@@ -92,3 +92,6 @@
 - [x] Text-Annotationen: Pfeil-Werkzeug zum Markieren auf Fotos
 - [x] Protokoll-Liste: Protokoll-Nummer in der Listenansicht anzeigen
 - [x] Projekt-PDF-Export: Alle Protokolle eines Projekts als gebündeltes PDF exportieren
+- [x] Projekt-PDF-Export: Fotos im gebündelten PDF einbetten
+- [x] Foto-Annotation: Zoom/Pan für präzisere Markierungen
+- [x] Foto-Annotation: Vorlagen für wiederkehrende Text-Annotationen (Mangel, Nacharbeit, etc.)

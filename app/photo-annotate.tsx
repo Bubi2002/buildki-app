@@ -40,7 +40,18 @@ const COLORS = [
 
 const PEN_SIZES = [3, 5, 8, 12];
 
-type ToolType = "pen" | "arrow" | "text";
+const TEXT_TEMPLATES = [
+  { label: "Mangel", icon: "warning" as const },
+  { label: "Nacharbeit", icon: "build" as const },
+  { label: "OK", icon: "check-circle" as const },
+  { label: "Achtung", icon: "error" as const },
+  { label: "Prüfen", icon: "search" as const },
+  { label: "Foto", icon: "photo-camera" as const },
+  { label: "Maß", icon: "straighten" as const },
+  { label: "Hinweis", icon: "info" as const },
+];
+
+type ToolType = "pen" | "arrow" | "text" | "zoom";
 
 type DrawElement = {
   type: "path" | "arrow" | "text";
@@ -83,10 +94,49 @@ export default function PhotoAnnotateScreen() {
   const [textInputValue, setTextInputValue] = useState("");
   const [textPosition, setTextPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isSaving, setIsSaving] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [translateX, setTranslateX] = useState(0);
+  const [translateY, setTranslateY] = useState(0);
+  const [baseScale, setBaseScale] = useState(1);
+  const [baseTranslateX, setBaseTranslateX] = useState(0);
+  const [baseTranslateY, setBaseTranslateY] = useState(0);
 
   // Calculate image dimensions to fit screen
   const imageWidth = SCREEN_WIDTH;
   const imageHeight = SCREEN_HEIGHT - 180;
+
+  // Pinch gesture for zoom
+  const pinchGesture = Gesture.Pinch()
+    .enabled(selectedTool === "zoom")
+    .onStart(() => {
+      setBaseScale(scale);
+    })
+    .onUpdate((e) => {
+      const newScale = Math.min(Math.max(baseScale * e.scale, 1), 5);
+      setScale(newScale);
+    })
+    .runOnJS(true);
+
+  // Pan gesture for zoom navigation
+  const zoomPanGesture = Gesture.Pan()
+    .enabled(selectedTool === "zoom")
+    .onStart(() => {
+      setBaseTranslateX(translateX);
+      setBaseTranslateY(translateY);
+    })
+    .onUpdate((e) => {
+      if (scale > 1) {
+        setTranslateX(baseTranslateX + e.translationX);
+        setTranslateY(baseTranslateY + e.translationY);
+      }
+    })
+    .runOnJS(true);
+
+  const resetZoom = () => {
+    setScale(1);
+    setTranslateX(0);
+    setTranslateY(0);
+  };
 
   // Pan gesture for pen drawing
   const penGesture = Gesture.Pan()
@@ -148,7 +198,26 @@ export default function PhotoAnnotateScreen() {
     })
     .runOnJS(true);
 
-  const composedGesture = Gesture.Race(penGesture, arrowGesture, tapGesture);
+  const addTemplateText = (label: string) => {
+    // Place template text at center of current view
+    const centerX = imageWidth / 2 - 30;
+    const centerY = imageHeight / 2;
+    setElements((prev) => [
+      ...prev,
+      {
+        type: "text",
+        x: centerX,
+        y: centerY,
+        text: label,
+        color: selectedColor,
+        strokeWidth: selectedSize,
+        fontSize: 18,
+      },
+    ]);
+  };
+
+  const zoomComposed = Gesture.Simultaneous(pinchGesture, zoomPanGesture);
+  const composedGesture = Gesture.Race(penGesture, arrowGesture, tapGesture, zoomComposed);
 
   const addTextElement = () => {
     if (textInputValue.trim()) {
@@ -350,13 +419,14 @@ export default function PhotoAnnotateScreen() {
 
         {/* Canvas area */}
         <View ref={canvasRef} style={styles.canvasContainer} collapsable={false}>
-          <Image
-            source={{ uri: photoUri }}
-            style={{ width: imageWidth, height: imageHeight }}
-            contentFit="contain"
-          />
-          <GestureDetector gesture={composedGesture}>
-            <View style={[styles.svgOverlay, { width: imageWidth, height: imageHeight }]}>
+          <View style={{ transform: [{ scale }, { translateX }, { translateY }], width: imageWidth, height: imageHeight }}>
+            <Image
+              source={{ uri: photoUri }}
+              style={{ width: imageWidth, height: imageHeight }}
+              contentFit="contain"
+            />
+            <GestureDetector gesture={composedGesture}>
+              <View style={[styles.svgOverlay, { width: imageWidth, height: imageHeight }]}>
               <Svg width={imageWidth} height={imageHeight}>
                 {/* Rendered elements */}
                 {elements.map((el, i) => renderElement(el, i))}
@@ -392,8 +462,9 @@ export default function PhotoAnnotateScreen() {
                   </G>
                 ) : null}
               </Svg>
-            </View>
-          </GestureDetector>
+              </View>
+            </GestureDetector>
+          </View>
         </View>
 
         {/* Tool selector */}
@@ -428,7 +499,46 @@ export default function PhotoAnnotateScreen() {
             <MaterialIcons name="text-fields" size={20} color={selectedTool === "text" ? colors.primary : colors.muted} />
             <Text style={[styles.toolTabText, { color: selectedTool === "text" ? colors.primary : colors.muted }]}>Text</Text>
           </Pressable>
+          <Pressable
+            onPress={() => setSelectedTool("zoom")}
+            style={[
+              styles.toolTab,
+              selectedTool === "zoom" && { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <MaterialIcons name="zoom-in" size={20} color={selectedTool === "zoom" ? colors.primary : colors.muted} />
+            <Text style={[styles.toolTabText, { color: selectedTool === "zoom" ? colors.primary : colors.muted }]}>Zoom</Text>
+          </Pressable>
         </View>
+        {/* Zoom reset indicator */}
+        {scale > 1 && (
+          <Pressable
+            onPress={resetZoom}
+            style={[styles.zoomResetBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
+            <MaterialIcons name="zoom-out-map" size={16} color={colors.primary} />
+            <Text style={[styles.zoomResetText, { color: colors.primary }]}>{Math.round(scale * 100)}% – Zurücksetzen</Text>
+          </Pressable>
+        )}
+
+        {/* Text template quick-select */}
+        {selectedTool === "text" && (
+          <View style={[styles.templateRow, { backgroundColor: colors.surface }]}>
+            {TEXT_TEMPLATES.map((tmpl) => (
+              <Pressable
+                key={tmpl.label}
+                onPress={() => addTemplateText(tmpl.label)}
+                style={({ pressed }) => [
+                  styles.templateChip,
+                  { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name={tmpl.icon} size={14} color={colors.primary} />
+                <Text style={[styles.templateChipText, { color: colors.foreground }]}>{tmpl.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {/* Toolbar */}
         <View style={[styles.toolbar, { backgroundColor: colors.background }]}>
@@ -727,4 +837,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   textInputBtnText: { fontSize: 15, fontWeight: "600" },
+  zoomResetBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, marginTop: 4 },
+  zoomResetText: { fontSize: 12, fontWeight: "600" },
+  templateRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
+  templateChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
+  templateChipText: { fontSize: 12, fontWeight: "500" },
 });

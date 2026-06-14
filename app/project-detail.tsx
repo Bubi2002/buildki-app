@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
+import * as FileSystem from "expo-file-system/legacy";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
 
 type Project = {
@@ -122,6 +123,28 @@ export default function ProjectDetailScreen() {
 
     setIsExporting(true);
     try {
+      // Convert photos to base64 for embedding
+      const photoBase64Map: Record<string, string[]> = {};
+      if (Platform.OS !== 'web') {
+        for (const p of protocols) {
+          if (p.photos && p.photos.length > 0) {
+            const base64Photos: string[] = [];
+            for (const photoUri of p.photos.slice(0, 4)) { // max 4 photos per protocol
+              try {
+                const info = await FileSystem.getInfoAsync(photoUri);
+                if (info.exists) {
+                  const base64 = await FileSystem.readAsStringAsync(photoUri, { encoding: FileSystem.EncodingType.Base64 });
+                  base64Photos.push(`data:image/jpeg;base64,${base64}`);
+                }
+              } catch { /* skip unreadable photos */ }
+            }
+            if (base64Photos.length > 0) {
+              photoBase64Map[p.id] = base64Photos;
+            }
+          }
+        }
+      }
+
       // Generate combined HTML for all protocols
       let combinedHtml = `
         <html><head><meta charset="utf-8"/>
@@ -139,6 +162,9 @@ export default function ProjectDetailScreen() {
           .toc { margin: 30px 0; }
           .toc-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
           .toc-number { color: #E53935; font-weight: 700; margin-right: 8px; }
+          .photos-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+          .photos-grid img { width: 48%; height: auto; max-height: 200px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
+          .photos-label { font-size: 12px; color: #666; margin-top: 16px; margin-bottom: 8px; font-weight: 600; }
         </style></head><body>
         <div class="project-cover">
           <h1>${project?.name || 'Projekt'}</h1>
@@ -177,6 +203,12 @@ export default function ProjectDetailScreen() {
               </div>
             </div>
             <div class="protocol-body">${(p.protocol || '').replace(/\n/g, '<br/>')}</div>
+            ${photoBase64Map[p.id] && photoBase64Map[p.id].length > 0 ? `
+              <p class="photos-label">Fotos (${photoBase64Map[p.id].length})</p>
+              <div class="photos-grid">
+                ${photoBase64Map[p.id].map(b64 => `<img src="${b64}" />`).join('')}
+              </div>
+            ` : ''}
           </div>
           ${i < protocols.length - 1 ? '<div class="page-break"></div>' : ''}
         `;
