@@ -60,3 +60,11 @@
 - [x] Reverse Geocoding (Koordinaten → Adresse)
 - [x] Standort im Protokoll-Datensatz speichern
 - [x] Standort in Protokoll-Detail und PDF anzeigen
+- [x] Mehrsprachige Protokolle: Spracherkennung der Aufnahme
+- [x] Mehrsprachige Protokolle: Übersetzung in Zielsprache per LLM
+- [x] Mehrsprachige Protokolle: Sprachauswahl in Einstellungen
+- [x] Projekt-Ordner: Projekte/Baustellen erstellen und verwalten
+- [x] Projekt-Ordner: Protokolle einem Projekt zuweisen
+- [x] Projekt-Ordner: Projekt-Übersicht mit Filterung
+- [x] Push-Erinnerungen: Benachrichtigungen für Aufgaben mit Frist
+- [x] Push-Erinnerungen: Erinnerungszeitpunkt konfigurierbar

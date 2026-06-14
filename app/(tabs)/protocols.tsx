@@ -237,6 +237,16 @@ export default function ProtocolsScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
+            {/* Projects button */}
+            <Pressable
+              onPress={() => router.push("/projects" as any)}
+              style={({ pressed }) => [
+                styles.headerBtn,
+                { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <MaterialIcons name="folder" size={20} color={colors.primary} />
+            </Pressable>
             {/* Tasks button */}
             <Pressable
               onPress={() => router.push("/tasks" as any)}

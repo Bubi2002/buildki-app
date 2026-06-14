@@ -32,6 +32,10 @@ type Settings = {
   templateId: string;
   autoSend: boolean;
   autoSendTarget: "whatsapp" | "email" | "both";
+  translateEnabled: boolean;
+  targetLanguage: string;
+  remindersEnabled: boolean;
+  reminderHoursBefore: number;
 };
 
 type CompanySettings = {
@@ -51,6 +55,10 @@ const DEFAULT_SETTINGS: Settings = {
   templateId: "freitext",
   autoSend: false,
   autoSendTarget: "whatsapp",
+  translateEnabled: false,
+  targetLanguage: "en",
+  remindersEnabled: true,
+  reminderHoursBefore: 24,
 };
 
 const DEFAULT_COMPANY: CompanySettings = {
@@ -176,6 +184,19 @@ export default function SettingsScreen() {
     try {
       await AsyncStorage.setItem("protokoll-settings", JSON.stringify(settings));
       await AsyncStorage.setItem("company-settings", JSON.stringify(company));
+
+      // Schedule or cancel reminders based on settings
+      if (settings.remindersEnabled) {
+        const { requestNotificationPermissions, scheduleTaskReminders } = await import("@/lib/reminders");
+        const granted = await requestNotificationPermissions();
+        if (granted) {
+          await scheduleTaskReminders(settings.reminderHoursBefore);
+        }
+      } else {
+        const { cancelAllReminders } = await import("@/lib/reminders");
+        await cancelAllReminders();
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
@@ -854,6 +875,53 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* Erinnerungen */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Erinnerungen
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Benachrichtigungen für Aufgaben mit nahender Frist
+          </Text>
+
+          <View style={[styles.autoSendRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.autoSendLabel, { color: colors.foreground }]}>Erinnerungen aktiv</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Push-Benachrichtigungen vor Fristablauf</Text>
+            </View>
+            <Pressable
+              onPress={() => setSettings({ ...settings, remindersEnabled: !settings.remindersEnabled })}
+              style={[styles.toggleSwitch, { backgroundColor: settings.remindersEnabled ? colors.primary : colors.border }]}
+            >
+              <View style={[styles.toggleKnob, { transform: [{ translateX: settings.remindersEnabled ? 20 : 2 }] }]} />
+            </Pressable>
+          </View>
+
+          {settings.remindersEnabled && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={[styles.label, { color: colors.muted }]}>Vorlaufzeit (Stunden vor Frist)</Text>
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                {[6, 12, 24, 48].map((hours) => (
+                  <Pressable
+                    key={hours}
+                    onPress={() => setSettings({ ...settings, reminderHoursBefore: hours })}
+                    style={({ pressed }) => [{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
+                      backgroundColor: settings.reminderHoursBefore === hours ? colors.primary : colors.surface,
+                      borderWidth: 1, borderColor: settings.reminderHoursBefore === hours ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    }]}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "500", color: settings.reminderHoursBefore === hours ? "#FFFFFF" : colors.foreground }}>
+                      {hours}h
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Save Button */}
         {/* Darstellung / Dark Mode */}
         <View style={styles.section}>
@@ -1222,5 +1290,19 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: "#FFFFFF",
+  },
+  autoSendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  autoSendLabel: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

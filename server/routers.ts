@@ -290,6 +290,55 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
         return { success: true };
       }),
   }),
+
+  translate: router({
+    translateProtocol: publicProcedure
+      .input(
+        z.object({
+          text: z.string(),
+          sourceLanguage: z.string().optional(),
+          targetLanguage: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const langNames: Record<string, string> = {
+          de: "Deutsch",
+          en: "Englisch",
+          fr: "Französisch",
+          es: "Spanisch",
+          it: "Italienisch",
+          nl: "Niederländisch",
+          pl: "Polnisch",
+          tr: "Türkisch",
+          pt: "Portugiesisch",
+          ar: "Arabisch",
+          ru: "Russisch",
+        };
+
+        const targetName = langNames[input.targetLanguage] || input.targetLanguage;
+        const sourceName = input.sourceLanguage ? (langNames[input.sourceLanguage] || input.sourceLanguage) : "der erkannten Sprache";
+
+        const systemPrompt = `Du bist ein professioneller Übersetzer. Übersetze den folgenden Protokolltext von ${sourceName} nach ${targetName}.
+
+Wichtige Regeln:
+- Behalte die Struktur und Formatierung bei (Überschriften, Stichpunkte, Absätze)
+- Übersetze fachlich korrekt und kontextbezogen
+- Behalte Eigennamen, Firmennamen und Adressen unverändert
+- Antworte ausschließlich mit der Übersetzung, ohne Erklärungen`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: input.text },
+          ],
+        });
+
+        const translated =
+          (response.choices?.[0]?.message?.content as string) || "Übersetzung fehlgeschlagen.";
+
+        return { translated, targetLanguage: input.targetLanguage };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

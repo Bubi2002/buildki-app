@@ -22,8 +22,23 @@ import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
+import { trpc } from "@/lib/trpc";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const LANGUAGES = [
+  { code: "de", name: "Deutsch" },
+  { code: "en", name: "Englisch" },
+  { code: "fr", name: "Franz\u00f6sisch" },
+  { code: "es", name: "Spanisch" },
+  { code: "it", name: "Italienisch" },
+  { code: "nl", name: "Niederl\u00e4ndisch" },
+  { code: "pl", name: "Polnisch" },
+  { code: "tr", name: "T\u00fcrkisch" },
+  { code: "pt", name: "Portugiesisch" },
+  { code: "ru", name: "Russisch" },
+  { code: "ar", name: "Arabisch" },
+];
 const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 3;
 
 type TodoItem = {
@@ -65,6 +80,12 @@ export default function ProtocolDetailScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [targetLang, setTargetLang] = useState("en");
+  const [showLangPicker, setShowLangPicker] = useState(false);
+  const translateMutation = trpc.translate.translateProtocol.useMutation();
 
   useEffect(() => {
     loadProtocol();
@@ -467,6 +488,77 @@ export default function ProtocolDetailScreen() {
           <Text style={[styles.protocolText, { color: colors.foreground }]}>
             {protocol.protocol}
           </Text>
+        </View>
+
+        {/* Translation section */}
+        <View style={[styles.section, { marginTop: 0 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="translate" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Übersetzung</Text>
+            </View>
+            <Pressable
+              onPress={() => setShowLangPicker(!showLangPicker)}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 13, color: colors.foreground }}>{LANGUAGES.find(l => l.code === targetLang)?.name || targetLang}</Text>
+              <MaterialIcons name="expand-more" size={16} color={colors.muted} />
+            </Pressable>
+          </View>
+
+          {showLangPicker && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+              {LANGUAGES.filter(l => l.code !== "de").map(lang => (
+                <Pressable
+                  key={lang.code}
+                  onPress={() => { setTargetLang(lang.code); setShowLangPicker(false); setTranslatedText(null); }}
+                  style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: targetLang === lang.code ? colors.primary : colors.surface, borderWidth: 1, borderColor: targetLang === lang.code ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={{ fontSize: 12, color: targetLang === lang.code ? "#FFFFFF" : colors.foreground }}>{lang.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          <Pressable
+            onPress={async () => {
+              if (showTranslation && translatedText) {
+                setShowTranslation(false);
+                return;
+              }
+              setIsTranslating(true);
+              try {
+                const result = await translateMutation.mutateAsync({
+                  text: protocol.protocol,
+                  sourceLanguage: "de",
+                  targetLanguage: targetLang,
+                });
+                setTranslatedText(result.translated);
+                setShowTranslation(true);
+              } catch (e) {
+                Alert.alert("Fehler", "Übersetzung fehlgeschlagen. Bitte versuche es erneut.");
+              } finally {
+                setIsTranslating(false);
+              }
+            }}
+            disabled={isTranslating}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: showTranslation ? colors.surface : colors.primary + "15", borderWidth: 1, borderColor: showTranslation ? colors.border : colors.primary + "40", opacity: (pressed || isTranslating) ? 0.6 : 1 }]}
+          >
+            {isTranslating ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialIcons name={showTranslation ? "visibility-off" : "translate"} size={18} color={colors.primary} />
+            )}
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>
+              {isTranslating ? "Übersetze..." : showTranslation ? "Übersetzung ausblenden" : `In ${LANGUAGES.find(l => l.code === targetLang)?.name || targetLang} übersetzen`}
+            </Text>
+          </Pressable>
+
+          {showTranslation && translatedText && (
+            <View style={[styles.transcriptionBox, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
+              <Text style={[styles.protocolText, { color: colors.foreground }]}>{translatedText}</Text>
+            </View>
+          )}
         </View>
 
         {/* Transcription toggle */}
