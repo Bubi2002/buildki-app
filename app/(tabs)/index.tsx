@@ -37,7 +37,7 @@ import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } fro
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 import { getApiBaseUrl } from "@/constants/oauth";
 
-type RecordingMode = "video" | "audio";
+type RecordingMode = "video" | "audio" | "audio-photo";
 
 export default function RecordScreen() {
   const colors = useColors();
@@ -561,6 +561,7 @@ export default function RecordScreen() {
     if (mode === "video") {
       startVideoRecording();
     } else {
+      // Both 'audio' and 'audio-photo' use the audio recorder
       startAudioRecording();
     }
   };
@@ -569,6 +570,7 @@ export default function RecordScreen() {
     if (mode === "video") {
       stopVideoRecording();
     } else {
+      // Both 'audio' and 'audio-photo' use the audio recorder
       stopAudioRecording();
     }
   };
@@ -901,7 +903,7 @@ export default function RecordScreen() {
     requestMicPermission();
   }
 
-  if (mode !== "audio" && (!cameraPermission.granted || !micPermission.granted)) {
+  if ((mode === "video" || mode === "audio-photo") && (!cameraPermission.granted || !micPermission.granted)) {
     const canAskAgain = cameraPermission?.canAskAgain !== false && micPermission?.canAskAgain !== false;
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
@@ -1083,6 +1085,7 @@ export default function RecordScreen() {
 
   // --- AUDIO MODE UI ---
   if (mode === "audio") {
+    // Pure audio mode - no camera
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Audio waveform area */}
@@ -1098,6 +1101,16 @@ export default function RecordScreen() {
             >
               <MaterialIcons name="videocam" size={20} color={colors.muted} />
               <Text style={[styles.modeButtonText, { color: colors.muted }]}>Video</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { if (!isRecording) setMode("audio-photo"); }}
+              style={({ pressed }) => [
+                styles.modeButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <MaterialIcons name="photo-camera" size={20} color={colors.muted} />
+              <Text style={[styles.modeButtonText, { color: colors.muted }]}>Audio+Foto</Text>
             </Pressable>
             <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}>
               <MaterialIcons name="mic" size={20} color={colors.primary} />
@@ -1249,7 +1262,7 @@ export default function RecordScreen() {
             </Pressable>
 
             <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-              {isRecording ? "Tippe zum Stoppen" : "Nur Sprache \u2022 Kein Video"}
+              {isRecording ? "Tippe zum Stoppen" : "Nur Sprache • Ohne Kamera"}
             </Text>
 
             {/* Quick access: last 3 protocols */}
@@ -1279,7 +1292,8 @@ export default function RecordScreen() {
     );
   }
 
-  // --- VIDEO MODE UI ---
+  // --- VIDEO / AUDIO+PHOTO MODE UI ---
+  // Both modes show the camera. Video records video+audio; Audio+Photo records audio only + allows photos.
   // Preview Modal
   if (showPreview && previewProtocol) {
     const { newProtocol } = previewProtocol;
@@ -1339,7 +1353,7 @@ export default function RecordScreen() {
         ref={cameraRef}
         style={styles.camera}
         facing="back"
-        mode="video"
+        mode={mode === "video" ? "video" : "picture"}
         active={isFocused}
         onCameraReady={() => setCameraReady(true)}
         onMountError={(e) => console.warn("Camera mount error:", e?.message)}
@@ -1380,16 +1394,37 @@ export default function RecordScreen() {
         {/* Mode toggle */}
         {!isRecording && (
           <View style={styles.modeToggleCamera}>
-            <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
-              <MaterialIcons name="videocam" size={20} color="#FFFFFF" />
-              <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Video</Text>
-            </View>
+            {mode === "video" ? (
+              <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
+                <MaterialIcons name="videocam" size={20} color="#FFFFFF" />
+                <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Video</Text>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setMode("video")}
+                style={({ pressed }) => [styles.modeButton, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="videocam" size={20} color="rgba(255,255,255,0.7)" />
+                <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Video</Text>
+              </Pressable>
+            )}
+            {mode === "audio-photo" ? (
+              <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
+                <MaterialIcons name="photo-camera" size={20} color="#FFFFFF" />
+                <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Audio+Foto</Text>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setMode("audio-photo")}
+                style={({ pressed }) => [styles.modeButton, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="photo-camera" size={20} color="rgba(255,255,255,0.7)" />
+                <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Audio+Foto</Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => setMode("audio")}
-              style={({ pressed }) => [
-                styles.modeButton,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
+              style={({ pressed }) => [styles.modeButton, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="mic" size={20} color="rgba(255,255,255,0.7)" />
               <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Audio</Text>
@@ -1518,7 +1553,7 @@ export default function RecordScreen() {
                 {
                   borderColor: "#FFFFFF",
                   transform: [{ scale: pressed ? 0.95 : 1 }],
-                  opacity: (!isRecording && !cameraReady) ? 0.5 : 1,
+                  opacity: (!isRecording && !cameraReady && mode === "video") ? 0.5 : 1,
                 },
               ]}
             >
@@ -1554,7 +1589,7 @@ export default function RecordScreen() {
           <Text style={styles.hintText}>
             {isRecording
               ? "Foto \u2022 Stopp \u2022 Markierung"
-              : "Tippe zum Aufnehmen"}
+              : mode === "audio-photo" ? "Audio + Fotos \u2022 Kein Video" : "Tippe zum Aufnehmen"}
           </Text>
         </View>
       </View>

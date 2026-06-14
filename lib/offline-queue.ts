@@ -10,7 +10,7 @@ export type QueuedRecording = {
   templateId: string;
   photos: string[];
   duration: number;
-  recordingMode: "video" | "audio";
+  recordingMode: "video" | "audio" | "audio-photo";
   createdAt: string;
   status: "pending" | "processing" | "failed";
   retryCount: number;

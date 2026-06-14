@@ -1,18 +1,28 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
+import * as WebBrowser from "expo-web-browser";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "com.app.protokollapp";
+// Must match the scheme generated in app.config.ts from rawBundleId
+const rawBundleId = "space.manus.protokoll.app.t20250614001800";
+const bundleId = rawBundleId
+  .replace(/[-_]/g, ".")
+  .replace(/[^a-zA-Z0-9.]/g, "")
+  .replace(/\.+/g, ".")
+  .replace(/^\.+|\.+$/g, "")
+  .toLowerCase()
+  .split(".")
+  .map((s) => (/^[a-zA-Z]/.test(s) ? s : "x" + s))
+  .join(".") || "space.manus.app";
 const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
-  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
-  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "",
-  appId: process.env.EXPO_PUBLIC_APP_ID ?? "",
-  ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
-  ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
+  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL || "https://manus.im",
+  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL || "https://api.manus.im",
+  appId: process.env.EXPO_PUBLIC_APP_ID || "C7amCXpPYwQNP8pDBUNaVq",
+  ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID || "cSfHAnJJ9YxVvFQDKLf5gm",
+  ownerName: process.env.EXPO_PUBLIC_OWNER_NAME || "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
   deepLinkScheme: schemeFromBundleId,
 };
@@ -116,15 +126,21 @@ export const getLoginUrl = () => {
 /**
  * Start OAuth login flow.
  *
- * On native platforms (iOS/Android), open the system browser directly so
- * the OAuth callback returns via deep link to the app.
+ * On native platforms (iOS/Android), uses openAuthSessionAsync which handles
+ * the redirect back to the app automatically via ASWebAuthenticationSession (iOS)
+ * or Chrome Custom Tabs (Android).
  *
  * On web, this simply redirects to the login URL.
  *
- * @returns Always null, the callback is handled via deep link.
+ * @returns The redirect URL with auth params, or null if cancelled/failed.
  */
 export async function startOAuthLogin(): Promise<string | null> {
   const loginUrl = getLoginUrl();
+  const redirectUri = getRedirectUri();
+
+  console.log("[OAuth] Starting login flow...");
+  console.log("[OAuth] Login URL:", loginUrl);
+  console.log("[OAuth] Redirect URI:", redirectUri);
 
   if (ReactNative.Platform.OS === "web") {
     // On web, just redirect
@@ -134,20 +150,30 @@ export async function startOAuthLogin(): Promise<string | null> {
     return null;
   }
 
-  const supported = await Linking.canOpenURL(loginUrl);
-  if (!supported) {
-    console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    // 可考虑抛出错误或返回错误状态，让调用方处理
+  try {
+    // Use openAuthSessionAsync for reliable OAuth on iOS/Android
+    // This handles the redirect back to the app automatically
+    const result = await WebBrowser.openAuthSessionAsync(loginUrl, redirectUri);
+    console.log("[OAuth] Auth session result:", result);
+
+    if (result.type === "success" && result.url) {
+      // The URL contains the auth params - parse and handle them
+      console.log("[OAuth] Success URL:", result.url);
+      return result.url;
+    } else if (result.type === "cancel" || result.type === "dismiss") {
+      console.log("[OAuth] User cancelled login");
+      return null;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[OAuth] Failed to open auth session:", error);
+    // Fallback: try opening URL directly
+    try {
+      await Linking.openURL(loginUrl);
+    } catch (linkError) {
+      console.error("[OAuth] Fallback also failed:", linkError);
+    }
     return null;
   }
-
-  try {
-    await Linking.openURL(loginUrl);
-  } catch (error) {
-    console.error("[OAuth] Failed to open login URL:", error);
-    // 可考虑抛出错误让调用方处理
-  }
-
-  // The OAuth callback will reopen the app via deep link.
-  return null;
 }

@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import { useThemeContext, type ThemeMode } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
+import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import {
   getBiometricStatus,
@@ -1409,7 +1410,34 @@ export default function SettingsScreen() {
                 <Text style={{ color: colors.error, fontWeight: "600", fontSize: 14 }}>Abmelden</Text>
               </Pressable>
             ) : (
-              <Pressable onPress={() => router.push("/oauth/callback")} style={({ pressed }) => [styles.loginButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+              <Pressable onPress={async () => {
+                const resultUrl = await startOAuthLogin();
+                if (resultUrl) {
+                  // Parse the URL and navigate to oauth callback with params
+                  try {
+                    const url = new URL(resultUrl);
+                    const code = url.searchParams.get('code');
+                    const state = url.searchParams.get('state');
+                    const sessionToken = url.searchParams.get('sessionToken');
+                    if (sessionToken) {
+                      router.push({ pathname: '/oauth/callback', params: { sessionToken } });
+                    } else if (code && state) {
+                      router.push({ pathname: '/oauth/callback', params: { code, state } });
+                    }
+                  } catch (e) {
+                    // Try parsing as deep link
+                    const params = resultUrl.split('?')[1];
+                    if (params) {
+                      const searchParams = new URLSearchParams(params);
+                      const code = searchParams.get('code');
+                      const state = searchParams.get('state');
+                      if (code && state) {
+                        router.push({ pathname: '/oauth/callback', params: { code, state } });
+                      }
+                    }
+                  }
+                }
+              }} style={({ pressed }) => [styles.loginButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
                 <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>Anmelden</Text>
               </Pressable>
             )}

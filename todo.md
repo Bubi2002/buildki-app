@@ -142,3 +142,5 @@
 - [x] Feature: Video-Qualität auf 720p reduzieren + maxFileSize 15 MB (stoppt automatisch bei 15 MB)
 - [x] Feature: Audio-Modus als Standard vorausgewählt (zuverlässigster Workflow)
 - [x] Feature: Video-Komprimierung mit expo-image-and-video-compressor (H.264, 480p, 800kbps, ultrafast)
+- [x] Bug-Fix: Cloud-Sync/OAuth-Login - startOAuthLogin mit openAuthSessionAsync, korrektes Deep-Link-Scheme, Fallback-Portal-URL
+- [x] Feature: Neuer Modus 'Audio+Foto' (Audio-Aufnahme + Kamera für Fotos, ohne Video)
