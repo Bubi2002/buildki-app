@@ -9,6 +9,13 @@ import {
   ScrollView,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -18,6 +25,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import * as Haptics from "expo-haptics";
+
+type RecordingMode = "video" | "audio";
 
 export default function RecordScreen() {
   const colors = useColors();
@@ -34,7 +43,12 @@ export default function RecordScreen() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoFlash, setPhotoFlash] = useState(false);
+  const [mode, setMode] = useState<RecordingMode>("video");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Audio recorder
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder);
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
@@ -44,6 +58,16 @@ export default function RecordScreen() {
   // Load default template from settings
   useEffect(() => {
     loadDefaultTemplate();
+  }, []);
+
+  // Setup audio mode for recording
+  useEffect(() => {
+    (async () => {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+    })();
   }, []);
 
   const loadDefaultTemplate = async () => {
@@ -117,7 +141,8 @@ export default function RecordScreen() {
     }
   };
 
-  const startRecording = async () => {
+  // --- VIDEO RECORDING ---
+  const startVideoRecording = async () => {
     if (Platform.OS === "web") {
       alert("Videoaufnahme ist nur auf dem Handy verfügbar.");
       return;
@@ -131,14 +156,14 @@ export default function RecordScreen() {
 
     try {
       const video = await cameraRef.current.recordAsync({
-        maxDuration: 300, // 5 minutes max
+        maxDuration: 300,
       });
 
       stopTimer();
       setIsRecording(false);
 
       if (video?.uri) {
-        await processRecording(video.uri);
+        await processRecording(video.uri, "video/mp4");
       }
     } catch (error) {
       stopTimer();
@@ -147,26 +172,79 @@ export default function RecordScreen() {
     }
   };
 
-  const stopRecording = () => {
+  const stopVideoRecording = () => {
     if (cameraRef.current) {
       cameraRef.current.stopRecording();
     }
   };
 
-  const processRecording = async (videoUri: string) => {
+  // --- AUDIO RECORDING ---
+  const startAudioRecording = async () => {
+    setShowTemplateSelector(false);
+    setCapturedPhotos([]);
+    setIsRecording(true);
+    startTimer();
+
+    try {
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+    } catch (error) {
+      stopTimer();
+      setIsRecording(false);
+      console.error("Audio recording error:", error);
+    }
+  };
+
+  const stopAudioRecording = async () => {
+    try {
+      await audioRecorder.stop();
+      stopTimer();
+      setIsRecording(false);
+
+      const uri = audioRecorder.uri;
+      if (uri) {
+        await processRecording(uri, "audio/m4a");
+      }
+    } catch (error) {
+      stopTimer();
+      setIsRecording(false);
+      console.error("Audio stop error:", error);
+    }
+  };
+
+  // --- UNIFIED RECORDING CONTROLS ---
+  const startRecording = () => {
+    if (mode === "video") {
+      startVideoRecording();
+    } else {
+      startAudioRecording();
+    }
+  };
+
+  const stopRecording = () => {
+    if (mode === "video") {
+      stopVideoRecording();
+    } else {
+      stopAudioRecording();
+    }
+  };
+
+  const processRecording = async (fileUri: string, mimeType: string) => {
     setIsProcessing(true);
 
     try {
       // Read the file as base64
-      const base64 = await FileSystem.readAsStringAsync(videoUri, {
+      const base64 = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+
+      const ext = mimeType === "video/mp4" ? "mp4" : "m4a";
 
       // Upload audio to storage
       const uploadResult = await uploadMutation.mutateAsync({
         base64,
-        mimeType: "video/mp4",
-        filename: `recording-${Date.now()}.mp4`,
+        mimeType,
+        filename: `recording-${Date.now()}.${ext}`,
       });
 
       // Transcribe audio
@@ -203,7 +281,6 @@ export default function RecordScreen() {
         }));
       } catch (todoError) {
         console.error("Todo extraction error:", todoError);
-        // Continue without todos - not critical
       }
 
       // Save protocol locally with photos and todos
@@ -220,6 +297,7 @@ export default function RecordScreen() {
         photos: capturedPhotos,
         todos,
         duration: recordingDuration,
+        recordingMode: mode,
         createdAt: new Date().toISOString(),
         status: "ready" as const,
       };
@@ -281,7 +359,7 @@ export default function RecordScreen() {
           Verarbeitung...
         </Text>
         <Text className="text-base text-muted mt-2 text-center">
-          Deine Aufnahme wird transkribiert und ein {selectedTemplate.name} erstellt.
+          Deine {mode === "video" ? "Aufnahme" : "Sprachnotiz"} wird transkribiert und ein {selectedTemplate.name} erstellt.
         </Text>
         {capturedPhotos.length > 0 && (
           <Text className="text-sm text-muted mt-2 text-center">
@@ -292,6 +370,173 @@ export default function RecordScreen() {
     );
   }
 
+  // --- AUDIO MODE UI ---
+  if (mode === "audio") {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Audio waveform area */}
+        <View style={styles.audioContainer}>
+          {/* Mode toggle */}
+          <View style={styles.modeToggleTop}>
+            <Pressable
+              onPress={() => { if (!isRecording) setMode("video"); }}
+              style={({ pressed }) => [
+                styles.modeButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <MaterialIcons name="videocam" size={20} color={colors.muted} />
+              <Text style={[styles.modeButtonText, { color: colors.muted }]}>Video</Text>
+            </Pressable>
+            <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}>
+              <MaterialIcons name="mic" size={20} color={colors.primary} />
+              <Text style={[styles.modeButtonText, { color: colors.primary, fontWeight: "700" }]}>Audio</Text>
+            </View>
+          </View>
+
+          {/* Audio visualization */}
+          <View style={styles.audioVisualArea}>
+            <View style={[styles.audioCircle, { borderColor: isRecording ? colors.primary : colors.border }]}>
+              <MaterialIcons
+                name={isRecording ? "graphic-eq" : "mic"}
+                size={64}
+                color={isRecording ? colors.primary : colors.muted}
+              />
+            </View>
+            {isRecording && (
+              <View style={styles.timerContainerAudio}>
+                <View style={styles.recordDot} />
+                <Text style={[styles.timerTextAudio, { color: colors.foreground }]}>
+                  {formatDuration(recordingDuration)}
+                </Text>
+              </View>
+            )}
+            {!isRecording && (
+              <Text style={[styles.audioHintText, { color: colors.muted }]}>
+                Tippe zum Starten der Sprachaufnahme
+              </Text>
+            )}
+          </View>
+
+          {/* Template selector */}
+          {showTemplateSelector && !isRecording && (
+            <View style={[styles.templateSheetAudio, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.templateSheetHeader}>
+                <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
+                  Vorlage wählen
+                </Text>
+                <Pressable onPress={() => setShowTemplateSelector(false)}>
+                  <MaterialIcons name="close" size={24} color={colors.muted} />
+                </Pressable>
+              </View>
+              <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
+                {PROTOCOL_TEMPLATES.map((template) => (
+                  <Pressable
+                    key={template.id}
+                    onPress={() => {
+                      setSelectedTemplate(template);
+                      setShowTemplateSelector(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.templateListItem,
+                      {
+                        backgroundColor:
+                          selectedTemplate.id === template.id
+                            ? colors.primary + "15"
+                            : "transparent",
+                        borderColor:
+                          selectedTemplate.id === template.id
+                            ? colors.primary
+                            : colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={template.icon as any}
+                      size={22}
+                      color={
+                        selectedTemplate.id === template.id
+                          ? colors.primary
+                          : colors.muted
+                      }
+                    />
+                    <View style={styles.templateListText}>
+                      <Text
+                        style={[
+                          styles.templateListName,
+                          {
+                            color:
+                              selectedTemplate.id === template.id
+                                ? colors.primary
+                                : colors.foreground,
+                          },
+                        ]}
+                      >
+                        {template.name}
+                      </Text>
+                      <Text
+                        style={[styles.templateListDesc, { color: colors.muted }]}
+                        numberOfLines={1}
+                      >
+                        {template.description}
+                      </Text>
+                    </View>
+                    {selectedTemplate.id === template.id && (
+                      <MaterialIcons name="check-circle" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Controls */}
+          <View style={styles.audioControls}>
+            {/* Template badge */}
+            {!isRecording && (
+              <Pressable
+                onPress={() => setShowTemplateSelector(true)}
+                style={({ pressed }) => [
+                  styles.templateBadgeAudio,
+                  { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name={selectedTemplate.icon as any} size={16} color={colors.primary} />
+                <Text style={[styles.templateBadgeTextAudio, { color: colors.foreground }]}>{selectedTemplate.name}</Text>
+                <MaterialIcons name="expand-more" size={16} color={colors.muted} />
+              </Pressable>
+            )}
+
+            {/* Record button */}
+            <Pressable
+              onPress={isRecording ? stopRecording : startRecording}
+              style={({ pressed }) => [
+                styles.recordButton,
+                {
+                  borderColor: colors.primary,
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                },
+              ]}
+            >
+              <View
+                style={[
+                  isRecording ? styles.stopIcon : styles.recordIcon,
+                  { backgroundColor: colors.primary },
+                ]}
+              />
+            </Pressable>
+
+            <Text style={[styles.audioControlHint, { color: colors.muted }]}>
+              {isRecording ? "Tippe zum Stoppen" : "Nur Sprache \u2022 Kein Video"}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // --- VIDEO MODE UI ---
   return (
     <View style={styles.container}>
       <CameraView
@@ -319,6 +564,26 @@ export default function RecordScreen() {
                 <Text style={styles.photoCountText}>{capturedPhotos.length}</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Mode toggle */}
+        {!isRecording && (
+          <View style={styles.modeToggleCamera}>
+            <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
+              <MaterialIcons name="videocam" size={20} color="#FFFFFF" />
+              <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Video</Text>
+            </View>
+            <Pressable
+              onPress={() => setMode("audio")}
+              style={({ pressed }) => [
+                styles.modeButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <MaterialIcons name="mic" size={20} color="rgba(255,255,255,0.7)" />
+              <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Audio</Text>
+            </Pressable>
           </View>
         )}
 
@@ -529,6 +794,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+  // Mode toggle
+  modeToggleCamera: {
+    position: "absolute",
+    top: 60,
+    right: 16,
+    flexDirection: "column",
+    gap: 8,
+  },
+  modeToggleTop: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    paddingTop: 60,
+    paddingBottom: 24,
+  },
+  modeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  modeButtonActive: {
+    borderWidth: 1.5,
+  },
+  modeButtonText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  // Template overlay (video mode)
   templateOverlay: {
     position: "absolute",
     top: 0,
@@ -545,6 +843,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
     maxHeight: "70%",
+  },
+  templateSheetAudio: {
+    position: "absolute",
+    bottom: 200,
+    left: 16,
+    right: 16,
+    borderRadius: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderWidth: 1,
+    maxHeight: 350,
   },
   templateSheetHeader: {
     flexDirection: "row",
@@ -671,5 +981,57 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Audio mode styles
+  audioContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  audioVisualArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 24,
+  },
+  audioCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timerContainerAudio: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  timerTextAudio: {
+    fontSize: 32,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+  audioHintText: {
+    fontSize: 15,
+  },
+  audioControls: {
+    alignItems: "center",
+    paddingBottom: 60,
+    gap: 16,
+  },
+  templateBadgeAudio: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+  },
+  templateBadgeTextAudio: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  audioControlHint: {
+    fontSize: 13,
   },
 });

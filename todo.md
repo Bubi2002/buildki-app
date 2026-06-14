@@ -33,3 +33,6 @@
 - [x] Datenmodell um todos-Array erweitern
 - [x] Detailansicht: To-Do-Liste mit Checkboxen anzeigen
 - [x] PDF-Export: To-Do-Sektion einfügen
+- [x] Nur-Audio-Modus (Diktier-Modus ohne Kamera)
+- [x] Audio-Aufnahme mit expo-audio
+- [x] Toggle zwischen Video- und Audio-Modus im Aufnahme-Screen
