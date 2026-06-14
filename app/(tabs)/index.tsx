@@ -876,7 +876,9 @@ export default function RecordScreen() {
         active={isFocused}
         onCameraReady={() => setCameraReady(true)}
         onMountError={(e) => console.warn("Camera mount error:", e?.message)}
-      >
+      />
+      {/* Overlay layer on top of camera */}
+      <View style={[styles.overlayContainer, { pointerEvents: "box-none" }]}>
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}
 
@@ -1088,7 +1090,7 @@ export default function RecordScreen() {
               : "Tippe zum Aufnehmen"}
           </Text>
         </View>
-      </CameraView>
+      </View>
     </View>
   );
 }
@@ -1100,6 +1102,13 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  overlayContainer: {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   flashOverlay: {
     position: "absolute",
