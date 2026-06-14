@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,14 @@ import {
   Dimensions,
   Platform,
   Alert,
+  TextInput,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import Svg, { Path, Circle } from "react-native-svg";
+import Svg, { Path, Line, Polygon, G, Text as SvgText } from "react-native-svg";
 import {
   GestureDetector,
   Gesture,
@@ -38,10 +40,24 @@ const COLORS = [
 
 const PEN_SIZES = [3, 5, 8, 12];
 
-type DrawPath = {
-  path: string;
+type ToolType = "pen" | "arrow" | "text";
+
+type DrawElement = {
+  type: "path" | "arrow" | "text";
   color: string;
   strokeWidth: number;
+  // For path
+  path?: string;
+  // For arrow
+  startX?: number;
+  startY?: number;
+  endX?: number;
+  endY?: number;
+  // For text
+  x?: number;
+  y?: number;
+  text?: string;
+  fontSize?: number;
 };
 
 export default function PhotoAnnotateScreen() {
@@ -54,19 +70,27 @@ export default function PhotoAnnotateScreen() {
   const router = useRouter();
   const canvasRef = useRef<View>(null);
 
-  const [paths, setPaths] = useState<DrawPath[]>([]);
+  const [elements, setElements] = useState<DrawElement[]>([]);
   const [currentPath, setCurrentPath] = useState<string>("");
+  const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
+  const [arrowEnd, setArrowEnd] = useState<{ x: number; y: number } | null>(null);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [selectedSize, setSelectedSize] = useState(PEN_SIZES[1]);
+  const [selectedTool, setSelectedTool] = useState<ToolType>("pen");
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showSizePicker, setShowSizePicker] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInputValue, setTextInputValue] = useState("");
+  const [textPosition, setTextPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isSaving, setIsSaving] = useState(false);
 
   // Calculate image dimensions to fit screen
   const imageWidth = SCREEN_WIDTH;
-  const imageHeight = SCREEN_HEIGHT - 180; // Leave space for toolbar
+  const imageHeight = SCREEN_HEIGHT - 180;
 
-  const panGesture = Gesture.Pan()
+  // Pan gesture for pen drawing
+  const penGesture = Gesture.Pan()
+    .enabled(selectedTool === "pen")
     .onStart((e) => {
       setCurrentPath(`M ${e.x} ${e.y}`);
     })
@@ -75,24 +99,99 @@ export default function PhotoAnnotateScreen() {
     })
     .onEnd(() => {
       if (currentPath) {
-        setPaths((prev) => [
+        setElements((prev) => [
           ...prev,
-          { path: currentPath, color: selectedColor, strokeWidth: selectedSize },
+          { type: "path", path: currentPath, color: selectedColor, strokeWidth: selectedSize },
         ]);
         setCurrentPath("");
       }
     })
     .runOnJS(true);
 
+  // Pan gesture for arrow drawing
+  const arrowGesture = Gesture.Pan()
+    .enabled(selectedTool === "arrow")
+    .onStart((e) => {
+      setArrowStart({ x: e.x, y: e.y });
+      setArrowEnd({ x: e.x, y: e.y });
+    })
+    .onUpdate((e) => {
+      setArrowEnd({ x: e.x, y: e.y });
+    })
+    .onEnd((e) => {
+      if (arrowStart) {
+        setElements((prev) => [
+          ...prev,
+          {
+            type: "arrow",
+            startX: arrowStart.x,
+            startY: arrowStart.y,
+            endX: e.x,
+            endY: e.y,
+            color: selectedColor,
+            strokeWidth: selectedSize,
+          },
+        ]);
+        setArrowStart(null);
+        setArrowEnd(null);
+      }
+    })
+    .runOnJS(true);
+
+  // Tap gesture for text placement
+  const tapGesture = Gesture.Tap()
+    .enabled(selectedTool === "text")
+    .onEnd((e) => {
+      setTextPosition({ x: e.x, y: e.y });
+      setTextInputValue("");
+      setShowTextInput(true);
+    })
+    .runOnJS(true);
+
+  const composedGesture = Gesture.Race(penGesture, arrowGesture, tapGesture);
+
+  const addTextElement = () => {
+    if (textInputValue.trim()) {
+      setElements((prev) => [
+        ...prev,
+        {
+          type: "text",
+          x: textPosition.x,
+          y: textPosition.y,
+          text: textInputValue.trim(),
+          color: selectedColor,
+          strokeWidth: selectedSize,
+          fontSize: 16,
+        },
+      ]);
+    }
+    setShowTextInput(false);
+    setTextInputValue("");
+  };
+
   const undo = () => {
-    setPaths((prev) => prev.slice(0, -1));
+    setElements((prev) => prev.slice(0, -1));
   };
 
   const clearAll = () => {
     Alert.alert("Alles löschen", "Alle Markierungen entfernen?", [
       { text: "Abbrechen", style: "cancel" },
-      { text: "Löschen", onPress: () => setPaths([]) },
+      { text: "Löschen", onPress: () => setElements([]) },
     ]);
+  };
+
+  // Calculate arrowhead points
+  const getArrowHead = (x1: number, y1: number, x2: number, y2: number, size: number) => {
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const headLength = size * 3 + 6;
+    const headAngle = Math.PI / 6;
+
+    const p1x = x2 - headLength * Math.cos(angle - headAngle);
+    const p1y = y2 - headLength * Math.sin(angle - headAngle);
+    const p2x = x2 - headLength * Math.cos(angle + headAngle);
+    const p2y = y2 - headLength * Math.sin(angle + headAngle);
+
+    return `${x2},${y2} ${p1x},${p1y} ${p2x},${p2y}`;
   };
 
   const saveAnnotation = async () => {
@@ -100,26 +199,21 @@ export default function PhotoAnnotateScreen() {
 
     setIsSaving(true);
     try {
-      // Capture the annotated image
       let annotatedUri: string;
 
       if (Platform.OS === "web") {
-        // On web, we save the SVG paths as metadata
         annotatedUri = photoUri || "";
-        // Store annotation data alongside the photo
-        const annotationData = { paths, photoUri, protocolId, photoIndex };
+        const annotationData = { elements, photoUri, protocolId, photoIndex };
         await AsyncStorage.setItem(
           `annotation-${protocolId}-${photoIndex}`,
           JSON.stringify(annotationData)
         );
       } else {
-        // On native, capture the view as an image
         annotatedUri = await captureRef(canvasRef, {
           format: "png",
           quality: 0.9,
         });
 
-        // Copy to persistent directory
         const annotDir = `${FileSystem.documentDirectory}annotations/`;
         const dirInfo = await FileSystem.getInfoAsync(annotDir);
         if (!dirInfo.exists) {
@@ -156,6 +250,72 @@ export default function PhotoAnnotateScreen() {
     }
   };
 
+  const renderElement = (el: DrawElement, i: number) => {
+    switch (el.type) {
+      case "path":
+        return (
+          <Path
+            key={i}
+            d={el.path || ""}
+            stroke={el.color}
+            strokeWidth={el.strokeWidth}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        );
+      case "arrow":
+        return (
+          <G key={i}>
+            <Line
+              x1={el.startX}
+              y1={el.startY}
+              x2={el.endX}
+              y2={el.endY}
+              stroke={el.color}
+              strokeWidth={el.strokeWidth}
+              strokeLinecap="round"
+            />
+            <Polygon
+              points={getArrowHead(el.startX!, el.startY!, el.endX!, el.endY!, el.strokeWidth)}
+              fill={el.color}
+            />
+          </G>
+        );
+      case "text":
+        return (
+          <G key={i}>
+            {/* Text background */}
+            <SvgText
+              x={el.x}
+              y={el.y}
+              fontSize={el.fontSize || 16}
+              fontWeight="bold"
+              fill={el.color === "#000000" ? "#FFFFFF" : "#000000"}
+              stroke={el.color === "#000000" ? "#FFFFFF" : "#000000"}
+              strokeWidth={3}
+              textAnchor="start"
+            >
+              {el.text}
+            </SvgText>
+            {/* Text foreground */}
+            <SvgText
+              x={el.x}
+              y={el.y}
+              fontSize={el.fontSize || 16}
+              fontWeight="bold"
+              fill={el.color}
+              textAnchor="start"
+            >
+              {el.text}
+            </SvgText>
+          </G>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: "#000" }]}>
@@ -172,11 +332,11 @@ export default function PhotoAnnotateScreen() {
           </Text>
           <Pressable
             onPress={saveAnnotation}
-            disabled={isSaving || paths.length === 0}
+            disabled={isSaving || elements.length === 0}
             style={({ pressed }) => [
               styles.saveBtn,
               {
-                backgroundColor: paths.length > 0 ? colors.primary : colors.border,
+                backgroundColor: elements.length > 0 ? colors.primary : colors.border,
                 opacity: pressed || isSaving ? 0.7 : 1,
               },
             ]}
@@ -195,21 +355,11 @@ export default function PhotoAnnotateScreen() {
             style={{ width: imageWidth, height: imageHeight }}
             contentFit="contain"
           />
-          <GestureDetector gesture={panGesture}>
+          <GestureDetector gesture={composedGesture}>
             <View style={[styles.svgOverlay, { width: imageWidth, height: imageHeight }]}>
               <Svg width={imageWidth} height={imageHeight}>
-                {/* Rendered paths */}
-                {paths.map((p, i) => (
-                  <Path
-                    key={i}
-                    d={p.path}
-                    stroke={p.color}
-                    strokeWidth={p.strokeWidth}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                ))}
+                {/* Rendered elements */}
+                {elements.map((el, i) => renderElement(el, i))}
                 {/* Current drawing path */}
                 {currentPath ? (
                   <Path
@@ -221,9 +371,63 @@ export default function PhotoAnnotateScreen() {
                     strokeLinejoin="round"
                   />
                 ) : null}
+                {/* Current arrow preview */}
+                {arrowStart && arrowEnd && selectedTool === "arrow" ? (
+                  <G>
+                    <Line
+                      x1={arrowStart.x}
+                      y1={arrowStart.y}
+                      x2={arrowEnd.x}
+                      y2={arrowEnd.y}
+                      stroke={selectedColor}
+                      strokeWidth={selectedSize}
+                      strokeLinecap="round"
+                      strokeDasharray="5,5"
+                    />
+                    <Polygon
+                      points={getArrowHead(arrowStart.x, arrowStart.y, arrowEnd.x, arrowEnd.y, selectedSize)}
+                      fill={selectedColor}
+                      opacity={0.7}
+                    />
+                  </G>
+                ) : null}
               </Svg>
             </View>
           </GestureDetector>
+        </View>
+
+        {/* Tool selector */}
+        <View style={[styles.toolSelector, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Pressable
+            onPress={() => setSelectedTool("pen")}
+            style={[
+              styles.toolTab,
+              selectedTool === "pen" && { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <MaterialIcons name="edit" size={20} color={selectedTool === "pen" ? colors.primary : colors.muted} />
+            <Text style={[styles.toolTabText, { color: selectedTool === "pen" ? colors.primary : colors.muted }]}>Stift</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedTool("arrow")}
+            style={[
+              styles.toolTab,
+              selectedTool === "arrow" && { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <MaterialIcons name="north-east" size={20} color={selectedTool === "arrow" ? colors.primary : colors.muted} />
+            <Text style={[styles.toolTabText, { color: selectedTool === "arrow" ? colors.primary : colors.muted }]}>Pfeil</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedTool("text")}
+            style={[
+              styles.toolTab,
+              selectedTool === "text" && { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <MaterialIcons name="text-fields" size={20} color={selectedTool === "text" ? colors.primary : colors.muted} />
+            <Text style={[styles.toolTabText, { color: selectedTool === "text" ? colors.primary : colors.muted }]}>Text</Text>
+          </Pressable>
         </View>
 
         {/* Toolbar */}
@@ -253,10 +457,10 @@ export default function PhotoAnnotateScreen() {
           {/* Undo */}
           <Pressable
             onPress={undo}
-            disabled={paths.length === 0}
+            disabled={elements.length === 0}
             style={({ pressed }) => [
               styles.toolButton,
-              { opacity: pressed || paths.length === 0 ? 0.4 : 1 },
+              { opacity: pressed || elements.length === 0 ? 0.4 : 1 },
             ]}
           >
             <MaterialIcons name="undo" size={24} color={colors.foreground} />
@@ -265,24 +469,24 @@ export default function PhotoAnnotateScreen() {
           {/* Clear all */}
           <Pressable
             onPress={clearAll}
-            disabled={paths.length === 0}
+            disabled={elements.length === 0}
             style={({ pressed }) => [
               styles.toolButton,
-              { opacity: pressed || paths.length === 0 ? 0.4 : 1 },
+              { opacity: pressed || elements.length === 0 ? 0.4 : 1 },
             ]}
           >
             <MaterialIcons name="delete-sweep" size={24} color={colors.error} />
           </Pressable>
 
-          {/* Path count */}
+          {/* Element count */}
           <Text style={[styles.pathCount, { color: colors.muted }]}>
-            {paths.length} Markierung{paths.length !== 1 ? "en" : ""}
+            {elements.length} Element{elements.length !== 1 ? "e" : ""}
           </Text>
         </View>
 
         {/* Color picker panel */}
         {showColorPicker && (
-          <View style={[styles.pickerPanel, { backgroundColor: colors.surface, bottom: 70 }]}>
+          <View style={[styles.pickerPanel, { backgroundColor: colors.surface, bottom: 120 }]}>
             <Text style={[styles.pickerLabel, { color: colors.foreground }]}>Farbe</Text>
             <View style={styles.pickerRow}>
               {COLORS.map((color) => (
@@ -306,7 +510,7 @@ export default function PhotoAnnotateScreen() {
 
         {/* Size picker panel */}
         {showSizePicker && (
-          <View style={[styles.pickerPanel, { backgroundColor: colors.surface, bottom: 70 }]}>
+          <View style={[styles.pickerPanel, { backgroundColor: colors.surface, bottom: 120 }]}>
             <Text style={[styles.pickerLabel, { color: colors.foreground }]}>Stiftstärke</Text>
             <View style={styles.pickerRow}>
               {PEN_SIZES.map((size) => (
@@ -331,6 +535,42 @@ export default function PhotoAnnotateScreen() {
             </View>
           </View>
         )}
+
+        {/* Text input modal */}
+        <Modal visible={showTextInput} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.textInputModal, { backgroundColor: colors.background }]}>
+              <Text style={[styles.textInputTitle, { color: colors.foreground }]}>
+                Beschriftung hinzufügen
+              </Text>
+              <TextInput
+                value={textInputValue}
+                onChangeText={setTextInputValue}
+                placeholder="Text eingeben..."
+                placeholderTextColor={colors.muted}
+                style={[styles.textInputField, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={addTextElement}
+                multiline={false}
+              />
+              <View style={styles.textInputButtons}>
+                <Pressable
+                  onPress={() => { setShowTextInput(false); setTextInputValue(""); }}
+                  style={[styles.textInputBtn, { backgroundColor: colors.surface }]}
+                >
+                  <Text style={[styles.textInputBtnText, { color: colors.foreground }]}>Abbrechen</Text>
+                </Pressable>
+                <Pressable
+                  onPress={addTextElement}
+                  style={[styles.textInputBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={[styles.textInputBtnText, { color: "#FFFFFF" }]}>Hinzufügen</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </GestureHandlerRootView>
   );
@@ -366,6 +606,20 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
   },
+  toolSelector: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderBottomWidth: 0,
+  },
+  toolTab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  toolTabText: { fontSize: 13, fontWeight: "600" },
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
@@ -436,4 +690,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(128,128,128,0.3)",
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  textInputModal: {
+    width: "100%",
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  textInputTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
+  textInputField: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  textInputButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  textInputBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  textInputBtnText: { fontSize: 15, fontWeight: "600" },
 });

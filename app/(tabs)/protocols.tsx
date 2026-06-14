@@ -29,6 +29,7 @@ type Protocol = {
   tags?: string[];
   recordingMode?: string;
   projectId?: string;
+  protocolNumber?: string;
 };
 
 type SortOption = "date_desc" | "date_asc" | "name_asc" | "name_desc" | "duration_desc";
@@ -327,11 +328,18 @@ export default function ProtocolsScreen() {
         </View>
       </View>
 
-      {item.templateName && (
-        <Text style={[styles.templateBadge, { color: colors.primary }]}>
-          {item.templateName}
-        </Text>
-      )}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {item.protocolNumber && (
+          <View style={[styles.numberBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '40' }]}>
+            <Text style={[styles.numberBadgeText, { color: colors.primary }]}>{item.protocolNumber}</Text>
+          </View>
+        )}
+        {item.templateName && (
+          <Text style={[styles.templateBadge, { color: colors.primary }]}>
+            {item.templateName}
+          </Text>
+        )}
+      </View>
 
       <Text
         style={[styles.cardPreview, { color: colors.muted }]}
@@ -623,6 +631,8 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   statusText: { fontSize: 10, fontWeight: "600" },
   templateBadge: { fontSize: 11, fontWeight: "500", marginBottom: 4 },
+  numberBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  numberBadgeText: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] as any },
   cardPreview: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
   tagRow: { flexDirection: "row", gap: 6, marginBottom: 8, flexWrap: "wrap" },
   tagChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },

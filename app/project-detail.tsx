@@ -6,12 +6,17 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  ActivityIndicator,
+  Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
+import { generateProtocolPdf } from "@/lib/pdf-generator";
 
 type Project = {
   id: string;
@@ -28,6 +33,13 @@ type Protocol = {
   createdAt: string;
   templateName?: string;
   status: string;
+  protocol?: string;
+  photos?: string[];
+  todos?: any[];
+  duration?: number;
+  location?: any;
+  weather?: string | null;
+  protocolNumber?: string;
 };
 
 export default function ProjectDetailScreen() {
@@ -38,6 +50,7 @@ export default function ProjectDetailScreen() {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,6 +114,102 @@ export default function ProjectDetailScreen() {
 
   const unassignedProtocols = allProtocols.filter((p) => !p.projectId);
 
+  const exportAllAsPdf = async () => {
+    if (protocols.length === 0) {
+      Alert.alert("Hinweis", "Keine Protokolle zum Exportieren vorhanden.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Generate combined HTML for all protocols
+      let combinedHtml = `
+        <html><head><meta charset="utf-8"/>
+        <style>
+          body { font-family: -apple-system, sans-serif; padding: 20px; color: #333; }
+          .page-break { page-break-after: always; }
+          .protocol-section { margin-bottom: 30px; }
+          .protocol-header { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+          .protocol-header h2 { margin: 0 0 8px 0; font-size: 18px; color: #1a1a1a; }
+          .protocol-meta { font-size: 12px; color: #666; }
+          .protocol-body { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+          .project-cover { text-align: center; padding: 80px 20px; }
+          .project-cover h1 { font-size: 28px; margin-bottom: 12px; }
+          .project-cover p { font-size: 16px; color: #666; }
+          .toc { margin: 30px 0; }
+          .toc-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+          .toc-number { color: #E53935; font-weight: 700; margin-right: 8px; }
+        </style></head><body>
+        <div class="project-cover">
+          <h1>${project?.name || 'Projekt'}</h1>
+          <p>${project?.description || ''}</p>
+          <p style="margin-top: 20px; font-size: 14px; color: #999;">
+            ${protocols.length} Protokoll${protocols.length !== 1 ? 'e' : ''} &bull;
+            Exportiert am ${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <div class="page-break"></div>
+        <div class="toc">
+          <h2>Inhaltsverzeichnis</h2>
+          ${protocols.map((p, i) => `
+            <div class="toc-item">
+              ${p.protocolNumber ? `<span class="toc-number">${p.protocolNumber}</span>` : `<span class="toc-number">#${i + 1}</span>`}
+              ${p.title} &mdash; ${new Date(p.createdAt).toLocaleDateString('de-DE')}
+            </div>
+          `).join('')}
+        </div>
+        <div class="page-break"></div>
+      `;
+
+      for (let i = 0; i < protocols.length; i++) {
+        const p = protocols[i];
+        const date = new Date(p.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+        const time = new Date(p.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+        combinedHtml += `
+          <div class="protocol-section">
+            <div class="protocol-header">
+              <h2>${p.protocolNumber ? `${p.protocolNumber} – ` : ''}${p.templateName || 'Protokoll'}</h2>
+              <div class="protocol-meta">
+                ${date} um ${time}
+                ${p.duration ? ` &bull; Dauer: ${Math.floor((p.duration || 0) / 60)}:${String((p.duration || 0) % 60).padStart(2, '0')}` : ''}
+                ${p.weather ? ` &bull; ${p.weather}` : ''}
+              </div>
+            </div>
+            <div class="protocol-body">${(p.protocol || '').replace(/\n/g, '<br/>')}</div>
+          </div>
+          ${i < protocols.length - 1 ? '<div class="page-break"></div>' : ''}
+        `;
+      }
+
+      combinedHtml += '</body></html>';
+
+      if (Platform.OS === 'web') {
+        Alert.alert('Hinweis', 'PDF-Export ist nur auf dem Handy verfügbar.');
+        return;
+      }
+
+      const { uri: pdfUri } = await Print.printToFileAsync({
+        html: combinedHtml,
+        base64: false,
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `${project?.name || 'Projekt'} – Alle Protokolle`,
+          UTI: 'com.adobe.pdf',
+        });
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Fehler', 'PDF konnte nicht erstellt werden.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!project) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
@@ -134,6 +243,30 @@ export default function ProjectDetailScreen() {
         {project.description ? (
           <Text style={[styles.description, { color: colors.muted }]}>{project.description}</Text>
         ) : null}
+
+        {/* Export button */}
+        <Pressable
+          onPress={exportAllAsPdf}
+          disabled={isExporting || protocols.length === 0}
+          style={({ pressed }) => [
+            styles.exportButton,
+            {
+              backgroundColor: colors.primary + '10',
+              borderColor: colors.primary + '40',
+              opacity: pressed || isExporting ? 0.7 : 1,
+            },
+          ]}
+        >
+          {isExporting ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
+          )}
+          <Text style={[styles.exportButtonText, { color: colors.primary }]}>
+            {isExporting ? 'Wird erstellt...' : `Alle ${protocols.length} Protokolle als PDF`}
+          </Text>
+          {!isExporting && <MaterialIcons name="chevron-right" size={18} color={colors.primary} />}
+        </Pressable>
 
         {/* Stats */}
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
@@ -260,4 +393,6 @@ const styles = StyleSheet.create({
   assignItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1 },
   assignTitle: { fontSize: 15, fontWeight: "500" },
   assignDate: { fontSize: 12 },
+  exportButton: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1 },
+  exportButtonText: { fontSize: 14, fontWeight: "600", flex: 1 },
 });

@@ -88,3 +88,7 @@
 - [x] Foto-Annotation: Auf Fotos zeichnen und markieren
 - [x] Foto-Annotation: Farb- und Stiftwahl
 - [x] Foto-Annotation: Annotierte Fotos speichern und im PDF anzeigen
+- [x] Text-Annotationen: Beschriftungen/Textfelder auf Fotos platzieren
+- [x] Text-Annotationen: Pfeil-Werkzeug zum Markieren auf Fotos
+- [x] Protokoll-Liste: Protokoll-Nummer in der Listenansicht anzeigen
+- [x] Projekt-PDF-Export: Alle Protokolle eines Projekts als gebündeltes PDF exportieren
