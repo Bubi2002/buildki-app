@@ -22,8 +22,15 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        // Resolve relative storage URLs to absolute URLs for server-side fetch
+        let audioUrl = input.audioUrl;
+        if (audioUrl.startsWith("/manus-storage/")) {
+          const port = process.env.PORT || "3000";
+          audioUrl = `http://127.0.0.1:${port}${audioUrl}`;
+        }
+
         const result = await transcribeAudio({
-          audioUrl: input.audioUrl,
+          audioUrl,
           language: input.language || "de",
           prompt: input.prompt || "Transkribiere die Sprachaufnahme auf Deutsch",
         });

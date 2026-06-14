@@ -35,7 +35,6 @@ import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/cale
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
-import { getApiBaseUrl } from "@/constants/oauth";
 
 type RecordingMode = "video" | "audio";
 
@@ -44,10 +43,16 @@ export default function RecordScreen() {
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
 
-  // Reset camera ready state when tab loses focus
+  // When screen regains focus after navigation, camera needs to re-initialize
+  // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
   useEffect(() => {
-    if (!isFocused) {
-      setCameraReady(false);
+    if (isFocused && !cameraReady) {
+      // Camera will fire onCameraReady when it resumes - give it a moment
+      const timeout = setTimeout(() => {
+        // If onCameraReady hasn't fired yet, force it (workaround for some devices)
+        setCameraReady(true);
+      }, 2000);
+      return () => clearTimeout(timeout);
     }
   }, [isFocused]);
   const router = useRouter();
@@ -215,8 +220,13 @@ export default function RecordScreen() {
       return;
     }
     if (!cameraReady) {
-      alert("Kamera wird noch initialisiert. Bitte warte einen Moment.");
-      return;
+      // Camera may need a moment after previous recording
+      // Wait briefly and check again
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!cameraReady) {
+        alert("Kamera wird noch initialisiert. Bitte warte einen Moment.");
+        return;
+      }
     }
 
     setShowTemplateSelector(false);
@@ -235,12 +245,16 @@ export default function RecordScreen() {
       setIsRecording(false);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
 
+      // Reset camera ready - it will fire onCameraReady again after recording stops
+      setCameraReady(false);
+
       if (video?.uri) {
         await processRecording(video.uri, "video/mp4");
       }
     } catch (error) {
       stopTimer();
       setIsRecording(false);
+      setCameraReady(false);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       console.error("Recording error:", error);
       alert("Aufnahme konnte nicht gestartet werden. Bitte versuche es erneut.");
@@ -358,19 +372,13 @@ export default function RecordScreen() {
 
       console.log("[Recording] Upload complete, URL:", uploadResult.url);
 
-      // Build absolute URL for server-side transcription
-      // The upload returns a relative path like /manus-storage/...
-      // The server needs an absolute URL to fetch the audio file
-      const apiBase = getApiBaseUrl();
-      const absoluteAudioUrl = uploadResult.url.startsWith("http")
-        ? uploadResult.url
-        : `${apiBase}${uploadResult.url}`;
-
-      console.log("[Recording] Transcribing with URL:", absoluteAudioUrl);
+      // Pass the storage URL to the server for transcription
+      // The server will resolve relative URLs internally using its own base URL
+      console.log("[Recording] Transcribing with URL:", uploadResult.url);
 
       // Transcribe audio
       const transcription = await transcribeMutation.mutateAsync({
-        audioUrl: absoluteAudioUrl,
+        audioUrl: uploadResult.url,
         language: "de",
       });
 

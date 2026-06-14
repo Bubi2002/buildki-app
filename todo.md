@@ -115,4 +115,5 @@
 - [x] Feature-Toggles: Zentraler Bereich in Einstellungen zum Ein-/Ausschalten von Features
 - [x] Feature-Toggles: Deaktivierte Features in der App ausblenden
 - [x] Bug-Fix: Schwarzer Kamera-Bildschirm behoben (active-Prop, onCameraReady, Audio-Mode-Fix)
-- [x] Bug-Fix: Relative Audio-URL verursachte Transkriptions-Fehler (Server konnte Datei nicht abrufen) – jetzt absolute URL
+- [x] Bug-Fix: Relative Audio-URL verursachte Transkriptions-Fehler – Server löst jetzt relative URLs intern auf (localhost)
+- [x] Bug-Fix: Kamera-Initialisierung blockiert nach erster Aufnahme – cameraReady-State wird korrekt zurückgesetzt
