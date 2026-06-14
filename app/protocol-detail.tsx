@@ -48,6 +48,7 @@ export default function ProtocolDetailScreen() {
   const [showTranscription, setShowTranscription] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
 
   useEffect(() => {
     loadProtocol();
@@ -107,26 +108,58 @@ export default function ProtocolDetailScreen() {
   const shareViaWhatsApp = async () => {
     if (!protocol) return;
 
-    const settings = JSON.parse(
-      (await AsyncStorage.getItem("protokoll-settings")) || "{}"
-    );
-    const phoneNumber = settings.whatsappNumber || "";
+    setIsSendingWhatsApp(true);
+    try {
+      // Generate PDF first
+      const pdfUri = await generateProtocolPdf({
+        title: protocol.title,
+        protocol: protocol.protocol,
+        templateName: protocol.templateName,
+        photos: protocol.photos,
+        duration: protocol.duration,
+        createdAt: protocol.createdAt,
+      });
 
-    const message = encodeURIComponent(protocol.protocol);
-
-    if (phoneNumber) {
-      const url = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
+      // Use native share sheet with PDF - user can pick WhatsApp
+      if (Platform.OS === "web") {
+        Alert.alert("Hinweis", "PDF-Versand per WhatsApp ist nur auf dem Handy verfügbar.");
         return;
       }
-    }
 
-    await Share.share({
-      message: protocol.protocol,
-      title: "Protokoll teilen",
-    });
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Protokoll-PDF per WhatsApp senden",
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        // Fallback: share text via WhatsApp deep link
+        const settings = JSON.parse(
+          (await AsyncStorage.getItem("protokoll-settings")) || "{}"
+        );
+        const phoneNumber = settings.whatsappNumber || "";
+        const message = encodeURIComponent(protocol.protocol);
+
+        if (phoneNumber) {
+          const url = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
+          const canOpen = await Linking.canOpenURL(url);
+          if (canOpen) {
+            await Linking.openURL(url);
+            return;
+          }
+        }
+        await Share.share({
+          message: protocol.protocol,
+          title: "Protokoll teilen",
+        });
+      }
+    } catch (error) {
+      console.error("WhatsApp PDF share error:", error);
+      Alert.alert("Fehler", "PDF konnte nicht erstellt werden. Bitte versuche es erneut.");
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
   };
 
   const shareViaEmail = async () => {
@@ -368,13 +401,20 @@ export default function ProtocolDetailScreen() {
       <View style={[styles.actionsContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           onPress={shareViaWhatsApp}
+          disabled={isSendingWhatsApp}
           style={({ pressed }) => [
             styles.actionButton,
-            { backgroundColor: "#25D366", opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: "#25D366", opacity: (pressed || isSendingWhatsApp) ? 0.6 : 1 },
           ]}
         >
-          <MaterialIcons name="chat" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>WhatsApp</Text>
+          {isSendingWhatsApp ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <MaterialIcons name="chat" size={20} color="#FFFFFF" />
+          )}
+          <Text style={styles.actionButtonText}>
+            {isSendingWhatsApp ? "PDF..." : "WhatsApp"}
+          </Text>
         </Pressable>
 
         <Pressable

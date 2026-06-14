@@ -28,3 +28,4 @@
 - [x] PDF-Layout mit Firmenlogo, Header, Protokolltext und Fotos
 - [x] PDF-Export-Button in Protokoll-Detailansicht
 - [x] Logo-Upload in Einstellungen ermöglichen
+- [x] PDF direkt per WhatsApp teilen (als Dateianhang)
