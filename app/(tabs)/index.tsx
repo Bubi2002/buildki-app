@@ -209,7 +209,14 @@ export default function RecordScreen() {
       alert("Videoaufnahme ist nur auf dem Handy verf\u00fcgbar.");
       return;
     }
-    if (!cameraRef.current) return;
+    if (!cameraRef.current) {
+      alert("Kamera nicht verf\u00fcgbar. Bitte warte einen Moment.");
+      return;
+    }
+    if (!cameraReady) {
+      alert("Kamera wird noch initialisiert. Bitte warte einen Moment.");
+      return;
+    }
 
     setShowTemplateSelector(false);
     setCapturedPhotos([]);
@@ -235,6 +242,7 @@ export default function RecordScreen() {
       setIsRecording(false);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       console.error("Recording error:", error);
+      alert("Aufnahme konnte nicht gestartet werden. Bitte versuche es erneut.");
     }
   };
 
@@ -864,7 +872,7 @@ export default function RecordScreen() {
         ref={cameraRef}
         style={styles.camera}
         facing="back"
-        mode={isRecording ? "video" : "picture"}
+        mode="video"
         active={isFocused}
         onCameraReady={() => setCameraReady(true)}
         onMountError={(e) => console.warn("Camera mount error:", e?.message)}
@@ -1041,6 +1049,7 @@ export default function RecordScreen() {
                 {
                   borderColor: "#FFFFFF",
                   transform: [{ scale: pressed ? 0.95 : 1 }],
+                  opacity: (!isRecording && !cameraReady) ? 0.5 : 1,
                 },
               ]}
             >
