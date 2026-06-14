@@ -25,6 +25,8 @@ type Settings = {
   format: "bullets" | "paragraphs";
   language: string;
   templateId: string;
+  autoSend: boolean;
+  autoSendTarget: "whatsapp" | "email" | "both";
 };
 
 type CompanySettings = {
@@ -42,6 +44,8 @@ const DEFAULT_SETTINGS: Settings = {
   format: "bullets",
   language: "de",
   templateId: "freitext",
+  autoSend: false,
+  autoSendTarget: "whatsapp",
 };
 
 const DEFAULT_COMPANY: CompanySettings = {
@@ -391,6 +395,136 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Auto-Send Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Automatischer Versand
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            PDF nach Aufnahme automatisch an Standard-Kontakt senden
+          </Text>
+
+          {/* Toggle */}
+          <Pressable
+            onPress={() => updateSetting("autoSend", !settings.autoSend)}
+            style={({ pressed }) => [
+              styles.autoSendToggle,
+              {
+                backgroundColor: settings.autoSend ? colors.primary + "15" : colors.surface,
+                borderColor: settings.autoSend ? colors.primary : colors.border,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <View style={styles.autoSendToggleContent}>
+              <MaterialIcons
+                name={settings.autoSend ? "send" : "send"}
+                size={22}
+                color={settings.autoSend ? colors.primary : colors.muted}
+              />
+              <View style={styles.autoSendToggleText}>
+                <Text style={[styles.autoSendTitle, { color: colors.foreground }]}>
+                  Auto-Versand {settings.autoSend ? "aktiv" : "inaktiv"}
+                </Text>
+                <Text style={[styles.autoSendSubtitle, { color: colors.muted }]}>
+                  {settings.autoSend
+                    ? "PDF wird nach jeder Aufnahme automatisch gesendet"
+                    : "Tippe zum Aktivieren"}
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[
+                styles.toggleSwitch,
+                { backgroundColor: settings.autoSend ? colors.primary : colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.toggleKnob,
+                  { transform: [{ translateX: settings.autoSend ? 18 : 2 }] },
+                ]}
+              />
+            </View>
+          </Pressable>
+
+          {/* Target selection */}
+          {settings.autoSend && (
+            <View style={styles.autoSendTargets}>
+              <Text style={[styles.optionLabel, { color: colors.muted }]}>Senden an:</Text>
+              <View style={styles.optionRow}>
+                <Pressable
+                  onPress={() => updateSetting("autoSendTarget", "whatsapp")}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: settings.autoSendTarget === "whatsapp" ? "#25D366" : colors.surface,
+                      borderColor: settings.autoSendTarget === "whatsapp" ? "#25D366" : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      { color: settings.autoSendTarget === "whatsapp" ? "#FFFFFF" : colors.foreground },
+                    ]}
+                  >
+                    WhatsApp
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => updateSetting("autoSendTarget", "email")}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: settings.autoSendTarget === "email" ? colors.primary : colors.surface,
+                      borderColor: settings.autoSendTarget === "email" ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      { color: settings.autoSendTarget === "email" ? "#FFFFFF" : colors.foreground },
+                    ]}
+                  >
+                    E-Mail
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => updateSetting("autoSendTarget", "both")}
+                  style={[
+                    styles.optionButton,
+                    {
+                      backgroundColor: settings.autoSendTarget === "both" ? colors.primary : colors.surface,
+                      borderColor: settings.autoSendTarget === "both" ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      { color: settings.autoSendTarget === "both" ? "#FFFFFF" : colors.foreground },
+                    ]}
+                  >
+                    Beide
+                  </Text>
+                </Pressable>
+              </View>
+              {!settings.whatsappNumber && settings.autoSendTarget !== "email" && (
+                <Text style={[styles.autoSendWarning, { color: colors.warning }]}>
+                  Bitte WhatsApp-Nummer oben eintragen
+                </Text>
+              )}
+              {!settings.defaultEmail && settings.autoSendTarget !== "whatsapp" && (
+                <Text style={[styles.autoSendWarning, { color: colors.warning }]}>
+                  Bitte E-Mail-Adresse oben eintragen
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* Protocol Style Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -699,6 +833,52 @@ const styles = StyleSheet.create({
   optionButtonText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  autoSendToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  autoSendToggleContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  autoSendToggleText: {
+    flex: 1,
+  },
+  autoSendTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  autoSendSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: "center",
+  },
+  toggleKnob: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FFFFFF",
+  },
+  autoSendTargets: {
+    gap: 8,
+  },
+  autoSendWarning: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 6,
   },
   saveButton: {
     flexDirection: "row",

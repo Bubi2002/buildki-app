@@ -25,6 +25,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import * as Haptics from "expo-haptics";
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
+import { generateProtocolPdf } from "@/lib/pdf-generator";
 
 type RecordingMode = "video" | "audio";
 
@@ -303,6 +306,42 @@ export default function RecordScreen() {
       };
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+
+      // Auto-send if enabled
+      try {
+        const settingsStr2 = await AsyncStorage.getItem("protokoll-settings");
+        const appSettings = settingsStr2 ? JSON.parse(settingsStr2) : {};
+        if (appSettings.autoSend) {
+          const companyStr = await AsyncStorage.getItem("company-settings");
+          const companySettings = companyStr ? JSON.parse(companyStr) : {};
+
+          const pdfHtml = await generateProtocolPdf({
+            title: newProtocol.templateName || "Protokoll",
+            protocol: newProtocol.protocol,
+            templateName: newProtocol.templateName || "Protokoll",
+            photos: newProtocol.photos || [],
+            todos: newProtocol.todos || [],
+            duration: newProtocol.duration,
+            createdAt: newProtocol.createdAt,
+          });
+
+          const { uri: pdfUri } = await Print.printToFileAsync({
+            html: pdfHtml,
+            base64: false,
+          });
+
+          // Share via system share sheet (opens WhatsApp/Email picker)
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(pdfUri, {
+              mimeType: "application/pdf",
+              dialogTitle: "Protokoll senden",
+              UTI: "com.adobe.pdf",
+            });
+          }
+        }
+      } catch (autoSendError) {
+        console.error("Auto-send error:", autoSendError);
+      }
 
       setIsProcessing(false);
       setCapturedPhotos([]);

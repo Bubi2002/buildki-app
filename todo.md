@@ -36,3 +36,6 @@
 - [x] Nur-Audio-Modus (Diktier-Modus ohne Kamera)
 - [x] Audio-Aufnahme mit expo-audio
 - [x] Toggle zwischen Video- und Audio-Modus im Aufnahme-Screen
+- [x] Aufgaben-Übersicht: Alle offenen To-Dos aus allen Protokollen gesammelt anzeigen
+- [x] Automatischer Versand: PDF nach Aufnahme sofort an Standard-Kontakt senden
+- [x] Protokoll-Volltextsuche: Suche über alle gespeicherten Protokolle
