@@ -127,3 +127,9 @@
 - [x] Fix: Upload-Limit für Video auf 50 MB erhöht (Audio bleibt 16 MB)
 - [x] Fix: Cache-Suche mit Zeitstempel-Filter (nur Dateien < 5 Min alt, verhindert falsche Video-Zuordnung)
 - [x] Fix: Offline-Queue speichert jetzt auch markers, location, weather, pendingVideoUri
+- [x] Fix: KRITISCH - 134 MB Video kann nicht hochgeladen werden (Base64 sprengt RAM + Server-Limit)
+- [x] Lösung: Im Video-Modus IMMER die parallele Audio-Aufnahme für Transkription verwenden (wenige MB)
+- [x] Fix: Dead-State nach Video-Aufnahme (cameraReady wurde auf false gesetzt und nie zurückgesetzt)
+- [x] Fix: Protokoll wurde nicht gespeichert weil protocolPreview=true als Default aktiv war
+- [x] Fix: Migration v1.0.6 setzt protocolPreview auf false für bestehende User
+- [x] Fix: Detailliertere Fehlermeldungen im processRecording catch-Block

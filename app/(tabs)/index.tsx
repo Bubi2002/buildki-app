@@ -334,7 +334,9 @@ export default function RecordScreen() {
       videoRecordingActiveRef.current = false;
       stopTimer();
       setIsRecording(false);
-      setCameraReady(false);
+      // NOTE: Do NOT set cameraReady=false here. The camera stays mounted and active.
+      // Setting it to false causes a dead-state where the record button becomes unresponsive.
+      // The camera will fire onCameraReady again if it needs to re-initialize.
 
       // Stop the parallel audio recorder and get its URI
       let audioBackupUri: string | null = null;
@@ -348,50 +350,63 @@ export default function RecordScreen() {
 
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
 
-      // Use video URI if available, otherwise fall back to audio backup
-      if (videoUri) {
-        console.log("[Video] Processing with video URI:", videoUri);
-        setProcessingSource("video");
-        pendingVideoUploadRef.current = null; // No pending upload needed
-        await processRecording(videoUri, "video/mp4");
-      } else if (audioBackupUri) {
-        console.log("[Video] Using audio backup for processing:", audioBackupUri);
-        setProcessingSource("audio-backup");
+      // STRATEGY: Always use the parallel audio recording for transcription.
+      // Video files are too large (often >100MB) to upload for transcription.
+      // The video is uploaded separately in the background as an attachment.
+      if (audioBackupUri) {
+        console.log("[Video] Using parallel audio for transcription (reliable, small file):", audioBackupUri);
         
-        // Try to find the video file in cache for background upload later
-        // Only consider files modified within the last 5 minutes to avoid stale videos
-        let cachedVideoUri: string | null = null;
-        try {
-          const cacheDir = FileSystem.cacheDirectory;
-          if (cacheDir) {
-            const files = await FileSystem.readDirectoryAsync(cacheDir);
-            const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
-            videoFiles.sort().reverse();
-            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-            for (const vf of videoFiles) {
-              const candidate = `${cacheDir}${vf}`;
-              const fInfo = await FileSystem.getInfoAsync(candidate);
-              if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
-                cachedVideoUri = candidate;
-                console.log("[Video] Found recent cached video for background upload:", cachedVideoUri, "size:", (fInfo.size / 1024 / 1024).toFixed(1), "MB");
-                break;
+        // If we have a video URI, save it for background upload
+        if (videoUri) {
+          console.log("[Video] Video URI available for background attachment:", videoUri);
+          setProcessingSource("video");
+          pendingVideoUploadRef.current = { videoUri, protocolId: "__pending__" };
+        } else {
+          setProcessingSource("audio-backup");
+          // Try to find the video file in cache for background upload later
+          // Only consider files modified within the last 5 minutes to avoid stale videos
+          let cachedVideoUri: string | null = null;
+          try {
+            const cacheDir = FileSystem.cacheDirectory;
+            if (cacheDir) {
+              const files = await FileSystem.readDirectoryAsync(cacheDir);
+              const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
+              videoFiles.sort().reverse();
+              const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+              for (const vf of videoFiles) {
+                const candidate = `${cacheDir}${vf}`;
+                const fInfo = await FileSystem.getInfoAsync(candidate);
+                if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
+                  cachedVideoUri = candidate;
+                  console.log("[Video] Found recent cached video for background upload:", cachedVideoUri, "size:", (fInfo.size / 1024 / 1024).toFixed(1), "MB");
+                  break;
+                }
               }
             }
+          } catch (e) {
+            console.warn("[Video] Cache search for background upload failed:", e);
           }
-        } catch (e) {
-          console.warn("[Video] Cache search for background upload failed:", e);
-        }
-        
-        // Mark for background upload (protocolId will be set after protocol is created)
-        if (cachedVideoUri) {
-          pendingVideoUploadRef.current = { videoUri: cachedVideoUri, protocolId: "__pending__" };
-        } else {
-          pendingVideoUploadRef.current = null;
+          if (cachedVideoUri) {
+            pendingVideoUploadRef.current = { videoUri: cachedVideoUri, protocolId: "__pending__" };
+          }
         }
         
         await processRecording(audioBackupUri, "audio/m4a");
+      } else if (videoUri) {
+        // Fallback: no audio backup available, try video (only works for small files)
+        console.log("[Video] No audio backup, falling back to video URI:", videoUri);
+        const fileInfo = await FileSystem.getInfoAsync(videoUri);
+        const sizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
+        if (sizeMB > 15) {
+          alert(`Video ist ${sizeMB.toFixed(0)} MB gro\u00df \u2013 zu gro\u00df f\u00fcr direkten Upload. Bitte verwende den Audio-Modus f\u00fcr lange Aufnahmen.`);
+          setIsProcessing(false);
+          setProcessingSource(null);
+          return;
+        }
+        setProcessingSource("video");
+        await processRecording(videoUri, "video/mp4");
       } else {
-        // Last resort: search cache
+        // Last resort: no audio backup AND no video URI
         console.warn("[Video] No URI from either source, searching cache...");
         let found = false;
         try {
@@ -402,15 +417,22 @@ export default function RecordScreen() {
               f.endsWith(".mov") || f.endsWith(".mp4") || f.endsWith(".m4a") || f.endsWith(".caf")
             );
             mediaFiles.sort().reverse();
-            if (mediaFiles.length > 0) {
-              const latest = `${cacheDir}${mediaFiles[0]}`;
+            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+            for (const mf of mediaFiles) {
+              const latest = `${cacheDir}${mf}`;
               const fileInfo = await FileSystem.getInfoAsync(latest);
-              if (fileInfo.exists && fileInfo.size && fileInfo.size > 1000) {
-                console.log("[Video] Found media in cache:", latest);
+              if (fileInfo.exists && fileInfo.size && fileInfo.size > 1000 && fileInfo.modificationTime && fileInfo.modificationTime * 1000 > fiveMinAgo) {
+                console.log("[Video] Found recent media in cache:", latest);
                 const mime = latest.endsWith(".m4a") || latest.endsWith(".caf") ? "audio/m4a" : "video/mp4";
+                // If it's a large video, skip it for transcription
+                if ((mime === "video/mp4" && fileInfo.size > 15 * 1024 * 1024)) {
+                  console.log("[Video] Cache video too large for transcription, skipping");
+                  continue;
+                }
                 setProcessingSource("cache");
                 await processRecording(latest, mime);
                 found = true;
+                break;
               }
             }
           }
@@ -418,14 +440,14 @@ export default function RecordScreen() {
           console.warn("[Video] Cache search failed:", cacheErr);
         }
         if (!found) {
-          alert("Aufnahme fehlgeschlagen: Keine Datei erhalten. Bitte versuche es erneut.");
+          alert("Aufnahme fehlgeschlagen: Keine Audio-Datei erhalten. Bitte versuche es erneut oder wechsle in den Audio-Modus.");
         }
       }
     } catch (error: any) {
       videoRecordingActiveRef.current = false;
       stopTimer();
       setIsRecording(false);
-      setCameraReady(false);
+      // Do NOT set cameraReady=false - prevents dead-state
       
       // Try to stop audio recorder
       try { await videoAudioRecorder.stop(); } catch {} 
@@ -484,7 +506,7 @@ export default function RecordScreen() {
         videoRecordingActiveRef.current = false;
         stopTimer();
         setIsRecording(false);
-        setCameraReady(false);
+        // Do NOT set cameraReady=false - prevents dead-state
         
         // Stop audio recorder and use it
         let audioUri: string | null = null;
@@ -739,6 +761,8 @@ export default function RecordScreen() {
       }
 
       // Show preview before saving (if feature enabled)
+      // NOTE: Preview is disabled by default since v1.0.6 to avoid confusion.
+      // Users can re-enable it in Settings > Funktionen.
       const { isFeatureEnabled } = require("@/lib/feature-toggles");
       const previewEnabled = await isFeatureEnabled("protocolPreview");
       if (previewEnabled) {
@@ -764,11 +788,24 @@ export default function RecordScreen() {
       }
       
       router.push(`/protocol-detail?id=${newProtocol.id}` as any);
-    } catch (error) {
+    } catch (error: any) {
       setIsProcessing(false);
       setProcessingSource(null);
-      console.error("Processing error:", error);
-      alert("Fehler bei der Verarbeitung. Bitte versuche es erneut.");
+      const errMsg = error?.message || String(error);
+      console.error("Processing error:", errMsg, error);
+      
+      // Provide more specific error messages
+      let userMessage = "Fehler bei der Verarbeitung.";
+      if (errMsg.includes("413") || errMsg.includes("too large") || errMsg.includes("payload")) {
+        userMessage = "Datei zu gro\u00df f\u00fcr Upload. Bitte verwende k\u00fcrzere Aufnahmen oder den Audio-Modus.";
+      } else if (errMsg.includes("network") || errMsg.includes("fetch") || errMsg.includes("ECONNREFUSED")) {
+        userMessage = "Netzwerkfehler. Bitte pr\u00fcfe deine Internetverbindung.";
+      } else if (errMsg.includes("transcri")) {
+        userMessage = "Transkription fehlgeschlagen. Bitte versuche es erneut.";
+      } else {
+        userMessage = `Fehler: ${errMsg.substring(0, 100)}`;
+      }
+      alert(userMessage);
     }
   };
 

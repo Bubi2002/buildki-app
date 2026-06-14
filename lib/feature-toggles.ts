@@ -34,7 +34,7 @@ export type FeatureToggle = {
 
 const DEFAULT_TOGGLES: FeatureToggle[] = [
   // Kernfunktionen
-  { key: "protocolPreview", label: "Protokoll-Vorschau", description: "Vorschau vor dem Speichern anzeigen", enabled: true, category: "Kernfunktionen" },
+  { key: "protocolPreview", label: "Protokoll-Vorschau", description: "Vorschau vor dem Speichern anzeigen", enabled: false, category: "Kernfunktionen" },
   { key: "protocolNumbering", label: "Automatische Nummerierung", description: "Fortlaufende Nummern pro Projekt", enabled: true, category: "Kernfunktionen" },
   { key: "quickNotes", label: "Schnellnotizen", description: "Sprach-zu-Text ohne Video", enabled: true, category: "Kernfunktionen" },
   { key: "statistics", label: "Statistik-Dashboard", description: "Protokoll- und Aufgaben-Statistiken", enabled: true, category: "Kernfunktionen" },
@@ -75,6 +75,18 @@ export async function getFeatureToggles(): Promise<FeatureToggle[]> {
     const stored = await AsyncStorage.getItem(FEATURE_TOGGLES_KEY);
     if (stored) {
       const savedMap: Record<string, boolean> = JSON.parse(stored);
+      
+      // Migration v1.0.6: Force protocolPreview to false for existing users
+      // who had it enabled by the old default. This prevents confusion where
+      // the protocol appears to be lost after processing.
+      const migrationKey = "feature-toggles-migration-v106";
+      const migrated = await AsyncStorage.getItem(migrationKey);
+      if (!migrated && savedMap["protocolPreview"] === true) {
+        savedMap["protocolPreview"] = false;
+        await AsyncStorage.setItem(FEATURE_TOGGLES_KEY, JSON.stringify(savedMap));
+        await AsyncStorage.setItem(migrationKey, "done");
+      }
+      
       // Merge saved state with defaults (handles new features)
       cachedToggles = DEFAULT_TOGGLES.map((toggle) => ({
         ...toggle,
