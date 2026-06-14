@@ -74,9 +74,70 @@ export const appRouter = router({
         });
 
         const protocolText =
-          response.choices?.[0]?.message?.content || "Protokoll konnte nicht erstellt werden.";
+          (response.choices?.[0]?.message?.content as string) || "Protokoll konnte nicht erstellt werden.";
 
         return { protocol: protocolText, templateName: template.name };
+      }),
+
+    extractTodos: publicProcedure
+      .input(
+        z.object({
+          transcription: z.string(),
+          protocolText: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const systemPrompt = `Du bist ein Assistent, der aus Protokollen und Transkriptionen konkrete Aufgaben (To-Dos) extrahiert.
+
+Analysiere den folgenden Protokolltext und die Originaltranskription. Extrahiere alle konkreten Aufgaben, Handlungsanweisungen, Vereinbarungen und offenen Punkte.
+
+Für jede Aufgabe gib an:
+- "task": Die konkrete Aufgabe in einem Satz
+- "assignee": Die verantwortliche Person (falls genannt, sonst "Nicht zugewiesen")
+- "priority": "hoch", "mittel" oder "niedrig" (basierend auf Dringlichkeit/Kontext)
+- "deadline": Frist falls genannt (sonst "Offen")
+
+Antworte AUSSCHLIESSLICH mit einem JSON-Array. Keine weiteren Erklärungen.
+Beispiel:
+[
+  {"task": "Angebot an Herrn Müller senden", "assignee": "Max", "priority": "hoch", "deadline": "Freitag"},
+  {"task": "Material für Dachsanierung bestellen", "assignee": "Nicht zugewiesen", "priority": "mittel", "deadline": "Offen"}
+]
+
+Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `PROTOKOLL:\n${input.protocolText}\n\nORIGINAL-TRANSKRIPTION:\n${input.transcription}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+        });
+
+        const content =
+          (response.choices?.[0]?.message?.content as string) || "[]";
+
+        try {
+          // Parse the response - it might be wrapped in an object or be a direct array
+          const parsed = JSON.parse(content);
+          const todos = Array.isArray(parsed) ? parsed : (parsed.todos || parsed.tasks || []);
+          return { todos };
+        } catch {
+          // Try to extract JSON array from the response
+          const match = content.match(/\[[\s\S]*\]/);
+          if (match) {
+            try {
+              const todos = JSON.parse(match[0]);
+              return { todos: Array.isArray(todos) ? todos : [] };
+            } catch {
+              return { todos: [] };
+            }
+          }
+          return { todos: [] };
+        }
       }),
   }),
 

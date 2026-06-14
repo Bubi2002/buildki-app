@@ -2,11 +2,20 @@ import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+type TodoItem = {
+  task: string;
+  assignee: string;
+  priority: string;
+  deadline: string;
+  done: boolean;
+};
+
 type PdfProtocol = {
   title: string;
   protocol: string;
   templateName?: string;
   photos?: string[];
+  todos?: TodoItem[];
   duration: number;
   createdAt: string;
 };
@@ -67,6 +76,7 @@ function generatePdfHtml(
   company: CompanySettings,
   photoDataUris: string[]
 ): string {
+  const todos = protocol.todos || [];
   const date = new Date(protocol.createdAt).toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
@@ -255,6 +265,36 @@ function generatePdfHtml(
         : ""
     }
   </table>
+
+  ${todos.length > 0 ? `
+  <div style="margin-bottom: 20px;">
+    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
+      Aufgaben (${todos.filter(t => t.done).length}/${todos.length} erledigt)
+    </h3>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+      <thead>
+        <tr style="background-color: #f8f8f8;">
+          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left; width: 30px;">✓</th>
+          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left;">Aufgabe</th>
+          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left; width: 100px;">Verantwortlich</th>
+          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: center; width: 70px;">Priorit\u00e4t</th>
+          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left; width: 80px;">Frist</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${todos.map(todo => `
+          <tr style="${todo.done ? 'opacity: 0.6;' : ''}">
+            <td style="padding: 8px; border: 1px solid #e0e0e0; text-align: center;">${todo.done ? '☑' : '☐'}</td>
+            <td style="padding: 8px; border: 1px solid #e0e0e0; ${todo.done ? 'text-decoration: line-through;' : ''}">${todo.task}</td>
+            <td style="padding: 8px; border: 1px solid #e0e0e0;">${todo.assignee}</td>
+            <td style="padding: 8px; border: 1px solid #e0e0e0; text-align: center; color: ${todo.priority === 'hoch' ? '#E53935' : todo.priority === 'mittel' ? '#FF9800' : '#666'};">${todo.priority}</td>
+            <td style="padding: 8px; border: 1px solid #e0e0e0;">${todo.deadline}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
 
   <div class="content">
     ${protocolHtml}

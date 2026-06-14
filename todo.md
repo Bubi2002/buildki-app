@@ -29,3 +29,7 @@
 - [x] PDF-Export-Button in Protokoll-Detailansicht
 - [x] Logo-Upload in Einstellungen ermöglichen
 - [x] PDF direkt per WhatsApp teilen (als Dateianhang)
+- [x] Server: To-Do-Extraktion per LLM aus Transkription
+- [x] Datenmodell um todos-Array erweitern
+- [x] Detailansicht: To-Do-Liste mit Checkboxen anzeigen
+- [x] PDF-Export: To-Do-Sektion einfügen

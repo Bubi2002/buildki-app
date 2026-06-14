@@ -39,6 +39,7 @@ export default function RecordScreen() {
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
   const protocolMutation = trpc.protocol.generate.useMutation();
+  const todosMutation = trpc.protocol.extractTodos.useMutation();
 
   // Load default template from settings
   useEffect(() => {
@@ -186,7 +187,26 @@ export default function RecordScreen() {
         format: settings.format || "bullets",
       });
 
-      // Save protocol locally with photos
+      // Extract To-Dos from transcription and protocol
+      let todos: Array<{ task: string; assignee: string; priority: string; deadline: string; done: boolean }> = [];
+      try {
+        const todosResult = await todosMutation.mutateAsync({
+          transcription: transcription.text,
+          protocolText: protocol.protocol,
+        });
+        todos = (todosResult.todos || []).map((t: any) => ({
+          task: t.task || "",
+          assignee: t.assignee || "Nicht zugewiesen",
+          priority: t.priority || "mittel",
+          deadline: t.deadline || "Offen",
+          done: false,
+        }));
+      } catch (todoError) {
+        console.error("Todo extraction error:", todoError);
+        // Continue without todos - not critical
+      }
+
+      // Save protocol locally with photos and todos
       const protocols = JSON.parse(
         (await AsyncStorage.getItem("protocols")) || "[]"
       );
@@ -198,6 +218,7 @@ export default function RecordScreen() {
         templateName: selectedTemplate.name,
         templateId: selectedTemplate.id,
         photos: capturedPhotos,
+        todos,
         duration: recordingDuration,
         createdAt: new Date().toISOString(),
         status: "ready" as const,

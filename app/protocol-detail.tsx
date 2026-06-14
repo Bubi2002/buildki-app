@@ -26,6 +26,14 @@ import { generateProtocolPdf } from "@/lib/pdf-generator";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 3;
 
+type TodoItem = {
+  task: string;
+  assignee: string;
+  priority: "hoch" | "mittel" | "niedrig";
+  deadline: string;
+  done: boolean;
+};
+
 type Protocol = {
   id: string;
   title: string;
@@ -34,6 +42,7 @@ type Protocol = {
   templateName?: string;
   templateId?: string;
   photos?: string[];
+  todos?: TodoItem[];
   duration: number;
   createdAt: string;
   status: "processing" | "ready" | "sent";
@@ -49,6 +58,7 @@ export default function ProtocolDetailScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
 
   useEffect(() => {
     loadProtocol();
@@ -61,10 +71,33 @@ export default function ProtocolDetailScreen() {
       );
       const found = protocols.find((p: Protocol) => p.id === id);
       setProtocol(found || null);
+      if (found?.todos) {
+        setTodos(found.todos);
+      }
     } catch (error) {
       console.error("Error loading protocol:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleTodo = async (index: number) => {
+    const updated = [...todos];
+    updated[index] = { ...updated[index], done: !updated[index].done };
+    setTodos(updated);
+
+    // Persist to AsyncStorage
+    try {
+      const protocols = JSON.parse(
+        (await AsyncStorage.getItem("protocols")) || "[]"
+      );
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].todos = updated;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      }
+    } catch (error) {
+      console.error("Error saving todo state:", error);
     }
   };
 
@@ -78,6 +111,7 @@ export default function ProtocolDetailScreen() {
         protocol: protocol.protocol,
         templateName: protocol.templateName,
         photos: protocol.photos,
+        todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
       });
@@ -116,6 +150,7 @@ export default function ProtocolDetailScreen() {
         protocol: protocol.protocol,
         templateName: protocol.templateName,
         photos: protocol.photos,
+        todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
       });
@@ -357,6 +392,56 @@ export default function ProtocolDetailScreen() {
             <Text style={[styles.photoHint, { color: colors.muted }]}>
               Tippe zum Vergrößern \u2022 Halte gedrückt zum Teilen
             </Text>
+          </View>
+        )}
+
+        {/* To-Do List */}
+        {todos.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.todoHeader}>
+              <MaterialIcons name="checklist" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0, marginLeft: 8 }]}>
+                Aufgaben ({todos.filter(t => t.done).length}/{todos.length})
+              </Text>
+            </View>
+            {todos.map((todo, index) => (
+              <Pressable
+                key={index}
+                onPress={() => toggleTodo(index)}
+                style={({ pressed }) => [
+                  styles.todoItem,
+                  { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <View style={[styles.todoCheckbox, { borderColor: todo.done ? colors.primary : colors.muted, backgroundColor: todo.done ? colors.primary : "transparent" }]}>
+                  {todo.done && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
+                </View>
+                <View style={styles.todoContent}>
+                  <Text style={[styles.todoTask, { color: colors.foreground, textDecorationLine: todo.done ? "line-through" : "none", opacity: todo.done ? 0.6 : 1 }]}>
+                    {todo.task}
+                  </Text>
+                  <View style={styles.todoMeta}>
+                    {todo.assignee !== "Nicht zugewiesen" && (
+                      <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
+                        <MaterialIcons name="person" size={12} color={colors.muted} />
+                        <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.assignee}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.todoBadge, { backgroundColor: todo.priority === "hoch" ? "#E5393520" : todo.priority === "mittel" ? "#FF980020" : colors.surface }]}>
+                      <Text style={[styles.todoBadgeText, { color: todo.priority === "hoch" ? "#E53935" : todo.priority === "mittel" ? "#FF9800" : colors.muted }]}>
+                        {todo.priority === "hoch" ? "⚠️ Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
+                      </Text>
+                    </View>
+                    {todo.deadline !== "Offen" && (
+                      <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
+                        <MaterialIcons name="schedule" size={12} color={colors.muted} />
+                        <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.deadline}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+            ))}
           </View>
         )}
 
@@ -695,6 +780,53 @@ const styles = StyleSheet.create({
   modalShareText: {
     color: "#FFFFFF",
     fontSize: 15,
+    fontWeight: "500",
+  },
+  todoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  todoItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    gap: 12,
+  },
+  todoCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  todoContent: {
+    flex: 1,
+    gap: 6,
+  },
+  todoTask: {
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "500",
+  },
+  todoMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  todoBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  todoBadgeText: {
+    fontSize: 11,
     fontWeight: "500",
   },
 });
