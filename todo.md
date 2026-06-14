@@ -136,3 +136,6 @@
 - [x] Feature: Fortschrittsanzeige mit Schritten (Upload → Transkription → Protokoll) mit Häkchen
 - [x] Feature: Video-Handling: Dateien >40MB werden lokal referenziert, kleinere werden hochgeladen, Fehler-Fallback speichert lokal
 - [x] Test: End-to-End-Test des Server-Flows (Upload + Transkription funktioniert korrekt)
+- [x] Fix: KRITISCH - Parallele Audio-Aufnahme entfernt (iOS AVAudioSession-Konflikt mit Kamera verhindert gleichzeitige Nutzung)
+- [x] Fix: Video-Modus nutzt jetzt direkt die Video-Datei für Transkription (Whisper extrahiert Audio aus Video)
+- [x] Fix: Größenprüfung: Videos >15 MB werden mit klarer Meldung abgelehnt (Audio-Modus empfohlen, Fotos weiterhin möglich)

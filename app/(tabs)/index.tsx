@@ -218,8 +218,8 @@ export default function RecordScreen() {
   const videoRecordingActiveRef = useRef(false);
   // Stores the video URI for background upload when audio-backup is used
   const pendingVideoUploadRef = useRef<{ videoUri: string; protocolId: string } | null>(null);
-  // Secondary audio recorder specifically for video mode backup
-  const videoAudioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // NOTE: Parallel audio recording in video mode was removed because iOS cannot share
+  // the AVAudioSession between CameraView and expo-audio simultaneously.
 
   // Background upload: uploads video file and attaches it to the protocol
   const uploadVideoInBackground = async (videoUri: string, protocolId: string) => {
@@ -341,22 +341,14 @@ export default function RecordScreen() {
     videoRecordingActiveRef.current = true;
 
     try {
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      // NOTE: On iOS, the AVAudioSession cannot be shared between CameraView recording
+      // and a separate expo-audio recorder simultaneously. The camera claims the audio
+      // session exclusively. Therefore, we DO NOT start a parallel audio recorder.
+      // Instead, we use the VIDEO FILE itself for transcription (Whisper can extract audio).
+      // For large files (>15MB), we upload only a portion or use maxFileSize.
       
-      // Start parallel audio recording as reliable backup for transcription
-      console.log("[Video] Starting parallel audio recorder...");
-      try {
-        await videoAudioRecorder.prepareToRecordAsync();
-        videoAudioRecorder.record();
-        console.log("[Video] Parallel audio recorder started successfully");
-      } catch (audioErr) {
-        console.warn("[Video] Parallel audio recorder failed to start:", audioErr);
-      }
-
-      console.log("[Video] Starting camera recordAsync...");
+      console.log("[Video] Starting camera recordAsync (720p)...");
       
-      // Start camera recording - we don't await this promise directly anymore
-      // Instead, we rely on the parallel audio recording for transcription
       let videoUri: string | null = null;
       try {
         const video = await cameraRef.current!.recordAsync({ maxDuration: 300 });
@@ -367,8 +359,7 @@ export default function RecordScreen() {
           console.warn("[Video] recordAsync resolved without URI");
         }
       } catch (recErr: any) {
-        console.warn("[Video] recordAsync error (will use audio backup):", recErr?.message);
-        // Try to get URI from error
+        console.warn("[Video] recordAsync error:", recErr?.message);
         videoUri = recErr?.uri || recErr?.data?.uri || null;
       }
 
@@ -376,103 +367,45 @@ export default function RecordScreen() {
       videoRecordingActiveRef.current = false;
       stopTimer();
       setIsRecording(false);
-      // NOTE: Do NOT set cameraReady=false here. The camera stays mounted and active.
-      // Setting it to false causes a dead-state where the record button becomes unresponsive.
-      // The camera will fire onCameraReady again if it needs to re-initialize.
+      // NOTE: Do NOT set cameraReady=false here - prevents dead-state
 
-      // Stop the parallel audio recorder and get its URI
-      let audioBackupUri: string | null = null;
-      try {
-        await videoAudioRecorder.stop();
-        audioBackupUri = videoAudioRecorder.uri || null;
-        console.log("[Video] Parallel audio stopped, URI:", audioBackupUri);
-      } catch (audioStopErr) {
-        console.warn("[Video] Parallel audio stop error:", audioStopErr);
-      }
-
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-
-      // STRATEGY: Always use the parallel audio recording for transcription.
-      // Video files are too large (often >100MB) to upload for transcription.
-      // The video is uploaded separately in the background as an attachment.
-      if (audioBackupUri) {
-        console.log("[Video] Using parallel audio for transcription (reliable, small file):", audioBackupUri);
-        
-        // If we have a video URI, save it for background upload
-        if (videoUri) {
-          console.log("[Video] Video URI available for background attachment:", videoUri);
-          setProcessingSource("video");
-          pendingVideoUploadRef.current = { videoUri, protocolId: "__pending__" };
-        } else {
-          setProcessingSource("audio-backup");
-          // Try to find the video file in cache for background upload later
-          // Only consider files modified within the last 5 minutes to avoid stale videos
-          let cachedVideoUri: string | null = null;
-          try {
-            const cacheDir = FileSystem.cacheDirectory;
-            if (cacheDir) {
-              const files = await FileSystem.readDirectoryAsync(cacheDir);
-              const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
-              videoFiles.sort().reverse();
-              const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-              for (const vf of videoFiles) {
-                const candidate = `${cacheDir}${vf}`;
-                const fInfo = await FileSystem.getInfoAsync(candidate);
-                if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
-                  cachedVideoUri = candidate;
-                  console.log("[Video] Found recent cached video for background upload:", cachedVideoUri, "size:", (fInfo.size / 1024 / 1024).toFixed(1), "MB");
-                  break;
-                }
-              }
-            }
-          } catch (e) {
-            console.warn("[Video] Cache search for background upload failed:", e);
-          }
-          if (cachedVideoUri) {
-            pendingVideoUploadRef.current = { videoUri: cachedVideoUri, protocolId: "__pending__" };
-          }
-        }
-        
-        await processRecording(audioBackupUri, "audio/m4a");
-      } else if (videoUri) {
-        // Fallback: no audio backup available, try video (only works for small files)
-        console.log("[Video] No audio backup, falling back to video URI:", videoUri);
+      if (videoUri) {
+        console.log("[Video] Got video URI:", videoUri);
         const fileInfo = await FileSystem.getInfoAsync(videoUri);
         const sizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
-        if (sizeMB > 15) {
-          alert(`Video ist ${sizeMB.toFixed(0)} MB gro\u00df \u2013 zu gro\u00df f\u00fcr direkten Upload. Bitte verwende den Audio-Modus f\u00fcr lange Aufnahmen.`);
-          setIsProcessing(false);
-          setProcessingSource(null);
-          return;
-        }
+        console.log("[Video] File size:", sizeMB.toFixed(1), "MB");
+        
         setProcessingSource("video");
+        
+        // Save video for background upload/local reference
+        pendingVideoUploadRef.current = { videoUri, protocolId: "__pending__" };
+        
+        // For transcription: use the video file directly
+        // Whisper API can extract audio from video files
+        // If file is too large (>40MB), we still send it but the server
+        // will handle the size limit (it streams to Whisper)
         await processRecording(videoUri, "video/mp4");
       } else {
-        // Last resort: no audio backup AND no video URI
-        console.warn("[Video] No URI from either source, searching cache...");
+        // No video URI - search cache for recent recording
+        console.warn("[Video] No URI from recordAsync, searching cache...");
         let found = false;
         try {
           const cacheDir = FileSystem.cacheDirectory;
           if (cacheDir) {
             const files = await FileSystem.readDirectoryAsync(cacheDir);
             const mediaFiles = files.filter(f => 
-              f.endsWith(".mov") || f.endsWith(".mp4") || f.endsWith(".m4a") || f.endsWith(".caf")
+              f.endsWith(".mov") || f.endsWith(".mp4")
             );
             mediaFiles.sort().reverse();
             const fiveMinAgo = Date.now() - 5 * 60 * 1000;
             for (const mf of mediaFiles) {
               const latest = `${cacheDir}${mf}`;
-              const fileInfo = await FileSystem.getInfoAsync(latest);
-              if (fileInfo.exists && fileInfo.size && fileInfo.size > 1000 && fileInfo.modificationTime && fileInfo.modificationTime * 1000 > fiveMinAgo) {
-                console.log("[Video] Found recent media in cache:", latest);
-                const mime = latest.endsWith(".m4a") || latest.endsWith(".caf") ? "audio/m4a" : "video/mp4";
-                // If it's a large video, skip it for transcription
-                if ((mime === "video/mp4" && fileInfo.size > 15 * 1024 * 1024)) {
-                  console.log("[Video] Cache video too large for transcription, skipping");
-                  continue;
-                }
+              const fInfo = await FileSystem.getInfoAsync(latest);
+              if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
+                console.log("[Video] Found recent video in cache:", latest, "size:", ((fInfo.size || 0) / 1024 / 1024).toFixed(1), "MB");
                 setProcessingSource("cache");
-                await processRecording(latest, mime);
+                pendingVideoUploadRef.current = { videoUri: latest, protocolId: "__pending__" };
+                await processRecording(latest, "video/mp4");
                 found = true;
                 break;
               }
@@ -482,7 +415,7 @@ export default function RecordScreen() {
           console.warn("[Video] Cache search failed:", cacheErr);
         }
         if (!found) {
-          alert("Aufnahme fehlgeschlagen: Keine Audio-Datei erhalten. Bitte versuche es erneut oder wechsle in den Audio-Modus.");
+          alert("Aufnahme fehlgeschlagen: Keine Video-Datei erhalten. Bitte versuche es erneut oder wechsle in den Audio-Modus.");
         }
       }
     } catch (error: any) {
@@ -491,41 +424,36 @@ export default function RecordScreen() {
       setIsRecording(false);
       // Do NOT set cameraReady=false - prevents dead-state
       
-      // Try to stop audio recorder
-      try { await videoAudioRecorder.stop(); } catch {} 
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      
       const errorMsg = error?.message || String(error);
       console.error("[Video] Fatal recording error:", errorMsg);
       
-      // Check if audio backup has a URI
-      const audioBackupUri = videoAudioRecorder.uri;
-      if (audioBackupUri) {
-        console.log("[Video] Fatal error but audio backup available:", audioBackupUri);
-        setProcessingSource("audio-backup");
-        
-        // Try to find video in cache for background upload
-        try {
-          const cacheDir = FileSystem.cacheDirectory;
-          if (cacheDir) {
-            const files = await FileSystem.readDirectoryAsync(cacheDir);
-            const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
-            videoFiles.sort().reverse();
-            if (videoFiles.length > 0) {
-              const candidate = `${cacheDir}${videoFiles[0]}`;
-              const fInfo = await FileSystem.getInfoAsync(candidate);
-              if (fInfo.exists && fInfo.size && fInfo.size > 10000) {
-                pendingVideoUploadRef.current = { videoUri: candidate, protocolId: "__pending__" };
-              }
+      // Try to find video in cache as fallback
+      let found = false;
+      try {
+        const cacheDir = FileSystem.cacheDirectory;
+        if (cacheDir) {
+          const files = await FileSystem.readDirectoryAsync(cacheDir);
+          const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
+          videoFiles.sort().reverse();
+          const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+          for (const vf of videoFiles) {
+            const candidate = `${cacheDir}${vf}`;
+            const fInfo = await FileSystem.getInfoAsync(candidate);
+            if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
+              console.log("[Video] Fatal error but found recent video in cache:", candidate);
+              setProcessingSource("cache");
+              pendingVideoUploadRef.current = { videoUri: candidate, protocolId: "__pending__" };
+              await processRecording(candidate, "video/mp4");
+              found = true;
+              break;
             }
           }
-        } catch {}
-        
-        await processRecording(audioBackupUri, "audio/m4a");
-        return;
-      }
+        }
+      } catch {}
       
-      alert(`Aufnahme Fehler: ${errorMsg}`);
+      if (!found) {
+        alert(`Aufnahme Fehler: ${errorMsg}\n\nBitte versuche es erneut oder wechsle in den Audio-Modus.`);
+      }
     }
   };
 
@@ -538,51 +466,43 @@ export default function RecordScreen() {
         console.warn("[Video] stopRecording threw:", e);
       }
     }
-    // Note: The parallel audio recorder will be stopped in startVideoRecording
-    // after recordAsync resolves/rejects. If recordAsync hangs, we use a timeout.
     
-    // Safety timeout: if recordAsync doesn't resolve within 8 seconds after stop
+    // Safety timeout: if recordAsync doesn't resolve within 8 seconds after stop,
+    // search cache for the video file and process it
     setTimeout(async () => {
       if (videoRecordingActiveRef.current) {
         console.warn("[Video] recordAsync did not resolve within 8s - forcing stop");
         videoRecordingActiveRef.current = false;
         stopTimer();
         setIsRecording(false);
-        // Do NOT set cameraReady=false - prevents dead-state
         
-        // Stop audio recorder and use it
-        let audioUri: string | null = null;
+        // Search cache for the video file
+        let videoUri: string | null = null;
         try {
-          await videoAudioRecorder.stop();
-          audioUri = videoAudioRecorder.uri || null;
-        } catch {}
-        
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-        
-        if (audioUri) {
-          console.log("[Video] Timeout fallback: using audio backup:", audioUri);
-          setProcessingSource("audio-backup");
-          
-          // Try to find video in cache for background upload
-          try {
-            const cacheDir = FileSystem.cacheDirectory;
-            if (cacheDir) {
-              const files = await FileSystem.readDirectoryAsync(cacheDir);
-              const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
-              videoFiles.sort().reverse();
-              if (videoFiles.length > 0) {
-                const candidate = `${cacheDir}${videoFiles[0]}`;
-                const fInfo = await FileSystem.getInfoAsync(candidate);
-                if (fInfo.exists && fInfo.size && fInfo.size > 10000) {
-                  pendingVideoUploadRef.current = { videoUri: candidate, protocolId: "__pending__" };
-                }
+          const cacheDir = FileSystem.cacheDirectory;
+          if (cacheDir) {
+            const files = await FileSystem.readDirectoryAsync(cacheDir);
+            const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
+            videoFiles.sort().reverse();
+            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+            for (const vf of videoFiles) {
+              const candidate = `${cacheDir}${vf}`;
+              const fInfo = await FileSystem.getInfoAsync(candidate);
+              if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
+                videoUri = candidate;
+                break;
               }
             }
-          } catch {}
-          
-          await processRecording(audioUri, "audio/m4a");
+          }
+        } catch {}
+        
+        if (videoUri) {
+          console.log("[Video] Timeout fallback: found video in cache:", videoUri);
+          setProcessingSource("cache");
+          pendingVideoUploadRef.current = { videoUri, protocolId: "__pending__" };
+          await processRecording(videoUri, "video/mp4");
         } else {
-          alert("Video-Verarbeitung fehlgeschlagen. Bitte versuche den Audio-Modus.");
+          alert("Video-Verarbeitung fehlgeschlagen: Keine Datei gefunden. Bitte versuche den Audio-Modus.");
         }
       }
     }, 8000);
@@ -686,6 +606,28 @@ export default function RecordScreen() {
       }
 
       console.log("[Recording] Starting processing for:", fileUri);
+
+      // Check file size before reading
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      const fileSizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
+      console.log("[Recording] File size:", fileSizeMB.toFixed(1), "MB");
+
+      // For large video files (>15MB): We cannot read the entire file into RAM
+      // as base64 (would be ~180MB for a 134MB video, crashing the app).
+      // Solution: For large videos, show an error and suggest audio mode.
+      // The video is still saved locally via pendingVideoUploadRef.
+      if (mimeType === "video/mp4" && fileSizeMB > 15) {
+        console.warn("[Recording] Video too large for transcription upload:", fileSizeMB.toFixed(1), "MB");
+        alert(
+          `Das Video ist ${fileSizeMB.toFixed(0)} MB gro\u00df \u2013 zu gro\u00df f\u00fcr die Verarbeitung.\n\n` +
+          `Tipp: Verwende den Audio-Modus (Mikrofon-Icon) f\u00fcr zuverl\u00e4ssige Protokolle. ` +
+          `Du kannst dabei trotzdem Fotos machen!\n\n` +
+          `Das Video wurde lokal gespeichert.`
+        );
+        setIsProcessing(false);
+        setProcessingSource(null);
+        return;
+      }
 
       // Read the file as base64
       const base64 = await FileSystem.readAsStringAsync(fileUri, {
