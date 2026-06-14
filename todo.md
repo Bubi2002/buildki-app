@@ -121,3 +121,4 @@
 - [x] Bug-Fix: Video-Recording catch-Block verschluckte Fehler still – jetzt mit Fehlermeldung und URI-Recovery
 - [x] Text-Fix: Empty-State in Protokolle-Liste korrigiert ("Starte eine Aufnahme" statt "Nimm ein Video auf")
 - [x] Bug-Fix: KRITISCH - getApiBaseUrl Import fehlte in index.tsx, Client sendet jetzt absolute URL an Transkriptions-Endpunkt
+- [x] Bug-Fix: KRITISCH - Video-Recording: recordAsync() resolved nicht zuverlässig auf iOS wenn takePictureAsync() während Aufnahme aufgerufen wird. Lösung: Parallele Audio-Aufnahme als Backup, 8s Timeout-Fallback, Cache-Directory-Suche

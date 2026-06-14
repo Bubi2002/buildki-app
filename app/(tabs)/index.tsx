@@ -211,8 +211,11 @@ export default function RecordScreen() {
     }
   };
 
-  // Video recording uses a ref to store the promise result
-  const videoRecordingPromiseRef = useRef<Promise<any> | null>(null);
+  // Video recording: We run a PARALLEL audio recording alongside the camera.
+  // This ensures we always have audio for transcription, even if recordAsync() fails to resolve.
+  const videoRecordingActiveRef = useRef(false);
+  // Secondary audio recorder specifically for video mode backup
+  const videoAudioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const startVideoRecording = async () => {
     if (Platform.OS === "web") {
@@ -236,62 +239,158 @@ export default function RecordScreen() {
     setMarkers([]);
     setIsRecording(true);
     startTimer();
+    videoRecordingActiveRef.current = true;
 
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      console.log("[Video] Starting recordAsync...");
       
-      // Store the promise - it resolves when stopRecording is called
-      videoRecordingPromiseRef.current = cameraRef.current.recordAsync({
-        maxDuration: 300,
-      });
+      // Start parallel audio recording as reliable backup for transcription
+      console.log("[Video] Starting parallel audio recorder...");
+      try {
+        await videoAudioRecorder.prepareToRecordAsync();
+        videoAudioRecorder.record();
+        console.log("[Video] Parallel audio recorder started successfully");
+      } catch (audioErr) {
+        console.warn("[Video] Parallel audio recorder failed to start:", audioErr);
+      }
+
+      console.log("[Video] Starting camera recordAsync...");
       
-      // Wait for the promise to resolve (happens when stopRecording is called)
-      const video = await videoRecordingPromiseRef.current;
-      videoRecordingPromiseRef.current = null;
+      // Start camera recording - we don't await this promise directly anymore
+      // Instead, we rely on the parallel audio recording for transcription
+      let videoUri: string | null = null;
+      try {
+        const video = await cameraRef.current!.recordAsync({ maxDuration: 300 });
+        if (video && video.uri) {
+          videoUri = video.uri;
+          console.log("[Video] recordAsync resolved with URI:", videoUri);
+        } else {
+          console.warn("[Video] recordAsync resolved without URI");
+        }
+      } catch (recErr: any) {
+        console.warn("[Video] recordAsync error (will use audio backup):", recErr?.message);
+        // Try to get URI from error
+        videoUri = recErr?.uri || recErr?.data?.uri || null;
+      }
 
-      console.log("[Video] recordAsync resolved, video:", JSON.stringify(video));
-
+      // Recording has stopped (either resolved or errored)
+      videoRecordingActiveRef.current = false;
       stopTimer();
       setIsRecording(false);
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       setCameraReady(false);
 
-      if (video && video.uri) {
-        console.log("[Video] Processing video URI:", video.uri);
-        await processRecording(video.uri, "video/mp4");
+      // Stop the parallel audio recorder and get its URI
+      let audioBackupUri: string | null = null;
+      try {
+        await videoAudioRecorder.stop();
+        audioBackupUri = videoAudioRecorder.uri || null;
+        console.log("[Video] Parallel audio stopped, URI:", audioBackupUri);
+      } catch (audioStopErr) {
+        console.warn("[Video] Parallel audio stop error:", audioStopErr);
+      }
+
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+
+      // Use video URI if available, otherwise fall back to audio backup
+      if (videoUri) {
+        console.log("[Video] Processing with video URI:", videoUri);
+        await processRecording(videoUri, "video/mp4");
+      } else if (audioBackupUri) {
+        console.log("[Video] Using audio backup for processing:", audioBackupUri);
+        await processRecording(audioBackupUri, "audio/m4a");
       } else {
-        console.error("[Video] No video URI returned. video object:", video);
-        alert("Video-Aufnahme fehlgeschlagen: Keine Datei erhalten. Bitte versuche es erneut.");
+        // Last resort: search cache
+        console.warn("[Video] No URI from either source, searching cache...");
+        let found = false;
+        try {
+          const cacheDir = FileSystem.cacheDirectory;
+          if (cacheDir) {
+            const files = await FileSystem.readDirectoryAsync(cacheDir);
+            const mediaFiles = files.filter(f => 
+              f.endsWith(".mov") || f.endsWith(".mp4") || f.endsWith(".m4a") || f.endsWith(".caf")
+            );
+            mediaFiles.sort().reverse();
+            if (mediaFiles.length > 0) {
+              const latest = `${cacheDir}${mediaFiles[0]}`;
+              const fileInfo = await FileSystem.getInfoAsync(latest);
+              if (fileInfo.exists && fileInfo.size && fileInfo.size > 1000) {
+                console.log("[Video] Found media in cache:", latest);
+                const mime = latest.endsWith(".m4a") || latest.endsWith(".caf") ? "audio/m4a" : "video/mp4";
+                await processRecording(latest, mime);
+                found = true;
+              }
+            }
+          }
+        } catch (cacheErr) {
+          console.warn("[Video] Cache search failed:", cacheErr);
+        }
+        if (!found) {
+          alert("Aufnahme fehlgeschlagen: Keine Datei erhalten. Bitte versuche es erneut.");
+        }
       }
     } catch (error: any) {
-      videoRecordingPromiseRef.current = null;
+      videoRecordingActiveRef.current = false;
       stopTimer();
       setIsRecording(false);
       setCameraReady(false);
+      
+      // Try to stop audio recorder
+      try { await videoAudioRecorder.stop(); } catch {} 
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       
       const errorMsg = error?.message || String(error);
-      console.error("[Video] Recording error:", errorMsg);
+      console.error("[Video] Fatal recording error:", errorMsg);
       
-      // On some iOS versions, stopRecording causes recordAsync to reject but still produces a file
-      const errorUri = error?.uri || error?.data?.uri;
-      if (errorUri) {
-        console.log("[Video] Error contained URI, processing:", errorUri);
-        await processRecording(errorUri, "video/mp4");
+      // Check if audio backup has a URI
+      const audioBackupUri = videoAudioRecorder.uri;
+      if (audioBackupUri) {
+        console.log("[Video] Fatal error but audio backup available:", audioBackupUri);
+        await processRecording(audioBackupUri, "audio/m4a");
         return;
       }
       
-      // Show specific error to user
-      alert(`Video-Aufnahme Fehler: ${errorMsg}`);
+      alert(`Aufnahme Fehler: ${errorMsg}`);
     }
   };
 
   const stopVideoRecording = () => {
     console.log("[Video] stopRecording called");
     if (cameraRef.current) {
-      cameraRef.current.stopRecording();
+      try {
+        cameraRef.current.stopRecording();
+      } catch (e) {
+        console.warn("[Video] stopRecording threw:", e);
+      }
     }
+    // Note: The parallel audio recorder will be stopped in startVideoRecording
+    // after recordAsync resolves/rejects. If recordAsync hangs, we use a timeout.
+    
+    // Safety timeout: if recordAsync doesn't resolve within 8 seconds after stop
+    setTimeout(async () => {
+      if (videoRecordingActiveRef.current) {
+        console.warn("[Video] recordAsync did not resolve within 8s - forcing stop");
+        videoRecordingActiveRef.current = false;
+        stopTimer();
+        setIsRecording(false);
+        setCameraReady(false);
+        
+        // Stop audio recorder and use it
+        let audioUri: string | null = null;
+        try {
+          await videoAudioRecorder.stop();
+          audioUri = videoAudioRecorder.uri || null;
+        } catch {}
+        
+        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+        
+        if (audioUri) {
+          console.log("[Video] Timeout fallback: using audio backup:", audioUri);
+          await processRecording(audioUri, "audio/m4a");
+        } else {
+          alert("Video-Verarbeitung fehlgeschlagen. Bitte versuche den Audio-Modus.");
+        }
+      }
+    }, 8000);
   };
 
   // --- AUDIO RECORDING ---
