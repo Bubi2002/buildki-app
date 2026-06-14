@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
+import * as Haptics from "expo-haptics";
 
 export default function RecordScreen() {
   const colors = useColors();
@@ -31,6 +32,8 @@ export default function RecordScreen() {
     PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]
   );
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [photoFlash, setPhotoFlash] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const uploadMutation = trpc.upload.audio.useMutation();
@@ -77,6 +80,42 @@ export default function RecordScreen() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const takePhoto = async () => {
+    if (!cameraRef.current) return;
+
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      // Flash effect
+      setPhotoFlash(true);
+      setTimeout(() => setPhotoFlash(false), 150);
+
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        skipProcessing: false,
+      });
+
+      if (photo?.uri) {
+        // Copy to persistent directory
+        const photoDir = `${FileSystem.documentDirectory}photos/`;
+        const dirInfo = await FileSystem.getInfoAsync(photoDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(photoDir, { intermediates: true });
+        }
+
+        const filename = `photo-${Date.now()}.jpg`;
+        const newUri = `${photoDir}${filename}`;
+        await FileSystem.copyAsync({ from: photo.uri, to: newUri });
+
+        setCapturedPhotos((prev) => [...prev, newUri]);
+      }
+    } catch (error) {
+      console.error("Photo capture error:", error);
+    }
+  };
+
   const startRecording = async () => {
     if (Platform.OS === "web") {
       alert("Videoaufnahme ist nur auf dem Handy verfügbar.");
@@ -85,6 +124,7 @@ export default function RecordScreen() {
     if (!cameraRef.current) return;
 
     setShowTemplateSelector(false);
+    setCapturedPhotos([]);
     setIsRecording(true);
     startTimer();
 
@@ -146,7 +186,7 @@ export default function RecordScreen() {
         format: settings.format || "bullets",
       });
 
-      // Save protocol locally
+      // Save protocol locally with photos
       const protocols = JSON.parse(
         (await AsyncStorage.getItem("protocols")) || "[]"
       );
@@ -157,6 +197,7 @@ export default function RecordScreen() {
         protocol: protocol.protocol,
         templateName: selectedTemplate.name,
         templateId: selectedTemplate.id,
+        photos: capturedPhotos,
         duration: recordingDuration,
         createdAt: new Date().toISOString(),
         status: "ready" as const,
@@ -165,6 +206,7 @@ export default function RecordScreen() {
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
       setIsProcessing(false);
+      setCapturedPhotos([]);
       router.push(
         `/protocol-detail?id=${newProtocol.id}` as any
       );
@@ -220,6 +262,11 @@ export default function RecordScreen() {
         <Text className="text-base text-muted mt-2 text-center">
           Deine Aufnahme wird transkribiert und ein {selectedTemplate.name} erstellt.
         </Text>
+        {capturedPhotos.length > 0 && (
+          <Text className="text-sm text-muted mt-2 text-center">
+            {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angehängt.
+          </Text>
+        )}
       </ScreenContainer>
     );
   }
@@ -232,6 +279,9 @@ export default function RecordScreen() {
         facing="back"
         mode="video"
       >
+        {/* Photo flash effect */}
+        {photoFlash && <View style={styles.flashOverlay} />}
+
         {/* Timer overlay */}
         {isRecording && (
           <View style={styles.timerContainer}>
@@ -241,6 +291,13 @@ export default function RecordScreen() {
                 {formatDuration(recordingDuration)}
               </Text>
             </View>
+            {/* Photo counter */}
+            {capturedPhotos.length > 0 && (
+              <View style={styles.photoCountBadge}>
+                <MaterialIcons name="photo-camera" size={14} color="#FFFFFF" />
+                <Text style={styles.photoCountText}>{capturedPhotos.length}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -336,27 +393,53 @@ export default function RecordScreen() {
             </Pressable>
           )}
 
-          <Pressable
-            onPress={isRecording ? stopRecording : startRecording}
-            style={({ pressed }) => [
-              styles.recordButton,
-              {
-                borderColor: "#FFFFFF",
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-              },
-            ]}
-          >
-            <View
-              style={[
-                isRecording ? styles.stopIcon : styles.recordIcon,
-                { backgroundColor: colors.primary },
+          <View style={styles.controlsRow}>
+            {/* Photo button - only visible during recording */}
+            {isRecording ? (
+              <Pressable
+                onPress={takePhoto}
+                style={({ pressed }) => [
+                  styles.photoButton,
+                  { transform: [{ scale: pressed ? 0.9 : 1 }] },
+                ]}
+              >
+                <MaterialIcons name="photo-camera" size={28} color="#FFFFFF" />
+                {capturedPhotos.length > 0 && (
+                  <View style={styles.photoBadge}>
+                    <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : (
+              <View style={styles.photoButtonPlaceholder} />
+            )}
+
+            {/* Record / Stop button */}
+            <Pressable
+              onPress={isRecording ? stopRecording : startRecording}
+              style={({ pressed }) => [
+                styles.recordButton,
+                {
+                  borderColor: "#FFFFFF",
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                },
               ]}
-            />
-          </Pressable>
+            >
+              <View
+                style={[
+                  isRecording ? styles.stopIcon : styles.recordIcon,
+                  { backgroundColor: colors.primary },
+                ]}
+              />
+            </Pressable>
+
+            {/* Spacer for symmetry */}
+            <View style={styles.photoButtonPlaceholder} />
+          </View>
 
           <Text style={styles.hintText}>
             {isRecording
-              ? "Tippe zum Stoppen"
+              ? "Tippe links für Foto \u2022 Mitte zum Stoppen"
               : "Tippe zum Aufnehmen"}
           </Text>
         </View>
@@ -373,11 +456,22 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
+  flashOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#FFFFFF",
+    opacity: 0.8,
+    zIndex: 100,
+  },
   timerContainer: {
     position: "absolute",
     top: 60,
     width: "100%",
     alignItems: "center",
+    gap: 8,
   },
   timerBadge: {
     flexDirection: "row",
@@ -399,6 +493,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
+  },
+  photoCountBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 4,
+  },
+  photoCountText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
   },
   templateOverlay: {
     position: "absolute",
@@ -452,9 +560,17 @@ const styles = StyleSheet.create({
   },
   controlsContainer: {
     position: "absolute",
-    bottom: 60,
+    bottom: 50,
     width: "100%",
     alignItems: "center",
+  },
+  controlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    paddingHorizontal: 40,
+    gap: 30,
   },
   templateBadge: {
     flexDirection: "row",
@@ -470,6 +586,36 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "500",
+  },
+  photoButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  photoBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#E53935",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  photoButtonPlaceholder: {
+    width: 52,
+    height: 52,
   },
   recordButton: {
     width: 80,
@@ -491,8 +637,8 @@ const styles = StyleSheet.create({
   },
   hintText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    marginTop: 12,
+    fontSize: 13,
+    marginTop: 14,
     opacity: 0.8,
   },
   permissionButton: {

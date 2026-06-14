@@ -19,3 +19,8 @@
 - [x] Server-Prompt pro Vorlage anpassen
 - [x] Vorlagen-Auswahl in Einstellungen integrieren
 - [x] Vorlagen-Auswahl vor Aufnahme anzeigen
+- [x] Foto-Button während Aufnahme anzeigen
+- [x] Fotos mit CameraView aufnehmen und lokal speichern
+- [x] Fotos dem Protokoll-Datensatz beifügen
+- [x] Foto-Galerie in Protokoll-Detailansicht anzeigen
+- [x] Fotos beim Teilen mitsenden

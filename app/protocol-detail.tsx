@@ -8,20 +8,31 @@ import {
   Share,
   ActivityIndicator,
   Platform,
+  FlatList,
+  Dimensions,
+  Modal,
 } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
+import * as Sharing from "expo-sharing";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 3; // 3 columns with gaps
 
 type Protocol = {
   id: string;
   title: string;
   transcription: string;
   protocol: string;
+  templateName?: string;
+  templateId?: string;
+  photos?: string[];
   duration: number;
   createdAt: string;
   status: "processing" | "ready" | "sent";
@@ -34,6 +45,7 @@ export default function ProtocolDetailScreen() {
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTranscription, setShowTranscription] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     loadProtocol();
@@ -87,7 +99,7 @@ export default function ProtocolDetailScreen() {
     );
     const emailTo = settings.defaultEmail || "";
     const subject = encodeURIComponent(
-      `Protokoll vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}`
+      `${protocol.templateName || "Protokoll"} vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}`
     );
     const body = encodeURIComponent(protocol.protocol);
 
@@ -105,8 +117,16 @@ export default function ProtocolDetailScreen() {
     if (!protocol) return;
     await Share.share({
       message: protocol.protocol,
-      title: "Protokoll teilen",
+      title: protocol.templateName || "Protokoll teilen",
     });
+  };
+
+  const sharePhoto = async (photoUri: string) => {
+    if (Platform.OS === "web") return;
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (isAvailable) {
+      await Sharing.shareAsync(photoUri);
+    }
   };
 
   if (loading) {
@@ -148,6 +168,8 @@ export default function ProtocolDetailScreen() {
     return `${mins}:${secs.toString().padStart(2, "0")} Min.`;
   };
 
+  const photos = protocol.photos || [];
+
   return (
     <ScreenContainer edges={["top", "left", "right", "bottom"]}>
       {/* Header */}
@@ -159,7 +181,7 @@ export default function ProtocolDetailScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
-          Protokoll
+          {protocol.templateName || "Protokoll"}
         </Text>
         <View style={{ width: 24 }} />
       </View>
@@ -180,7 +202,50 @@ export default function ProtocolDetailScreen() {
               {formatDuration(protocol.duration)}
             </Text>
           </View>
+          {photos.length > 0 && (
+            <View style={styles.metaRow}>
+              <MaterialIcons name="photo-camera" size={18} color={colors.muted} />
+              <Text style={[styles.metaText, { color: colors.muted }]}>
+                {photos.length} Foto{photos.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          )}
         </View>
+
+        {/* Photos Gallery */}
+        {photos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Fotos
+            </Text>
+            <View style={styles.photoGrid}>
+              {photos.map((photoUri, index) => (
+                <Pressable
+                  key={index}
+                  onPress={() => setSelectedPhoto(photoUri)}
+                  onLongPress={() => sharePhoto(photoUri)}
+                  style={({ pressed }) => [
+                    styles.photoThumbnail,
+                    { opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <Image
+                    source={{ uri: photoUri }}
+                    style={styles.photoImage}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                  <View style={styles.photoIndex}>
+                    <Text style={styles.photoIndexText}>{index + 1}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={[styles.photoHint, { color: colors.muted }]}>
+              Tippe zum Vergrößern \u2022 Halte gedrückt zum Teilen
+            </Text>
+          </View>
+        )}
 
         {/* Protocol content */}
         <View style={styles.section}>
@@ -266,6 +331,47 @@ export default function ProtocolDetailScreen() {
           <Text style={[styles.actionButtonText, { color: colors.background }]}>Teilen</Text>
         </Pressable>
       </View>
+
+      {/* Full-screen photo viewer */}
+      <Modal
+        visible={!!selectedPhoto}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPhoto(null)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setSelectedPhoto(null)}
+        >
+          <View style={styles.modalContent}>
+            {selectedPhoto && (
+              <Image
+                source={{ uri: selectedPhoto }}
+                style={styles.modalImage}
+                contentFit="contain"
+                transition={200}
+              />
+            )}
+            <Pressable
+              onPress={() => setSelectedPhoto(null)}
+              style={styles.modalCloseButton}
+            >
+              <MaterialIcons name="close" size={28} color="#FFFFFF" />
+            </Pressable>
+            {selectedPhoto && (
+              <Pressable
+                onPress={() => {
+                  if (selectedPhoto) sharePhoto(selectedPhoto);
+                }}
+                style={styles.modalShareButton}
+              >
+                <MaterialIcons name="share" size={24} color="#FFFFFF" />
+                <Text style={styles.modalShareText}>Teilen</Text>
+              </Pressable>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -293,11 +399,13 @@ const styles = StyleSheet.create({
   },
   metaCard: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     padding: 12,
     borderRadius: 10,
     borderWidth: 0.5,
     marginBottom: 20,
+    gap: 8,
   },
   metaRow: {
     flexDirection: "row",
@@ -314,6 +422,42 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
+  },
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  photoThumbnail: {
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  photoImage: {
+    width: "100%",
+    height: "100%",
+  },
+  photoIndex: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoIndexText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  photoHint: {
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: "center",
   },
   protocolText: {
     fontSize: 15,
@@ -370,5 +514,48 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalImage: {
+    width: SCREEN_WIDTH - 32,
+    height: SCREEN_WIDTH - 32,
+    borderRadius: 8,
+  },
+  modalCloseButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalShareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 24,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  modalShareText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "500",
   },
 });
