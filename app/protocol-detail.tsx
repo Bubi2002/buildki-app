@@ -8,9 +8,9 @@ import {
   Share,
   ActivityIndicator,
   Platform,
-  FlatList,
   Dimensions,
   Modal,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -21,9 +21,10 @@ import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { generateProtocolPdf } from "@/lib/pdf-generator";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 3; // 3 columns with gaps
+const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 3;
 
 type Protocol = {
   id: string;
@@ -46,6 +47,7 @@ export default function ProtocolDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [showTranscription, setShowTranscription] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     loadProtocol();
@@ -62,6 +64,43 @@ export default function ProtocolDetailScreen() {
       console.error("Error loading protocol:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exportPdf = async () => {
+    if (!protocol) return;
+
+    setIsExporting(true);
+    try {
+      const pdfUri = await generateProtocolPdf({
+        title: protocol.title,
+        protocol: protocol.protocol,
+        templateName: protocol.templateName,
+        photos: protocol.photos,
+        duration: protocol.duration,
+        createdAt: protocol.createdAt,
+      });
+
+      // Share the PDF
+      if (Platform.OS === "web") {
+        Alert.alert("PDF erstellt", "PDF-Export ist nur auf dem Handy verfügbar.");
+      } else {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(pdfUri, {
+            mimeType: "application/pdf",
+            dialogTitle: `${protocol.templateName || "Protokoll"} als PDF teilen`,
+            UTI: "com.adobe.pdf",
+          });
+        } else {
+          Alert.alert("Fehler", "Teilen ist auf diesem Gerät nicht verfügbar.");
+        }
+      }
+    } catch (error) {
+      console.error("PDF export error:", error);
+      Alert.alert("Fehler", "PDF konnte nicht erstellt werden. Bitte versuche es erneut.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -84,7 +123,6 @@ export default function ProtocolDetailScreen() {
       }
     }
 
-    // Fallback: use system share
     await Share.share({
       message: protocol.protocol,
       title: "Protokoll teilen",
@@ -110,7 +148,7 @@ export default function ProtocolDetailScreen() {
   const copyToClipboard = async () => {
     if (!protocol) return;
     await Clipboard.setStringAsync(protocol.protocol);
-    alert("Protokoll in die Zwischenablage kopiert!");
+    Alert.alert("Kopiert", "Protokoll in die Zwischenablage kopiert!");
   };
 
   const shareGeneric = async () => {
@@ -183,7 +221,18 @@ export default function ProtocolDetailScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
           {protocol.templateName || "Protokoll"}
         </Text>
-        <View style={{ width: 24 }} />
+        {/* PDF Export button in header */}
+        <Pressable
+          onPress={exportPdf}
+          disabled={isExporting}
+          style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.5 : 1 }]}
+        >
+          {isExporting ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
+          )}
+        </Pressable>
       </View>
 
       <ScrollView
@@ -211,6 +260,37 @@ export default function ProtocolDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* PDF Export Banner */}
+        <Pressable
+          onPress={exportPdf}
+          disabled={isExporting}
+          style={({ pressed }) => [
+            styles.pdfBanner,
+            {
+              backgroundColor: "#E5393520",
+              borderColor: "#E53935",
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          {isExporting ? (
+            <ActivityIndicator size="small" color="#E53935" />
+          ) : (
+            <MaterialIcons name="picture-as-pdf" size={22} color="#E53935" />
+          )}
+          <View style={styles.pdfBannerText}>
+            <Text style={[styles.pdfBannerTitle, { color: colors.foreground }]}>
+              {isExporting ? "PDF wird erstellt..." : "Als PDF exportieren"}
+            </Text>
+            <Text style={[styles.pdfBannerSubtitle, { color: colors.muted }]}>
+              Professionelles Dokument mit Logo & Fotos
+            </Text>
+          </View>
+          {!isExporting && (
+            <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+          )}
+        </Pressable>
 
         {/* Photos Gallery */}
         {photos.length > 0 && (
@@ -281,7 +361,6 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* Spacer for action buttons */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -404,7 +483,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     borderWidth: 0.5,
-    marginBottom: 20,
+    marginBottom: 12,
     gap: 8,
   },
   metaRow: {
@@ -414,6 +493,26 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
+  },
+  pdfBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 20,
+    gap: 12,
+  },
+  pdfBannerText: {
+    flex: 1,
+  },
+  pdfBannerTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  pdfBannerSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
   },
   section: {
     marginBottom: 16,

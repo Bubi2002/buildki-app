@@ -101,6 +101,12 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "expo-image-picker",
+      {
+        photosPermission: "ProtoKI benötigt Zugriff auf deine Fotos, um ein Logo auszuwählen.",
+      },
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/images/splash-icon.png",

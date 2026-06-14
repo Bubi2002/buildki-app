@@ -24,3 +24,7 @@
 - [x] Fotos dem Protokoll-Datensatz beifügen
 - [x] Foto-Galerie in Protokoll-Detailansicht anzeigen
 - [x] Fotos beim Teilen mitsenden
+- [x] Client-seitige PDF-Generierung mit expo-print erstellen
+- [x] PDF-Layout mit Firmenlogo, Header, Protokolltext und Fotos
+- [x] PDF-Export-Button in Protokoll-Detailansicht
+- [x] Logo-Upload in Einstellungen ermöglichen

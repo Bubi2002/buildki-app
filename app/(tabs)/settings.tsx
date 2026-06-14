@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,11 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Platform,
 } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,6 +27,14 @@ type Settings = {
   templateId: string;
 };
 
+type CompanySettings = {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  logoBase64: string;
+  logoUri: string;
+};
+
 const DEFAULT_SETTINGS: Settings = {
   whatsappNumber: "",
   defaultEmail: "",
@@ -32,13 +44,23 @@ const DEFAULT_SETTINGS: Settings = {
   templateId: "freitext",
 };
 
+const DEFAULT_COMPANY: CompanySettings = {
+  companyName: "",
+  companyAddress: "",
+  companyPhone: "",
+  logoBase64: "",
+  logoUri: "",
+};
+
 export default function SettingsScreen() {
   const colors = useColors();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     loadSettings();
+    loadCompanySettings();
   }, []);
 
   const loadSettings = async () => {
@@ -52,9 +74,21 @@ export default function SettingsScreen() {
     }
   };
 
+  const loadCompanySettings = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("company-settings");
+      if (stored) {
+        setCompany({ ...DEFAULT_COMPANY, ...JSON.parse(stored) });
+      }
+    } catch (error) {
+      console.error("Error loading company settings:", error);
+    }
+  };
+
   const saveSettings = async () => {
     try {
       await AsyncStorage.setItem("protokoll-settings", JSON.stringify(settings));
+      await AsyncStorage.setItem("company-settings", JSON.stringify(company));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
@@ -64,6 +98,60 @@ export default function SettingsScreen() {
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const updateCompany = <K extends keyof CompanySettings>(key: K, value: CompanySettings[K]) => {
+    setCompany((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const pickLogo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [3, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+
+        // Convert to base64 for PDF embedding
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        // Save logo to persistent directory
+        const logoDir = `${FileSystem.documentDirectory}branding/`;
+        const dirInfo = await FileSystem.getInfoAsync(logoDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(logoDir, { intermediates: true });
+        }
+        const logoPath = `${logoDir}logo.png`;
+        await FileSystem.copyAsync({ from: uri, to: logoPath });
+
+        const ext = uri.split(".").pop()?.toLowerCase() || "png";
+        const mimeMap: Record<string, string> = {
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          png: "image/png",
+          gif: "image/gif",
+          webp: "image/webp",
+        };
+        const mime = mimeMap[ext] || "image/png";
+
+        updateCompany("logoBase64", `data:${mime};base64,${base64}`);
+        updateCompany("logoUri", logoPath);
+      }
+    } catch (error) {
+      console.error("Logo picker error:", error);
+      Alert.alert("Fehler", "Logo konnte nicht geladen werden.");
+    }
+  };
+
+  const removeLogo = () => {
+    updateCompany("logoBase64", "");
+    updateCompany("logoUri", "");
   };
 
   return (
@@ -79,6 +167,121 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Company Branding Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Firmendaten & Logo
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Erscheint im PDF-Export deiner Protokolle
+          </Text>
+
+          {/* Logo Upload */}
+          <View style={styles.logoSection}>
+            {company.logoBase64 ? (
+              <View style={styles.logoPreviewContainer}>
+                <Image
+                  source={{ uri: company.logoBase64 }}
+                  style={styles.logoPreview}
+                  contentFit="contain"
+                />
+                <View style={styles.logoActions}>
+                  <Pressable
+                    onPress={pickLogo}
+                    style={({ pressed }) => [
+                      styles.logoActionButton,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="edit" size={16} color={colors.primary} />
+                    <Text style={[styles.logoActionText, { color: colors.primary }]}>Ändern</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={removeLogo}
+                    style={({ pressed }) => [
+                      styles.logoActionButton,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="delete" size={16} color={colors.error} />
+                    <Text style={[styles.logoActionText, { color: colors.error }]}>Entfernen</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable
+                onPress={pickLogo}
+                style={({ pressed }) => [
+                  styles.logoUploadButton,
+                  { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name="add-photo-alternate" size={32} color={colors.muted} />
+                <Text style={[styles.logoUploadText, { color: colors.muted }]}>
+                  Firmenlogo hochladen
+                </Text>
+                <Text style={[styles.logoUploadHint, { color: colors.muted }]}>
+                  Empfohlen: PNG, max. 500x200px
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Company Name */}
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="business" size={18} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>
+                Firmenname
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={company.companyName}
+              onChangeText={(v) => updateCompany("companyName", v)}
+              placeholder="Meine Firma GmbH"
+              placeholderTextColor={colors.muted}
+            />
+          </View>
+
+          {/* Company Address */}
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="location-on" size={18} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>
+                Adresse
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.input, styles.multilineInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={company.companyAddress}
+              onChangeText={(v) => updateCompany("companyAddress", v)}
+              placeholder="Musterstraße 1&#10;12345 Musterstadt"
+              placeholderTextColor={colors.muted}
+              multiline
+              numberOfLines={2}
+            />
+          </View>
+
+          {/* Company Phone */}
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="phone" size={18} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>
+                Telefon
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={company.companyPhone}
+              onChangeText={(v) => updateCompany("companyPhone", v)}
+              placeholder="+49 123 456789"
+              placeholderTextColor={colors.muted}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </View>
+
         {/* Template Selection */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -381,6 +584,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 12,
   },
+  logoSection: {
+    marginBottom: 16,
+  },
+  logoPreviewContainer: {
+    alignItems: "center",
+    gap: 12,
+  },
+  logoPreview: {
+    width: "100%",
+    height: 80,
+    borderRadius: 8,
+  },
+  logoActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  logoActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  logoActionText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  logoUploadButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    gap: 6,
+  },
+  logoUploadText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  logoUploadHint: {
+    fontSize: 11,
+  },
   templateGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -427,6 +675,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
+  },
+  multilineInput: {
+    minHeight: 60,
+    textAlignVertical: "top",
   },
   optionLabel: {
     fontSize: 13,
