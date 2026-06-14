@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -40,7 +40,7 @@ const COLORS = [
 
 const PEN_SIZES = [3, 5, 8, 12];
 
-const TEXT_TEMPLATES = [
+const DEFAULT_TEXT_TEMPLATES = [
   { label: "Mangel", icon: "warning" as const },
   { label: "Nacharbeit", icon: "build" as const },
   { label: "OK", icon: "check-circle" as const },
@@ -51,7 +51,9 @@ const TEXT_TEMPLATES = [
   { label: "Hinweis", icon: "info" as const },
 ];
 
-type ToolType = "pen" | "arrow" | "text" | "zoom";
+const ANNOTATION_STORAGE_KEY = 'annotation-custom-templates';
+
+type ToolType = "pen" | "arrow" | "text" | "zoom" | "move";
 
 type DrawElement = {
   type: "path" | "arrow" | "text";
@@ -94,12 +96,29 @@ export default function PhotoAnnotateScreen() {
   const [textInputValue, setTextInputValue] = useState("");
   const [textPosition, setTextPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isSaving, setIsSaving] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await AsyncStorage.getItem(ANNOTATION_STORAGE_KEY);
+        if (data) setCustomTemplates(JSON.parse(data));
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  const allTemplates = [
+    ...DEFAULT_TEXT_TEMPLATES,
+    ...customTemplates.map(label => ({ label, icon: "label" as const })),
+  ];
   const [scale, setScale] = useState(1);
   const [translateX, setTranslateX] = useState(0);
   const [translateY, setTranslateY] = useState(0);
   const [baseScale, setBaseScale] = useState(1);
   const [baseTranslateX, setBaseTranslateX] = useState(0);
   const [baseTranslateY, setBaseTranslateY] = useState(0);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
 
   // Calculate image dimensions to fit screen
   const imageWidth = SCREEN_WIDTH;
@@ -216,8 +235,66 @@ export default function PhotoAnnotateScreen() {
     ]);
   };
 
+  // Move gesture for repositioning text/arrow elements
+  const moveGesture = Gesture.Pan()
+    .enabled(selectedTool === "move")
+    .onStart((e) => {
+      // Find the closest text element to the tap point
+      let closestIdx = -1;
+      let closestDist = 40; // max tap distance threshold
+      elements.forEach((el, i) => {
+        if (el.type === "text" && el.x !== undefined && el.y !== undefined) {
+          const dist = Math.sqrt(Math.pow(e.x - el.x, 2) + Math.pow(e.y - el.y, 2));
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = i;
+          }
+        } else if (el.type === "arrow") {
+          // Check proximity to arrow midpoint
+          const midX = ((el.startX || 0) + (el.endX || 0)) / 2;
+          const midY = ((el.startY || 0) + (el.endY || 0)) / 2;
+          const dist = Math.sqrt(Math.pow(e.x - midX, 2) + Math.pow(e.y - midY, 2));
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = i;
+          }
+        }
+      });
+      if (closestIdx >= 0) {
+        setDragIndex(closestIdx);
+        setDragStartPos({ x: e.x, y: e.y });
+      }
+    })
+    .onUpdate((e) => {
+      if (dragIndex !== null && dragStartPos) {
+        const dx = e.x - dragStartPos.x;
+        const dy = e.y - dragStartPos.y;
+        setElements((prev) => {
+          const updated = [...prev];
+          const el = { ...updated[dragIndex] };
+          if (el.type === "text") {
+            el.x = (el.x || 0) + dx;
+            el.y = (el.y || 0) + dy;
+          } else if (el.type === "arrow") {
+            el.startX = (el.startX || 0) + dx;
+            el.startY = (el.startY || 0) + dy;
+            el.endX = (el.endX || 0) + dx;
+            el.endY = (el.endY || 0) + dy;
+          }
+          updated[dragIndex] = el;
+          return updated;
+        });
+        setDragStartPos({ x: e.x, y: e.y });
+      }
+    })
+    .onEnd(() => {
+      setDragIndex(null);
+      setDragStartPos(null);
+    })
+    .runOnJS(true);
+
   const zoomComposed = Gesture.Simultaneous(pinchGesture, zoomPanGesture);
-  const composedGesture = Gesture.Race(penGesture, arrowGesture, tapGesture, zoomComposed);
+  const composedGesture = Gesture.Race(penGesture, arrowGesture, tapGesture, moveGesture, zoomComposed);
 
   const addTextElement = () => {
     if (textInputValue.trim()) {
@@ -500,6 +577,16 @@ export default function PhotoAnnotateScreen() {
             <Text style={[styles.toolTabText, { color: selectedTool === "text" ? colors.primary : colors.muted }]}>Text</Text>
           </Pressable>
           <Pressable
+            onPress={() => setSelectedTool("move")}
+            style={[
+              styles.toolTab,
+              selectedTool === "move" && { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <MaterialIcons name="open-with" size={20} color={selectedTool === "move" ? colors.primary : colors.muted} />
+            <Text style={[styles.toolTabText, { color: selectedTool === "move" ? colors.primary : colors.muted }]}>Bewegen</Text>
+          </Pressable>
+          <Pressable
             onPress={() => setSelectedTool("zoom")}
             style={[
               styles.toolTab,
@@ -524,7 +611,7 @@ export default function PhotoAnnotateScreen() {
         {/* Text template quick-select */}
         {selectedTool === "text" && (
           <View style={[styles.templateRow, { backgroundColor: colors.surface }]}>
-            {TEXT_TEMPLATES.map((tmpl) => (
+            {allTemplates.map((tmpl) => (
               <Pressable
                 key={tmpl.label}
                 onPress={() => addTemplateText(tmpl.label)}

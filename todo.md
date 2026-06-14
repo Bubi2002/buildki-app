@@ -95,3 +95,6 @@
 - [x] Projekt-PDF-Export: Fotos im gebündelten PDF einbetten
 - [x] Foto-Annotation: Zoom/Pan für präzisere Markierungen
 - [x] Foto-Annotation: Vorlagen für wiederkehrende Text-Annotationen (Mangel, Nacharbeit, etc.)
+- [x] Einstellungen: Eigene Text-Vorlagen für Foto-Annotation konfigurierbar
+- [x] Foto-Annotation: Drag-to-reposition für bereits platzierte Text-Elemente
+- [x] PDF-Export: Wasserzeichen/Firmenstempel automatisch auf Fotos anwenden

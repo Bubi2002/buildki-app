@@ -33,6 +33,8 @@ type CompanySettings = {
   companyAddress?: string;
   companyPhone?: string;
   logoBase64?: string;
+  watermarkEnabled?: boolean;
+  watermarkText?: string;
 };
 
 /**
@@ -69,7 +71,14 @@ async function fileToBase64DataUri(uri: string): Promise<string | null> {
 async function loadCompanySettings(): Promise<CompanySettings> {
   try {
     const stored = await AsyncStorage.getItem("company-settings");
-    if (stored) return JSON.parse(stored);
+    const watermarkData = await AsyncStorage.getItem("watermark-settings");
+    const companyData = stored ? JSON.parse(stored) : {};
+    if (watermarkData) {
+      const wm = JSON.parse(watermarkData);
+      companyData.watermarkEnabled = wm.enabled;
+      companyData.watermarkText = wm.text;
+    }
+    return companyData;
   } catch (error) {
     // Ignore
   }
@@ -236,6 +245,19 @@ function generatePdfHtml(
       border-top: 1px solid #eee;
       padding-top: 8px;
     }
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 48px;
+      font-weight: 700;
+      color: rgba(200, 200, 200, 0.15);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+      letter-spacing: 4px;
+    }
   </style>
 </head>
 <body>
@@ -320,6 +342,8 @@ function generatePdfHtml(
   </div>
 
   ${photosHtml}
+
+  ${company.watermarkEnabled && company.watermarkText ? `<div class="watermark">${company.watermarkText}</div>` : ''}
 
   <div class="footer">
     ${company.companyName ? company.companyName + " | " : ""}Erstellt am ${date} um ${time} | ProtoKI Protokoll-App

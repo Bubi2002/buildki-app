@@ -192,6 +192,192 @@ const biometricStyles = StyleSheet.create({
   },
 });
 
+const ANNOTATION_STORAGE_KEY = 'annotation-custom-templates';
+
+function AnnotationTemplatesSection({ colors }: { colors: any }) {
+  const [templates, setTemplates] = useState<string[]>([]);
+  const [newTemplate, setNewTemplate] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const data = await AsyncStorage.getItem(ANNOTATION_STORAGE_KEY);
+      if (data) setTemplates(JSON.parse(data));
+    } catch { /* ignore */ }
+  };
+
+  const saveTemplates = async (updated: string[]) => {
+    setTemplates(updated);
+    await AsyncStorage.setItem(ANNOTATION_STORAGE_KEY, JSON.stringify(updated));
+  };
+
+  const addTemplate = () => {
+    const trimmed = newTemplate.trim();
+    if (!trimmed || templates.includes(trimmed)) return;
+    saveTemplates([...templates, trimmed]);
+    setNewTemplate('');
+  };
+
+  const removeTemplate = (index: number) => {
+    const updated = templates.filter((_, i) => i !== index);
+    saveTemplates(updated);
+  };
+
+  return (
+    <View style={annotStyles.section}>
+      <Text style={[annotStyles.sectionTitle, { color: colors.foreground }]}>
+        Annotations-Vorlagen
+      </Text>
+      <Text style={[annotStyles.sectionDescription, { color: colors.muted }]}>
+        Eigene Schnelltext-Vorlagen für die Foto-Annotation
+      </Text>
+
+      {/* Existing templates */}
+      {templates.length > 0 && (
+        <View style={annotStyles.chipContainer}>
+          {templates.map((tmpl, i) => (
+            <View key={i} style={[annotStyles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[annotStyles.chipText, { color: colors.foreground }]}>{tmpl}</Text>
+              {isEditing && (
+                <Pressable onPress={() => removeTemplate(i)} style={{ padding: 2 }}>
+                  <MaterialIcons name="close" size={14} color={colors.error} />
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Add new template */}
+      <View style={[annotStyles.addRow, { borderColor: colors.border }]}>
+        <TextInput
+          value={newTemplate}
+          onChangeText={setNewTemplate}
+          placeholder="Neue Vorlage..."
+          placeholderTextColor={colors.muted}
+          style={[annotStyles.addInput, { color: colors.foreground, backgroundColor: colors.surface }]}
+          returnKeyType="done"
+          onSubmitEditing={addTemplate}
+        />
+        <Pressable
+          onPress={addTemplate}
+          disabled={!newTemplate.trim()}
+          style={({ pressed }) => [
+            annotStyles.addBtn,
+            { backgroundColor: newTemplate.trim() ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <MaterialIcons name="add" size={20} color="#FFF" />
+        </Pressable>
+      </View>
+
+      {templates.length > 0 && (
+        <Pressable
+          onPress={() => setIsEditing(!isEditing)}
+          style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
+        >
+          <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>
+            {isEditing ? 'Fertig' : 'Bearbeiten'}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+const annotStyles = StyleSheet.create({
+  section: { marginBottom: 28 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
+  sectionDescription: { fontSize: 13, marginBottom: 12 },
+  chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
+  chipText: { fontSize: 13, fontWeight: '500' },
+  addRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  addInput: { flex: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  addBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+});
+
+const WATERMARK_STORAGE_KEY = 'watermark-settings';
+
+function WatermarkSection({ colors }: { colors: any }) {
+  const [enabled, setEnabled] = useState(false);
+  const [text, setText] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await AsyncStorage.getItem(WATERMARK_STORAGE_KEY);
+        if (data) {
+          const parsed = JSON.parse(data);
+          setEnabled(parsed.enabled || false);
+          setText(parsed.text || '');
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  const save = async (newEnabled: boolean, newText: string) => {
+    setEnabled(newEnabled);
+    setText(newText);
+    await AsyncStorage.setItem(WATERMARK_STORAGE_KEY, JSON.stringify({ enabled: newEnabled, text: newText }));
+  };
+
+  return (
+    <View style={wmStyles.section}>
+      <Text style={[wmStyles.sectionTitle, { color: colors.foreground }]}>
+        Wasserzeichen / Stempel
+      </Text>
+      <Text style={[wmStyles.sectionDescription, { color: colors.muted }]}>
+        Firmenstempel als Wasserzeichen im PDF anzeigen
+      </Text>
+
+      <View style={[wmStyles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <MaterialIcons name="branding-watermark" size={22} color={enabled ? colors.primary : colors.muted} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[wmStyles.label, { color: colors.foreground }]}>Wasserzeichen aktiv</Text>
+          <Text style={{ fontSize: 12, color: colors.muted }}>Wird diagonal über jede PDF-Seite gelegt</Text>
+        </View>
+        <Pressable onPress={() => save(!enabled, text)} style={{ padding: 4 }}>
+          <View style={[wmStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
+            <View style={[wmStyles.toggleThumb, { transform: [{ translateX: enabled ? 18 : 2 }] }]} />
+          </View>
+        </Pressable>
+      </View>
+
+      {enabled && (
+        <View style={{ marginTop: 12 }}>
+          <TextInput
+            value={text}
+            onChangeText={(v) => save(true, v)}
+            placeholder="z.B. Firmenname, VERTRAULICH, ENTWURF"
+            placeholderTextColor={colors.muted}
+            style={[wmStyles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+            returnKeyType="done"
+          />
+          <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
+            Tipp: Firmenname oder „VERTRAULICH“ als Stempel
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const wmStyles = StyleSheet.create({
+  section: { marginBottom: 28 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
+  sectionDescription: { fontSize: 13, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1 },
+  label: { fontSize: 15, fontWeight: '500' },
+  toggleTrack: { width: 44, height: 26, borderRadius: 13, justifyContent: 'center' },
+  toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' },
+  input: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, borderWidth: 1 },
+});
+
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -512,6 +698,9 @@ export default function SettingsScreen() {
             />
           </View>
         </View>
+
+        {/* Wasserzeichen / Firmenstempel */}
+        <WatermarkSection colors={colors} />
 
         {/* Template Selection */}
         <View style={styles.section}>
@@ -1048,7 +1237,9 @@ export default function SettingsScreen() {
         {/* Biometrische Sperre */}
         <BiometricLockSection colors={colors} />
 
-        {/* Save Button */}
+        {/* Text-Vorlagen für Annotation */}
+        <AnnotationTemplatesSection colors={colors} />
+
         {/* Darstellung / Dark Mode */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
