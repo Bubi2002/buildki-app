@@ -73,6 +73,7 @@ export default function RecordScreen() {
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("video");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
+  const [processingSource, setProcessingSource] = useState<"video" | "audio-backup" | "cache" | "audio" | null>(null);
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
@@ -294,9 +295,11 @@ export default function RecordScreen() {
       // Use video URI if available, otherwise fall back to audio backup
       if (videoUri) {
         console.log("[Video] Processing with video URI:", videoUri);
+        setProcessingSource("video");
         await processRecording(videoUri, "video/mp4");
       } else if (audioBackupUri) {
         console.log("[Video] Using audio backup for processing:", audioBackupUri);
+        setProcessingSource("audio-backup");
         await processRecording(audioBackupUri, "audio/m4a");
       } else {
         // Last resort: search cache
@@ -316,6 +319,7 @@ export default function RecordScreen() {
               if (fileInfo.exists && fileInfo.size && fileInfo.size > 1000) {
                 console.log("[Video] Found media in cache:", latest);
                 const mime = latest.endsWith(".m4a") || latest.endsWith(".caf") ? "audio/m4a" : "video/mp4";
+                setProcessingSource("cache");
                 await processRecording(latest, mime);
                 found = true;
               }
@@ -345,6 +349,7 @@ export default function RecordScreen() {
       const audioBackupUri = videoAudioRecorder.uri;
       if (audioBackupUri) {
         console.log("[Video] Fatal error but audio backup available:", audioBackupUri);
+        setProcessingSource("audio-backup");
         await processRecording(audioBackupUri, "audio/m4a");
         return;
       }
@@ -385,6 +390,7 @@ export default function RecordScreen() {
         
         if (audioUri) {
           console.log("[Video] Timeout fallback: using audio backup:", audioUri);
+          setProcessingSource("audio-backup");
           await processRecording(audioUri, "audio/m4a");
         } else {
           alert("Video-Verarbeitung fehlgeschlagen. Bitte versuche den Audio-Modus.");
@@ -421,6 +427,7 @@ export default function RecordScreen() {
 
       const uri = audioRecorder.uri;
       if (uri) {
+        setProcessingSource("audio");
         await processRecording(uri, "audio/m4a");
       }
     } catch (error) {
@@ -473,6 +480,7 @@ export default function RecordScreen() {
           createdAt: new Date().toISOString(),
         });
         setIsProcessing(false);
+        setProcessingSource(null);
         setCapturedPhotos([]);
         alert("Kein Internet – Aufnahme wurde in der Warteschlange gespeichert und wird automatisch verarbeitet, sobald du wieder online bist.");
         return;
@@ -600,16 +608,19 @@ export default function RecordScreen() {
         setPreviewProtocol({ newProtocol, protocols });
         setShowPreview(true);
         setIsProcessing(false);
+        setProcessingSource(null);
         return;
       }
       // Skip preview - save directly
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
       setIsProcessing(false);
+      setProcessingSource(null);
       setCapturedPhotos([]);
       router.push(`/protocol-detail?id=${newProtocol.id}` as any);
     } catch (error) {
       setIsProcessing(false);
+      setProcessingSource(null);
       console.error("Processing error:", error);
       alert("Fehler bei der Verarbeitung. Bitte versuche es erneut.");
     }
@@ -754,6 +765,16 @@ export default function RecordScreen() {
 
   // Processing state
   if (isProcessing) {
+    const sourceLabel = processingSource === "video" 
+      ? "\u2705 Video erfolgreich aufgenommen" 
+      : processingSource === "audio-backup" 
+        ? "\u26A0\uFE0F Audio-Backup verwendet (Video-Datei nicht verfügbar)" 
+        : processingSource === "cache" 
+          ? "\u26A0\uFE0F Datei aus Cache wiederhergestellt" 
+          : processingSource === "audio" 
+            ? "\u2705 Audio erfolgreich aufgenommen" 
+            : null;
+
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
         <ActivityIndicator size="large" color={colors.primary} />
@@ -767,6 +788,30 @@ export default function RecordScreen() {
           <Text className="text-sm text-muted mt-2 text-center">
             {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angehängt.
           </Text>
+        )}
+        {sourceLabel && (
+          <View style={[
+            styles.sourceBadge,
+            { 
+              backgroundColor: processingSource === "video" || processingSource === "audio" 
+                ? colors.success + "15" 
+                : colors.warning + "15",
+              borderColor: processingSource === "video" || processingSource === "audio" 
+                ? colors.success + "40" 
+                : colors.warning + "40",
+            }
+          ]}>
+            <Text style={[
+              styles.sourceBadgeText,
+              { 
+                color: processingSource === "video" || processingSource === "audio" 
+                  ? colors.success 
+                  : colors.warning 
+              }
+            ]}>
+              {sourceLabel}
+            </Text>
+          </View>
         )}
       </ScreenContainer>
     );
@@ -1559,5 +1604,17 @@ const styles = StyleSheet.create({
   },
   audioControlHint: {
     fontSize: 13,
+  },
+  sourceBadge: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  sourceBadgeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
