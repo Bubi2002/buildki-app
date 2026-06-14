@@ -18,6 +18,7 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
@@ -38,6 +39,15 @@ type RecordingMode = "video" | "audio";
 
 export default function RecordScreen() {
   const colors = useColors();
+  const isFocused = useIsFocused();
+  const [cameraReady, setCameraReady] = useState(false);
+
+  // Reset camera ready state when tab loses focus
+  useEffect(() => {
+    if (!isFocused) {
+      setCameraReady(false);
+    }
+  }, [isFocused]);
   const router = useRouter();
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -97,12 +107,12 @@ export default function RecordScreen() {
     loadDefaultTemplate();
   }, []);
 
-  // Setup audio mode for recording
+  // Setup audio mode for recording - only enable allowsRecording when actually recording
   useEffect(() => {
     (async () => {
       await setAudioModeAsync({
         playsInSilentMode: true,
-        allowsRecording: true,
+        allowsRecording: false,
       });
     })();
   }, []);
@@ -195,7 +205,7 @@ export default function RecordScreen() {
 
   const startVideoRecording = async () => {
     if (Platform.OS === "web") {
-      alert("Videoaufnahme ist nur auf dem Handy verfügbar.");
+      alert("Videoaufnahme ist nur auf dem Handy verf\u00fcgbar.");
       return;
     }
     if (!cameraRef.current) return;
@@ -207,12 +217,14 @@ export default function RecordScreen() {
     startTimer();
 
     try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
       const video = await cameraRef.current.recordAsync({
         maxDuration: 300,
       });
 
       stopTimer();
       setIsRecording(false);
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
 
       if (video?.uri) {
         await processRecording(video.uri, "video/mp4");
@@ -220,6 +232,7 @@ export default function RecordScreen() {
     } catch (error) {
       stopTimer();
       setIsRecording(false);
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       console.error("Recording error:", error);
     }
   };
@@ -239,6 +252,7 @@ export default function RecordScreen() {
     startTimer();
 
     try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (error) {
@@ -253,6 +267,7 @@ export default function RecordScreen() {
       await audioRecorder.stop();
       stopTimer();
       setIsRecording(false);
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
 
       const uri = audioRecorder.uri;
       if (uri) {
@@ -804,6 +819,9 @@ export default function RecordScreen() {
         style={styles.camera}
         facing="back"
         mode="video"
+        active={isFocused}
+        onCameraReady={() => setCameraReady(true)}
+        onMountError={(e) => console.warn("Camera mount error:", e?.message)}
       >
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}

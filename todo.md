@@ -114,3 +114,4 @@
 - [x] Schnellzugriff: Letzte 3 Protokolle auf dem Home-Screen anzeigen
 - [x] Feature-Toggles: Zentraler Bereich in Einstellungen zum Ein-/Ausschalten von Features
 - [x] Feature-Toggles: Deaktivierte Features in der App ausblenden
+- [x] Bug-Fix: Schwarzer Kamera-Bildschirm behoben (active-Prop, onCameraReady, Audio-Mode-Fix)
