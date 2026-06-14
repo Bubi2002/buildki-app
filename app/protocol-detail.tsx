@@ -80,6 +80,9 @@ type Protocol = {
   videoUrl?: string | null;
   videoUploadedAt?: string | null;
   videoUploadPending?: boolean;
+  videoIsLocal?: boolean;
+  videoSizeMB?: number;
+  videoUploadFailed?: boolean;
 };
 
 export default function ProtocolDetailScreen() {
@@ -644,9 +647,18 @@ export default function ProtocolDetailScreen() {
               <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
                 Video-Aufnahme
               </Text>
+              {protocol.videoSizeMB && (
+                <Text style={{ color: colors.muted, fontSize: 11 }}>
+                  ({protocol.videoSizeMB} MB)
+                </Text>
+              )}
             </View>
             <Pressable
-              onPress={() => Linking.openURL(protocol.videoUrl!)}
+              onPress={() => {
+                if (protocol.videoUrl) {
+                  Linking.openURL(protocol.videoUrl);
+                }
+              }}
               style={({ pressed }) => [{
                 marginTop: 8,
                 flexDirection: 'row',
@@ -661,13 +673,21 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="play-circle-outline" size={32} color={colors.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '500' }}>
-                  Video abspielen
+                  {protocol.videoIsLocal ? 'Video lokal gespeichert' : 'Video abspielen'}
                 </Text>
                 <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-                  Nachträglich hochgeladen{protocol.videoUploadedAt ? ` am ${new Date(protocol.videoUploadedAt).toLocaleString('de-DE')}` : ''}
+                  {protocol.videoIsLocal 
+                    ? `Lokal verf\u00fcgbar (${protocol.videoSizeMB || '?'} MB \u2013 zu gro\u00df f\u00fcr Cloud-Upload)`
+                    : `Hochgeladen${protocol.videoUploadedAt ? ` am ${new Date(protocol.videoUploadedAt).toLocaleString('de-DE')}` : ''}`
+                  }
                 </Text>
+                {protocol.videoUploadFailed && (
+                  <Text style={{ color: colors.warning, fontSize: 11, marginTop: 2 }}>
+                    Upload fehlgeschlagen \u2013 lokal gespeichert
+                  </Text>
+                )}
               </View>
-              <MaterialIcons name="open-in-new" size={18} color={colors.muted} />
+              <MaterialIcons name={protocol.videoIsLocal ? "folder" : "open-in-new"} size={18} color={colors.muted} />
             </Pressable>
           </View>
         )}

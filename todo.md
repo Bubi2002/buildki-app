@@ -133,3 +133,6 @@
 - [x] Fix: Protokoll wurde nicht gespeichert weil protocolPreview=true als Default aktiv war
 - [x] Fix: Migration v1.0.6 setzt protocolPreview auf false für bestehende User
 - [x] Fix: Detailliertere Fehlermeldungen im processRecording catch-Block
+- [x] Feature: Fortschrittsanzeige mit Schritten (Upload → Transkription → Protokoll) mit Häkchen
+- [x] Feature: Video-Handling: Dateien >40MB werden lokal referenziert, kleinere werden hochgeladen, Fehler-Fallback speichert lokal
+- [x] Test: End-to-End-Test des Server-Flows (Upload + Transkription funktioniert korrekt)

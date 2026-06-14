@@ -74,6 +74,7 @@ export default function RecordScreen() {
   const [mode, setMode] = useState<RecordingMode>("video");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
   const [processingSource, setProcessingSource] = useState<"video" | "audio-backup" | "cache" | "audio" | null>(null);
+  const [processingStep, setProcessingStep] = useState<"upload" | "transcription" | "protocol" | "saving" | "done">("upload");
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
@@ -232,12 +233,37 @@ export default function RecordScreen() {
         return;
       }
 
-      // Read as base64
+      const fileSizeMB = (fileInfo.size || 0) / (1024 * 1024);
+      console.log("[BackgroundUpload] Video file size:", fileSizeMB.toFixed(1), "MB");
+
+      // For files > 40MB: Save local reference only (no upload)
+      // This prevents RAM crashes on mobile devices
+      if (fileSizeMB > 40) {
+        console.log("[BackgroundUpload] Video too large for upload (", fileSizeMB.toFixed(1), "MB). Saving local reference.");
+        
+        // Save local URI reference so user can still access the video
+        const protocolsStr = await AsyncStorage.getItem("protocols");
+        if (protocolsStr) {
+          const protocols = JSON.parse(protocolsStr);
+          const protocolIndex = protocols.findIndex((p: any) => p.id === protocolId);
+          if (protocolIndex !== -1) {
+            protocols[protocolIndex].videoUrl = videoUri; // Local file URI
+            protocols[protocolIndex].videoUploadedAt = new Date().toISOString();
+            protocols[protocolIndex].videoIsLocal = true;
+            protocols[protocolIndex].videoSizeMB = Math.round(fileSizeMB);
+            await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+            console.log("[BackgroundUpload] Protocol updated with local video reference");
+          }
+        }
+        return;
+      }
+
+      // For files <= 40MB: Upload to server
       const base64 = await FileSystem.readAsStringAsync(videoUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      console.log("[BackgroundUpload] Video file read, size:", (base64.length * 0.75 / 1024 / 1024).toFixed(1), "MB");
+      console.log("[BackgroundUpload] Video file read, uploading...");
 
       // Upload to storage
       const uploadResult = await uploadMutation.mutateAsync({
@@ -262,6 +288,8 @@ export default function RecordScreen() {
         if (protocolIndex !== -1) {
           protocols[protocolIndex].videoUrl = videoUrl;
           protocols[protocolIndex].videoUploadedAt = new Date().toISOString();
+          protocols[protocolIndex].videoIsLocal = false;
+          protocols[protocolIndex].videoSizeMB = Math.round(fileSizeMB);
           await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
           console.log("[BackgroundUpload] Protocol updated with video URL");
         }
@@ -269,6 +297,20 @@ export default function RecordScreen() {
     } catch (error) {
       console.error("[BackgroundUpload] Video upload failed:", error);
       // Non-critical: don't alert the user, just log
+      // Save local reference as fallback
+      try {
+        const protocolsStr = await AsyncStorage.getItem("protocols");
+        if (protocolsStr) {
+          const protocols = JSON.parse(protocolsStr);
+          const protocolIndex = protocols.findIndex((p: any) => p.id === protocolId);
+          if (protocolIndex !== -1) {
+            protocols[protocolIndex].videoUrl = videoUri;
+            protocols[protocolIndex].videoIsLocal = true;
+            protocols[protocolIndex].videoUploadFailed = true;
+            await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+          }
+        }
+      } catch {}
     } finally {
       pendingVideoUploadRef.current = null;
     }
@@ -610,6 +652,7 @@ export default function RecordScreen() {
 
   const processRecording = async (fileUri: string, mimeType: string) => {
     setIsProcessing(true);
+    setProcessingStep("upload");
 
     try {
       // Check internet connectivity
@@ -661,6 +704,7 @@ export default function RecordScreen() {
       });
 
       console.log("[Recording] Upload complete, URL:", uploadResult.url);
+      setProcessingStep("transcription");
 
       // Build absolute URL for transcription
       // The upload returns a relative URL like /manus-storage/audio/...
@@ -678,6 +722,7 @@ export default function RecordScreen() {
       });
 
       console.log("[Recording] Transcription complete:", transcription.text?.substring(0, 50));
+      setProcessingStep("protocol");
 
       // Get settings for protocol style
       const settingsStr = await AsyncStorage.getItem("protokoll-settings");
@@ -773,6 +818,7 @@ export default function RecordScreen() {
         return;
       }
       // Skip preview - save directly
+      setProcessingStep("saving");
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
       setIsProcessing(false);
@@ -954,56 +1000,116 @@ export default function RecordScreen() {
     );
   }
 
-  // Processing state
+  // Processing state with step-by-step progress
   if (isProcessing) {
     const sourceLabel = processingSource === "video" 
       ? "\u2705 Video erfolgreich aufgenommen" 
       : processingSource === "audio-backup" 
-        ? "\u26A0\uFE0F Audio-Backup verwendet (Video-Datei nicht verfügbar)" 
+        ? "\u26A0\uFE0F Audio-Backup verwendet" 
         : processingSource === "cache" 
           ? "\u26A0\uFE0F Datei aus Cache wiederhergestellt" 
           : processingSource === "audio" 
             ? "\u2705 Audio erfolgreich aufgenommen" 
             : null;
 
+    const steps = [
+      { key: "upload", label: "Audio hochladen", icon: "cloud-upload" as const },
+      { key: "transcription", label: "Sprache erkennen", icon: "mic" as const },
+      { key: "protocol", label: "Protokoll erstellen", icon: "description" as const },
+      { key: "saving", label: "Speichern", icon: "check-circle" as const },
+    ];
+    const currentStepIndex = steps.findIndex(s => s.key === processingStep);
+
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text className="text-xl font-semibold text-foreground mt-6 text-center">
-          Verarbeitung...
-        </Text>
-        <Text className="text-base text-muted mt-2 text-center">
-          Deine {mode === "video" ? "Aufnahme" : "Sprachnotiz"} wird transkribiert und ein {selectedTemplate.name} erstellt.
-        </Text>
-        {capturedPhotos.length > 0 && (
-          <Text className="text-sm text-muted mt-2 text-center">
-            {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angehängt.
+        <View style={{ alignItems: "center", width: "100%", maxWidth: 300 }}>
+          {/* Spinner */}
+          <ActivityIndicator size="large" color={colors.primary} />
+          
+          {/* Title */}
+          <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground, marginTop: 24, textAlign: "center" }}>
+            Verarbeitung...
           </Text>
-        )}
-        {sourceLabel && (
-          <View style={[
-            styles.sourceBadge,
-            { 
-              backgroundColor: processingSource === "video" || processingSource === "audio" 
-                ? colors.success + "15" 
-                : colors.warning + "15",
-              borderColor: processingSource === "video" || processingSource === "audio" 
-                ? colors.success + "40" 
-                : colors.warning + "40",
-            }
-          ]}>
-            <Text style={[
-              styles.sourceBadgeText,
+          <Text style={{ fontSize: 14, color: colors.muted, marginTop: 6, textAlign: "center" }}>
+            {selectedTemplate.name} wird erstellt
+          </Text>
+
+          {/* Step progress */}
+          <View style={{ marginTop: 32, width: "100%" }}>
+            {steps.map((step, index) => {
+              const isCompleted = index < currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              const isPending = index > currentStepIndex;
+              
+              return (
+                <View key={step.key} style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+                  {/* Step indicator */}
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: isCompleted ? colors.success : isCurrent ? colors.primary : colors.surface,
+                    borderWidth: isCurrent ? 2 : 1,
+                    borderColor: isCompleted ? colors.success : isCurrent ? colors.primary : colors.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    {isCompleted ? (
+                      <MaterialIcons name="check" size={18} color="#FFFFFF" />
+                    ) : isCurrent ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <MaterialIcons name={step.icon} size={16} color={colors.muted} />
+                    )}
+                  </View>
+                  
+                  {/* Step label */}
+                  <Text style={{
+                    marginLeft: 12,
+                    fontSize: 15,
+                    fontWeight: isCurrent ? "600" : "400",
+                    color: isCompleted ? colors.success : isCurrent ? colors.foreground : colors.muted,
+                  }}>
+                    {step.label}{isCompleted ? " \u2713" : ""}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Source badge */}
+          {sourceLabel && (
+            <View style={[
+              styles.sourceBadge,
               { 
-                color: processingSource === "video" || processingSource === "audio" 
-                  ? colors.success 
-                  : colors.warning 
+                backgroundColor: processingSource === "video" || processingSource === "audio" 
+                  ? colors.success + "15" 
+                  : colors.warning + "15",
+                borderColor: processingSource === "video" || processingSource === "audio" 
+                  ? colors.success + "40" 
+                  : colors.warning + "40",
               }
             ]}>
-              {sourceLabel}
+              <Text style={[
+                styles.sourceBadgeText,
+                { 
+                  color: processingSource === "video" || processingSource === "audio" 
+                    ? colors.success 
+                    : colors.warning 
+                }
+              ]}>
+                {sourceLabel}
+              </Text>
+            </View>
+          )}
+
+          {/* Photos info */}
+          {capturedPhotos.length > 0 && (
+            <Text style={{ fontSize: 13, color: colors.muted, marginTop: 12, textAlign: "center" }}>
+              {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angeh\u00e4ngt
             </Text>
-          </View>
-        )}
+          )}
+        </View>
       </ScreenContainer>
     );
   }
