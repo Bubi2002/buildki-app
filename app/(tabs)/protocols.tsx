@@ -427,10 +427,10 @@ export default function ProtocolsScreen() {
         </>
       ) : (
         <>
-          <MaterialIcons name="videocam-off" size={64} color={colors.border} />
+          <MaterialIcons name="mic-none" size={64} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Noch keine Protokolle</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Nimm ein Video auf, um dein erstes Protokoll zu erstellen.
+            Starte eine Aufnahme, um dein erstes Protokoll zu erstellen.
           </Text>
         </>
       )}
