@@ -35,6 +35,7 @@ import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/cale
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
+import { getApiBaseUrl } from "@/constants/oauth";
 
 type RecordingMode = "video" | "audio";
 
@@ -337,10 +338,14 @@ export default function RecordScreen() {
         return;
       }
 
+      console.log("[Recording] Starting processing for:", fileUri);
+
       // Read the file as base64
       const base64 = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+
+      console.log("[Recording] File read, base64 length:", base64.length);
 
       const ext = mimeType === "video/mp4" ? "mp4" : "m4a";
 
@@ -351,11 +356,25 @@ export default function RecordScreen() {
         filename: `recording-${Date.now()}.${ext}`,
       });
 
+      console.log("[Recording] Upload complete, URL:", uploadResult.url);
+
+      // Build absolute URL for server-side transcription
+      // The upload returns a relative path like /manus-storage/...
+      // The server needs an absolute URL to fetch the audio file
+      const apiBase = getApiBaseUrl();
+      const absoluteAudioUrl = uploadResult.url.startsWith("http")
+        ? uploadResult.url
+        : `${apiBase}${uploadResult.url}`;
+
+      console.log("[Recording] Transcribing with URL:", absoluteAudioUrl);
+
       // Transcribe audio
       const transcription = await transcribeMutation.mutateAsync({
-        audioUrl: uploadResult.url,
+        audioUrl: absoluteAudioUrl,
         language: "de",
       });
+
+      console.log("[Recording] Transcription complete:", transcription.text?.substring(0, 50));
 
       // Get settings for protocol style
       const settingsStr = await AsyncStorage.getItem("protokoll-settings");
