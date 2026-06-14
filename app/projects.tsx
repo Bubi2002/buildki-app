@@ -21,6 +21,8 @@ type Project = {
   description: string;
   color: string;
   createdAt: string;
+  protocolPrefix?: string;
+  protocolCounter?: number;
 };
 
 type Protocol = {
@@ -46,6 +48,7 @@ export default function ProjectsScreen() {
   const [newDescription, setNewDescription] = useState("");
   const [selectedColor, setSelectedColor] = useState(PROJECT_COLORS[0]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [newPrefix, setNewPrefix] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -78,7 +81,7 @@ export default function ProjectsScreen() {
       if (editingProject) {
         const updated = existing.map((p: Project) =>
           p.id === editingProject.id
-            ? { ...p, name: newName.trim(), description: newDescription.trim(), color: selectedColor }
+            ? { ...p, name: newName.trim(), description: newDescription.trim(), color: selectedColor, protocolPrefix: newPrefix.trim().toUpperCase() || undefined }
             : p
         );
         await AsyncStorage.setItem("projects", JSON.stringify(updated));
@@ -90,6 +93,8 @@ export default function ProjectsScreen() {
           description: newDescription.trim(),
           color: selectedColor,
           createdAt: new Date().toISOString(),
+          protocolPrefix: newPrefix.trim().toUpperCase() || undefined,
+          protocolCounter: 0,
         };
         const updated = [newProject, ...existing];
         await AsyncStorage.setItem("projects", JSON.stringify(updated));
@@ -99,6 +104,7 @@ export default function ProjectsScreen() {
       setShowCreateModal(false);
       setNewName("");
       setNewDescription("");
+      setNewPrefix("");
       setSelectedColor(PROJECT_COLORS[0]);
       setEditingProject(null);
     } catch (e) {
@@ -144,6 +150,7 @@ export default function ProjectsScreen() {
     setNewName(project.name);
     setNewDescription(project.description);
     setSelectedColor(project.color);
+    setNewPrefix(project.protocolPrefix || "");
     setShowCreateModal(true);
   };
 
@@ -193,7 +200,7 @@ export default function ProjectsScreen() {
           </Pressable>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Projekte</Text>
           <Pressable
-            onPress={() => { setEditingProject(null); setNewName(""); setNewDescription(""); setSelectedColor(PROJECT_COLORS[0]); setShowCreateModal(true); }}
+            onPress={() => { setEditingProject(null); setNewName(""); setNewDescription(""); setNewPrefix(""); setSelectedColor(PROJECT_COLORS[0]); setShowCreateModal(true); }}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
             <MaterialIcons name="add" size={28} color={colors.primary} />
@@ -258,7 +265,20 @@ export default function ProjectsScreen() {
                 style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               />
 
-              <Text style={[styles.colorLabel, { color: colors.muted }]}>Farbe wählen</Text>
+              <TextInput
+                value={newPrefix}
+                onChangeText={(v) => setNewPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
+                placeholder="Protokoll-Pr\u00e4fix (z.B. BST, MNG)"
+                placeholderTextColor={colors.muted}
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                autoCapitalize="characters"
+                maxLength={5}
+              />
+              <Text style={[styles.prefixHint, { color: colors.muted }]}>
+                {newPrefix ? `Nummerierung: ${newPrefix}-001, ${newPrefix}-002, ...` : 'Optional: Automatische Nummerierung (z.B. BST-001)'}
+              </Text>
+
+              <Text style={[styles.colorLabel, { color: colors.muted }]}>Farbe w\u00e4hlen</Text>
               <View style={styles.colorGrid}>
                 {PROJECT_COLORS.map((color) => (
                   <Pressable
@@ -325,4 +345,5 @@ const styles = StyleSheet.create({
   colorDotSelected: { borderWidth: 3, borderColor: "#FFFFFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
   saveButton: { paddingVertical: 14, borderRadius: 12, alignItems: "center" },
   saveButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+  prefixHint: { fontSize: 12, marginBottom: 14, marginTop: -6 },
 });

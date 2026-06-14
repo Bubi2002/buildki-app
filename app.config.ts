@@ -131,6 +131,12 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "expo-local-authentication",
+      {
+        faceIDPermission: "ProtoKI möchte Face ID verwenden, um die App zu entsperren.",
+      },
+    ],
+    [
       "expo-build-properties",
       {
         android: {

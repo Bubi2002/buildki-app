@@ -22,6 +22,13 @@ import { useThemeContext, type ThemeMode } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
 import { trpc } from "@/lib/trpc";
+import {
+  getBiometricStatus,
+  isBiometricLockEnabled,
+  setBiometricLockEnabled,
+  getBiometricLabel,
+  type BiometricStatus,
+} from "@/lib/biometric-lock";
 
 type Settings = {
   whatsappNumber: string;
@@ -68,6 +75,122 @@ const DEFAULT_COMPANY: CompanySettings = {
   logoBase64: "",
   logoUri: "",
 };
+
+function BiometricLockSection({ colors }: { colors: any }) {
+  const [enabled, setEnabled] = useState(false);
+  const [status, setStatus] = useState<BiometricStatus | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const biometricStatus = await getBiometricStatus();
+      setStatus(biometricStatus);
+      const isEnabled = await isBiometricLockEnabled();
+      setEnabled(isEnabled);
+    })();
+  }, []);
+
+  const toggle = async () => {
+    const newVal = !enabled;
+    setEnabled(newVal);
+    await setBiometricLockEnabled(newVal);
+  };
+
+  if (!status || !status.available || !status.enrolled) {
+    // Don't show section if biometrics not available
+    // But on web we show it as informational
+    if (Platform.OS === 'web') {
+      return (
+        <View style={biometricStyles.section}>
+          <Text style={[biometricStyles.sectionTitle, { color: colors.foreground }]}>
+            Biometrische Sperre
+          </Text>
+          <Text style={[biometricStyles.sectionDescription, { color: colors.muted }]}>
+            Face ID / Fingerabdruck zum Entsperren der App
+          </Text>
+          <View style={[biometricStyles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialIcons name="fingerprint" size={24} color={colors.muted} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[biometricStyles.label, { color: colors.foreground }]}>App-Sperre</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Nur auf Ger\u00e4ten mit Biometrie verf\u00fcgbar</Text>
+            </View>
+            <View style={[biometricStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
+              <View style={[biometricStyles.toggleThumb, { transform: [{ translateX: enabled ? 18 : 2 }] }]} />
+            </View>
+          </View>
+        </View>
+      );
+    }
+    return null;
+  }
+
+  const label = getBiometricLabel(status.type);
+
+  return (
+    <View style={biometricStyles.section}>
+      <Text style={[biometricStyles.sectionTitle, { color: colors.foreground }]}>
+        Biometrische Sperre
+      </Text>
+      <Text style={[biometricStyles.sectionDescription, { color: colors.muted }]}>
+        {label} zum Entsperren der App verwenden
+      </Text>
+
+      <Pressable
+        onPress={toggle}
+        style={({ pressed }) => [
+          biometricStyles.row,
+          {
+            backgroundColor: enabled ? colors.primary + '15' : colors.surface,
+            borderColor: enabled ? colors.primary : colors.border,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <MaterialIcons
+          name={status.type === 'face' ? 'face' : 'fingerprint'}
+          size={24}
+          color={enabled ? colors.primary : colors.muted}
+        />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[biometricStyles.label, { color: colors.foreground }]}>
+            App-Sperre mit {label}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.muted }}>
+            {enabled ? 'Aktiv \u2013 App wird beim Start gesperrt' : 'Tippe zum Aktivieren'}
+          </Text>
+        </View>
+        <View style={[biometricStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
+          <View style={[biometricStyles.toggleThumb, { transform: [{ translateX: enabled ? 18 : 2 }] }]} />
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+const biometricStyles = StyleSheet.create({
+  section: { marginBottom: 28 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
+  sectionDescription: { fontSize: 13, marginBottom: 12 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  label: { fontSize: 15, fontWeight: '500' },
+  toggleTrack: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+  },
+});
 
 export default function SettingsScreen() {
   const colors = useColors();
@@ -921,6 +1044,9 @@ export default function SettingsScreen() {
             </View>
           )}
         </View>
+
+        {/* Biometrische Sperre */}
+        <BiometricLockSection colors={colors} />
 
         {/* Save Button */}
         {/* Darstellung / Dark Mode */}

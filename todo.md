@@ -81,3 +81,10 @@
 - [x] Zusammenfassung: KI-generierte Kurzzusammenfassung für jedes Protokoll
 - [x] Wetter-Integration: Automatisch Wetterdaten zum Baustellenbericht hinzufügen
 - [x] Unterschrift: Digitale Unterschrift für Abnahmeprotokolle
+- [x] Biometrische Sperre: Face ID/Fingerabdruck beim App-Start
+- [x] Biometrische Sperre: Toggle in Einstellungen
+- [x] Automatische Nummerierung: Fortlaufende Nummern pro Projekt (z.B. BST-001)
+- [x] Automatische Nummerierung: Konfigurierbare Präfixe pro Projekt
+- [x] Foto-Annotation: Auf Fotos zeichnen und markieren
+- [x] Foto-Annotation: Farb- und Stiftwahl
+- [x] Foto-Annotation: Annotierte Fotos speichern und im PDF anzeigen

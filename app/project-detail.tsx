@@ -58,6 +58,11 @@ export default function ProjectDetailScreen() {
       setProject(found || null);
       setAllProtocols(protocolsList);
       setProtocols(protocolsList.filter((p) => p.projectId === id));
+
+      // Set this project as the active project for protocol numbering
+      if (id) {
+        await AsyncStorage.setItem("last-selected-project-id", id);
+      }
     } catch (e) {
       console.error("Error loading project detail:", e);
     }

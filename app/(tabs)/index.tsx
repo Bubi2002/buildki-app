@@ -32,6 +32,7 @@ import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
 import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/calendar-integration";
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
+import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 
 type RecordingMode = "video" | "audio";
 
@@ -352,6 +353,14 @@ export default function RecordScreen() {
       const protocols = JSON.parse(
         (await AsyncStorage.getItem("protocols")) || "[]"
       );
+
+      // Generate protocol number if project has a prefix
+      let protocolNumber: string | null = null;
+      const lastProjectId = await AsyncStorage.getItem("last-selected-project-id");
+      if (lastProjectId) {
+        protocolNumber = await getNextProtocolNumber(lastProjectId);
+      }
+
       const newProtocol = {
         id: Date.now().toString(),
         title: transcription.text.substring(0, 50) + "...",
@@ -374,6 +383,8 @@ export default function RecordScreen() {
         } : null,
         weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
         status: "ready" as const,
+        projectId: lastProjectId || undefined,
+        protocolNumber: protocolNumber || undefined,
       };
       // Link to calendar event if available
       if (currentCalendarEvent && Platform.OS !== "web") {
@@ -405,6 +416,7 @@ export default function RecordScreen() {
             todos: newProtocol.todos || [],
             duration: newProtocol.duration,
             createdAt: newProtocol.createdAt,
+            protocolNumber: newProtocol.protocolNumber,
           });
 
           const { uri: pdfUri } = await Print.printToFileAsync({

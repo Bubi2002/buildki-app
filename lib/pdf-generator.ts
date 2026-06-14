@@ -25,6 +25,7 @@ type PdfProtocol = {
     city: string | null;
   } | null;
   weather?: string | null;
+  protocolNumber?: string;
 };
 
 type CompanySettings = {
@@ -250,6 +251,7 @@ function generatePdfHtml(
   </div>
 
   <table class="meta-table">
+    ${protocol.protocolNumber ? `<tr><td>Protokoll-Nr.</td><td><strong>${protocol.protocolNumber}</strong></td></tr>` : ''}
     <tr>
       <td>Datum</td>
       <td>${date}</td>

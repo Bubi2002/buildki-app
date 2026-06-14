@@ -74,6 +74,7 @@ type Protocol = {
   tags?: string[];
   recordingMode?: string;
   projectId?: string;
+  protocolNumber?: string;
 };
 
 export default function ProtocolDetailScreen() {
@@ -231,6 +232,7 @@ export default function ProtocolDetailScreen() {
         createdAt: protocol.createdAt,
         location: protocol.location,
         weather: protocol.weather,
+        protocolNumber: protocol.protocolNumber,
       });
 
       // Share the PDF
@@ -272,6 +274,7 @@ export default function ProtocolDetailScreen() {
         createdAt: protocol.createdAt,
         location: protocol.location,
         weather: protocol.weather,
+        protocolNumber: protocol.protocolNumber,
       });
 
       // Use native share sheet with PDF - user can pick WhatsApp
@@ -479,6 +482,12 @@ export default function ProtocolDetailScreen() {
 
         {/* Metadata */}
         <View style={[styles.metaCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {protocol.protocolNumber && (
+            <View style={styles.metaRow}>
+              <MaterialIcons name="tag" size={18} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.primary, fontWeight: '600' }]}>{protocol.protocolNumber}</Text>
+            </View>
+          )}
           <View style={styles.metaRow}>
             <MaterialIcons name="event" size={18} color={colors.muted} />
             <Text style={[styles.metaText, { color: colors.muted }]}>{formattedDate}</Text>
@@ -554,29 +563,44 @@ export default function ProtocolDetailScreen() {
             </Text>
             <View style={styles.photoGrid}>
               {photos.map((photoUri, index) => (
-                <Pressable
-                  key={index}
-                  onPress={() => setSelectedPhoto(photoUri)}
-                  onLongPress={() => sharePhoto(photoUri)}
-                  style={({ pressed }) => [
-                    styles.photoThumbnail,
-                    { opacity: pressed ? 0.7 : 1 },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: photoUri }}
-                    style={styles.photoImage}
-                    contentFit="cover"
-                    transition={200}
-                  />
-                  <View style={styles.photoIndex}>
-                    <Text style={styles.photoIndexText}>{index + 1}</Text>
-                  </View>
-                </Pressable>
+                <View key={index} style={{ position: 'relative' }}>
+                  <Pressable
+                    onPress={() => setSelectedPhoto(photoUri)}
+                    onLongPress={() => sharePhoto(photoUri)}
+                    style={({ pressed }) => [
+                      styles.photoThumbnail,
+                      { opacity: pressed ? 0.7 : 1 },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: photoUri }}
+                      style={styles.photoImage}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                    <View style={styles.photoIndex}>
+                      <Text style={styles.photoIndexText}>{index + 1}</Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push(`/photo-annotate?photoUri=${encodeURIComponent(photoUri)}&protocolId=${protocol.id}&photoIndex=${index}` as any)}
+                    style={({ pressed }) => [{
+                      position: 'absolute',
+                      bottom: 4,
+                      right: 4,
+                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      borderRadius: 12,
+                      padding: 4,
+                      opacity: pressed ? 0.6 : 1,
+                    }]}
+                  >
+                    <MaterialIcons name="edit" size={14} color="#FFFFFF" />
+                  </Pressable>
+                </View>
               ))}
             </View>
             <Text style={[styles.photoHint, { color: colors.muted }]}>
-              Tippe zum Vergrößern \u2022 Halte gedrückt zum Teilen
+              Tippe zum Vergr\u00f6\u00dfern \u2022 Halte gedr\u00fcckt zum Teilen \u2022 \u270f\ufe0f Annotieren
             </Text>
           </View>
         )}
