@@ -26,6 +26,7 @@ type PdfProtocol = {
   } | null;
   weather?: string | null;
   protocolNumber?: string;
+  signaturePaths?: string[];
 };
 
 type CompanySettings = {
@@ -342,6 +343,17 @@ function generatePdfHtml(
   </div>
 
   ${photosHtml}
+
+  ${protocol.signaturePaths && protocol.signaturePaths.length > 0 ? `
+  <div style="margin-top: 30px; page-break-inside: avoid;">
+    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Unterschrift</h3>
+    <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa; display: inline-block;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="300" height="120" viewBox="0 0 340 200" style="max-width: 100%;">
+        ${protocol.signaturePaths.map(d => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join('\n        ')}
+      </svg>
+    </div>
+  </div>
+  ` : ''}
 
   ${company.watermarkEnabled && company.watermarkText ? `<div class="watermark">${company.watermarkText}</div>` : ''}
 

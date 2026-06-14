@@ -481,6 +481,13 @@ export default function ProtocolsScreen() {
                 </View>
               )}
             </Pressable>
+            {/* Compare */}
+            <Pressable
+              onPress={() => router.push("/protocol-compare" as any)}
+              style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="compare-arrows" size={20} color={colors.primary} />
+            </Pressable>
             {/* Search */}
             <Pressable
               onPress={() => setShowSearch(!showSearch)}

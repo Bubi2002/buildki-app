@@ -98,3 +98,8 @@
 - [x] Einstellungen: Eigene Text-Vorlagen für Foto-Annotation konfigurierbar
 - [x] Foto-Annotation: Drag-to-reposition für bereits platzierte Text-Elemente
 - [x] PDF-Export: Wasserzeichen/Firmenstempel automatisch auf Fotos anwenden
+- [x] Unterschrift-Feld: Digitale Signatur per Finger-Zeichnung im Protokoll
+- [x] Unterschrift-Feld: Signatur im PDF-Export einbetten
+- [x] Protokoll-Vergleich: Diff-Ansicht zweier Protokolle nebeneinander
+- [x] Offline-Modus: Anzeige des Verbindungsstatus in der App
+- [x] Offline-Modus: Automatische Synchronisation bei Wiederverbindung

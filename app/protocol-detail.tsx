@@ -24,6 +24,7 @@ import * as Sharing from "expo-sharing";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
 import { trpc } from "@/lib/trpc";
+import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -101,6 +102,7 @@ export default function ProtocolDetailScreen() {
   const [summary, setSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
+  const [signaturePaths, setSignaturePaths] = useState<string[]>([]);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const translateMutation = trpc.translate.translateProtocol.useMutation();
 
@@ -121,6 +123,8 @@ export default function ProtocolDetailScreen() {
       if (found) {
         setIsFavorite(found.isFavorite || false);
         setTags(found.tags || []);
+        if ((found as any).signaturePaths) setSignaturePaths((found as any).signaturePaths);
+        if ((found as any).signatureData) setSignatureData((found as any).signatureData);
       }
     } catch (error) {
       console.error("Error loading protocol:", error);
@@ -233,6 +237,7 @@ export default function ProtocolDetailScreen() {
         location: protocol.location,
         weather: protocol.weather,
         protocolNumber: protocol.protocolNumber,
+        signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
       });
 
       // Share the PDF
@@ -275,6 +280,7 @@ export default function ProtocolDetailScreen() {
         location: protocol.location,
         weather: protocol.weather,
         protocolNumber: protocol.protocolNumber,
+        signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
       });
 
       // Use native share sheet with PDF - user can pick WhatsApp
@@ -716,25 +722,61 @@ export default function ProtocolDetailScreen() {
             </View>
             {signatureData && (
               <Pressable
-                onPress={() => setSignatureData(null)}
+                onPress={() => {
+                  setSignatureData(null);
+                  setSignaturePaths([]);
+                  (async () => {
+                    try {
+                      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+                      const idx = protocols.findIndex((p: any) => p.id === id);
+                      if (idx !== -1) {
+                        delete protocols[idx].signaturePaths;
+                        delete protocols[idx].signatureData;
+                        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+                      }
+                    } catch { /* ignore */ }
+                  })();
+                }}
                 style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
               >
                 <MaterialIcons name="delete-outline" size={20} color={colors.error} />
               </Pressable>
             )}
           </View>
-          {signatureData ? (
-            <View style={{ alignItems: "center", padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 13, color: colors.success, fontWeight: "500" }}>\u2713 Unterschrift gespeichert</Text>
-              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Wird im PDF-Export angezeigt</Text>
-            </View>
-          ) : (
-            <Pressable
-              onPress={() => {
-                // Simple signature: store timestamp as confirmation
+          {showSignature ? (
+            <SignaturePad
+              initialPaths={signaturePaths}
+              onSave={(paths) => {
+                setSignaturePaths(paths);
                 const sig = `Unterzeichnet am ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
                 setSignatureData(sig);
+                setShowSignature(false);
+                // Persist signature
+                (async () => {
+                  try {
+                    const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+                    const idx = protocols.findIndex((p: any) => p.id === id);
+                    if (idx !== -1) {
+                      protocols[idx].signaturePaths = paths;
+                      protocols[idx].signatureData = sig;
+                      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+                    }
+                  } catch { /* ignore */ }
+                })();
               }}
+              onCancel={() => setShowSignature(false)}
+            />
+          ) : signatureData ? (
+            <Pressable
+              onPress={() => setShowSignature(true)}
+              style={({ pressed }) => [{ alignItems: "center", padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 13, color: colors.success, fontWeight: "500" }}>✓ Unterschrift gespeichert</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Tippen zum Bearbeiten • Wird im PDF angezeigt</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setShowSignature(true)}
               style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="draw" size={24} color={colors.muted} />
