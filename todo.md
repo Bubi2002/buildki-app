@@ -47,3 +47,16 @@
 - [x] Eigene Vorlagen: In Vorlagen-Auswahl integrieren
 - [x] Dunkelmodus: Automatischer Wechsel nach Systemeinstellung
 - [x] Dunkelmodus: Manueller Toggle in Einstellungen
+- [x] Sprachbefehle: Keyword-Erkennung während Aufnahme (z.B. "Foto", "Markierung")
+- [x] Sprachbefehle: Automatisches Foto bei Sprachbefehl auslösen
+- [x] Sprachbefehle: Zeitmarkierungen im Protokoll setzen
+- [x] Kalender-Integration: Expo Calendar einbinden
+- [x] Kalender-Integration: Termin-Auswahl vor/nach Aufnahme
+- [x] Kalender-Integration: Protokoll mit Kalendereintrag verknüpfen
+- [x] Cloud-Sync: Benutzer-Login (OAuth)
+- [x] Cloud-Sync: Protokolle in Datenbank speichern
+- [x] Cloud-Sync: Geräteübergreifende Synchronisation
+- [x] Automatische GPS-Standort-Ermittlung bei Aufnahmestart
+- [x] Reverse Geocoding (Koordinaten → Adresse)
+- [x] Standort im Protokoll-Datensatz speichern
+- [x] Standort in Protokoll-Detail und PDF anzeigen

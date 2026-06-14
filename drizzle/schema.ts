@@ -25,4 +25,25 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// Protocol table for cloud sync
+export const protocols = mysqlTable("protocols", {
+  id: int("id").autoincrement().primaryKey(),
+  localId: varchar("localId", { length: 64 }).notNull(),
+  userId: int("userId").notNull(),
+  title: text("title"),
+  transcription: text("transcription"),
+  protocol: text("protocol"),
+  templateName: varchar("templateName", { length: 128 }),
+  templateId: varchar("templateId", { length: 64 }),
+  todos: text("todos"), // JSON string
+  markers: text("markers"), // JSON string
+  photos: text("photos"), // JSON string of photo URLs
+  duration: int("duration"),
+  recordingMode: varchar("recordingMode", { length: 16 }),
+  calendarEventId: varchar("calendarEventId", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Protocol = typeof protocols.$inferSelect;
+export type InsertProtocol = typeof protocols.$inferInsert;

@@ -45,6 +45,12 @@ type Protocol = {
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address: string | null;
+    city: string | null;
+  } | null;
   status: "processing" | "ready" | "sent";
 };
 
@@ -114,6 +120,7 @@ export default function ProtocolDetailScreen() {
         todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
+        location: protocol.location,
       });
 
       // Share the PDF
@@ -153,6 +160,7 @@ export default function ProtocolDetailScreen() {
         todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
+        location: protocol.location,
       });
 
       // Use native share sheet with PDF - user can pick WhatsApp
@@ -324,6 +332,14 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="photo-camera" size={18} color={colors.muted} />
               <Text style={[styles.metaText, { color: colors.muted }]}>
                 {photos.length} Foto{photos.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          )}
+          {protocol.location && (
+            <View style={styles.metaRow}>
+              <MaterialIcons name="location-on" size={18} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.muted }]} numberOfLines={2}>
+                {protocol.location.address || `${protocol.location.latitude.toFixed(4)}, ${protocol.location.longitude.toFixed(4)}`}
               </Text>
             </View>
           )}

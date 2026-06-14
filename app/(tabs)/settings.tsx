@@ -19,6 +19,9 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
 import { useThemeContext, type ThemeMode } from "@/lib/theme-provider";
+import { useAuth } from "@/hooks/use-auth";
+import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
+import { trpc } from "@/lib/trpc";
 
 type Settings = {
   whatsappNumber: string;
@@ -62,10 +65,62 @@ export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
   const { themeMode, setThemeMode } = useThemeContext();
+  const { user, isAuthenticated, logout } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
   const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
   const [saved, setSaved] = useState(false);
+  const [syncEnabled, setSyncEnabledState] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const pushMutation = trpc.sync.pushProtocol.useMutation();
+
+  useEffect(() => {
+    isSyncEnabled().then(setSyncEnabledState);
+  }, []);
+
+  const toggleSync = async (val: boolean) => {
+    setSyncEnabledState(val);
+    await setSyncEnabled(val);
+    if (val && isAuthenticated) {
+      syncNow();
+    }
+  };
+
+  const syncNow = async () => {
+    if (!isAuthenticated) {
+      Alert.alert("Login erforderlich", "Bitte melde dich an, um Cloud-Sync zu nutzen.");
+      return;
+    }
+    setSyncing(true);
+    try {
+      const protocols = await getLocalProtocols();
+      const unsynced = protocols.filter((p) => !p.synced);
+      for (const p of unsynced) {
+        await pushMutation.mutateAsync({
+          localId: p.id,
+          title: p.title || null,
+          transcription: p.transcription || null,
+          protocol: p.protocol || null,
+          templateName: p.templateName || null,
+          templateId: p.templateId || null,
+          todos: p.todos ? JSON.stringify(p.todos) : null,
+          markers: p.markers ? JSON.stringify(p.markers) : null,
+          photos: p.photos ? JSON.stringify(p.photos) : null,
+          duration: p.duration || null,
+          recordingMode: p.recordingMode || null,
+          calendarEventId: p.calendarEventId || null,
+          createdAt: p.createdAt,
+        });
+        await markProtocolSynced(p.id);
+      }
+      Alert.alert("Sync abgeschlossen", `${unsynced.length} Protokoll(e) synchronisiert.`);
+    } catch (error) {
+      Alert.alert("Sync-Fehler", "Die Synchronisation konnte nicht abgeschlossen werden.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     loadSettings();
@@ -739,6 +794,66 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Cloud Sync & Konto */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Cloud & Konto
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Synchronisiere Protokolle geräteübergreifend
+          </Text>
+
+          {/* Login Status */}
+          <View style={[styles.syncRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialIcons name={isAuthenticated ? "account-circle" : "person-outline"} size={24} color={isAuthenticated ? colors.primary : colors.muted} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.syncLabel, { color: colors.foreground }]}>
+                {isAuthenticated ? (user?.name || "Angemeldet") : "Nicht angemeldet"}
+              </Text>
+              <Text style={[styles.syncHint, { color: colors.muted }]}>
+                {isAuthenticated ? "Cloud-Sync verfügbar" : "Anmelden für Cloud-Sync"}
+              </Text>
+            </View>
+            {isAuthenticated ? (
+              <Pressable onPress={() => { logout(); setSyncEnabledState(false); setSyncEnabled(false); }} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={{ color: colors.error, fontWeight: "600", fontSize: 14 }}>Abmelden</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.push("/oauth/callback")} style={({ pressed }) => [styles.loginButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+                <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>Anmelden</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Sync Toggle */}
+          {isAuthenticated && (
+            <>
+              <Pressable
+                onPress={() => toggleSync(!syncEnabled)}
+                style={({ pressed }) => [styles.syncRow, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <MaterialIcons name="cloud-sync" size={24} color={syncEnabled ? colors.primary : colors.muted} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.syncLabel, { color: colors.foreground }]}>Auto-Sync</Text>
+                  <Text style={[styles.syncHint, { color: colors.muted }]}>Neue Protokolle automatisch hochladen</Text>
+                </View>
+                <View style={[styles.toggleTrack, { backgroundColor: syncEnabled ? colors.primary : colors.border }]}>
+                  <View style={[styles.toggleThumb, { transform: [{ translateX: syncEnabled ? 18 : 2 }] }]} />
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={syncNow}
+                disabled={syncing}
+                style={({ pressed }) => [styles.syncButton, { backgroundColor: colors.primary, opacity: pressed || syncing ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name={syncing ? "hourglass-top" : "sync"} size={20} color="#FFFFFF" />
+                <Text style={styles.syncButtonText}>{syncing ? "Synchronisiere..." : "Jetzt synchronisieren"}</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+
         {/* Save Button */}
         {/* Darstellung / Dark Mode */}
         <View style={styles.section}>
@@ -1060,5 +1175,52 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  syncRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  syncLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  syncHint: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  syncButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 4,
+  },
+  syncButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  loginButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  toggleTrack: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: "center",
+  },
+  toggleThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FFFFFF",
   },
 });

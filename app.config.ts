@@ -107,6 +107,18 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "expo-calendar",
+      {
+        calendarPermission: "ProtoKI benötigt Zugriff auf deinen Kalender, um Protokolle mit Terminen zu verknüpfen.",
+      },
+    ],
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission: "ProtoKI benötigt deinen Standort, um ihn dem Protokoll zuzuweisen.",
+      },
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/images/splash-icon.png",

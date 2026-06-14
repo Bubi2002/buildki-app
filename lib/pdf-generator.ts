@@ -18,6 +18,12 @@ type PdfProtocol = {
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address: string | null;
+    city: string | null;
+  } | null;
 };
 
 type CompanySettings = {
@@ -262,6 +268,11 @@ function generatePdfHtml(
     ${
       photoDataUris.length > 0
         ? `<tr><td>Anhänge</td><td>${photoDataUris.length} Foto${photoDataUris.length !== 1 ? "s" : ""}</td></tr>`
+        : ""
+    }
+    ${
+      protocol.location
+        ? `<tr><td>Standort</td><td>${protocol.location.address || `${protocol.location.latitude.toFixed(5)}, ${protocol.location.longitude.toFixed(5)}`}</td></tr>`
         : ""
     }
   </table>

@@ -1,10 +1,13 @@
 import { z } from "zod";
-import { router, publicProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
 import { storagePut } from "./storage";
 import { getTemplateById } from "../shared/templates";
+import { getDb } from "./db";
+import { protocols } from "../drizzle/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: "ok" })),
@@ -54,7 +57,6 @@ export const appRouter = router({
 
         const template = getTemplateById(templateId);
 
-        // Build system prompt from template + style/format preferences
         const styleNote =
           style === "formal"
             ? "Schreibe formell und sachlich."
@@ -121,12 +123,10 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
           (response.choices?.[0]?.message?.content as string) || "[]";
 
         try {
-          // Parse the response - it might be wrapped in an object or be a direct array
           const parsed = JSON.parse(content);
           const todos = Array.isArray(parsed) ? parsed : (parsed.todos || parsed.tasks || []);
           return { todos };
         } catch {
-          // Try to extract JSON array from the response
           const match = content.match(/\[[\s\S]*\]/);
           if (match) {
             try {
@@ -153,7 +153,6 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       .mutation(async ({ input }) => {
         const buffer = Buffer.from(input.base64, "base64");
 
-        // Check file size (16MB limit)
         const sizeMB = buffer.length / (1024 * 1024);
         if (sizeMB > 16) {
           throw new TRPCError({
@@ -166,6 +165,129 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
         const { url } = await storagePut(key, buffer, input.mimeType);
 
         return { url, key };
+      }),
+  }),
+
+  // Cloud Sync endpoints (require login)
+  sync: router({
+    // Upload a protocol to the cloud
+    pushProtocol: protectedProcedure
+      .input(
+        z.object({
+          localId: z.string(),
+          title: z.string().nullable(),
+          transcription: z.string().nullable(),
+          protocol: z.string().nullable(),
+          templateName: z.string().nullable(),
+          templateId: z.string().nullable(),
+          todos: z.string().nullable(), // JSON string
+          markers: z.string().nullable(), // JSON string
+          photos: z.string().nullable(), // JSON string
+          duration: z.number().nullable(),
+          recordingMode: z.string().nullable(),
+          calendarEventId: z.string().nullable(),
+          createdAt: z.string(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const userId = ctx.user.id;
+
+        // Check if protocol already exists
+        const existing = await db
+          .select()
+          .from(protocols)
+          .where(and(eq(protocols.localId, input.localId), eq(protocols.userId, userId)))
+          .limit(1);
+
+        if (existing.length > 0) {
+          // Update existing
+          await db
+            .update(protocols)
+            .set({
+              title: input.title,
+              transcription: input.transcription,
+              protocol: input.protocol,
+              templateName: input.templateName,
+              templateId: input.templateId,
+              todos: input.todos,
+              markers: input.markers,
+              photos: input.photos,
+              duration: input.duration,
+              recordingMode: input.recordingMode,
+              calendarEventId: input.calendarEventId,
+            })
+            .where(eq(protocols.id, existing[0].id));
+
+          return { id: existing[0].id, action: "updated" as const };
+        } else {
+          // Insert new
+          const result = await db.insert(protocols).values({
+            localId: input.localId,
+            userId,
+            title: input.title,
+            transcription: input.transcription,
+            protocol: input.protocol,
+            templateName: input.templateName,
+            templateId: input.templateId,
+            todos: input.todos,
+            markers: input.markers,
+            photos: input.photos,
+            duration: input.duration,
+            recordingMode: input.recordingMode,
+            calendarEventId: input.calendarEventId,
+          });
+
+          return { id: result[0].insertId, action: "created" as const };
+        }
+      }),
+
+    // Pull all protocols from the cloud
+    pullProtocols: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const userId = ctx.user.id;
+
+      const results = await db
+        .select()
+        .from(protocols)
+        .where(eq(protocols.userId, userId))
+        .orderBy(desc(protocols.createdAt));
+
+      return {
+        protocols: results.map((p) => ({
+          localId: p.localId,
+          title: p.title,
+          transcription: p.transcription,
+          protocol: p.protocol,
+          templateName: p.templateName,
+          templateId: p.templateId,
+          todos: p.todos,
+          markers: p.markers,
+          photos: p.photos,
+          duration: p.duration,
+          recordingMode: p.recordingMode,
+          calendarEventId: p.calendarEventId,
+          createdAt: p.createdAt.toISOString(),
+          updatedAt: p.updatedAt.toISOString(),
+        })),
+      };
+    }),
+
+    // Delete a protocol from the cloud
+    deleteProtocol: protectedProcedure
+      .input(z.object({ localId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const userId = ctx.user.id;
+
+        await db
+          .delete(protocols)
+          .where(and(eq(protocols.localId, input.localId), eq(protocols.userId, userId)));
+
+        return { success: true };
       }),
   }),
 });

@@ -29,6 +29,8 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
 import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
+import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/calendar-integration";
+import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 
 type RecordingMode = "video" | "audio";
 
@@ -48,6 +50,10 @@ export default function RecordScreen() {
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("video");
+  const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
+  const [voiceCommandActive, setVoiceCommandActive] = useState(true);
+  const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
+  const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Audio recorder
@@ -88,6 +94,13 @@ export default function RecordScreen() {
       // Use default
     }
   };
+
+  // Check for current calendar event when screen loads
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      getCurrentEvent().then(setCurrentCalendarEvent).catch(() => {});
+    }
+  }, []);
 
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
@@ -146,6 +159,13 @@ export default function RecordScreen() {
   };
 
   // --- VIDEO RECORDING ---
+  const addMarker = (label: string) => {
+    setMarkers((prev) => [...prev, { time: recordingDuration, label }]);
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
   const startVideoRecording = async () => {
     if (Platform.OS === "web") {
       alert("Videoaufnahme ist nur auf dem Handy verfügbar.");
@@ -155,6 +175,7 @@ export default function RecordScreen() {
 
     setShowTemplateSelector(false);
     setCapturedPhotos([]);
+    setMarkers([]);
     setIsRecording(true);
     startTimer();
 
@@ -186,6 +207,7 @@ export default function RecordScreen() {
   const startAudioRecording = async () => {
     setShowTemplateSelector(false);
     setCapturedPhotos([]);
+    setMarkers([]);
     setIsRecording(true);
     startTimer();
 
@@ -218,6 +240,10 @@ export default function RecordScreen() {
 
   // --- UNIFIED RECORDING CONTROLS ---
   const startRecording = () => {
+    // Capture location at recording start
+    if (Platform.OS !== "web") {
+      getCurrentLocation().then(setRecordingLocation).catch(() => {});
+    }
     if (mode === "video") {
       startVideoRecording();
     } else {
@@ -320,11 +346,30 @@ export default function RecordScreen() {
         templateId: selectedTemplate.id,
         photos: capturedPhotos,
         todos,
+        markers,
         duration: recordingDuration,
         recordingMode: mode,
         createdAt: new Date().toISOString(),
+        calendarEventId: null as string | null,
+        location: recordingLocation ? {
+          latitude: recordingLocation.latitude,
+          longitude: recordingLocation.longitude,
+          address: recordingLocation.address,
+          city: recordingLocation.city,
+        } : null,
         status: "ready" as const,
       };
+      // Link to calendar event if available
+      if (currentCalendarEvent && Platform.OS !== "web") {
+        try {
+          const summary = `Protokoll: ${newProtocol.title}\n\n${protocol.protocol.substring(0, 500)}...`;
+          await addNotesToEvent(currentCalendarEvent.id, summary);
+          newProtocol.calendarEventId = currentCalendarEvent.id;
+        } catch {
+          // Calendar linking is optional
+        }
+      }
+
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
@@ -568,6 +613,16 @@ export default function RecordScreen() {
               </Pressable>
             )}
 
+            {/* Location badge */}
+            {recordingLocation && isRecording && (
+              <View style={[styles.templateBadgeAudio, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <MaterialIcons name="location-on" size={16} color={colors.primary} />
+                <Text style={[styles.templateBadgeTextAudio, { color: colors.muted }]} numberOfLines={1}>
+                  {recordingLocation.address || recordingLocation.city || `${recordingLocation.latitude.toFixed(4)}, ${recordingLocation.longitude.toFixed(4)}`}
+                </Text>
+              </View>
+            )}
+
             {/* Record button */}
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
@@ -622,6 +677,15 @@ export default function RecordScreen() {
               <View style={styles.photoCountBadge}>
                 <MaterialIcons name="photo-camera" size={14} color="#FFFFFF" />
                 <Text style={styles.photoCountText}>{capturedPhotos.length}</Text>
+              </View>
+            )}
+            {/* Location badge */}
+            {recordingLocation && (
+              <View style={[styles.photoCountBadge, { marginLeft: 6 }]}>
+                <MaterialIcons name="location-on" size={14} color="#FFFFFF" />
+                <Text style={styles.photoCountText} numberOfLines={1}>
+                  {recordingLocation.city || "GPS"}
+                </Text>
               </View>
             )}
           </View>
@@ -779,13 +843,30 @@ export default function RecordScreen() {
               />
             </Pressable>
 
-            {/* Spacer for symmetry */}
-            <View style={styles.photoButtonPlaceholder} />
+            {/* Marker button - only visible during recording */}
+            {isRecording ? (
+              <Pressable
+                onPress={() => addMarker("Markierung")}
+                style={({ pressed }) => [
+                  styles.photoButton,
+                  { transform: [{ scale: pressed ? 0.9 : 1 }] },
+                ]}
+              >
+                <MaterialIcons name="bookmark-add" size={28} color="#FFFFFF" />
+                {markers.length > 0 && (
+                  <View style={[styles.photoBadge, { backgroundColor: "#FF9800" }]}>
+                    <Text style={styles.photoBadgeText}>{markers.length}</Text>
+                  </View>
+                )}
+              </Pressable>
+            ) : (
+              <View style={styles.photoButtonPlaceholder} />
+            )}
           </View>
 
           <Text style={styles.hintText}>
             {isRecording
-              ? "Tippe links für Foto \u2022 Mitte zum Stoppen"
+              ? "Foto \u2022 Stopp \u2022 Markierung"
               : "Tippe zum Aufnehmen"}
           </Text>
         </View>
