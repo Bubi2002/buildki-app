@@ -15,3 +15,7 @@
 - [x] Settings screen (default recipients, protocol style)
 - [x] App logo generation and branding
 - [x] Processing/loading states and error handling
+- [x] Protokoll-Vorlagen definieren (Baustellenbericht, Besprechungsnotiz, Mängelliste, Tagesbericht, Abnahmeprotokoll)
+- [x] Server-Prompt pro Vorlage anpassen
+- [x] Vorlagen-Auswahl in Einstellungen integrieren
+- [x] Vorlagen-Auswahl vor Aufnahme anzeigen

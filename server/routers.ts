@@ -4,6 +4,7 @@ import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
 import { storagePut } from "./storage";
+import { getTemplateById } from "../shared/templates";
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: "ok" })),
@@ -41,6 +42,7 @@ export const appRouter = router({
       .input(
         z.object({
           transcription: z.string(),
+          templateId: z.string().optional(),
           style: z.enum(["formal", "informal"]).optional(),
           format: z.enum(["bullets", "paragraphs"]).optional(),
         })
@@ -48,19 +50,21 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const style = input.style || "formal";
         const format = input.format || "bullets";
+        const templateId = input.templateId || "freitext";
 
-        const systemPrompt = `Du bist ein professioneller Protokollant. Erstelle aus dem folgenden transkribierten Text ein strukturiertes Protokoll.
+        const template = getTemplateById(templateId);
 
-Stil: ${style === "formal" ? "Formell und sachlich" : "Informell und verständlich"}
-Format: ${format === "bullets" ? "Stichpunkte mit klarer Gliederung" : "Fließtext in Absätzen"}
+        // Build system prompt from template + style/format preferences
+        const styleNote =
+          style === "formal"
+            ? "Schreibe formell und sachlich."
+            : "Schreibe verständlich und informell.";
+        const formatNote =
+          format === "bullets"
+            ? "Verwende Stichpunkte und klare Gliederung."
+            : "Schreibe in Fließtext mit Absätzen.";
 
-Das Protokoll soll folgende Struktur haben:
-1. Zusammenfassung (2-3 Sätze)
-2. Hauptpunkte / Beobachtungen
-3. Offene Punkte / To-Dos (falls vorhanden)
-4. Datum und Zeitstempel
-
-Antworte ausschließlich mit dem fertigen Protokoll, ohne Einleitung oder Kommentare.`;
+        const systemPrompt = `${template.systemPrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
 
         const response = await invokeLLM({
           messages: [
@@ -72,7 +76,7 @@ Antworte ausschließlich mit dem fertigen Protokoll, ohne Einleitung oder Kommen
         const protocolText =
           response.choices?.[0]?.message?.content || "Protokoll konnte nicht erstellt werden.";
 
-        return { protocol: protocolText };
+        return { protocol: protocolText, templateName: template.name };
       }),
   }),
 

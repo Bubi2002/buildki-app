@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as FileSystem from "expo-file-system/legacy";
@@ -14,6 +15,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 
 export default function RecordScreen() {
   const colors = useColors();
@@ -24,11 +27,35 @@ export default function RecordScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [selectedTemplate, setSelectedTemplate] = useState<ProtocolTemplate>(
+    PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]
+  );
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
   const protocolMutation = trpc.protocol.generate.useMutation();
+
+  // Load default template from settings
+  useEffect(() => {
+    loadDefaultTemplate();
+  }, []);
+
+  const loadDefaultTemplate = async () => {
+    try {
+      const settingsStr = await AsyncStorage.getItem("protokoll-settings");
+      if (settingsStr) {
+        const settings = JSON.parse(settingsStr);
+        if (settings.templateId) {
+          const template = PROTOCOL_TEMPLATES.find((t) => t.id === settings.templateId);
+          if (template) setSelectedTemplate(template);
+        }
+      }
+    } catch (error) {
+      // Use default
+    }
+  };
 
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
@@ -57,6 +84,7 @@ export default function RecordScreen() {
     }
     if (!cameraRef.current) return;
 
+    setShowTemplateSelector(false);
     setIsRecording(true);
     startTimer();
 
@@ -110,9 +138,10 @@ export default function RecordScreen() {
       const settingsStr = await AsyncStorage.getItem("protokoll-settings");
       const settings = settingsStr ? JSON.parse(settingsStr) : {};
 
-      // Generate protocol
+      // Generate protocol with selected template
       const protocol = await protocolMutation.mutateAsync({
         transcription: transcription.text,
+        templateId: selectedTemplate.id,
         style: settings.style || "formal",
         format: settings.format || "bullets",
       });
@@ -126,6 +155,8 @@ export default function RecordScreen() {
         title: transcription.text.substring(0, 50) + "...",
         transcription: transcription.text,
         protocol: protocol.protocol,
+        templateName: selectedTemplate.name,
+        templateId: selectedTemplate.id,
         duration: recordingDuration,
         createdAt: new Date().toISOString(),
         status: "ready" as const,
@@ -187,7 +218,7 @@ export default function RecordScreen() {
           Verarbeitung...
         </Text>
         <Text className="text-base text-muted mt-2 text-center">
-          Deine Aufnahme wird transkribiert und ein Protokoll erstellt.
+          Deine Aufnahme wird transkribiert und ein {selectedTemplate.name} erstellt.
         </Text>
       </ScreenContainer>
     );
@@ -213,8 +244,98 @@ export default function RecordScreen() {
           </View>
         )}
 
+        {/* Template selector overlay */}
+        {showTemplateSelector && !isRecording && (
+          <View style={styles.templateOverlay}>
+            <View style={[styles.templateSheet, { backgroundColor: colors.background }]}>
+              <View style={styles.templateSheetHeader}>
+                <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
+                  Vorlage wählen
+                </Text>
+                <Pressable onPress={() => setShowTemplateSelector(false)}>
+                  <MaterialIcons name="close" size={24} color={colors.muted} />
+                </Pressable>
+              </View>
+              <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
+                {PROTOCOL_TEMPLATES.map((template) => (
+                  <Pressable
+                    key={template.id}
+                    onPress={() => {
+                      setSelectedTemplate(template);
+                      setShowTemplateSelector(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.templateListItem,
+                      {
+                        backgroundColor:
+                          selectedTemplate.id === template.id
+                            ? colors.primary + "15"
+                            : "transparent",
+                        borderColor:
+                          selectedTemplate.id === template.id
+                            ? colors.primary
+                            : colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={template.icon as any}
+                      size={22}
+                      color={
+                        selectedTemplate.id === template.id
+                          ? colors.primary
+                          : colors.muted
+                      }
+                    />
+                    <View style={styles.templateListText}>
+                      <Text
+                        style={[
+                          styles.templateListName,
+                          {
+                            color:
+                              selectedTemplate.id === template.id
+                                ? colors.primary
+                                : colors.foreground,
+                          },
+                        ]}
+                      >
+                        {template.name}
+                      </Text>
+                      <Text
+                        style={[styles.templateListDesc, { color: colors.muted }]}
+                        numberOfLines={1}
+                      >
+                        {template.description}
+                      </Text>
+                    </View>
+                    {selectedTemplate.id === template.id && (
+                      <MaterialIcons name="check-circle" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        )}
+
         {/* Controls */}
         <View style={styles.controlsContainer}>
+          {/* Template badge */}
+          {!isRecording && (
+            <Pressable
+              onPress={() => setShowTemplateSelector(true)}
+              style={({ pressed }) => [
+                styles.templateBadge,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <MaterialIcons name={selectedTemplate.icon as any} size={16} color="#FFFFFF" />
+              <Text style={styles.templateBadgeText}>{selectedTemplate.name}</Text>
+              <MaterialIcons name="expand-more" size={16} color="#FFFFFF" />
+            </Pressable>
+          )}
+
           <Pressable
             onPress={isRecording ? stopRecording : startRecording}
             style={({ pressed }) => [
@@ -279,11 +400,76 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },
+  templateOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  templateSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    maxHeight: "70%",
+  },
+  templateSheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  templateSheetTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  templateList: {
+    maxHeight: 400,
+  },
+  templateListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+    gap: 12,
+  },
+  templateListText: {
+    flex: 1,
+  },
+  templateListName: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  templateListDesc: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   controlsContainer: {
     position: "absolute",
     bottom: 60,
     width: "100%",
     alignItems: "center",
+  },
+  templateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 20,
+    gap: 6,
+  },
+  templateBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "500",
   },
   recordButton: {
     width: 80,

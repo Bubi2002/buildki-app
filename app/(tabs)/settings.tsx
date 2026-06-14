@@ -12,6 +12,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { PROTOCOL_TEMPLATES } from "@/shared/templates";
 
 type Settings = {
   whatsappNumber: string;
@@ -19,6 +20,7 @@ type Settings = {
   style: "formal" | "informal";
   format: "bullets" | "paragraphs";
   language: string;
+  templateId: string;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +29,7 @@ const DEFAULT_SETTINGS: Settings = {
   style: "formal",
   format: "bullets",
   language: "de",
+  templateId: "freitext",
 };
 
 export default function SettingsScreen() {
@@ -76,13 +79,80 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Template Selection */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Protokoll-Vorlage
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Wähle die Standard-Vorlage für neue Protokolle
+          </Text>
+
+          <View style={styles.templateGrid}>
+            {PROTOCOL_TEMPLATES.map((template) => (
+              <Pressable
+                key={template.id}
+                onPress={() => updateSetting("templateId", template.id)}
+                style={({ pressed }) => [
+                  styles.templateCard,
+                  {
+                    backgroundColor:
+                      settings.templateId === template.id
+                        ? colors.primary + "15"
+                        : colors.surface,
+                    borderColor:
+                      settings.templateId === template.id
+                        ? colors.primary
+                        : colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.templateIconRow}>
+                  <MaterialIcons
+                    name={template.icon as any}
+                    size={24}
+                    color={
+                      settings.templateId === template.id
+                        ? colors.primary
+                        : colors.muted
+                    }
+                  />
+                  {settings.templateId === template.id && (
+                    <MaterialIcons name="check-circle" size={18} color={colors.primary} />
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.templateName,
+                    {
+                      color:
+                        settings.templateId === template.id
+                          ? colors.primary
+                          : colors.foreground,
+                    },
+                  ]}
+                >
+                  {template.name}
+                </Text>
+                <Text
+                  style={[styles.templateDescription, { color: colors.muted }]}
+                  numberOfLines={2}
+                >
+                  {template.description}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         {/* Recipients Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Empfänger
           </Text>
 
-          <View style={[styles.inputGroup, { borderColor: colors.border }]}>
+          <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
               <MaterialIcons name="chat" size={18} color="#25D366" />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
@@ -99,7 +169,7 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View style={[styles.inputGroup, { borderColor: colors.border }]}>
+          <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
               <MaterialIcons name="email" size={18} color={colors.primary} />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
@@ -305,7 +375,38 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
+    marginBottom: 4,
+  },
+  sectionDescription: {
+    fontSize: 13,
     marginBottom: 12,
+  },
+  templateGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  templateCard: {
+    width: "48%",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    minHeight: 100,
+  },
+  templateIconRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  templateName: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  templateDescription: {
+    fontSize: 11,
+    lineHeight: 16,
   },
   inputGroup: {
     marginBottom: 14,
