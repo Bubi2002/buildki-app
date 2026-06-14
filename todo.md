@@ -1,0 +1,17 @@
+# Project TODO
+
+- [x] Theme colors and branding configuration
+- [x] Tab navigation with 3 tabs (Aufnahme, Protokolle, Einstellungen)
+- [x] Icon mappings for tab bar
+- [x] Aufnahme screen with camera preview and record button
+- [x] Video recording with audio capture
+- [x] Audio extraction and transcription via server LLM (Whisper)
+- [x] Protocol generation via server LLM (ChatGPT)
+- [x] Local protocol storage with AsyncStorage
+- [x] Protokolle list screen with FlatList
+- [x] Protokoll-Detail screen with full text and actions
+- [x] WhatsApp sharing integration
+- [x] Email sharing integration
+- [x] Settings screen (default recipients, protocol style)
+- [x] App logo generation and branding
+- [x] Processing/loading states and error handling
