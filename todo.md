@@ -120,3 +120,4 @@
 - [x] Bug-Fix: KRITISCH - Native App (TestFlight) konnte API nicht erreichen weil Sandbox-URL eingebaked war – getApiBaseUrl() nutzt jetzt deployed Domain auf nativen Geräten
 - [x] Bug-Fix: Video-Recording catch-Block verschluckte Fehler still – jetzt mit Fehlermeldung und URI-Recovery
 - [x] Text-Fix: Empty-State in Protokolle-Liste korrigiert ("Starte eine Aufnahme" statt "Nimm ein Video auf")
+- [x] Bug-Fix: KRITISCH - getApiBaseUrl Import fehlte in index.tsx, Client sendet jetzt absolute URL an Transkriptions-Endpunkt

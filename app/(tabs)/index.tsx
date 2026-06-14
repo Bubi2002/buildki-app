@@ -35,6 +35,7 @@ import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/cale
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
+import { getApiBaseUrl } from "@/constants/oauth";
 
 type RecordingMode = "video" | "audio";
 
@@ -210,6 +211,9 @@ export default function RecordScreen() {
     }
   };
 
+  // Video recording uses a ref to store the promise result
+  const videoRecordingPromiseRef = useRef<Promise<any> | null>(null);
+
   const startVideoRecording = async () => {
     if (Platform.OS === "web") {
       alert("Videoaufnahme ist nur auf dem Handy verf\u00fcgbar.");
@@ -220,8 +224,6 @@ export default function RecordScreen() {
       return;
     }
     if (!cameraReady) {
-      // Camera may need a moment after previous recording
-      // Wait briefly and check again
       await new Promise(resolve => setTimeout(resolve, 500));
       if (!cameraReady) {
         alert("Kamera wird noch initialisiert. Bitte warte einen Moment.");
@@ -238,35 +240,41 @@ export default function RecordScreen() {
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
       console.log("[Video] Starting recordAsync...");
-      const video = await cameraRef.current.recordAsync({
+      
+      // Store the promise - it resolves when stopRecording is called
+      videoRecordingPromiseRef.current = cameraRef.current.recordAsync({
         maxDuration: 300,
       });
+      
+      // Wait for the promise to resolve (happens when stopRecording is called)
+      const video = await videoRecordingPromiseRef.current;
+      videoRecordingPromiseRef.current = null;
 
       console.log("[Video] recordAsync resolved, video:", JSON.stringify(video));
 
       stopTimer();
       setIsRecording(false);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-
-      // Reset camera ready - it will fire onCameraReady again after recording stops
       setCameraReady(false);
 
-      if (video?.uri) {
+      if (video && video.uri) {
         console.log("[Video] Processing video URI:", video.uri);
         await processRecording(video.uri, "video/mp4");
       } else {
-        console.error("[Video] No video URI returned from recordAsync");
+        console.error("[Video] No video URI returned. video object:", video);
         alert("Video-Aufnahme fehlgeschlagen: Keine Datei erhalten. Bitte versuche es erneut.");
       }
     } catch (error: any) {
+      videoRecordingPromiseRef.current = null;
       stopTimer();
       setIsRecording(false);
       setCameraReady(false);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      console.error("[Video] Recording error:", error?.message || error);
       
-      // On some iOS versions, stopRecording causes recordAsync to reject with the video URI
-      // Check if the error object contains a URI we can use
+      const errorMsg = error?.message || String(error);
+      console.error("[Video] Recording error:", errorMsg);
+      
+      // On some iOS versions, stopRecording causes recordAsync to reject but still produces a file
       const errorUri = error?.uri || error?.data?.uri;
       if (errorUri) {
         console.log("[Video] Error contained URI, processing:", errorUri);
@@ -274,17 +282,13 @@ export default function RecordScreen() {
         return;
       }
       
-      // Don't show alert for intentional stop without URI
-      if (error?.message?.includes("cancelled") || error?.message?.includes("stopped") || error?.message?.includes("stop")) {
-        console.log("[Video] Recording was stopped but no URI available");
-        alert("Video-Aufnahme wurde gestoppt, aber keine Datei erhalten. Bitte versuche es erneut.");
-      } else {
-        alert(`Video-Aufnahme Fehler: ${error?.message || "Unbekannter Fehler"}`);
-      }
+      // Show specific error to user
+      alert(`Video-Aufnahme Fehler: ${errorMsg}`);
     }
   };
 
   const stopVideoRecording = () => {
+    console.log("[Video] stopRecording called");
     if (cameraRef.current) {
       cameraRef.current.stopRecording();
     }
@@ -395,13 +399,18 @@ export default function RecordScreen() {
 
       console.log("[Recording] Upload complete, URL:", uploadResult.url);
 
-      // Pass the storage URL to the server for transcription
-      // The server will resolve relative URLs internally using its own base URL
-      console.log("[Recording] Transcribing with URL:", uploadResult.url);
+      // Build absolute URL for transcription
+      // The upload returns a relative URL like /manus-storage/audio/...
+      // The server needs an absolute URL to fetch the audio file
+      let audioUrlForTranscription = uploadResult.url;
+      if (audioUrlForTranscription.startsWith("/")) {
+        audioUrlForTranscription = `${getApiBaseUrl()}${audioUrlForTranscription}`;
+      }
+      console.log("[Recording] Transcribing with URL:", audioUrlForTranscription);
 
       // Transcribe audio
       const transcription = await transcribeMutation.mutateAsync({
-        audioUrl: uploadResult.url,
+        audioUrl: audioUrlForTranscription,
         language: "de",
       });
 
