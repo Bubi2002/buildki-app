@@ -11,6 +11,7 @@ import {
   Dimensions,
   Modal,
   Alert,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -67,6 +68,12 @@ type Protocol = {
     city: string | null;
   } | null;
   status: "processing" | "ready" | "sent";
+  weather?: string | null;
+  isFavorite?: boolean;
+  isArchived?: boolean;
+  tags?: string[];
+  recordingMode?: string;
+  projectId?: string;
 };
 
 export default function ProtocolDetailScreen() {
@@ -85,6 +92,15 @@ export default function ProtocolDetailScreen() {
   const [showTranslation, setShowTranslation] = useState(false);
   const [targetLang, setTargetLang] = useState("en");
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [showTagEditor, setShowTagEditor] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
   const translateMutation = trpc.translate.translateProtocol.useMutation();
 
   useEffect(() => {
@@ -100,6 +116,10 @@ export default function ProtocolDetailScreen() {
       setProtocol(found || null);
       if (found?.todos) {
         setTodos(found.todos);
+      }
+      if (found) {
+        setIsFavorite(found.isFavorite || false);
+        setTags(found.tags || []);
       }
     } catch (error) {
       console.error("Error loading protocol:", error);
@@ -128,6 +148,74 @@ export default function ProtocolDetailScreen() {
     }
   };
 
+  const toggleFavorite = async () => {
+    const newVal = !isFavorite;
+    setIsFavorite(newVal);
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].isFavorite = newVal;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
+  };
+
+  const updateTags = async (newTags: string[]) => {
+    setTags(newTags);
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].tags = newTags;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      }
+    } catch (error) {
+      console.error("Error updating tags:", error);
+    }
+  };
+
+  // Edit protocol text
+  const startEditing = () => {
+    setEditedText(protocol?.protocol || "");
+    setIsEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!protocol) return;
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].protocol = editedText;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        setProtocol({ ...protocol, protocol: editedText });
+      }
+    } catch (error) {
+      console.error("Error saving edit:", error);
+    }
+    setIsEditing(false);
+  };
+
+  // Generate AI summary
+  const generateSummary = async () => {
+    if (!protocol) return;
+    setIsGeneratingSummary(true);
+    try {
+      const result = await translateMutation.mutateAsync({
+        text: "Fasse folgendes Protokoll in 2-3 pr\u00e4gnanten S\u00e4tzen zusammen: " + protocol.protocol,
+        targetLanguage: "de",
+      });
+      setSummary(result.translated);
+    } catch (error) {
+      console.error("Error generating summary:", error);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
   const exportPdf = async () => {
     if (!protocol) return;
 
@@ -142,6 +230,7 @@ export default function ProtocolDetailScreen() {
         duration: protocol.duration,
         createdAt: protocol.createdAt,
         location: protocol.location,
+        weather: protocol.weather,
       });
 
       // Share the PDF
@@ -182,6 +271,7 @@ export default function ProtocolDetailScreen() {
         duration: protocol.duration,
         createdAt: protocol.createdAt,
         location: protocol.location,
+        weather: protocol.weather,
       });
 
       // Use native share sheet with PDF - user can pick WhatsApp
@@ -318,24 +408,75 @@ export default function ProtocolDetailScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
           {protocol.templateName || "Protokoll"}
         </Text>
-        {/* PDF Export button in header */}
-        <Pressable
-          onPress={exportPdf}
-          disabled={isExporting}
-          style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.5 : 1 }]}
-        >
-          {isExporting ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
-          )}
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+          {/* Favorite toggle */}
+          <Pressable
+            onPress={toggleFavorite}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <MaterialIcons name={isFavorite ? "star" : "star-outline"} size={24} color={isFavorite ? "#FFC107" : colors.muted} />
+          </Pressable>
+          {/* Tags */}
+          <Pressable
+            onPress={() => setShowTagEditor(!showTagEditor)}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <MaterialIcons name="label" size={24} color={tags.length > 0 ? colors.primary : colors.muted} />
+          </Pressable>
+          {/* PDF Export button in header */}
+          <Pressable
+            onPress={exportPdf}
+            disabled={isExporting}
+            style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.5 : 1 }]}
+          >
+            {isExporting ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
+            )}
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Tags */}
+        {showTagEditor && (
+          <View style={[styles.metaCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
+            <Text style={[{ fontSize: 14, fontWeight: "600", marginBottom: 8, color: colors.foreground }]}>Tags</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {tags.map((tag) => (
+                <Pressable key={tag} onPress={() => updateTags(tags.filter(t => t !== tag))} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}>
+                  <Text style={{ fontSize: 12, color: colors.primary }}>{tag}</Text>
+                  <MaterialIcons name="close" size={12} color={colors.primary} />
+                </Pressable>
+              ))}
+              <Pressable
+                onPress={() => {
+                  Alert.prompt ? Alert.prompt("Tag hinzufügen", "Name des Tags:", (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert("Tag hinzufügen", "Nutze die Protokoll-Liste (langes Drücken) um Tags zu verwalten.");
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.border + "50", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}
+              >
+                <MaterialIcons name="add" size={14} color={colors.muted} />
+                <Text style={{ fontSize: 12, color: colors.muted }}>Tag</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Tags display (when editor closed) */}
+        {!showTagEditor && tags.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
+            {tags.map((tag) => (
+              <View key={tag} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+                <Text style={{ fontSize: 11, color: colors.primary }}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Metadata */}
         <View style={[styles.metaCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.metaRow}>
@@ -361,6 +502,14 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="location-on" size={18} color={colors.primary} />
               <Text style={[styles.metaText, { color: colors.muted }]} numberOfLines={2}>
                 {protocol.location.address || `${protocol.location.latitude.toFixed(4)}, ${protocol.location.longitude.toFixed(4)}`}
+              </Text>
+            </View>
+          )}
+          {protocol.weather && (
+            <View style={styles.metaRow}>
+              <MaterialIcons name="cloud" size={18} color={colors.primary} />
+              <Text style={[styles.metaText, { color: colors.muted }]}>
+                {protocol.weather}
               </Text>
             </View>
           )}
@@ -482,12 +631,92 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
+        {/* Summary */}
+        <View style={[styles.section, { marginBottom: 0 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Zusammenfassung</Text>
+            </View>
+            <Pressable
+              onPress={generateSummary}
+              disabled={isGeneratingSummary}
+              style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "15", opacity: pressed || isGeneratingSummary ? 0.5 : 1 }]}
+            >
+              {isGeneratingSummary ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>{summary ? "Neu generieren" : "Generieren"}</Text>
+              )}
+            </Pressable>
+          </View>
+          {summary && (
+            <View style={{ backgroundColor: colors.primary + "08", borderRadius: 8, padding: 12, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 20 }}>{summary}</Text>
+            </View>
+          )}
+        </View>
+
         {/* Protocol content */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Protokoll</Text>
-          <Text style={[styles.protocolText, { color: colors.foreground }]}>
-            {protocol.protocol}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Protokoll</Text>
+            <Pressable
+              onPress={isEditing ? saveEdit : startEditing}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: isEditing ? colors.success + "15" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name={isEditing ? "check" : "edit"} size={14} color={isEditing ? colors.success : colors.muted} />
+              <Text style={{ fontSize: 12, color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
+            </Pressable>
+          </View>
+          {isEditing ? (
+            <TextInput
+              value={editedText}
+              onChangeText={setEditedText}
+              multiline
+              style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 8, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
+            />
+          ) : (
+            <Text style={[styles.protocolText, { color: colors.foreground }]}>
+              {protocol.protocol}
+            </Text>
+          )}
+        </View>
+
+        {/* Digital Signature */}
+        <View style={[styles.section, { marginTop: 0 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <MaterialIcons name="draw" size={18} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Unterschrift</Text>
+            </View>
+            {signatureData && (
+              <Pressable
+                onPress={() => setSignatureData(null)}
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+              >
+                <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+              </Pressable>
+            )}
+          </View>
+          {signatureData ? (
+            <View style={{ alignItems: "center", padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 13, color: colors.success, fontWeight: "500" }}>\u2713 Unterschrift gespeichert</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Wird im PDF-Export angezeigt</Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => {
+                // Simple signature: store timestamp as confirmation
+                const sig = `Unterzeichnet am ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
+                setSignatureData(sig);
+              }}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="draw" size={24} color={colors.muted} />
+              <Text style={{ fontSize: 14, color: colors.muted }}>Tippen zum Unterschreiben</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Translation section */}

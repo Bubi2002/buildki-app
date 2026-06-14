@@ -24,6 +24,7 @@ type PdfProtocol = {
     address: string | null;
     city: string | null;
   } | null;
+  weather?: string | null;
 };
 
 type CompanySettings = {
@@ -273,6 +274,11 @@ function generatePdfHtml(
     ${
       protocol.location
         ? `<tr><td>Standort</td><td>${protocol.location.address || `${protocol.location.latitude.toFixed(5)}, ${protocol.location.longitude.toFixed(5)}`}</td></tr>`
+        : ""
+    }
+    ${
+      protocol.weather
+        ? `<tr><td>Wetter</td><td>${protocol.weather}</td></tr>`
         : ""
     }
   </table>

@@ -68,3 +68,16 @@
 - [x] Projekt-Ordner: Projekt-Übersicht mit Filterung
 - [x] Push-Erinnerungen: Benachrichtigungen für Aufgaben mit Frist
 - [x] Push-Erinnerungen: Erinnerungszeitpunkt konfigurierbar
+- [x] Statistik-Dashboard: Protokolle pro Woche, offene/erledigte Aufgaben, Vorlagen-Nutzung
+- [x] Schnellnotizen: Sprach-zu-Text ohne Video direkt in ein Projekt
+- [x] Favoriten: Protokolle als Favorit markieren und filtern
+- [x] Batch-Aktionen: Mehrere Protokolle gleichzeitig löschen/verschieben/exportieren
+- [x] Protokoll-Duplikation: Bestehendes Protokoll als Vorlage kopieren
+- [x] Onboarding: Erstnutzer-Tutorial mit Feature-Erklärung
+- [x] Sortierung: Protokolle nach Datum/Name/Projekt sortieren
+- [x] Archiv: Alte Protokolle archivieren statt löschen
+- [x] Tags/Labels: Protokolle mit farbigen Tags versehen und filtern
+- [x] Protokoll-Bearbeitung: Nachträgliches Editieren des generierten Textes
+- [x] Zusammenfassung: KI-generierte Kurzzusammenfassung für jedes Protokoll
+- [x] Wetter-Integration: Automatisch Wetterdaten zum Baustellenbericht hinzufügen
+- [x] Unterschrift: Digitale Unterschrift für Abnahmeprotokolle

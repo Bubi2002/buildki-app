@@ -31,6 +31,7 @@ import { generateProtocolPdf } from "@/lib/pdf-generator";
 import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
 import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/calendar-integration";
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
+import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 
 type RecordingMode = "video" | "audio";
 
@@ -54,6 +55,7 @@ export default function RecordScreen() {
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Audio recorder
@@ -64,6 +66,16 @@ export default function RecordScreen() {
   const transcribeMutation = trpc.voice.transcribe.useMutation();
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
+
+  // Check onboarding
+  useEffect(() => {
+    (async () => {
+      const done = await AsyncStorage.getItem("onboarding_complete");
+      if (!done) {
+        router.replace("/onboarding" as any);
+      }
+    })();
+  }, []);
 
   // Load default template from settings
   useEffect(() => {
@@ -240,9 +252,12 @@ export default function RecordScreen() {
 
   // --- UNIFIED RECORDING CONTROLS ---
   const startRecording = () => {
-    // Capture location at recording start
+    // Capture location and weather at recording start
     if (Platform.OS !== "web") {
-      getCurrentLocation().then(setRecordingLocation).catch(() => {});
+      getCurrentLocation().then((loc) => {
+        setRecordingLocation(loc);
+        if (loc) getWeatherForLocation(loc).then(setWeatherData).catch(() => {});
+      }).catch(() => {});
     }
     if (mode === "video") {
       startVideoRecording();
@@ -357,6 +372,7 @@ export default function RecordScreen() {
           address: recordingLocation.address,
           city: recordingLocation.city,
         } : null,
+        weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
         status: "ready" as const,
       };
       // Link to calendar event if available
