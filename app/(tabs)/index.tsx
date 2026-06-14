@@ -359,6 +359,7 @@ export default function RecordScreen() {
         setProcessingSource("audio-backup");
         
         // Try to find the video file in cache for background upload later
+        // Only consider files modified within the last 5 minutes to avoid stale videos
         let cachedVideoUri: string | null = null;
         try {
           const cacheDir = FileSystem.cacheDirectory;
@@ -366,12 +367,14 @@ export default function RecordScreen() {
             const files = await FileSystem.readDirectoryAsync(cacheDir);
             const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
             videoFiles.sort().reverse();
-            if (videoFiles.length > 0) {
-              const candidate = `${cacheDir}${videoFiles[0]}`;
+            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+            for (const vf of videoFiles) {
+              const candidate = `${cacheDir}${vf}`;
               const fInfo = await FileSystem.getInfoAsync(candidate);
-              if (fInfo.exists && fInfo.size && fInfo.size > 10000) {
+              if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
                 cachedVideoUri = candidate;
-                console.log("[Video] Found cached video for background upload:", cachedVideoUri);
+                console.log("[Video] Found recent cached video for background upload:", cachedVideoUri, "size:", (fInfo.size / 1024 / 1024).toFixed(1), "MB");
+                break;
               }
             }
           }
@@ -590,7 +593,7 @@ export default function RecordScreen() {
       // Check internet connectivity
       const online = await isOnline();
       if (!online) {
-        // Save to offline queue
+        // Save to offline queue with all metadata
         await addToQueue({
           id: Date.now().toString(),
           fileUri,
@@ -600,6 +603,15 @@ export default function RecordScreen() {
           duration: recordingDuration,
           recordingMode: mode,
           createdAt: new Date().toISOString(),
+          markers,
+          location: recordingLocation ? {
+            latitude: recordingLocation.latitude,
+            longitude: recordingLocation.longitude,
+            address: recordingLocation.address,
+            city: recordingLocation.city,
+          } : null,
+          weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
+          pendingVideoUri: pendingVideoUploadRef.current?.videoUri || null,
         });
         setIsProcessing(false);
         setProcessingSource(null);

@@ -161,10 +161,12 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
         const buffer = Buffer.from(input.base64, "base64");
 
         const sizeMB = buffer.length / (1024 * 1024);
-        if (sizeMB > 16) {
+        const isVideo = input.mimeType.startsWith("video/");
+        const maxSize = isVideo ? 50 : 16;
+        if (sizeMB > maxSize) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `Datei zu groß: ${sizeMB.toFixed(1)}MB (max 16MB)`,
+            message: `Datei zu gro\u00df: ${sizeMB.toFixed(1)}MB (max ${maxSize}MB)`,
           });
         }
 

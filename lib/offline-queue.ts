@@ -14,6 +14,15 @@ export type QueuedRecording = {
   createdAt: string;
   status: "pending" | "processing" | "failed";
   retryCount: number;
+  markers?: Array<{ time: number; label: string }>;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address: string | null;
+    city: string | null;
+  } | null;
+  weather?: string | null;
+  pendingVideoUri?: string | null;
 };
 
 /**
