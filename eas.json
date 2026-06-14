@@ -25,5 +25,13 @@
         "autoIncrement": true
       }
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "info@iserloh.net",
+        "appleTeamId": "TLHL2MRJB4"
+      }
+    }
   }
 }
