@@ -237,9 +237,12 @@ export default function RecordScreen() {
 
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      console.log("[Video] Starting recordAsync...");
       const video = await cameraRef.current.recordAsync({
         maxDuration: 300,
       });
+
+      console.log("[Video] recordAsync resolved, video:", JSON.stringify(video));
 
       stopTimer();
       setIsRecording(false);
@@ -249,15 +252,35 @@ export default function RecordScreen() {
       setCameraReady(false);
 
       if (video?.uri) {
+        console.log("[Video] Processing video URI:", video.uri);
         await processRecording(video.uri, "video/mp4");
+      } else {
+        console.error("[Video] No video URI returned from recordAsync");
+        alert("Video-Aufnahme fehlgeschlagen: Keine Datei erhalten. Bitte versuche es erneut.");
       }
-    } catch (error) {
+    } catch (error: any) {
       stopTimer();
       setIsRecording(false);
       setCameraReady(false);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      console.error("Recording error:", error);
-      alert("Aufnahme konnte nicht gestartet werden. Bitte versuche es erneut.");
+      console.error("[Video] Recording error:", error?.message || error);
+      
+      // On some iOS versions, stopRecording causes recordAsync to reject with the video URI
+      // Check if the error object contains a URI we can use
+      const errorUri = error?.uri || error?.data?.uri;
+      if (errorUri) {
+        console.log("[Video] Error contained URI, processing:", errorUri);
+        await processRecording(errorUri, "video/mp4");
+        return;
+      }
+      
+      // Don't show alert for intentional stop without URI
+      if (error?.message?.includes("cancelled") || error?.message?.includes("stopped") || error?.message?.includes("stop")) {
+        console.log("[Video] Recording was stopped but no URI available");
+        alert("Video-Aufnahme wurde gestoppt, aber keine Datei erhalten. Bitte versuche es erneut.");
+      } else {
+        alert(`Video-Aufnahme Fehler: ${error?.message || "Unbekannter Fehler"}`);
+      }
     }
   };
 

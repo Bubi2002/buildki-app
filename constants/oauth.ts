@@ -24,15 +24,28 @@ export const OWNER_OPEN_ID = env.ownerId;
 export const OWNER_NAME = env.ownerName;
 export const API_BASE_URL = env.apiBaseUrl;
 
+// The deployed production domain for this app
+// This is used as fallback when the app runs natively (TestFlight/App Store)
+// and the build-time API_BASE_URL points to a sandbox that's not reachable
+const DEPLOYED_DOMAIN = "https://protokollapp-c7amcxpp.manus.space";
+
 /**
  * Get the API base URL, deriving from current hostname if not set.
  * Metro runs on 8081, API server runs on 3000.
  * URL pattern: https://PORT-sandboxid.region.domain
  */
 export function getApiBaseUrl(): string {
-  // If API_BASE_URL is set, use it
+  // If API_BASE_URL is set, check if it's usable
   if (API_BASE_URL) {
-    return API_BASE_URL.replace(/\/$/, "");
+    const url = API_BASE_URL.replace(/\/$/, "");
+    
+    // On native devices (iOS/Android), sandbox URLs (*.manus.computer) are NOT reachable
+    // Use the deployed production domain instead
+    if (ReactNative.Platform.OS !== "web" && url.includes("manus.computer")) {
+      return DEPLOYED_DOMAIN;
+    }
+    
+    return url;
   }
 
   // On web, derive from current hostname by replacing port 8081 with 3000
@@ -43,6 +56,15 @@ export function getApiBaseUrl(): string {
     if (apiHostname !== hostname) {
       return `${protocol}//${apiHostname}`;
     }
+    // If on deployed domain (manus.space), use same origin
+    if (hostname.includes("manus.space")) {
+      return `${protocol}//${hostname}`;
+    }
+  }
+
+  // On native without any URL set, use deployed domain
+  if (ReactNative.Platform.OS !== "web") {
+    return DEPLOYED_DOMAIN;
   }
 
   // Fallback to empty (will use relative URL)

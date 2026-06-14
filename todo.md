@@ -117,3 +117,6 @@
 - [x] Bug-Fix: Schwarzer Kamera-Bildschirm behoben (active-Prop, onCameraReady, Audio-Mode-Fix)
 - [x] Bug-Fix: Relative Audio-URL verursachte Transkriptions-Fehler – Server löst jetzt relative URLs intern auf (localhost)
 - [x] Bug-Fix: Kamera-Initialisierung blockiert nach erster Aufnahme – cameraReady-State wird korrekt zurückgesetzt
+- [x] Bug-Fix: KRITISCH - Native App (TestFlight) konnte API nicht erreichen weil Sandbox-URL eingebaked war – getApiBaseUrl() nutzt jetzt deployed Domain auf nativen Geräten
+- [x] Bug-Fix: Video-Recording catch-Block verschluckte Fehler still – jetzt mit Fehlermeldung und URI-Recovery
+- [x] Text-Fix: Empty-State in Protokolle-Liste korrigiert ("Starte eine Aufnahme" statt "Nimm ein Video auf")
