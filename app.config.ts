@@ -41,6 +41,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
+    appleTeamId: "TLHL2MRJB4",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: "ProtoKI benötigt Zugriff auf die Kamera, um Videos aufzunehmen.",
