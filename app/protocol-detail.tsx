@@ -77,6 +77,9 @@ type Protocol = {
   recordingMode?: string;
   projectId?: string;
   protocolNumber?: string;
+  videoUrl?: string | null;
+  videoUploadedAt?: string | null;
+  videoUploadPending?: boolean;
 };
 
 export default function ProtocolDetailScreen() {
@@ -630,6 +633,52 @@ export default function ProtocolDetailScreen() {
             <Text style={[styles.photoHint, { color: colors.muted }]}>
               Tippe zum Vergr\u00f6\u00dfern \u2022 Halte gedr\u00fcckt zum Teilen \u2022 \u270f\ufe0f Annotieren
             </Text>
+          </View>
+        )}
+
+        {/* Video Attachment */}
+        {protocol.videoUrl && (
+          <View style={styles.section}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialIcons name="videocam" size={20} color={colors.success} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                Video-Aufnahme
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => Linking.openURL(protocol.videoUrl!)}
+              style={({ pressed }) => [{
+                marginTop: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.surface,
+                padding: 12,
+                borderRadius: 10,
+                gap: 10,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <MaterialIcons name="play-circle-outline" size={32} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '500' }}>
+                  Video abspielen
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                  Nachträglich hochgeladen{protocol.videoUploadedAt ? ` am ${new Date(protocol.videoUploadedAt).toLocaleString('de-DE')}` : ''}
+                </Text>
+              </View>
+              <MaterialIcons name="open-in-new" size={18} color={colors.muted} />
+            </Pressable>
+          </View>
+        )}
+        {protocol.videoUploadPending && !protocol.videoUrl && (
+          <View style={styles.section}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color={colors.warning} />
+              <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '500' }}>
+                Video wird im Hintergrund hochgeladen...
+              </Text>
+            </View>
           </View>
         )}
 

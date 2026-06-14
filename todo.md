@@ -123,3 +123,4 @@
 - [x] Bug-Fix: KRITISCH - getApiBaseUrl Import fehlte in index.tsx, Client sendet jetzt absolute URL an Transkriptions-Endpunkt
 - [x] Bug-Fix: KRITISCH - Video-Recording: recordAsync() resolved nicht zuverlässig auf iOS wenn takePictureAsync() während Aufnahme aufgerufen wird. Lösung: Parallele Audio-Aufnahme als Backup, 8s Timeout-Fallback, Cache-Directory-Suche
 - [x] Feature: Transparente Benachrichtigung nach Verarbeitung – zeigt an ob Video-URI oder Audio-Backup verwendet wurde
+- [x] Feature: Video-Datei im Hintergrund nachträglich hochladen und dem Protokoll anhängen, wenn Audio-Backup greift

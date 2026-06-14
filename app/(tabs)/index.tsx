@@ -215,8 +215,64 @@ export default function RecordScreen() {
   // Video recording: We run a PARALLEL audio recording alongside the camera.
   // This ensures we always have audio for transcription, even if recordAsync() fails to resolve.
   const videoRecordingActiveRef = useRef(false);
+  // Stores the video URI for background upload when audio-backup is used
+  const pendingVideoUploadRef = useRef<{ videoUri: string; protocolId: string } | null>(null);
   // Secondary audio recorder specifically for video mode backup
   const videoAudioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
+  // Background upload: uploads video file and attaches it to the protocol
+  const uploadVideoInBackground = async (videoUri: string, protocolId: string) => {
+    try {
+      console.log("[BackgroundUpload] Starting video upload for protocol:", protocolId);
+      
+      // Check if file exists and is readable
+      const fileInfo = await FileSystem.getInfoAsync(videoUri);
+      if (!fileInfo.exists || !fileInfo.size || fileInfo.size < 1000) {
+        console.warn("[BackgroundUpload] Video file not found or too small:", videoUri);
+        return;
+      }
+
+      // Read as base64
+      const base64 = await FileSystem.readAsStringAsync(videoUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      console.log("[BackgroundUpload] Video file read, size:", (base64.length * 0.75 / 1024 / 1024).toFixed(1), "MB");
+
+      // Upload to storage
+      const uploadResult = await uploadMutation.mutateAsync({
+        base64,
+        mimeType: "video/mp4",
+        filename: `video-${protocolId}-${Date.now()}.mp4`,
+      });
+
+      console.log("[BackgroundUpload] Upload complete, URL:", uploadResult.url);
+
+      // Build absolute URL
+      let videoUrl = uploadResult.url;
+      if (videoUrl.startsWith("/")) {
+        videoUrl = `${getApiBaseUrl()}${videoUrl}`;
+      }
+
+      // Update the protocol in AsyncStorage with the video URL
+      const protocolsStr = await AsyncStorage.getItem("protocols");
+      if (protocolsStr) {
+        const protocols = JSON.parse(protocolsStr);
+        const protocolIndex = protocols.findIndex((p: any) => p.id === protocolId);
+        if (protocolIndex !== -1) {
+          protocols[protocolIndex].videoUrl = videoUrl;
+          protocols[protocolIndex].videoUploadedAt = new Date().toISOString();
+          await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+          console.log("[BackgroundUpload] Protocol updated with video URL");
+        }
+      }
+    } catch (error) {
+      console.error("[BackgroundUpload] Video upload failed:", error);
+      // Non-critical: don't alert the user, just log
+    } finally {
+      pendingVideoUploadRef.current = null;
+    }
+  };
 
   const startVideoRecording = async () => {
     if (Platform.OS === "web") {
@@ -296,10 +352,40 @@ export default function RecordScreen() {
       if (videoUri) {
         console.log("[Video] Processing with video URI:", videoUri);
         setProcessingSource("video");
+        pendingVideoUploadRef.current = null; // No pending upload needed
         await processRecording(videoUri, "video/mp4");
       } else if (audioBackupUri) {
         console.log("[Video] Using audio backup for processing:", audioBackupUri);
         setProcessingSource("audio-backup");
+        
+        // Try to find the video file in cache for background upload later
+        let cachedVideoUri: string | null = null;
+        try {
+          const cacheDir = FileSystem.cacheDirectory;
+          if (cacheDir) {
+            const files = await FileSystem.readDirectoryAsync(cacheDir);
+            const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
+            videoFiles.sort().reverse();
+            if (videoFiles.length > 0) {
+              const candidate = `${cacheDir}${videoFiles[0]}`;
+              const fInfo = await FileSystem.getInfoAsync(candidate);
+              if (fInfo.exists && fInfo.size && fInfo.size > 10000) {
+                cachedVideoUri = candidate;
+                console.log("[Video] Found cached video for background upload:", cachedVideoUri);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("[Video] Cache search for background upload failed:", e);
+        }
+        
+        // Mark for background upload (protocolId will be set after protocol is created)
+        if (cachedVideoUri) {
+          pendingVideoUploadRef.current = { videoUri: cachedVideoUri, protocolId: "__pending__" };
+        } else {
+          pendingVideoUploadRef.current = null;
+        }
+        
         await processRecording(audioBackupUri, "audio/m4a");
       } else {
         // Last resort: search cache
@@ -350,6 +436,24 @@ export default function RecordScreen() {
       if (audioBackupUri) {
         console.log("[Video] Fatal error but audio backup available:", audioBackupUri);
         setProcessingSource("audio-backup");
+        
+        // Try to find video in cache for background upload
+        try {
+          const cacheDir = FileSystem.cacheDirectory;
+          if (cacheDir) {
+            const files = await FileSystem.readDirectoryAsync(cacheDir);
+            const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
+            videoFiles.sort().reverse();
+            if (videoFiles.length > 0) {
+              const candidate = `${cacheDir}${videoFiles[0]}`;
+              const fInfo = await FileSystem.getInfoAsync(candidate);
+              if (fInfo.exists && fInfo.size && fInfo.size > 10000) {
+                pendingVideoUploadRef.current = { videoUri: candidate, protocolId: "__pending__" };
+              }
+            }
+          }
+        } catch {}
+        
         await processRecording(audioBackupUri, "audio/m4a");
         return;
       }
@@ -391,6 +495,24 @@ export default function RecordScreen() {
         if (audioUri) {
           console.log("[Video] Timeout fallback: using audio backup:", audioUri);
           setProcessingSource("audio-backup");
+          
+          // Try to find video in cache for background upload
+          try {
+            const cacheDir = FileSystem.cacheDirectory;
+            if (cacheDir) {
+              const files = await FileSystem.readDirectoryAsync(cacheDir);
+              const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
+              videoFiles.sort().reverse();
+              if (videoFiles.length > 0) {
+                const candidate = `${cacheDir}${videoFiles[0]}`;
+                const fInfo = await FileSystem.getInfoAsync(candidate);
+                if (fInfo.exists && fInfo.size && fInfo.size > 10000) {
+                  pendingVideoUploadRef.current = { videoUri: candidate, protocolId: "__pending__" };
+                }
+              }
+            }
+          } catch {}
+          
           await processRecording(audioUri, "audio/m4a");
         } else {
           alert("Video-Verarbeitung fehlgeschlagen. Bitte versuche den Audio-Modus.");
@@ -589,6 +711,9 @@ export default function RecordScreen() {
         status: "ready" as const,
         projectId: lastProjectId || undefined,
         protocolNumber: protocolNumber || undefined,
+        videoUrl: null as string | null,
+        videoUploadedAt: null as string | null,
+        videoUploadPending: pendingVideoUploadRef.current !== null,
       };
       // Link to calendar event if available
       if (currentCalendarEvent && Platform.OS !== "web") {
@@ -617,6 +742,15 @@ export default function RecordScreen() {
       setIsProcessing(false);
       setProcessingSource(null);
       setCapturedPhotos([]);
+      
+      // Start background video upload if pending
+      if (pendingVideoUploadRef.current && pendingVideoUploadRef.current.protocolId === "__pending__") {
+        pendingVideoUploadRef.current.protocolId = newProtocol.id;
+        const { videoUri, protocolId } = pendingVideoUploadRef.current;
+        // Fire and forget - don't await
+        uploadVideoInBackground(videoUri, protocolId);
+      }
+      
       router.push(`/protocol-detail?id=${newProtocol.id}` as any);
     } catch (error) {
       setIsProcessing(false);
@@ -674,6 +808,14 @@ export default function RecordScreen() {
 
       setIsProcessing(false);
       setCapturedPhotos([]);
+      
+      // Start background video upload if pending
+      if (pendingVideoUploadRef.current && pendingVideoUploadRef.current.protocolId === "__pending__") {
+        pendingVideoUploadRef.current.protocolId = newProtocol.id;
+        const { videoUri, protocolId } = pendingVideoUploadRef.current;
+        uploadVideoInBackground(videoUri, protocolId);
+      }
+      
       router.push(
         `/protocol-detail?id=${newProtocol.id}` as any
       );
