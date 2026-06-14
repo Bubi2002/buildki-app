@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import {
@@ -515,26 +516,71 @@ export default function RecordScreen() {
     );
   }
 
-  if (!cameraPermission.granted || !micPermission.granted) {
+  if (mode === "audio" && micPermission && !micPermission.granted) {
+    // Audio mode only needs mic permission - request it
+    requestMicPermission();
+  }
+
+  if (mode !== "audio" && (!cameraPermission.granted || !micPermission.granted)) {
+    const canAskAgain = cameraPermission?.canAskAgain !== false && micPermission?.canAskAgain !== false;
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
+        <MaterialIcons name="videocam-off" size={64} color={colors.muted} style={{ marginBottom: 16 }} />
         <Text className="text-2xl font-bold text-foreground text-center mb-4">
           Berechtigungen erforderlich
         </Text>
         <Text className="text-base text-muted text-center mb-8">
           ProtoKI benötigt Zugriff auf Kamera und Mikrofon, um Videos aufzunehmen und Protokolle zu erstellen.
         </Text>
+        {canAskAgain ? (
+          <Pressable
+            onPress={async () => {
+              await requestCameraPermission();
+              await requestMicPermission();
+            }}
+            style={({ pressed }) => [
+              styles.permissionButton,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            <Text style={styles.permissionButtonText}>Berechtigungen erteilen</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else if (Platform.OS === 'android') {
+                  Linking.openSettings();
+                }
+              }}
+              style={({ pressed }) => [
+                styles.permissionButton,
+                { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Text style={styles.permissionButtonText}>Einstellungen öffnen</Text>
+            </Pressable>
+            <Text className="text-sm text-muted text-center mt-4">
+              Berechtigungen wurden verweigert. Bitte aktiviere Kamera und Mikrofon in den Geräteeinstellungen.
+            </Text>
+          </>
+        )}
+        {/* Allow switching to audio mode even without camera permission */}
         <Pressable
           onPress={async () => {
-            await requestCameraPermission();
-            await requestMicPermission();
+            if (!micPermission?.granted) {
+              await requestMicPermission();
+            }
+            setMode("audio");
           }}
           style={({ pressed }) => [
             styles.permissionButton,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginTop: 16, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <Text style={styles.permissionButtonText}>Berechtigungen erteilen</Text>
+          <Text style={[styles.permissionButtonText, { color: colors.foreground }]}>Nur Audio-Modus nutzen</Text>
         </Pressable>
       </ScreenContainer>
     );
@@ -818,7 +864,7 @@ export default function RecordScreen() {
         ref={cameraRef}
         style={styles.camera}
         facing="back"
-        mode="video"
+        mode={isRecording ? "video" : "picture"}
         active={isFocused}
         onCameraReady={() => setCameraReady(true)}
         onMountError={(e) => console.warn("Camera mount error:", e?.message)}
