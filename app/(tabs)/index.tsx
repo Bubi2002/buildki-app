@@ -28,6 +28,7 @@ import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
+import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
 
 type RecordingMode = "video" | "audio";
 
@@ -236,6 +237,26 @@ export default function RecordScreen() {
     setIsProcessing(true);
 
     try {
+      // Check internet connectivity
+      const online = await isOnline();
+      if (!online) {
+        // Save to offline queue
+        await addToQueue({
+          id: Date.now().toString(),
+          fileUri,
+          mimeType,
+          templateId: selectedTemplate.id,
+          photos: capturedPhotos,
+          duration: recordingDuration,
+          recordingMode: mode,
+          createdAt: new Date().toISOString(),
+        });
+        setIsProcessing(false);
+        setCapturedPhotos([]);
+        alert("Kein Internet – Aufnahme wurde in der Warteschlange gespeichert und wird automatisch verarbeitet, sobald du wieder online bist.");
+        return;
+      }
+
       // Read the file as base64
       const base64 = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,

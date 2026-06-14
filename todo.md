@@ -39,3 +39,11 @@
 - [x] Aufgaben-Übersicht: Alle offenen To-Dos aus allen Protokollen gesammelt anzeigen
 - [x] Automatischer Versand: PDF nach Aufnahme sofort an Standard-Kontakt senden
 - [x] Protokoll-Volltextsuche: Suche über alle gespeicherten Protokolle
+- [x] Offline-Modus: Aufnahmen lokal zwischenspeichern wenn kein Internet
+- [x] Offline-Queue: Automatische Verarbeitung bei Internetverbindung
+- [x] Offline-Status-Anzeige im UI
+- [x] Eigene Vorlagen: Editor-Screen zum Erstellen eigener Protokoll-Strukturen
+- [x] Eigene Vorlagen: Speichern und Laden aus AsyncStorage
+- [x] Eigene Vorlagen: In Vorlagen-Auswahl integrieren
+- [x] Dunkelmodus: Automatischer Wechsel nach Systemeinstellung
+- [x] Dunkelmodus: Manueller Toggle in Einstellungen

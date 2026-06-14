@@ -126,3 +126,26 @@ export function getTemplateById(id: string): ProtocolTemplate {
     PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]
   );
 }
+
+/**
+ * Get all templates including custom ones from AsyncStorage.
+ * Must be called from a React component or async context.
+ */
+export async function getAllTemplates(): Promise<ProtocolTemplate[]> {
+  try {
+    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
+    const stored = await AsyncStorage.getItem("custom-templates");
+    const customTemplates: ProtocolTemplate[] = stored ? JSON.parse(stored) : [];
+    return [...PROTOCOL_TEMPLATES, ...customTemplates];
+  } catch {
+    return PROTOCOL_TEMPLATES;
+  }
+}
+
+/**
+ * Get a template by ID, including custom templates.
+ */
+export async function getTemplateByIdAsync(id: string): Promise<ProtocolTemplate> {
+  const all = await getAllTemplates();
+  return all.find((t) => t.id === id) || PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1];
+}

@@ -16,7 +16,9 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { PROTOCOL_TEMPLATES } from "@/shared/templates";
+import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
+import { useRouter } from "expo-router";
+import { useThemeContext, type ThemeMode } from "@/lib/theme-provider";
 
 type Settings = {
   whatsappNumber: string;
@@ -58,14 +60,40 @@ const DEFAULT_COMPANY: CompanySettings = {
 
 export default function SettingsScreen() {
   const colors = useColors();
+  const router = useRouter();
+  const { themeMode, setThemeMode } = useThemeContext();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
+  const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     loadSettings();
     loadCompanySettings();
+    loadCustomTemplates();
   }, []);
+
+  const loadCustomTemplates = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("custom-templates");
+      if (stored) setCustomTemplates(JSON.parse(stored));
+    } catch (error) {
+      console.error("Error loading custom templates:", error);
+    }
+  };
+
+  const deleteCustomTemplate = async (id: string) => {
+    try {
+      const updated = customTemplates.filter((t) => t.id !== id);
+      await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
+      setCustomTemplates(updated);
+      if (settings.templateId === id) {
+        updateSetting("templateId", "freitext");
+      }
+    } catch (error) {
+      console.error("Error deleting template:", error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -294,6 +322,54 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
             Wähle die Standard-Vorlage für neue Protokolle
           </Text>
+
+          {/* Custom Templates */}
+          {customTemplates.length > 0 && (
+            <View style={[styles.customTemplateSection, { marginBottom: 12 }]}>
+              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>Eigene Vorlagen</Text>
+              {customTemplates.map((template) => (
+                <View key={template.id} style={[styles.customTemplateRow, { borderColor: settings.templateId === template.id ? colors.primary : colors.border, backgroundColor: settings.templateId === template.id ? colors.primary + "15" : colors.surface }]}>
+                  <Pressable
+                    onPress={() => updateSetting("templateId", template.id)}
+                    style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, padding: 12 }}
+                  >
+                    <MaterialIcons name={template.icon as any} size={22} color={settings.templateId === template.id ? colors.primary : colors.muted} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.templateName, { color: settings.templateId === template.id ? colors.primary : colors.foreground }]}>{template.name}</Text>
+                      <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={1}>{template.description}</Text>
+                    </View>
+                    {settings.templateId === template.id && (
+                      <MaterialIcons name="check-circle" size={18} color={colors.primary} />
+                    )}
+                  </Pressable>
+                  <View style={{ flexDirection: "row", gap: 4, paddingRight: 8 }}>
+                    <Pressable onPress={() => router.push(`/template-editor?editId=${template.id}` as any)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
+                      <MaterialIcons name="edit" size={18} color={colors.muted} />
+                    </Pressable>
+                    <Pressable onPress={() => deleteCustomTemplate(template.id)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
+                      <MaterialIcons name="delete" size={18} color={colors.error} />
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Create new template button */}
+          <Pressable
+            onPress={() => router.push("/template-editor" as any)}
+            style={({ pressed }) => [
+              styles.createTemplateButton,
+              { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <MaterialIcons name="add" size={20} color={colors.primary} />
+            <Text style={[styles.createTemplateText, { color: colors.primary }]}>
+              Eigene Vorlage erstellen
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16, marginBottom: 8 }]}>Standard-Vorlagen</Text>
 
           <View style={styles.templateGrid}>
             {PROTOCOL_TEMPLATES.map((template) => (
@@ -664,6 +740,55 @@ export default function SettingsScreen() {
         </View>
 
         {/* Save Button */}
+        {/* Darstellung / Dark Mode */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Darstellung
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Wähle das Erscheinungsbild der App
+          </Text>
+
+          <View style={styles.themeOptions}>
+            {(["system", "light", "dark"] as ThemeMode[]).map((mode) => {
+              const labels = { system: "Automatisch", light: "Hell", dark: "Dunkel" };
+              const icons = { system: "brightness-auto", light: "light-mode", dark: "dark-mode" };
+              const isActive = themeMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => setThemeMode(mode)}
+                  style={({ pressed }) => [
+                    styles.themeOption,
+                    {
+                      backgroundColor: isActive ? colors.primary + "15" : colors.surface,
+                      borderColor: isActive ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={icons[mode] as any}
+                    size={24}
+                    color={isActive ? colors.primary : colors.muted}
+                  />
+                  <Text
+                    style={[
+                      styles.themeOptionText,
+                      { color: isActive ? colors.primary : colors.foreground },
+                    ]}
+                  >
+                    {labels[mode]}
+                  </Text>
+                  {isActive && (
+                    <MaterialIcons name="check-circle" size={16} color={colors.primary} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <Pressable
           onPress={saveSettings}
           style={({ pressed }) => [
@@ -832,6 +957,48 @@ const styles = StyleSheet.create({
   },
   optionButtonText: {
     fontSize: 14,
+    fontWeight: "600",
+  },
+  customTemplateSection: {
+    gap: 8,
+  },
+  customTemplateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  createTemplateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    marginBottom: 8,
+  },
+  createTemplateText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  themeOptions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  themeOption: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  themeOptionText: {
+    fontSize: 13,
     fontWeight: "600",
   },
   autoSendToggle: {
