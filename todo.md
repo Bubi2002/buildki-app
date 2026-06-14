@@ -139,3 +139,6 @@
 - [x] Fix: KRITISCH - Parallele Audio-Aufnahme entfernt (iOS AVAudioSession-Konflikt mit Kamera verhindert gleichzeitige Nutzung)
 - [x] Fix: Video-Modus nutzt jetzt direkt die Video-Datei für Transkription (Whisper extrahiert Audio aus Video)
 - [x] Fix: Größenprüfung: Videos >15 MB werden mit klarer Meldung abgelehnt (Audio-Modus empfohlen, Fotos weiterhin möglich)
+- [x] Feature: Video-Qualität auf 720p reduzieren + maxFileSize 15 MB (stoppt automatisch bei 15 MB)
+- [x] Feature: Audio-Modus als Standard vorausgewählt (zuverlässigster Workflow)
+- [x] Feature: Video-Komprimierung mit expo-image-and-video-compressor (H.264, 480p, 800kbps, ultrafast)

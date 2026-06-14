@@ -71,10 +71,10 @@ export default function RecordScreen() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoFlash, setPhotoFlash] = useState(false);
-  const [mode, setMode] = useState<RecordingMode>("video");
+  const [mode, setMode] = useState<RecordingMode>("audio");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
   const [processingSource, setProcessingSource] = useState<"video" | "audio-backup" | "cache" | "audio" | null>(null);
-  const [processingStep, setProcessingStep] = useState<"upload" | "transcription" | "protocol" | "saving" | "done">("upload");
+  const [processingStep, setProcessingStep] = useState<"compress" | "upload" | "transcription" | "protocol" | "saving" | "done">("upload");
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
@@ -351,7 +351,10 @@ export default function RecordScreen() {
       
       let videoUri: string | null = null;
       try {
-        const video = await cameraRef.current!.recordAsync({ maxDuration: 300 });
+        const video = await cameraRef.current!.recordAsync({
+          maxDuration: 300,
+          maxFileSize: 15 * 1024 * 1024, // 15 MB max - keeps file manageable for upload
+        });
         if (video && video.uri) {
           videoUri = video.uri;
           console.log("[Video] recordAsync resolved with URI:", videoUri);
@@ -612,25 +615,46 @@ export default function RecordScreen() {
       const fileSizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
       console.log("[Recording] File size:", fileSizeMB.toFixed(1), "MB");
 
-      // For large video files (>15MB): We cannot read the entire file into RAM
-      // as base64 (would be ~180MB for a 134MB video, crashing the app).
-      // Solution: For large videos, show an error and suggest audio mode.
-      // The video is still saved locally via pendingVideoUploadRef.
+      // For large video files (>15MB): Compress before uploading
+      // Uses hardware-accelerated H.264 encoding via expo-image-and-video-compressor
+      let processUri = fileUri;
       if (mimeType === "video/mp4" && fileSizeMB > 15) {
-        console.warn("[Recording] Video too large for transcription upload:", fileSizeMB.toFixed(1), "MB");
-        alert(
-          `Das Video ist ${fileSizeMB.toFixed(0)} MB gro\u00df \u2013 zu gro\u00df f\u00fcr die Verarbeitung.\n\n` +
-          `Tipp: Verwende den Audio-Modus (Mikrofon-Icon) f\u00fcr zuverl\u00e4ssige Protokolle. ` +
-          `Du kannst dabei trotzdem Fotos machen!\n\n` +
-          `Das Video wurde lokal gespeichert.`
-        );
-        setIsProcessing(false);
-        setProcessingSource(null);
-        return;
+        console.log("[Recording] Video too large (", fileSizeMB.toFixed(1), "MB), compressing...");
+        setProcessingStep("compress"); // Show compression step in progress UI
+        try {
+          const { compress } = require("expo-image-and-video-compressor");
+          const compressed = await compress(fileUri, {
+            bitrate: 800_000, // 800 kbps - optimized for speech (audio quality matters, video less)
+            maxSize: 480, // 480p is enough for Whisper to extract audio
+            codec: "h264",
+            speed: "ultrafast",
+          }, (progress: number) => {
+            console.log(`[Recording] Compression: ${Math.round(progress * 100)}%`);
+          });
+          const compressedInfo = await FileSystem.getInfoAsync(compressed);
+          const compressedSizeMB = compressedInfo.exists && compressedInfo.size ? compressedInfo.size / (1024 * 1024) : 0;
+          console.log("[Recording] Compressed:", compressedSizeMB.toFixed(1), "MB (from", fileSizeMB.toFixed(1), "MB)");
+          processUri = compressed;
+        } catch (compressErr: any) {
+          console.warn("[Recording] Compression failed:", compressErr?.message);
+          // If compression fails and file is too large, show error
+          if (fileSizeMB > 40) {
+            alert(
+              `Das Video ist ${fileSizeMB.toFixed(0)} MB gro\u00df und konnte nicht komprimiert werden.\n\n` +
+              `Tipp: Verwende den Audio-Modus (Mikrofon-Icon) f\u00fcr zuverl\u00e4ssige Protokolle. ` +
+              `Du kannst dabei trotzdem Fotos machen!`
+            );
+            setIsProcessing(false);
+            setProcessingSource(null);
+            return;
+          }
+          // For files 15-40 MB, try uploading anyway
+          console.log("[Recording] Attempting upload without compression (file is", fileSizeMB.toFixed(1), "MB)");
+        }
       }
 
-      // Read the file as base64
-      const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      // Read the file as base64 (use processUri which may be compressed)
+      const base64 = await FileSystem.readAsStringAsync(processUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
@@ -955,7 +979,8 @@ export default function RecordScreen() {
             : null;
 
     const steps = [
-      { key: "upload", label: "Audio hochladen", icon: "cloud-upload" as const },
+      ...(processingSource === "video" ? [{ key: "compress", label: "Video komprimieren", icon: "compress" as const }] : []),
+      { key: "upload", label: "Datei hochladen", icon: "cloud-upload" as const },
       { key: "transcription", label: "Sprache erkennen", icon: "mic" as const },
       { key: "protocol", label: "Protokoll erstellen", icon: "description" as const },
       { key: "saving", label: "Speichern", icon: "check-circle" as const },
