@@ -45,6 +45,8 @@ export default function RecordScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewProtocol, setPreviewProtocol] = useState<any>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<ProtocolTemplate>(
     PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]
   );
@@ -57,6 +59,7 @@ export default function RecordScreen() {
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [recentProtocols, setRecentProtocols] = useState<any[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Audio recorder
@@ -67,6 +70,17 @@ export default function RecordScreen() {
   const transcribeMutation = trpc.voice.transcribe.useMutation();
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
+
+  // Load recent protocols for quick access
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem("protocols");
+        const all = stored ? JSON.parse(stored) : [];
+        setRecentProtocols(all.filter((p: any) => !p.isArchived).slice(0, 3));
+      } catch {}
+    })();
+  }, [isProcessing]);
 
   // Check onboarding
   useEffect(() => {
@@ -397,6 +411,34 @@ export default function RecordScreen() {
         }
       }
 
+      // Show preview before saving (if feature enabled)
+      const { isFeatureEnabled } = require("@/lib/feature-toggles");
+      const previewEnabled = await isFeatureEnabled("protocolPreview");
+      if (previewEnabled) {
+        setPreviewProtocol({ newProtocol, protocols });
+        setShowPreview(true);
+        setIsProcessing(false);
+        return;
+      }
+      // Skip preview - save directly
+      protocols.unshift(newProtocol);
+      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      setIsProcessing(false);
+      setCapturedPhotos([]);
+      router.push(`/protocol-detail?id=${newProtocol.id}` as any);
+    } catch (error) {
+      setIsProcessing(false);
+      console.error("Processing error:", error);
+      alert("Fehler bei der Verarbeitung. Bitte versuche es erneut.");
+    }
+  };
+
+  const confirmSaveProtocol = async () => {
+    if (!previewProtocol) return;
+    const { newProtocol, protocols } = previewProtocol;
+    setShowPreview(false);
+    setIsProcessing(true);
+    try {
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
@@ -673,6 +715,28 @@ export default function RecordScreen() {
             <Text style={[styles.audioControlHint, { color: colors.muted }]}>
               {isRecording ? "Tippe zum Stoppen" : "Nur Sprache \u2022 Kein Video"}
             </Text>
+
+            {/* Quick access: last 3 protocols */}
+            {!isRecording && recentProtocols.length > 0 && (
+              <View style={{ marginTop: 24, width: "100%", paddingHorizontal: 20 }}>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Letzte Protokolle</Text>
+                {recentProtocols.map((p: any) => (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, marginBottom: 6, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name={p.recordingMode === "audio" ? "mic" : "videocam"} size={16} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>{p.templateName || "Protokoll"}</Text>
+                      <Text style={{ fontSize: 11, color: colors.muted }}>{new Date(p.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</Text>
+                    </View>
+                    {p.protocolNumber && <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>{p.protocolNumber}</Text>}
+                    <MaterialIcons name="chevron-right" size={16} color={colors.muted} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -680,6 +744,59 @@ export default function RecordScreen() {
   }
 
   // --- VIDEO MODE UI ---
+  // Preview Modal
+  if (showPreview && previewProtocol) {
+    const { newProtocol } = previewProtocol;
+    return (
+      <ScreenContainer className="p-4">
+        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Protokoll-Vorschau</Text>
+            <Text style={{ fontSize: 13, color: colors.muted }}>Pr\u00fcfe das generierte Protokoll vor dem Speichern</Text>
+          </View>
+
+          <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{newProtocol.templateName || "Protokoll"}</Text>
+            {newProtocol.protocolNumber && <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 8 }}>{newProtocol.protocolNumber}</Text>}
+            <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 22 }} numberOfLines={30}>{newProtocol.protocol}</Text>
+          </View>
+
+          {newProtocol.todos && newProtocol.todos.length > 0 && (
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Aufgaben ({newProtocol.todos.length})</Text>
+              {newProtocol.todos.slice(0, 5).map((t: any, i: number) => (
+                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.priority === "hoch" ? "#E53935" : t.priority === "mittel" ? "#FF9800" : colors.muted }} />
+                  <Text style={{ fontSize: 13, color: colors.foreground, flex: 1 }} numberOfLines={1}>{t.task}</Text>
+                </View>
+              ))}
+              {newProtocol.todos.length > 5 && <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>+{newProtocol.todos.length - 5} weitere</Text>}
+            </View>
+          )}
+
+          {newProtocol.photos && newProtocol.photos.length > 0 && (
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{newProtocol.photos.length} Foto(s) angeh\u00e4ngt</Text>
+          )}
+        </ScrollView>
+
+        <View style={{ position: "absolute", bottom: 30, left: 16, right: 16, flexDirection: "row", gap: 12 }}>
+          <Pressable
+            onPress={() => { setShowPreview(false); setPreviewProtocol(null); setCapturedPhotos([]); }}
+            style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Verwerfen</Text>
+          </Pressable>
+          <Pressable
+            onPress={confirmSaveProtocol}
+            style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Speichern</Text>
+          </Pressable>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <CameraView

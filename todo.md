@@ -103,3 +103,14 @@
 - [x] Protokoll-Vergleich: Diff-Ansicht zweier Protokolle nebeneinander
 - [x] Offline-Modus: Anzeige des Verbindungsstatus in der App
 - [x] Offline-Modus: Automatische Synchronisation bei Wiederverbindung
+- [x] Mehrere Unterschriften: Rollen-basiert (Auftraggeber, Auftragnehmer, Zeuge)
+- [x] Mehrere Unterschriften: Alle Signaturen im PDF-Export anzeigen
+- [x] Push-Benachrichtigungen: Erinnerung bei ausstehenden Aufgaben/Fristablauf
+- [x] CSV/Excel-Export: Aufgabenliste als CSV exportieren und teilen
+- [x] Aufgaben: Fälligkeitsdatum-Picker mit Kalender-Auswahl
+- [x] Backup: Automatische Backup-Funktion (Export aller Daten als JSON)
+- [x] Backup: Import/Wiederherstellen aus Backup-Datei
+- [x] Protokoll-Vorschau: Vorschau des generierten Protokolls vor dem Speichern
+- [x] Schnellzugriff: Letzte 3 Protokolle auf dem Home-Screen anzeigen
+- [x] Feature-Toggles: Zentraler Bereich in Einstellungen zum Ein-/Ausschalten von Features
+- [x] Feature-Toggles: Deaktivierte Features in der App ausblenden

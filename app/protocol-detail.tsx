@@ -49,6 +49,7 @@ type TodoItem = {
   priority: "hoch" | "mittel" | "niedrig";
   deadline: string;
   done: boolean;
+  dueDate?: string;
 };
 
 type Protocol = {
@@ -104,11 +105,29 @@ export default function ProtocolDetailScreen() {
   const [showSignature, setShowSignature] = useState(false);
   const [signaturePaths, setSignaturePaths] = useState<string[]>([]);
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  // Multi-signature support
+  type SignatureEntry = { role: string; paths: string[]; signedAt: string };
+  const [signatures, setSignatures] = useState<SignatureEntry[]>([]);
+  const [activeSignRole, setActiveSignRole] = useState<string>("");
+  const SIGNATURE_ROLES = ["Auftraggeber", "Auftragnehmer", "Zeuge", "Pr\u00fcfer"];
   const translateMutation = trpc.translate.translateProtocol.useMutation();
+  const [featureFlags, setFeatureFlags] = useState({ photoAnnotation: true, signature: true, multiSignature: false, tags: true });
 
   useEffect(() => {
     loadProtocol();
+    loadFeatureFlags();
   }, [id]);
+
+  const loadFeatureFlags = async () => {
+    const { isFeatureEnabled } = require("@/lib/feature-toggles");
+    const [photoAnnotation, signature, multiSignature, tags] = await Promise.all([
+      isFeatureEnabled("photoAnnotation"),
+      isFeatureEnabled("signature"),
+      isFeatureEnabled("multiSignature"),
+      isFeatureEnabled("tags"),
+    ]);
+    setFeatureFlags({ photoAnnotation, signature, multiSignature, tags });
+  };
 
   const loadProtocol = async () => {
     try {
@@ -125,6 +144,7 @@ export default function ProtocolDetailScreen() {
         setTags(found.tags || []);
         if ((found as any).signaturePaths) setSignaturePaths((found as any).signaturePaths);
         if ((found as any).signatureData) setSignatureData((found as any).signatureData);
+        if ((found as any).signatures) setSignatures((found as any).signatures);
       }
     } catch (error) {
       console.error("Error loading protocol:", error);
@@ -238,6 +258,7 @@ export default function ProtocolDetailScreen() {
         weather: protocol.weather,
         protocolNumber: protocol.protocolNumber,
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
+        signatures: signatures.length > 0 ? signatures : undefined,
       });
 
       // Share the PDF
@@ -281,6 +302,7 @@ export default function ProtocolDetailScreen() {
         weather: protocol.weather,
         protocolNumber: protocol.protocolNumber,
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
+        signatures: signatures.length > 0 ? signatures : undefined,
       });
 
       // Use native share sheet with PDF - user can pick WhatsApp
@@ -588,7 +610,7 @@ export default function ProtocolDetailScreen() {
                       <Text style={styles.photoIndexText}>{index + 1}</Text>
                     </View>
                   </Pressable>
-                  <Pressable
+                  {featureFlags.photoAnnotation && <Pressable
                     onPress={() => router.push(`/photo-annotate?photoUri=${encodeURIComponent(photoUri)}&protocolId=${protocol.id}&photoIndex=${index}` as any)}
                     style={({ pressed }) => [{
                       position: 'absolute',
@@ -601,7 +623,7 @@ export default function ProtocolDetailScreen() {
                     }]}
                   >
                     <MaterialIcons name="edit" size={14} color="#FFFFFF" />
-                  </Pressable>
+                  </Pressable>}
                 </View>
               ))}
             </View>
@@ -624,6 +646,50 @@ export default function ProtocolDetailScreen() {
               <Pressable
                 key={index}
                 onPress={() => toggleTodo(index)}
+                onLongPress={() => {
+                  if (Platform.OS === "web") {
+                    const input = prompt("F\u00e4lligkeitsdatum (TT.MM.JJJJ):", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
+                    if (input) {
+                      const parts = input.split(".");
+                      if (parts.length === 3) {
+                        const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                        if (!isNaN(date.getTime())) {
+                          const updated = [...todos];
+                          updated[index] = { ...updated[index], dueDate: date.toISOString() };
+                          setTodos(updated);
+                          (async () => {
+                            try {
+                              const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+                              const pidx = protocols.findIndex((p: any) => p.id === id);
+                              if (pidx !== -1) { protocols[pidx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
+                            } catch { /* ignore */ }
+                          })();
+                        }
+                      }
+                    }
+                  } else {
+                    Alert.prompt ? Alert.prompt("F\u00e4lligkeitsdatum", "Format: TT.MM.JJJJ", (input) => {
+                      if (input) {
+                        const parts = input.split(".");
+                        if (parts.length === 3) {
+                          const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                          if (!isNaN(date.getTime())) {
+                            const updated = [...todos];
+                            updated[index] = { ...updated[index], dueDate: date.toISOString() };
+                            setTodos(updated);
+                            (async () => {
+                              try {
+                                const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+                                const pidx = protocols.findIndex((p: any) => p.id === id);
+                                if (pidx !== -1) { protocols[pidx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
+                              } catch { /* ignore */ }
+                            })();
+                          }
+                        }
+                      }
+                    }, "plain-text", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "") : Alert.alert("Hinweis", "Halte eine Aufgabe gedr\u00fcckt um ein F\u00e4lligkeitsdatum zu setzen.");
+                  }
+                }}
                 style={({ pressed }) => [
                   styles.todoItem,
                   { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
@@ -652,6 +718,14 @@ export default function ProtocolDetailScreen() {
                       <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
                         <MaterialIcons name="schedule" size={12} color={colors.muted} />
                         <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.deadline}</Text>
+                      </View>
+                    )}
+                    {todo.dueDate && (
+                      <View style={[styles.todoBadge, { backgroundColor: new Date(todo.dueDate) < new Date() && !todo.done ? "#E5393520" : colors.surface }]}>
+                        <MaterialIcons name="event" size={12} color={new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted} />
+                        <Text style={[styles.todoBadgeText, { color: new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted }]}>
+                          {new Date(todo.dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -713,77 +787,104 @@ export default function ProtocolDetailScreen() {
           )}
         </View>
 
-        {/* Digital Signature */}
-        <View style={[styles.section, { marginTop: 0 }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <MaterialIcons name="draw" size={18} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Unterschrift</Text>
-            </View>
-            {signatureData && (
+        {/* Digital Signatures (Multi-Role) */}
+        {(featureFlags.signature || featureFlags.multiSignature) && <View style={[styles.section, { marginTop: 0 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <MaterialIcons name="draw" size={18} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Unterschriften</Text>
+          </View>
+
+          {/* Existing signatures */}
+          {signatures.map((sig, idx) => (
+            <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, marginBottom: 8 }}>
+              <MaterialIcons name="verified" size={18} color={colors.success} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{sig.role}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted }}>{sig.signedAt}</Text>
+              </View>
               <Pressable
                 onPress={() => {
-                  setSignatureData(null);
-                  setSignaturePaths([]);
+                  const updated = signatures.filter((_, i) => i !== idx);
+                  setSignatures(updated);
                   (async () => {
                     try {
                       const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
-                      const idx = protocols.findIndex((p: any) => p.id === id);
-                      if (idx !== -1) {
-                        delete protocols[idx].signaturePaths;
-                        delete protocols[idx].signatureData;
+                      const pidx = protocols.findIndex((p: any) => p.id === id);
+                      if (pidx !== -1) {
+                        protocols[pidx].signatures = updated;
                         await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
                       }
                     } catch { /* ignore */ }
                   })();
                 }}
-                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 4 }]}
               >
-                <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                <MaterialIcons name="close" size={16} color={colors.error} />
               </Pressable>
-            )}
-          </View>
+            </View>
+          ))}
+
+          {/* Active signing pad */}
           {showSignature ? (
-            <SignaturePad
-              initialPaths={signaturePaths}
-              onSave={(paths) => {
-                setSignaturePaths(paths);
-                const sig = `Unterzeichnet am ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
-                setSignatureData(sig);
-                setShowSignature(false);
-                // Persist signature
-                (async () => {
-                  try {
-                    const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
-                    const idx = protocols.findIndex((p: any) => p.id === id);
-                    if (idx !== -1) {
-                      protocols[idx].signaturePaths = paths;
-                      protocols[idx].signatureData = sig;
-                      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
-                    }
-                  } catch { /* ignore */ }
-                })();
-              }}
-              onCancel={() => setShowSignature(false)}
-            />
-          ) : signatureData ? (
-            <Pressable
-              onPress={() => setShowSignature(true)}
-              style={({ pressed }) => [{ alignItems: "center", padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={{ fontSize: 13, color: colors.success, fontWeight: "500" }}>✓ Unterschrift gespeichert</Text>
-              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Tippen zum Bearbeiten • Wird im PDF angezeigt</Text>
-            </Pressable>
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary, marginBottom: 8 }}>Rolle: {activeSignRole}</Text>
+              <SignaturePad
+                initialPaths={[]}
+                onSave={(paths) => {
+                  const signedAt = `${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
+                  const newEntry = { role: activeSignRole, paths, signedAt };
+                  const updated = [...signatures, newEntry];
+                  setSignatures(updated);
+                  setShowSignature(false);
+                  // Also keep legacy fields for backward compat
+                  if (!signaturePaths.length) {
+                    setSignaturePaths(paths);
+                    setSignatureData(`Unterzeichnet am ${signedAt}`);
+                  }
+                  (async () => {
+                    try {
+                      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+                      const pidx = protocols.findIndex((p: any) => p.id === id);
+                      if (pidx !== -1) {
+                        protocols[pidx].signatures = updated;
+                        protocols[pidx].signaturePaths = protocols[pidx].signaturePaths || paths;
+                        protocols[pidx].signatureData = protocols[pidx].signatureData || `Unterzeichnet am ${signedAt}`;
+                        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+                      }
+                    } catch { /* ignore */ }
+                  })();
+                }}
+                onCancel={() => setShowSignature(false)}
+              />
+            </View>
           ) : (
-            <Pressable
-              onPress={() => setShowSignature(true)}
-              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, borderStyle: "dashed", opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="draw" size={24} color={colors.muted} />
-              <Text style={{ fontSize: 14, color: colors.muted }}>Tippen zum Unterschreiben</Text>
-            </Pressable>
+            <View>
+              {/* Role selection chips */}
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>Rolle wählen und unterschreiben:</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {SIGNATURE_ROLES.filter(role => !signatures.find(s => s.role === role)).map((role) => (
+                  <Pressable
+                    key={role}
+                    onPress={() => {
+                      setActiveSignRole(role);
+                      setShowSignature(true);
+                    }}
+                    style={({ pressed }) => [{
+                      flexDirection: "row", alignItems: "center", gap: 6,
+                      paddingHorizontal: 14, paddingVertical: 10,
+                      backgroundColor: colors.surface, borderRadius: 20,
+                      borderWidth: 1, borderColor: colors.border, borderStyle: "dashed",
+                      opacity: pressed ? 0.7 : 1,
+                    }]}
+                  >
+                    <MaterialIcons name="draw" size={16} color={colors.muted} />
+                    <Text style={{ fontSize: 13, color: colors.foreground }}>{role}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           )}
-        </View>
+        </View>}
 
         {/* Translation section */}
         <View style={[styles.section, { marginTop: 0 }]}>

@@ -111,11 +111,17 @@ export default function RootLayout() {
   const [frame, setFrame] = useState<Rect>(initialFrame);
   const [isLocked, setIsLocked] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState('Biometrie');
+  const [offlineModeEnabled, setOfflineModeEnabled] = useState(true);
   const backgroundTimeRef = useRef<number | null>(null);
 
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
+    // Load feature toggles
+    (async () => {
+      const { isFeatureEnabled } = require("@/lib/feature-toggles");
+      setOfflineModeEnabled(await isFeatureEnabled("offlineMode"));
+    })();
   }, []);
 
   // Biometric lock on app start
@@ -208,7 +214,7 @@ export default function RootLayout() {
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="oauth/callback" />
           </Stack>
-          <NetworkBanner />
+          {offlineModeEnabled && <NetworkBanner />}
           <StatusBar style="auto" />
         </QueryClientProvider>
       </trpc.Provider>

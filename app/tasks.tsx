@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { exportTasksAsCSV } from "@/lib/csv-export";
 
 type TodoItem = {
   task: string;
@@ -38,10 +39,15 @@ export default function TasksScreen() {
   const [allTodos, setAllTodos] = useState<ProtocolTodo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("open");
+  const [csvEnabled, setCsvEnabled] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       loadAllTodos();
+      (async () => {
+        const { isFeatureEnabled } = require("@/lib/feature-toggles");
+        setCsvEnabled(await isFeatureEnabled("csvExport"));
+      })();
     }, [])
   );
 
@@ -243,7 +249,9 @@ export default function TasksScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           Aufgaben
         </Text>
-        <View style={styles.backBtn} />
+        {csvEnabled && <Pressable onPress={exportTasksAsCSV} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}>
+          <MaterialIcons name="file-download" size={22} color={colors.primary} />
+        </Pressable>}
       </View>
 
       {/* Stats */}

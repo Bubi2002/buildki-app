@@ -46,14 +46,26 @@ export default function ProtocolsScreen() {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [featureFlags, setFeatureFlags] = useState({ protocolCompare: false, csvExport: true, statistics: true });
 
   useFocusEffect(
     useCallback(() => {
       loadProtocols();
+      loadFeatureFlags();
       setBatchMode(false);
       setSelectedIds(new Set());
     }, [])
   );
+
+  const loadFeatureFlags = async () => {
+    const { isFeatureEnabled } = require("@/lib/feature-toggles");
+    const [protocolCompare, csvExport, statistics] = await Promise.all([
+      isFeatureEnabled("protocolCompare"),
+      isFeatureEnabled("csvExport"),
+      isFeatureEnabled("statistics"),
+    ]);
+    setFeatureFlags({ protocolCompare, csvExport, statistics });
+  };
 
   const loadProtocols = async () => {
     try {
@@ -449,12 +461,12 @@ export default function ProtocolsScreen() {
           </View>
           <View style={styles.headerActions}>
             {/* Dashboard */}
-            <Pressable
+            {featureFlags.statistics && <Pressable
               onPress={() => router.push("/dashboard" as any)}
               style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="bar-chart" size={20} color={colors.primary} />
-            </Pressable>
+            </Pressable>}
             {/* Quick Note */}
             <Pressable
               onPress={() => router.push("/quick-note" as any)}
@@ -482,12 +494,12 @@ export default function ProtocolsScreen() {
               )}
             </Pressable>
             {/* Compare */}
-            <Pressable
+            {featureFlags.protocolCompare && <Pressable
               onPress={() => router.push("/protocol-compare" as any)}
               style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="compare-arrows" size={20} color={colors.primary} />
-            </Pressable>
+            </Pressable>}
             {/* Search */}
             <Pressable
               onPress={() => setShowSearch(!showSearch)}

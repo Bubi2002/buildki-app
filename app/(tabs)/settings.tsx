@@ -378,6 +378,263 @@ const wmStyles = StyleSheet.create({
   input: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, borderWidth: 1 },
 });
 
+function TaskReminderSection({ colors }: { colors: any }) {
+  const [enabled, setEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(9);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const data = await AsyncStorage.getItem("task-reminder-settings");
+      if (data) {
+        const s = JSON.parse(data);
+        setEnabled(s.enabled ?? false);
+        setReminderHour(s.reminderHour ?? 9);
+      }
+      // Check permission status
+      if (Platform.OS !== "web") {
+        const Notif = require("expo-notifications");
+        const { status } = await Notif.getPermissionsAsync();
+        setPermissionGranted(status === "granted");
+      }
+    } catch { /* ignore */ }
+  };
+
+  const toggleEnabled = async (val: boolean) => {
+    setEnabled(val);
+    if (val && Platform.OS !== "web") {
+      const Notif = require("expo-notifications");
+      const { status } = await Notif.requestPermissionsAsync();
+      setPermissionGranted(status === "granted");
+      if (status !== "granted") {
+        Alert.alert("Berechtigung verweigert", "Bitte erlaube Benachrichtigungen in den Systemeinstellungen.");
+        setEnabled(false);
+        return;
+      }
+    }
+    const settings = { enabled: val, reminderHour, reminderMinute: 0, daysBeforeDue: 1 };
+    await AsyncStorage.setItem("task-reminder-settings", JSON.stringify(settings));
+    if (val && Platform.OS !== "web") {
+      const { scheduleTaskReminders } = require("@/lib/task-reminders");
+      await scheduleTaskReminders();
+    }
+  };
+
+  const changeHour = async (hour: number) => {
+    setReminderHour(hour);
+    const settings = { enabled, reminderHour: hour, reminderMinute: 0, daysBeforeDue: 1 };
+    await AsyncStorage.setItem("task-reminder-settings", JSON.stringify(settings));
+    if (enabled && Platform.OS !== "web") {
+      const { scheduleTaskReminders } = require("@/lib/task-reminders");
+      await scheduleTaskReminders();
+    }
+  };
+
+  return (
+    <View style={{ marginBottom: 28 }}>
+      <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Aufgaben-Erinnerungen</Text>
+      <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Benachrichtigungen bei f\u00e4lligen Aufgaben</Text>
+
+      <Pressable
+        onPress={() => toggleEnabled(!enabled)}
+        style={({ pressed }) => [{
+          flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+          padding: 14, borderRadius: 12, borderWidth: 1,
+          backgroundColor: colors.surface, borderColor: colors.border,
+          opacity: pressed ? 0.7 : 1,
+        }]}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <MaterialIcons name="notifications" size={20} color={enabled ? colors.primary : colors.muted} />
+          <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>Erinnerungen aktiv</Text>
+        </View>
+        <View style={[{ width: 44, height: 26, borderRadius: 13, justifyContent: "center" }, { backgroundColor: enabled ? colors.primary : colors.border }]}>
+          <View style={[{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#FFFFFF" }, { marginLeft: enabled ? 20 : 2 }]} />
+        </View>
+      </Pressable>
+
+      {enabled && (
+        <View style={{ marginTop: 12 }}>
+          <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Erinnerungszeit:</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {[7, 8, 9, 10, 12, 14, 17].map((h) => (
+              <Pressable
+                key={h}
+                onPress={() => changeHour(h)}
+                style={({ pressed }) => [{
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
+                  backgroundColor: reminderHour === h ? colors.primary : colors.surface,
+                  borderWidth: 1, borderColor: reminderHour === h ? colors.primary : colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <Text style={{ fontSize: 13, color: reminderHour === h ? "#fff" : colors.foreground }}>{h}:00</Text>
+              </Pressable>
+            ))}
+          </View>
+          {Platform.OS !== "web" && !permissionGranted && (
+            <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>\u26a0\ufe0f Benachrichtigungs-Berechtigung noch nicht erteilt</Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function FeatureTogglesSection({ colors }: { colors: any }) {
+  const [toggles, setToggles] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    loadToggles();
+  }, []);
+
+  const loadToggles = async () => {
+    const { getFeatureToggles } = require("@/lib/feature-toggles");
+    const t = await getFeatureToggles();
+    setToggles([...t]);
+  };
+
+  const handleToggle = async (key: string, enabled: boolean) => {
+    const { setFeatureEnabled } = require("@/lib/feature-toggles");
+    await setFeatureEnabled(key, enabled);
+    await loadToggles();
+  };
+
+  // Group by category
+  const grouped: Record<string, any[]> = {};
+  for (const t of toggles) {
+    if (!grouped[t.category]) grouped[t.category] = [];
+    grouped[t.category].push(t);
+  }
+
+  const enabledCount = toggles.filter(t => t.enabled).length;
+
+  return (
+    <View style={{ marginBottom: 28 }}>
+      <Pressable
+        onPress={() => setExpanded(!expanded)}
+        style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Features verwalten</Text>
+          <Text style={{ fontSize: 13, color: colors.muted }}>{enabledCount} von {toggles.length} aktiv</Text>
+        </View>
+        <MaterialIcons name={expanded ? "expand-less" : "expand-more"} size={24} color={colors.muted} />
+      </Pressable>
+
+      {expanded && (
+        <View style={{ marginTop: 16 }}>
+          {Object.entries(grouped).map(([category, items]) => (
+            <View key={category} style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{category}</Text>
+              {items.map((toggle: any) => (
+                <Pressable
+                  key={toggle.key}
+                  onPress={() => handleToggle(toggle.key, !toggle.enabled)}
+                  style={({ pressed }) => [{
+                    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+                    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, marginBottom: 4,
+                    backgroundColor: toggle.enabled ? colors.surface : "transparent",
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>{toggle.label}</Text>
+                    <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{toggle.description}</Text>
+                  </View>
+                  <View style={[{ width: 44, height: 26, borderRadius: 13, justifyContent: "center" }, { backgroundColor: toggle.enabled ? colors.primary : colors.border }]}>
+                    <View style={[{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#FFFFFF" }, { marginLeft: toggle.enabled ? 20 : 2 }]} />
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ))}
+          <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 4 }}>Deaktivierte Features werden in der App ausgeblendet</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function BackupSection({ colors }: { colors: any }) {
+  const [stats, setStats] = useState({ protocolCount: 0, projectCount: 0, totalSize: "0 KB" });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    const { getBackupStats } = require("@/lib/backup");
+    const s = await getBackupStats();
+    setStats(s);
+  };
+
+  const handleBackup = async () => {
+    setLoading(true);
+    try {
+      const { createBackup } = require("@/lib/backup");
+      await createBackup();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setLoading(true);
+    try {
+      const { restoreBackup } = require("@/lib/backup");
+      await restoreBackup();
+      await loadStats();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={{ marginBottom: 28 }}>
+      <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Datensicherung</Text>
+      <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
+        {stats.protocolCount} Protokolle, {stats.projectCount} Projekte ({stats.totalSize})
+      </Text>
+
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <Pressable
+          onPress={handleBackup}
+          disabled={loading}
+          style={({ pressed }) => [{
+            flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+            paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary,
+            opacity: pressed || loading ? 0.7 : 1,
+          }]}
+        >
+          <MaterialIcons name="backup" size={18} color="#fff" />
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>Backup</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleRestore}
+          disabled={loading}
+          style={({ pressed }) => [{
+            flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+            paddingVertical: 12, borderRadius: 12, borderWidth: 1,
+            borderColor: colors.border, backgroundColor: colors.surface,
+            opacity: pressed || loading ? 0.7 : 1,
+          }]}
+        >
+          <MaterialIcons name="restore" size={18} color={colors.foreground} />
+          <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Wiederherstellen</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -1240,6 +1497,12 @@ export default function SettingsScreen() {
         {/* Text-Vorlagen für Annotation */}
         <AnnotationTemplatesSection colors={colors} />
 
+        {/* Aufgaben-Erinnerungen */}
+        <TaskReminderSection colors={colors} />
+
+        {/* Backup */}
+        <BackupSection colors={colors} />
+
         {/* Darstellung / Dark Mode */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -1288,6 +1551,9 @@ export default function SettingsScreen() {
             })}
           </View>
         </View>
+
+        {/* Feature-Toggles */}
+        <FeatureTogglesSection colors={colors} />
 
         <Pressable
           onPress={saveSettings}

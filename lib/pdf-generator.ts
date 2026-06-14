@@ -27,6 +27,7 @@ type PdfProtocol = {
   weather?: string | null;
   protocolNumber?: string;
   signaturePaths?: string[];
+  signatures?: { role: string; paths: string[]; signedAt: string }[];
 };
 
 type CompanySettings = {
@@ -344,7 +345,22 @@ function generatePdfHtml(
 
   ${photosHtml}
 
-  ${protocol.signaturePaths && protocol.signaturePaths.length > 0 ? `
+  ${protocol.signatures && protocol.signatures.length > 0 ? `
+  <div style="margin-top: 30px; page-break-inside: avoid;">
+    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Unterschriften</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+      ${protocol.signatures.map(sig => `
+        <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa;">
+          <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 6px;">${sig.role}</div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="250" height="100" viewBox="0 0 340 200" style="max-width: 100%; border-bottom: 1px solid #ddd;">
+            ${sig.paths.map(d => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join('\n            ')}
+          </svg>
+          <div style="font-size: 10px; color: #888; margin-top: 6px;">${sig.signedAt}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+  ` : protocol.signaturePaths && protocol.signaturePaths.length > 0 ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">
     <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Unterschrift</h3>
     <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa; display: inline-block;">
