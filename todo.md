@@ -189,3 +189,6 @@
 - [x] Feature: Foto-Galerie im Projekt (Grid-Ansicht aller Fotos, filterbar nach Datum)
 - [x] Feature: Push-Benachrichtigungen für offene Mängel und ausstehende Checklisten
 - [x] UX: Dark Mode Feintuning für alle neuen Screens
+- [x] Feature: Offline-Modus Indikator mit automatischer Sync-Queue
+- [x] Feature: Anpassbare Protokoll-Vorlagen (eigene erstellen/bearbeiten)
+- [x] Feature: Mehrsprachigkeit (DE/EN/FR) für internationale Baustellen
