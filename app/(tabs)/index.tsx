@@ -548,6 +548,7 @@ export default function RecordScreen() {
         status: "processing" as const,
         processingStep: "uploading" as string,
         projectId: activeProjectId || undefined,
+        projectName: selectedProject?.name || undefined,
         protocolNumber: protocolNumber || undefined,
 
       };
@@ -645,6 +646,7 @@ export default function RecordScreen() {
             duration: newProtocol.duration,
             createdAt: newProtocol.createdAt,
             protocolNumber: newProtocol.protocolNumber,
+            projectName: selectedProject?.name || undefined,
           });
 
           const { uri: pdfUri } = await Print.printToFileAsync({
