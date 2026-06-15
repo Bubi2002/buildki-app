@@ -204,3 +204,7 @@
 - [x] Feature: Cloud-Import nachträglich im laufenden Projekt nutzbar (Pläne, Dokumente, Fotos)
 - [x] UX: Aktives Projekt oben im Aufnahme-Screen anzeigen (Name + Farbmarkierung)
 - [x] UX: Kamera-Zoom per +/- Buttons im Audio+Foto Modus
+- [x] Feature: PDF-Vorschau vor Export anzeigen
+- [x] UX: Projektfarbe als Akzentlinie im PDF (statt immer rot)
+- [x] UX: Foto-Beschriftung im PDF mit Zeitstempel statt "Foto 1/2/3"
+- [x] UX: Kamera-Zoom 0.5x (Ultraweitwinkel) + Presets (0.5x/1x/2x/5x)

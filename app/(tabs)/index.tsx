@@ -1458,12 +1458,24 @@ export default function RecordScreen() {
         {/* Zoom slider */}
         {!isRecording && (
           <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
-            <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, paddingVertical: 12, paddingHorizontal: 6, alignItems: "center", gap: 6 }}>
-              <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.1))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
+            <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4 }}>
+              <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
                 <MaterialIcons name="add" size={18} color="#FFFFFF" />
               </Pressable>
-              <Text style={{ fontSize: 10, color: "#FFFFFF", fontWeight: "700" }}>{(1 + cameraZoom * 9).toFixed(1)}x</Text>
-              <Pressable onPress={() => setCameraZoom(Math.max(0, cameraZoom - 0.1))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
+              {[{ label: "5x", value: 0.44 }, { label: "2x", value: 0.11 }, { label: "1x", value: 0 }, { label: "0.5x", value: -0.05 }].map((preset) => (
+                <Pressable
+                  key={preset.label}
+                  onPress={() => setCameraZoom(Math.max(0, preset.value))}
+                  style={({ pressed }) => [{
+                    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 10,
+                    backgroundColor: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "rgba(255,255,255,0.3)" : "transparent",
+                    opacity: pressed ? 0.5 : 1,
+                  }]}
+                >
+                  <Text style={{ fontSize: 9, color: "#FFFFFF", fontWeight: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "800" : "500" }}>{preset.label}</Text>
+                </Pressable>
+              ))}
+              <Pressable onPress={() => setCameraZoom(Math.max(0, cameraZoom - 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
                 <MaterialIcons name="remove" size={18} color="#FFFFFF" />
               </Pressable>
             </View>

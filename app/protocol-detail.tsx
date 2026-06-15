@@ -116,6 +116,8 @@ export default function ProtocolDetailScreen() {
   const SIGNATURE_ROLES = ["Auftraggeber", "Auftragnehmer", "Zeuge", "Pr\u00fcfer"];
   const translateMutation = trpc.translate.translateProtocol.useMutation();
   const [featureFlags, setFeatureFlags] = useState({ photoAnnotation: true, signature: true, multiSignature: false, tags: true });
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [previewPdfUri, setPreviewPdfUri] = useState<string | null>(null);
 
   useEffect(() => {
     loadProtocol();
@@ -265,6 +267,7 @@ export default function ProtocolDetailScreen() {
         protocol: protocol.protocol,
         templateName: protocol.templateName,
         photos: protocol.photos,
+        photoTimestamps: (protocol as any).photoTimestamps || undefined,
         todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
@@ -272,30 +275,37 @@ export default function ProtocolDetailScreen() {
         weather: protocol.weather,
         protocolNumber: protocol.protocolNumber,
         projectName: protocol.projectName || undefined,
+        projectColor: (protocol as any).projectColor || undefined,
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
         signatures: signatures.length > 0 ? signatures : undefined,
       });
 
-      // Share the PDF
-      if (Platform.OS === "web") {
-        Alert.alert("PDF erstellt", "PDF-Export ist nur auf dem Handy verfügbar.");
-      } else {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(pdfUri, {
-            mimeType: "application/pdf",
-            dialogTitle: `${protocol.templateName || "Protokoll"} als PDF teilen`,
-            UTI: "com.adobe.pdf",
-          });
-        } else {
-          Alert.alert("Fehler", "Teilen ist auf diesem Gerät nicht verfügbar.");
-        }
-      }
+      // Show PDF preview first
+      setPreviewPdfUri(pdfUri);
+      setShowPdfPreview(true);
     } catch (error) {
       console.error("PDF export error:", error);
       Alert.alert("Fehler", "PDF konnte nicht erstellt werden. Bitte versuche es erneut.");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const sharePdfFromPreview = async () => {
+    if (!previewPdfUri || !protocol) return;
+    if (Platform.OS === "web") {
+      Alert.alert("PDF erstellt", "PDF-Export ist nur auf dem Handy verfügbar.");
+      return;
+    }
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (isAvailable) {
+      await Sharing.shareAsync(previewPdfUri, {
+        mimeType: "application/pdf",
+        dialogTitle: `${protocol.templateName || "Protokoll"} als PDF teilen`,
+        UTI: "com.adobe.pdf",
+      });
+    } else {
+      Alert.alert("Fehler", "Teilen ist auf diesem Gerät nicht verfügbar.");
     }
   };
 
@@ -1147,6 +1157,64 @@ export default function ProtocolDetailScreen() {
             )}
           </View>
         </Pressable>
+      </Modal>
+
+      {/* PDF Preview Modal */}
+      <Modal
+        visible={showPdfPreview}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPdfPreview(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <Pressable onPress={() => setShowPdfPreview(false)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+              <Text style={{ fontSize: 16, color: colors.primary }}>Schlie\u00dfen</Text>
+            </Pressable>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>PDF-Vorschau</Text>
+            <Pressable onPress={sharePdfFromPreview} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
+              <MaterialIcons name="share" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 16, color: colors.primary }}>Teilen</Text>
+            </Pressable>
+          </View>
+          {previewPdfUri && Platform.OS !== "web" ? (
+            <View style={{ flex: 1, padding: 8 }}>
+              <Image
+                source={{ uri: previewPdfUri }}
+                style={{ flex: 1, borderRadius: 8 }}
+                contentFit="contain"
+              />
+              <View style={{ paddingVertical: 12, gap: 8 }}>
+                <Pressable
+                  onPress={sharePdfFromPreview}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="share" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowPdfPreview(false)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zur\u00fcck</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
+              <MaterialIcons name="picture-as-pdf" size={64} color={colors.primary} />
+              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>PDF erstellt</Text>
+              <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8, textAlign: "center" }}>Tippe auf \"Teilen\" um das PDF zu versenden.</Text>
+              <Pressable
+                onPress={sharePdfFromPreview}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 24, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <MaterialIcons name="share" size={20} color="#FFFFFF" />
+                <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </Modal>
     </ScreenContainer>
   );

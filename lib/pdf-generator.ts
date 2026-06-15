@@ -15,6 +15,7 @@ type PdfProtocol = {
   protocol: string;
   templateName?: string;
   photos?: string[];
+  photoTimestamps?: number[]; // seconds since recording start for each photo
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
@@ -27,6 +28,7 @@ type PdfProtocol = {
   weather?: string | null;
   protocolNumber?: string;
   projectName?: string;
+  projectColor?: string; // hex color for accent line
   planData?: {
     planImageUri: string;
     planName: string;
@@ -103,7 +105,8 @@ function generatePdfHtml(
   protocol: PdfProtocol,
   company: CompanySettings,
   photoDataUris: string[],
-  planImageBase64?: string | null
+  planImageBase64?: string | null,
+  accentColor?: string
 ): string {
   const todos = protocol.todos || [];
   const date = new Date(protocol.createdAt).toLocaleDateString("de-DE", {
@@ -163,7 +166,7 @@ function generatePdfHtml(
             (uri, i) => `
           <div style="width: 48%; margin-bottom: 12px;">
             <img src="${uri}" style="width: 100%; max-height: 220px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
-            <p style="font-size: 9px; color: #888; margin-top: 4px; text-align: center;">Foto ${i + 1}</p>
+            <p style="font-size: 9px; color: #888; margin-top: 4px; text-align: center;">${protocol.photoTimestamps && protocol.photoTimestamps[i] != null ? `Foto ${i + 1} – ${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.` : `Foto ${i + 1}`}</p>
           </div>
         `
           )
@@ -242,7 +245,7 @@ function generatePdfHtml(
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid #E53935;
+      border-bottom: 2px solid ${accentColor || protocol.projectColor || '#0a7ea4'};
       padding-bottom: 12px;
       margin-bottom: 20px;
     }
@@ -462,8 +465,18 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     planImageBase64 = await fileToBase64DataUri(protocol.planData.planImageUri);
   }
 
+  // Load PDF branding accent color
+  let accentColor: string | undefined;
+  try {
+    const brandingStr = await AsyncStorage.getItem("pdf-branding");
+    if (brandingStr) {
+      const branding = JSON.parse(brandingStr);
+      if (branding.accentColor) accentColor = branding.accentColor;
+    }
+  } catch {}
+
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64);
+  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor);
 
   // Generate PDF
   const { uri } = await Print.printToFileAsync({
