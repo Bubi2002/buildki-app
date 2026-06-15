@@ -358,6 +358,20 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="photo-library" size={20} color={"#E91E63"} />
             <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Fotos</Text>
           </Pressable>
+          <Pressable
+            onPress={() => router.push(`/qr-scanner?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="qr-code-scanner" size={20} color={"#00BCD4"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>QR-Scan</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/time-tracking?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="timer" size={20} color={"#FF5722"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Zeit</Text>
+          </Pressable>
         </View>
 
         {/* Stats */}

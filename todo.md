@@ -192,3 +192,6 @@
 - [x] Feature: Offline-Modus Indikator mit automatischer Sync-Queue
 - [x] Feature: Anpassbare Protokoll-Vorlagen (eigene erstellen/bearbeiten)
 - [x] Feature: Mehrsprachigkeit (DE/EN/FR) für internationale Baustellen
+- [x] Feature: QR-Code Scanner (Bauteile/Materialien per QR-Code scannen und Protokoll zuordnen)
+- [x] Feature: Zeiterfassung mit Start/Stopp-Timer pro Projekt/Tag
+- [x] Feature: PDF-Branding (Firmenlogo, Kopf-/Fußzeile in exportierten PDFs)
