@@ -10,6 +10,9 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
+  Image as RNImage,
+  Platform,
+  Animated,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -17,7 +20,6 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import { Platform, Image as RNImage } from "react-native";
 import {
   FloorPlan,
   PlanPin,
@@ -29,7 +31,21 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const PIN_COLORS: Record<PlanPin["type"], string> = {
+  photo: "#2196F3",
+  defect: "#F44336",
+  note: "#FF9800",
+  protocol: "#4CAF50",
+};
+
+const PIN_ICONS: Record<PlanPin["type"], string> = {
+  photo: "photo-camera",
+  defect: "report-problem",
+  note: "edit-note",
+  protocol: "description",
+};
 
 export default function FloorPlanScreen() {
   const colors = useColors();
@@ -41,11 +57,17 @@ export default function FloorPlanScreen() {
   const [selectedPlan, setSelectedPlan] = useState<FloorPlan | null>(null);
   const [pins, setPins] = useState<PlanPin[]>([]);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showPlanNameModal, setShowPlanNameModal] = useState(false);
+  const [showPinDetail, setShowPinDetail] = useState<PlanPin | null>(null);
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number } | null>(null);
   const [pinLabel, setPinLabel] = useState("");
   const [pinType, setPinType] = useState<PlanPin["type"]>("note");
   const [pinDescription, setPinDescription] = useState("");
+  const [newPlanName, setNewPlanName] = useState("");
+  const [pendingPlanAsset, setPendingPlanAsset] = useState<any>(null);
   const [imageSize, setImageSize] = useState({ width: 1, height: 1 });
+  const [viewMode, setViewMode] = useState<"plan" | "list">("plan");
+  const [filterType, setFilterType] = useState<PlanPin["type"] | "all">("all");
 
   useFocusEffect(
     useCallback(() => {
@@ -71,42 +93,35 @@ export default function FloorPlanScreen() {
   const addPlan = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+      quality: 0.9,
     });
 
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const newPlan: FloorPlan = {
-        id: `plan-${Date.now()}`,
-        projectId,
-        name: `Plan ${plans.length + 1}`,
-        imageUri: asset.uri,
-        width: asset.width || 1000,
-        height: asset.height || 1000,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Ask for name
-      Alert.prompt
-        ? Alert.prompt("Plan benennen", "Name für diesen Grundriss:", [
-            { text: "Abbrechen", style: "cancel" },
-            {
-              text: "Speichern",
-              onPress: async (name?: string) => {
-                newPlan.name = name || newPlan.name;
-                await saveFloorPlan(newPlan);
-                await loadPlans();
-                selectPlan(newPlan);
-              },
-            },
-          ], "plain-text", `Plan ${plans.length + 1}`)
-        : (async () => {
-            newPlan.name = `Plan ${plans.length + 1}`;
-            await saveFloorPlan(newPlan);
-            await loadPlans();
-            selectPlan(newPlan);
-          })();
+      setPendingPlanAsset(result.assets[0]);
+      setNewPlanName(`Plan ${plans.length + 1}`);
+      setShowPlanNameModal(true);
     }
+  };
+
+  const savePlanWithName = async () => {
+    if (!pendingPlanAsset) return;
+    const asset = pendingPlanAsset;
+    const newPlan: FloorPlan = {
+      id: `plan-${Date.now()}`,
+      projectId,
+      name: newPlanName.trim() || `Plan ${plans.length + 1}`,
+      imageUri: asset.uri,
+      width: asset.width || 1000,
+      height: asset.height || 1000,
+      createdAt: new Date().toISOString(),
+    };
+    await saveFloorPlan(newPlan);
+    setShowPlanNameModal(false);
+    setPendingPlanAsset(null);
+    setNewPlanName("");
+    await loadPlans();
+    selectPlan(newPlan);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handlePlanPress = (event: any) => {
@@ -121,6 +136,9 @@ export default function FloorPlanScreen() {
 
     if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
       setPendingPin({ x, y });
+      setPinLabel("");
+      setPinDescription("");
+      setPinType("note");
       setShowPinModal(true);
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -129,14 +147,10 @@ export default function FloorPlanScreen() {
   };
 
   const savePin = async () => {
-    if (!pendingPin || !selectedPlan || !pinLabel.trim()) return;
-
-    const pinColors: Record<PlanPin["type"], string> = {
-      photo: "#1E88E5",
-      defect: "#E53935",
-      note: "#FB8C00",
-      protocol: "#43A047",
-    };
+    if (!pendingPin || !selectedPlan || !pinLabel.trim()) {
+      Alert.alert("Hinweis", "Bitte gib eine Bezeichnung ein.");
+      return;
+    }
 
     const newPin: PlanPin = {
       id: `pin-${Date.now()}`,
@@ -147,7 +161,7 @@ export default function FloorPlanScreen() {
       type: pinType,
       label: pinLabel.trim(),
       description: pinDescription.trim() || undefined,
-      color: pinColors[pinType],
+      color: PIN_COLORS[pinType],
       createdAt: new Date().toISOString(),
     };
 
@@ -157,11 +171,11 @@ export default function FloorPlanScreen() {
     setPendingPin(null);
     setPinLabel("");
     setPinDescription("");
-    setPinType("note");
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const removePin = async (pinId: string) => {
-    Alert.alert("Pin löschen", "Diesen Pin wirklich entfernen?", [
+    Alert.alert("Markierung löschen", "Diese Markierung wirklich entfernen?", [
       { text: "Abbrechen", style: "cancel" },
       {
         text: "Löschen",
@@ -169,13 +183,15 @@ export default function FloorPlanScreen() {
         onPress: async () => {
           await deletePlanPin(pinId);
           setPins(pins.filter((p) => p.id !== pinId));
+          setShowPinDetail(null);
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         },
       },
     ]);
   };
 
   const removePlan = async (planId: string) => {
-    Alert.alert("Plan löschen", "Diesen Grundriss und alle Pins wirklich löschen?", [
+    Alert.alert("Plan löschen", "Diesen Grundriss und alle zugehörigen Markierungen löschen?", [
       { text: "Abbrechen", style: "cancel" },
       {
         text: "Löschen",
@@ -194,30 +210,50 @@ export default function FloorPlanScreen() {
 
   const containerWidth = SCREEN_WIDTH - 32;
   const aspectRatio = imageSize.width / imageSize.height;
-  const containerHeight = containerWidth / aspectRatio;
+  const containerHeight = Math.min(containerWidth / aspectRatio, SCREEN_HEIGHT * 0.5);
 
-  const pinTypeOptions: Array<{ type: PlanPin["type"]; label: string; icon: string }> = [
-    { type: "note", label: "Notiz", icon: "sticky-note-2" },
-    { type: "defect", label: "Mangel", icon: "warning" },
-    { type: "photo", label: "Foto", icon: "photo-camera" },
-    { type: "protocol", label: "Protokoll", icon: "description" },
+  const filteredPins = filterType === "all" ? pins : pins.filter((p) => p.type === filterType);
+
+  const pinTypeOptions: Array<{ type: PlanPin["type"]; label: string; icon: string; color: string }> = [
+    { type: "note", label: "Notiz", icon: "edit-note", color: PIN_COLORS.note },
+    { type: "defect", label: "Mangel", icon: "report-problem", color: PIN_COLORS.defect },
+    { type: "photo", label: "Foto", icon: "photo-camera", color: PIN_COLORS.photo },
+    { type: "protocol", label: "Protokoll", icon: "description", color: PIN_COLORS.protocol },
   ];
 
   return (
-    <ScreenContainer className="p-4">
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+    <ScreenContainer className="flex-1">
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}>
+          <MaterialIcons name="arrow-back-ios" size={20} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Grundrisse</Text>
-        <Pressable onPress={addPlan} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
-          <MaterialIcons name="add" size={24} color={colors.primary} />
-        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Grundrisse</Text>
+          {selectedPlan && (
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{selectedPlan.name}</Text>
+          )}
+        </View>
+        <View style={{ flexDirection: "row", gap: 4 }}>
+          {/* View mode toggle */}
+          <Pressable
+            onPress={() => setViewMode(viewMode === "plan" ? "list" : "plan")}
+            style={({ pressed }) => [styles.headerAction, { backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}
+          >
+            <MaterialIcons name={viewMode === "plan" ? "list" : "map"} size={20} color={colors.primary} />
+          </Pressable>
+          <Pressable
+            onPress={addPlan}
+            style={({ pressed }) => [styles.headerAction, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
+          >
+            <MaterialIcons name="add" size={20} color="#FFF" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Plan Tabs */}
-      {plans.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.planTabs}>
+      {plans.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.planTabs} contentContainerStyle={{ paddingHorizontal: 16 }}>
           {plans.map((plan) => (
             <Pressable
               key={plan.id}
@@ -225,12 +261,15 @@ export default function FloorPlanScreen() {
               onLongPress={() => removePlan(plan.id)}
               style={({ pressed }) => [
                 styles.planTab,
-                { borderColor: selectedPlan?.id === plan.id ? colors.primary : colors.border },
-                selectedPlan?.id === plan.id && { backgroundColor: colors.primary + "15" },
+                {
+                  borderColor: selectedPlan?.id === plan.id ? colors.primary : colors.border,
+                  backgroundColor: selectedPlan?.id === plan.id ? colors.primary + "12" : colors.surface,
+                },
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <Text style={[styles.planTabText, { color: selectedPlan?.id === plan.id ? colors.primary : colors.muted }]}>
+              <MaterialIcons name="layers" size={14} color={selectedPlan?.id === plan.id ? colors.primary : colors.muted} />
+              <Text style={[styles.planTabText, { color: selectedPlan?.id === plan.id ? colors.primary : colors.foreground }]}>
                 {plan.name}
               </Text>
             </Pressable>
@@ -238,88 +277,198 @@ export default function FloorPlanScreen() {
         </ScrollView>
       )}
 
-      {/* Plan View with Pins */}
-      {selectedPlan ? (
-        <View style={styles.planContainer}>
-          <Pressable onPress={handlePlanPress}>
-            <RNImage
-              source={{ uri: selectedPlan.imageUri }}
-              style={{ width: containerWidth, height: containerHeight }}
-              resizeMode="contain"
-            />
-            {/* Render Pins */}
-            {pins.map((pin) => (
-              <Pressable
-                key={pin.id}
-                onLongPress={() => removePin(pin.id)}
-                style={[
-                  styles.pin,
-                  {
-                    left: pin.x * containerWidth - 12,
-                    top: pin.y * containerHeight - 24,
-                    backgroundColor: pin.color,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name={
-                    pin.type === "defect" ? "warning" :
-                    pin.type === "photo" ? "photo-camera" :
-                    pin.type === "protocol" ? "description" : "place"
-                  }
-                  size={16}
-                  color="#fff"
-                />
-              </Pressable>
-            ))}
-            {/* Pending Pin */}
-            {pendingPin && (
-              <View
-                style={[
-                  styles.pin,
-                  styles.pendingPin,
-                  {
-                    left: pendingPin.x * containerWidth - 12,
-                    top: pendingPin.y * containerHeight - 24,
-                  },
-                ]}
-              >
-                <MaterialIcons name="add-location" size={16} color="#fff" />
-              </View>
-            )}
-          </Pressable>
-
-          {/* Pin Legend */}
-          <View style={[styles.legend, { borderColor: colors.border }]}>
-            <Text style={[styles.legendTitle, { color: colors.muted }]}>
-              {pins.length} Markierung{pins.length !== 1 ? "en" : ""} – Tippen zum Hinzufügen
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.emptyState}>
-          <MaterialIcons name="map" size={64} color={colors.muted} />
-          <Text style={[styles.emptyText, { color: colors.muted }]}>
-            Noch keine Grundrisse
-          </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted }]}>
-            Lade einen Grundriss oder Lageplan hoch um Markierungen zu setzen
-          </Text>
+      {/* Filter Bar */}
+      {selectedPlan && pins.length > 0 && (
+        <View style={[styles.filterBar, { borderBottomColor: colors.border }]}>
           <Pressable
-            onPress={addPlan}
-            style={({ pressed }) => [styles.uploadBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
+            onPress={() => setFilterType("all")}
+            style={[styles.filterChip, { backgroundColor: filterType === "all" ? colors.primary + "15" : "transparent", borderColor: filterType === "all" ? colors.primary : colors.border }]}
           >
-            <MaterialIcons name="upload-file" size={20} color="#fff" />
-            <Text style={styles.uploadBtnText}>Grundriss hochladen</Text>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: filterType === "all" ? colors.primary : colors.muted }}>
+              Alle ({pins.length})
+            </Text>
           </Pressable>
+          {pinTypeOptions.map((opt) => {
+            const count = pins.filter((p) => p.type === opt.type).length;
+            if (count === 0) return null;
+            return (
+              <Pressable
+                key={opt.type}
+                onPress={() => setFilterType(filterType === opt.type ? "all" : opt.type)}
+                style={[styles.filterChip, { backgroundColor: filterType === opt.type ? opt.color + "15" : "transparent", borderColor: filterType === opt.type ? opt.color : colors.border }]}
+              >
+                <MaterialIcons name={opt.icon as any} size={12} color={filterType === opt.type ? opt.color : colors.muted} />
+                <Text style={{ fontSize: 11, fontWeight: "500", color: filterType === opt.type ? opt.color : colors.muted }}>
+                  {count}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       )}
 
-      {/* Pin Creation Modal */}
+      {/* Main Content */}
+      {selectedPlan ? (
+        viewMode === "plan" ? (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {/* Plan Image with Pins */}
+            <View style={[styles.planImageContainer, { borderColor: colors.border }]}>
+              <Pressable onPress={handlePlanPress}>
+                <RNImage
+                  source={{ uri: selectedPlan.imageUri }}
+                  style={{ width: containerWidth, height: containerHeight }}
+                  resizeMode="contain"
+                />
+                {/* Render Pins */}
+                {filteredPins.map((pin) => (
+                  <Pressable
+                    key={pin.id}
+                    onPress={() => setShowPinDetail(pin)}
+                    onLongPress={() => removePin(pin.id)}
+                    style={[
+                      styles.pin,
+                      {
+                        left: pin.x * containerWidth - 14,
+                        top: pin.y * containerHeight - 32,
+                      },
+                    ]}
+                  >
+                    {/* Pin marker SVG-style */}
+                    <View style={[styles.pinMarker, { backgroundColor: pin.color }]}>
+                      <MaterialIcons name={PIN_ICONS[pin.type] as any} size={14} color="#FFF" />
+                    </View>
+                    <View style={[styles.pinTail, { borderTopColor: pin.color }]} />
+                  </Pressable>
+                ))}
+                {/* Pending Pin */}
+                {pendingPin && (
+                  <View
+                    style={[
+                      styles.pin,
+                      {
+                        left: pendingPin.x * containerWidth - 14,
+                        top: pendingPin.y * containerHeight - 32,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.pinMarker, { backgroundColor: "#9E9E9E" }]}>
+                      <MaterialIcons name="add" size={14} color="#FFF" />
+                    </View>
+                    <View style={[styles.pinTail, { borderTopColor: "#9E9E9E" }]} />
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            {/* Instruction */}
+            <View style={[styles.instructionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <MaterialIcons name="touch-app" size={18} color={colors.primary} />
+              <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 8, flex: 1 }}>
+                Tippe auf den Plan um eine Markierung zu setzen. Tippe auf einen Pin für Details.
+              </Text>
+            </View>
+
+            {/* Pin Summary */}
+            {filteredPins.length > 0 && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>
+                  Markierungen ({filteredPins.length})
+                </Text>
+                {filteredPins.slice(0, 5).map((pin) => (
+                  <Pressable
+                    key={pin.id}
+                    onPress={() => setShowPinDetail(pin)}
+                    style={({ pressed }) => [styles.pinListItem, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <View style={[styles.pinListDot, { backgroundColor: pin.color }]}>
+                      <MaterialIcons name={PIN_ICONS[pin.type] as any} size={12} color="#FFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{pin.label}</Text>
+                      {pin.description && (
+                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{pin.description}</Text>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 10, color: colors.muted }}>
+                      {new Date(pin.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        ) : (
+          /* List View */
+          <FlatList
+            data={filteredPins}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 16 }}
+            ListEmptyComponent={
+              <View style={{ alignItems: "center", paddingTop: 40 }}>
+                <MaterialIcons name="pin-drop" size={40} color={colors.muted} />
+                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>Keine Markierungen</Text>
+              </View>
+            }
+            renderItem={({ item: pin }) => (
+              <Pressable
+                onPress={() => setShowPinDetail(pin)}
+                onLongPress={() => removePin(pin.id)}
+                style={({ pressed }) => [styles.pinListItemFull, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <View style={[styles.pinListDotLarge, { backgroundColor: pin.color }]}>
+                  <MaterialIcons name={PIN_ICONS[pin.type] as any} size={18} color="#FFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{pin.label}</Text>
+                  {pin.description && (
+                    <Text style={{ fontSize: 12, color: colors.muted, marginTop: 3 }} numberOfLines={2}>{pin.description}</Text>
+                  )}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+                    <Text style={{ fontSize: 10, color: colors.muted, backgroundColor: colors.background, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      {pinTypeOptions.find((o) => o.type === pin.type)?.label}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: colors.muted }}>
+                      {new Date(pin.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+                    </Text>
+                  </View>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+              </Pressable>
+            )}
+          />
+        )
+      ) : (
+        /* Empty State */
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.primary + "10" }]}>
+            <MaterialIcons name="map" size={48} color={colors.primary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Grundrisse & Pläne</Text>
+          <Text style={[styles.emptySubtext, { color: colors.muted }]}>
+            Lade Grundrisse, Lagepläne oder technische Zeichnungen hoch und markiere Stellen direkt auf dem Plan.
+          </Text>
+          <Pressable
+            onPress={addPlan}
+            style={({ pressed }) => [styles.uploadBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.85 }]}
+          >
+            <MaterialIcons name="cloud-upload" size={20} color="#FFF" />
+            <Text style={styles.uploadBtnText}>Plan hochladen</Text>
+          </Pressable>
+          <Text style={{ fontSize: 11, color: colors.muted, marginTop: 12 }}>
+            Unterstützt: JPG, PNG, PDF-Scans
+          </Text>
+        </View>
+      )}
+
+      {/* Pin Creation Modal (Bottom Sheet Style) */}
       <Modal visible={showPinModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Markierung hinzufügen</Text>
+        <Pressable style={styles.modalOverlay} onPress={() => { setShowPinModal(false); setPendingPin(null); }}>
+          <Pressable style={[styles.modalContent, { backgroundColor: colors.background }]} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Neue Markierung</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
+              Wähle einen Typ und gib eine Bezeichnung ein
+            </Text>
 
             {/* Pin Type Selection */}
             <View style={styles.typeRow}>
@@ -327,18 +476,19 @@ export default function FloorPlanScreen() {
                 <Pressable
                   key={opt.type}
                   onPress={() => setPinType(opt.type)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.typeBtn,
-                    { borderColor: pinType === opt.type ? colors.primary : colors.border },
-                    pinType === opt.type && { backgroundColor: colors.primary + "15" },
+                    {
+                      borderColor: pinType === opt.type ? opt.color : colors.border,
+                      backgroundColor: pinType === opt.type ? opt.color + "12" : colors.surface,
+                    },
+                    pressed && { opacity: 0.7 },
                   ]}
                 >
-                  <MaterialIcons
-                    name={opt.icon as any}
-                    size={20}
-                    color={pinType === opt.type ? colors.primary : colors.muted}
-                  />
-                  <Text style={[styles.typeBtnText, { color: pinType === opt.type ? colors.primary : colors.muted }]}>
+                  <View style={[styles.typeBtnIcon, { backgroundColor: pinType === opt.type ? opt.color : colors.muted + "30" }]}>
+                    <MaterialIcons name={opt.icon as any} size={18} color={pinType === opt.type ? "#FFF" : colors.muted} />
+                  </View>
+                  <Text style={[styles.typeBtnText, { color: pinType === opt.type ? opt.color : colors.muted }]}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -346,15 +496,17 @@ export default function FloorPlanScreen() {
             </View>
 
             <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Bezeichnung"
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              placeholder="Bezeichnung *"
               placeholderTextColor={colors.muted}
               value={pinLabel}
               onChangeText={setPinLabel}
+              autoFocus
+              returnKeyType="next"
             />
 
             <TextInput
-              style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+              style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               placeholder="Beschreibung (optional)"
               placeholderTextColor={colors.muted}
               value={pinDescription}
@@ -365,54 +517,315 @@ export default function FloorPlanScreen() {
 
             <View style={styles.modalButtons}>
               <Pressable
-                onPress={() => { setShowPinModal(false); setPendingPin(null); setPinLabel(""); setPinDescription(""); }}
+                onPress={() => { setShowPinModal(false); setPendingPin(null); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
               </Pressable>
               <Pressable
                 onPress={savePin}
-                style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [styles.saveBtn, { backgroundColor: PIN_COLORS[pinType] }, pressed && { opacity: 0.85 }]}
               >
-                <Text style={styles.saveBtnText}>Speichern</Text>
+                <MaterialIcons name="check" size={18} color="#FFF" />
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF", marginLeft: 6 }}>Speichern</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Plan Name Modal */}
+      <Modal visible={showPlanNameModal} transparent animationType="fade">
+        <View style={[styles.modalOverlay, { justifyContent: "center" }]}>
+          <View style={[styles.nameModalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Plan benennen</Text>
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              placeholder="z.B. EG Grundriss, OG1 Elektro..."
+              placeholderTextColor={colors.muted}
+              value={newPlanName}
+              onChangeText={setNewPlanName}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={savePlanWithName}
+            />
+            <View style={styles.modalButtons}>
+              <Pressable
+                onPress={() => { setShowPlanNameModal(false); setPendingPlanAsset(null); }}
+                style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                onPress={savePlanWithName}
+                style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Speichern</Text>
               </Pressable>
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Pin Detail Modal */}
+      <Modal visible={!!showPinDetail} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPinDetail(null)}>
+          <Pressable style={[styles.detailModalContent, { backgroundColor: colors.background }]} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            {showPinDetail && (
+              <>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                  <View style={[styles.detailIcon, { backgroundColor: showPinDetail.color }]}>
+                    <MaterialIcons name={PIN_ICONS[showPinDetail.type] as any} size={22} color="#FFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{showPinDetail.label}</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                      {pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label} • {new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                    </Text>
+                  </View>
+                </View>
+                {showPinDetail.description && (
+                  <View style={[styles.detailDescBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>{showPinDetail.description}</Text>
+                  </View>
+                )}
+                <View style={[styles.detailCoords, { backgroundColor: colors.surface }]}>
+                  <MaterialIcons name="my-location" size={14} color={colors.muted} />
+                  <Text style={{ fontSize: 11, color: colors.muted, marginLeft: 6 }}>
+                    Position: {(showPinDetail.x * 100).toFixed(1)}% / {(showPinDetail.y * 100).toFixed(1)}%
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => removePin(showPinDetail.id)}
+                  style={({ pressed }) => [styles.deleteBtn, { borderColor: colors.error }, pressed && { opacity: 0.7 }]}
+                >
+                  <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>Markierung löschen</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
       </Modal>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  backBtn: { padding: 8, marginRight: 8 },
-  title: { fontSize: 22, fontWeight: "700", flex: 1 },
-  addBtn: { padding: 8 },
-  planTabs: { marginBottom: 12, maxHeight: 40 },
-  planTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
-  planTabText: { fontSize: 14, fontWeight: "500" },
-  planContainer: { flex: 1 },
-  pin: { position: "absolute", width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-  pendingPin: { backgroundColor: "#9E9E9E", opacity: 0.8 },
-  legend: { marginTop: 12, paddingTop: 8, borderTopWidth: 1 },
-  legendTitle: { fontSize: 13, textAlign: "center" },
-  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  emptyText: { fontSize: 18, fontWeight: "600" },
-  emptySubtext: { fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
-  uploadBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, marginTop: 8 },
-  uploadBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backBtn: { padding: 6, marginRight: 8 },
+  title: { fontSize: 20, fontWeight: "800" },
+  headerAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planTabs: { maxHeight: 44, borderBottomWidth: 0, marginTop: 8 },
+  planTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  planTabText: { fontSize: 13, fontWeight: "600" },
+  filterBar: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+    borderBottomWidth: 1,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  planImageContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
+  pin: {
+    position: "absolute",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  pinMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  pinTail: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 6,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    marginTop: -1,
+  },
+  instructionBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  pinListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  pinListDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinListItemFull: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  pinListDotLarge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
+  emptySubtext: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+  uploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  uploadBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#DDD",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
   typeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  typeBtn: { flex: 1, alignItems: "center", gap: 4, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
-  typeBtnText: { fontSize: 11, fontWeight: "500" },
-  input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 12 },
+  typeBtn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  typeBtnIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  typeBtnText: { fontSize: 11, fontWeight: "700" },
+  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15, marginBottom: 12 },
   textArea: { minHeight: 80, textAlignVertical: "top" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" },
-  cancelBtnText: { fontSize: 15, fontWeight: "600" },
-  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
-  saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  saveBtn: { flex: 1.5, paddingVertical: 14, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row" },
+  nameModalContent: {
+    marginHorizontal: 24,
+    borderRadius: 20,
+    padding: 24,
+  },
+  detailModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  detailIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailDescBox: {
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  detailCoords: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
 });

@@ -26,6 +26,15 @@ type PdfProtocol = {
   } | null;
   weather?: string | null;
   protocolNumber?: string;
+  projectName?: string;
+  planData?: {
+    planImageUri: string;
+    planName: string;
+    pinX: number; // 0-1 relative
+    pinY: number; // 0-1 relative
+    pinLabel: string;
+    pinColor: string;
+  } | null;
   signaturePaths?: string[];
   signatures?: { role: string; paths: string[]; signedAt: string }[];
 };
@@ -93,7 +102,8 @@ async function loadCompanySettings(): Promise<CompanySettings> {
 function generatePdfHtml(
   protocol: PdfProtocol,
   company: CompanySettings,
-  photoDataUris: string[]
+  photoDataUris: string[],
+  planImageBase64?: string | null
 ): string {
   const todos = protocol.todos || [];
   const date = new Date(protocol.createdAt).toLocaleDateString("de-DE", {
@@ -159,9 +169,54 @@ function generatePdfHtml(
           )
           .join("")}
       </div>
+      ${protocol.protocol ? `
+      <div style="margin-top: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px; border: 1px solid #eee;">
+        <h4 style="font-size: 12px; color: #555; margin: 0 0 8px 0;">Transkription / Protokolltext</h4>
+        <p style="font-size: 11px; color: #333; line-height: 1.6; margin: 0; white-space: pre-wrap;">${protocol.protocol.substring(0, 2000)}</p>
+      </div>
+      ` : ''}
     </div>
   `
       : "";
+
+  // Plan marking section (Gesamtplan + Ausschnitt mit Pin)
+  const planHtml = (protocol.planData && planImageBase64) ? `
+    <div style="page-break-before: always; margin-top: 24px;">
+      <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
+        Planverortung – ${protocol.planData.planName}
+      </h3>
+      
+      <!-- Gesamtplan mit Markierung -->
+      <div style="margin-bottom: 20px;">
+        <p style="font-size: 11px; color: #555; margin-bottom: 8px; font-weight: 600;">Übersicht (Gesamtplan)</p>
+        <div style="position: relative; display: inline-block; width: 100%; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
+          <img src="${planImageBase64}" style="width: 100%; display: block;" />
+          <div style="position: absolute; top: ${protocol.planData.pinY * 100}%; left: ${protocol.planData.pinX * 100}%; transform: translate(-50%, -100%); z-index: 10;">
+            <svg width="24" height="32" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" fill="${protocol.planData.pinColor}"/>
+              <circle cx="12" cy="12" r="5" fill="white"/>
+            </svg>
+          </div>
+        </div>
+        <p style="font-size: 9px; color: #888; margin-top: 4px; text-align: center;">${protocol.planData.pinLabel}</p>
+      </div>
+
+      <!-- Ausschnitt/Zoom der markierten Stelle -->
+      <div style="margin-bottom: 12px;">
+        <p style="font-size: 11px; color: #555; margin-bottom: 8px; font-weight: 600;">Detailausschnitt</p>
+        <div style="width: 100%; height: 280px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; position: relative;">
+          <img src="${planImageBase64}" style="position: absolute; width: 300%; height: 300%; object-fit: cover; left: ${-protocol.planData.pinX * 300 + 50}%; top: ${-protocol.planData.pinY * 300 + 50}%;" />
+          <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); z-index: 10;">
+            <svg width="32" height="42" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" fill="${protocol.planData.pinColor}"/>
+              <circle cx="12" cy="12" r="5" fill="white"/>
+            </svg>
+          </div>
+        </div>
+        <p style="font-size: 9px; color: #888; margin-top: 4px; text-align: center;">Zoom: ${protocol.planData.pinLabel}</p>
+      </div>
+    </div>
+  ` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -276,6 +331,7 @@ function generatePdfHtml(
 
   <table class="meta-table">
     ${protocol.protocolNumber ? `<tr><td>Protokoll-Nr.</td><td><strong>${protocol.protocolNumber}</strong></td></tr>` : ''}
+    ${protocol.projectName ? `<tr><td>Projekt</td><td><strong>${protocol.projectName}</strong></td></tr>` : ''}
     <tr>
       <td>Datum</td>
       <td>${date}</td>
@@ -343,6 +399,8 @@ function generatePdfHtml(
     ${protocolHtml}
   </div>
 
+  ${planHtml}
+
   ${photosHtml}
 
   ${protocol.signatures && protocol.signatures.length > 0 ? `
@@ -398,8 +456,14 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     }
   }
 
+  // Convert plan image to base64 if available
+  let planImageBase64: string | null = null;
+  if (protocol.planData?.planImageUri) {
+    planImageBase64 = await fileToBase64DataUri(protocol.planData.planImageUri);
+  }
+
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris);
+  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64);
 
   // Generate PDF
   const { uri } = await Print.printToFileAsync({
@@ -412,5 +476,21 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     },
   });
 
-  return uri;
+  // Rename to meaningful filename: Projekt_Datum_Nummer.pdf
+  try {
+    const dateStr = new Date(protocol.createdAt).toISOString().split("T")[0]; // 2026-06-15
+    const parts: string[] = [];
+    if (protocol.projectName) parts.push(protocol.projectName.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_]/g, "_").substring(0, 30));
+    parts.push(dateStr);
+    if (protocol.protocolNumber) parts.push(protocol.protocolNumber);
+    else parts.push(protocol.templateName || "Protokoll");
+    const filename = parts.join("_") + ".pdf";
+    const dir = uri.substring(0, uri.lastIndexOf("/") + 1);
+    const newUri = dir + filename;
+    await FileSystem.moveAsync({ from: uri, to: newUri });
+    return newUri;
+  } catch {
+    // Fallback to original URI if rename fails
+    return uri;
+  }
 }

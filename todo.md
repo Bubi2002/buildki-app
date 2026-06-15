@@ -196,3 +196,7 @@
 - [x] Feature: Zeiterfassung mit Start/Stopp-Timer pro Projekt/Tag
 - [x] Feature: PDF-Branding (Firmenlogo, Kopf-/Fußzeile in exportierten PDFs)
 - [x] UX: Projekt-Tab in untere Navigation (jederzeit Projekt wechseln/anlegen während Aufnahme)
+- [x] Fix: PDF-Dateiname aussagekräftig (Projekt_Datum_Nummer.pdf statt UUID)
+- [x] Fix: Projekt-Name in PDF-Metadaten-Tabelle anzeigen
+- [x] Fix: Transkriptions-Text unter den Fotos im PDF anzeigen (statt nur "Foto 1/2/3")
+- [x] Feature: Plan-Markierung im PDF (Gesamtplan + Ausschnitt mit Pin-Icon vor Fotos/Text)
