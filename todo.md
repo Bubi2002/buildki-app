@@ -186,3 +186,6 @@
 - [x] Feature: Projekt-Export (alle Protokolle eines Projekts als PDF-Sammlung exportieren)
 - [x] Feature: Projekt-Duplikation (bestehendes Projekt als Vorlage kopieren)
 - [x] UX: Professionelle Verbesserungen (Swipe-Aktionen, Long-Press-Menü, Projekt-Avatar/Bild)
+- [x] Feature: Foto-Galerie im Projekt (Grid-Ansicht aller Fotos, filterbar nach Datum)
+- [x] Feature: Push-Benachrichtigungen für offene Mängel und ausstehende Checklisten
+- [x] UX: Dark Mode Feintuning für alle neuen Screens

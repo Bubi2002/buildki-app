@@ -241,20 +241,20 @@ export default function ProjectStatsScreen() {
           <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Mängel nach Priorität</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: "#EF4444" + "15" }}>
-                <Text style={{ fontSize: 20, fontWeight: "800", color: "#EF4444" }}>{stats.defectCritical}</Text>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.error + "15" }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.error }}>{stats.defectCritical}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Kritisch</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: "#F59E0B" + "15" }}>
-                <Text style={{ fontSize: 20, fontWeight: "800", color: "#F59E0B" }}>{stats.defectHigh}</Text>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.warning + "15" }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.warning }}>{stats.defectHigh}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Hoch</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: "#3B82F6" + "15" }}>
-                <Text style={{ fontSize: 20, fontWeight: "800", color: "#3B82F6" }}>{stats.defectMedium}</Text>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.primary + "15" }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.primary }}>{stats.defectMedium}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Mittel</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: "#6B7280" + "15" }}>
-                <Text style={{ fontSize: 20, fontWeight: "800", color: "#6B7280" }}>{stats.defectLow}</Text>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.muted + "15" }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.muted }}>{stats.defectLow}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Niedrig</Text>
               </View>
             </View>

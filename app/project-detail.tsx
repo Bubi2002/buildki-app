@@ -351,6 +351,13 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="ios-share" size={20} color={"#43A047"} />
             <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Export</Text>
           </Pressable>
+          <Pressable
+            onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="photo-library" size={20} color={"#E91E63"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Fotos</Text>
+          </Pressable>
         </View>
 
         {/* Stats */}
