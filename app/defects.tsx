@@ -1,0 +1,356 @@
+import { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+  ScrollView,
+} from "react-native";
+import { ScreenContainer } from "@/components/screen-container";
+import { useColors } from "@/hooks/use-colors";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as Haptics from "expo-haptics";
+import { Platform } from "react-native";
+import {
+  Defect,
+  DefectStatus,
+  DefectPriority,
+  DEFECT_CATEGORIES,
+  getDefects,
+  saveDefect,
+  deleteDefect,
+  updateDefectStatus,
+  getDefectStats,
+} from "@/lib/defect-store";
+
+export default function DefectsScreen() {
+  const colors = useColors();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ projectId?: string }>();
+  const projectId = params.projectId || "";
+
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [filter, setFilter] = useState<DefectStatus | "alle">("alle");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newPriority, setNewPriority] = useState<DefectPriority>("mittel");
+  const [newCategory, setNewCategory] = useState(DEFECT_CATEGORIES[0]);
+  const [newLocation, setNewLocation] = useState("");
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDefects();
+    }, [projectId])
+  );
+
+  const loadDefects = async () => {
+    const loaded = await getDefects(projectId || undefined);
+    setDefects(loaded);
+  };
+
+  const filteredDefects = filter === "alle" ? defects : defects.filter((d) => d.status === filter);
+  const stats = getDefectStats(defects);
+
+  const createDefect = async () => {
+    if (!newTitle.trim()) return;
+
+    const defect: Defect = {
+      id: `defect-${Date.now()}`,
+      projectId,
+      title: newTitle.trim(),
+      description: newDescription.trim(),
+      status: "offen",
+      priority: newPriority,
+      category: newCategory,
+      photos: [],
+      location: newLocation.trim() || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await saveDefect(defect);
+    setDefects([defect, ...defects]);
+    setShowCreateModal(false);
+    setNewTitle("");
+    setNewDescription("");
+    setNewPriority("mittel");
+    setNewLocation("");
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const cycleStatus = async (defect: Defect) => {
+    const nextStatus: Record<DefectStatus, DefectStatus> = {
+      offen: "in_bearbeitung",
+      in_bearbeitung: "erledigt",
+      erledigt: "offen",
+    };
+    const newStatus = nextStatus[defect.status];
+    await updateDefectStatus(defect.id, newStatus);
+    await loadDefects();
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const removeDefect = (defectId: string) => {
+    Alert.alert("Mangel löschen", "Diesen Mangel wirklich entfernen?", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Löschen",
+        style: "destructive",
+        onPress: async () => {
+          await deleteDefect(defectId);
+          await loadDefects();
+        },
+      },
+    ]);
+  };
+
+  const statusColors: Record<DefectStatus, string> = {
+    offen: colors.error,
+    in_bearbeitung: colors.warning,
+    erledigt: colors.success,
+  };
+
+  const statusLabels: Record<DefectStatus, string> = {
+    offen: "Offen",
+    in_bearbeitung: "In Arbeit",
+    erledigt: "Erledigt",
+  };
+
+  const priorityIcons: Record<DefectPriority, string> = {
+    hoch: "priority-high",
+    mittel: "remove",
+    niedrig: "arrow-downward",
+  };
+
+  const renderDefect = ({ item }: { item: Defect }) => (
+    <Pressable
+      onPress={() => cycleStatus(item)}
+      onLongPress={() => removeDefect(item.id)}
+      style={({ pressed }) => [
+        styles.defectCard,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <View style={[styles.statusDot, { backgroundColor: statusColors[item.status] }]} />
+      <View style={styles.defectContent}>
+        <View style={styles.defectHeader}>
+          <Text style={[styles.defectTitle, { color: colors.foreground }]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <MaterialIcons name={priorityIcons[item.priority] as any} size={18} color={item.priority === "hoch" ? colors.error : colors.muted} />
+        </View>
+        <Text style={[styles.defectMeta, { color: colors.muted }]}>
+          {item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
+        </Text>
+        {item.description ? (
+          <Text style={[styles.defectDesc, { color: colors.muted }]} numberOfLines={2}>
+            {item.description}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+
+  return (
+    <ScreenContainer className="p-4">
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+        </Pressable>
+        <Text style={[styles.title, { color: colors.foreground }]}>Mängel</Text>
+        <Pressable onPress={() => setShowCreateModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
+          <MaterialIcons name="add" size={24} color={colors.primary} />
+        </Pressable>
+      </View>
+
+      {/* Stats */}
+      <View style={styles.statsRow}>
+        <View style={[styles.statBadge, { backgroundColor: colors.error + "20" }]}>
+          <Text style={[styles.statNum, { color: colors.error }]}>{stats.offen}</Text>
+          <Text style={[styles.statLabel, { color: colors.error }]}>Offen</Text>
+        </View>
+        <View style={[styles.statBadge, { backgroundColor: colors.warning + "20" }]}>
+          <Text style={[styles.statNum, { color: colors.warning }]}>{stats.inBearbeitung}</Text>
+          <Text style={[styles.statLabel, { color: colors.warning }]}>In Arbeit</Text>
+        </View>
+        <View style={[styles.statBadge, { backgroundColor: colors.success + "20" }]}>
+          <Text style={[styles.statNum, { color: colors.success }]}>{stats.erledigt}</Text>
+          <Text style={[styles.statLabel, { color: colors.success }]}>Erledigt</Text>
+        </View>
+      </View>
+
+      {/* Filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+        {(["alle", "offen", "in_bearbeitung", "erledigt"] as const).map((f) => (
+          <Pressable
+            key={f}
+            onPress={() => setFilter(f)}
+            style={[
+              styles.filterBtn,
+              { borderColor: filter === f ? colors.primary : colors.border },
+              filter === f && { backgroundColor: colors.primary + "15" },
+            ]}
+          >
+            <Text style={[styles.filterText, { color: filter === f ? colors.primary : colors.muted }]}>
+              {f === "alle" ? "Alle" : f === "in_bearbeitung" ? "In Arbeit" : f === "offen" ? "Offen" : "Erledigt"}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* Defect List */}
+      <FlatList
+        data={filteredDefects}
+        keyExtractor={(item) => item.id}
+        renderItem={renderDefect}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <MaterialIcons name="check-circle" size={48} color={colors.muted} />
+            <Text style={[styles.emptyText, { color: colors.muted }]}>
+              {filter === "alle" ? "Keine Mängel erfasst" : `Keine ${statusLabels[filter as DefectStatus] || ""} Mängel`}
+            </Text>
+          </View>
+        }
+      />
+
+      {/* Create Modal */}
+      <Modal visible={showCreateModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Neuen Mangel erfassen</Text>
+
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+              placeholder="Bezeichnung *"
+              placeholderTextColor={colors.muted}
+              value={newTitle}
+              onChangeText={setNewTitle}
+            />
+
+            <TextInput
+              style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+              placeholder="Beschreibung"
+              placeholderTextColor={colors.muted}
+              value={newDescription}
+              onChangeText={setNewDescription}
+              multiline
+              numberOfLines={3}
+            />
+
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+              placeholder="Ort/Raum (z.B. EG Flur, Bad OG)"
+              placeholderTextColor={colors.muted}
+              value={newLocation}
+              onChangeText={setNewLocation}
+            />
+
+            {/* Priority */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Priorität</Text>
+            <View style={styles.priorityRow}>
+              {(["niedrig", "mittel", "hoch"] as DefectPriority[]).map((p) => (
+                <Pressable
+                  key={p}
+                  onPress={() => setNewPriority(p)}
+                  style={[
+                    styles.priorityBtn,
+                    { borderColor: newPriority === p ? colors.primary : colors.border },
+                    newPriority === p && { backgroundColor: colors.primary + "15" },
+                  ]}
+                >
+                  <Text style={[styles.priorityText, { color: newPriority === p ? colors.primary : colors.muted }]}>
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Category */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Kategorie</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+              {DEFECT_CATEGORIES.map((cat) => (
+                <Pressable
+                  key={cat}
+                  onPress={() => setNewCategory(cat)}
+                  style={[
+                    styles.categoryBtn,
+                    { borderColor: newCategory === cat ? colors.primary : colors.border },
+                    newCategory === cat && { backgroundColor: colors.primary + "15" },
+                  ]}
+                >
+                  <Text style={[styles.categoryText, { color: newCategory === cat ? colors.primary : colors.muted }]}>
+                    {cat}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            <View style={styles.modalButtons}>
+              <Pressable
+                onPress={() => { setShowCreateModal(false); setNewTitle(""); setNewDescription(""); setNewLocation(""); }}
+                style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                onPress={createDefect}
+                style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
+              >
+                <Text style={styles.saveBtnText}>Erstellen</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  backBtn: { padding: 8, marginRight: 8 },
+  title: { fontSize: 22, fontWeight: "700", flex: 1 },
+  addBtn: { padding: 8 },
+  statsRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  statBadge: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10 },
+  statNum: { fontSize: 20, fontWeight: "700" },
+  statLabel: { fontSize: 11, fontWeight: "500", marginTop: 2 },
+  filterRow: { marginBottom: 12, maxHeight: 36 },
+  filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, borderWidth: 1, marginRight: 8 },
+  filterText: { fontSize: 13, fontWeight: "500" },
+  list: { paddingBottom: 20 },
+  defectCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+  defectContent: { flex: 1 },
+  defectHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  defectTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
+  defectMeta: { fontSize: 12, marginTop: 3 },
+  defectDesc: { fontSize: 13, marginTop: 4 },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
+  emptyText: { fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "85%" },
+  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
+  input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 12 },
+  textArea: { minHeight: 80, textAlignVertical: "top" },
+  sectionLabel: { fontSize: 13, fontWeight: "500", marginBottom: 8 },
+  priorityRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  priorityBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  priorityText: { fontSize: 14, fontWeight: "500" },
+  categoryScroll: { marginBottom: 16, maxHeight: 36 },
+  categoryBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, marginRight: 8 },
+  categoryText: { fontSize: 13, fontWeight: "500" },
+  modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  cancelBtnText: { fontSize: 15, fontWeight: "600" },
+  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
+  saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+});

@@ -300,6 +300,45 @@ export default function ProjectDetailScreen() {
           {!isExporting && <MaterialIcons name="chevron-right" size={18} color={colors.primary} />}
         </Pressable>
 
+        {/* Tools */}
+        <View style={styles.toolsGrid}>
+          <Pressable
+            onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="map" size={20} color={colors.primary} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Grundriss</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="warning" size={20} color={colors.warning} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Mängel</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="menu-book" size={20} color={colors.success} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Tagebuch</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="checklist" size={20} color={"#8E24AA"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Checklisten</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/team` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="groups" size={20} color={"#1E88E5"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Team</Text>
+          </Pressable>
+        </View>
+
         {/* Stats */}
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
           <View style={styles.stat}>
@@ -427,4 +466,7 @@ const styles = StyleSheet.create({
   assignDate: { fontSize: 12 },
   exportButton: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1 },
   exportButtonText: { fontSize: 14, fontWeight: "600", flex: 1 },
+  toolsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8, marginBottom: 12 },
+  toolBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },
+  toolBtnText: { fontSize: 13, fontWeight: "500" },
 });

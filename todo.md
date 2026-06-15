@@ -167,3 +167,9 @@
 - [x] Video-Modus komplett entfernen (Video-Aufnahme, Video-Upload, Video-bezogener Code)
 - [x] Mode-Switcher vereinfachen: nur noch "Audio + Foto" und "Nur Audio"
 - [x] Video-bezogene Imports und Dependencies aufräumen
+- [x] Feature: Grundriss-/Plan-Markierung – Pläne hochladen, Fotos/Einträge darauf pinnen, zoombar/pannbar
+- [x] Feature: Mängelmanagement – Mängel erfassen mit Status (offen/in Bearbeitung/erledigt), Fotos, Priorität
+- [x] Feature: Bautagebuch – Automatisches Tagesprotokoll aus allen Aufnahmen eines Tages generieren
+- [x] Feature: Wetter-Integration – Automatisch Wetterdaten (Temperatur, Niederschlag) zum Protokoll hinzufügen (bereits in Recording-Flow integriert)
+- [x] Feature: Team-Kollaboration – Projekte mit Kollegen teilen, Aufgaben zuweisen, Kommentare
+- [x] Feature: Checklisten – Vordefinierte Prüflisten (Abnahme, Brandschutz, Elektro, etc.)
