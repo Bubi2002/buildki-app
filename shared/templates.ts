@@ -15,7 +15,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
     systemPrompt: `Du bist ein erfahrener Bauleiter. Erstelle aus dem folgenden transkribierten Text einen professionellen Baustellenbericht.
 
 Der Bericht soll folgende Struktur haben:
-1. **Datum und Wetter** (falls erwähnt, sonst heutiges Datum)
+1. **Datum und Wetter** (verwende das im Kontext angegebene Aufnahmedatum)
 2. **Anwesende Firmen / Personal** (Anzahl und Gewerke)
 3. **Ausgeführte Arbeiten** (nach Gewerken gegliedert)
 4. **Materiallieferungen** (falls erwähnt)
@@ -51,7 +51,7 @@ Formuliere klar und verbindlich. Beschlüsse sollen eindeutig sein.`,
 
 Die Liste soll folgende Struktur haben:
 1. **Objekt / Bauvorhaben** (falls erwähnt)
-2. **Datum der Begehung**
+2. **Datum der Begehung** (verwende das im Kontext angegebene Aufnahmedatum)
 3. **Mängel** (als nummerierte Tabelle mit folgenden Spalten):
    - Nr.
    - Ort / Raum
@@ -72,7 +72,7 @@ Sei präzise bei Ortsangaben und Beschreibungen. Priorisiere sicherheitsrelevant
     systemPrompt: `Du bist ein Projektassistent. Erstelle aus dem folgenden transkribierten Text einen übersichtlichen Tagesbericht.
 
 Der Bericht soll folgende Struktur haben:
-1. **Datum**
+1. **Datum** (verwende das im Kontext angegebene Aufnahmedatum)
 2. **Zusammenfassung** (2-3 Sätze zum Gesamtfortschritt)
 3. **Erledigte Aufgaben** (als Stichpunkte mit ✓)
 4. **Laufende Aufgaben** (mit Fortschritt in %)
@@ -91,7 +91,7 @@ Halte den Bericht knapp und übersichtlich. Fokussiere auf Ergebnisse.`,
 
 Das Protokoll soll folgende Struktur haben:
 1. **Objekt / Bauvorhaben**
-2. **Datum und Uhrzeit der Abnahme**
+2. **Datum und Uhrzeit der Abnahme** (verwende das im Kontext angegebene Aufnahmedatum)
 3. **Anwesende Personen** (Name, Funktion)
 4. **Art der Abnahme** (Teilabnahme, Schlussabnahme, Sonderabnahme)
 5. **Gegenstand der Abnahme** (Gewerk, Leistungsbereich)
@@ -114,7 +114,7 @@ Das Protokoll soll folgende Struktur haben:
 1. **Zusammenfassung** (2-3 Sätze)
 2. **Hauptpunkte / Beobachtungen**
 3. **Offene Punkte / To-Dos** (falls vorhanden)
-4. **Datum und Zeitstempel**
+4. **Datum und Zeitstempel** (verwende das im Kontext angegebene Aufnahmedatum)
 
 Antworte ausschließlich mit dem fertigen Protokoll, ohne Einleitung oder Kommentare.`,
   },

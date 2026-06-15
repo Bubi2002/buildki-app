@@ -55,6 +55,9 @@ export const appRouter = router({
           templateId: z.string().optional(),
           style: z.enum(["formal", "informal"]).optional(),
           format: z.enum(["bullets", "paragraphs"]).optional(),
+          recordingDate: z.string().optional(),
+          markers: z.array(z.object({ time: z.number(), label: z.string() })).optional(),
+          photoCount: z.number().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -73,12 +76,50 @@ export const appRouter = router({
             ? "Verwende Stichpunkte und klare Gliederung."
             : "Schreibe in Fließtext mit Absätzen.";
 
-        const systemPrompt = `${template.systemPrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
+        const systemPrompt = `${template.systemPrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
+
+        // Build user message with recording context
+        let userMessage = "";
+        
+        // Add recording date context
+        if (input.recordingDate) {
+          const date = new Date(input.recordingDate);
+          const dateStr = date.toLocaleDateString("de-DE", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          const timeStr = date.toLocaleTimeString("de-DE", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          userMessage += `AUFNAHMEDATUM: ${dateStr}, ${timeStr} Uhr\n\n`;
+        }
+
+        // Add markers context for section structure
+        if (input.markers && input.markers.length > 0) {
+          userMessage += "MARKIERUNGEN (Abschnitt-Trenner während der Aufnahme gesetzt):\n";
+          input.markers.forEach((m, i) => {
+            const mins = Math.floor(m.time / 60);
+            const secs = Math.floor(m.time % 60);
+            const timeCode = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+            userMessage += `  [${timeCode}] Markierung ${i + 1}: ${m.label || "Abschnitt"}\n`;
+          });
+          userMessage += "\nBitte strukturiere das Protokoll anhand dieser Markierungen in entsprechende Abschnitte. Füge zwischen den Abschnitten einen klaren Trenner ein.\n\n";
+        }
+
+        // Add photo context
+        if (input.photoCount && input.photoCount > 0) {
+          userMessage += `FOTOS: ${input.photoCount} Foto(s) wurden während der Aufnahme gemacht und sind dem Protokoll beigefügt.\n\n`;
+        }
+
+        userMessage += `TRANSKRIPTION:\n${input.transcription}`;
 
         const response = await invokeLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: input.transcription },
+            { role: "user", content: userMessage },
           ],
         });
 

@@ -1,0 +1,218 @@
+/**
+ * Background Processor for Protocol Recording
+ * 
+ * Handles the async pipeline: Upload → Transcription → Protocol Generation → Save
+ * The recording screen creates a placeholder protocol immediately and navigates away.
+ * This processor runs in the background and updates the protocol in AsyncStorage.
+ */
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
+import { getApiBaseUrl } from "@/constants/oauth";
+
+// Types
+export interface PendingJob {
+  protocolId: string;
+  fileUri: string;
+  mimeType: string;
+  templateId: string;
+  style: string;
+  format: string;
+  createdAt: string;
+  markers?: Array<{ time: number; label: string }>;
+  photos?: string[];
+  photoTimestamps?: number[];
+  status: "queued" | "uploading" | "transcribing" | "generating" | "extracting-todos" | "done" | "failed";
+  error?: string;
+  progress?: string;
+}
+
+// Event listeners for UI updates
+type JobUpdateListener = (protocolId: string, status: PendingJob["status"], error?: string) => void;
+const listeners: Set<JobUpdateListener> = new Set();
+
+export function onJobUpdate(listener: JobUpdateListener) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
+function notifyListeners(protocolId: string, status: PendingJob["status"], error?: string) {
+  listeners.forEach(fn => fn(protocolId, status, error));
+}
+
+// Active jobs tracking
+const activeJobs = new Map<string, PendingJob>();
+
+// Helper: Update processing step in AsyncStorage so protocol-detail can show progress
+async function updateProtocolStep(protocolId: string, step: string) {
+  try {
+    const protocolsStr = await AsyncStorage.getItem("protocols");
+    const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+    const idx = protocols.findIndex((p: any) => p.id === protocolId);
+    if (idx !== -1) {
+      protocols[idx].processingStep = step;
+      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+    }
+  } catch {}
+}
+
+export function getActiveJobs(): Map<string, PendingJob> {
+  return activeJobs;
+}
+
+export function isJobActive(protocolId: string): boolean {
+  return activeJobs.has(protocolId);
+}
+
+/**
+ * Start background processing for a protocol.
+ * The protocol placeholder must already be saved in AsyncStorage.
+ */
+export async function startBackgroundProcessing(job: PendingJob, apiClient: {
+  upload: (base64: string, mimeType: string, filename: string) => Promise<{ url: string }>;
+  transcribe: (audioUrl: string, language: string) => Promise<{ text: string }>;
+  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: Array<{ time: number; label: string }>, photoCount?: number) => Promise<{ protocol: string }>;
+  extractTodos: (transcription: string, protocolText: string) => Promise<{ todos: Array<{ task: string; assignee: string; priority: string; deadline: string }> }>;
+}) {
+  activeJobs.set(job.protocolId, job);
+  
+  try {
+    // Step 1: Compress if needed, then Upload
+    job.status = "uploading";
+    notifyListeners(job.protocolId, "uploading");
+    await updateProtocolStep(job.protocolId, "uploading");
+    
+    const fileInfo = await FileSystem.getInfoAsync(job.fileUri);
+    const fileSizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
+    console.log(`[BG-Processor] ${job.protocolId}: Uploading (${fileSizeMB.toFixed(1)} MB)...`);
+    
+    let processUri = job.fileUri;
+    
+    // Compress large video files
+    if (job.mimeType === "video/mp4" && fileSizeMB > 15) {
+      try {
+        const { compress } = require("expo-image-and-video-compressor");
+        const compressed = await compress(job.fileUri, {
+          bitrate: 800_000,
+          maxSize: 480,
+          codec: "h264",
+          speed: "ultrafast",
+        }, (progress: number) => {
+          console.log(`[BG-Processor] Compression: ${Math.round(progress * 100)}%`);
+        });
+        processUri = compressed;
+      } catch (compressErr: any) {
+        console.warn("[BG-Processor] Compression failed:", compressErr?.message);
+        if (fileSizeMB > 40) {
+          throw new Error(`Video zu groß (${fileSizeMB.toFixed(0)} MB) und Komprimierung fehlgeschlagen. Bitte Audio-Modus verwenden.`);
+        }
+      }
+    }
+    
+    // Read file as base64
+    const base64 = await FileSystem.readAsStringAsync(processUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    
+    const ext = job.mimeType === "video/mp4" ? "mp4" : "m4a";
+    const uploadResult = await apiClient.upload(base64, job.mimeType, `recording-${Date.now()}.${ext}`);
+    console.log(`[BG-Processor] ${job.protocolId}: Upload complete`);
+    
+    // Step 2: Transcribe
+    job.status = "transcribing";
+    notifyListeners(job.protocolId, "transcribing");
+    await updateProtocolStep(job.protocolId, "transcribing");
+    
+    let audioUrl = uploadResult.url;
+    if (audioUrl.startsWith("/")) {
+      audioUrl = `${getApiBaseUrl()}${audioUrl}`;
+    }
+    
+    const transcription = await apiClient.transcribe(audioUrl, "de");
+    console.log(`[BG-Processor] ${job.protocolId}: Transcription complete`);
+    
+    // Step 3: Generate Protocol
+    job.status = "generating";
+    notifyListeners(job.protocolId, "generating");
+    await updateProtocolStep(job.protocolId, "generating");
+    
+    const protocol = await apiClient.generateProtocol(
+      transcription.text,
+      job.templateId,
+      job.style,
+      job.format,
+      job.createdAt,
+      job.markers,
+      job.photos?.length || 0,
+    );
+    console.log(`[BG-Processor] ${job.protocolId}: Protocol generated`);
+    
+    // Step 4: Extract Todos
+    job.status = "extracting-todos";
+    notifyListeners(job.protocolId, "extracting-todos");
+    await updateProtocolStep(job.protocolId, "extracting-todos");
+    
+    let todos: Array<{ task: string; assignee: string; priority: string; deadline: string; done: boolean }> = [];
+    try {
+      const todosResult = await apiClient.extractTodos(transcription.text, protocol.protocol);
+      todos = (todosResult.todos || []).map((t: any) => ({
+        task: t.task || "",
+        assignee: t.assignee || "Nicht zugewiesen",
+        priority: t.priority || "mittel",
+        deadline: t.deadline || "Offen",
+        done: false,
+      }));
+    } catch (todoError) {
+      console.warn("[BG-Processor] Todo extraction failed (non-critical):", todoError);
+    }
+    
+    // Step 5: Update protocol in AsyncStorage
+    job.status = "done";
+    const protocolsStr = await AsyncStorage.getItem("protocols");
+    const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+    const idx = protocols.findIndex((p: any) => p.id === job.protocolId);
+    
+    if (idx !== -1) {
+      protocols[idx] = {
+        ...protocols[idx],
+        transcription: transcription.text,
+        protocol: protocol.protocol,
+        title: transcription.text.substring(0, 50) + "...",
+        todos,
+        status: "ready",
+        processingStep: undefined,
+        processingError: undefined,
+      };
+      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      console.log(`[BG-Processor] ${job.protocolId}: Saved to AsyncStorage as ready`);
+    }
+    
+    notifyListeners(job.protocolId, "done");
+    activeJobs.delete(job.protocolId);
+    
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    console.error(`[BG-Processor] ${job.protocolId}: FAILED -`, errMsg);
+    
+    job.status = "failed";
+    job.error = errMsg;
+    
+    // Update protocol in AsyncStorage with error
+    try {
+      const protocolsStr = await AsyncStorage.getItem("protocols");
+      const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+      const idx = protocols.findIndex((p: any) => p.id === job.protocolId);
+      if (idx !== -1) {
+        protocols[idx] = {
+          ...protocols[idx],
+          status: "processing",
+          processingStep: "failed",
+          processingError: errMsg,
+        };
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      }
+    } catch {}
+    
+    notifyListeners(job.protocolId, "failed", errMsg);
+    activeJobs.delete(job.protocolId);
+  }
+}

@@ -70,6 +70,7 @@ export default function RecordScreen() {
   );
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [photoTimestamps, setPhotoTimestamps] = useState<number[]>([]); // recording time when each photo was taken
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("audio");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
@@ -199,6 +200,7 @@ export default function RecordScreen() {
         await FileSystem.copyAsync({ from: photo.uri, to: newUri });
 
         setCapturedPhotos((prev) => [...prev, newUri]);
+        setPhotoTimestamps((prev) => [...prev, recordingDuration]);
       }
     } catch (error) {
       console.error("Photo capture error:", error);
@@ -335,6 +337,7 @@ export default function RecordScreen() {
 
     setShowTemplateSelector(false);
     setCapturedPhotos([]);
+    setPhotoTimestamps([]);
     setMarkers([]);
     setIsRecording(true);
     startTimer();
@@ -515,6 +518,7 @@ export default function RecordScreen() {
   const startAudioRecording = async () => {
     setShowTemplateSelector(false);
     setCapturedPhotos([]);
+    setPhotoTimestamps([]);
     setMarkers([]);
     setIsRecording(true);
     startTimer();
@@ -576,9 +580,9 @@ export default function RecordScreen() {
   };
 
   const processRecording = async (fileUri: string, mimeType: string) => {
-    setIsProcessing(true);
-    setProcessingStep("upload");
-
+    // NON-BLOCKING: Create placeholder protocol immediately, navigate away,
+    // then process in background. App is instantly usable again.
+    
     try {
       // Check internet connectivity
       const online = await isOnline();
@@ -603,129 +607,14 @@ export default function RecordScreen() {
           weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
           pendingVideoUri: pendingVideoUploadRef.current?.videoUri || null,
         });
-        setIsProcessing(false);
-        setProcessingSource(null);
         setCapturedPhotos([]);
+        setPhotoTimestamps([]);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
         alert("Kein Internet – Aufnahme wurde in der Warteschlange gespeichert und wird automatisch verarbeitet, sobald du wieder online bist.");
         return;
       }
-
-      console.log("[Recording] Starting processing for:", fileUri);
-
-      // Check file size before reading
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      const fileSizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
-      console.log("[Recording] File size:", fileSizeMB.toFixed(1), "MB");
-
-      // For large video files (>15MB): Compress before uploading
-      // Uses hardware-accelerated H.264 encoding via expo-image-and-video-compressor
-      let processUri = fileUri;
-      if (mimeType === "video/mp4" && fileSizeMB > 15) {
-        console.log("[Recording] Video too large (", fileSizeMB.toFixed(1), "MB), compressing...");
-        setProcessingStep("compress"); // Show compression step in progress UI
-        try {
-          const { compress } = require("expo-image-and-video-compressor");
-          const compressed = await compress(fileUri, {
-            bitrate: 800_000, // 800 kbps - optimized for speech (audio quality matters, video less)
-            maxSize: 480, // 480p is enough for Whisper to extract audio
-            codec: "h264",
-            speed: "ultrafast",
-          }, (progress: number) => {
-            console.log(`[Recording] Compression: ${Math.round(progress * 100)}%`);
-          });
-          const compressedInfo = await FileSystem.getInfoAsync(compressed);
-          const compressedSizeMB = compressedInfo.exists && compressedInfo.size ? compressedInfo.size / (1024 * 1024) : 0;
-          console.log("[Recording] Compressed:", compressedSizeMB.toFixed(1), "MB (from", fileSizeMB.toFixed(1), "MB)");
-          processUri = compressed;
-        } catch (compressErr: any) {
-          console.warn("[Recording] Compression failed:", compressErr?.message);
-          // If compression fails and file is too large, show error
-          if (fileSizeMB > 40) {
-            alert(
-              `Das Video ist ${fileSizeMB.toFixed(0)} MB gro\u00df und konnte nicht komprimiert werden.\n\n` +
-              `Tipp: Verwende den Audio-Modus (Mikrofon-Icon) f\u00fcr zuverl\u00e4ssige Protokolle. ` +
-              `Du kannst dabei trotzdem Fotos machen!`
-            );
-            setIsProcessing(false);
-            setProcessingSource(null);
-            return;
-          }
-          // For files 15-40 MB, try uploading anyway
-          console.log("[Recording] Attempting upload without compression (file is", fileSizeMB.toFixed(1), "MB)");
-        }
-      }
-
-      // Read the file as base64 (use processUri which may be compressed)
-      const base64 = await FileSystem.readAsStringAsync(processUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      console.log("[Recording] File read, base64 length:", base64.length);
-
-      const ext = mimeType === "video/mp4" ? "mp4" : "m4a";
-
-      // Upload audio to storage
-      const uploadResult = await uploadMutation.mutateAsync({
-        base64,
-        mimeType,
-        filename: `recording-${Date.now()}.${ext}`,
-      });
-
-      console.log("[Recording] Upload complete, URL:", uploadResult.url);
-      setProcessingStep("transcription");
-
-      // Build absolute URL for transcription
-      // The upload returns a relative URL like /manus-storage/audio/...
-      // The server needs an absolute URL to fetch the audio file
-      let audioUrlForTranscription = uploadResult.url;
-      if (audioUrlForTranscription.startsWith("/")) {
-        audioUrlForTranscription = `${getApiBaseUrl()}${audioUrlForTranscription}`;
-      }
-      console.log("[Recording] Transcribing with URL:", audioUrlForTranscription);
-
-      // Transcribe audio
-      const transcription = await transcribeMutation.mutateAsync({
-        audioUrl: audioUrlForTranscription,
-        language: "de",
-      });
-
-      console.log("[Recording] Transcription complete:", transcription.text?.substring(0, 50));
-      setProcessingStep("protocol");
-
-      // Get settings for protocol style
-      const settingsStr = await AsyncStorage.getItem("protokoll-settings");
-      const settings = settingsStr ? JSON.parse(settingsStr) : {};
-
-      // Generate protocol with selected template
-      const protocol = await protocolMutation.mutateAsync({
-        transcription: transcription.text,
-        templateId: selectedTemplate.id,
-        style: settings.style || "formal",
-        format: settings.format || "bullets",
-      });
-
-      // Extract To-Dos from transcription and protocol
-      let todos: Array<{ task: string; assignee: string; priority: string; deadline: string; done: boolean }> = [];
-      try {
-        const todosResult = await todosMutation.mutateAsync({
-          transcription: transcription.text,
-          protocolText: protocol.protocol,
-        });
-        todos = (todosResult.todos || []).map((t: any) => ({
-          task: t.task || "",
-          assignee: t.assignee || "Nicht zugewiesen",
-          priority: t.priority || "mittel",
-          deadline: t.deadline || "Offen",
-          done: false,
-        }));
-      } catch (todoError) {
-        console.error("Todo extraction error:", todoError);
-      }
-
-      // Save protocol locally with photos and todos
-      const protocols = JSON.parse(
-        (await AsyncStorage.getItem("protocols")) || "[]"
-      );
 
       // Generate protocol number if project has a prefix
       let protocolNumber: string | null = null;
@@ -734,15 +623,17 @@ export default function RecordScreen() {
         protocolNumber = await getNextProtocolNumber(lastProjectId);
       }
 
-      const newProtocol = {
-        id: Date.now().toString(),
-        title: transcription.text.substring(0, 50) + "...",
-        transcription: transcription.text,
-        protocol: protocol.protocol,
+      // Create placeholder protocol with status "processing"
+      const protocolId = Date.now().toString();
+      const placeholderProtocol = {
+        id: protocolId,
+        title: "Wird verarbeitet...",
+        transcription: "",
+        protocol: "",
         templateName: selectedTemplate.name,
         templateId: selectedTemplate.id,
         photos: capturedPhotos,
-        todos,
+        todos: [],
         markers,
         duration: recordingDuration,
         recordingMode: mode,
@@ -755,71 +646,79 @@ export default function RecordScreen() {
           city: recordingLocation.city,
         } : null,
         weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
-        status: "ready" as const,
+        status: "processing" as const,
+        processingStep: "uploading" as string,
         projectId: lastProjectId || undefined,
         protocolNumber: protocolNumber || undefined,
         videoUrl: null as string | null,
         videoUploadedAt: null as string | null,
-        videoUploadPending: pendingVideoUploadRef.current !== null,
+        videoUploadPending: false,
       };
+
       // Link to calendar event if available
       if (currentCalendarEvent && Platform.OS !== "web") {
         try {
-          const summary = `Protokoll: ${newProtocol.title}\n\n${protocol.protocol.substring(0, 500)}...`;
-          await addNotesToEvent(currentCalendarEvent.id, summary);
-          newProtocol.calendarEventId = currentCalendarEvent.id;
-        } catch {
-          // Calendar linking is optional
-        }
+          await addNotesToEvent(currentCalendarEvent.id, `Protokoll wird verarbeitet...`);
+          placeholderProtocol.calendarEventId = currentCalendarEvent.id;
+        } catch {}
       }
 
-      // Show preview before saving (if feature enabled)
-      // NOTE: Preview is disabled by default since v1.0.6 to avoid confusion.
-      // Users can re-enable it in Settings > Funktionen.
-      const { isFeatureEnabled } = require("@/lib/feature-toggles");
-      const previewEnabled = await isFeatureEnabled("protocolPreview");
-      if (previewEnabled) {
-        setPreviewProtocol({ newProtocol, protocols });
-        setShowPreview(true);
-        setIsProcessing(false);
-        setProcessingSource(null);
-        return;
-      }
-      // Skip preview - save directly
-      setProcessingStep("saving");
-      protocols.unshift(newProtocol);
+      // Save placeholder immediately to AsyncStorage
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      protocols.unshift(placeholderProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+
+      // Clear recording state and navigate to protocols list
+      setCapturedPhotos([]);
+      setPhotoTimestamps([]);
       setIsProcessing(false);
       setProcessingSource(null);
-      setCapturedPhotos([]);
       
-      // Start background video upload if pending
-      if (pendingVideoUploadRef.current && pendingVideoUploadRef.current.protocolId === "__pending__") {
-        pendingVideoUploadRef.current.protocolId = newProtocol.id;
-        const { videoUri, protocolId } = pendingVideoUploadRef.current;
-        // Fire and forget - don't await
-        uploadVideoInBackground(videoUri, protocolId);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      router.push(`/protocol-detail?id=${newProtocol.id}` as any);
+      // Navigate to protocols tab (the list will show the placeholder with "processing" status)
+      router.push("/(tabs)/protocols" as any);
+
+      // Get settings for protocol style
+      const settingsStr = await AsyncStorage.getItem("protokoll-settings");
+      const settings = settingsStr ? JSON.parse(settingsStr) : {};
+
+      // Start background processing (fire and forget)
+      const { startBackgroundProcessing } = require("@/lib/background-processor");
+      startBackgroundProcessing(
+        {
+          protocolId,
+          fileUri,
+          mimeType,
+          templateId: selectedTemplate.id,
+          style: settings.style || "formal",
+          format: settings.format || "bullets",
+          createdAt: placeholderProtocol.createdAt,
+          markers: markers.length > 0 ? markers : undefined,
+          photos: capturedPhotos.length > 0 ? capturedPhotos : undefined,
+          photoTimestamps: photoTimestamps.length > 0 ? photoTimestamps : undefined,
+          status: "queued",
+        },
+        {
+          upload: (base64: string, mime: string, filename: string) =>
+            uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),
+          transcribe: (audioUrl: string, language: string) =>
+            transcribeMutation.mutateAsync({ audioUrl, language }),
+          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: Array<{ time: number; label: string }>, photoCount?: number) =>
+            protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount }),
+          extractTodos: (transcription: string, protocolText: string) =>
+            todosMutation.mutateAsync({ transcription, protocolText }),
+        }
+      );
+
     } catch (error: any) {
       setIsProcessing(false);
       setProcessingSource(null);
       const errMsg = error?.message || String(error);
-      console.error("Processing error:", errMsg, error);
-      
-      // Provide more specific error messages
-      let userMessage = "Fehler bei der Verarbeitung.";
-      if (errMsg.includes("413") || errMsg.includes("too large") || errMsg.includes("payload")) {
-        userMessage = "Datei zu gro\u00df f\u00fcr Upload. Bitte verwende k\u00fcrzere Aufnahmen oder den Audio-Modus.";
-      } else if (errMsg.includes("network") || errMsg.includes("fetch") || errMsg.includes("ECONNREFUSED")) {
-        userMessage = "Netzwerkfehler. Bitte pr\u00fcfe deine Internetverbindung.";
-      } else if (errMsg.includes("transcri")) {
-        userMessage = "Transkription fehlgeschlagen. Bitte versuche es erneut.";
-      } else {
-        userMessage = `Fehler: ${errMsg.substring(0, 100)}`;
-      }
-      alert(userMessage);
+      console.error("Processing setup error:", errMsg);
+      alert(`Fehler beim Starten der Verarbeitung: ${errMsg.substring(0, 100)}`);
     }
   };
 
@@ -871,6 +770,7 @@ export default function RecordScreen() {
 
       setIsProcessing(false);
       setCapturedPhotos([]);
+      setPhotoTimestamps([]);
       
       // Start background video upload if pending
       if (pendingVideoUploadRef.current && pendingVideoUploadRef.current.protocolId === "__pending__") {
@@ -1331,7 +1231,7 @@ export default function RecordScreen() {
 
         <View style={{ position: "absolute", bottom: 30, left: 16, right: 16, flexDirection: "row", gap: 12 }}>
           <Pressable
-            onPress={() => { setShowPreview(false); setPreviewProtocol(null); setCapturedPhotos([]); }}
+            onPress={() => { setShowPreview(false); setPreviewProtocol(null); setCapturedPhotos([]); setPhotoTimestamps([]); }}
             style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
           >
             <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Verwerfen</Text>

@@ -70,6 +70,8 @@ type Protocol = {
     city: string | null;
   } | null;
   status: "processing" | "ready" | "sent";
+  processingStep?: string;
+  processingError?: string;
   weather?: string | null;
   isFavorite?: boolean;
   isArchived?: boolean;
@@ -123,6 +125,16 @@ export default function ProtocolDetailScreen() {
     loadProtocol();
     loadFeatureFlags();
   }, [id]);
+
+  // Auto-refresh while protocol is still processing in background
+  useEffect(() => {
+    if (protocol?.status === "processing") {
+      const interval = setInterval(() => {
+        loadProtocol();
+      }, 3000); // Refresh every 3 seconds
+      return () => clearInterval(interval);
+    }
+  }, [protocol?.status]);
 
   const loadFeatureFlags = async () => {
     const { isFeatureEnabled } = require("@/lib/feature-toggles");
@@ -514,6 +526,33 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
+        {/* Processing Status Banner */}
+        {protocol.status === "processing" && (
+          <View style={[styles.metaCard, { backgroundColor: "#FFF3E0", borderColor: "#FF9800", marginBottom: 12 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <ActivityIndicator size="small" color="#FF9800" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#E65100" }}>
+                  Wird im Hintergrund verarbeitet...
+                </Text>
+                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 2 }}>
+                  {protocol.processingStep === "uploading" && "Audio wird hochgeladen..."}
+                  {protocol.processingStep === "transcribing" && "Spracherkennung l\u00e4uft..."}
+                  {protocol.processingStep === "generating" && "Protokoll wird erstellt..."}
+                  {protocol.processingStep === "extracting-todos" && "Aufgaben werden extrahiert..."}
+                  {protocol.processingStep === "failed" && `Fehler: ${protocol.processingError || "Unbekannt"}`}
+                  {!protocol.processingStep && "Verarbeitung l\u00e4uft..."}
+                </Text>
+                {protocol.processingStep === "failed" && (
+                  <Text style={{ fontSize: 11, color: "#E65100", marginTop: 4 }}>
+                    Tipp: Versuche es erneut mit dem Audio-Modus.
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Metadata */}
         <View style={[styles.metaCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {protocol.protocolNumber && (
@@ -553,6 +592,19 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="cloud" size={18} color={colors.primary} />
               <Text style={[styles.metaText, { color: colors.muted }]}>
                 {protocol.weather}
+              </Text>
+            </View>
+          )}
+          {/* Recording Mode Badge */}
+          {protocol.recordingMode && (
+            <View style={styles.metaRow}>
+              <MaterialIcons 
+                name={protocol.recordingMode === "video" ? "videocam" : protocol.recordingMode === "audio-photo" ? "photo-camera" : "mic"} 
+                size={18} 
+                color={colors.primary} 
+              />
+              <Text style={[styles.metaText, { color: colors.primary, fontWeight: "500" }]}>
+                {protocol.recordingMode === "video" ? "Video-Aufnahme" : protocol.recordingMode === "audio-photo" ? "Audio + Fotos" : "Audio-Aufnahme"}
               </Text>
             </View>
           )}
@@ -1055,8 +1107,17 @@ export default function ProtocolDetailScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Action buttons */}
+      {/* Action buttons - disabled while processing */}
       <View style={[styles.actionsContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        {protocol.status === "processing" && (
+          <View style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}>
+            <Text style={{ fontSize: 12, color: "#FF9800", fontWeight: "500" }}>
+              Versenden erst m\u00f6glich wenn Verarbeitung abgeschlossen
+            </Text>
+          </View>
+        )}
+        {protocol.status !== "processing" && (
+          <>
         <Pressable
           onPress={shareViaWhatsApp}
           disabled={isSendingWhatsApp}
@@ -1107,6 +1168,8 @@ export default function ProtocolDetailScreen() {
           <MaterialIcons name="share" size={20} color={colors.background} />
           <Text style={[styles.actionButtonText, { color: colors.background }]}>Teilen</Text>
         </Pressable>
+          </>
+        )}
       </View>
 
       {/* Full-screen photo viewer */}

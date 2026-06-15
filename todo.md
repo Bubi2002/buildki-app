@@ -144,3 +144,16 @@
 - [x] Feature: Video-Komprimierung mit expo-image-and-video-compressor (H.264, 480p, 800kbps, ultrafast)
 - [x] Bug-Fix: Cloud-Sync/OAuth-Login - startOAuthLogin mit openAuthSessionAsync, korrektes Deep-Link-Scheme, Fallback-Portal-URL
 - [x] Feature: Neuer Modus 'Audio+Foto' (Audio-Aufnahme + Kamera für Fotos, ohne Video)
+- [x] Umbau: Non-blocking Background-Processing – App sofort bedienbar nach Aufnahme-Stopp
+- [x] Umbau: Upload/Transkription/Protokoll-Generierung laufen im Hintergrund
+- [x] Umbau: Protokoll wird sofort mit Status "wird verarbeitet" erstellt und in Liste angezeigt
+- [x] Umbau: Status-Anzeige im Protokoll (Upload... / Transkription... / Fertig)
+- [x] Umbau: Teilen/Verschicken erst möglich wenn Verarbeitung abgeschlossen
+- [x] Fix: Video-Upload blockiert die App – muss non-blocking im Hintergrund laufen
+- [x] Fix: Aufnahme-Modus (Video/Audio/Audio+Foto) als Badge in Protokoll-Detail-Metadaten anzeigen
+- [x] Fix: Unicode-Escape-Bug (\u2013 statt – im Video-Upload-Status-Text)
+- [ ] Fix: Video-Upload schlägt fehl bei kurzen Videos (10-15 Sek) – Größengrenze oder Komprimierung prüfen
+- [x] Fix: LLM halluziniert falsches Datum im Protokoll ("26. Oktober 2023") – echtes Datum muss im Prompt stehen
+- [x] Feature: Fotos den Markierungs-Abschnitten zuordnen (Foto nach Markierung = gehört zum vorherigen Abschnitt)
+- [x] Feature: Im Protokoll Abschnitt-Trenner bei Markierungen (LLM strukturiert anhand Marker)
+- [ ] Feature: Im PDF Fotos inline bei Abschnitten statt alle am Ende (erfordert PDF-Generator-Umbau)
