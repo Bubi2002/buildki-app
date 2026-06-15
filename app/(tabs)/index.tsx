@@ -47,6 +47,7 @@ export default function RecordScreen() {
   const colors = useColors();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraZoom, setCameraZoom] = useState(0);
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -1146,6 +1147,25 @@ export default function RecordScreen() {
     // Pure audio mode - no camera
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* Active Project Header */}
+        {selectedProject && (
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10, opacity: pressed ? 0.8 : 1 }]}>
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: selectedProject.color }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>{selectedProject.name}</Text>
+              {selectedProject.description ? <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>{selectedProject.description}</Text> : null}
+            </View>
+            <MaterialIcons name="swap-horiz" size={18} color={colors.muted} />
+          </Pressable>
+        )}
+        {!selectedProject && (
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.warning + "10", gap: 8, opacity: pressed ? 0.8 : 1 }]}>
+            <MaterialIcons name="warning" size={16} color={colors.warning} />
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.warning }}>Kein Projekt gew\u00e4hlt</Text>
+            <MaterialIcons name="chevron-right" size={16} color={colors.warning} />
+          </Pressable>
+        )}
+
         {/* Audio waveform area */}
         <View style={styles.audioContainer}>
           {/* Mode toggle */}
@@ -1411,12 +1431,42 @@ export default function RecordScreen() {
         style={styles.camera}
         facing="back"
         mode="picture"
+        zoom={cameraZoom}
         active={isFocused}
         onCameraReady={() => setCameraReady(true)}
         onMountError={(e) => console.warn("Camera mount error:", e?.message)}
       />
       {/* Overlay layer on top of camera */}
       <View style={[styles.overlayContainer, { pointerEvents: "box-none" }]}>
+        {/* Active Project Header (top of camera) */}
+        {selectedProject && (
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 20, gap: 8, backgroundColor: "rgba(0,0,0,0.5)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: selectedProject.color, borderWidth: 1, borderColor: "rgba(255,255,255,0.5)" }} />
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>{selectedProject.name}</Text>
+            <MaterialIcons name="swap-horiz" size={14} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+        )}
+        {!selectedProject && (
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 20, gap: 6, backgroundColor: "rgba(255,152,0,0.8)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
+            <MaterialIcons name="warning" size={14} color="#FFFFFF" />
+            <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Kein Projekt</Text>
+          </Pressable>
+        )}
+
+        {/* Zoom slider */}
+        {!isRecording && (
+          <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
+            <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, paddingVertical: 12, paddingHorizontal: 6, alignItems: "center", gap: 6 }}>
+              <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.1))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
+                <MaterialIcons name="add" size={18} color="#FFFFFF" />
+              </Pressable>
+              <Text style={{ fontSize: 10, color: "#FFFFFF", fontWeight: "700" }}>{(1 + cameraZoom * 9).toFixed(1)}x</Text>
+              <Pressable onPress={() => setCameraZoom(Math.max(0, cameraZoom - 0.1))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
+                <MaterialIcons name="remove" size={18} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          </View>
+        )}
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}
 

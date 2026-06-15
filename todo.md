@@ -202,3 +202,5 @@
 - [x] Feature: Plan-Markierung im PDF (Gesamtplan + Ausschnitt mit Pin-Icon vor Fotos/Text)
 - [x] Feature: Cloud-Speicher-Integration (Dropbox, Google Drive, iCloud, OneDrive) für Projektordner
 - [x] Feature: Cloud-Import nachträglich im laufenden Projekt nutzbar (Pläne, Dokumente, Fotos)
+- [x] UX: Aktives Projekt oben im Aufnahme-Screen anzeigen (Name + Farbmarkierung)
+- [x] UX: Kamera-Zoom per +/- Buttons im Audio+Foto Modus
