@@ -19,6 +19,7 @@ const MAPPING = {
   "mic.fill": "mic",
   "doc.text.fill": "description",
   "gearshape.fill": "settings",
+  "folder.fill": "folder",
 } as IconMapping;
 
 /**

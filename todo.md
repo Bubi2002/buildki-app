@@ -195,3 +195,4 @@
 - [x] Feature: QR-Code Scanner (Bauteile/Materialien per QR-Code scannen und Protokoll zuordnen)
 - [x] Feature: Zeiterfassung mit Start/Stopp-Timer pro Projekt/Tag
 - [x] Feature: PDF-Branding (Firmenlogo, Kopf-/Fußzeile in exportierten PDFs)
+- [x] UX: Projekt-Tab in untere Navigation (jederzeit Projekt wechseln/anlegen während Aufnahme)
