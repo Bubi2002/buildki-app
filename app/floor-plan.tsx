@@ -13,6 +13,9 @@ import {
   Image as RNImage,
   Platform,
   Animated,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -486,8 +489,11 @@ export default function FloorPlanScreen() {
 
       {/* Pin Creation Modal (Bottom Sheet Style) */}
       <Modal visible={showPinModal} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => { setShowPinModal(false); setPendingPin(null); }}>
-          <Pressable style={[styles.modalContent, { backgroundColor: colors.background }]} onPress={() => {}}>
+        <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "flex-end" }}>
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Neue Markierung</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
@@ -525,8 +531,9 @@ export default function FloorPlanScreen() {
               placeholderTextColor={colors.muted}
               value={pinLabel}
               onChangeText={setPinLabel}
-              autoFocus
-              returnKeyType="next"
+              autoFocus={false}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
 
             <TextInput
@@ -541,21 +548,24 @@ export default function FloorPlanScreen() {
 
             <View style={styles.modalButtons}>
               <Pressable
-                onPress={() => { setShowPinModal(false); setPendingPin(null); }}
+                onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
                 <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
               </Pressable>
               <Pressable
-                onPress={savePin}
+                onPress={() => { Keyboard.dismiss(); savePin(); }}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: PIN_COLORS[pinType] }, pressed && { opacity: 0.85 }]}
               >
                 <MaterialIcons name="check" size={18} color="#FFF" />
                 <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF", marginLeft: 6 }}>Speichern</Text>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Plan Name Modal */}
