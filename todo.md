@@ -173,3 +173,6 @@
 - [x] Feature: Wetter-Integration – Automatisch Wetterdaten (Temperatur, Niederschlag) zum Protokoll hinzufügen (bereits in Recording-Flow integriert)
 - [x] Feature: Team-Kollaboration – Projekte mit Kollegen teilen, Aufgaben zuweisen, Kommentare
 - [x] Feature: Checklisten – Vordefinierte Prüflisten (Abnahme, Brandschutz, Elektro, etc.)
+- [x] UX: Projektauswahl-Maske IMMER anzeigen (auch wenn letztes Projekt gespeichert ist)
+- [x] UX: Projektauswahl-Design aufwerten (professioneller, übersichtlicher)
+- [x] UX: Zusätzliche Infos in Projektliste (Anzahl Protokolle, letztes Datum, Werkzeug-Zugang)

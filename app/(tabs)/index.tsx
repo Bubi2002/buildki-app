@@ -108,20 +108,30 @@ export default function RecordScreen() {
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
 
-  // Load projects and restore last selected
+  // Load projects and pre-select last used (but ALWAYS show picker)
   useEffect(() => {
     (async () => {
       try {
-        const [projectsData, lastId] = await Promise.all([
+        const [projectsData, lastId, protocolsData] = await Promise.all([
           AsyncStorage.getItem("projects"),
           AsyncStorage.getItem("last-selected-project-id"),
+          AsyncStorage.getItem("protocols"),
         ]);
         const allProjects: ProjectItem[] = JSON.parse(projectsData || "[]");
-        setProjects(allProjects);
+        const allProtocols: any[] = JSON.parse(protocolsData || "[]");
+        // Enrich projects with protocol count and last date
+        const enriched = allProjects.map((p) => {
+          const projectProtocols = allProtocols.filter((pr: any) => pr.projectId === p.id);
+          const lastProtocol = projectProtocols.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+          return { ...p, _protocolCount: projectProtocols.length, _lastDate: lastProtocol?.createdAt || null };
+        });
+        setProjects(enriched as any);
+        // Pre-select last used project but ALWAYS show picker
         if (lastId) {
-          const found = allProjects.find((p) => p.id === lastId);
-          if (found) { setSelectedProject(found); setShowProjectPicker(false); }
+          const found = enriched.find((p) => p.id === lastId);
+          if (found) setSelectedProject(found as any);
         }
+        // Always keep showProjectPicker = true
       } catch {}
     })();
   }, []);
@@ -538,51 +548,118 @@ export default function RecordScreen() {
   if (showProjectPicker && !isRecording && !isProcessing) {
     return (
       <ScreenContainer className="flex-1">
-        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 24, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Projekt wählen</Text>
-            <Text style={{ fontSize: 14, color: colors.muted }}>Wähle ein Projekt für deine Aufnahme</Text>
+        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
+          {/* Header */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                <MaterialIcons name="business" size={20} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.foreground }}>Projekt wählen</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>Wähle ein Projekt oder starte ohne Zuordnung</Text>
           </View>
+
+          {/* Summary Stats */}
+          {projects.length > 0 && (
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.primary }}>{projects.length}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Projekte</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.success }}>{projects.reduce((sum, p: any) => sum + (p._protocolCount || 0), 0)}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.warning }}>{projects.reduce((sum, p: any) => sum + (p.protocolCounter || 0), 0)}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Gesamt Nr.</Text>
+              </View>
+            </View>
+          )}
+
           <FlatList
             data={projects}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingBottom: 120 }}
+            contentContainerStyle={{ paddingBottom: 140 }}
             ListHeaderComponent={
-              <Pressable onPress={() => setShowCreateProject(true)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 12, borderWidth: 1.5, borderColor: colors.primary, borderStyle: "dashed", marginBottom: 12, gap: 12, opacity: pressed ? 0.7 : 1 }]}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
-                  <MaterialIcons name="add" size={24} color={colors.primary} />
+              <Pressable onPress={() => setShowCreateProject(true)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 14, borderWidth: 1.5, borderColor: colors.primary, borderStyle: "dashed", marginBottom: 14, gap: 12, opacity: pressed ? 0.7 : 1 }]}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                  <MaterialIcons name="add" size={26} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.primary }}>Neues Projekt</Text>
-                  <Text style={{ fontSize: 12, color: colors.muted }}>Erstelle ein neues Projekt</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.primary }}>Neues Projekt anlegen</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Mit Nummerierung, Farbe und Beschreibung</Text>
                 </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
               </Pressable>
             }
-            renderItem={({ item }) => (
-              <Pressable onPress={() => selectProject(item)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: selectedProject?.id === item.id ? colors.primary : colors.border, backgroundColor: selectedProject?.id === item.id ? colors.primary + "10" : colors.surface, marginBottom: 8, opacity: pressed ? 0.7 : 1 }]}>
-                <View style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: item.color, marginRight: 12 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{item.name}</Text>
-                  {item.description ? <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{item.description}</Text> : null}
-                  {item.protocolPrefix && <Text style={{ fontSize: 11, color: colors.primary, marginTop: 3, fontWeight: "500" }}>{item.protocolPrefix}-{String((item.protocolCounter || 0) + 1).padStart(3, "0")} (nächstes)</Text>}
-                </View>
-                {selectedProject?.id === item.id && <MaterialIcons name="check-circle" size={22} color={colors.primary} />}
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const pItem = item as any;
+              const isSelected = selectedProject?.id === item.id;
+              return (
+                <Pressable onPress={() => selectProject(item)} style={({ pressed }) => [{ padding: 14, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, marginBottom: 10, opacity: pressed ? 0.7 : 1 }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: item.color + "20", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.color }} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{item.name}</Text>
+                      {item.description ? <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{item.description}</Text> : null}
+                    </View>
+                    {isSelected && <MaterialIcons name="check-circle" size={24} color={colors.primary} />}
+                  </View>
+                  {/* Extra Info Row */}
+                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border + "60", gap: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <MaterialIcons name="description" size={14} color={colors.muted} />
+                      <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{pItem._protocolCount || 0} Protokolle</Text>
+                    </View>
+                    {item.protocolPrefix && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <MaterialIcons name="tag" size={14} color={colors.primary} />
+                        <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>{item.protocolPrefix}-{String((item.protocolCounter || 0) + 1).padStart(3, "0")}</Text>
+                      </View>
+                    )}
+                    {pItem._lastDate && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <MaterialIcons name="schedule" size={14} color={colors.muted} />
+                        <Text style={{ fontSize: 12, color: colors.muted }}>{new Date(pItem._lastDate).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }} />
+                    <Pressable
+                      onPress={() => { selectProject(item); setShowProjectPicker(false); router.push(`/project-detail?id=${item.id}` as any); }}
+                      style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="open-in-new" size={14} color={colors.primary} />
+                    </Pressable>
+                  </View>
+                </Pressable>
+              );
+            }}
             ListEmptyComponent={
-              <View style={{ alignItems: "center", paddingTop: 40 }}>
-                <MaterialIcons name="folder-open" size={56} color={colors.border} />
-                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>Noch keine Projekte</Text>
-                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>Erstelle dein erstes Projekt, um Protokolle zu organisieren.</Text>
+              <View style={{ alignItems: "center", paddingTop: 50 }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <MaterialIcons name="folder-open" size={40} color={colors.border} />
+                </View>
+                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>Noch keine Projekte</Text>
+                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center", paddingHorizontal: 20 }}>Erstelle dein erstes Projekt, um Protokolle übersichtlich zu organisieren.</Text>
               </View>
             }
           />
-          <View style={{ position: "absolute", bottom: 30, left: 16, right: 16 }}>
+
+          {/* Bottom Buttons */}
+          <View style={{ position: "absolute", bottom: 24, left: 20, right: 20, gap: 10 }}>
             <Pressable onPress={selectWithoutProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1, backgroundColor: colors.background }]}>
               <Text style={{ fontSize: 14, fontWeight: "500", color: colors.muted }}>Ohne Projekt fortfahren</Text>
             </Pressable>
           </View>
         </View>
+
+        {/* Create Project Modal */}
         <Modal visible={showCreateProject} animationType="slide" transparent>
           <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, backgroundColor: colors.background }}>
