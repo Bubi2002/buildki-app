@@ -8,6 +8,10 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
+  FlatList,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import {
@@ -83,6 +87,18 @@ export default function RecordScreen() {
   const [recentProtocols, setRecentProtocols] = useState<any[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // --- PROJECT SELECTION STATE ---
+  type ProjectItem = { id: string; name: string; description: string; color: string; createdAt: string; protocolPrefix?: string; protocolCounter?: number; };
+  const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
+  const [showProjectPicker, setShowProjectPicker] = useState(true);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDesc, setNewProjectDesc] = useState("");
+  const [newProjectPrefix, setNewProjectPrefix] = useState("");
+  const [newProjectColor, setNewProjectColor] = useState("#E53935");
+  const PROJECT_COLORS = ["#E53935","#D81B60","#8E24AA","#5C6BC0","#1E88E5","#00ACC1","#00897B","#43A047","#7CB342","#FDD835","#FB8C00","#6D4C41"];
+
   // Audio recorder
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder);
@@ -91,6 +107,24 @@ export default function RecordScreen() {
   const transcribeMutation = trpc.voice.transcribe.useMutation();
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
+
+  // Load projects and restore last selected
+  useEffect(() => {
+    (async () => {
+      try {
+        const [projectsData, lastId] = await Promise.all([
+          AsyncStorage.getItem("projects"),
+          AsyncStorage.getItem("last-selected-project-id"),
+        ]);
+        const allProjects: ProjectItem[] = JSON.parse(projectsData || "[]");
+        setProjects(allProjects);
+        if (lastId) {
+          const found = allProjects.find((p) => p.id === lastId);
+          if (found) { setSelectedProject(found); setShowProjectPicker(false); }
+        }
+      } catch {}
+    })();
+  }, []);
 
   // Load recent protocols for quick access
   useEffect(() => {
@@ -141,6 +175,32 @@ export default function RecordScreen() {
     } catch (error) {
       // Use default
     }
+  };
+
+  // --- PROJECT SELECTION FUNCTIONS ---
+  const selectProject = async (project: ProjectItem) => {
+    setSelectedProject(project); setShowProjectPicker(false);
+    await AsyncStorage.setItem("last-selected-project-id", project.id);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+  const selectWithoutProject = async () => {
+    setSelectedProject(null); setShowProjectPicker(false);
+    await AsyncStorage.removeItem("last-selected-project-id");
+  };
+  const createAndSelectProject = async () => {
+    if (!newProjectName.trim()) { Alert.alert("Fehler", "Bitte gib einen Projektnamen ein."); return; }
+    try {
+      const existing = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+      const np: ProjectItem = { id: Date.now().toString(), name: newProjectName.trim(), description: newProjectDesc.trim(), color: newProjectColor, createdAt: new Date().toISOString(), protocolPrefix: newProjectPrefix.trim().toUpperCase() || undefined, protocolCounter: 0 };
+      const updated = [np, ...existing];
+      await AsyncStorage.setItem("projects", JSON.stringify(updated));
+      setProjects(updated); setShowCreateProject(false); setNewProjectName(""); setNewProjectDesc(""); setNewProjectPrefix(""); setNewProjectColor("#E53935");
+      await selectProject(np);
+    } catch { Alert.alert("Fehler", "Projekt konnte nicht erstellt werden."); }
+  };
+  const changeProject = () => {
+    setShowProjectPicker(true);
+    AsyncStorage.getItem("projects").then((d) => setProjects(JSON.parse(d || "[]"))).catch(() => {});
   };
 
   // Check for current calendar event when screen loads
@@ -320,11 +380,11 @@ export default function RecordScreen() {
 
   const startVideoRecording = async () => {
     if (Platform.OS === "web") {
-      alert("Videoaufnahme ist nur auf dem Handy verf\u00fcgbar.");
+      alert("Videoaufnahme ist nur auf dem Handy verfügbar.");
       return;
     }
     if (!cameraRef.current) {
-      alert("Kamera nicht verf\u00fcgbar. Bitte warte einen Moment.");
+      alert("Kamera nicht verfügbar. Bitte warte einen Moment.");
       return;
     }
     if (!cameraReady) {
@@ -618,9 +678,9 @@ export default function RecordScreen() {
 
       // Generate protocol number if project has a prefix
       let protocolNumber: string | null = null;
-      const lastProjectId = await AsyncStorage.getItem("last-selected-project-id");
-      if (lastProjectId) {
-        protocolNumber = await getNextProtocolNumber(lastProjectId);
+      const activeProjectId = selectedProject?.id || null;
+      if (activeProjectId) {
+        protocolNumber = await getNextProtocolNumber(activeProjectId);
       }
 
       // Create placeholder protocol with status "processing"
@@ -648,7 +708,7 @@ export default function RecordScreen() {
         weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
         status: "processing" as const,
         processingStep: "uploading" as string,
-        projectId: lastProjectId || undefined,
+        projectId: activeProjectId || undefined,
         protocolNumber: protocolNumber || undefined,
         videoUrl: null as string | null,
         videoUploadedAt: null as string | null,
@@ -789,6 +849,84 @@ export default function RecordScreen() {
     }
   };
 
+  // --- PROJECT PICKER UI (shown FIRST before anything else) ---
+  if (showProjectPicker && !isRecording && !isProcessing) {
+    return (
+      <ScreenContainer className="flex-1">
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ fontSize: 24, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Projekt wählen</Text>
+            <Text style={{ fontSize: 14, color: colors.muted }}>Wähle ein Projekt für deine Aufnahme</Text>
+          </View>
+          <FlatList
+            data={projects}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            ListHeaderComponent={
+              <Pressable onPress={() => setShowCreateProject(true)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 12, borderWidth: 1.5, borderColor: colors.primary, borderStyle: "dashed", marginBottom: 12, gap: 12, opacity: pressed ? 0.7 : 1 }]}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                  <MaterialIcons name="add" size={24} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.primary }}>Neues Projekt</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted }}>Erstelle ein neues Projekt</Text>
+                </View>
+              </Pressable>
+            }
+            renderItem={({ item }) => (
+              <Pressable onPress={() => selectProject(item)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: selectedProject?.id === item.id ? colors.primary : colors.border, backgroundColor: selectedProject?.id === item.id ? colors.primary + "10" : colors.surface, marginBottom: 8, opacity: pressed ? 0.7 : 1 }]}>
+                <View style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: item.color, marginRight: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{item.name}</Text>
+                  {item.description ? <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{item.description}</Text> : null}
+                  {item.protocolPrefix && <Text style={{ fontSize: 11, color: colors.primary, marginTop: 3, fontWeight: "500" }}>{item.protocolPrefix}-{String((item.protocolCounter || 0) + 1).padStart(3, "0")} (nächstes)</Text>}
+                </View>
+                {selectedProject?.id === item.id && <MaterialIcons name="check-circle" size={22} color={colors.primary} />}
+              </Pressable>
+            )}
+            ListEmptyComponent={
+              <View style={{ alignItems: "center", paddingTop: 40 }}>
+                <MaterialIcons name="folder-open" size={56} color={colors.border} />
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>Noch keine Projekte</Text>
+                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>Erstelle dein erstes Projekt, um Protokolle zu organisieren.</Text>
+              </View>
+            }
+          />
+          <View style={{ position: "absolute", bottom: 30, left: 16, right: 16 }}>
+            <Pressable onPress={selectWithoutProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1, backgroundColor: colors.background }]}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.muted }}>Ohne Projekt fortfahren</Text>
+            </Pressable>
+          </View>
+        </View>
+        <Modal visible={showCreateProject} animationType="slide" transparent>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, backgroundColor: colors.background }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
+                <Pressable onPress={() => setShowCreateProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+              </View>
+              <TextInput value={newProjectName} onChangeText={setNewProjectName} placeholder="Projektname (z.B. Baustelle Mühlenstraße)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
+              <TextInput value={newProjectDesc} onChangeText={setNewProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
+              <TextInput value={newProjectPrefix} onChangeText={(v) => setNewProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{newProjectPrefix ? `Nummerierung: ${newProjectPrefix}-001, ${newProjectPrefix}-002, ...` : "Optional: Automatische Nummerierung (z.B. BST-001)"}</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Farbe wählen</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
+                {PROJECT_COLORS.map((c) => (
+                  <Pressable key={c} onPress={() => setNewProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 16, backgroundColor: c, alignItems: "center", justifyContent: "center" }, newProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
+                    {newProjectColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable onPress={createAndSelectProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Projekt erstellen & auswählen</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </ScreenContainer>
+    );
+  }
+
   // Permission handling
   if (!cameraPermission || !micPermission) {
     return (
@@ -871,13 +1009,13 @@ export default function RecordScreen() {
   // Processing state with step-by-step progress
   if (isProcessing) {
     const sourceLabel = processingSource === "video" 
-      ? "\u2705 Video erfolgreich aufgenommen" 
+      ? "✅ Video erfolgreich aufgenommen" 
       : processingSource === "audio-backup" 
-        ? "\u26A0\uFE0F Audio-Backup verwendet" 
+        ? "⚠️ Audio-Backup verwendet" 
         : processingSource === "cache" 
-          ? "\u26A0\uFE0F Datei aus Cache wiederhergestellt" 
+          ? "⚠️ Datei aus Cache wiederhergestellt" 
           : processingSource === "audio" 
-            ? "\u2705 Audio erfolgreich aufgenommen" 
+            ? "✅ Audio erfolgreich aufgenommen" 
             : null;
 
     const steps = [
@@ -939,7 +1077,7 @@ export default function RecordScreen() {
                     fontWeight: isCurrent ? "600" : "400",
                     color: isCompleted ? colors.success : isCurrent ? colors.foreground : colors.muted,
                   }}>
-                    {step.label}{isCompleted ? " \u2713" : ""}
+                    {step.label}{isCompleted ? " ✓" : ""}
                   </Text>
                 </View>
               );
@@ -975,7 +1113,7 @@ export default function RecordScreen() {
           {/* Photos info */}
           {capturedPhotos.length > 0 && (
             <Text style={{ fontSize: 13, color: colors.muted, marginTop: 12, textAlign: "center" }}>
-              {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angeh\u00e4ngt
+              {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angehängt
             </Text>
           )}
         </View>
@@ -1041,6 +1179,15 @@ export default function RecordScreen() {
               </Text>
             )}
           </View>
+
+          {/* Project badge */}
+          {!isRecording && selectedProject && (
+            <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignSelf: "center", marginBottom: 8, opacity: pressed ? 0.7 : 1 }]}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedProject.color }} />
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.foreground }}>{selectedProject.name}</Text>
+              <MaterialIcons name="swap-horiz" size={14} color={colors.muted} />
+            </Pressable>
+          )}
 
           {/* Template selector */}
           {showTemplateSelector && !isRecording && (
@@ -1202,7 +1349,7 @@ export default function RecordScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Protokoll-Vorschau</Text>
-            <Text style={{ fontSize: 13, color: colors.muted }}>Pr\u00fcfe das generierte Protokoll vor dem Speichern</Text>
+            <Text style={{ fontSize: 13, color: colors.muted }}>Prüfe das generierte Protokoll vor dem Speichern</Text>
           </View>
 
           <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
@@ -1225,7 +1372,7 @@ export default function RecordScreen() {
           )}
 
           {newProtocol.photos && newProtocol.photos.length > 0 && (
-            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{newProtocol.photos.length} Foto(s) angeh\u00e4ngt</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{newProtocol.photos.length} Foto(s) angehängt</Text>
           )}
         </ScrollView>
 
@@ -1488,8 +1635,8 @@ export default function RecordScreen() {
 
           <Text style={styles.hintText}>
             {isRecording
-              ? "Foto \u2022 Stopp \u2022 Markierung"
-              : mode === "audio-photo" ? "Audio + Fotos \u2022 Kein Video" : "Tippe zum Aufnehmen"}
+              ? "Foto • Stopp • Markierung"
+              : mode === "audio-photo" ? "Audio + Fotos • Kein Video" : "Tippe zum Aufnehmen"}
           </Text>
         </View>
       </View>

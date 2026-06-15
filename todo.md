@@ -157,3 +157,10 @@
 - [x] Feature: Fotos den Markierungs-Abschnitten zuordnen (Foto nach Markierung = gehört zum vorherigen Abschnitt)
 - [x] Feature: Im Protokoll Abschnitt-Trenner bei Markierungen (LLM strukturiert anhand Marker)
 - [ ] Feature: Im PDF Fotos inline bei Abschnitten statt alle am Ende (erfordert PDF-Generator-Umbau)
+- [x] UX-Umbau: Projekt-Auswahl als erster Schritt vor jeder Aufnahme (statt optional am Ende)
+- [x] UX-Umbau: Neues Projekt erstellen Dialog mit Name, Beschreibung, Präfix, Farbe
+- [x] UX-Umbau: Vorhandenes Projekt aus Liste wählen
+- [x] UX-Umbau: "Ohne Projekt fortfahren" Option
+- [x] UX-Umbau: Projekt-Badge im Aufnahme-Screen anzeigen
+- [x] UX-Umbau: Automatische Nummerierung (BST-001, BST-002...) in Projekt-Auswahl anzeigen
+- [x] Fix: Unicode-Escape-Sequenzen in JSX-Text durch echte Zeichen ersetzt
