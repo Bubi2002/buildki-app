@@ -271,6 +271,7 @@ export default function ProtocolDetailScreen() {
         location: protocol.location,
         weather: protocol.weather,
         protocolNumber: protocol.protocolNumber,
+        projectName: protocol.projectName || undefined,
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
         signatures: signatures.length > 0 ? signatures : undefined,
       });

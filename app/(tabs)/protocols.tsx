@@ -71,7 +71,22 @@ export default function ProtocolsScreen() {
     try {
       const stored = await AsyncStorage.getItem("protocols");
       if (stored) {
-        setProtocols(JSON.parse(stored));
+        let parsed = JSON.parse(stored);
+        // Migration: Add projectName to protocols that have projectId but no projectName
+        const needsMigration = parsed.some((p: any) => p.projectId && !p.projectName);
+        if (needsMigration) {
+          const projectsStr = await AsyncStorage.getItem("projects");
+          const projects = projectsStr ? JSON.parse(projectsStr) : [];
+          parsed = parsed.map((p: any) => {
+            if (p.projectId && !p.projectName) {
+              const proj = projects.find((pr: any) => pr.id === p.projectId);
+              if (proj) return { ...p, projectName: proj.name };
+            }
+            return p;
+          });
+          await AsyncStorage.setItem("protocols", JSON.stringify(parsed));
+        }
+        setProtocols(parsed);
       }
     } catch (error) {
       console.error("Error loading protocols:", error);
