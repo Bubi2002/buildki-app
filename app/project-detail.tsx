@@ -14,6 +14,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { getFloorPlans } from "@/lib/floor-plan-store";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
@@ -52,6 +53,7 @@ export default function ProjectDetailScreen() {
   const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [planCount, setPlanCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -72,6 +74,12 @@ export default function ProjectDetailScreen() {
       setProject(found || null);
       setAllProtocols(protocolsList);
       setProtocols(protocolsList.filter((p) => p.projectId === id));
+
+      // Load floor plan count
+      if (id) {
+        const plans = await getFloorPlans(id);
+        setPlanCount(plans.length);
+      }
 
       // Set this project as the active project for protocol numbering
       if (id) {
@@ -307,7 +315,7 @@ export default function ProjectDetailScreen() {
             style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="map" size={20} color={colors.primary} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Grundriss</Text>
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Grundriss{planCount > 0 ? ` ${planCount}` : ""}</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
