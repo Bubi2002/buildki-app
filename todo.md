@@ -176,3 +176,6 @@
 - [x] UX: Projektauswahl-Maske IMMER anzeigen (auch wenn letztes Projekt gespeichert ist)
 - [x] UX: Projektauswahl-Design aufwerten (professioneller, übersichtlicher)
 - [x] UX: Zusätzliche Infos in Projektliste (Anzahl Protokolle, letztes Datum, Werkzeug-Zugang)
+- [x] UX: Suchfeld/Filter in der Projektauswahl-Liste
+- [x] UX: Sortierung der Projekte (letzte Aktivität, Name, Erstelldatum)
+- [x] UX: Projekt-Archivierung (abgeschlossene Projekte ausblenden ohne Löschen)

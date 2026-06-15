@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -97,6 +97,9 @@ export default function RecordScreen() {
   const [newProjectDesc, setNewProjectDesc] = useState("");
   const [newProjectPrefix, setNewProjectPrefix] = useState("");
   const [newProjectColor, setNewProjectColor] = useState("#E53935");
+  const [projectSearch, setProjectSearch] = useState("");
+  const [projectSort, setProjectSort] = useState<"activity" | "name" | "created">("activity");
+  const [showArchived, setShowArchived] = useState(false);
   const PROJECT_COLORS = ["#E53935","#D81B60","#8E24AA","#5C6BC0","#1E88E5","#00ACC1","#00897B","#43A047","#7CB342","#FDD835","#FB8C00","#6D4C41"];
 
   // Audio recorder
@@ -212,6 +215,55 @@ export default function RecordScreen() {
     setShowProjectPicker(true);
     AsyncStorage.getItem("projects").then((d) => setProjects(JSON.parse(d || "[]"))).catch(() => {});
   };
+
+  const archiveProject = async (projectId: string) => {
+    Alert.alert("Projekt archivieren", "Dieses Projekt wird ausgeblendet, aber nicht gelöscht.", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Archivieren",
+        onPress: async () => {
+          try {
+            const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+            const updated = data.map((p: any) => p.id === projectId ? { ...p, isArchived: true } : p);
+            await AsyncStorage.setItem("projects", JSON.stringify(updated));
+            setProjects(updated);
+            if (selectedProject?.id === projectId) setSelectedProject(null);
+            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } catch {}
+        },
+      },
+    ]);
+  };
+
+  const unarchiveProject = async (projectId: string) => {
+    try {
+      const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+      const updated = data.map((p: any) => p.id === projectId ? { ...p, isArchived: false } : p);
+      await AsyncStorage.setItem("projects", JSON.stringify(updated));
+      setProjects(updated);
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+  };
+
+  // Filtered and sorted projects
+  const filteredProjects = useMemo(() => {
+    let list = projects.filter((p: any) => showArchived ? p.isArchived : !p.isArchived);
+    // Search filter
+    if (projectSearch.trim()) {
+      const q = projectSearch.toLowerCase();
+      list = list.filter((p) => p.name.toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.protocolPrefix || "").toLowerCase().includes(q));
+    }
+    // Sort
+    list.sort((a: any, b: any) => {
+      if (projectSort === "name") return a.name.localeCompare(b.name, "de");
+      if (projectSort === "created") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      // activity: by last protocol date, then created
+      const aDate = a._lastDate ? new Date(a._lastDate).getTime() : new Date(a.createdAt).getTime();
+      const bDate = b._lastDate ? new Date(b._lastDate).getTime() : new Date(b.createdAt).getTime();
+      return bDate - aDate;
+    });
+    return list;
+  }, [projects, projectSearch, projectSort, showArchived]);
 
   // Check for current calendar event when screen loads
   useEffect(() => {
@@ -564,24 +616,72 @@ export default function RecordScreen() {
 
           {/* Summary Stats */}
           {projects.length > 0 && (
-            <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
-                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.primary }}>{projects.length}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Projekte</Text>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.primary }}>{projects.filter((p: any) => !p.isArchived).length}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Aktiv</Text>
               </View>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.success }}>{projects.reduce((sum, p: any) => sum + (p._protocolCount || 0), 0)}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
               </View>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
-                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.warning }}>{projects.reduce((sum, p: any) => sum + (p.protocolCounter || 0), 0)}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Gesamt Nr.</Text>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: colors.muted }}>{projects.filter((p: any) => p.isArchived).length}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Archiv</Text>
               </View>
             </View>
           )}
 
+          {/* Search Bar */}
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, marginBottom: 10 }}>
+            <MaterialIcons name="search" size={20} color={colors.muted} />
+            <TextInput
+              value={projectSearch}
+              onChangeText={setProjectSearch}
+              placeholder="Projekt suchen..."
+              placeholderTextColor={colors.muted}
+              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, color: colors.foreground }}
+              returnKeyType="done"
+            />
+            {projectSearch.length > 0 && (
+              <Pressable onPress={() => setProjectSearch("")} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+                <MaterialIcons name="close" size={18} color={colors.muted} />
+              </Pressable>
+            )}
+          </View>
+
+          {/* Sort & Archive Toggle Row */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 6 }}>
+            <Pressable
+              onPress={() => setProjectSort("activity")}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: projectSort === "activity" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "activity" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "activity" ? colors.primary : colors.muted }}>Aktivität</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setProjectSort("name")}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: projectSort === "name" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "name" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "name" ? colors.primary : colors.muted }}>Name</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setProjectSort("created")}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: projectSort === "created" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "created" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "created" ? colors.primary : colors.muted }}>Erstellt</Text>
+            </Pressable>
+            <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={() => setShowArchived(!showArchived)}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: showArchived ? colors.warning + "15" : colors.surface, borderWidth: 1, borderColor: showArchived ? colors.warning : colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name={showArchived ? "inventory" : "archive"} size={14} color={showArchived ? colors.warning : colors.muted} />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: showArchived ? colors.warning : colors.muted }}>{showArchived ? "Archiv" : "Archiv"}</Text>
+            </Pressable>
+          </View>
+
           <FlatList
-            data={projects}
+            data={filteredProjects}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 140 }}
             ListHeaderComponent={
@@ -630,12 +730,29 @@ export default function RecordScreen() {
                       </View>
                     )}
                     <View style={{ flex: 1 }} />
-                    <Pressable
-                      onPress={() => { selectProject(item); setShowProjectPicker(false); router.push(`/project-detail?id=${item.id}` as any); }}
-                      style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
-                    >
-                      <MaterialIcons name="open-in-new" size={14} color={colors.primary} />
-                    </Pressable>
+                    {showArchived ? (
+                      <Pressable
+                        onPress={() => unarchiveProject(item.id)}
+                        style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.success + "15", opacity: pressed ? 0.6 : 1 }]}
+                      >
+                        <MaterialIcons name="unarchive" size={14} color={colors.success} />
+                      </Pressable>
+                    ) : (
+                      <>
+                        <Pressable
+                          onPress={() => archiveProject(item.id)}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.muted + "15", opacity: pressed ? 0.6 : 1 }]}
+                        >
+                          <MaterialIcons name="archive" size={14} color={colors.muted} />
+                        </Pressable>
+                        <Pressable
+                          onPress={() => { selectProject(item); setShowProjectPicker(false); router.push(`/project-detail?id=${item.id}` as any); }}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
+                        >
+                          <MaterialIcons name="open-in-new" size={14} color={colors.primary} />
+                        </Pressable>
+                      </>
+                    )}
                   </View>
                 </Pressable>
               );
@@ -643,10 +760,10 @@ export default function RecordScreen() {
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 50 }}>
                 <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                  <MaterialIcons name="folder-open" size={40} color={colors.border} />
+                  <MaterialIcons name={showArchived ? "inventory" : "folder-open"} size={40} color={colors.border} />
                 </View>
-                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>Noch keine Projekte</Text>
-                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center", paddingHorizontal: 20 }}>Erstelle dein erstes Projekt, um Protokolle übersichtlich zu organisieren.</Text>
+                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>{showArchived ? "Kein archiviertes Projekt" : (projectSearch ? "Keine Treffer" : "Noch keine Projekte")}</Text>
+                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center", paddingHorizontal: 20 }}>{showArchived ? "Archivierte Projekte erscheinen hier." : (projectSearch ? "Versuche einen anderen Suchbegriff." : "Erstelle dein erstes Projekt, um Protokolle übersichtlich zu organisieren.")}</Text>
               </View>
             }
           />
