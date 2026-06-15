@@ -100,6 +100,12 @@ export default function RecordScreen() {
   const [projectSearch, setProjectSearch] = useState("");
   const [projectSort, setProjectSort] = useState<"activity" | "name" | "created">("activity");
   const [showArchived, setShowArchived] = useState(false);
+  const [showEditProject, setShowEditProject] = useState(false);
+  const [editProjectId, setEditProjectId] = useState<string | null>(null);
+  const [editProjectName, setEditProjectName] = useState("");
+  const [editProjectDesc, setEditProjectDesc] = useState("");
+  const [editProjectPrefix, setEditProjectPrefix] = useState("");
+  const [editProjectColor, setEditProjectColor] = useState("#E53935");
   const PROJECT_COLORS = ["#E53935","#D81B60","#8E24AA","#5C6BC0","#1E88E5","#00ACC1","#00897B","#43A047","#7CB342","#FDD835","#FB8C00","#6D4C41"];
 
   // Audio recorder
@@ -245,6 +251,60 @@ export default function RecordScreen() {
     } catch {}
   };
 
+  const deleteProject = async (projectId: string) => {
+    Alert.alert("Projekt löschen", "Dieses Projekt und alle zugeordneten Protokolle werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Endgültig löschen",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+            const updated = data.filter((p: any) => p.id !== projectId);
+            await AsyncStorage.setItem("projects", JSON.stringify(updated));
+            setProjects(updated);
+            if (selectedProject?.id === projectId) setSelectedProject(null);
+            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } catch {}
+        },
+      },
+    ]);
+  };
+
+  const toggleFavorite = async (projectId: string) => {
+    try {
+      const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+      const updated = data.map((p: any) => p.id === projectId ? { ...p, isFavorite: !p.isFavorite } : p);
+      await AsyncStorage.setItem("projects", JSON.stringify(updated));
+      setProjects(updated);
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+  };
+
+  const openEditProject = (project: ProjectItem) => {
+    setEditProjectId(project.id);
+    setEditProjectName(project.name);
+    setEditProjectDesc(project.description || "");
+    setEditProjectPrefix(project.protocolPrefix || "");
+    setEditProjectColor(project.color);
+    setShowEditProject(true);
+  };
+
+  const saveEditProject = async () => {
+    if (!editProjectName.trim()) { Alert.alert("Fehler", "Bitte gib einen Projektnamen ein."); return; }
+    try {
+      const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+      const updated = data.map((p: any) => p.id === editProjectId ? { ...p, name: editProjectName.trim(), description: editProjectDesc.trim(), color: editProjectColor, protocolPrefix: editProjectPrefix.trim().toUpperCase() || undefined } : p);
+      await AsyncStorage.setItem("projects", JSON.stringify(updated));
+      setProjects(updated);
+      if (selectedProject?.id === editProjectId) {
+        setSelectedProject({ ...selectedProject, name: editProjectName.trim(), description: editProjectDesc.trim(), color: editProjectColor, protocolPrefix: editProjectPrefix.trim().toUpperCase() || undefined });
+      }
+      setShowEditProject(false);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch { Alert.alert("Fehler", "Projekt konnte nicht gespeichert werden."); }
+  };
+
   // Filtered and sorted projects
   const filteredProjects = useMemo(() => {
     let list = projects.filter((p: any) => showArchived ? p.isArchived : !p.isArchived);
@@ -253,8 +313,11 @@ export default function RecordScreen() {
       const q = projectSearch.toLowerCase();
       list = list.filter((p) => p.name.toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.protocolPrefix || "").toLowerCase().includes(q));
     }
-    // Sort
+    // Sort: favorites first, then by selected sort
     list.sort((a: any, b: any) => {
+      // Favorites always on top
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
       if (projectSort === "name") return a.name.localeCompare(b.name, "de");
       if (projectSort === "created") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       // activity: by last protocol date, then created
@@ -699,9 +762,17 @@ export default function RecordScreen() {
             renderItem={({ item }) => {
               const pItem = item as any;
               const isSelected = selectedProject?.id === item.id;
+              const isFav = pItem.isFavorite;
               return (
                 <Pressable onPress={() => selectProject(item)} style={({ pressed }) => [{ padding: 14, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, marginBottom: 10, opacity: pressed ? 0.7 : 1 }]}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {/* Favorite Star */}
+                    <Pressable
+                      onPress={() => toggleFavorite(item.id)}
+                      style={({ pressed }) => [{ marginRight: 8, opacity: pressed ? 0.5 : 1 }]}
+                    >
+                      <MaterialIcons name={isFav ? "star" : "star-border"} size={22} color={isFav ? "#FDD835" : colors.border} />
+                    </Pressable>
                     <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: item.color + "20", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                       <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.color }} />
                     </View>
@@ -712,10 +783,10 @@ export default function RecordScreen() {
                     {isSelected && <MaterialIcons name="check-circle" size={24} color={colors.primary} />}
                   </View>
                   {/* Extra Info Row */}
-                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border + "60", gap: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border + "60", gap: 8 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <MaterialIcons name="description" size={14} color={colors.muted} />
-                      <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{pItem._protocolCount || 0} Protokolle</Text>
+                      <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{pItem._protocolCount || 0} Prot.</Text>
                     </View>
                     {item.protocolPrefix && (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -731,14 +802,28 @@ export default function RecordScreen() {
                     )}
                     <View style={{ flex: 1 }} />
                     {showArchived ? (
-                      <Pressable
-                        onPress={() => unarchiveProject(item.id)}
-                        style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.success + "15", opacity: pressed ? 0.6 : 1 }]}
-                      >
-                        <MaterialIcons name="unarchive" size={14} color={colors.success} />
-                      </Pressable>
+                      <>
+                        <Pressable
+                          onPress={() => deleteProject(item.id)}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.error + "15", opacity: pressed ? 0.6 : 1 }]}
+                        >
+                          <MaterialIcons name="delete" size={14} color={colors.error} />
+                        </Pressable>
+                        <Pressable
+                          onPress={() => unarchiveProject(item.id)}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.success + "15", opacity: pressed ? 0.6 : 1 }]}
+                        >
+                          <MaterialIcons name="unarchive" size={14} color={colors.success} />
+                        </Pressable>
+                      </>
                     ) : (
                       <>
+                        <Pressable
+                          onPress={() => openEditProject(item)}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
+                        >
+                          <MaterialIcons name="edit" size={14} color={colors.primary} />
+                        </Pressable>
                         <Pressable
                           onPress={() => archiveProject(item.id)}
                           style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.muted + "15", opacity: pressed ? 0.6 : 1 }]}
@@ -799,6 +884,38 @@ export default function RecordScreen() {
               <Pressable onPress={createAndSelectProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
                 <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Projekt erstellen & auswählen</Text>
               </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Project Modal */}
+        <Modal visible={showEditProject} animationType="slide" transparent>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, backgroundColor: colors.background }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Projekt bearbeiten</Text>
+                <Pressable onPress={() => setShowEditProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+              </View>
+              <TextInput value={editProjectName} onChangeText={setEditProjectName} placeholder="Projektname" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
+              <TextInput value={editProjectDesc} onChangeText={setEditProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
+              <TextInput value={editProjectPrefix} onChangeText={(v) => setEditProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{editProjectPrefix ? `Präfix: ${editProjectPrefix}` : "Kein Präfix"}</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Farbe wählen</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
+                {PROJECT_COLORS.map((c) => (
+                  <Pressable key={c} onPress={() => setEditProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 16, backgroundColor: c, alignItems: "center", justifyContent: "center" }, editProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
+                    {editProjectColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
+                  </Pressable>
+                ))}
+              </View>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable onPress={() => { setShowEditProject(false); deleteProject(editProjectId!); }} style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.error + "15", alignItems: "center", opacity: pressed ? 0.8 : 1, borderWidth: 1, borderColor: colors.error }]}>
+                  <Text style={{ color: colors.error, fontSize: 14, fontWeight: "600" }}>Löschen</Text>
+                </Pressable>
+                <Pressable onPress={saveEditProject} style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+                  <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Speichern</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>

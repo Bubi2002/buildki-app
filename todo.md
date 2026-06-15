@@ -179,3 +179,6 @@
 - [x] UX: Suchfeld/Filter in der Projektauswahl-Liste
 - [x] UX: Sortierung der Projekte (letzte Aktivität, Name, Erstelldatum)
 - [x] UX: Projekt-Archivierung (abgeschlossene Projekte ausblenden ohne Löschen)
+- [x] UX: Projekt löschen (mit Bestätigung)
+- [x] UX: Projekt bearbeiten (Name, Farbe, Beschreibung, Präfix nachträglich ändern)
+- [x] UX: Favoriten-Projekte oben anpinnen
