@@ -85,35 +85,12 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     const fileSizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
     console.log(`[BG-Processor] ${job.protocolId}: Uploading (${fileSizeMB.toFixed(1)} MB)...`);
     
-    let processUri = job.fileUri;
-    
-    // Compress large video files
-    if (job.mimeType === "video/mp4" && fileSizeMB > 15) {
-      try {
-        const { compress } = require("expo-image-and-video-compressor");
-        const compressed = await compress(job.fileUri, {
-          bitrate: 800_000,
-          maxSize: 480,
-          codec: "h264",
-          speed: "ultrafast",
-        }, (progress: number) => {
-          console.log(`[BG-Processor] Compression: ${Math.round(progress * 100)}%`);
-        });
-        processUri = compressed;
-      } catch (compressErr: any) {
-        console.warn("[BG-Processor] Compression failed:", compressErr?.message);
-        if (fileSizeMB > 40) {
-          throw new Error(`Video zu groß (${fileSizeMB.toFixed(0)} MB) und Komprimierung fehlgeschlagen. Bitte Audio-Modus verwenden.`);
-        }
-      }
-    }
-    
     // Read file as base64
-    const base64 = await FileSystem.readAsStringAsync(processUri, {
+    const base64 = await FileSystem.readAsStringAsync(job.fileUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
     
-    const ext = job.mimeType === "video/mp4" ? "mp4" : "m4a";
+    const ext = "m4a";
     const uploadResult = await apiClient.upload(base64, job.mimeType, `recording-${Date.now()}.${ext}`);
     console.log(`[BG-Processor] ${job.protocolId}: Upload complete`);
     

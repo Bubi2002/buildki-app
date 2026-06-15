@@ -48,7 +48,7 @@ export default function DashboardScreen() {
     openTodos: 0,
     doneTodos: 0,
     totalDuration: 0,
-    videoCount: 0,
+    audioPhotoCount: 0,
     audioCount: 0,
     avgPerWeek: 0,
   });
@@ -79,7 +79,7 @@ export default function DashboardScreen() {
       let openTodos = 0;
       let doneTodos = 0;
       let totalDuration = 0;
-      let videoCount = 0;
+      let audioPhotoCount = 0;
       let audioCount = 0;
 
       for (const p of active) {
@@ -90,7 +90,7 @@ export default function DashboardScreen() {
         }
         totalDuration += p.duration || 0;
         if (p.recordingMode === "audio") audioCount++;
-        else videoCount++;
+        else audioPhotoCount++;
       }
 
       // Calculate average per week (based on first protocol date)
@@ -108,7 +108,7 @@ export default function DashboardScreen() {
         openTodos,
         doneTodos,
         totalDuration,
-        videoCount,
+        audioPhotoCount,
         audioCount,
         avgPerWeek,
       });
@@ -252,9 +252,9 @@ export default function DashboardScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Aufnahme-Modus</Text>
             <View style={styles.modeRow}>
               <View style={styles.modeItem}>
-                <MaterialIcons name="videocam" size={24} color="#F44336" />
-                <Text style={[styles.modeValue, { color: colors.foreground }]}>{stats.videoCount}</Text>
-                <Text style={[styles.modeLabel, { color: colors.muted }]}>Video</Text>
+                <MaterialIcons name="photo-camera" size={24} color="#4CAF50" />
+                <Text style={[styles.modeValue, { color: colors.foreground }]}>{stats.audioPhotoCount}</Text>
+                <Text style={[styles.modeLabel, { color: colors.muted }]}>Audio+Foto</Text>
               </View>
               <View style={styles.modeItem}>
                 <MaterialIcons name="mic" size={24} color="#2196F3" />

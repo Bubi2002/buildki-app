@@ -41,7 +41,7 @@ import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } fro
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 import { getApiBaseUrl } from "@/constants/oauth";
 
-type RecordingMode = "video" | "audio" | "audio-photo";
+type RecordingMode = "audio" | "audio-photo";
 
 export default function RecordScreen() {
   const colors = useColors();
@@ -78,7 +78,7 @@ export default function RecordScreen() {
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("audio");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
-  const [processingSource, setProcessingSource] = useState<"video" | "audio-backup" | "cache" | "audio" | null>(null);
+  const [processingSource, setProcessingSource] = useState<"audio" | null>(null);
   const [processingStep, setProcessingStep] = useState<"compress" | "upload" | "transcription" | "protocol" | "saving" | "done">("upload");
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
@@ -275,305 +275,6 @@ export default function RecordScreen() {
     }
   };
 
-  // Video recording: We run a PARALLEL audio recording alongside the camera.
-  // This ensures we always have audio for transcription, even if recordAsync() fails to resolve.
-  const videoRecordingActiveRef = useRef(false);
-  // Stores the video URI for background upload when audio-backup is used
-  const pendingVideoUploadRef = useRef<{ videoUri: string; protocolId: string } | null>(null);
-  // NOTE: Parallel audio recording in video mode was removed because iOS cannot share
-  // the AVAudioSession between CameraView and expo-audio simultaneously.
-
-  // Background upload: uploads video file and attaches it to the protocol
-  const uploadVideoInBackground = async (videoUri: string, protocolId: string) => {
-    try {
-      console.log("[BackgroundUpload] Starting video upload for protocol:", protocolId);
-      
-      // Check if file exists and is readable
-      const fileInfo = await FileSystem.getInfoAsync(videoUri);
-      if (!fileInfo.exists || !fileInfo.size || fileInfo.size < 1000) {
-        console.warn("[BackgroundUpload] Video file not found or too small:", videoUri);
-        return;
-      }
-
-      const fileSizeMB = (fileInfo.size || 0) / (1024 * 1024);
-      console.log("[BackgroundUpload] Video file size:", fileSizeMB.toFixed(1), "MB");
-
-      // For files > 40MB: Save local reference only (no upload)
-      // This prevents RAM crashes on mobile devices
-      if (fileSizeMB > 40) {
-        console.log("[BackgroundUpload] Video too large for upload (", fileSizeMB.toFixed(1), "MB). Saving local reference.");
-        
-        // Save local URI reference so user can still access the video
-        const protocolsStr = await AsyncStorage.getItem("protocols");
-        if (protocolsStr) {
-          const protocols = JSON.parse(protocolsStr);
-          const protocolIndex = protocols.findIndex((p: any) => p.id === protocolId);
-          if (protocolIndex !== -1) {
-            protocols[protocolIndex].videoUrl = videoUri; // Local file URI
-            protocols[protocolIndex].videoUploadedAt = new Date().toISOString();
-            protocols[protocolIndex].videoIsLocal = true;
-            protocols[protocolIndex].videoSizeMB = Math.round(fileSizeMB);
-            await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
-            console.log("[BackgroundUpload] Protocol updated with local video reference");
-          }
-        }
-        return;
-      }
-
-      // For files <= 40MB: Upload to server
-      const base64 = await FileSystem.readAsStringAsync(videoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      console.log("[BackgroundUpload] Video file read, uploading...");
-
-      // Upload to storage
-      const uploadResult = await uploadMutation.mutateAsync({
-        base64,
-        mimeType: "video/mp4",
-        filename: `video-${protocolId}-${Date.now()}.mp4`,
-      });
-
-      console.log("[BackgroundUpload] Upload complete, URL:", uploadResult.url);
-
-      // Build absolute URL
-      let videoUrl = uploadResult.url;
-      if (videoUrl.startsWith("/")) {
-        videoUrl = `${getApiBaseUrl()}${videoUrl}`;
-      }
-
-      // Update the protocol in AsyncStorage with the video URL
-      const protocolsStr = await AsyncStorage.getItem("protocols");
-      if (protocolsStr) {
-        const protocols = JSON.parse(protocolsStr);
-        const protocolIndex = protocols.findIndex((p: any) => p.id === protocolId);
-        if (protocolIndex !== -1) {
-          protocols[protocolIndex].videoUrl = videoUrl;
-          protocols[protocolIndex].videoUploadedAt = new Date().toISOString();
-          protocols[protocolIndex].videoIsLocal = false;
-          protocols[protocolIndex].videoSizeMB = Math.round(fileSizeMB);
-          await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
-          console.log("[BackgroundUpload] Protocol updated with video URL");
-        }
-      }
-    } catch (error) {
-      console.error("[BackgroundUpload] Video upload failed:", error);
-      // Non-critical: don't alert the user, just log
-      // Save local reference as fallback
-      try {
-        const protocolsStr = await AsyncStorage.getItem("protocols");
-        if (protocolsStr) {
-          const protocols = JSON.parse(protocolsStr);
-          const protocolIndex = protocols.findIndex((p: any) => p.id === protocolId);
-          if (protocolIndex !== -1) {
-            protocols[protocolIndex].videoUrl = videoUri;
-            protocols[protocolIndex].videoIsLocal = true;
-            protocols[protocolIndex].videoUploadFailed = true;
-            await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
-          }
-        }
-      } catch {}
-    } finally {
-      pendingVideoUploadRef.current = null;
-    }
-  };
-
-  const startVideoRecording = async () => {
-    if (Platform.OS === "web") {
-      alert("Videoaufnahme ist nur auf dem Handy verfügbar.");
-      return;
-    }
-    if (!cameraRef.current) {
-      alert("Kamera nicht verfügbar. Bitte warte einen Moment.");
-      return;
-    }
-    if (!cameraReady) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (!cameraReady) {
-        alert("Kamera wird noch initialisiert. Bitte warte einen Moment.");
-        return;
-      }
-    }
-
-    setShowTemplateSelector(false);
-    setCapturedPhotos([]);
-    setPhotoTimestamps([]);
-    setMarkers([]);
-    setIsRecording(true);
-    startTimer();
-    videoRecordingActiveRef.current = true;
-
-    try {
-      // NOTE: On iOS, the AVAudioSession cannot be shared between CameraView recording
-      // and a separate expo-audio recorder simultaneously. The camera claims the audio
-      // session exclusively. Therefore, we DO NOT start a parallel audio recorder.
-      // Instead, we use the VIDEO FILE itself for transcription (Whisper can extract audio).
-      // For large files (>15MB), we upload only a portion or use maxFileSize.
-      
-      console.log("[Video] Starting camera recordAsync (720p)...");
-      
-      let videoUri: string | null = null;
-      try {
-        const video = await cameraRef.current!.recordAsync({
-          maxDuration: 300,
-          maxFileSize: 15 * 1024 * 1024, // 15 MB max - keeps file manageable for upload
-        });
-        if (video && video.uri) {
-          videoUri = video.uri;
-          console.log("[Video] recordAsync resolved with URI:", videoUri);
-        } else {
-          console.warn("[Video] recordAsync resolved without URI");
-        }
-      } catch (recErr: any) {
-        console.warn("[Video] recordAsync error:", recErr?.message);
-        videoUri = recErr?.uri || recErr?.data?.uri || null;
-      }
-
-      // Recording has stopped (either resolved or errored)
-      videoRecordingActiveRef.current = false;
-      stopTimer();
-      setIsRecording(false);
-      // NOTE: Do NOT set cameraReady=false here - prevents dead-state
-
-      if (videoUri) {
-        console.log("[Video] Got video URI:", videoUri);
-        const fileInfo = await FileSystem.getInfoAsync(videoUri);
-        const sizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
-        console.log("[Video] File size:", sizeMB.toFixed(1), "MB");
-        
-        setProcessingSource("video");
-        
-        // Save video for background upload/local reference
-        pendingVideoUploadRef.current = { videoUri, protocolId: "__pending__" };
-        
-        // For transcription: use the video file directly
-        // Whisper API can extract audio from video files
-        // If file is too large (>40MB), we still send it but the server
-        // will handle the size limit (it streams to Whisper)
-        await processRecording(videoUri, "video/mp4");
-      } else {
-        // No video URI - search cache for recent recording
-        console.warn("[Video] No URI from recordAsync, searching cache...");
-        let found = false;
-        try {
-          const cacheDir = FileSystem.cacheDirectory;
-          if (cacheDir) {
-            const files = await FileSystem.readDirectoryAsync(cacheDir);
-            const mediaFiles = files.filter(f => 
-              f.endsWith(".mov") || f.endsWith(".mp4")
-            );
-            mediaFiles.sort().reverse();
-            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-            for (const mf of mediaFiles) {
-              const latest = `${cacheDir}${mf}`;
-              const fInfo = await FileSystem.getInfoAsync(latest);
-              if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
-                console.log("[Video] Found recent video in cache:", latest, "size:", ((fInfo.size || 0) / 1024 / 1024).toFixed(1), "MB");
-                setProcessingSource("cache");
-                pendingVideoUploadRef.current = { videoUri: latest, protocolId: "__pending__" };
-                await processRecording(latest, "video/mp4");
-                found = true;
-                break;
-              }
-            }
-          }
-        } catch (cacheErr) {
-          console.warn("[Video] Cache search failed:", cacheErr);
-        }
-        if (!found) {
-          alert("Aufnahme fehlgeschlagen: Keine Video-Datei erhalten. Bitte versuche es erneut oder wechsle in den Audio-Modus.");
-        }
-      }
-    } catch (error: any) {
-      videoRecordingActiveRef.current = false;
-      stopTimer();
-      setIsRecording(false);
-      // Do NOT set cameraReady=false - prevents dead-state
-      
-      const errorMsg = error?.message || String(error);
-      console.error("[Video] Fatal recording error:", errorMsg);
-      
-      // Try to find video in cache as fallback
-      let found = false;
-      try {
-        const cacheDir = FileSystem.cacheDirectory;
-        if (cacheDir) {
-          const files = await FileSystem.readDirectoryAsync(cacheDir);
-          const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
-          videoFiles.sort().reverse();
-          const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-          for (const vf of videoFiles) {
-            const candidate = `${cacheDir}${vf}`;
-            const fInfo = await FileSystem.getInfoAsync(candidate);
-            if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
-              console.log("[Video] Fatal error but found recent video in cache:", candidate);
-              setProcessingSource("cache");
-              pendingVideoUploadRef.current = { videoUri: candidate, protocolId: "__pending__" };
-              await processRecording(candidate, "video/mp4");
-              found = true;
-              break;
-            }
-          }
-        }
-      } catch {}
-      
-      if (!found) {
-        alert(`Aufnahme Fehler: ${errorMsg}\n\nBitte versuche es erneut oder wechsle in den Audio-Modus.`);
-      }
-    }
-  };
-
-  const stopVideoRecording = () => {
-    console.log("[Video] stopRecording called");
-    if (cameraRef.current) {
-      try {
-        cameraRef.current.stopRecording();
-      } catch (e) {
-        console.warn("[Video] stopRecording threw:", e);
-      }
-    }
-    
-    // Safety timeout: if recordAsync doesn't resolve within 8 seconds after stop,
-    // search cache for the video file and process it
-    setTimeout(async () => {
-      if (videoRecordingActiveRef.current) {
-        console.warn("[Video] recordAsync did not resolve within 8s - forcing stop");
-        videoRecordingActiveRef.current = false;
-        stopTimer();
-        setIsRecording(false);
-        
-        // Search cache for the video file
-        let videoUri: string | null = null;
-        try {
-          const cacheDir = FileSystem.cacheDirectory;
-          if (cacheDir) {
-            const files = await FileSystem.readDirectoryAsync(cacheDir);
-            const videoFiles = files.filter(f => f.endsWith(".mov") || f.endsWith(".mp4"));
-            videoFiles.sort().reverse();
-            const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-            for (const vf of videoFiles) {
-              const candidate = `${cacheDir}${vf}`;
-              const fInfo = await FileSystem.getInfoAsync(candidate);
-              if (fInfo.exists && fInfo.size && fInfo.size > 10000 && fInfo.modificationTime && fInfo.modificationTime * 1000 > fiveMinAgo) {
-                videoUri = candidate;
-                break;
-              }
-            }
-          }
-        } catch {}
-        
-        if (videoUri) {
-          console.log("[Video] Timeout fallback: found video in cache:", videoUri);
-          setProcessingSource("cache");
-          pendingVideoUploadRef.current = { videoUri, protocolId: "__pending__" };
-          await processRecording(videoUri, "video/mp4");
-        } else {
-          alert("Video-Verarbeitung fehlgeschlagen: Keine Datei gefunden. Bitte versuche den Audio-Modus.");
-        }
-      }
-    }, 8000);
-  };
-
   // --- AUDIO RECORDING ---
   const startAudioRecording = async () => {
     setShowTemplateSelector(false);
@@ -622,21 +323,12 @@ export default function RecordScreen() {
         if (loc) getWeatherForLocation(loc).then(setWeatherData).catch(() => {});
       }).catch(() => {});
     }
-    if (mode === "video") {
-      startVideoRecording();
-    } else {
-      // Both 'audio' and 'audio-photo' use the audio recorder
-      startAudioRecording();
-    }
+    // Both 'audio' and 'audio-photo' use the audio recorder
+    startAudioRecording();
   };
 
   const stopRecording = () => {
-    if (mode === "video") {
-      stopVideoRecording();
-    } else {
-      // Both 'audio' and 'audio-photo' use the audio recorder
-      stopAudioRecording();
-    }
+    stopAudioRecording();
   };
 
   const processRecording = async (fileUri: string, mimeType: string) => {
@@ -665,7 +357,7 @@ export default function RecordScreen() {
             city: recordingLocation.city,
           } : null,
           weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
-          pendingVideoUri: pendingVideoUploadRef.current?.videoUri || null,
+
         });
         setCapturedPhotos([]);
         setPhotoTimestamps([]);
@@ -710,9 +402,7 @@ export default function RecordScreen() {
         processingStep: "uploading" as string,
         projectId: activeProjectId || undefined,
         protocolNumber: protocolNumber || undefined,
-        videoUrl: null as string | null,
-        videoUploadedAt: null as string | null,
-        videoUploadPending: false,
+
       };
 
       // Link to calendar event if available
@@ -832,12 +522,7 @@ export default function RecordScreen() {
       setCapturedPhotos([]);
       setPhotoTimestamps([]);
       
-      // Start background video upload if pending
-      if (pendingVideoUploadRef.current && pendingVideoUploadRef.current.protocolId === "__pending__") {
-        pendingVideoUploadRef.current.protocolId = newProtocol.id;
-        const { videoUri, protocolId } = pendingVideoUploadRef.current;
-        uploadVideoInBackground(videoUri, protocolId);
-      }
+
       
       router.push(
         `/protocol-detail?id=${newProtocol.id}` as any
@@ -941,16 +626,16 @@ export default function RecordScreen() {
     requestMicPermission();
   }
 
-  if ((mode === "video" || mode === "audio-photo") && (!cameraPermission.granted || !micPermission.granted)) {
+  if (mode === "audio-photo" && (!cameraPermission.granted || !micPermission.granted)) {
     const canAskAgain = cameraPermission?.canAskAgain !== false && micPermission?.canAskAgain !== false;
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
-        <MaterialIcons name="videocam-off" size={64} color={colors.muted} style={{ marginBottom: 16 }} />
+        <MaterialIcons name="no-photography" size={64} color={colors.muted} style={{ marginBottom: 16 }} />
         <Text className="text-2xl font-bold text-foreground text-center mb-4">
           Berechtigungen erforderlich
         </Text>
         <Text className="text-base text-muted text-center mb-8">
-          ProtoKI benötigt Zugriff auf Kamera und Mikrofon, um Videos aufzunehmen und Protokolle zu erstellen.
+          Baudikt benötigt Zugriff auf Kamera und Mikrofon, um Fotos aufzunehmen und Protokolle zu erstellen.
         </Text>
         {canAskAgain ? (
           <Pressable
@@ -1008,18 +693,12 @@ export default function RecordScreen() {
 
   // Processing state with step-by-step progress
   if (isProcessing) {
-    const sourceLabel = processingSource === "video" 
-      ? "✅ Video erfolgreich aufgenommen" 
-      : processingSource === "audio-backup" 
-        ? "⚠️ Audio-Backup verwendet" 
-        : processingSource === "cache" 
-          ? "⚠️ Datei aus Cache wiederhergestellt" 
-          : processingSource === "audio" 
-            ? "✅ Audio erfolgreich aufgenommen" 
-            : null;
+    const sourceLabel = processingSource === "audio" 
+      ? "✅ Audio erfolgreich aufgenommen" 
+      : null;
 
     const steps = [
-      ...(processingSource === "video" ? [{ key: "compress", label: "Video komprimieren", icon: "compress" as const }] : []),
+
       { key: "upload", label: "Datei hochladen", icon: "cloud-upload" as const },
       { key: "transcription", label: "Sprache erkennen", icon: "mic" as const },
       { key: "protocol", label: "Protokoll erstellen", icon: "description" as const },
@@ -1089,10 +768,10 @@ export default function RecordScreen() {
             <View style={[
               styles.sourceBadge,
               { 
-                backgroundColor: processingSource === "video" || processingSource === "audio" 
+                backgroundColor: processingSource === "audio" 
                   ? colors.success + "15" 
                   : colors.warning + "15",
-                borderColor: processingSource === "video" || processingSource === "audio" 
+                borderColor: processingSource === "audio" 
                   ? colors.success + "40" 
                   : colors.warning + "40",
               }
@@ -1100,7 +779,7 @@ export default function RecordScreen() {
               <Text style={[
                 styles.sourceBadgeText,
                 { 
-                  color: processingSource === "video" || processingSource === "audio" 
+                  color: processingSource === "audio" 
                     ? colors.success 
                     : colors.warning 
                 }
@@ -1131,16 +810,6 @@ export default function RecordScreen() {
           {/* Mode toggle */}
           <View style={styles.modeToggleTop}>
             <Pressable
-              onPress={() => { if (!isRecording) setMode("video"); }}
-              style={({ pressed }) => [
-                styles.modeButton,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <MaterialIcons name="videocam" size={20} color={colors.muted} />
-              <Text style={[styles.modeButtonText, { color: colors.muted }]}>Video</Text>
-            </Pressable>
-            <Pressable
               onPress={() => { if (!isRecording) setMode("audio-photo"); }}
               style={({ pressed }) => [
                 styles.modeButton,
@@ -1152,7 +821,7 @@ export default function RecordScreen() {
             </Pressable>
             <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}>
               <MaterialIcons name="mic" size={20} color={colors.primary} />
-              <Text style={[styles.modeButtonText, { color: colors.primary, fontWeight: "700" }]}>Audio</Text>
+              <Text style={[styles.modeButtonText, { color: colors.primary, fontWeight: "700" }]}>Nur Audio</Text>
             </View>
           </View>
 
@@ -1322,7 +991,7 @@ export default function RecordScreen() {
                     onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)}
                     style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, marginBottom: 6, opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <MaterialIcons name={p.recordingMode === "audio" ? "mic" : "videocam"} size={16} color={colors.primary} />
+                    <MaterialIcons name={p.recordingMode === "audio" ? "mic" : "photo-camera"} size={16} color={colors.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>{p.templateName || "Protokoll"}</Text>
                       <Text style={{ fontSize: 11, color: colors.muted }}>{new Date(p.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</Text>
@@ -1339,8 +1008,8 @@ export default function RecordScreen() {
     );
   }
 
-  // --- VIDEO / AUDIO+PHOTO MODE UI ---
-  // Both modes show the camera. Video records video+audio; Audio+Photo records audio only + allows photos.
+  // --- AUDIO+PHOTO MODE UI ---
+  // Audio+Photo mode shows the camera for photos while recording audio.
   // Preview Modal
   if (showPreview && previewProtocol) {
     const { newProtocol } = previewProtocol;
@@ -1400,7 +1069,7 @@ export default function RecordScreen() {
         ref={cameraRef}
         style={styles.camera}
         facing="back"
-        mode={mode === "video" ? "video" : "picture"}
+        mode="picture"
         active={isFocused}
         onCameraReady={() => setCameraReady(true)}
         onMountError={(e) => console.warn("Camera mount error:", e?.message)}
@@ -1441,40 +1110,16 @@ export default function RecordScreen() {
         {/* Mode toggle */}
         {!isRecording && (
           <View style={styles.modeToggleCamera}>
-            {mode === "video" ? (
-              <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
-                <MaterialIcons name="videocam" size={20} color="#FFFFFF" />
-                <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Video</Text>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setMode("video")}
-                style={({ pressed }) => [styles.modeButton, { opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="videocam" size={20} color="rgba(255,255,255,0.7)" />
-                <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Video</Text>
-              </Pressable>
-            )}
-            {mode === "audio-photo" ? (
-              <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
-                <MaterialIcons name="photo-camera" size={20} color="#FFFFFF" />
-                <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Audio+Foto</Text>
-              </View>
-            ) : (
-              <Pressable
-                onPress={() => setMode("audio-photo")}
-                style={({ pressed }) => [styles.modeButton, { opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="photo-camera" size={20} color="rgba(255,255,255,0.7)" />
-                <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Audio+Foto</Text>
-              </Pressable>
-            )}
+            <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: "rgba(255,255,255,0.2)", borderColor: "#FFFFFF" }]}>
+              <MaterialIcons name="photo-camera" size={20} color="#FFFFFF" />
+              <Text style={[styles.modeButtonText, { color: "#FFFFFF", fontWeight: "700" }]}>Audio+Foto</Text>
+            </View>
             <Pressable
               onPress={() => setMode("audio")}
               style={({ pressed }) => [styles.modeButton, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="mic" size={20} color="rgba(255,255,255,0.7)" />
-              <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Audio</Text>
+              <Text style={[styles.modeButtonText, { color: "rgba(255,255,255,0.7)" }]}>Nur Audio</Text>
             </Pressable>
           </View>
         )}
@@ -1600,7 +1245,7 @@ export default function RecordScreen() {
                 {
                   borderColor: "#FFFFFF",
                   transform: [{ scale: pressed ? 0.95 : 1 }],
-                  opacity: (!isRecording && !cameraReady && mode === "video") ? 0.5 : 1,
+                  opacity: 1,
                 },
               ]}
             >
@@ -1636,7 +1281,7 @@ export default function RecordScreen() {
           <Text style={styles.hintText}>
             {isRecording
               ? "Foto • Stopp • Markierung"
-              : mode === "audio-photo" ? "Audio + Fotos • Kein Video" : "Tippe zum Aufnehmen"}
+              : mode === "audio-photo" ? "Audio + Fotos" : "Tippe zum Aufnehmen"}
           </Text>
         </View>
       </View>
@@ -1743,7 +1388,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
-  // Template overlay (video mode)
+  // Template overlay
   templateOverlay: {
     position: "absolute",
     top: 0,

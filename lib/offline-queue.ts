@@ -10,7 +10,7 @@ export type QueuedRecording = {
   templateId: string;
   photos: string[];
   duration: number;
-  recordingMode: "video" | "audio" | "audio-photo";
+  recordingMode: "audio" | "audio-photo";
   createdAt: string;
   status: "pending" | "processing" | "failed";
   retryCount: number;
@@ -22,7 +22,6 @@ export type QueuedRecording = {
     city: string | null;
   } | null;
   weather?: string | null;
-  pendingVideoUri?: string | null;
 };
 
 /**

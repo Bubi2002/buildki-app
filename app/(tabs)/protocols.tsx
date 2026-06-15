@@ -322,7 +322,7 @@ export default function ProtocolsScreen() {
             <MaterialIcons name="star" size={18} color="#FFC107" />
           )}
           <MaterialIcons
-            name={item.recordingMode === "audio" ? "mic" : item.recordingMode === "audio-photo" ? "photo-camera" : item.recordingMode === "note" ? "edit-note" : "videocam"}
+            name={item.recordingMode === "audio" ? "mic" : item.recordingMode === "audio-photo" ? "photo-camera" : "edit-note"}
             size={18}
             color={colors.primary}
           />

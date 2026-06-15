@@ -36,7 +36,7 @@ const DEFAULT_TOGGLES: FeatureToggle[] = [
   // Kernfunktionen
   { key: "protocolPreview", label: "Protokoll-Vorschau", description: "Vorschau vor dem Speichern anzeigen", enabled: false, category: "Kernfunktionen" },
   { key: "protocolNumbering", label: "Automatische Nummerierung", description: "Fortlaufende Nummern pro Projekt", enabled: true, category: "Kernfunktionen" },
-  { key: "quickNotes", label: "Schnellnotizen", description: "Sprach-zu-Text ohne Video", enabled: true, category: "Kernfunktionen" },
+  { key: "quickNotes", label: "Schnellnotizen", description: "Schnelle Sprach-zu-Text-Notizen", enabled: true, category: "Kernfunktionen" },
   { key: "statistics", label: "Statistik-Dashboard", description: "Protokoll- und Aufgaben-Statistiken", enabled: true, category: "Kernfunktionen" },
 
   // Aufnahme

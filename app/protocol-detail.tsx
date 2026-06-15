@@ -79,12 +79,7 @@ type Protocol = {
   recordingMode?: string;
   projectId?: string;
   protocolNumber?: string;
-  videoUrl?: string | null;
-  videoUploadedAt?: string | null;
-  videoUploadPending?: boolean;
-  videoIsLocal?: boolean;
-  videoSizeMB?: number;
-  videoUploadFailed?: boolean;
+
 };
 
 export default function ProtocolDetailScreen() {
@@ -599,12 +594,12 @@ export default function ProtocolDetailScreen() {
           {protocol.recordingMode && (
             <View style={styles.metaRow}>
               <MaterialIcons 
-                name={protocol.recordingMode === "video" ? "videocam" : protocol.recordingMode === "audio-photo" ? "photo-camera" : "mic"} 
+                name={protocol.recordingMode === "audio-photo" ? "photo-camera" : "mic"} 
                 size={18} 
                 color={colors.primary} 
               />
               <Text style={[styles.metaText, { color: colors.primary, fontWeight: "500" }]}>
-                {protocol.recordingMode === "video" ? "Video-Aufnahme" : protocol.recordingMode === "audio-photo" ? "Audio + Fotos" : "Audio-Aufnahme"}
+                {protocol.recordingMode === "audio-photo" ? "Audio + Fotos" : "Audio-Aufnahme"}
               </Text>
             </View>
           )}
@@ -691,68 +686,6 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* Video Attachment */}
-        {protocol.videoUrl && (
-          <View style={styles.section}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialIcons name="videocam" size={20} color={colors.success} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
-                Video-Aufnahme
-              </Text>
-              {protocol.videoSizeMB && (
-                <Text style={{ color: colors.muted, fontSize: 11 }}>
-                  ({protocol.videoSizeMB} MB)
-                </Text>
-              )}
-            </View>
-            <Pressable
-              onPress={() => {
-                if (protocol.videoUrl) {
-                  Linking.openURL(protocol.videoUrl);
-                }
-              }}
-              style={({ pressed }) => [{
-                marginTop: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.surface,
-                padding: 12,
-                borderRadius: 10,
-                gap: 10,
-                opacity: pressed ? 0.7 : 1,
-              }]}
-            >
-              <MaterialIcons name="play-circle-outline" size={32} color={colors.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '500' }}>
-                  {protocol.videoIsLocal ? 'Video lokal gespeichert' : 'Video abspielen'}
-                </Text>
-                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
-                  {protocol.videoIsLocal 
-                    ? `Lokal verf\u00fcgbar (${protocol.videoSizeMB || '?'} MB \u2013 zu gro\u00df f\u00fcr Cloud-Upload)`
-                    : `Hochgeladen${protocol.videoUploadedAt ? ` am ${new Date(protocol.videoUploadedAt).toLocaleString('de-DE')}` : ''}`
-                  }
-                </Text>
-                {protocol.videoUploadFailed && (
-                  <Text style={{ color: colors.warning, fontSize: 11, marginTop: 2 }}>
-                    Upload fehlgeschlagen \u2013 lokal gespeichert
-                  </Text>
-                )}
-              </View>
-              <MaterialIcons name={protocol.videoIsLocal ? "folder" : "open-in-new"} size={18} color={colors.muted} />
-            </Pressable>
-          </View>
-        )}
-        {protocol.videoUploadPending && !protocol.videoUrl && (
-          <View style={styles.section}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <ActivityIndicator size="small" color={colors.warning} />
-              <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '500' }}>
-                Video wird im Hintergrund hochgeladen...
-              </Text>
-            </View>
-          </View>
-        )}
 
         {/* To-Do List */}
         {todos.length > 0 && (

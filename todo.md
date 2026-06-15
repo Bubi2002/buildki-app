@@ -152,7 +152,7 @@
 - [x] Fix: Video-Upload blockiert die App – muss non-blocking im Hintergrund laufen
 - [x] Fix: Aufnahme-Modus (Video/Audio/Audio+Foto) als Badge in Protokoll-Detail-Metadaten anzeigen
 - [x] Fix: Unicode-Escape-Bug (\u2013 statt – im Video-Upload-Status-Text)
-- [ ] Fix: Video-Upload schlägt fehl bei kurzen Videos (10-15 Sek) – Größengrenze oder Komprimierung prüfen
+- [x] Fix: Video-Upload schlägt fehl bei kurzen Videos (10-15 Sek) – ENTFÄLLT (Video-Modus entfernt)
 - [x] Fix: LLM halluziniert falsches Datum im Protokoll ("26. Oktober 2023") – echtes Datum muss im Prompt stehen
 - [x] Feature: Fotos den Markierungs-Abschnitten zuordnen (Foto nach Markierung = gehört zum vorherigen Abschnitt)
 - [x] Feature: Im Protokoll Abschnitt-Trenner bei Markierungen (LLM strukturiert anhand Marker)
@@ -164,3 +164,6 @@
 - [x] UX-Umbau: Projekt-Badge im Aufnahme-Screen anzeigen
 - [x] UX-Umbau: Automatische Nummerierung (BST-001, BST-002...) in Projekt-Auswahl anzeigen
 - [x] Fix: Unicode-Escape-Sequenzen in JSX-Text durch echte Zeichen ersetzt
+- [x] Video-Modus komplett entfernen (Video-Aufnahme, Video-Upload, Video-bezogener Code)
+- [x] Mode-Switcher vereinfachen: nur noch "Audio + Foto" und "Nur Audio"
+- [x] Video-bezogene Imports und Dependencies aufräumen

@@ -17,10 +17,10 @@ type OnboardingStep = {
 
 const STEPS: OnboardingStep[] = [
   {
-    icon: "videocam",
-    title: "Video oder Audio aufnehmen",
-    description: "Nimm ein Video auf oder nutze den Audio-Modus für schnelle Diktate. Die Kamera fängt alles ein, das Mikrofon zeichnet deine Stimme auf.",
-    color: "#F44336",
+    icon: "mic",
+    title: "Aufnehmen & Fotografieren",
+    description: "Sprich dein Protokoll einfach ein und fotografiere gleichzeitig Schäden, Mängel oder Details. Audio + Foto – alles in einer Aufnahme.",
+    color: "#2196F3",
   },
   {
     icon: "auto-awesome",

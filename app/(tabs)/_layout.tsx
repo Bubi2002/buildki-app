@@ -32,7 +32,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Aufnahme",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="video.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="mic.fill" color={color} />,
         }}
       />
       <Tabs.Screen
