@@ -182,3 +182,7 @@
 - [x] UX: Projekt löschen (mit Bestätigung)
 - [x] UX: Projekt bearbeiten (Name, Farbe, Beschreibung, Präfix nachträglich ändern)
 - [x] UX: Favoriten-Projekte oben anpinnen
+- [x] Feature: Projekt-Statistik-Dashboard (Protokolle pro Woche, Mängel-Status, Aktivitäts-Timeline)
+- [x] Feature: Projekt-Export (alle Protokolle eines Projekts als PDF-Sammlung exportieren)
+- [x] Feature: Projekt-Duplikation (bestehendes Projekt als Vorlage kopieren)
+- [x] UX: Professionelle Verbesserungen (Swipe-Aktionen, Long-Press-Menü, Projekt-Avatar/Bild)

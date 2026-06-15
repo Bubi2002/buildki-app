@@ -305,6 +305,27 @@ export default function RecordScreen() {
     } catch { Alert.alert("Fehler", "Projekt konnte nicht gespeichert werden."); }
   };
 
+  const duplicateProject = async (sourceProject: any) => {
+    try {
+      const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const duplicated = {
+        ...sourceProject,
+        id: newId,
+        name: `${sourceProject.name} (Kopie)`,
+        createdAt: new Date().toISOString(),
+        protocolCounter: 0,
+        isArchived: false,
+        isFavorite: false,
+      };
+      const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+      data.push(duplicated);
+      await AsyncStorage.setItem("projects", JSON.stringify(data));
+      setProjects(data);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Dupliziert", `Projekt \"${duplicated.name}\" wurde erstellt.`);
+    } catch { Alert.alert("Fehler", "Projekt konnte nicht dupliziert werden."); }
+  };
+
   // Filtered and sorted projects
   const filteredProjects = useMemo(() => {
     let list = projects.filter((p: any) => showArchived ? p.isArchived : !p.isArchived);
@@ -689,6 +710,10 @@ export default function RecordScreen() {
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
               </View>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 20, fontWeight: "700", color: "#FDD835" }}>{projects.filter((p: any) => p.isFavorite && !p.isArchived).length}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Favoriten</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.muted }}>{projects.filter((p: any) => p.isArchived).length}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Archiv</Text>
               </View>
@@ -908,14 +933,19 @@ export default function RecordScreen() {
                   </Pressable>
                 ))}
               </View>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <Pressable onPress={() => { setShowEditProject(false); deleteProject(editProjectId!); }} style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.error + "15", alignItems: "center", opacity: pressed ? 0.8 : 1, borderWidth: 1, borderColor: colors.error }]}>
-                  <Text style={{ color: colors.error, fontSize: 14, fontWeight: "600" }}>Löschen</Text>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                <Pressable onPress={() => { setShowEditProject(false); const proj = projects.find((p: any) => p.id === editProjectId); if (proj) duplicateProject(proj); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+                  <MaterialIcons name="content-copy" size={16} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>Duplizieren</Text>
                 </Pressable>
-                <Pressable onPress={saveEditProject} style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
-                  <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Speichern</Text>
+                <Pressable onPress={() => { setShowEditProject(false); deleteProject(editProjectId!); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.error + "15", borderWidth: 1, borderColor: colors.error, opacity: pressed ? 0.8 : 1 }]}>
+                  <MaterialIcons name="delete" size={16} color={colors.error} />
+                  <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>Löschen</Text>
                 </Pressable>
               </View>
+              <Pressable onPress={saveEditProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Speichern</Text>
+              </Pressable>
             </View>
           </View>
         </Modal>

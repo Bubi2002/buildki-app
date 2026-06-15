@@ -337,6 +337,20 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="groups" size={20} color={"#1E88E5"} />
             <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Team</Text>
           </Pressable>
+          <Pressable
+            onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="bar-chart" size={20} color={"#00ACC1"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Statistik</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/project-export?id=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="ios-share" size={20} color={"#43A047"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Export</Text>
+          </Pressable>
         </View>
 
         {/* Stats */}
