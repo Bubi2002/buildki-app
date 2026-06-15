@@ -372,6 +372,13 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="timer" size={20} color={"#FF5722"} />
             <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Zeit</Text>
           </Pressable>
+          <Pressable
+            onPress={() => router.push(`/cloud-import?projectId=${project.id}` as any)}
+            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="cloud-download" size={20} color={"#607D8B"} />
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Cloud</Text>
+          </Pressable>
         </View>
 
         {/* Stats */}

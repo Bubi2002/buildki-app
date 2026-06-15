@@ -200,3 +200,5 @@
 - [x] Fix: Projekt-Name in PDF-Metadaten-Tabelle anzeigen
 - [x] Fix: Transkriptions-Text unter den Fotos im PDF anzeigen (statt nur "Foto 1/2/3")
 - [x] Feature: Plan-Markierung im PDF (Gesamtplan + Ausschnitt mit Pin-Icon vor Fotos/Text)
+- [x] Feature: Cloud-Speicher-Integration (Dropbox, Google Drive, iCloud, OneDrive) für Projektordner
+- [x] Feature: Cloud-Import nachträglich im laufenden Projekt nutzbar (Pläne, Dokumente, Fotos)

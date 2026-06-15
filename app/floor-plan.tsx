@@ -30,6 +30,7 @@ import {
   savePlanPin,
   deletePlanPin,
 } from "@/lib/floor-plan-store";
+import { importPlanFromCloud } from "@/lib/cloud-import-service";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -91,16 +92,39 @@ export default function FloorPlanScreen() {
   };
 
   const addPlan = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.9,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setPendingPlanAsset(result.assets[0]);
-      setNewPlanName(`Plan ${plans.length + 1}`);
-      setShowPlanNameModal(true);
-    }
+    // Show options: Galerie or Cloud
+    Alert.alert("Plan hinzufügen", "Woher möchtest du den Plan laden?", [
+      {
+        text: "Fotogalerie",
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.9,
+          });
+          if (!result.canceled && result.assets[0]) {
+            setPendingPlanAsset(result.assets[0]);
+            setNewPlanName(`Plan ${plans.length + 1}`);
+            setShowPlanNameModal(true);
+          }
+        },
+      },
+      {
+        text: "Cloud (Dropbox, Drive...)",
+        onPress: async () => {
+          const file = await importPlanFromCloud();
+          if (file) {
+            setPendingPlanAsset({ uri: file.uri, width: 1000, height: 1000 });
+            setNewPlanName(file.name.replace(/\.[^/.]+$/, ""));
+            setShowPlanNameModal(true);
+            // Try to get actual dimensions
+            RNImage.getSize(file.uri, (w, h) => {
+              setPendingPlanAsset((prev: any) => prev ? { ...prev, width: w, height: h } : prev);
+            }, () => {});
+          }
+        },
+      },
+      { text: "Abbrechen", style: "cancel" },
+    ]);
   };
 
   const savePlanWithName = async () => {
