@@ -414,6 +414,45 @@ export default function ProtocolDetailScreen() {
     }
   };
 
+  const editPhotoCaption = (photoIndex: number, currentCaption: string) => {
+    if (Platform.OS === "web") {
+      const newCaption = prompt("Foto-Beschreibung bearbeiten:", currentCaption || "");
+      if (newCaption !== null) {
+        savePhotoCaption(photoIndex, newCaption);
+      }
+    } else {
+      Alert.prompt
+        ? Alert.prompt("Foto-Beschreibung", `Text f\u00fcr Foto ${photoIndex + 1} bearbeiten:`, [
+            { text: "Abbrechen", style: "cancel" },
+            { text: "Speichern", onPress: (text?: string) => savePhotoCaption(photoIndex, text || "") },
+          ], "plain-text", currentCaption || "")
+        : Alert.alert("Foto-Beschreibung", `Aktuelle Beschreibung:\n\n${currentCaption || "(leer)"}`, [
+            { text: "L\u00f6schen", style: "destructive", onPress: () => savePhotoCaption(photoIndex, "") },
+            { text: "OK" },
+          ]);
+    }
+  };
+
+  const savePhotoCaption = async (photoIndex: number, caption: string) => {
+    try {
+      const protocolsStr = await AsyncStorage.getItem("protocols");
+      const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+      const idx = protocols.findIndex((p: any) => p.id === protocol!.id);
+      if (idx !== -1) {
+        const captions = protocols[idx].photoCaptions || [];
+        // Ensure array is long enough
+        while (captions.length <= photoIndex) captions.push("");
+        captions[photoIndex] = caption;
+        protocols[idx].photoCaptions = captions;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        // Reload protocol to reflect changes
+        setProtocol({ ...protocol!, ...protocols[idx] } as any);
+      }
+    } catch (error) {
+      console.error("Error saving photo caption:", error);
+    }
+  };
+
   if (loading) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
@@ -658,46 +697,85 @@ export default function ProtocolDetailScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Fotos
             </Text>
-            <View style={styles.photoGrid}>
-              {photos.map((photoUri, index) => (
-                <View key={index} style={{ position: 'relative' }}>
-                  <Pressable
-                    onPress={() => setSelectedPhoto(photoUri)}
-                    onLongPress={() => sharePhoto(photoUri)}
-                    style={({ pressed }) => [
-                      styles.photoThumbnail,
-                      { opacity: pressed ? 0.7 : 1 },
-                    ]}
-                  >
-                    <Image
-                      source={{ uri: photoUri }}
-                      style={styles.photoImage}
-                      contentFit="cover"
-                      transition={200}
-                    />
-                    <View style={styles.photoIndex}>
-                      <Text style={styles.photoIndexText}>{index + 1}</Text>
+            {photos.map((photoUri, index) => {
+              const captions: string[] = (protocol as any).photoCaptions || [];
+              const segments: Array<{ start: number; end: number; text: string }> = (protocol as any).transcriptionSegments || [];
+              const timestamps: number[] = (protocol as any).photoTimestamps || [];
+              // Auto-generate caption from segments if not manually set
+              let autoCaption = "";
+              if (segments.length > 0 && timestamps[index] != null) {
+                const photoTime = timestamps[index];
+                const windowStart = Math.max(0, photoTime - 15);
+                const windowEnd = photoTime + 5;
+                const matching = segments.filter(s => s.end >= windowStart && s.start <= windowEnd);
+                if (matching.length > 0) {
+                  autoCaption = matching.map(s => s.text.trim()).join(" ").trim();
+                } else {
+                  const before = segments.filter(s => s.start <= photoTime);
+                  if (before.length > 0) autoCaption = before[before.length - 1].text.trim();
+                }
+              }
+              const currentCaption = captions[index] || autoCaption;
+              return (
+                <View key={index} style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <View style={{ position: 'relative' }}>
+                      <Pressable
+                        onPress={() => setSelectedPhoto(photoUri)}
+                        onLongPress={() => sharePhoto(photoUri)}
+                        style={({ pressed }) => [
+                          styles.photoThumbnail,
+                          { opacity: pressed ? 0.7 : 1 },
+                        ]}
+                      >
+                        <Image
+                          source={{ uri: photoUri }}
+                          style={styles.photoImage}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                        <View style={styles.photoIndex}>
+                          <Text style={styles.photoIndexText}>{index + 1}</Text>
+                        </View>
+                      </Pressable>
+                      {featureFlags.photoAnnotation && <Pressable
+                        onPress={() => router.push(`/photo-annotate?photoUri=${encodeURIComponent(photoUri)}&protocolId=${protocol.id}&photoIndex=${index}` as any)}
+                        style={({ pressed }) => [{
+                          position: 'absolute',
+                          bottom: 4,
+                          right: 4,
+                          backgroundColor: 'rgba(0,0,0,0.7)',
+                          borderRadius: 12,
+                          padding: 4,
+                          opacity: pressed ? 0.6 : 1,
+                        }]}
+                      >
+                        <MaterialIcons name="edit" size={14} color="#FFFFFF" />
+                      </Pressable>}
                     </View>
-                  </Pressable>
-                  {featureFlags.photoAnnotation && <Pressable
-                    onPress={() => router.push(`/photo-annotate?photoUri=${encodeURIComponent(photoUri)}&protocolId=${protocol.id}&photoIndex=${index}` as any)}
-                    style={({ pressed }) => [{
-                      position: 'absolute',
-                      bottom: 4,
-                      right: 4,
-                      backgroundColor: 'rgba(0,0,0,0.7)',
-                      borderRadius: 12,
-                      padding: 4,
-                      opacity: pressed ? 0.6 : 1,
-                    }]}
-                  >
-                    <MaterialIcons name="edit" size={14} color="#FFFFFF" />
-                  </Pressable>}
+                    {/* Caption area */}
+                    <View style={{ flex: 1, justifyContent: "flex-start" }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted }}>
+                          Foto {index + 1}{timestamps[index] != null ? ` – ${Math.floor(timestamps[index] / 60)}:${(timestamps[index] % 60).toString().padStart(2, "0")} Min.` : ""}
+                        </Text>
+                        <Pressable
+                          onPress={() => editPhotoCaption(index, currentCaption)}
+                          style={({ pressed }) => [{ marginLeft: 8, opacity: pressed ? 0.5 : 1 }]}
+                        >
+                          <MaterialIcons name="edit" size={14} color={colors.primary} />
+                        </Pressable>
+                      </View>
+                      <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }} numberOfLines={4}>
+                        {currentCaption || "Kein zugeordneter Text"}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              ))}
-            </View>
+              );
+            })}
             <Text style={[styles.photoHint, { color: colors.muted }]}>
-              Tippe zum Vergr\u00f6\u00dfern \u2022 Halte gedr\u00fcckt zum Teilen \u2022 \u270f\ufe0f Annotieren
+              Tippe zum Vergrößern • Halte gedrückt zum Teilen • ✏️ Annotieren
             </Text>
           </View>
         )}

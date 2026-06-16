@@ -212,3 +212,7 @@
 - [x] UX: Mängel-Zähler als Badge am Mängel-Button in Projekt-Detail
 - [x] UX: Wisch-Gesten (Swipe-to-Delete, Swipe-to-Share) in Protokoll-Liste
 - [x] Feature: Gesprochener Text den Fotos zuordnen (Whisper-Segmente speichern, Text unter Bildern im PDF)
+- [x] Feature: Foto-Captions manuell bearbeiten in Detailansicht
+- [x] Feature: Fotos inline im Protokolltext im PDF (an thematisch passender Stelle)
+- [x] Feature: Sprach-Highlight im PDF (exakter Satz zum Foto-Zeitpunkt fett hervorgehoben)
+- [x] UX: Aufnahme-Buttons umgestalten (Start/Stopp kleiner mit Label, Foto/Markierung größer, verschiedene Farben)

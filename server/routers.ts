@@ -58,6 +58,7 @@ export const appRouter = router({
           recordingDate: z.string().optional(),
           markers: z.array(z.object({ time: z.number(), label: z.string() })).optional(),
           photoCount: z.number().optional(),
+          photoTimestamps: z.array(z.number()).optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -109,9 +110,19 @@ export const appRouter = router({
           userMessage += "\nBitte strukturiere das Protokoll anhand dieser Markierungen in entsprechende Abschnitte. Füge zwischen den Abschnitten einen klaren Trenner ein.\n\n";
         }
 
-        // Add photo context
+        // Add photo context with timestamps for inline placement
         if (input.photoCount && input.photoCount > 0) {
-          userMessage += `FOTOS: ${input.photoCount} Foto(s) wurden während der Aufnahme gemacht und sind dem Protokoll beigefügt.\n\n`;
+          if (input.photoTimestamps && input.photoTimestamps.length > 0) {
+            userMessage += `FOTOS: ${input.photoCount} Foto(s) wurden während der Aufnahme zu folgenden Zeitpunkten gemacht:\n`;
+            input.photoTimestamps.forEach((ts, i) => {
+              const mins = Math.floor(ts / 60);
+              const secs = Math.floor(ts % 60);
+              userMessage += `  Foto ${i + 1}: bei ${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")} Min.\n`;
+            });
+            userMessage += `\nFüge an der thematisch passenden Stelle im Protokoll den Platzhalter [FOTO X] ein (z.B. [FOTO 1], [FOTO 2] etc.), damit die Fotos im fertigen Dokument inline erscheinen.\n\n`;
+          } else {
+            userMessage += `FOTOS: ${input.photoCount} Foto(s) wurden während der Aufnahme gemacht und sind dem Protokoll beigefügt.\n\n`;
+          }
         }
 
         userMessage += `TRANSKRIPTION:\n${input.transcription}`;

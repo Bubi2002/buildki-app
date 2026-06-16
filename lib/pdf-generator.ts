@@ -136,11 +136,41 @@ function generatePdfHtml(
       </div>`
     : "";
 
-  // Convert protocol text to HTML (handle line breaks and bullet points)
+  // Convert protocol text to HTML (handle line breaks, bullet points, and inline photo placeholders)
   const protocolHtml = protocol.protocol
     .split("\n")
     .map((line) => {
       const trimmed = line.trim();
+      // Check for inline photo placeholder [FOTO X]
+      const photoMatch = trimmed.match(/^\[FOTO\s*(\d+)\]$/i);
+      if (photoMatch) {
+        const photoIdx = parseInt(photoMatch[1], 10) - 1;
+        if (photoIdx >= 0 && photoIdx < photoDataUris.length) {
+          const caption = getPhotoCaptionFromSegments(photoIdx);
+          const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[photoIdx] != null
+            ? `${Math.floor(protocol.photoTimestamps[photoIdx] / 60)}:${(protocol.photoTimestamps[photoIdx] % 60).toString().padStart(2, '0')} Min.`
+            : null;
+          return `
+          <div style="margin: 12px 0; page-break-inside: avoid; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <img src="${photoDataUris[photoIdx]}" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 4px;" />
+            <p style="font-size: 10px; color: #555; font-weight: 600; margin: 8px 0 2px 0;">Foto ${photoIdx + 1}${timestamp ? ` \u2013 ${timestamp}` : ''}</p>
+            ${caption ? `<p style="font-size: 11px; color: #333; line-height: 1.4; margin: 0;">${caption}</p>` : ''}
+          </div>`;
+        }
+      }
+      // Also handle inline [FOTO X] within a text line
+      const inlinePhotoRegex = /\[FOTO\s*(\d+)\]/gi;
+      if (inlinePhotoRegex.test(trimmed) && !photoMatch) {
+        let result = trimmed;
+        result = result.replace(/\[FOTO\s*(\d+)\]/gi, (match, num) => {
+          const idx = parseInt(num, 10) - 1;
+          if (idx >= 0 && idx < photoDataUris.length) {
+            return `<span style="color: ${accentColor || '#0a7ea4'}; font-weight: 600;">[Foto ${idx + 1} \u2013 siehe Fotodokumentation]</span>`;
+          }
+          return match;
+        });
+        return `<p style="margin: 4px 0; line-height: 1.6;">${result}</p>`;
+      }
       if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
         return `<li>${trimmed.substring(2)}</li>`;
       }
@@ -156,12 +186,13 @@ function generatePdfHtml(
     .join("\n");
 
   // Helper: Get caption text for a photo based on its timestamp and transcription segments
+  // Returns HTML with the exact sentence at photo time highlighted in bold
   const getPhotoCaptionFromSegments = (photoIndex: number): string => {
-    // Priority 1: Pre-computed captions
+    // Priority 1: Pre-computed captions (no highlight for manually edited captions)
     if (protocol.photoCaptions && protocol.photoCaptions[photoIndex]) {
       return protocol.photoCaptions[photoIndex];
     }
-    // Priority 2: Match segments by timestamp
+    // Priority 2: Match segments by timestamp with highlight
     if (protocol.transcriptionSegments && protocol.transcriptionSegments.length > 0 && protocol.photoTimestamps && protocol.photoTimestamps[photoIndex] != null) {
       const photoTime = protocol.photoTimestamps[photoIndex];
       // Find segments that overlap with a window around the photo time (±15 seconds before, +5 after)
@@ -171,13 +202,25 @@ function generatePdfHtml(
         (seg) => seg.end >= windowStart && seg.start <= windowEnd
       );
       if (matchingSegments.length > 0) {
-        return matchingSegments.map(s => s.text.trim()).join(" ").trim();
+        // Find the exact segment that contains the photo timestamp (spoken at that moment)
+        const exactSegment = protocol.transcriptionSegments.find(
+          (seg) => seg.start <= photoTime && seg.end >= photoTime
+        );
+        // Build caption with highlight on the exact sentence
+        const captionParts = matchingSegments.map(s => {
+          const text = s.text.trim();
+          if (exactSegment && s.start === exactSegment.start && s.end === exactSegment.end) {
+            return `<strong style="background-color: rgba(255, 235, 59, 0.3); padding: 1px 3px; border-radius: 2px;">${text}</strong>`;
+          }
+          return text;
+        });
+        return captionParts.join(" ").trim();
       }
       // Fallback: find the closest segment before the photo
       const beforeSegments = protocol.transcriptionSegments.filter(seg => seg.start <= photoTime);
       if (beforeSegments.length > 0) {
         const closest = beforeSegments[beforeSegments.length - 1];
-        return closest.text.trim();
+        return `<strong style="background-color: rgba(255, 235, 59, 0.3); padding: 1px 3px; border-radius: 2px;">${closest.text.trim()}</strong>`;
       }
     }
     // Priority 3: No segments available – use empty

@@ -70,7 +70,7 @@ export function isJobActive(protocolId: string): boolean {
 export async function startBackgroundProcessing(job: PendingJob, apiClient: {
   upload: (base64: string, mimeType: string, filename: string) => Promise<{ url: string }>;
   transcribe: (audioUrl: string, language: string) => Promise<{ text: string; segments?: Array<{ start: number; end: number; text: string }> }>;
-  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: Array<{ time: number; label: string }>, photoCount?: number) => Promise<{ protocol: string }>;
+  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: Array<{ time: number; label: string }>, photoCount?: number, photoTimestamps?: number[]) => Promise<{ protocol: string }>;
   extractTodos: (transcription: string, protocolText: string) => Promise<{ todos: Array<{ task: string; assignee: string; priority: string; deadline: string }> }>;
 }) {
   activeJobs.set(job.protocolId, job);
@@ -121,6 +121,7 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       job.createdAt,
       job.markers,
       job.photos?.length || 0,
+      job.photoTimestamps,
     );
     console.log(`[BG-Processor] ${job.protocolId}: Protocol generated`);
     

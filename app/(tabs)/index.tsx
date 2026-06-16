@@ -605,8 +605,8 @@ export default function RecordScreen() {
             uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),
           transcribe: (audioUrl: string, language: string) =>
             transcribeMutation.mutateAsync({ audioUrl, language }),
-          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: Array<{ time: number; label: string }>, photoCount?: number) =>
-            protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount }),
+          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: Array<{ time: number; label: string }>, photoCount?: number, jobPhotoTimestamps?: number[]) =>
+            protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount, photoTimestamps: jobPhotoTimestamps }),
           extractTodos: (transcription: string, protocolText: string) =>
             todosMutation.mutateAsync({ transcription, protocolText }),
         }
@@ -1623,16 +1623,17 @@ export default function RecordScreen() {
           )}
 
           <View style={styles.controlsRow}>
-            {/* Photo button - only visible during recording */}
+            {/* Photo button - larger, blue color */}
             {isRecording ? (
               <Pressable
                 onPress={takePhoto}
                 style={({ pressed }) => [
-                  styles.photoButton,
-                  { transform: [{ scale: pressed ? 0.9 : 1 }] },
+                  styles.actionButtonLarge,
+                  { backgroundColor: "#2196F3", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
-                <MaterialIcons name="photo-camera" size={28} color="#FFFFFF" />
+                <MaterialIcons name="photo-camera" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>Foto</Text>
                 {capturedPhotos.length > 0 && (
                   <View style={styles.photoBadge}>
                     <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
@@ -1640,53 +1641,54 @@ export default function RecordScreen() {
                 )}
               </Pressable>
             ) : (
-              <View style={styles.photoButtonPlaceholder} />
+              <View style={styles.actionButtonPlaceholder} />
             )}
 
-            {/* Record / Stop button */}
+            {/* Record / Stop button - smaller, with label */}
             <Pressable
               onPress={isRecording ? stopRecording : startRecording}
               style={({ pressed }) => [
-                styles.recordButton,
+                styles.recordButtonSmall,
                 {
-                  borderColor: "#FFFFFF",
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                  opacity: 1,
+                  borderColor: isRecording ? "#F44336" : "#FFFFFF",
+                  transform: [{ scale: pressed ? 0.93 : 1 }],
                 },
               ]}
             >
               <View
                 style={[
-                  isRecording ? styles.stopIcon : styles.recordIcon,
-                  { backgroundColor: colors.primary },
+                  isRecording ? styles.stopIcon : styles.recordIconSmall,
+                  { backgroundColor: isRecording ? "#F44336" : colors.primary },
                 ]}
               />
+              <Text style={styles.recordButtonLabel}>{isRecording ? "Stopp" : "Start"}</Text>
             </Pressable>
 
-            {/* Marker button - only visible during recording */}
+            {/* Marker button - larger, orange color */}
             {isRecording ? (
               <Pressable
                 onPress={() => addMarker("Markierung")}
                 style={({ pressed }) => [
-                  styles.photoButton,
-                  { transform: [{ scale: pressed ? 0.9 : 1 }] },
+                  styles.actionButtonLarge,
+                  { backgroundColor: "#FF9800", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
-                <MaterialIcons name="bookmark-add" size={28} color="#FFFFFF" />
+                <MaterialIcons name="bookmark-add" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>Marker</Text>
                 {markers.length > 0 && (
-                  <View style={[styles.photoBadge, { backgroundColor: "#FF9800" }]}>
+                  <View style={[styles.photoBadge, { backgroundColor: "#E53935" }]}>
                     <Text style={styles.photoBadgeText}>{markers.length}</Text>
                   </View>
                 )}
               </Pressable>
             ) : (
-              <View style={styles.photoButtonPlaceholder} />
+              <View style={styles.actionButtonPlaceholder} />
             )}
           </View>
 
           <Text style={styles.hintText}>
             {isRecording
-              ? "Foto • Stopp • Markierung"
+              ? ""
               : mode === "audio-photo" ? "Audio + Fotos" : "Tippe zum Aufnehmen"}
           </Text>
         </View>
@@ -1896,6 +1898,27 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.5)",
   },
+  actionButtonLarge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  actionButtonLabel: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  actionButtonPlaceholder: {
+    width: 72,
+    height: 72,
+  },
   photoBadge: {
     position: "absolute",
     top: -4,
@@ -1924,14 +1947,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  recordButtonSmall: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordButtonLabel: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "700",
+    marginTop: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
   recordIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
   },
+  recordIconSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
   stopIcon: {
-    width: 30,
-    height: 30,
+    width: 24,
+    height: 24,
     borderRadius: 4,
   },
   hintText: {
