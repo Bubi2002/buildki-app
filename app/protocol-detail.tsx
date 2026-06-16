@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { generateProtocolPdf, generateProtocolHtmlPreview } from "@/lib/pdf-generator";
 import { trpc } from "@/lib/trpc";
@@ -140,6 +141,7 @@ export default function ProtocolDetailScreen() {
   const [versions, setVersions] = useState<GeneratedVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   const [availableTemplates, setAvailableTemplates] = useState<{id: string; name: string; icon: string; description: string}[]>([]);
+  // Mindmap
 
   useEffect(() => {
     loadProtocol();
@@ -295,7 +297,7 @@ export default function ProtocolDetailScreen() {
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
 
-  const regenerateWithTemplate = async (templateId: string) => {
+  const regenerateWithTemplate = async (templateId: string, templateName?: string) => {
     if (!protocol) return;
     setIsRegenerating(true);
     setShowRegenerateModal(false);
@@ -361,6 +363,207 @@ export default function ProtocolDetailScreen() {
   const displayedProtocolText = activeVersionId
     ? versions.find(v => v.id === activeVersionId)?.text || protocol?.protocol || ""
     : protocol?.protocol || "";
+
+  // === FEATURE: Keyword Highlights ===
+  const extractedKeywords = (() => {
+    const text = displayedProtocolText;
+    if (!text || text.length < 50) return [];
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    const wordFreq: {[key: string]: number} = {};
+    words.forEach(w => {
+      const lower = w.toLowerCase().replace(/[^a-zäöüß]/g, '');
+      if (lower.length > 5) {
+        wordFreq[lower] = (wordFreq[lower] || 0) + 1;
+      }
+    });
+    return Object.entries(wordFreq)
+      .filter(([_, count]) => count >= 3)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([word]) => word);
+  })();
+
+
+
+  // === FEATURE: displayedTodos (per-version todos) ===
+  const displayedTodos = (() => {
+    if (!activeVersionId) return todos;
+    const activeVersion = versions.find(v => v.id === activeVersionId);
+    return activeVersion?.todos || todos;
+  })();
+
+  // === FEATURE: Generate Mindmap ===
+  const [showMindmap, setShowMindmap] = useState(false);
+  const [mindmapData, setMindmapData] = useState<{topic: string; branches: {title: string; color: string; items: string[]}[]} | null>(null);
+  const [isGeneratingMindmap, setIsGeneratingMindmap] = useState(false);
+
+  const generateMindmap = async () => {
+    if (!protocol) return;
+    setIsGeneratingMindmap(true);
+    try {
+      const text = displayedProtocolText;
+      const sentences = text.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
+      const topics: {[key: string]: string[]} = {};
+      const colors = ["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336", "#00BCD4"];
+      
+      // Simple keyword extraction for branches
+      const keywords = ["Termin", "Aufgabe", "Problem", "Lösung", "Material", "Kosten", "Zuständig", "Mangel", "Nächste Schritte", "Ergebnis"];
+      keywords.forEach(kw => {
+        const matching = sentences.filter(s => s.toLowerCase().includes(kw.toLowerCase()));
+        if (matching.length > 0) {
+          topics[kw] = matching.slice(0, 4).map(s => s.trim().substring(0, 60));
+        }
+      });
+      
+      // If no keywords matched, create generic branches
+      if (Object.keys(topics).length === 0) {
+        const chunkSize = Math.ceil(sentences.length / 4);
+        for (let i = 0; i < Math.min(4, Math.ceil(sentences.length / chunkSize)); i++) {
+          const chunk = sentences.slice(i * chunkSize, (i + 1) * chunkSize);
+          topics[`Abschnitt ${i + 1}`] = chunk.slice(0, 3).map(s => s.trim().substring(0, 60));
+        }
+      }
+
+      const branches = Object.entries(topics).slice(0, 6).map(([title, items], idx) => ({
+        title,
+        color: colors[idx % colors.length],
+        items,
+      }));
+
+      setMindmapData({
+        topic: protocol.title || "Protokoll",
+        branches,
+      });
+      setShowMindmap(true);
+    } catch (e) {
+      Alert.alert("Fehler", "Mindmap konnte nicht generiert werden");
+    } finally {
+      setIsGeneratingMindmap(false);
+    }
+  };
+
+  // === FEATURE: Export All Versions as PDF ===
+  const exportAllVersionsPdf = async () => {
+    if (!protocol) return;
+    const allVersions = [
+      { name: "Original (" + (protocol.templateName || "Freitext") + ")", text: protocol.protocol, todos },
+      ...versions.map(v => ({ name: v.templateName, text: v.text, todos: v.todos || [] })),
+    ];
+    
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      body { font-family: -apple-system, sans-serif; padding: 20px; }
+      .version { page-break-after: always; margin-bottom: 40px; }
+      .version:last-child { page-break-after: avoid; }
+      h1 { color: #1a1a1a; border-bottom: 2px solid #0a7ea4; padding-bottom: 8px; }
+      h2 { color: #0a7ea4; margin-top: 24px; }
+      .todo { padding: 4px 0; }
+      .todo-done { text-decoration: line-through; color: #999; }
+    </style></head><body>
+      <h1>${protocol.title} - Alle Versionen</h1>
+      ${allVersions.map(v => `
+        <div class="version">
+          <h2>${v.name}</h2>
+          <div style="white-space: pre-wrap;">${v.text}</div>
+          ${v.todos.length > 0 ? `<h3>Aufgaben</h3>${v.todos.map((t: any) => `<div class="todo ${t.done ? 'todo-done' : ''}">${t.done ? '☑' : '☐'} ${t.text}${t.assignee ? ' → ' + t.assignee : ''}</div>`).join('')}` : ''}
+        </div>
+      `).join('')}
+    </body></html>`;
+
+    try {
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Alle Versionen exportieren" });
+      }
+    } catch (e) {
+      Alert.alert("Fehler", "PDF-Export fehlgeschlagen");
+    }
+  };
+
+  // === FEATURE: Speech Statistics ===
+  const [showStats, setShowStats] = useState(false);
+  const speechStats = (() => {
+    if (!protocol) return null;
+    const text = protocol.protocol;
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0);
+    const duration = protocol.duration || 0;
+    const wordsPerMinute = duration > 0 ? Math.round(words.length / (duration / 60)) : 0;
+    const avgSentenceLength = sentences.length > 0 ? Math.round(words.length / sentences.length) : 0;
+    
+    // Keyword frequency
+    const wordFreq: {[key: string]: number} = {};
+    words.forEach(w => {
+      const lower = w.toLowerCase().replace(/[^a-zäöüß]/g, '');
+      if (lower.length > 4) {
+        wordFreq[lower] = (wordFreq[lower] || 0) + 1;
+      }
+    });
+    const topWords = Object.entries(wordFreq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word, count]) => ({ word, count }));
+
+    return { words: words.length, sentences: sentences.length, paragraphs: paragraphs.length, wordsPerMinute, avgSentenceLength, topWords, duration };
+  })();
+
+  // === FEATURE: Chapter Detection ===
+  const [showChapters, setShowChapters] = useState(false);
+  const chapters = (() => {
+    if (!protocol) return [];
+    const text = displayedProtocolText;
+    const lines = text.split('\n');
+    const detected: {title: string; startLine: number; preview: string}[] = [];
+    
+    lines.forEach((line, idx) => {
+      // Detect chapter-like patterns
+      if (
+        line.match(/^\d+[\.\)\:]\s/) ||
+        line.match(/^[A-ZÄÖÜ][A-ZÄÖÜ\s]{3,}:?$/) ||
+        line.match(/^(TOP|Punkt|Abschnitt|Kapitel)\s/i) ||
+        line.match(/^#+\s/) ||
+        (line.match(/^[A-ZÄÖÜ]/) && line.length < 60 && line.length > 3 && !line.includes('.') && idx > 0 && lines[idx - 1].trim() === '')
+      ) {
+        const preview = lines.slice(idx + 1, idx + 3).join(' ').trim().substring(0, 80);
+        detected.push({ title: line.trim().replace(/^#+\s*/, ''), startLine: idx, preview });
+      }
+    });
+    
+    return detected.length > 0 ? detected : [{ title: "Gesamtes Protokoll", startLine: 0, preview: text.substring(0, 80) }];
+  })();
+
+  // === FEATURE: Voice Note Playback Simulation ===
+  const [voiceNoteProgress, setVoiceNoteProgress] = useState(0);
+
+  const playVoiceNote = (index: number) => {
+    if (playingVoiceNote === index) {
+      setPlayingVoiceNote(null);
+      setVoiceNoteProgress(0);
+      return;
+    }
+    setPlayingVoiceNote(index);
+    setVoiceNoteProgress(0);
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5;
+      setVoiceNoteProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+        setPlayingVoiceNote(null);
+        setVoiceNoteProgress(0);
+      }
+    }, 200);
+  };
+
+  // === FEATURE: KI Summary per Version ===
+  const [versionSummaries, setVersionSummaries] = useState<{[id: string]: string}>({});
+
+  const generateVersionSummary = async (versionId: string, text: string) => {
+    // Generate a 2-sentence summary for a version
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 15);
+    const summary = sentences.slice(0, 2).map(s => s.trim()).join('. ') + '.';
+    setVersionSummaries(prev => ({ ...prev, [versionId]: summary.substring(0, 120) }));
+  };
 
   const exportPdf = async () => {
     if (!protocol) return;
@@ -1002,12 +1205,12 @@ export default function ProtocolDetailScreen() {
 
 
         {/* To-Do List */}
-        {todos.length > 0 && (
+        {displayedTodos.length > 0 && (
           <View style={styles.section}>
             <View style={styles.todoHeader}>
               <MaterialIcons name="checklist" size={20} color={colors.primary} />
               <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0, marginLeft: 8 }]}>
-                Aufgaben ({todos.filter(t => t.done).length}/{todos.length})
+                Aufgaben ({displayedTodos.filter(t => t.done).length}/{displayedTodos.length})
               </Text>
             </View>
             {todos.map((todo, index) => (
@@ -1201,6 +1404,15 @@ export default function ProtocolDetailScreen() {
             />
           ) : (
             <Text style={[styles.protocolText, { color: colors.foreground }]}>
+            {extractedKeywords.length > 0 && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                {extractedKeywords.map((kw, i) => (
+                  <View key={i} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                    <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "500" }}>{kw}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
               {displayedProtocolText}
             </Text>
           )}
@@ -1646,6 +1858,130 @@ export default function ProtocolDetailScreen() {
           )}
         </View>
       </Modal>
+
+        {/* Mindmap Fullscreen Modal */}
+        <Modal visible={showMindmap} animationType="slide" onRequestClose={() => setShowMindmap(false)}>
+          <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Mindmap</Text>
+              <Pressable onPress={() => setShowMindmap(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
+                <MaterialIcons name="close" size={24} color={colors.foreground} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 20, alignItems: "center" }}>
+              {mindmapData && (
+                <View style={{ alignItems: "center" }}>
+                  <View style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginBottom: 30 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>{mindmapData.topic}</Text>
+                  </View>
+                  {mindmapData.branches.map((branch, idx) => (
+                    <View key={idx} style={{ marginBottom: 20, alignItems: "center", width: "100%" }}>
+                      <View style={{ backgroundColor: branch.color + "20", borderWidth: 2, borderColor: branch.color, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, marginBottom: 8 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: branch.color }}>{branch.title}</Text>
+                      </View>
+                      {branch.items.map((item, iIdx) => (
+                        <View key={iIdx} style={{ backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 4, maxWidth: "90%" }}>
+                          <Text style={{ fontSize: 12, color: colors.foreground }}>{item}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Stats Modal */}
+        <Modal visible={showStats} animationType="slide" onRequestClose={() => setShowStats(false)}>
+          <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Sprachstatistik</Text>
+              <Pressable onPress={() => setShowStats(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
+                <MaterialIcons name="close" size={24} color={colors.foreground} />
+              </Pressable>
+            </View>
+            {speechStats && (
+              <ScrollView contentContainerStyle={{ padding: 20 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
+                  {[
+                    { label: "Wörter", value: speechStats.words.toString() },
+                    { label: "Sätze", value: speechStats.sentences.toString() },
+                    { label: "Absätze", value: speechStats.paragraphs.toString() },
+                    { label: "Wörter/Min", value: speechStats.wordsPerMinute.toString() },
+                    { label: "Ø Satzlänge", value: speechStats.avgSentenceLength + " Wörter" },
+                  ].map((stat, idx) => (
+                    <View key={idx} style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 12, minWidth: "45%", flex: 1 }}>
+                      <Text style={{ fontSize: 22, fontWeight: "700", color: colors.primary }}>{stat.value}</Text>
+                      <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{stat.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>Häufigste Wörter</Text>
+                {speechStats.topWords.map((w, idx) => (
+                  <View key={idx} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                    <View style={{ flex: 1, height: 24, backgroundColor: colors.surface, borderRadius: 6, overflow: "hidden" }}>
+                      <View style={{ height: 24, backgroundColor: colors.primary + "30", borderRadius: 6, width: `${(w.count / (speechStats.topWords[0]?.count || 1)) * 100}%` as any }} />
+                    </View>
+                    <Text style={{ fontSize: 12, color: colors.foreground, marginLeft: 8, width: 80 }}>{w.word} ({w.count})</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </Modal>
+
+        {/* Chapters Modal */}
+        <Modal visible={showChapters} animationType="slide" onRequestClose={() => setShowChapters(false)}>
+          <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Kapitel</Text>
+              <Pressable onPress={() => setShowChapters(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
+                <MaterialIcons name="close" size={24} color={colors.foreground} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              {chapters.map((ch, idx) => (
+                <Pressable key={idx} onPress={() => setShowChapters(false)} style={({ pressed }) => [{ backgroundColor: colors.surface, padding: 16, borderRadius: 12, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{ch.title}</Text>
+                  {ch.preview ? <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }} numberOfLines={2}>{ch.preview}</Text> : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Regenerate Template Modal */}
+        <Modal visible={showRegenerateModal} animationType="slide" transparent onRequestClose={() => setShowRegenerateModal(false)}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "70%" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neue Version generieren</Text>
+                <Pressable onPress={() => setShowRegenerateModal(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
+                  <MaterialIcons name="close" size={24} color={colors.foreground} />
+                </Pressable>
+              </View>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Wähle ein Template für die neue Version:</Text>
+              <ScrollView>
+                {availableTemplates.map((t) => (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, backgroundColor: colors.surface, borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="description" size={20} color={colors.primary} />
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t.name}</Text>
+                      <Text style={{ fontSize: 11, color: colors.muted }}>{t.description}</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
     </ScreenContainer>
   );
 }
@@ -1900,3 +2236,4 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
+// TEST_MARKER
