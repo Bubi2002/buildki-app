@@ -241,3 +241,6 @@
 - [x] Feature: Kalender-Integration – Protokolle mit Kalendereinträgen verknüpfen und Meetings vorschlagen
 - [x] Feature: Offline-Sync mit Konfliktlösung – Protokolle offline bearbeiten und bei Reconnect intelligent zusammenführen
 - [x] Feature: Team-Dashboard – Übersicht aller delegierten Aufgaben, offenen Todos und Protokoll-Aktivitäten
+- [x] Feature: Protokoll-Vorlagen-Editor – Eigene Templates erstellen und bearbeiten (Struktur, Felder, Formatierung)
+- [x] Feature: Batch-Export – Mehrere Protokolle gleichzeitig als ZIP/PDF exportieren
+- [x] Feature: Wiederkehrende Meetings – Automatisch Protokolle für regelmäßige Termine vorbereiten

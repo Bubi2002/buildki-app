@@ -53,7 +53,9 @@ export default function TemplateEditorScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("description");
-  const [sections, setSections] = useState<string[]>([""]);
+  const [sections, setSections] = useState<{name: string; type: "text" | "checkbox" | "list" | "date" | "number"}[]>([{name: "", type: "text"}]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [outputFormat, setOutputFormat] = useState<"markdown" | "structured">("markdown");
   const [showIconPicker, setShowIconPicker] = useState(false);
 
   useEffect(() => {
@@ -74,10 +76,14 @@ export default function TemplateEditorScreen() {
           setIcon(template.icon);
           // Parse sections from systemPrompt
           const sectionMatches = template.systemPrompt.match(/\d+\.\s\*\*(.+?)\*\*/g);
+            const fieldTypes = template.systemPrompt.match(/\[(.+?)\]/g);
           if (sectionMatches) {
-            setSections(sectionMatches.map((s) => s.replace(/\d+\.\s\*\*|\*\*/g, "")));
+            setSections(sectionMatches.map((m: string, i: number) => ({
+              name: m.replace(/\d+\.\s\*\*|\*\*/g, "").replace(/\s*\[.*?\]/g, "").trim(),
+              type: (fieldTypes && fieldTypes[i] ? fieldTypes[i].replace(/[\[\]]/g, "") : "text") as any
+            })));
           } else {
-            setSections([""]);
+            setSections([{name: "", type: "text"}]);
           }
         }
       }
@@ -87,25 +93,30 @@ export default function TemplateEditorScreen() {
   };
 
   const addSection = () => {
-    setSections([...sections, ""]);
+    setSections([...sections, {name: "", type: "text"}]);
   };
 
   const updateSection = (index: number, value: string) => {
     const updated = [...sections];
-    updated[index] = value;
+    updated[index] = { ...updated[index], name: value };
+    setSections(updated);
+  };
+  const updateSectionType = (index: number, type: "text" | "checkbox" | "list" | "date" | "number") => {
+    const updated = [...sections];
+    updated[index] = { ...updated[index], type };
     setSections(updated);
   };
 
   const removeSection = (index: number) => {
     if (sections.length <= 1) return;
-    const updated = sections.filter((_, i) => i !== index);
+    const updated = sections.filter((_: any, i: number) => i !== index);
     setSections(updated);
   };
 
   const buildSystemPrompt = (): string => {
-    const validSections = sections.filter((s) => s.trim() !== "");
+    const validSections = sections.filter((s) => s.name.trim() !== "");
     const sectionList = validSections
-      .map((s, i) => `${i + 1}. **${s}**`)
+      .map((s: any, i: number) => `${i + 1}. **${s.name}** [${s.type}]`)
       .join("\n");
 
     return `Du bist ein professioneller Protokollant. Erstelle aus dem folgenden transkribierten Text ein strukturiertes Protokoll nach der Vorlage "${name}".
@@ -122,7 +133,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
       return;
     }
 
-    const validSections = sections.filter((s) => s.trim() !== "");
+    const validSections = sections.filter((s) => s.name.trim() !== "");
     if (validSections.length === 0) {
       Alert.alert("Fehler", "Bitte füge mindestens eine Sektion hinzu.");
       return;
@@ -292,7 +303,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
               </Text>
               <TextInput
                 style={[styles.sectionInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                value={section}
+                value={typeof section === "string" ? section : section.name}
                 onChangeText={(v) => updateSection(index, v)}
                 placeholder={`Sektion ${index + 1} (z.B. "Zusammenfassung")`}
                 placeholderTextColor={colors.muted}
@@ -323,7 +334,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
         </View>
 
         {/* Preview */}
-        {name.trim() && sections.some((s) => s.trim()) && (
+        {name.trim() && sections.some((s: any) => (typeof s === "string" ? s : s.name).trim()) && (
           <View style={[styles.previewBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.previewTitle, { color: colors.foreground }]}>
               Vorschau

@@ -1058,6 +1058,17 @@ return (
                     <Pressable onPress={() => router.push(`/template-editor?editId=${template.id}` as any)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
                       <MaterialIcons name="edit" size={18} color={colors.muted} />
                     </Pressable>
+            <Pressable
+              onPress={() => router.push("/recurring-meetings" as any)}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border })}
+            >
+              <MaterialIcons name="event-repeat" size={22} color={colors.primary} style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>Wiederkehrende Meetings</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>Automatisch Protokolle vorbereiten</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            </Pressable>
                     <Pressable onPress={() => deleteCustomTemplate(template.id)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
                       <MaterialIcons name="delete" size={18} color={colors.error} />
                     </Pressable>

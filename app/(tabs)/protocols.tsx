@@ -203,6 +203,51 @@ export default function ProtocolsScreen() {
     setBatchMode(false);
     setSelectedIds(new Set());
   };
+  const batchExport = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { generateProtocolPdf } = await import("@/lib/pdf-generator");
+      const selected = protocols.filter((p) => selectedIds.has(p.id));
+      
+      if (selected.length === 1) {
+        // Single protocol - export directly
+        const item = selected[0];
+        const pdfUri = await generateProtocolPdf({
+          title: item.title,
+          createdAt: item.createdAt,
+          duration: item.duration,
+          templateName: item.templateName || "Freies Protokoll",
+          protocol: item.protocol,
+          photos: item.photos,
+        });
+        if (pdfUri && await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(pdfUri);
+        }
+      } else {
+        // Multiple protocols - generate combined PDF
+        const combinedContent = selected.map((item, idx) => {
+          const date = new Date(item.createdAt).toLocaleDateString("de-DE");
+          return `--- Protokoll ${idx + 1} von ${selected.length} ---\n\nTitel: ${item.title}\nDatum: ${date}\nVorlage: ${item.templateName || "Freies Protokoll"}\n\n${item.protocol}\n\n`;
+        }).join("\n\n");
+        
+        const pdfUri = await generateProtocolPdf({
+          title: `Batch-Export (${selected.length} Protokolle)`,
+          createdAt: new Date().toISOString(),
+          duration: selected.reduce((sum, p) => sum + p.duration, 0),
+          templateName: "Batch-Export",
+          protocol: combinedContent,
+        });
+        if (pdfUri && await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(pdfUri);
+        }
+      }
+      setBatchMode(false);
+      setSelectedIds(new Set());
+    } catch (e) {
+      Alert.alert("Fehler", "Export fehlgeschlagen: " + (e instanceof Error ? e.message : "Unbekannter Fehler"));
+    }
+  };
+
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -684,6 +729,10 @@ export default function ProtocolsScreen() {
             <Pressable onPress={batchArchive} style={styles.batchBtn}>
               <MaterialIcons name="archive" size={18} color="#FF9800" />
               <Text style={[styles.batchBtnText, { color: colors.foreground }]}>Archiv</Text>
+            </Pressable>
+            <Pressable onPress={batchExport} style={styles.batchBtn}>
+              <MaterialIcons name="picture-as-pdf" size={18} color="#E91E63" />
+              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>Export</Text>
             </Pressable>
             <Pressable onPress={batchDelete} style={styles.batchBtn}>
               <MaterialIcons name="delete" size={18} color={colors.error} />
