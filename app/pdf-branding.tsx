@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { getPdfBranding, savePdfBranding, type PdfBranding, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
+import { getPdfBranding, savePdfBranding, type PdfBranding, type FilenameSchema, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
 
 const ACCENT_COLORS = [
   "#0a7ea4", "#1E40AF", "#7C3AED", "#DC2626",
@@ -250,6 +250,45 @@ export default function PdfBrandingScreen() {
               thumbColor={branding.showProjectName ? colors.primary : colors.muted}
             />
           </View>
+        </View>
+
+        {/* Filename Schema */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Dateiname</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Schema für den PDF-Dateinamen</Text>
+
+          {([
+            { key: "project_date_nr" as FilenameSchema, label: "Projekt_Datum_Nr", example: "Baustelle_2026-06-15_BST-004" },
+            { key: "nr_project_date" as FilenameSchema, label: "Nr_Projekt_Datum", example: "BST-004_Baustelle_2026-06-15" },
+            { key: "date_project_nr" as FilenameSchema, label: "Datum_Projekt_Nr", example: "2026-06-15_Baustelle_BST-004" },
+            { key: "project_nr" as FilenameSchema, label: "Projekt_Nr", example: "Baustelle_BST-004" },
+            { key: "date_nr" as FilenameSchema, label: "Datum_Nr", example: "2026-06-15_BST-004" },
+          ]).map((schema) => (
+            <Pressable
+              key={schema.key}
+              onPress={() => updateField("filenameSchema", schema.key)}
+              style={({ pressed }) => [{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                marginBottom: 6,
+                backgroundColor: branding.filenameSchema === schema.key ? colors.primary + "12" : colors.surface,
+                borderWidth: branding.filenameSchema === schema.key ? 1.5 : 1,
+                borderColor: branding.filenameSchema === schema.key ? colors.primary : colors.border,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: branding.filenameSchema === schema.key ? colors.primary : colors.muted, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                {branding.filenameSchema === schema.key && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary }} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{schema.label}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{schema.example}.pdf</Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
 
         {/* Preview */}

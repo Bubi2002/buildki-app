@@ -208,3 +208,6 @@
 - [x] UX: Projektfarbe als Akzentlinie im PDF (statt immer rot)
 - [x] UX: Foto-Beschriftung im PDF mit Zeitstempel statt "Foto 1/2/3"
 - [x] UX: Kamera-Zoom 0.5x (Ultraweitwinkel) + Presets (0.5x/1x/2x/5x)
+- [x] Feature: Dateinamen-Schema konfigurierbar in PDF-Branding-Einstellungen
+- [x] UX: Mängel-Zähler als Badge am Mängel-Button in Projekt-Detail
+- [x] UX: Wisch-Gesten (Swipe-to-Delete, Swipe-to-Share) in Protokoll-Liste

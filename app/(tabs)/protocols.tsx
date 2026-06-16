@@ -7,7 +7,10 @@ import {
   StyleSheet,
   Alert,
   TextInput,
+  Animated,
 } from "react-native";
+import { Swipeable, RectButton } from "react-native-gesture-handler";
+import * as Sharing from "expo-sharing";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -30,6 +33,8 @@ type Protocol = {
   recordingMode?: string;
   projectId?: string;
   protocolNumber?: string;
+  photos?: string[];
+  projectName?: string;
 };
 
 type SortOption = "date_desc" | "date_asc" | "name_asc" | "name_desc" | "duration_desc";
@@ -299,7 +304,69 @@ export default function ProtocolsScreen() {
     Alert.alert(item.title, "Aktion wählen:", actions);
   };
 
+  const shareProtocol = async (item: Protocol) => {
+    try {
+      const { generateProtocolPdf } = await import("@/lib/pdf-generator");
+      const pdfUri = await generateProtocolPdf({
+        title: item.title,
+        createdAt: item.createdAt,
+        duration: item.duration,
+        templateName: item.templateName || "Freies Protokoll",
+        protocol: item.protocol,
+        photos: item.photos,
+        projectName: item.projectName,
+        protocolNumber: item.protocolNumber,
+      });
+      if (pdfUri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(pdfUri);
+      }
+    } catch (e) {
+      Alert.alert("Fehler", "PDF konnte nicht erstellt werden.");
+    }
+  };
+
+  const renderRightActions = (item: Protocol) => (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    return (
+      <View style={{ flexDirection: "row", marginBottom: 10 }}>
+        <RectButton
+          style={{ backgroundColor: colors.error, justifyContent: "center", alignItems: "center", width: 72, borderTopRightRadius: 12, borderBottomRightRadius: 12 }}
+          onPress={() => deleteProtocol(item.id)}
+        >
+          <MaterialIcons name="delete" size={22} color="#FFF" />
+          <Text style={{ fontSize: 11, color: "#FFF", marginTop: 2 }}>Löschen</Text>
+        </RectButton>
+      </View>
+    );
+  };
+
+  const renderLeftActions = (item: Protocol) => (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    return (
+      <View style={{ flexDirection: "row", marginBottom: 10 }}>
+        <RectButton
+          style={{ backgroundColor: colors.primary, justifyContent: "center", alignItems: "center", width: 72, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}
+          onPress={() => shareProtocol(item)}
+        >
+          <MaterialIcons name="share" size={22} color="#FFF" />
+          <Text style={{ fontSize: 11, color: "#FFF", marginTop: 2 }}>Teilen</Text>
+        </RectButton>
+      </View>
+    );
+  };
+
   const renderItem = ({ item }: { item: Protocol }) => (
+    <Swipeable
+      renderRightActions={renderRightActions(item)}
+      renderLeftActions={renderLeftActions(item)}
+      overshootRight={false}
+      overshootLeft={false}
+      friction={2}
+    >
     <Pressable
       onPress={() => {
         if (batchMode) {
@@ -412,6 +479,7 @@ export default function ProtocolsScreen() {
         )}
       </View>
     </Pressable>
+    </Swipeable>
   );
 
   const renderEmpty = () => (

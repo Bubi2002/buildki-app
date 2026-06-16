@@ -489,15 +489,17 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     },
   });
 
-  // Rename to meaningful filename: Projekt_Datum_Nummer.pdf
+  // Rename to meaningful filename using configured schema
   try {
-    const dateStr = new Date(protocol.createdAt).toISOString().split("T")[0]; // 2026-06-15
-    const parts: string[] = [];
-    if (protocol.projectName) parts.push(protocol.projectName.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_]/g, "_").substring(0, 30));
-    parts.push(dateStr);
-    if (protocol.protocolNumber) parts.push(protocol.protocolNumber);
-    else parts.push(protocol.templateName || "Protokoll");
-    const filename = parts.join("_") + ".pdf";
+    const { generateFilename, getPdfBranding } = await import("./pdf-branding-store");
+    const branding = await getPdfBranding();
+    const filename = generateFilename(
+      branding.filenameSchema,
+      protocol.projectName,
+      new Date(protocol.createdAt),
+      protocol.protocolNumber,
+      protocol.templateName || "Protokoll"
+    ) + ".pdf";
     const dir = uri.substring(0, uri.lastIndexOf("/") + 1);
     const newUri = dir + filename;
     await FileSystem.moveAsync({ from: uri, to: newUri });

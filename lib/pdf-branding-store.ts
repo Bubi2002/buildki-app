@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PDF_BRANDING_KEY = "pdf-branding";
 
+export type FilenameSchema = "project_date_nr" | "nr_project_date" | "date_project_nr" | "project_nr" | "date_nr";
+
 export type PdfBranding = {
   companyName: string;
   companyAddress: string;
@@ -15,6 +17,7 @@ export type PdfBranding = {
   showDate: boolean;
   showProjectName: boolean;
   accentColor: string; // hex color for header line
+  filenameSchema: FilenameSchema;
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -30,7 +33,39 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showDate: true,
   showProjectName: true,
   accentColor: "#0a7ea4",
+  filenameSchema: "project_date_nr",
 };
+
+/**
+ * Generate filename based on schema
+ */
+export function generateFilename(
+  schema: FilenameSchema,
+  projectName: string | undefined,
+  date: Date,
+  protocolNumber: string | undefined,
+  templateName: string
+): string {
+  const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  const dateStr = date.toISOString().slice(0, 10); // YYYY-MM-DD
+  const proj = projectName ? sanitize(projectName) : "Protokoll";
+  const nr = protocolNumber || templateName ? sanitize(protocolNumber || templateName) : "Export";
+
+  switch (schema) {
+    case "project_date_nr":
+      return `${proj}_${dateStr}_${nr}`;
+    case "nr_project_date":
+      return `${nr}_${proj}_${dateStr}`;
+    case "date_project_nr":
+      return `${dateStr}_${proj}_${nr}`;
+    case "project_nr":
+      return `${proj}_${nr}`;
+    case "date_nr":
+      return `${dateStr}_${nr}`;
+    default:
+      return `${proj}_${dateStr}_${nr}`;
+  }
+}
 
 export async function getPdfBranding(): Promise<PdfBranding> {
   try {

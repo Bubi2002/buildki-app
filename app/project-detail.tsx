@@ -54,6 +54,7 @@ export default function ProjectDetailScreen() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [planCount, setPlanCount] = useState(0);
+  const [defectCount, setDefectCount] = useState({ open: 0, total: 0 });
 
   useFocusEffect(
     useCallback(() => {
@@ -75,10 +76,16 @@ export default function ProjectDetailScreen() {
       setAllProtocols(protocolsList);
       setProtocols(protocolsList.filter((p) => p.projectId === id));
 
-      // Load floor plan count
+      // Load floor plan count and defect count
       if (id) {
         const plans = await getFloorPlans(id);
         setPlanCount(plans.length);
+        try {
+          const { getDefects } = await import("@/lib/defect-store");
+          const defects = await getDefects(id);
+          const openCount = defects.filter((d: any) => d.status === "offen").length;
+          setDefectCount({ open: openCount, total: defects.length });
+        } catch {}
       }
 
       // Set this project as the active project for protocol numbering
@@ -321,8 +328,15 @@ export default function ProjectDetailScreen() {
             onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
             style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
-            <MaterialIcons name="warning" size={20} color={colors.warning} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Mängel</Text>
+            <View style={{ position: "relative" }}>
+              <MaterialIcons name="warning" size={20} color={colors.warning} />
+              {defectCount.open > 0 && (
+                <View style={{ position: "absolute", top: -4, right: -6, backgroundColor: colors.error, borderRadius: 7, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
+                  <Text style={{ fontSize: 9, fontWeight: "700", color: "#FFF" }}>{defectCount.open}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Mängel{defectCount.total > 0 ? ` ${defectCount.total}` : ""}</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
