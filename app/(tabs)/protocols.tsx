@@ -23,6 +23,7 @@ type Protocol = {
   transcription: string;
   protocol: string;
   templateName?: string;
+  templateId?: string;
   duration: number;
   createdAt: string;
   status: "processing" | "ready" | "sent";
@@ -217,6 +218,7 @@ export default function ProtocolsScreen() {
           createdAt: item.createdAt,
           duration: item.duration,
           templateName: item.templateName || "Freies Protokoll",
+          templateId: item.templateId,
           protocol: item.protocol,
           photos: item.photos,
         });
@@ -357,6 +359,7 @@ export default function ProtocolsScreen() {
         createdAt: item.createdAt,
         duration: item.duration,
         templateName: item.templateName || "Freies Protokoll",
+        templateId: item.templateId,
         protocol: item.protocol,
         photos: item.photos,
         photoTimestamps: (item as any).photoTimestamps || undefined,

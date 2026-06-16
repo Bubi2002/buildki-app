@@ -16,6 +16,7 @@ type PdfProtocol = {
   title: string;
   protocol: string;
   templateName?: string;
+  templateId?: string;
   photos?: string[];
   photoTimestamps?: number[]; // seconds since recording start for each photo
   transcriptionSegments?: Array<{ start: number; end: number; text: string }>; // Whisper segments with timing
@@ -118,6 +119,7 @@ function generatePdfHtml(
   const showPhotos = pdfTemplate !== "no_photos";
   const isCompact = pdfTemplate === "compact";
   const isDetailed = pdfTemplate === "detailed";
+  const isGutachten = protocol.templateId === "gutachterliche-bewertung";
   const todos = protocol.todos || [];
   const date = new Date(protocol.createdAt).toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -182,6 +184,23 @@ function generatePdfHtml(
       if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
         return `<li>${trimmed.substring(2)}</li>`;
       }
+      // Gutachten-specific: numbered chapter headings
+      if (isGutachten && /^\d+\.\s+\*\*/.test(trimmed)) {
+        const chapterText = trimmed.replace(/\*\*/g, '');
+        return `<div class="gutachten-chapter">${chapterText}</div>`;
+      }
+      // Gutachten-specific: Bewertungsbox markers
+      if (isGutachten && /^\*\*Gutachterliche Bewertung/i.test(trimmed)) {
+        return `<div class="gutachten-bewertungsbox"><div class="gutachten-bewertungsbox-title">Gutachterliche Bewertung</div>`;
+      }
+      if (isGutachten && /^\*\*Fazit|^\*\*Gesamturteil|^\*\*Gutachterliches Gesamturteil/i.test(trimmed)) {
+        const title = trimmed.replace(/\*\*/g, '').replace(/:$/, '');
+        return `<div class="gutachten-fazitbox"><div class="gutachten-fazitbox-title">${title}</div>`;
+      }
+      if (isGutachten && /^\*\*Empfehlung|^\*\*Sanierungskonzept|^\*\*Ma\u00dfnahmen/i.test(trimmed)) {
+        const title = trimmed.replace(/\*\*/g, '').replace(/:$/, '');
+        return `<div class="gutachten-empfehlungsbox"><div class="gutachten-empfehlungsbox-title">${title}</div>`;
+      }
       if (trimmed.startsWith("## ")) {
         return `<h3 style="margin-top: 16px; margin-bottom: 8px; color: #1a1a1a; font-size: 14px;">${trimmed.substring(3)}</h3>`;
       }
@@ -189,7 +208,15 @@ function generatePdfHtml(
         return `<h2 style="margin-top: 20px; margin-bottom: 10px; color: #1a1a1a; font-size: 16px;">${trimmed.substring(2)}</h2>`;
       }
       if (trimmed === "") return "<br/>";
-      return `<p style="margin: 4px 0; line-height: 1.6;">${trimmed}</p>`;
+      // Handle **bold** inline
+      let processed = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      // Handle | table rows for gutachten
+      if (isGutachten && processed.startsWith('|') && processed.endsWith('|')) {
+        const cells = processed.split('|').filter(c => c.trim() !== '');
+        if (cells.every(c => /^[-:]+$/.test(c.trim()))) return ''; // separator row
+        return `<tr>${cells.map(c => `<td style="padding: 6px 10px; border: 1px solid #e0e0e0; font-size: 11px;">${c.trim()}</td>`).join('')}</tr>`;
+      }
+      return `<p style="margin: 4px 0; line-height: 1.6;">${processed}</p>`;
     })
     .join("\n");
 
@@ -235,15 +262,26 @@ function generatePdfHtml(
     return "";
   };
 
+  // Check which photos were already placed inline via [FOTO X] placeholders
+  const inlinePlacedPhotos = new Set<number>();
+  const inlineRegex = /\[FOTO\s*(\d+)\]/gi;
+  let inlineMatch;
+  while ((inlineMatch = inlineRegex.exec(protocol.protocol)) !== null) {
+    inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
+  }
+  // Only show remaining (non-inline) photos in the Fotodokumentation section
+  const remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i));
+
   const photosHtml =
-    photoDataUris.length > 0
+    remainingPhotoIndices.length > 0
       ? `
     <div style="page-break-before: auto; margin-top: 24px;">
       <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
-        Fotodokumentation (${photoDataUris.length} ${photoDataUris.length === 1 ? "Bild" : "Bilder"})
+        Fotodokumentation (${remainingPhotoIndices.length} ${remainingPhotoIndices.length === 1 ? "Bild" : "Bilder"})
       </h3>
-      ${photoDataUris
-        .map((uri, i) => {
+      ${remainingPhotoIndices
+        .map((i) => {
+          const uri = photoDataUris[i];
           const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[i] != null
             ? `${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.`
             : null;
@@ -402,9 +440,79 @@ function generatePdfHtml(
       z-index: 0;
       letter-spacing: 4px;
     }
+    /* Gutachterliche Bewertung styles */
+    .gutachten-bewertungsbox {
+      border: 2px solid #B8860B;
+      background-color: #FFFDE7;
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin: 12px 0;
+    }
+    .gutachten-bewertungsbox-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #B8860B;
+      margin-bottom: 6px;
+    }
+    .gutachten-fazitbox {
+      border: 2px solid #C62828;
+      background-color: #FFEBEE;
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .gutachten-fazitbox-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #C62828;
+      margin-bottom: 8px;
+    }
+    .gutachten-empfehlungsbox {
+      border: 2px solid #2E7D32;
+      background-color: #E8F5E9;
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .gutachten-empfehlungsbox-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2E7D32;
+      margin-bottom: 8px;
+    }
+    .gutachten-normenbox {
+      border: 1px solid #1565C0;
+      background-color: #E3F2FD;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin: 10px 0;
+    }
+    .gutachten-chapter {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1A237E;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #1A237E;
+      padding-bottom: 6px;
+    }
   </style>
 </head>
 <body>
+  ${isGutachten ? `
+  <div style="border-bottom: 3px solid #1A237E; padding-bottom: 16px; margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        ${logoHtml}
+        <h1 style="font-size: 24px; font-weight: 800; color: #1A237E; margin: 8px 0 4px 0;">Gutachterliche Bewertung</h1>
+        <p style="font-size: 11px; color: #666; margin: 0;">Erstellt mit ProtoKI</p>
+      </div>
+      <div style="text-align: right;">
+        ${companyInfoHtml}
+      </div>
+    </div>
+  </div>
+  ` : `
   <div class="header">
     <div class="header-left">
       ${logoHtml}
@@ -415,6 +523,7 @@ function generatePdfHtml(
       ${companyInfoHtml}
     </div>
   </div>
+  `}
 
   <table class="meta-table">
     ${protocol.protocolNumber ? `<tr><td>Protokoll-Nr.</td><td><strong>${protocol.protocolNumber}</strong></td></tr>` : ''}

@@ -156,7 +156,7 @@
 - [x] Fix: LLM halluziniert falsches Datum im Protokoll ("26. Oktober 2023") – echtes Datum muss im Prompt stehen
 - [x] Feature: Fotos den Markierungs-Abschnitten zuordnen (Foto nach Markierung = gehört zum vorherigen Abschnitt)
 - [x] Feature: Im Protokoll Abschnitt-Trenner bei Markierungen (LLM strukturiert anhand Marker)
-- [ ] Feature: Im PDF Fotos inline bei Abschnitten statt alle am Ende (erfordert PDF-Generator-Umbau)
+- [x] Feature: Im PDF Fotos inline bei Abschnitten statt alle am Ende (erfordert PDF-Generator-Umbau)
 - [x] UX-Umbau: Projekt-Auswahl als erster Schritt vor jeder Aufnahme (statt optional am Ende)
 - [x] UX-Umbau: Neues Projekt erstellen Dialog mit Name, Beschreibung, Präfix, Farbe
 - [x] UX-Umbau: Vorhandenes Projekt aus Liste wählen
@@ -257,3 +257,8 @@
 - [x] Feature: PDF-Layout an Plaud-Struktur anpassen (Titel, Executive Summary, thematische Sektionen, nächste Schritte)
 - [x] Feature: Prompt-Logik pro Dokumenttyp an Plaud-Beispielen ausrichten
 - [x] QA: Plaud-Stil für Generierung und PDF-Export verifizieren
+- [x] Feature: Fotos inline im PDF bei Abschnitten – Fotos direkt beim zugehörigen Textabschnitt statt alle am Ende
+- [x] Feature: PDF-Vorschau vor Export – Generiertes PDF im App-internen Viewer anzeigen bevor es geteilt wird
+- [x] Feature: Automatische Dokumenttyp-Erkennung – KI schlägt basierend auf Inhalt den passenden Output-Typ vor
+- [x] Feature: Neuer Template-Typ "Gutachterliche Bewertung" – Formeller Bewertungsbericht nach Vorbild Shell Karlsruhe (Befundaufnahme, Mängeltabelle, Gesamturteil, Empfehlung)
+- [x] Feature: Gutachten-PDF-Styling – Dunkelblaue Kapitelüberschriften, gelbe Bewertungsboxen, rote Fazitbox, grüne Empfehlungsbox

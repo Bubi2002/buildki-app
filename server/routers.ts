@@ -617,6 +617,53 @@ Wichtige Regeln:
         }
       }),
   }),
+  detectDocumentType: publicProcedure
+      .input(z.object({ transcription: z.string() }))
+      .mutation(async ({ input }) => {
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Du bist ein Dokumenttyp-Erkennungssystem. Analysiere die folgende Transkription und bestimme, welcher Dokumenttyp am besten passt.
+
+Verfügbare Typen:
+- "zusammenfassung-plaud" - Kurze Zusammenfassung (für allgemeine Gespräche, Interviews)
+- "besprechungszusammenfassung-plaud" - Besprechungszusammenfassung (für Meetings mit mehreren Teilnehmern)
+- "begruendungszusammenfassung-plaud" - Begründungszusammenfassung (für Entscheidungen, Gutachten)
+- "sitzungsprotokoll-plaud" - Formelles Sitzungsprotokoll (für offizielle Sitzungen)
+- "baustellenbericht" - Baustellenbericht (für Baustellen, Bauarbeiten, Handwerk)
+- "besprechungsnotiz" - Besprechungsnotiz (für informelle Besprechungen)
+- "maengelliste" - Mängelliste (für Mängel, Schäden, Reklamationen)
+- "tagesbericht" - Tagesbericht (für tägliche Arbeitsberichte)
+- "abnahmeprotokoll" - Abnahmeprotokoll (für Abnahmen, Übergaben)
+- "gutachterliche-bewertung" - Gutachterliche Bewertung (für Sachverständigengutachten, technische Bewertungen, Befundberichte)
+- "freitext" - Freies Protokoll (wenn nichts anderes passt)
+
+Antworte NUR mit einem JSON-Objekt im Format:
+{"type": "<template_id>", "confidence": <0-100>, "reason": "<kurze Begründung auf Deutsch>"}`,
+            },
+            {
+              role: "user",
+              content: `Transkription (erste 500 Zeichen):\n${input.transcription.substring(0, 500)}`,
+            },
+          ],
+        });
+        const content = (response.choices?.[0]?.message?.content as string) || "";
+        try {
+          // Try to parse JSON from response
+          const jsonMatch = content.match(/\{[^}]+\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return {
+              suggestedType: parsed.type || "freitext",
+              confidence: parsed.confidence || 50,
+              reason: parsed.reason || "Automatisch erkannt",
+            };
+          }
+        } catch {}
+        return { suggestedType: "freitext", confidence: 30, reason: "Konnte nicht eindeutig erkannt werden" };
+      }),
+
 });
 
 export type AppRouter = typeof appRouter;

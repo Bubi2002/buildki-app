@@ -146,6 +146,8 @@ export default function ProtocolDetailScreen() {
   const [playingVoiceNote, setPlayingVoiceNote] = useState<number | null>(null);
   // Multi-output (Plaud-style)
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [suggestedDocType, setSuggestedDocType] = useState<{ type: string; confidence: number; reason: string } | null>(null);
+  const [isDetectingType, setIsDetectingType] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [versions, setVersions] = useState<GeneratedVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
@@ -330,6 +332,23 @@ export default function ProtocolDetailScreen() {
   };
 
   // Speaker Identification
+  const detectDocumentType = async () => {
+    if (!protocol?.protocol) return;
+    setIsDetectingType(true);
+    try {
+      const result = await detectTypeMutation.mutateAsync({
+        transcription: protocol.protocol,
+      });
+      setSuggestedDocType({ type: result.suggestedType, confidence: result.confidence, reason: result.reason });
+    } catch (error) {
+      console.error("Document type detection error:", error);
+      Alert.alert("Fehler", "Dokumenttyp konnte nicht erkannt werden.");
+    } finally {
+      setIsDetectingType(false);
+    }
+  };
+
+  const detectTypeMutation = trpc.detectDocumentType.useMutation();
   const speakerMutation = trpc.speaker.identify.useMutation();
 
   // Load team contacts
@@ -781,6 +800,7 @@ export default function ProtocolDetailScreen() {
         title: protocol.title,
         protocol: protocol.protocol,
         templateName: protocol.templateName,
+        templateId: protocol.templateId,
         photos: protocol.photos,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
         transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
@@ -802,6 +822,7 @@ export default function ProtocolDetailScreen() {
           title: protocol.title,
           protocol: protocol.protocol,
           templateName: protocol.templateName,
+          templateId: protocol.templateId,
           photos: protocol.photos,
           photoTimestamps: (protocol as any).photoTimestamps || undefined,
           transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
@@ -853,10 +874,11 @@ export default function ProtocolDetailScreen() {
     setIsSendingWhatsApp(true);
     try {
       // Generate PDF first
-      const pdfUri = await generateProtocolPdf({
+            const pdfUri = await generateProtocolPdf({
         title: protocol.title,
         protocol: protocol.protocol,
         templateName: protocol.templateName,
+        templateId: protocol.templateId,
         photos: protocol.photos,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
         transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
@@ -870,7 +892,6 @@ export default function ProtocolDetailScreen() {
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
         signatures: signatures.length > 0 ? signatures : undefined,
       });
-
       // Use native share sheet with PDF - user can pick WhatsApp
       if (Platform.OS === "web") {
         Alert.alert("Hinweis", "PDF-Versand per WhatsApp ist nur auf dem Handy verfügbar.");
@@ -1070,6 +1091,7 @@ export default function ProtocolDetailScreen() {
   };
 
   const photos = protocol.photos || [];
+  const inlinePlacedCount = (protocol?.protocol || '').match(/\[FOTO\s*\d+\]/gi)?.length || 0;
 
   return (
     <ScreenContainer edges={["top", "left", "right", "bottom"]}>
@@ -2162,11 +2184,17 @@ export default function ProtocolDetailScreen() {
             </View>
           ) : previewPdfUri && Platform.OS !== "web" ? (
             <View style={{ flex: 1, padding: 8 }}>
-              <Image
-                source={{ uri: previewPdfUri }}
-                style={{ flex: 1, borderRadius: 8 }}
-                contentFit="contain"
-              />
+              <View style={{ flex: 1, backgroundColor: "#f8f8f8", borderRadius: 8, padding: 16, justifyContent: "center", alignItems: "center" }}>
+                <MaterialIcons name="picture-as-pdf" size={64} color={colors.primary} />
+                <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>PDF erstellt</Text>
+                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8, textAlign: "center" }}>
+                  {protocol?.title || "Protokoll"}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+                  {photos.length > 0 ? `${photos.length} Foto(s) enthalten` : "Ohne Fotos"}
+                  {inlinePlacedCount > 0 ? ` \u2022 ${inlinePlacedCount} inline platziert` : ""}
+                </Text>
+              </View>
               <View style={{ paddingVertical: 12, gap: 8 }}>
                 <Pressable
                   onPress={sharePdfFromPreview}
@@ -2297,6 +2325,24 @@ export default function ProtocolDetailScreen() {
               </View>
               <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Generiere eine neue Version aus der Original-Aufnahme:</Text>
               <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Auto-Detect Button */}
+                <Pressable
+                  onPress={detectDocumentType}
+                  disabled={isDetectingType}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12, borderRadius: 10, backgroundColor: suggestedDocType ? "#E8F5E9" : "#F3E8FF", opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={suggestedDocType ? "check-circle" : "auto-awesome"} size={20} color={suggestedDocType ? "#4CAF50" : "#7C3AED"} />
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: suggestedDocType ? "#2E7D32" : "#7C3AED" }}>
+                    {isDetectingType ? "Analysiere..." : suggestedDocType ? `Empfohlen: ${suggestedDocType.reason}` : "KI-Dokumenttyp erkennen"}
+                  </Text>
+                </Pressable>
+                {suggestedDocType && (
+                  <View style={{ marginBottom: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#E8F5E9", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: "#4CAF50" }}>
+                    <Text style={{ fontSize: 12, color: "#2E7D32", fontWeight: "500" }}>
+                      Konfidenz: {suggestedDocType.confidence}% – Typ: {suggestedDocType.type}
+                    </Text>
+                  </View>
+                )}
                 {/* Plaud-Style Formate */}
                 <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Plaud-Formate</Text>
                 {availableTemplates.filter(t => t.id.includes("plaud")).map((t) => (
