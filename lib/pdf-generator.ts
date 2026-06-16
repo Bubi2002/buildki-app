@@ -520,6 +520,35 @@ function generatePdfHtml(
 /**
  * Generate a PDF file from a protocol and return the local file URI
  */
+/**
+ * Generate HTML preview string (for in-app web preview without creating a PDF file)
+ */
+export async function generateProtocolHtmlPreview(protocol: PdfProtocol): Promise<string> {
+  const company = await loadCompanySettings();
+  const photoDataUris: string[] = [];
+  if (protocol.photos && protocol.photos.length > 0) {
+    for (const photoUri of protocol.photos) {
+      const dataUri = await fileToBase64DataUri(photoUri);
+      if (dataUri) {
+        photoDataUris.push(dataUri);
+      }
+    }
+  }
+  let planImageBase64: string | null = null;
+  if (protocol.planData?.planImageUri) {
+    planImageBase64 = await fileToBase64DataUri(protocol.planData.planImageUri);
+  }
+  let accentColor: string | undefined;
+  try {
+    const brandingStr = await AsyncStorage.getItem("pdf-branding");
+    if (brandingStr) {
+      const branding = JSON.parse(brandingStr);
+      if (branding.accentColor) accentColor = branding.accentColor;
+    }
+  } catch {}
+  return generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor);
+}
+
 export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string> {
   // Load company settings
   const company = await loadCompanySettings();

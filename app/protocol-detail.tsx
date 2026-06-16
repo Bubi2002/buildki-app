@@ -22,7 +22,7 @@ import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { generateProtocolPdf } from "@/lib/pdf-generator";
+import { generateProtocolPdf, generateProtocolHtmlPreview } from "@/lib/pdf-generator";
 import { trpc } from "@/lib/trpc";
 import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
@@ -118,6 +118,7 @@ export default function ProtocolDetailScreen() {
   const [featureFlags, setFeatureFlags] = useState({ photoAnnotation: true, signature: true, multiSignature: false, tags: true });
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [previewPdfUri, setPreviewPdfUri] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
   useEffect(() => {
     loadProtocol();
@@ -281,7 +282,29 @@ export default function ProtocolDetailScreen() {
         signatures: signatures.length > 0 ? signatures : undefined,
       });
 
-      // Show PDF preview first
+      // Generate HTML preview for web
+      if (Platform.OS === "web") {
+        const html = await generateProtocolHtmlPreview({
+          title: protocol.title,
+          protocol: protocol.protocol,
+          templateName: protocol.templateName,
+          photos: protocol.photos,
+          photoTimestamps: (protocol as any).photoTimestamps || undefined,
+          transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
+          todos,
+          duration: protocol.duration,
+          createdAt: protocol.createdAt,
+          location: protocol.location,
+          weather: protocol.weather,
+          protocolNumber: protocol.protocolNumber,
+          projectName: protocol.projectName || undefined,
+          projectColor: (protocol as any).projectColor || undefined,
+          signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
+          signatures: signatures.length > 0 ? signatures : undefined,
+        });
+        setPreviewHtml(html);
+      }
+      // Show PDF preview
       setPreviewPdfUri(pdfUri);
       setShowPdfPreview(true);
     } catch (error) {
@@ -450,6 +473,46 @@ export default function ProtocolDetailScreen() {
       }
     } catch (error) {
       console.error("Error saving photo caption:", error);
+    }
+  };
+
+  const reorderPhoto = async (fromIndex: number, toIndex: number) => {
+    try {
+      const protocolsStr = await AsyncStorage.getItem("protocols");
+      const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+      const idx = protocols.findIndex((p: any) => p.id === protocol!.id);
+      if (idx !== -1) {
+        const p = protocols[idx];
+        // Swap photos
+        const newPhotos = [...(p.photos || [])];
+        [newPhotos[fromIndex], newPhotos[toIndex]] = [newPhotos[toIndex], newPhotos[fromIndex]];
+        p.photos = newPhotos;
+        // Swap timestamps
+        if (p.photoTimestamps && p.photoTimestamps.length > 0) {
+          const newTs = [...p.photoTimestamps];
+          [newTs[fromIndex], newTs[toIndex]] = [newTs[toIndex], newTs[fromIndex]];
+          p.photoTimestamps = newTs;
+        }
+        // Swap captions
+        if (p.photoCaptions && p.photoCaptions.length > 0) {
+          const newCaptions = [...p.photoCaptions];
+          while (newCaptions.length <= Math.max(fromIndex, toIndex)) newCaptions.push("");
+          [newCaptions[fromIndex], newCaptions[toIndex]] = [newCaptions[toIndex], newCaptions[fromIndex]];
+          p.photoCaptions = newCaptions;
+        }
+        // Swap voice notes
+        if (p.photoVoiceNotes && p.photoVoiceNotes.length > 0) {
+          const newNotes = [...p.photoVoiceNotes];
+          while (newNotes.length <= Math.max(fromIndex, toIndex)) newNotes.push(null);
+          [newNotes[fromIndex], newNotes[toIndex]] = [newNotes[toIndex], newNotes[fromIndex]];
+          p.photoVoiceNotes = newNotes;
+        }
+        protocols[idx] = p;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        setProtocol({ ...protocol!, ...p } as any);
+      }
+    } catch (error) {
+      console.error("Error reordering photos:", error);
     }
   };
 
@@ -694,9 +757,14 @@ export default function ProtocolDetailScreen() {
         {/* Photos Gallery */}
         {photos.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Fotos
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                Fotos ({photos.length})
+              </Text>
+              {photos.length > 1 && (
+                <Text style={{ fontSize: 11, color: colors.muted }}>Reihenfolge ändern ↑↓</Text>
+              )}
+            </View>
             {photos.map((photoUri, index) => {
               const captions: string[] = (protocol as any).photoCaptions || [];
               const segments: Array<{ start: number; end: number; text: string }> = (protocol as any).transcriptionSegments || [];
@@ -757,7 +825,7 @@ export default function ProtocolDetailScreen() {
                     <View style={{ flex: 1, justifyContent: "flex-start" }}>
                       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
                         <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted }}>
-                          Foto {index + 1}{timestamps[index] != null ? ` – ${Math.floor(timestamps[index] / 60)}:${(timestamps[index] % 60).toString().padStart(2, "0")} Min.` : ""}
+                          Foto {index + 1}{timestamps[index] != null ? ` \u2013 ${Math.floor(timestamps[index] / 60)}:${(timestamps[index] % 60).toString().padStart(2, "0")} Min.` : ""}
                         </Text>
                         <Pressable
                           onPress={() => editPhotoCaption(index, currentCaption)}
@@ -765,6 +833,27 @@ export default function ProtocolDetailScreen() {
                         >
                           <MaterialIcons name="edit" size={14} color={colors.primary} />
                         </Pressable>
+                        {/* Reorder buttons */}
+                        {photos.length > 1 && (
+                          <View style={{ flexDirection: "row", marginLeft: "auto", gap: 2 }}>
+                            {index > 0 && (
+                              <Pressable
+                                onPress={() => reorderPhoto(index, index - 1)}
+                                style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}
+                              >
+                                <MaterialIcons name="arrow-upward" size={16} color={colors.muted} />
+                              </Pressable>
+                            )}
+                            {index < photos.length - 1 && (
+                              <Pressable
+                                onPress={() => reorderPhoto(index, index + 1)}
+                                style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}
+                              >
+                                <MaterialIcons name="arrow-downward" size={16} color={colors.muted} />
+                              </Pressable>
+                            )}
+                          </View>
+                        )}
                       </View>
                       <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }} numberOfLines={4}>
                         {currentCaption || "Kein zugeordneter Text"}
@@ -1258,7 +1347,41 @@ export default function ProtocolDetailScreen() {
               <Text style={{ fontSize: 16, color: colors.primary }}>Teilen</Text>
             </Pressable>
           </View>
-          {previewPdfUri && Platform.OS !== "web" ? (
+          {Platform.OS === "web" && previewHtml ? (
+            <View style={{ flex: 1 }}>
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+                <View style={{ backgroundColor: "#fff", borderRadius: 8, padding: 16, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textAlign: "center" }}>PDF-Vorschau (Druckansicht)</Text>
+                  {/* Render HTML preview as text summary on web */}
+                  <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 4, padding: 12 }}>
+                    <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 20 }}>
+                      {protocol?.protocol?.substring(0, 500) || ""}{(protocol?.protocol?.length || 0) > 500 ? "..." : ""}
+                    </Text>
+                    {photos.length > 0 && (
+                      <Text style={{ fontSize: 11, color: colors.muted, marginTop: 8 }}>
+                        + {photos.length} Foto(s) im PDF enthalten
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+                <Pressable
+                  onPress={sharePdfFromPreview}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="share" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen / herunterladen</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowPdfPreview(false)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zur\u00fcck</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : previewPdfUri && Platform.OS !== "web" ? (
             <View style={{ flex: 1, padding: 8 }}>
               <Image
                 source={{ uri: previewPdfUri }}
@@ -1284,15 +1407,8 @@ export default function ProtocolDetailScreen() {
           ) : (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
               <MaterialIcons name="picture-as-pdf" size={64} color={colors.primary} />
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>PDF erstellt</Text>
-              <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8, textAlign: "center" }}>Tippe auf \"Teilen\" um das PDF zu versenden.</Text>
-              <Pressable
-                onPress={sharePdfFromPreview}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 24, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-              >
-                <MaterialIcons name="share" size={20} color="#FFFFFF" />
-                <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
-              </Pressable>
+              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>PDF wird erstellt...</Text>
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} />
             </View>
           )}
         </View>

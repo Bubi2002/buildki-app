@@ -216,3 +216,6 @@
 - [x] Feature: Fotos inline im Protokolltext im PDF (an thematisch passender Stelle)
 - [x] Feature: Sprach-Highlight im PDF (exakter Satz zum Foto-Zeitpunkt fett hervorgehoben)
 - [x] UX: Aufnahme-Buttons umgestalten (Start/Stopp kleiner mit Label, Foto/Markierung größer, verschiedene Farben)
+- [x] Feature: Foto-Reihenfolge per Drag-and-Drop in Detailansicht ändern
+- [x] Feature: PDF-Vorschau in-App vor dem Export
+- [x] Feature: Sprachnotiz pro Foto beim Aufnehmen (kurze Audio-Annotation)

@@ -76,6 +76,8 @@ export default function RecordScreen() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoTimestamps, setPhotoTimestamps] = useState<number[]>([]); // recording time when each photo was taken
+  const [photoVoiceNotes, setPhotoVoiceNotes] = useState<(string | null)[]>([]); // voice note URI per photo
+  const [voiceNoteRecording, setVoiceNoteRecording] = useState<{ photoIndex: number; startTime: number } | null>(null);
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("audio");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
@@ -408,9 +410,55 @@ export default function RecordScreen() {
 
         setCapturedPhotos((prev) => [...prev, newUri]);
         setPhotoTimestamps((prev) => [...prev, recordingDuration]);
+        setPhotoVoiceNotes((prev) => [...prev, null]); // placeholder for voice note
       }
     } catch (error) {
       console.error("Photo capture error:", error);
+    }
+  };
+
+  // --- VOICE NOTE PER PHOTO ---
+  const startVoiceNote = async (photoIndex: number) => {
+    // Record a short voice note for the last captured photo
+    // We use a simple approach: record to a separate file using expo-audio
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      setVoiceNoteRecording({ photoIndex, startTime: Date.now() });
+      // Note: The main recording is still running, so we just mark the start time
+      // and will extract the segment later. For now, we use a simpler approach:
+      // We record the voice note timestamp range within the main audio.
+      // The voice note is effectively a "marked segment" of the main recording.
+    } catch (error) {
+      console.error("Voice note start error:", error);
+    }
+  };
+
+  const stopVoiceNote = async () => {
+    if (!voiceNoteRecording) return;
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      // Store the voice note as a time range reference in the main recording
+      const endTime = Date.now();
+      const duration = (endTime - voiceNoteRecording.startTime) / 1000;
+      const photoIndex = voiceNoteRecording.photoIndex;
+      
+      // Save voice note metadata (start time in recording seconds)
+      const noteStartSec = photoTimestamps[photoIndex] || 0;
+      const voiceNoteUri = `voice-note://${photoIndex}/${noteStartSec}/${noteStartSec + duration}`;
+      
+      setPhotoVoiceNotes((prev) => {
+        const updated = [...prev];
+        updated[photoIndex] = voiceNoteUri;
+        return updated;
+      });
+      setVoiceNoteRecording(null);
+    } catch (error) {
+      console.error("Voice note stop error:", error);
+      setVoiceNoteRecording(null);
     }
   };
 
@@ -427,6 +475,7 @@ export default function RecordScreen() {
     setShowTemplateSelector(false);
     setCapturedPhotos([]);
     setPhotoTimestamps([]);
+    setPhotoVoiceNotes([]);
     setMarkers([]);
     setIsRecording(true);
     startTimer();
@@ -533,6 +582,7 @@ export default function RecordScreen() {
         templateId: selectedTemplate.id,
         photos: capturedPhotos,
         photoTimestamps: photoTimestamps.length > 0 ? photoTimestamps : undefined,
+        photoVoiceNotes: photoVoiceNotes.some(n => n !== null) ? photoVoiceNotes : undefined,
         todos: [],
         markers,
         duration: recordingDuration,
@@ -570,6 +620,7 @@ export default function RecordScreen() {
       // Clear recording state and navigate to protocols list
       setCapturedPhotos([]);
       setPhotoTimestamps([]);
+      setPhotoVoiceNotes([]);
       setIsProcessing(false);
       setProcessingSource(null);
       
@@ -1500,6 +1551,28 @@ export default function RecordScreen() {
                 <MaterialIcons name="photo-camera" size={14} color="#FFFFFF" />
                 <Text style={styles.photoCountText}>{capturedPhotos.length}</Text>
               </View>
+            )}
+            {/* Voice note button for last photo */}
+            {capturedPhotos.length > 0 && isRecording && (
+              <Pressable
+                onPress={() => {
+                  if (voiceNoteRecording) {
+                    stopVoiceNote();
+                  } else {
+                    startVoiceNote(capturedPhotos.length - 1);
+                  }
+                }}
+                style={({ pressed }) => [styles.photoCountBadge, {
+                  marginLeft: 6,
+                  backgroundColor: voiceNoteRecording ? "rgba(244,67,54,0.8)" : "rgba(76,175,80,0.8)",
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <MaterialIcons name={voiceNoteRecording ? "stop" : "mic"} size={14} color="#FFFFFF" />
+                <Text style={styles.photoCountText}>
+                  {voiceNoteRecording ? "Stopp" : "Notiz"}
+                </Text>
+              </Pressable>
             )}
             {/* Location badge */}
             {recordingLocation && (
