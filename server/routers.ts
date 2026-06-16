@@ -479,6 +479,39 @@ Beispiel:
       }),
   }),
 
+  streaming: router({
+    transcribeChunk: publicProcedure
+      .input(
+        z.object({
+          audioUrl: z.string(),
+          chunkIndex: z.number(),
+          language: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          const result = await transcribeAudio({
+            audioUrl: input.audioUrl,
+            language: input.language,
+          });
+          if ("error" in result) {
+            return { text: "", chunkIndex: input.chunkIndex, success: false };
+          }
+          return {
+            text: (result as { text: string }).text || "",
+            chunkIndex: input.chunkIndex,
+            success: true,
+          };
+        } catch (error) {
+          console.error("Streaming chunk transcription error:", error);
+          return {
+            text: "",
+            chunkIndex: input.chunkIndex,
+            success: false,
+          };
+        }
+      }),
+  }),
   translate: router({
     translateProtocol: publicProcedure
       .input(

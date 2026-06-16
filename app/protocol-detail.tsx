@@ -28,6 +28,8 @@ import { trpc } from "@/lib/trpc";
 import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
 import * as Haptics from "expo-haptics";
+import { getTeamContacts, saveTeamContact, markContactUsed, TeamContact, sortContactsByRecent } from "@/lib/team-contacts";
+import { getSpeakerName, updateSpeakerName, SpeakerProfile } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
 import { sendActionItemsEmail } from "@/lib/email-actions";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -150,12 +152,21 @@ export default function ProtocolDetailScreen() {
   const [showSpeakers, setShowSpeakers] = useState(false);
   // Action Items Email
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailRecipient, setEmailRecipient] = useState("");
+
+  const [teamContacts, setTeamContacts] = useState<TeamContact[]>([]);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactEmail, setNewContactEmail] = useState("");
+  const [newContactRole, setNewContactRole] = useState("");
+  const [editingSpeakerLabel, setEditingSpeakerLabel] = useState<string | null>(null);
+  const [speakerNameInput, setSpeakerNameInput] = useState("");
+  const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({});  const [emailRecipient, setEmailRecipient] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   // Mindmap
 
   useEffect(() => {
     loadProtocol();
+    loadTeamContacts();
     loadFeatureFlags();
     loadTemplates();
   }, [id]);
@@ -306,6 +317,53 @@ export default function ProtocolDetailScreen() {
 
   // Speaker Identification
   const speakerMutation = trpc.speaker.identify.useMutation();
+
+  // Load team contacts
+  const loadTeamContacts = async () => {
+    const contacts = await getTeamContacts();
+    setTeamContacts(sortContactsByRecent(contacts));
+  };
+
+  // Load speaker names from storage
+  const loadSpeakerNames = async (segments: { speaker: string }[]) => {
+    const nameMap: Record<string, string> = {};
+    for (const seg of segments) {
+      const savedName = await getSpeakerName(seg.speaker, protocol?.projectId || undefined);
+      if (savedName) nameMap[seg.speaker] = savedName;
+    }
+    setSpeakerNameMap(nameMap);
+  };
+
+  // Save a speaker name
+  const saveSpeakerName = async (label: string, name: string) => {
+    await updateSpeakerName(label, name, protocol?.projectId || undefined);
+    setSpeakerNameMap(prev => ({ ...prev, [label]: name }));
+    setEditingSpeakerLabel(null);
+    setSpeakerNameInput("");
+  };
+
+  // Add a new team contact
+  const addNewTeamContact = async () => {
+    if (!newContactName.trim() || !newContactEmail.trim()) return;
+    const contact = await saveTeamContact({
+      name: newContactName.trim(),
+      email: newContactEmail.trim(),
+      role: newContactRole.trim() || undefined,
+      lastUsed: Date.now(),
+    });
+    setTeamContacts(prev => [contact, ...prev]);
+    setNewContactName("");
+    setNewContactEmail("");
+    setNewContactRole("");
+    setShowAddContact(false);
+  };
+
+  // Select a team contact for email
+  const selectTeamContact = async (contact: TeamContact) => {
+    setEmailRecipient(contact.email);
+    await markContactUsed(contact.id);
+  };
+
   const identifySpeakers = async () => {
     if (!protocol?.transcription) return;
     setIsIdentifyingSpeakers(true);
@@ -314,6 +372,7 @@ export default function ProtocolDetailScreen() {
         transcription: protocol.transcription,
       });
       setSpeakerSegments(result.segments);
+      loadSpeakerNames(result.segments);
       setShowSpeakers(true);
     } catch (error) {
       console.error("Speaker identification failed:", error);
@@ -1475,43 +1534,53 @@ export default function ProtocolDetailScreen() {
               style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 8, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
             />
           ) : (
-            <Text style={[styles.protocolText, { color: colors.foreground }]}>
-            {extractedKeywords.length > 0 && (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                {extractedKeywords.map((kw, i) => (
-                  <View key={i} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                    <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "500" }}>{kw}</Text>
+            <View>
+              {extractedKeywords.length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  {extractedKeywords.map((kw, i) => (
+                    <View key={i} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "500" }}>{kw}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {showSpeakers && speakerSegments.length > 0 && (
+                <View style={{ marginBottom: 12 }}>
+                  {/* Speaker Legend */}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                    {getUniqueSpeakers(speakerSegments).map((speaker, idx) => {
+                      const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+                      return (
+                        <View key={speaker} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.text }} />
+                          <Pressable onPress={() => { setEditingSpeakerLabel(speaker); setSpeakerNameInput(speakerNameMap[speaker] || speaker); }}>
+                            <Text style={{ fontSize: 11, fontWeight: "500", color: color.text }}>{speakerNameMap[speaker] || speaker}</Text>
+                          </Pressable>
+                        </View>
+                      );
+                    })}
                   </View>
-                ))}
-              </View>
-            )}
-            {showSpeakers && speakerSegments.length > 0 && (
-              <View style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                  {getUniqueSpeakers(speakerSegments).map((speaker, idx) => {
-                    const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+                  {/* Speaker Segments */}
+                  {speakerSegments.map((seg, idx) => {
+                    const speakers = getUniqueSpeakers(speakerSegments);
+                    const speakerColor = getSpeakerColor(seg.speaker, speakers);
                     return (
-                      <View key={speaker} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.text }} />
-                        <Text style={{ fontSize: 11, color: colors.muted }}>{speaker}</Text>
+                      <View key={idx} style={{ marginBottom: 8, paddingLeft: 10, borderLeftWidth: 3, borderLeftColor: speakerColor.border }}>
+                        <Pressable onPress={() => { setEditingSpeakerLabel(seg.speaker); setSpeakerNameInput(speakerNameMap[seg.speaker] || seg.speaker); }}>
+                          <Text style={{ fontSize: 11, fontWeight: "600", color: speakerColor.text, marginBottom: 2 }}>{speakerNameMap[seg.speaker] || seg.speaker}</Text>
+                        </Pressable>
+                        <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 18 }}>{seg.text}</Text>
                       </View>
                     );
                   })}
                 </View>
-                {speakerSegments.map((seg, idx) => {
-                  const allSpeakers = getUniqueSpeakers(speakerSegments);
-                  const color = getSpeakerColor(seg.speaker, allSpeakers);
-                  return (
-                    <View key={idx} style={{ marginBottom: 6, paddingLeft: 8, borderLeftWidth: 3, borderLeftColor: color.border }}>
-                      <Text style={{ fontSize: 10, color: color.text, fontWeight: "600", marginBottom: 2 }}>{seg.speaker}</Text>
-                      <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 18 }}>{seg.text}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-              {displayedProtocolText}
-            </Text>
+              )}
+              {!showSpeakers && (
+                <Text style={[styles.protocolText, { color: colors.foreground }]}>
+                  {displayedProtocolText}
+                </Text>
+              )}
+            </View>
           )}
         </View>
 
@@ -2111,6 +2180,48 @@ export default function ProtocolDetailScreen() {
                   marginBottom: 16,
                 }}
               />
+              {/* Team Contacts */}
+              {teamContacts.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontSize: 12, color: "#9BA1A6", marginBottom: 6 }}>Kontakte:</Text>
+                  {teamContacts.slice(0, 5).map(contact => (
+                    <Pressable
+                      key={contact.id}
+                      onPress={() => selectTeamContact(contact)}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: pressed ? "#1e202220" : "transparent", marginBottom: 2 }]}
+                    >
+                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#0a7ea4" }}>{contact.name.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "500", color: "#11181C" }}>{contact.name}</Text>
+                        <Text style={{ fontSize: 11, color: "#687076" }}>{contact.email}</Text>
+                      </View>
+                      {contact.role && <Text style={{ fontSize: 10, color: "#9BA1A6", backgroundColor: "#f5f5f5", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>{contact.role}</Text>}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {/* Add Contact Button */}
+              {!showAddContact ? (
+                <Pressable onPress={() => setShowAddContact(true)} style={{ marginTop: 8, paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 12, color: "#0a7ea4" }}>+ Neuen Kontakt speichern</Text>
+                </Pressable>
+              ) : (
+                <View style={{ marginTop: 8, padding: 10, backgroundColor: "#f5f5f5", borderRadius: 8 }}>
+                  <TextInput placeholder="Name" value={newContactName} onChangeText={setNewContactName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
+                  <TextInput placeholder="E-Mail" value={newContactEmail} onChangeText={setNewContactEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
+                  <TextInput placeholder="Rolle (optional)" value={newContactRole} onChangeText={setNewContactRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 8 }} />
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <Pressable onPress={addNewTeamContact} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 8, borderRadius: 6, alignItems: "center" }}>
+                      <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>Speichern</Text>
+                    </Pressable>
+                    <Pressable onPress={() => setShowAddContact(false)} style={{ flex: 1, backgroundColor: "#E5E7EB", paddingVertical: 8, borderRadius: 6, alignItems: "center" }}>
+                      <Text style={{ fontSize: 12, color: "#687076" }}>Abbrechen</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
               <ScrollView style={{ maxHeight: 200, marginBottom: 16 }}>
                 {displayedTodos.map((todo, i) => (
                   <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
@@ -2139,6 +2250,31 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>📧 E-Mail senden</Text>
                 )}
               </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Speaker Name Edit Modal */}
+        <Modal visible={!!editingSpeakerLabel} transparent animationType="fade" onRequestClose={() => setEditingSpeakerLabel(null)}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: "white", borderRadius: 16, padding: 24, width: "80%", maxWidth: 320 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Sprecher benennen</Text>
+              <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Name für "{editingSpeakerLabel}" eingeben. Wird für zukünftige Protokolle gespeichert.</Text>
+              <TextInput
+                value={speakerNameInput}
+                onChangeText={setSpeakerNameInput}
+                placeholder="Name eingeben..."
+                style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 16 }}
+                autoFocus
+              />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable onPress={() => { if (editingSpeakerLabel && speakerNameInput.trim()) saveSpeakerName(editingSpeakerLabel, speakerNameInput.trim()); }} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 12, borderRadius: 8, alignItems: "center" }}>
+                  <Text style={{ color: "white", fontWeight: "600" }}>Speichern</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingSpeakerLabel(null)} style={{ flex: 1, backgroundColor: "#f5f5f5", paddingVertical: 12, borderRadius: 8, alignItems: "center" }}>
+                  <Text style={{ color: "#687076" }}>Abbrechen</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>

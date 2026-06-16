@@ -46,7 +46,7 @@ type RecordingMode = "audio" | "audio-photo";
 
 export default function RecordScreen() {
   const colors = useColors();
-  const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText } = useRealtimeTranscription();
+  const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText , getFullTranscript, streamingActive } = useRealtimeTranscription();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraZoom, setCameraZoom] = useState(0);

@@ -15,6 +15,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getTeamContacts, saveTeamContact, deleteTeamContact, TeamContact } from "@/lib/team-contacts";
+import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
@@ -829,7 +831,49 @@ export default function SettingsScreen() {
     updateCompany("logoUri", "");
   };
 
-  return (
+  
+  // Team Contacts
+  const [teamContacts, setTeamContacts] = useState<TeamContact[]>([]);
+  const [showAddTeamContact, setShowAddTeamContact] = useState(false);
+  const [tcName, setTcName] = useState("");
+  const [tcEmail, setTcEmail] = useState("");
+  const [tcRole, setTcRole] = useState("");
+  const [speakerProfiles, setSpeakerProfiles] = useState<SpeakerProfile[]>([]);
+
+  useEffect(() => {
+    loadTeamContacts();
+    loadSpeakerProfiles();
+  }, []);
+
+  const loadTeamContacts = async () => {
+    const contacts = await getTeamContacts();
+    setTeamContacts(contacts);
+  };
+
+  const loadSpeakerProfiles = async () => {
+    const profiles = await getSpeakerProfiles();
+    setSpeakerProfiles(profiles);
+  };
+
+  const handleAddTeamContact = async () => {
+    if (!tcName.trim() || !tcEmail.trim()) return;
+    await saveTeamContact({ name: tcName.trim(), email: tcEmail.trim(), role: tcRole.trim() || undefined, lastUsed: Date.now() });
+    setTcName(""); setTcEmail(""); setTcRole("");
+    setShowAddTeamContact(false);
+    loadTeamContacts();
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    await deleteTeamContact(id);
+    loadTeamContacts();
+  };
+
+  const handleDeleteSpeaker = async (id: string) => {
+    await deleteSpeakerProfile(id);
+    loadSpeakerProfiles();
+  };
+
+return (
     <ScreenContainer className="flex-1">
       <View style={styles.headerContainer}>
         <Text style={[styles.screenTitle, { color: colors.foreground }]}>
@@ -1630,6 +1674,65 @@ export default function SettingsScreen() {
             })}
           </View>
         </View>
+
+
+        {/* Team-Kontaktbuch */}
+        <View style={{ marginTop: 24, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Team-Kontaktbuch</Text>
+          <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Gespeicherte Kontakte für schnellen E-Mail-Versand von Aufgaben.</Text>
+          {teamContacts.map(contact => (
+            <View key={contact.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a7ea4" }}>{contact.name.charAt(0)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "500" }}>{contact.name}</Text>
+                <Text style={{ fontSize: 11, color: "#687076" }}>{contact.email}{contact.role ? ` • ${contact.role}` : ""}</Text>
+              </View>
+              <Pressable onPress={() => handleDeleteContact(contact.id)} style={{ padding: 6 }}>
+                <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
+              </Pressable>
+            </View>
+          ))}
+          {!showAddTeamContact ? (
+            <Pressable onPress={() => setShowAddTeamContact(true)} style={{ marginTop: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, borderStyle: "dashed" }}>
+              <Text style={{ fontSize: 13, color: "#0a7ea4" }}>+ Kontakt hinzufügen</Text>
+            </Pressable>
+          ) : (
+            <View style={{ marginTop: 10, padding: 12, backgroundColor: "#f9f9f9", borderRadius: 8 }}>
+              <TextInput placeholder="Name" value={tcName} onChangeText={setTcName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 6 }} />
+              <TextInput placeholder="E-Mail" value={tcEmail} onChangeText={setTcEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 6 }} />
+              <TextInput placeholder="Rolle (optional)" value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 10 }} />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable onPress={handleAddTeamContact} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 10, borderRadius: 6, alignItems: "center" }}>
+                  <Text style={{ color: "white", fontSize: 13, fontWeight: "600" }}>Speichern</Text>
+                </Pressable>
+                <Pressable onPress={() => setShowAddTeamContact(false)} style={{ flex: 1, backgroundColor: "#E5E7EB", paddingVertical: 10, borderRadius: 6, alignItems: "center" }}>
+                  <Text style={{ fontSize: 13, color: "#687076" }}>Abbrechen</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Gespeicherte Sprecher */}
+        {speakerProfiles.length > 0 && (
+          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Gespeicherte Sprecher</Text>
+            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Automatisch erkannte Sprecher mit zugewiesenen Namen.</Text>
+            {speakerProfiles.map(profile => (
+              <View key={profile.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "500" }}>{profile.name}</Text>
+                  <Text style={{ fontSize: 11, color: "#687076" }}>{profile.label} • {profile.usageCount}x verwendet</Text>
+                </View>
+                <Pressable onPress={() => handleDeleteSpeaker(profile.id)} style={{ padding: 6 }}>
+                  <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Feature-Toggles */}
         <FeatureTogglesSection colors={colors} />

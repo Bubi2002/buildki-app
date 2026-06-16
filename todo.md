@@ -229,3 +229,6 @@
 - [x] Feature: Sprecheridentifikation – Verschiedene Sprecher automatisch erkennen und farblich markieren (wie Otter.ai)
 - [x] Feature: Echtzeit-Transkription – Live-Text während der Aufnahme anzeigen
 - [x] Feature: Action Items per E-Mail – Extrahierte Aufgaben automatisch an zugewiesene Personen versenden
+- [x] Feature: Automatische Sprecher-Benennung – Sprecher über Protokolle hinweg mit Namen verknüpfen und wiedererkennen
+- [x] Feature: Team-Kontaktbuch – Häufige Empfänger speichern und bei E-Mail-Versand vorschlagen
+- [x] Feature: Sprach-Streaming – Echtzeit-Transkription mit Whisper-API in 10-Sekunden-Chunks für echten Live-Text
