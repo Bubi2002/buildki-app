@@ -247,3 +247,8 @@
 - [x] Feature: Protokoll-Vorlagen-Marktplatz – Vorlagen mit anderen Nutzern teilen und importieren
 - [x] Feature: KI-gestützte Agenda-Vorbereitung – Aus vorherigen Protokollen automatisch Agenda-Punkte vorschlagen
 - [x] Feature: Aufgaben-Kanban-Board – Visuelle Aufgabenverwaltung mit Drag-and-Drop (Offen/In Arbeit/Erledigt)
+- [ ] Feature: Foto-Export über Cloud-Dienste (Dropbox, Google Drive, OneDrive) – Bilder aus Protokollen direkt in Cloud-Speicher exportieren
+- [x] UI: Projekt-Detail Layout Redesign – 3-Spalten Icon-Grid (PlanRadar-Style)
+- [x] UI: Protokoll-Detail KI-Werkzeuge – Plaud-Style Auswahl mit großen Karten statt kleiner Buttons
+- [x] UI: Verbesserte Lesbarkeit – Größere Schriften, bessere Abstände, klarere Hierarchie
+- [x] Feature: Foto-Export über Cloud-Dienste (Dropbox, Google Drive, OneDrive) – Bilder aus Protokollen direkt in Cloud-Speicher exportieren

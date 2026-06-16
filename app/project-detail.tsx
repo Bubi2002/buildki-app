@@ -315,95 +315,118 @@ export default function ProjectDetailScreen() {
           {!isExporting && <MaterialIcons name="chevron-right" size={18} color={colors.primary} />}
         </Pressable>
 
-        {/* Tools */}
-        <View style={styles.toolsGrid}>
-          <Pressable
-            onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="map" size={20} color={colors.primary} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Grundriss{planCount > 0 ? ` ${planCount}` : ""}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <View style={{ position: "relative" }}>
-              <MaterialIcons name="warning" size={20} color={colors.warning} />
+                {/* Tools Grid - Professional 3-column layout */}
+        <View style={styles.toolsSection}>
+          <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>Werkzeuge</Text>
+          <View style={styles.toolsGrid}>
+            <Pressable
+              onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: colors.primary + '15' }]}>
+                <MaterialIcons name="map" size={22} color={colors.primary} />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Grundriss</Text>
+              {planCount > 0 && <Text style={[styles.toolCardBadge, { color: colors.muted }]}>{planCount}</Text>}
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#FF6D0015' }]}>
+                <MaterialIcons name="warning" size={22} color="#FF6D00" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Mängel</Text>
               {defectCount.open > 0 && (
-                <View style={{ position: "absolute", top: -4, right: -6, backgroundColor: colors.error, borderRadius: 7, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "700", color: "#FFF" }}>{defectCount.open}</Text>
+                <View style={[styles.toolBadge, { backgroundColor: colors.error }]}>
+                  <Text style={styles.toolBadgeText}>{defectCount.open}</Text>
                 </View>
               )}
-            </View>
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Mängel{defectCount.total > 0 ? ` ${defectCount.total}` : ""}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="menu-book" size={20} color={colors.success} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Tagebuch</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="checklist" size={20} color={"#8E24AA"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Checklisten</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/team` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="groups" size={20} color={"#1E88E5"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Team</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="bar-chart" size={20} color={"#00ACC1"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Statistik</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/project-export?id=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="ios-share" size={20} color={"#43A047"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Export</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="photo-library" size={20} color={"#E91E63"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Fotos</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/qr-scanner?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="qr-code-scanner" size={20} color={"#00BCD4"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>QR-Scan</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/time-tracking?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="timer" size={20} color={"#FF5722"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Zeit</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push(`/cloud-import?projectId=${project.id}` as any)}
-            style={({ pressed }) => [styles.toolBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="cloud-download" size={20} color={"#607D8B"} />
-            <Text style={[styles.toolBtnText, { color: colors.foreground }]}>Cloud</Text>
-          </Pressable>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#43A04715' }]}>
+                <MaterialIcons name="menu-book" size={22} color="#43A047" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Tagebuch</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#8E24AA15' }]}>
+                <MaterialIcons name="checklist" size={22} color="#8E24AA" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Checklisten</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/team` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#1E88E515' }]}>
+                <MaterialIcons name="groups" size={22} color="#1E88E5" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Team</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#00ACC115' }]}>
+                <MaterialIcons name="bar-chart" size={22} color="#00ACC1" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Statistik</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#E91E6315' }]}>
+                <MaterialIcons name="photo-library" size={22} color="#E91E63" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Fotos</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/qr-scanner?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#00BCD415' }]}>
+                <MaterialIcons name="qr-code-scanner" size={22} color="#00BCD4" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>QR-Scan</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/time-tracking?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#FF572215' }]}>
+                <MaterialIcons name="timer" size={22} color="#FF5722" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Zeit</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/cloud-import?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#607D8B15' }]}>
+                <MaterialIcons name="cloud-download" size={22} color="#607D8B" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Cloud</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/project-export?id=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#43A04715' }]}>
+                <MaterialIcons name="ios-share" size={22} color="#43A047" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Export</Text>
+            </Pressable>
+          </View>
         </View>
-
-        {/* Stats */}
+{/* Stats */}
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
           <View style={styles.stat}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>{protocols.length}</Text>
@@ -507,18 +530,18 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
   headerCenter: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginHorizontal: 16 },
   headerDot: { width: 12, height: 12, borderRadius: 6 },
-  headerTitle: { fontSize: 18, fontWeight: "700", flex: 1 },
+  headerTitle: { fontSize: 20, fontWeight: "800", flex: 1 },
   description: { fontSize: 14, paddingHorizontal: 16, marginBottom: 12 },
-  statsRow: { flexDirection: "row", marginHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, marginBottom: 16 },
+  statsRow: { flexDirection: "row", marginHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, marginBottom: 16 },
   stat: { flex: 1, alignItems: "center" },
-  statNumber: { fontSize: 18, fontWeight: "700" },
+  statNumber: { fontSize: 20, fontWeight: "800" },
   statLabel: { fontSize: 12, marginTop: 2 },
   statDivider: { width: 1, alignSelf: "stretch" },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   protocolItem: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, borderWidth: 1, marginBottom: 8 },
   protocolInfo: { flex: 1 },
-  protocolTitle: { fontSize: 15, fontWeight: "500", marginBottom: 2 },
-  protocolDate: { fontSize: 12 },
+  protocolTitle: { fontSize: 16, fontWeight: "600", marginBottom: 3 },
+  protocolDate: { fontSize: 13 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
   modalOverlay: { justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
@@ -530,7 +553,13 @@ const styles = StyleSheet.create({
   assignDate: { fontSize: 12 },
   exportButton: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1 },
   exportButtonText: { fontSize: 14, fontWeight: "600", flex: 1 },
-  toolsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8, marginBottom: 12 },
-  toolBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },
-  toolBtnText: { fontSize: 13, fontWeight: "500" },
+  toolsSection: { paddingHorizontal: 16, marginBottom: 16 },
+  toolsSectionTitle: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+  toolsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  toolCard: { width: "30.5%", alignItems: "center", paddingVertical: 14, borderRadius: 12, position: "relative" },
+  toolIconBg: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  toolCardLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  toolCardBadge: { fontSize: 10, marginTop: 2 },
+  toolBadge: { position: "absolute", top: 6, right: "20%", minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  toolBadgeText: { fontSize: 9, fontWeight: "700", color: "#FFFFFF" },
 });

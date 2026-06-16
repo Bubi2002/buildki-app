@@ -1522,85 +1522,125 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* Summary */}
-        <View style={[styles.section, { marginBottom: 0 }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Zusammenfassung</Text>
-            </View>
+        {/* KI-Werkzeuge - Plaud-Style */}
+        <View style={styles.section}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>KI-Werkzeuge</Text>
+          </View>
+          <View style={{ gap: 8 }}>
+            {/* Zusammenfassung */}
             <Pressable
               onPress={generateSummary}
               disabled={isGeneratingSummary}
-              style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "15", opacity: pressed || isGeneratingSummary ? 0.5 : 1 }]}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "25",
+                opacity: pressed || isGeneratingSummary ? 0.7 : 1,
+              }]}
             >
-              {isGeneratingSummary ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>{summary ? "Neu generieren" : "Generieren"}</Text>
-              )}
+              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                {isGeneratingSummary ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="summarize" size={20} color={colors.primary} />}
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Zusammenfassung</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Kernpunkte auf einen Blick</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
+            {/* Neu generieren */}
+            <Pressable
+              onPress={() => setShowRegenerateModal(true)}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                backgroundColor: "#8B5CF6" + "08", borderWidth: 1, borderColor: "#8B5CF6" + "25",
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: "#8B5CF6" + "15", alignItems: "center", justifyContent: "center" }}>
+                <MaterialIcons name="refresh" size={20} color="#8B5CF6" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Neu generieren</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Anderes Template oder Format wählen</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            </Pressable>
+            {/* Sprecher erkennen */}
             <Pressable
               onPress={identifySpeakers}
               disabled={isIdentifyingSpeakers}
-              style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: "#8B5CF6" + "15", opacity: pressed || isIdentifyingSpeakers ? 0.5 : 1, marginLeft: 8 }]}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                backgroundColor: "#059669" + "08", borderWidth: 1, borderColor: "#059669" + "25",
+                opacity: pressed || isIdentifyingSpeakers ? 0.7 : 1,
+              }]}
             >
-              {isIdentifyingSpeakers ? (
-                <ActivityIndicator size="small" color="#8B5CF6" />
-              ) : (
-                <Text style={{ fontSize: 12, color: "#8B5CF6", fontWeight: "600" }}>Sprecher</Text>
-              )}
+              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: "#059669" + "15", alignItems: "center", justifyContent: "center" }}>
+                {isIdentifyingSpeakers ? <ActivityIndicator size="small" color="#059669" /> : <MaterialIcons name="record-voice-over" size={20} color="#059669" />}
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Sprecher erkennen</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Personen im Gespräch identifizieren</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
+            {/* Row with smaller buttons */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
               <Pressable
                 onPress={generateTimelineView}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#8B5CF615", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{
+                  flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: 12, borderRadius: 10, backgroundColor: "#0EA5E9" + "10", borderWidth: 1, borderColor: "#0EA5E9" + "20",
+                  opacity: pressed ? 0.7 : 1,
+                }]}
               >
-                <MaterialIcons name="timeline" size={14} color="#8B5CF6" />
-                <Text style={{ fontSize: 12, color: "#8B5CF6", fontWeight: "600" }}>Timeline</Text>
+                <MaterialIcons name="timeline" size={16} color="#0EA5E9" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0EA5E9" }}>Timeline</Text>
               </Pressable>
               <Pressable
                 onPress={generateMindmap}
                 disabled={isGeneratingMindmap}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#22C55E15", opacity: pressed || isGeneratingMindmap ? 0.5 : 1 }]}
+                style={({ pressed }) => [{
+                  flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: 12, borderRadius: 10, backgroundColor: "#22C55E" + "10", borderWidth: 1, borderColor: "#22C55E" + "20",
+                  opacity: pressed || isGeneratingMindmap ? 0.7 : 1,
+                }]}
               >
-                <MaterialIcons name="hub" size={14} color="#22C55E" />
-                <Text style={{ fontSize: 12, color: "#22C55E", fontWeight: "600" }}>{isGeneratingMindmap ? "..." : "Mindmap"}</Text>
+                <MaterialIcons name="hub" size={16} color="#22C55E" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>{isGeneratingMindmap ? "..." : "Mindmap"}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowStats(true)}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#F59E0B15", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{
+                  flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: 12, borderRadius: 10, backgroundColor: "#F59E0B" + "10", borderWidth: 1, borderColor: "#F59E0B" + "20",
+                  opacity: pressed ? 0.7 : 1,
+                }]}
               >
-                <MaterialIcons name="bar-chart" size={14} color="#F59E0B" />
-                <Text style={{ fontSize: 12, color: "#F59E0B", fontWeight: "600" }}>Stats</Text>
+                <MaterialIcons name="bar-chart" size={16} color="#F59E0B" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#F59E0B" }}>Statistik</Text>
               </Pressable>
+            </View>
           </View>
+          {/* Summary result display */}
           {summary && (
-            <View style={{ backgroundColor: colors.primary + "08", borderRadius: 8, padding: 12, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
-              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 20 }}>{summary}</Text>
+            <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 10, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 21 }}>{summary}</Text>
             </View>
           )}
         </View>
-
         {/* Protocol content with multi-output versions */}
         <View style={styles.section}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Protokoll</Text>
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              <Pressable
-                onPress={() => setShowRegenerateModal(true)}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="auto-awesome" size={14} color={colors.primary} />
-                <Text style={{ fontSize: 12, color: colors.primary }}>Neu generieren</Text>
-              </Pressable>
-              <Pressable
-                onPress={isEditing ? saveEdit : startEditing}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: isEditing ? colors.success + "15" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name={isEditing ? "check" : "edit"} size={14} color={isEditing ? colors.success : colors.muted} />
-                <Text style={{ fontSize: 12, color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={isEditing ? saveEdit : startEditing}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: isEditing ? colors.success + "12" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name={isEditing ? "check" : "edit"} size={15} color={isEditing ? colors.success : colors.muted} />
+              <Text style={{ fontSize: 13, fontWeight: "500", color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
+            </Pressable>
           </View>
 
           {/* Version tabs */}
@@ -2506,24 +2546,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 40,
   },
   metaCard: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    marginBottom: 12,
-    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 14,
+    gap: 10,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
   metaText: {
     fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
   },
   pdfBanner: {
     flexDirection: "row",
@@ -2546,7 +2586,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   section: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 20,
