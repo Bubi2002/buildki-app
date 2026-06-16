@@ -10,6 +10,8 @@ type TodoItem = {
   done: boolean;
 };
 
+type PdfTemplate = "standard" | "compact" | "detailed" | "no_photos";
+
 type PdfProtocol = {
   title: string;
   protocol: string;
@@ -21,6 +23,7 @@ type PdfProtocol = {
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
+  transcription?: string; // raw transcription for detailed template
   location?: {
     latitude: number;
     longitude: number;
@@ -108,8 +111,13 @@ function generatePdfHtml(
   company: CompanySettings,
   photoDataUris: string[],
   planImageBase64?: string | null,
-  accentColor?: string
+  accentColor?: string,
+  pdfTemplate: PdfTemplate = "standard"
 ): string {
+  // Template-specific overrides
+  const showPhotos = pdfTemplate !== "no_photos";
+  const isCompact = pdfTemplate === "compact";
+  const isDetailed = pdfTemplate === "detailed";
   const todos = protocol.todos || [];
   const date = new Date(protocol.createdAt).toLocaleDateString("de-DE", {
     day: "2-digit",
@@ -539,14 +547,16 @@ export async function generateProtocolHtmlPreview(protocol: PdfProtocol): Promis
     planImageBase64 = await fileToBase64DataUri(protocol.planData.planImageUri);
   }
   let accentColor: string | undefined;
+  let pdfTemplate: PdfTemplate = "standard";
   try {
     const brandingStr = await AsyncStorage.getItem("pdf-branding");
     if (brandingStr) {
       const branding = JSON.parse(brandingStr);
       if (branding.accentColor) accentColor = branding.accentColor;
+      if (branding.pdfTemplate) pdfTemplate = branding.pdfTemplate;
     }
   } catch {}
-  return generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor);
+  return generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate);
 }
 
 export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string> {
@@ -570,18 +580,20 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     planImageBase64 = await fileToBase64DataUri(protocol.planData.planImageUri);
   }
 
-  // Load PDF branding accent color
+  // Load PDF branding accent color and template
   let accentColor: string | undefined;
+  let pdfTemplate: PdfTemplate = "standard";
   try {
     const brandingStr = await AsyncStorage.getItem("pdf-branding");
     if (brandingStr) {
       const branding = JSON.parse(brandingStr);
       if (branding.accentColor) accentColor = branding.accentColor;
+      if (branding.pdfTemplate) pdfTemplate = branding.pdfTemplate;
     }
   } catch {}
 
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor);
+  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate);
 
   // Generate PDF
   const { uri } = await Print.printToFileAsync({

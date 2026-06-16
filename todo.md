@@ -219,3 +219,6 @@
 - [x] Feature: Foto-Reihenfolge per Drag-and-Drop in Detailansicht ändern
 - [x] Feature: PDF-Vorschau in-App vor dem Export
 - [x] Feature: Sprachnotiz pro Foto beim Aufnehmen (kurze Audio-Annotation)
+- [ ] Feature: Sprachnotiz-Wiedergabe in Detailansicht (Play-Button bei Fotos mit Voice Note)
+- [ ] Feature: Foto-Galerie mit Vollbild-Swipe (zwischen Fotos wischen)
+- [ ] Feature: PDF-Template-Auswahl (kompakt, detailliert, mit/ohne Fotos)

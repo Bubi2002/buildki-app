@@ -119,6 +119,11 @@ export default function ProtocolDetailScreen() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [previewPdfUri, setPreviewPdfUri] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  // Fullscreen gallery with swipe
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [showGallery, setShowGallery] = useState(false);
+  // Voice note playback
+  const [playingVoiceNote, setPlayingVoiceNote] = useState<number | null>(null);
 
   useEffect(() => {
     loadProtocol();
@@ -789,7 +794,7 @@ export default function ProtocolDetailScreen() {
                   <View style={{ flexDirection: "row", gap: 12 }}>
                     <View style={{ position: 'relative' }}>
                       <Pressable
-                        onPress={() => setSelectedPhoto(photoUri)}
+                        onPress={() => { setGalleryIndex(index); setShowGallery(true); }}
                         onLongPress={() => sharePhoto(photoUri)}
                         style={({ pressed }) => [
                           styles.photoThumbnail,
@@ -858,6 +863,33 @@ export default function ProtocolDetailScreen() {
                       <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }} numberOfLines={4}>
                         {currentCaption || "Kein zugeordneter Text"}
                       </Text>
+                      {/* Voice note indicator */}
+                      {(protocol as any).photoVoiceNotes?.[index] && (
+                        <Pressable
+                          onPress={() => setPlayingVoiceNote(playingVoiceNote === index ? null : index)}
+                          style={({ pressed }) => [{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            marginTop: 4,
+                            paddingVertical: 3,
+                            paddingHorizontal: 8,
+                            backgroundColor: playingVoiceNote === index ? "rgba(76,175,80,0.15)" : "rgba(0,0,0,0.05)",
+                            borderRadius: 12,
+                            alignSelf: "flex-start",
+                            opacity: pressed ? 0.6 : 1,
+                          }]}
+                        >
+                          <MaterialIcons
+                            name={playingVoiceNote === index ? "stop" : "play-arrow"}
+                            size={14}
+                            color={playingVoiceNote === index ? "#4CAF50" : colors.muted}
+                          />
+                          <Text style={{ fontSize: 10, color: playingVoiceNote === index ? "#4CAF50" : colors.muted }}>
+                            {playingVoiceNote === index ? "Wiedergabe..." : "Sprachnotiz"}
+                          </Text>
+                        </Pressable>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -1288,45 +1320,96 @@ export default function ProtocolDetailScreen() {
         )}
       </View>
 
-      {/* Full-screen photo viewer */}
+      {/* Full-screen photo gallery with swipe */}
       <Modal
-        visible={!!selectedPhoto}
+        visible={showGallery}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedPhoto(null)}
+        onRequestClose={() => setShowGallery(false)}
       >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setSelectedPhoto(null)}
-        >
+        <View style={styles.modalBackdrop}>
+          {/* Close button */}
+          <Pressable
+            onPress={() => setShowGallery(false)}
+            style={styles.modalCloseButton}
+          >
+            <MaterialIcons name="close" size={28} color="#FFFFFF" />
+          </Pressable>
+
+          {/* Photo counter */}
+          <View style={{ position: "absolute", top: 60, alignSelf: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, zIndex: 10 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
+              {galleryIndex + 1} / {photos.length}
+            </Text>
+          </View>
+
+          {/* Main image */}
           <View style={styles.modalContent}>
-            {selectedPhoto && (
+            {photos[galleryIndex] && (
               <Image
-                source={{ uri: selectedPhoto }}
+                source={{ uri: photos[galleryIndex] }}
                 style={styles.modalImage}
                 contentFit="contain"
-                transition={200}
+                transition={150}
               />
             )}
-            <Pressable
-              onPress={() => setSelectedPhoto(null)}
-              style={styles.modalCloseButton}
-            >
-              <MaterialIcons name="close" size={28} color="#FFFFFF" />
-            </Pressable>
-            {selectedPhoto && (
-              <Pressable
-                onPress={() => {
-                  if (selectedPhoto) sharePhoto(selectedPhoto);
-                }}
-                style={styles.modalShareButton}
-              >
-                <MaterialIcons name="share" size={24} color="#FFFFFF" />
-                <Text style={styles.modalShareText}>Teilen</Text>
-              </Pressable>
-            )}
           </View>
-        </Pressable>
+
+          {/* Navigation arrows */}
+          {galleryIndex > 0 && (
+            <Pressable
+              onPress={() => setGalleryIndex(galleryIndex - 1)}
+              style={({ pressed }) => [{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                borderRadius: 24,
+                padding: 8,
+                opacity: pressed ? 0.6 : 1,
+              }]}
+            >
+              <MaterialIcons name="chevron-left" size={32} color="#FFFFFF" />
+            </Pressable>
+          )}
+          {galleryIndex < photos.length - 1 && (
+            <Pressable
+              onPress={() => setGalleryIndex(galleryIndex + 1)}
+              style={({ pressed }) => [{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                borderRadius: 24,
+                padding: 8,
+                opacity: pressed ? 0.6 : 1,
+              }]}
+            >
+              <MaterialIcons name="chevron-right" size={32} color="#FFFFFF" />
+            </Pressable>
+          )}
+
+          {/* Bottom actions */}
+          <View style={{ position: "absolute", bottom: 50, flexDirection: "row", gap: 16, alignSelf: "center" }}>
+            <Pressable
+              onPress={() => { if (photos[galleryIndex]) sharePhoto(photos[galleryIndex]); }}
+              style={({ pressed }) => [styles.modalShareButton, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="share" size={24} color="#FFFFFF" />
+              <Text style={styles.modalShareText}>Teilen</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setShowGallery(false);
+                router.push(`/photo-annotate?photoUri=${encodeURIComponent(photos[galleryIndex])}&protocolId=${protocol?.id}&photoIndex=${galleryIndex}` as any);
+              }}
+              style={({ pressed }) => [styles.modalShareButton, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="edit" size={24} color="#FFFFFF" />
+              <Text style={styles.modalShareText}>Annotieren</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* PDF Preview Modal */}

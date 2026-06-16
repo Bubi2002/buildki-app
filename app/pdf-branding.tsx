@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { getPdfBranding, savePdfBranding, type PdfBranding, type FilenameSchema, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
+import { getPdfBranding, savePdfBranding, type PdfBranding, type FilenameSchema, type PdfTemplate, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
 
 const ACCENT_COLORS = [
   "#0a7ea4", "#1E40AF", "#7C3AED", "#DC2626",
@@ -286,6 +286,45 @@ export default function PdfBrandingScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{schema.label}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{schema.example}.pdf</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* PDF Template / Layout */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>PDF-Layout</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Wähle das Layout für den PDF-Export</Text>
+
+          {([
+            { key: "standard" as PdfTemplate, label: "Standard", desc: "Vollständiges Protokoll mit Fotos und Metadaten", icon: "description" as const },
+            { key: "compact" as PdfTemplate, label: "Kompakt", desc: "Nur Protokolltext und Aufgaben, kleine Fotos", icon: "compress" as const },
+            { key: "detailed" as PdfTemplate, label: "Detailliert", desc: "Alle Infos inkl. Transkription, große Fotos, Planverortung", icon: "article" as const },
+            { key: "no_photos" as PdfTemplate, label: "Ohne Fotos", desc: "Nur Text, Aufgaben und Metadaten – kein Bildmaterial", icon: "text-snippet" as const },
+          ]).map((template) => (
+            <Pressable
+              key={template.key}
+              onPress={() => updateField("pdfTemplate", template.key)}
+              style={({ pressed }) => [{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                marginBottom: 6,
+                backgroundColor: branding.pdfTemplate === template.key ? colors.primary + "12" : colors.surface,
+                borderWidth: branding.pdfTemplate === template.key ? 1.5 : 1,
+                borderColor: branding.pdfTemplate === template.key ? colors.primary : colors.border,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: branding.pdfTemplate === template.key ? colors.primary : colors.muted, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                {branding.pdfTemplate === template.key && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary }} />}
+              </View>
+              <MaterialIcons name={template.icon} size={20} color={branding.pdfTemplate === template.key ? colors.primary : colors.muted} style={{ marginRight: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{template.label}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{template.desc}</Text>
               </View>
             </Pressable>
           ))}

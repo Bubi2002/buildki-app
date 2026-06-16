@@ -4,6 +4,8 @@ const PDF_BRANDING_KEY = "pdf-branding";
 
 export type FilenameSchema = "project_date_nr" | "nr_project_date" | "date_project_nr" | "project_nr" | "date_nr";
 
+export type PdfTemplate = "standard" | "compact" | "detailed" | "no_photos";
+
 export type PdfBranding = {
   companyName: string;
   companyAddress: string;
@@ -18,6 +20,7 @@ export type PdfBranding = {
   showProjectName: boolean;
   accentColor: string; // hex color for header line
   filenameSchema: FilenameSchema;
+  pdfTemplate: PdfTemplate; // layout variant
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -34,6 +37,7 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showProjectName: true,
   accentColor: "#0a7ea4",
   filenameSchema: "project_date_nr",
+  pdfTemplate: "standard" as PdfTemplate,
 };
 
 /**
