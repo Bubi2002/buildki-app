@@ -27,6 +27,9 @@ import { generateProtocolPdf, generateProtocolHtmlPreview } from "@/lib/pdf-gene
 import { trpc } from "@/lib/trpc";
 import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
+import * as Haptics from "expo-haptics";
+import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
+import { sendActionItemsEmail } from "@/lib/email-actions";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const LANGUAGES = [
@@ -141,6 +144,14 @@ export default function ProtocolDetailScreen() {
   const [versions, setVersions] = useState<GeneratedVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   const [availableTemplates, setAvailableTemplates] = useState<{id: string; name: string; icon: string; description: string}[]>([]);
+  // Speaker Identification
+  const [speakerSegments, setSpeakerSegments] = useState<SpeakerSegment[]>([]);
+  const [isIdentifyingSpeakers, setIsIdentifyingSpeakers] = useState(false);
+  const [showSpeakers, setShowSpeakers] = useState(false);
+  // Action Items Email
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   // Mindmap
 
   useEffect(() => {
@@ -290,6 +301,50 @@ export default function ProtocolDetailScreen() {
       console.error("Error generating summary:", error);
     } finally {
       setIsGeneratingSummary(false);
+    }
+  };
+
+  // Speaker Identification
+  const speakerMutation = trpc.speaker.identify.useMutation();
+  const identifySpeakers = async () => {
+    if (!protocol?.transcription) return;
+    setIsIdentifyingSpeakers(true);
+    try {
+      const result = await speakerMutation.mutateAsync({
+        transcription: protocol.transcription,
+      });
+      setSpeakerSegments(result.segments);
+      setShowSpeakers(true);
+    } catch (error) {
+      console.error("Speaker identification failed:", error);
+    } finally {
+      setIsIdentifyingSpeakers(false);
+    }
+  };
+
+  // Action Items Email
+  const emailMutation = trpc.email.sendActionItems.useMutation();
+  const sendTodosViaEmail = async () => {
+    if (!emailRecipient || displayedTodos.length === 0) return;
+    setIsSendingEmail(true);
+    try {
+      const protocolDate = new Date(protocol?.createdAt || "").toLocaleDateString("de-DE");
+      const protocolTitle = protocol?.title || "Protokoll";
+      await sendActionItemsEmail(
+        displayedTodos.map(t => ({ task: t.task, assignee: t.assignee, priority: t.priority, deadline: t.deadline })),
+        emailRecipient,
+        protocolTitle,
+        protocolDate,
+      );
+      setShowEmailModal(false);
+      setEmailRecipient("");
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error("Email send failed:", error);
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -904,7 +959,13 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
             )}
           </Pressable>
-        </View>
+        
+            <Pressable
+              onPress={() => setShowEmailModal(true)}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: "#3B82F6" + "15", opacity: pressed ? 0.5 : 1, marginLeft: 8 }]}
+            >
+              <Text style={{ fontSize: 11, color: "#3B82F6", fontWeight: "600" }}>📧 Senden</Text>
+            </Pressable></View>
       </View>
 
       <ScrollView
@@ -1324,6 +1385,17 @@ export default function ProtocolDetailScreen() {
                 <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>{summary ? "Neu generieren" : "Generieren"}</Text>
               )}
             </Pressable>
+            <Pressable
+              onPress={identifySpeakers}
+              disabled={isIdentifyingSpeakers}
+              style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: "#8B5CF6" + "15", opacity: pressed || isIdentifyingSpeakers ? 0.5 : 1, marginLeft: 8 }]}
+            >
+              {isIdentifyingSpeakers ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : (
+                <Text style={{ fontSize: 12, color: "#8B5CF6", fontWeight: "600" }}>Sprecher</Text>
+              )}
+            </Pressable>
           </View>
           {summary && (
             <View style={{ backgroundColor: colors.primary + "08", borderRadius: 8, padding: 12, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
@@ -1411,6 +1483,31 @@ export default function ProtocolDetailScreen() {
                     <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "500" }}>{kw}</Text>
                   </View>
                 ))}
+              </View>
+            )}
+            {showSpeakers && speakerSegments.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                  {getUniqueSpeakers(speakerSegments).map((speaker, idx) => {
+                    const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+                    return (
+                      <View key={speaker} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.text }} />
+                        <Text style={{ fontSize: 11, color: colors.muted }}>{speaker}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                {speakerSegments.map((seg, idx) => {
+                  const allSpeakers = getUniqueSpeakers(speakerSegments);
+                  const color = getSpeakerColor(seg.speaker, allSpeakers);
+                  return (
+                    <View key={idx} style={{ marginBottom: 6, paddingLeft: 8, borderLeftWidth: 3, borderLeftColor: color.border }}>
+                      <Text style={{ fontSize: 10, color: color.text, fontWeight: "600", marginBottom: 2 }}>{seg.speaker}</Text>
+                      <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 18 }}>{seg.text}</Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
               {displayedProtocolText}
@@ -1982,7 +2079,70 @@ export default function ProtocolDetailScreen() {
           </View>
         </Modal>
 
-    </ScreenContainer>
+    
+        {/* Email Action Items Modal */}
+        <Modal visible={showEmailModal} animationType="slide" transparent>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "60%" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Aufgaben per E-Mail senden</Text>
+                <Pressable onPress={() => setShowEmailModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+                  <MaterialIcons name="close" size={24} color={colors.muted} />
+                </Pressable>
+              </View>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
+                {displayedTodos.length} Aufgabe(n) werden als E-Mail versendet
+              </Text>
+              <TextInput
+                value={emailRecipient}
+                onChangeText={setEmailRecipient}
+                placeholder="E-Mail-Adresse eingeben"
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={{ 
+                  backgroundColor: colors.surface, 
+                  borderRadius: 12, 
+                  padding: 14, 
+                  fontSize: 15, 
+                  color: colors.foreground,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  marginBottom: 16,
+                }}
+              />
+              <ScrollView style={{ maxHeight: 200, marginBottom: 16 }}>
+                {displayedTodos.map((todo, i) => (
+                  <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, color: todo.priority === "hoch" ? colors.error : todo.priority === "mittel" ? colors.warning : colors.success }}>●</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, color: colors.foreground }}>{todo.task}</Text>
+                      <Text style={{ fontSize: 11, color: colors.muted }}>{todo.assignee} • {todo.deadline}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+              <Pressable
+                onPress={sendTodosViaEmail}
+                disabled={isSendingEmail || !emailRecipient}
+                style={({ pressed }) => [{
+                  backgroundColor: emailRecipient ? colors.primary : colors.border,
+                  borderRadius: 12,
+                  padding: 14,
+                  alignItems: "center",
+                  opacity: pressed ? 0.8 : 1,
+                }]}
+              >
+                {isSendingEmail ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>📧 E-Mail senden</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+</ScreenContainer>
   );
 }
 

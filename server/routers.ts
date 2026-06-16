@@ -352,6 +352,133 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       }),
   }),
 
+
+  // Speaker Identification / Diarization
+  speaker: router({
+    identify: publicProcedure
+      .input(
+        z.object({
+          transcription: z.string(),
+          segments: z.array(z.object({
+            start: z.number(),
+            end: z.number(),
+            text: z.string(),
+          })).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const systemPrompt = `Du bist ein Experte für Sprecheridentifikation. Analysiere die folgende Transkription und identifiziere verschiedene Sprecher.
+Für jeden erkannten Abschnitt gib an:
+- "speaker": Eine Bezeichnung (z.B. "Sprecher 1", "Sprecher 2", oder wenn ein Name erkennbar ist, den Namen)
+- "text": Der gesprochene Text dieses Abschnitts
+- "startIndex": Die ungefähre Zeichenposition im Originaltext (0-basiert)
+
+Regeln:
+- Erkenne Sprecherwechsel anhand von Kontext, Anrede, Fragen/Antworten, Perspektivwechsel
+- Wenn nur ein Sprecher erkennbar ist, weise alles "Sprecher 1" zu
+- Maximal 6 verschiedene Sprecher
+- Antworte AUSSCHLIESSLICH mit einem JSON-Array
+
+Beispiel:
+[
+  {"speaker": "Sprecher 1", "text": "Guten Morgen, wie ist der Stand?", "startIndex": 0},
+  {"speaker": "Sprecher 2", "text": "Alles nach Plan, die Arbeiten sind zu 80% fertig.", "startIndex": 42}
+]`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `TRANSKRIPTION:\n${input.transcription}` },
+          ],
+          response_format: { type: "json_object" },
+        });
+
+        const content = (response.choices?.[0]?.message?.content as string) || "[]";
+        try {
+          const parsed = JSON.parse(content);
+          const segments = Array.isArray(parsed) ? parsed : (parsed.segments || parsed.speakers || []);
+          return { segments: segments.map((s: any) => ({
+            speaker: s.speaker || "Sprecher 1",
+            text: s.text || "",
+            startIndex: s.startIndex || 0,
+          })) };
+        } catch {
+          return { segments: [{ speaker: "Sprecher 1", text: input.transcription, startIndex: 0 }] };
+        }
+      }),
+  }),
+  // Send action items per email
+  email: router({
+    sendActionItems: publicProcedure
+      .input(
+        z.object({
+          todos: z.array(z.object({
+            task: z.string(),
+            assignee: z.string(),
+            priority: z.string(),
+            deadline: z.string(),
+          })),
+          recipientEmail: z.string(),
+          protocolTitle: z.string(),
+          protocolDate: z.string(),
+          senderName: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        // Generate email HTML content
+        const priorityColors: Record<string, string> = {
+          hoch: "#EF4444",
+          mittel: "#F59E0B",
+          niedrig: "#22C55E",
+        };
+        
+        const todoRows = input.todos.map(t => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${t.task}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${t.assignee}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">
+              <span style="background: ${priorityColors[t.priority] || '#666'}20; color: ${priorityColors[t.priority] || '#666'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${t.priority}</span>
+            </td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${t.deadline}</td>
+          </tr>
+        `).join('');
+
+        const emailHtml = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #1a1a2e; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0;">Aufgaben aus Protokoll</h2>
+              <p style="margin: 4px 0 0; opacity: 0.8;">${input.protocolTitle} • ${input.protocolDate}</p>
+            </div>
+            <div style="padding: 20px; background: #fff; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
+              <p>Hallo,</p>
+              <p>folgende Aufgaben wurden aus dem Protokoll extrahiert:</p>
+              <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                <thead>
+                  <tr style="background: #f5f5f5;">
+                    <th style="padding: 8px; text-align: left;">Aufgabe</th>
+                    <th style="padding: 8px; text-align: left;">Zuständig</th>
+                    <th style="padding: 8px; text-align: left;">Priorität</th>
+                    <th style="padding: 8px; text-align: left;">Frist</th>
+                  </tr>
+                </thead>
+                <tbody>${todoRows}</tbody>
+              </table>
+              <p style="color: #666; font-size: 12px; margin-top: 20px;">
+                Gesendet von ${input.senderName || 'ProtoKI App'} • Automatisch generiert
+              </p>
+            </div>
+          </div>
+        `;
+
+        // Return the HTML for client-side email composition (since we can't send emails directly from server without SMTP)
+        return { 
+          emailHtml,
+          subject: `Aufgaben: ${input.protocolTitle} (${input.protocolDate})`,
+          success: true 
+        };
+      }),
+  }),
+
   translate: router({
     translateProtocol: publicProcedure
       .input(

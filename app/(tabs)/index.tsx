@@ -22,6 +22,7 @@ import {
   setAudioModeAsync,
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
+import { useRealtimeTranscription } from "@/lib/realtime-transcription";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
@@ -45,6 +46,7 @@ type RecordingMode = "audio" | "audio-photo";
 
 export default function RecordScreen() {
   const colors = useColors();
+  const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText } = useRealtimeTranscription();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraZoom, setCameraZoom] = useState(0);
@@ -512,6 +514,7 @@ export default function RecordScreen() {
 
   // --- UNIFIED RECORDING CONTROLS ---
   const startRecording = () => {
+    startListening();
     // Capture location and weather at recording start
     if (Platform.OS !== "web") {
       getCurrentLocation().then((loc) => {
@@ -524,6 +527,7 @@ export default function RecordScreen() {
   };
 
   const stopRecording = () => {
+    stopListening();
     stopAudioRecording();
   };
 
@@ -748,6 +752,9 @@ export default function RecordScreen() {
               </View>
               <View>
                 <Text style={{ fontSize: 22, fontWeight: "800", color: colors.foreground }}>Projekt wählen</Text>
+              {isListening && liveText ? (
+                <Text style={{ fontSize: 12, color: "#22C55E", marginTop: 6, textAlign: "center", maxWidth: 280 }} numberOfLines={2}>{liveText}</Text>
+              ) : null}
               </View>
             </View>
             <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>Wähle ein Projekt oder starte ohne Zuordnung</Text>

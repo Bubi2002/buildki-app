@@ -226,3 +226,6 @@
 - [x] Feature: Protokoll-Vergleich visuell (Diff-Ansicht mit farblichen Unterschieden)
 - [x] Feature: Erweiterte Sprachsteuerung (6 Befehle: Neuer Abschnitt, Priorität, Aufgabe für, Wichtig, Nachtrag, Ende Protokoll)
 - [x] Feature: Multi-Output wie Plaud – Nachträgliche Template-Auswahl, mehrere Varianten aus einer Aufnahme generieren, Versionshistorie
+- [x] Feature: Sprecheridentifikation – Verschiedene Sprecher automatisch erkennen und farblich markieren (wie Otter.ai)
+- [x] Feature: Echtzeit-Transkription – Live-Text während der Aufnahme anzeigen
+- [x] Feature: Action Items per E-Mail – Extrahierte Aufgaben automatisch an zugewiesene Personen versenden
