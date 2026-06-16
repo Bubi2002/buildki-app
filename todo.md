@@ -219,6 +219,10 @@
 - [x] Feature: Foto-Reihenfolge per Drag-and-Drop in Detailansicht ändern
 - [x] Feature: PDF-Vorschau in-App vor dem Export
 - [x] Feature: Sprachnotiz pro Foto beim Aufnehmen (kurze Audio-Annotation)
-- [ ] Feature: Sprachnotiz-Wiedergabe in Detailansicht (Play-Button bei Fotos mit Voice Note)
-- [ ] Feature: Foto-Galerie mit Vollbild-Swipe (zwischen Fotos wischen)
-- [ ] Feature: PDF-Template-Auswahl (kompakt, detailliert, mit/ohne Fotos)
+- [x] Feature: Sprachnotiz-Wiedergabe in Detailansicht (Play-Button bei Fotos mit Voice Note)
+- [x] Feature: Foto-Galerie mit Vollbild-Swipe (zwischen Fotos wischen)
+- [x] Feature: PDF-Template-Auswahl (kompakt, detailliert, mit/ohne Fotos)
+- [x] Feature: Automatischer PDF-Versand per E-Mail nach Fertigstellung
+- [x] Feature: Protokoll-Vergleich visuell (Diff-Ansicht mit farblichen Unterschieden)
+- [x] Feature: Erweiterte Sprachsteuerung (6 Befehle: Neuer Abschnitt, Priorität, Aufgabe für, Wichtig, Nachtrag, Ende Protokoll)
+- [x] Feature: Multi-Output wie Plaud – Nachträgliche Template-Auswahl, mehrere Varianten aus einer Aufnahme generieren, Versionshistorie

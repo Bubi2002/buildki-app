@@ -80,7 +80,17 @@ type Protocol = {
   projectId?: string;
   projectName?: string;
   protocolNumber?: string;
+  generatedVersions?: GeneratedVersion[];
+  activeVersionId?: string;
+};
 
+type GeneratedVersion = {
+  id: string;
+  templateId: string;
+  templateName: string;
+  text: string;
+  createdAt: string;
+  todos?: TodoItem[];
 };
 
 export default function ProtocolDetailScreen() {
@@ -124,11 +134,24 @@ export default function ProtocolDetailScreen() {
   const [showGallery, setShowGallery] = useState(false);
   // Voice note playback
   const [playingVoiceNote, setPlayingVoiceNote] = useState<number | null>(null);
+  // Multi-output (Plaud-style)
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [versions, setVersions] = useState<GeneratedVersion[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  const [availableTemplates, setAvailableTemplates] = useState<{id: string; name: string; icon: string; description: string}[]>([]);
 
   useEffect(() => {
     loadProtocol();
     loadFeatureFlags();
+    loadTemplates();
   }, [id]);
+
+  const loadTemplates = async () => {
+    const { getAllTemplates } = require("@/shared/templates");
+    const templates = await getAllTemplates();
+    setAvailableTemplates(templates.map((t: any) => ({ id: t.id, name: t.name, icon: t.icon, description: t.description })));
+  };
 
   // Auto-refresh while protocol is still processing in background
   useEffect(() => {
@@ -167,6 +190,11 @@ export default function ProtocolDetailScreen() {
         if ((found as any).signaturePaths) setSignaturePaths((found as any).signaturePaths);
         if ((found as any).signatureData) setSignatureData((found as any).signatureData);
         if ((found as any).signatures) setSignatures((found as any).signatures);
+        // Load generated versions
+        if (found.generatedVersions) {
+          setVersions(found.generatedVersions);
+          setActiveVersionId(found.activeVersionId || null);
+        }
       }
     } catch (error) {
       console.error("Error loading protocol:", error);
@@ -262,6 +290,77 @@ export default function ProtocolDetailScreen() {
       setIsGeneratingSummary(false);
     }
   };
+
+  // Multi-output: Regenerate with different template (Plaud-style)
+  const protocolMutation = trpc.protocol.generate.useMutation();
+  const todosMutation = trpc.protocol.extractTodos.useMutation();
+
+  const regenerateWithTemplate = async (templateId: string) => {
+    if (!protocol) return;
+    setIsRegenerating(true);
+    setShowRegenerateModal(false);
+    try {
+      const result = await protocolMutation.mutateAsync({
+        transcription: protocol.transcription,
+        templateId,
+      });
+      // Extract todos for this version
+      let versionTodos: TodoItem[] = [];
+      try {
+        const todosResult = await todosMutation.mutateAsync({
+          transcription: protocol.transcription,
+          protocolText: result.protocol,
+        });
+        versionTodos = (todosResult.todos || []).map((t: any) => ({ ...t, done: false }));
+      } catch { /* ignore todo extraction errors */ }
+      const newVersion: GeneratedVersion = {
+        id: Date.now().toString(),
+        templateId,
+        templateName: result.templateName,
+        text: result.protocol,
+        todos: versionTodos,
+        createdAt: new Date().toISOString(),
+      };
+      const updatedVersions = [...versions, newVersion];
+      setVersions(updatedVersions);
+      setActiveVersionId(newVersion.id);
+      // Persist to AsyncStorage
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].generatedVersions = updatedVersions;
+        protocols[idx].activeVersionId = newVersion.id;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      }
+    } catch (error) {
+      console.error("Error regenerating:", error);
+      Alert.alert("Fehler", "Protokoll konnte nicht neu generiert werden.");
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const switchToVersion = (versionId: string | null) => {
+    setActiveVersionId(versionId);
+  };
+
+  const deleteVersion = async (versionId: string) => {
+    const updatedVersions = versions.filter(v => v.id !== versionId);
+    setVersions(updatedVersions);
+    if (activeVersionId === versionId) setActiveVersionId(null);
+    // Persist
+    const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+    const idx = protocols.findIndex((p: Protocol) => p.id === id);
+    if (idx !== -1) {
+      protocols[idx].generatedVersions = updatedVersions;
+      if (protocols[idx].activeVersionId === versionId) delete protocols[idx].activeVersionId;
+      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+    }
+  };
+
+  const displayedProtocolText = activeVersionId
+    ? versions.find(v => v.id === activeVersionId)?.text || protocol?.protocol || ""
+    : protocol?.protocol || "";
 
   const exportPdf = async () => {
     if (!protocol) return;
@@ -1030,18 +1129,69 @@ export default function ProtocolDetailScreen() {
           )}
         </View>
 
-        {/* Protocol content */}
+        {/* Protocol content with multi-output versions */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Protokoll</Text>
-            <Pressable
-              onPress={isEditing ? saveEdit : startEditing}
-              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: isEditing ? colors.success + "15" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name={isEditing ? "check" : "edit"} size={14} color={isEditing ? colors.success : colors.muted} />
-              <Text style={{ fontSize: 12, color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              <Pressable
+                onPress={() => setShowRegenerateModal(true)}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="auto-awesome" size={14} color={colors.primary} />
+                <Text style={{ fontSize: 12, color: colors.primary }}>Neu generieren</Text>
+              </Pressable>
+              <Pressable
+                onPress={isEditing ? saveEdit : startEditing}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: isEditing ? colors.success + "15" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name={isEditing ? "check" : "edit"} size={14} color={isEditing ? colors.success : colors.muted} />
+                <Text style={{ fontSize: 12, color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
+              </Pressable>
+            </View>
           </View>
+
+          {/* Version tabs */}
+          {versions.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
+              <Pressable
+                onPress={() => switchToVersion(null)}
+                style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: !activeVersionId ? colors.primary : colors.surface, borderWidth: 1, borderColor: !activeVersionId ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "500", color: !activeVersionId ? "#FFFFFF" : colors.muted }}>
+                  Original ({protocol.templateName || "Freitext"})
+                </Text>
+              </Pressable>
+              {versions.map((v) => (
+                <View key={v.id} style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Pressable
+                    onPress={() => switchToVersion(v.id)}
+                    style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: activeVersionId === v.id ? colors.primary : colors.surface, borderWidth: 1, borderColor: activeVersionId === v.id ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: "500", color: activeVersionId === v.id ? "#FFFFFF" : colors.muted }}>
+                      {v.templateName}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => deleteVersion(v.id)}
+                    style={({ pressed }) => [{ marginLeft: 2, padding: 4, opacity: pressed ? 0.5 : 1 }]}
+                  >
+                    <MaterialIcons name="close" size={12} color={colors.error} />
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Regenerating indicator */}
+          {isRegenerating && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: colors.primary + "08", borderRadius: 8, marginBottom: 12 }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.primary }}>Wird neu generiert...</Text>
+            </View>
+          )}
+
+          {/* Protocol text */}
           {isEditing ? (
             <TextInput
               value={editedText}
@@ -1051,7 +1201,7 @@ export default function ProtocolDetailScreen() {
             />
           ) : (
             <Text style={[styles.protocolText, { color: colors.foreground }]}>
-              {protocol.protocol}
+              {displayedProtocolText}
             </Text>
           )}
         </View>
