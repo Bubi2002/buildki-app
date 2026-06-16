@@ -580,6 +580,43 @@ Wichtige Regeln:
         return { translated, targetLanguage: input.targetLanguage };
       }),
   }),
+
+  agenda: router({
+    generateSuggestions: publicProcedure
+      .input(z.object({
+        protocols: z.array(z.object({
+          id: z.string(),
+          title: z.string(),
+          text: z.string(),
+          todos: z.array(z.object({
+            task: z.string(),
+            done: z.boolean(),
+            priority: z.string().optional(),
+          })).optional(),
+        })),
+        meetingTitle: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const protocolSummaries = input.protocols.map(p => 
+          `Protokoll "${p.title}": ${p.text.slice(0, 500)}...\nOffene Aufgaben: ${(p.todos || []).filter(t => !t.done).map(t => t.task).join(", ")}`
+        ).join("\n\n");
+        
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "Du bist ein Meeting-Assistent. Basierend auf vorherigen Protokollen, erstelle 5-8 konkrete Agenda-Vorschlaege. Antworte als JSON-Array mit Objekten: {title: string, priority: hoch|mittel|niedrig, estimatedMinutes: number, reason: string}" },
+            { role: "user", content: `Vorherige Protokolle:\n${protocolSummaries}\n\nErstelle Agenda-Vorschlaege fuer: ${input.meetingTitle || "naechstes Meeting"}` },
+          ],
+        });
+        
+        try {
+          const respContent = (response.choices?.[0]?.message?.content as string) || "[]";
+          const jsonMatch = respContent.match(/\[.*\]/s);
+          return { suggestions: jsonMatch ? JSON.parse(jsonMatch[0]) : [] };
+        } catch {
+          return { suggestions: [] };
+        }
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

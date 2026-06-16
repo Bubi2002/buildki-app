@@ -244,3 +244,6 @@
 - [x] Feature: Protokoll-Vorlagen-Editor – Eigene Templates erstellen und bearbeiten (Struktur, Felder, Formatierung)
 - [x] Feature: Batch-Export – Mehrere Protokolle gleichzeitig als ZIP/PDF exportieren
 - [x] Feature: Wiederkehrende Meetings – Automatisch Protokolle für regelmäßige Termine vorbereiten
+- [x] Feature: Protokoll-Vorlagen-Marktplatz – Vorlagen mit anderen Nutzern teilen und importieren
+- [x] Feature: KI-gestützte Agenda-Vorbereitung – Aus vorherigen Protokollen automatisch Agenda-Punkte vorschlagen
+- [x] Feature: Aufgaben-Kanban-Board – Visuelle Aufgabenverwaltung mit Drag-and-Drop (Offen/In Arbeit/Erledigt)

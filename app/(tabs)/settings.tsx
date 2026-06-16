@@ -1054,6 +1054,42 @@ return (
                       <MaterialIcons name="check-circle" size={18} color={colors.primary} />
                     )}
                   </Pressable>
+          {/* Vorlagen-Marktplatz */}
+          <Pressable
+            onPress={() => router.push("/template-marketplace" as any)}
+            style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="store" size={22} color={colors.primary} />
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Vorlagen-Marktplatz</Text>
+              <Text style={[styles.settingDesc, { color: colors.muted }]}>Vorlagen entdecken und teilen</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+          {/* Agenda-Vorbereitung */}
+          <Pressable
+            onPress={() => router.push("/agenda-preparation" as any)}
+            style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="event-note" size={22} color={colors.primary} />
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Agenda-Vorbereitung</Text>
+              <Text style={[styles.settingDesc, { color: colors.muted }]}>KI-gestützte Meeting-Agenden erstellen</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+          {/* Kanban Board */}
+          <Pressable
+            onPress={() => router.push("/kanban" as any)}
+            style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="view-kanban" size={22} color={colors.primary} />
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Kanban Board</Text>
+              <Text style={[styles.settingDesc, { color: colors.muted }]}>Aufgaben visuell verwalten</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
                   <View style={{ flexDirection: "row", gap: 4, paddingRight: 8 }}>
                     <Pressable onPress={() => router.push(`/template-editor?editId=${template.id}` as any)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
                       <MaterialIcons name="edit" size={18} color={colors.muted} />
@@ -2144,5 +2180,23 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "500",
+  },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  settingInfo: {
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  settingDesc: {
+    fontSize: 11,
+    marginTop: 2,
   },
 });
