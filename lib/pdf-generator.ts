@@ -486,9 +486,14 @@ function generatePdfHtml(
     ${protocolHtml}
   </div>
 
-  ${planHtml}
-
-  ${photosHtml}
+  ${isDetailed && protocol.transcription ? `
+  <div style="margin-bottom: 20px; page-break-before: auto;">
+    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Originaltranskription</h3>
+    <div style="font-size: 10px; color: #555; line-height: 1.6; white-space: pre-wrap; background: #f9f9f9; padding: 12px; border-radius: 6px; border: 1px solid #eee;">${protocol.transcription}</div>
+  </div>
+  ` : ''}
+  ${showPhotos ? planHtml : ''}
+  ${showPhotos ? (isCompact ? photosHtml.replace(/max-height: 280px/g, 'max-height: 140px').replace(/flex: 0 0 55%/g, 'flex: 0 0 35%') : photosHtml) : ''}
 
   ${protocol.signatures && protocol.signatures.length > 0 ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">
