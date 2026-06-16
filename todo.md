@@ -252,3 +252,8 @@
 - [x] UI: Protokoll-Detail KI-Werkzeuge – Plaud-Style Auswahl mit großen Karten statt kleiner Buttons
 - [x] UI: Verbesserte Lesbarkeit – Größere Schriften, bessere Abstände, klarere Hierarchie
 - [x] Feature: Foto-Export über Cloud-Dienste (Dropbox, Google Drive, OneDrive) – Bilder aus Protokollen direkt in Cloud-Speicher exportieren
+- [x] Analyse: Plaud-PDF-Beispiele auswerten (Zusammenfassung, Begründungszusammenfassung, Besprechungszusammenfassung, Sitzungsprotokoll)
+- [x] Feature: Plaud-ähnliche Output-Typen in KI-Auswahl integrieren (4 Plaud-Formate hinzugefügt)
+- [x] Feature: PDF-Layout an Plaud-Struktur anpassen (Titel, Executive Summary, thematische Sektionen, nächste Schritte)
+- [x] Feature: Prompt-Logik pro Dokumenttyp an Plaud-Beispielen ausrichten
+- [x] QA: Plaud-Stil für Generierung und PDF-Export verifizieren

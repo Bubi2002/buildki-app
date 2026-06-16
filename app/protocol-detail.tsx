@@ -2094,6 +2094,16 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="edit" size={24} color="#FFFFFF" />
               <Text style={styles.modalShareText}>Annotieren</Text>
             </Pressable>
+            <Pressable
+              onPress={() => {
+                setShowGallery(false);
+                router.push({ pathname: "/cloud-photo-export", params: { photos: JSON.stringify(photos), projectName: protocol?.title || "Protokoll" } } as any);
+              }}
+              style={({ pressed }) => [styles.modalShareButton, { backgroundColor: "#0EA5E9", opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="cloud-upload" size={24} color="#FFFFFF" />
+              <Text style={styles.modalShareText}>Cloud</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -2278,27 +2288,49 @@ export default function ProtocolDetailScreen() {
         {/* Regenerate Template Modal */}
         <Modal visible={showRegenerateModal} animationType="slide" transparent onRequestClose={() => setShowRegenerateModal(false)}>
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
-            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "70%" }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neue Version generieren</Text>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: "80%" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.foreground }}>KI-Ausgabeformat wählen</Text>
                 <Pressable onPress={() => setShowRegenerateModal(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
                   <MaterialIcons name="close" size={24} color={colors.foreground} />
                 </Pressable>
               </View>
-              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Wähle ein Template für die neue Version:</Text>
-              <ScrollView>
-                {availableTemplates.map((t) => (
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Generiere eine neue Version aus der Original-Aufnahme:</Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Plaud-Style Formate */}
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Plaud-Formate</Text>
+                {availableTemplates.filter(t => t.id.includes("plaud")).map((t) => (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: colors.primary + "06", borderRadius: 14, marginBottom: 8, borderWidth: 1.5, borderColor: colors.primary + "30", opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                      <MaterialIcons name={(t as any).icon || "auto-awesome"} size={22} color={colors.primary} />
+                    </View>
+                    <View style={{ marginLeft: 14, flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>{t.name.replace(" (Plaud)", "")}</Text>
+                      <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t.description}</Text>
+                    </View>
+                    <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
+                  </Pressable>
+                ))}
+                {/* Fach-Templates */}
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 10 }}>Fach-Vorlagen</Text>
+                {availableTemplates.filter(t => !t.id.includes("plaud")).map((t) => (
                   <Pressable
                     key={t.id}
                     onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}
                     style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, backgroundColor: colors.surface, borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <MaterialIcons name="description" size={20} color={colors.primary} />
+                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.border + "40", alignItems: "center", justifyContent: "center" }}>
+                      <MaterialIcons name={(t as any).icon || "description"} size={18} color={colors.muted} />
+                    </View>
                     <View style={{ marginLeft: 12, flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t.name}</Text>
-                      <Text style={{ fontSize: 11, color: colors.muted }}>{t.description}</Text>
+                      <Text style={{ fontSize: 11, color: colors.muted, marginTop: 1 }}>{t.description}</Text>
                     </View>
-                    <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                    <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
                   </Pressable>
                 ))}
               </ScrollView>
