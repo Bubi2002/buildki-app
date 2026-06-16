@@ -17,6 +17,8 @@ import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTeamContacts, saveTeamContact, deleteTeamContact, TeamContact } from "@/lib/team-contacts";
 import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
+import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-profiles";
+import { getDelegations, TaskDelegation } from "@/lib/task-delegation";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
@@ -839,9 +841,13 @@ export default function SettingsScreen() {
   const [tcEmail, setTcEmail] = useState("");
   const [tcRole, setTcRole] = useState("");
   const [speakerProfiles, setSpeakerProfiles] = useState<SpeakerProfile[]>([]);
+  const [voiceProfiles, setVoiceProfiles] = useState<VoiceProfile[]>([]);
+  const [delegations, setDelegations] = useState<TaskDelegation[]>([]);
 
   useEffect(() => {
     loadTeamContacts();
+    loadVoiceProfiles();
+    loadDelegations();
     loadSpeakerProfiles();
   }, []);
 
@@ -854,6 +860,22 @@ export default function SettingsScreen() {
     const profiles = await getSpeakerProfiles();
     setSpeakerProfiles(profiles);
   };
+
+  const loadVoiceProfiles = async () => {
+    const profiles = await getVoiceProfiles();
+    setVoiceProfiles(profiles);
+  };
+
+  const loadDelegations = async () => {
+    const dels = await getDelegations();
+    setDelegations(dels);
+  };
+
+  const handleDeleteVoiceProfile = async (id: string) => {
+    await deleteVoiceProfile(id);
+    loadVoiceProfiles();
+  };
+
 
   const handleAddTeamContact = async () => {
     if (!tcName.trim() || !tcEmail.trim()) return;
@@ -1734,7 +1756,49 @@ return (
           </View>
         )}
 
-        {/* Feature-Toggles */}
+        
+        {/* Stimmprofile */}
+        {voiceProfiles.length > 0 && (
+          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Stimmprofile</Text>
+            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Automatisch erkannte Stimmcharakteristiken für Sprecher-Zuweisung.</Text>
+            {voiceProfiles.map(profile => (
+              <View key={profile.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#8B5CF620", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                  <Text style={{ fontSize: 14 }}>🎙️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "500" }}>{profile.name}</Text>
+                  <Text style={{ fontSize: 11, color: "#687076" }}>{profile.detectionCount}x erkannt • {Math.round(profile.confidence * 100)}% Konfidenz</Text>
+                </View>
+                <Pressable onPress={() => handleDeleteVoiceProfile(profile.id)} style={{ padding: 6 }}>
+                  <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Delegierte Aufgaben */}
+        {delegations.length > 0 && (
+          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Delegierte Aufgaben</Text>
+            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Übersicht aller delegierten Aufgaben und deren Status.</Text>
+            {delegations.slice(0, 10).map(del => (
+              <View key={del.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
+                <Text style={{ fontSize: 13, fontWeight: "500" }}>{del.taskText}</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, color: "#687076" }}>👤 {del.assignee}</Text>
+                  <Text style={{ fontSize: 11, color: del.status === "completed" ? "#22C55E" : del.status === "sent" ? "#0a7ea4" : "#F59E0B" }}>
+                    {del.status === "completed" ? "✓ Erledigt" : del.status === "sent" ? "📤 Gesendet" : "⏳ Ausstehend"}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+{/* Feature-Toggles */}
         <FeatureTogglesSection colors={colors} />
 
         <Pressable

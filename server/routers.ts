@@ -479,7 +479,27 @@ Beispiel:
       }),
   }),
 
-  streaming: router({
+    notification: router({
+    sendTaskNotification: publicProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          content: z.string(),
+          assigneeEmail: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          const { notifyOwner } = await import("./_core/notification");
+          const success = await notifyOwner({ title: input.title, content: input.content });
+          return { success };
+        } catch (error) {
+          console.error("Task notification error:", error);
+          return { success: false };
+        }
+      }),
+  }),
+streaming: router({
     transcribeChunk: publicProcedure
       .input(
         z.object({

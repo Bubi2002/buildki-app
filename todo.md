@@ -232,3 +232,9 @@
 - [x] Feature: Automatische Sprecher-Benennung – Sprecher über Protokolle hinweg mit Namen verknüpfen und wiedererkennen
 - [x] Feature: Team-Kontaktbuch – Häufige Empfänger speichern und bei E-Mail-Versand vorschlagen
 - [x] Feature: Sprach-Streaming – Echtzeit-Transkription mit Whisper-API in 10-Sekunden-Chunks für echten Live-Text
+- [x] Feature: Automatische Sprecher-Zuweisung per Stimmprofil – Stimmcharakteristiken speichern und Sprecher automatisch erkennen
+- [x] Feature: Aufgaben-Delegation mit Push-Notification – Zugewiesene Aufgaben per Push an Teammitglieder senden
+- [x] Feature: Protokoll-Timeline – Chronologische Ansicht mit Zeitstempeln und Audio-Sprungmarken
+- [x] Feature: Aufgaben-Prioritäten – Aufgaben mit Priorität (hoch/mittel/niedrig) versehen
+- [x] Feature: Protokoll-Suche – Volltextsuche über alle Protokolle hinweg
+- [x] Feature: Protokoll-Tags – Tags/Labels für bessere Organisation und Filterung

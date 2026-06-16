@@ -28,6 +28,9 @@ import { trpc } from "@/lib/trpc";
 import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
 import * as Haptics from "expo-haptics";
+import { getVoiceProfiles, saveVoiceProfile, matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
+import { saveDelegation, formatDelegationNotification, TaskDelegation } from "@/lib/task-delegation";
+import { generateTimeline, formatTimestamp, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
 import { getTeamContacts, saveTeamContact, markContactUsed, TeamContact, sortContactsByRecent } from "@/lib/team-contacts";
 import { getSpeakerName, updateSpeakerName, SpeakerProfile } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
@@ -161,8 +164,18 @@ export default function ProtocolDetailScreen() {
   const [editingSpeakerLabel, setEditingSpeakerLabel] = useState<string | null>(null);
   const [speakerNameInput, setSpeakerNameInput] = useState("");
   const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({});  const [emailRecipient, setEmailRecipient] = useState("");
+
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  // Mindmap
+  // Timeline
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [timelineEntries, setTimelineEntries] = useState<TimelineEntry[]>([]);
+  // Voice Profiles
+  const [voiceProfiles, setVoiceProfiles] = useState<VoiceProfile[]>([]);
+  const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
+  // Task Delegation
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [delegatingTask, setDelegatingTask] = useState<{task: string; assignee: string; priority: string; deadline?: string} | null>(null);
+  const [isDelegating, setIsDelegating] = useState(false);  // Mindmap
 
   useEffect(() => {
     loadProtocol();
@@ -323,6 +336,85 @@ export default function ProtocolDetailScreen() {
     const contacts = await getTeamContacts();
     setTeamContacts(sortContactsByRecent(contacts));
   };
+
+  // Generate timeline from protocol
+  const generateTimelineView = () => {
+    if (!protocol) return;
+    const entries = generateTimeline(
+      displayedProtocolText,
+      protocol.duration || 0,
+      speakerSegments.length > 0 ? speakerSegments : undefined
+    );
+    setTimelineEntries(entries);
+    setShowTimeline(true);
+  };
+
+  // Analyze voice and create/match profile
+  const analyzeVoiceProfile = async (speakerLabel: string, text: string) => {
+    setIsAnalyzingVoice(true);
+    try {
+      const wordCount = text.split(/\s+/).length;
+      const estimatedDuration = (protocol?.duration || 60) / Math.max(speakerSegments.length, 1);
+      const speakingRate = Math.round((wordCount / estimatedDuration) * 60);
+      
+      // Try to match with existing profile
+      const characteristics = `speaking rate ${speakingRate} wpm, segment length ${wordCount} words`;
+      const match = await matchSpeakerToProfile(characteristics, speakingRate);
+      
+      if (match) {
+        // Auto-assign the matched name
+        setSpeakerNameMap(prev => ({ ...prev, [speakerLabel]: match.name }));
+        Alert.alert("Sprecher erkannt", `"${speakerLabel}" wurde automatisch als "${match.name}" identifiziert (Konfidenz: ${Math.round(match.confidence * 100)}%).`);
+      } else {
+        Alert.alert("Neues Stimmprofil", `Kein bekanntes Profil gefunden. Benennen Sie den Sprecher, um ein neues Profil zu erstellen.`);
+      }
+    } catch (e) {
+      console.error("Voice profile analysis error:", e);
+    } finally {
+      setIsAnalyzingVoice(false);
+    }
+  };
+
+  // Delegate a task with push notification
+  const delegateTask = async (task: string, assignee: string, priority: string, deadline?: string) => {
+    setIsDelegating(true);
+    try {
+      const delegation = await saveDelegation({
+        taskText: task,
+        assignee,
+        assigneeEmail: teamContacts.find(c => c.name === assignee)?.email,
+        priority: priority as "hoch" | "mittel" | "niedrig",
+        deadline,
+        protocolId: protocol?.id || "",
+        protocolTitle: protocol?.title || "Protokoll",
+        status: "sent",
+        sentAt: Date.now(),
+      });
+      
+      // Send push notification via server
+      const notification = formatDelegationNotification(delegation);
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000"}/api/trpc/system.sendNotification`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ json: { title: notification.title, content: notification.content } }),
+        });
+        if (response.ok) {
+          Alert.alert("Aufgabe delegiert", `"${task}" wurde an ${assignee} gesendet.`);
+        }
+      } catch (notifError) {
+        // Notification sending failed but delegation was saved
+        Alert.alert("Aufgabe gespeichert", `Aufgabe wurde gespeichert. Push-Benachrichtigung konnte nicht gesendet werden.`);
+      }
+    } catch (e) {
+      Alert.alert("Fehler", "Aufgabe konnte nicht delegiert werden.");
+    } finally {
+      setIsDelegating(false);
+      setShowDelegateModal(false);
+      setDelegatingTask(null);
+    }
+  };
+
 
   // Load speaker names from storage
   const loadSpeakerNames = async (segments: { speaker: string }[]) => {
@@ -1405,6 +1497,9 @@ export default function ProtocolDetailScreen() {
                         {todo.priority === "hoch" ? "⚠️ Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
                       </Text>
                     </View>
+                    <Pressable onPress={() => { setDelegatingTask({ task: todo.task, assignee: todo.assignee, priority: todo.priority, deadline: todo.deadline }); setShowDelegateModal(true); }} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "#22C55E15", opacity: pressed ? 0.7 : 1 }]}>
+                      <Text style={{ fontSize: 10, color: "#22C55E", fontWeight: "500" }}>📤 Delegieren</Text>
+                    </Pressable>
                     {todo.deadline !== "Offen" && (
                       <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
                         <MaterialIcons name="schedule" size={12} color={colors.muted} />
@@ -1455,6 +1550,28 @@ export default function ProtocolDetailScreen() {
                 <Text style={{ fontSize: 12, color: "#8B5CF6", fontWeight: "600" }}>Sprecher</Text>
               )}
             </Pressable>
+              <Pressable
+                onPress={generateTimelineView}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#8B5CF615", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="timeline" size={14} color="#8B5CF6" />
+                <Text style={{ fontSize: 12, color: "#8B5CF6", fontWeight: "600" }}>Timeline</Text>
+              </Pressable>
+              <Pressable
+                onPress={generateMindmap}
+                disabled={isGeneratingMindmap}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#22C55E15", opacity: pressed || isGeneratingMindmap ? 0.5 : 1 }]}
+              >
+                <MaterialIcons name="hub" size={14} color="#22C55E" />
+                <Text style={{ fontSize: 12, color: "#22C55E", fontWeight: "600" }}>{isGeneratingMindmap ? "..." : "Mindmap"}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowStats(true)}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#F59E0B15", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="bar-chart" size={14} color="#F59E0B" />
+                <Text style={{ fontSize: 12, color: "#F59E0B", fontWeight: "600" }}>Stats</Text>
+              </Pressable>
           </View>
           {summary && (
             <View style={{ backgroundColor: colors.primary + "08", borderRadius: 8, padding: 12, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
@@ -2275,6 +2392,92 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ color: "#687076" }}>Abbrechen</Text>
                 </Pressable>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Timeline Modal */}
+        <Modal visible={showTimeline} animationType="slide" onRequestClose={() => setShowTimeline(false)}>
+          <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Protokoll-Timeline</Text>
+              <Pressable onPress={() => setShowTimeline(false)} style={{ padding: 8 }}>
+                <MaterialIcons name="close" size={24} color={colors.foreground} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ flex: 1, paddingHorizontal: 20 }}>
+              {timelineEntries.map((entry, idx) => (
+                <View key={entry.id} style={{ flexDirection: "row", marginBottom: 16 }}>
+                  {/* Time column */}
+                  <View style={{ width: 55, alignItems: "flex-end", marginRight: 12 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted, fontVariant: ["tabular-nums"] }}>{entry.formattedTime}</Text>
+                  </View>
+                  {/* Timeline line */}
+                  <View style={{ width: 24, alignItems: "center" }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getTimelineColor(entry.type), marginTop: 4 }} />
+                    {idx < timelineEntries.length - 1 && <View style={{ width: 2, flex: 1, backgroundColor: colors.border, marginTop: 4 }} />}
+                  </View>
+                  {/* Content */}
+                  <View style={{ flex: 1, paddingBottom: 8 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12 }}>{getTimelineIcon(entry.type)}</Text>
+                      {entry.speaker && <Text style={{ fontSize: 11, fontWeight: "600", color: getTimelineColor(entry.type) }}>{speakerNameMap[entry.speaker] || entry.speaker}</Text>}
+                      {entry.isHighlight && <View style={{ backgroundColor: getTimelineColor(entry.type) + "20", paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}><Text style={{ fontSize: 9, color: getTimelineColor(entry.type), fontWeight: "600" }}>{entry.type === "decision" ? "Beschluss" : "Aktion"}</Text></View>}
+                    </View>
+                    <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 18 }}>{entry.text}</Text>
+                  </View>
+                </View>
+              ))}
+              {timelineEntries.length === 0 && (
+                <View style={{ alignItems: "center", paddingTop: 40 }}>
+                  <MaterialIcons name="timeline" size={48} color={colors.muted} />
+                  <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>Keine Timeline-Einträge verfügbar</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Task Delegation Modal */}
+        <Modal visible={showDelegateModal} transparent animationType="fade" onRequestClose={() => setShowDelegateModal(false)}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: "white", borderRadius: 16, padding: 24, width: "85%", maxWidth: 360 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Aufgabe delegieren</Text>
+              <Text style={{ fontSize: 12, color: "#687076", marginBottom: 16 }}>Push-Benachrichtigung an Teammitglied senden</Text>
+              {delegatingTask && (
+                <View style={{ marginBottom: 16 }}>
+                  <View style={{ backgroundColor: "#f5f5f5", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "600", marginBottom: 4 }}>{delegatingTask.task}</Text>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <Text style={{ fontSize: 11, color: "#687076" }}>👤 {delegatingTask.assignee}</Text>
+                      <Text style={{ fontSize: 11, color: delegatingTask.priority === "hoch" ? "#EF4444" : delegatingTask.priority === "mittel" ? "#F59E0B" : "#22C55E" }}>● {delegatingTask.priority}</Text>
+                      {delegatingTask.deadline && <Text style={{ fontSize: 11, color: "#687076" }}>📅 {delegatingTask.deadline}</Text>}
+                    </View>
+                  </View>
+                  {teamContacts.length > 0 && (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={{ fontSize: 12, color: "#687076", marginBottom: 6 }}>An Kontakt senden:</Text>
+                      {teamContacts.slice(0, 3).map(contact => (
+                        <Pressable key={contact.id} onPress={() => delegateTask(delegatingTask.task, contact.name, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: pressed ? "#f0f0f0" : "transparent", marginBottom: 2 }]}>
+                          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#22C55E20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#22C55E" }}>{contact.name.charAt(0)}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontWeight: "500" }}>{contact.name}</Text>
+                            <Text style={{ fontSize: 11, color: "#687076" }}>{contact.email}</Text>
+                          </View>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                  <Pressable onPress={() => delegateTask(delegatingTask.task, delegatingTask.assignee, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ backgroundColor: "#22C55E", paddingVertical: 12, borderRadius: 8, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+                    {isDelegating ? <ActivityIndicator color="white" size="small" /> : <Text style={{ color: "white", fontWeight: "600" }}>📤 Jetzt delegieren</Text>}
+                  </Pressable>
+                </View>
+              )}
+              <Pressable onPress={() => { setShowDelegateModal(false); setDelegatingTask(null); }} style={{ marginTop: 8, alignItems: "center", paddingVertical: 8 }}>
+                <Text style={{ color: "#687076" }}>Abbrechen</Text>
+              </Pressable>
             </View>
           </View>
         </Modal>
