@@ -314,6 +314,8 @@ export default function ProtocolsScreen() {
         templateName: item.templateName || "Freies Protokoll",
         protocol: item.protocol,
         photos: item.photos,
+        photoTimestamps: (item as any).photoTimestamps || undefined,
+        transcriptionSegments: (item as any).transcriptionSegments || undefined,
         projectName: item.projectName,
         protocolNumber: item.protocolNumber,
       });

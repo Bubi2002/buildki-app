@@ -69,7 +69,7 @@ export function isJobActive(protocolId: string): boolean {
  */
 export async function startBackgroundProcessing(job: PendingJob, apiClient: {
   upload: (base64: string, mimeType: string, filename: string) => Promise<{ url: string }>;
-  transcribe: (audioUrl: string, language: string) => Promise<{ text: string }>;
+  transcribe: (audioUrl: string, language: string) => Promise<{ text: string; segments?: Array<{ start: number; end: number; text: string }> }>;
   generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: Array<{ time: number; label: string }>, photoCount?: number) => Promise<{ protocol: string }>;
   extractTodos: (transcription: string, protocolText: string) => Promise<{ todos: Array<{ task: string; assignee: string; priority: string; deadline: string }> }>;
 }) {
@@ -105,7 +105,8 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     }
     
     const transcription = await apiClient.transcribe(audioUrl, "de");
-    console.log(`[BG-Processor] ${job.protocolId}: Transcription complete`);
+    const transcriptionSegments = transcription.segments || [];
+    console.log(`[BG-Processor] ${job.protocolId}: Transcription complete (${transcriptionSegments.length} segments)`);
     
     // Step 3: Generate Protocol
     job.status = "generating";
@@ -152,6 +153,7 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       protocols[idx] = {
         ...protocols[idx],
         transcription: transcription.text,
+        transcriptionSegments: transcriptionSegments.length > 0 ? transcriptionSegments.map(s => ({ start: s.start, end: s.end, text: s.text })) : undefined,
         protocol: protocol.protocol,
         title: transcription.text.substring(0, 50) + "...",
         todos,

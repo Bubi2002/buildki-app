@@ -16,6 +16,8 @@ type PdfProtocol = {
   templateName?: string;
   photos?: string[];
   photoTimestamps?: number[]; // seconds since recording start for each photo
+  transcriptionSegments?: Array<{ start: number; end: number; text: string }>; // Whisper segments with timing
+  photoCaptions?: string[]; // pre-computed captions per photo (fallback if segments unavailable)
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
@@ -153,6 +155,35 @@ function generatePdfHtml(
     })
     .join("\n");
 
+  // Helper: Get caption text for a photo based on its timestamp and transcription segments
+  const getPhotoCaptionFromSegments = (photoIndex: number): string => {
+    // Priority 1: Pre-computed captions
+    if (protocol.photoCaptions && protocol.photoCaptions[photoIndex]) {
+      return protocol.photoCaptions[photoIndex];
+    }
+    // Priority 2: Match segments by timestamp
+    if (protocol.transcriptionSegments && protocol.transcriptionSegments.length > 0 && protocol.photoTimestamps && protocol.photoTimestamps[photoIndex] != null) {
+      const photoTime = protocol.photoTimestamps[photoIndex];
+      // Find segments that overlap with a window around the photo time (±15 seconds before, +5 after)
+      const windowStart = Math.max(0, photoTime - 15);
+      const windowEnd = photoTime + 5;
+      const matchingSegments = protocol.transcriptionSegments.filter(
+        (seg) => seg.end >= windowStart && seg.start <= windowEnd
+      );
+      if (matchingSegments.length > 0) {
+        return matchingSegments.map(s => s.text.trim()).join(" ").trim();
+      }
+      // Fallback: find the closest segment before the photo
+      const beforeSegments = protocol.transcriptionSegments.filter(seg => seg.start <= photoTime);
+      if (beforeSegments.length > 0) {
+        const closest = beforeSegments[beforeSegments.length - 1];
+        return closest.text.trim();
+      }
+    }
+    // Priority 3: No segments available – use empty
+    return "";
+  };
+
   const photosHtml =
     photoDataUris.length > 0
       ? `
@@ -160,24 +191,26 @@ function generatePdfHtml(
       <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
         Fotodokumentation (${photoDataUris.length} ${photoDataUris.length === 1 ? "Bild" : "Bilder"})
       </h3>
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start;">
-        ${photoDataUris
-          .map(
-            (uri, i) => `
-          <div style="width: 48%; margin-bottom: 12px;">
-            <img src="${uri}" style="width: 100%; max-height: 220px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
-            <p style="font-size: 9px; color: #888; margin-top: 4px; text-align: center;">${protocol.photoTimestamps && protocol.photoTimestamps[i] != null ? `Foto ${i + 1} – ${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.` : `Foto ${i + 1}`}</p>
-          </div>
-        `
-          )
-          .join("")}
-      </div>
-      ${protocol.protocol ? `
-      <div style="margin-top: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px; border: 1px solid #eee;">
-        <h4 style="font-size: 12px; color: #555; margin: 0 0 8px 0;">Transkription / Protokolltext</h4>
-        <p style="font-size: 11px; color: #333; line-height: 1.6; margin: 0; white-space: pre-wrap;">${protocol.protocol.substring(0, 2000)}</p>
-      </div>
-      ` : ''}
+      ${photoDataUris
+        .map((uri, i) => {
+          const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[i] != null
+            ? `${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.`
+            : null;
+          const caption = getPhotoCaptionFromSegments(i);
+          return `
+          <div style="width: 100%; margin-bottom: 20px; page-break-inside: avoid;">
+            <div style="display: flex; align-items: flex-start; gap: 16px;">
+              <div style="flex: 0 0 55%;">
+                <img src="${uri}" style="width: 100%; max-height: 280px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+              </div>
+              <div style="flex: 1; padding-top: 4px;">
+                <p style="font-size: 10px; color: #555; font-weight: 600; margin: 0 0 4px 0;">Foto ${i + 1}${timestamp ? ` – ${timestamp}` : ''}</p>
+                ${caption ? `<p style="font-size: 11px; color: #333; line-height: 1.5; margin: 0; white-space: pre-wrap;">${caption}</p>` : '<p style="font-size: 10px; color: #999; margin: 0; font-style: italic;">Kein zugeordneter Text</p>'}
+              </div>
+            </div>
+          </div>`;
+        })
+        .join("")}
     </div>
   `
       : "";

@@ -532,6 +532,7 @@ export default function RecordScreen() {
         templateName: selectedTemplate.name,
         templateId: selectedTemplate.id,
         photos: capturedPhotos,
+        photoTimestamps: photoTimestamps.length > 0 ? photoTimestamps : undefined,
         todos: [],
         markers,
         duration: recordingDuration,

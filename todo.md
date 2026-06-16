@@ -211,3 +211,4 @@
 - [x] Feature: Dateinamen-Schema konfigurierbar in PDF-Branding-Einstellungen
 - [x] UX: Mängel-Zähler als Badge am Mängel-Button in Projekt-Detail
 - [x] UX: Wisch-Gesten (Swipe-to-Delete, Swipe-to-Share) in Protokoll-Liste
+- [x] Feature: Gesprochener Text den Fotos zuordnen (Whisper-Segmente speichern, Text unter Bildern im PDF)
