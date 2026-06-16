@@ -35,6 +35,7 @@ import { getTeamContacts, saveTeamContact, markContactUsed, TeamContact, sortCon
 import { getSpeakerName, updateSpeakerName, SpeakerProfile } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
 import { sendActionItemsEmail } from "@/lib/email-actions";
+import { queueChange, getSyncStatus } from "@/lib/offline-sync";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const LANGUAGES = [

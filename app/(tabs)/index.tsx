@@ -36,7 +36,7 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
 import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
-import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/calendar-integration";
+import { getCurrentEvent, addNotesToEvent, suggestMeetingTime, scheduleFollowUp, type CalendarEvent } from "@/lib/calendar-integration";
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
@@ -87,6 +87,7 @@ export default function RecordScreen() {
   const [processingStep, setProcessingStep] = useState<"compress" | "upload" | "transcription" | "protocol" | "saving" | "done">("upload");
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
   const [currentCalendarEvent, setCurrentCalendarEvent] = useState<CalendarEvent | null>(null);
+  const [suggestedMeeting, setSuggestedMeeting] = useState<{start: Date; end: Date} | null>(null);
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [recentProtocols, setRecentProtocols] = useState<any[]>([]);

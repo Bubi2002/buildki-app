@@ -20,6 +20,8 @@ const MAPPING = {
   "doc.text.fill": "description",
   "gearshape.fill": "settings",
   "folder.fill": "folder",
+  "chart.bar.fill": "dashboard",
+  "person.3.fill": "groups",
 } as IconMapping;
 
 /**

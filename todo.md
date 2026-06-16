@@ -238,3 +238,6 @@
 - [x] Feature: Aufgaben-Prioritäten – Aufgaben mit Priorität (hoch/mittel/niedrig) versehen
 - [x] Feature: Protokoll-Suche – Volltextsuche über alle Protokolle hinweg
 - [x] Feature: Protokoll-Tags – Tags/Labels für bessere Organisation und Filterung
+- [x] Feature: Kalender-Integration – Protokolle mit Kalendereinträgen verknüpfen und Meetings vorschlagen
+- [x] Feature: Offline-Sync mit Konfliktlösung – Protokolle offline bearbeiten und bei Reconnect intelligent zusammenführen
+- [x] Feature: Team-Dashboard – Übersicht aller delegierten Aufgaben, offenen Todos und Protokoll-Aktivitäten

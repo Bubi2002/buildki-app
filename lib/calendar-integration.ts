@@ -125,3 +125,93 @@ export async function addNotesToEvent(eventId: string, notes: string): Promise<b
     return false;
   }
 }
+
+/**
+ * Get upcoming events for the next N days
+ */
+export async function getUpcomingEvents(days: number = 7): Promise<CalendarEvent[]> {
+  const hasPermission = await requestCalendarPermission();
+  if (!hasPermission) return [];
+  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const calendarIds = calendars.map((cal) => cal.id);
+  const start = new Date();
+  const end = new Date();
+  end.setDate(end.getDate() + days);
+  const events = await Calendar.getEventsAsync(calendarIds, start, end);
+  return events.map((e) => ({
+    id: e.id,
+    title: e.title,
+    startDate: new Date(e.startDate),
+    endDate: new Date(e.endDate),
+    notes: e.notes || undefined,
+  }));
+}
+
+/**
+ * Suggest next available meeting slot (30 min blocks, 9-17 Uhr)
+ */
+export async function suggestMeetingTime(durationMinutes: number = 30): Promise<{ start: Date; end: Date } | null> {
+  const events = await getUpcomingEvents(3);
+  const now = new Date();
+  
+  // Try to find a free slot in the next 3 days
+  for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
+    const day = new Date(now);
+    day.setDate(day.getDate() + dayOffset);
+    
+    // Work hours: 9:00 - 17:00
+    for (let hour = 9; hour < 17; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        const slotStart = new Date(day);
+        slotStart.setHours(hour, min, 0, 0);
+        const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
+        
+        // Skip if slot is in the past
+        if (slotStart < now) continue;
+        
+        // Check if slot conflicts with any event
+        const hasConflict = events.some((event) => {
+          const eventStart = event.startDate.getTime();
+          const eventEnd = event.endDate.getTime();
+          const sStart = slotStart.getTime();
+          const sEnd = slotEnd.getTime();
+          return (sStart < eventEnd && sEnd > eventStart);
+        });
+        
+        if (!hasConflict) {
+          return { start: slotStart, end: slotEnd };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Get events linked to protocols (by checking notes for protocol references)
+ */
+export async function getProtocolLinkedEvents(): Promise<CalendarEvent[]> {
+  const events = await getUpcomingEvents(30);
+  return events.filter((e) => e.notes && e.notes.includes("Protokoll"));
+}
+
+/**
+ * Schedule a follow-up meeting based on protocol action items
+ */
+export async function scheduleFollowUp(params: {
+  title: string;
+  notes: string;
+  suggestedDate?: Date;
+}): Promise<string | null> {
+  const suggestion = params.suggestedDate 
+    ? { start: params.suggestedDate, end: new Date(params.suggestedDate.getTime() + 30 * 60 * 1000) }
+    : await suggestMeetingTime(30);
+  
+  if (!suggestion) return null;
+  
+  return createProtocolEvent({
+    title: params.title,
+    notes: params.notes,
+    startDate: suggestion.start,
+  });
+}
