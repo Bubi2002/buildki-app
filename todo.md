@@ -276,3 +276,6 @@
 - [x] Feature: Eigene Vorlagen erstellen – Button im Template-Modal zum Anlegen benutzerdefinierter Vorlagen mit eigenem Prompt
 - [x] Feature: PDF-Dateiname automatisch mit Vorlagenname versehen (z.B. "Mühlenstr_35_Begründungszusammenfassung.pdf")
 - [x] Feature: Foto-Beschriftungen manuell editierbar machen (Tippen auf Bildunterschrift → Bearbeiten)
+- [x] Feature: Vorlagen-Import/Export als JSON – Eigene Vorlagen teilen und von Kollegen importieren
+- [x] Feature: Foto-Beschriftung per Sprache – Beim Fotografieren startet automatisch Sprachnotiz als Caption
+- [x] Feature: Vorlagen-Vorschau – Beim Erstellen einer eigenen Vorlage Vorschau mit Beispiel-Transkript testen

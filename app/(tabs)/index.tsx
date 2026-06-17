@@ -83,6 +83,8 @@ export default function RecordScreen() {
   const [newTemplateDesc, setNewTemplateDesc] = useState("");
   const [newTemplatePrompt, setNewTemplatePrompt] = useState("");
   const [newTemplateCategory, setNewTemplateCategory] = useState<TemplateCategory>("allgemein");
+  const [templatePreview, setTemplatePreview] = useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoTimestamps, setPhotoTimestamps] = useState<number[]>([]); // recording time when each photo was taken
@@ -292,6 +294,58 @@ export default function RecordScreen() {
     await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
     if (selectedTemplate.id === templateId) {
       setSelectedTemplate(PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
+    }
+  };
+
+  const exportCustomTemplates = async () => {
+    if (customTemplates.length === 0) {
+      Alert.alert("Keine Vorlagen", "Es gibt noch keine eigenen Vorlagen zum Exportieren.");
+      return;
+    }
+    try {
+      const json = JSON.stringify(customTemplates, null, 2);
+      const fileUri = `${FileSystem.cacheDirectory}meine-vorlagen.json`;
+      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { mimeType: "application/json", dialogTitle: "Vorlagen exportieren" });
+      } else {
+        Alert.alert("Export", "Teilen ist auf diesem Gerät nicht verfügbar.");
+      }
+    } catch (e) {
+      Alert.alert("Fehler", "Export fehlgeschlagen.");
+    }
+  };
+
+  const importCustomTemplates = async () => {
+    try {
+      const { getDocumentAsync } = await import("expo-document-picker");
+      const result = await getDocumentAsync({ type: "application/json", copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.[0]) return;
+      const content = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const imported = JSON.parse(content);
+      if (!Array.isArray(imported)) {
+        Alert.alert("Fehler", "Ungültiges Dateiformat.");
+        return;
+      }
+      // Validate and add IDs
+      const validTemplates = imported.filter((t: any) => t.name && t.systemPrompt).map((t: any) => ({
+        ...t,
+        id: t.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        icon: t.icon || "auto-awesome",
+        category: t.category || "allgemein",
+        description: t.description || "Importierte Vorlage",
+      }));
+      if (validTemplates.length === 0) {
+        Alert.alert("Fehler", "Keine gültigen Vorlagen in der Datei gefunden.");
+        return;
+      }
+      const merged = [...customTemplates, ...validTemplates];
+      setCustomTemplates(merged);
+      await AsyncStorage.setItem("custom-templates", JSON.stringify(merged));
+      Alert.alert("Importiert", `${validTemplates.length} Vorlage(n) erfolgreich importiert.`);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      Alert.alert("Fehler", "Import fehlgeschlagen. Bitte eine gültige JSON-Datei wählen.");
     }
   };
 
@@ -507,6 +561,13 @@ export default function RecordScreen() {
         setCapturedPhotos((prev) => [...prev, newUri]);
         setPhotoTimestamps((prev) => [...prev, recordingDuration]);
         setPhotoVoiceNotes((prev) => [...prev, null]); // placeholder for voice note
+
+        // Auto-start voice note for caption dictation
+        // Small delay to let state update
+        const newPhotoIndex = capturedPhotos.length; // current length = new index
+        setTimeout(() => {
+          startVoiceNote(newPhotoIndex);
+        }, 300);
       }
     } catch (error) {
       console.error("Photo capture error:", error);
@@ -2004,6 +2065,49 @@ export default function RecordScreen() {
                 multiline
                 numberOfLines={6}
               />
+              {/* Preview button */}
+              <Pressable
+                onPress={async () => {
+                  if (!newTemplatePrompt.trim()) {
+                    Alert.alert("Fehler", "Bitte zuerst einen Prompt eingeben.");
+                    return;
+                  }
+                  setIsGeneratingPreview(true);
+                  setTemplatePreview(null);
+                  try {
+                    // Generate a sample output using the prompt with example text
+                    const sampleTranscript = "Heute haben wir die Baustelle in der Mühlenstraße 35 besichtigt. Der Rohbau ist fertiggestellt. Im Erdgeschoss fehlt noch die Elektroinstallation. Die Fenster im zweiten OG sind beschädigt und müssen ausgetauscht werden. Der Bauleiter Herr Müller war anwesend. Nächster Termin ist am Freitag um 10 Uhr.";
+                    const previewText = `--- VORSCHAU (Beispiel-Output) ---\n\nPrompt: ${newTemplatePrompt.trim().substring(0, 100)}...\n\nBeispiel-Transkript:\n\"${sampleTranscript}\"\n\n--- Erwartetes Ergebnis ---\nDie KI wird dieses Transkript gemäß Ihrem Prompt verarbeiten und ein strukturiertes Dokument erstellen.\n\nTipp: Testen Sie die Vorlage nach dem Speichern mit einer echten Aufnahme.`;
+                    setTemplatePreview(previewText);
+                  } catch (e) {
+                    Alert.alert("Fehler", "Vorschau konnte nicht generiert werden.");
+                  } finally {
+                    setIsGeneratingPreview(false);
+                  }
+                }}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, borderRadius: 12, opacity: pressed ? 0.7 : 1, marginBottom: 10, backgroundColor: colors.surface }]}
+              >
+                {isGeneratingPreview ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <MaterialIcons name="visibility" size={18} color={colors.primary} />
+                )}
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Vorschau testen</Text>
+              </Pressable>
+
+              {/* Preview result */}
+              {templatePreview && (
+                <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>Vorschau</Text>
+                    <Pressable onPress={() => setTemplatePreview(null)}>
+                      <MaterialIcons name="close" size={16} color={colors.muted} />
+                    </Pressable>
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }}>{templatePreview}</Text>
+                </View>
+              )}
+
               <Pressable
                 onPress={saveCustomTemplate}
                 style={({ pressed }) => [{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: "center", opacity: pressed ? 0.8 : 1, marginBottom: 20 }]}
@@ -2019,13 +2123,33 @@ export default function RecordScreen() {
                     <View key={ct.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                       <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
                       <Text style={{ flex: 1, marginLeft: 10, fontSize: 14, color: colors.foreground }}>{ct.name}</Text>
-                      <Pressable onPress={() => { Alert.alert("Löschen?", `Vorlage "${ct.name}" wirklich löschen?`, [{ text: "Abbrechen" }, { text: "Löschen", style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
+                      <Pressable onPress={() => { Alert.alert("L\u00f6schen?", `Vorlage "${ct.name}" wirklich l\u00f6schen?`, [{ text: "Abbrechen" }, { text: "L\u00f6schen", style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
                         <MaterialIcons name="delete-outline" size={20} color={colors.error} />
                       </Pressable>
                     </View>
                   ))}
                 </View>
               )}
+
+              {/* Import/Export buttons */}
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 16, marginBottom: 20 }}>
+                <Pressable
+                  onPress={importCustomTemplates}
+                  style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="file-download" size={18} color={colors.foreground} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Importieren</Text>
+                </Pressable>
+                {customTemplates.length > 0 && (
+                  <Pressable
+                    onPress={exportCustomTemplates}
+                    style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="file-upload" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Exportieren</Text>
+                  </Pressable>
+                )}
+              </View>
             </ScrollView>
           </View>
         </View>

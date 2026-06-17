@@ -1317,7 +1317,21 @@ export default function ProtocolDetailScreen() {
               const timestamps: number[] = (protocol as any).photoTimestamps || [];
               // Auto-generate caption from segments if not manually set
               let autoCaption = "";
-              if (segments.length > 0 && timestamps[index] != null) {
+              const voiceNotes: (string | null)[] = (protocol as any).photoVoiceNotes || [];
+              const voiceNote = voiceNotes[index];
+              if (voiceNote && segments.length > 0) {
+                // Voice note exists: extract text from the voice note time range
+                // Format: voice-note://photoIndex/startSec/endSec
+                const parts = voiceNote.replace("voice-note://", "").split("/");
+                const vnStart = parseFloat(parts[1] || "0");
+                const vnEnd = parseFloat(parts[2] || "0");
+                const vnMatching = segments.filter(s => s.end >= vnStart && s.start <= vnEnd);
+                if (vnMatching.length > 0) {
+                  autoCaption = vnMatching.map(s => s.text.trim()).join(" ").trim();
+                }
+              }
+              if (!autoCaption && segments.length > 0 && timestamps[index] != null) {
+                // Fallback: use time window around photo
                 const photoTime = timestamps[index];
                 const windowStart = Math.max(0, photoTime - 15);
                 const windowEnd = photoTime + 5;
