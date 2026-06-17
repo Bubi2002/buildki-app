@@ -85,11 +85,14 @@ export default function RecordScreen() {
   const [newTemplateCategory, setNewTemplateCategory] = useState<TemplateCategory>("allgemein");
   const [templatePreview, setTemplatePreview] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoTimestamps, setPhotoTimestamps] = useState<number[]>([]); // recording time when each photo was taken
   const [photoVoiceNotes, setPhotoVoiceNotes] = useState<(string | null)[]>([]); // voice note URI per photo
   const [voiceNoteRecording, setVoiceNoteRecording] = useState<{ photoIndex: number; startTime: number } | null>(null);
+  const [voiceNoteElapsed, setVoiceNoteElapsed] = useState(0);
+  const voiceNoteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("audio");
   const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
@@ -576,17 +579,24 @@ export default function RecordScreen() {
 
   // --- VOICE NOTE PER PHOTO ---
   const startVoiceNote = async (photoIndex: number) => {
-    // Record a short voice note for the last captured photo
-    // We use a simple approach: record to a separate file using expo-audio
     try {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
       setVoiceNoteRecording({ photoIndex, startTime: Date.now() });
-      // Note: The main recording is still running, so we just mark the start time
-      // and will extract the segment later. For now, we use a simpler approach:
-      // We record the voice note timestamp range within the main audio.
-      // The voice note is effectively a "marked segment" of the main recording.
+      setVoiceNoteElapsed(0);
+      // Start countdown timer
+      if (voiceNoteTimerRef.current) clearInterval(voiceNoteTimerRef.current);
+      voiceNoteTimerRef.current = setInterval(() => {
+        setVoiceNoteElapsed((prev) => {
+          if (prev >= 29) {
+            // Auto-stop at 30 seconds
+            stopVoiceNote();
+            return 30;
+          }
+          return prev + 1;
+        });
+      }, 1000);
     } catch (error) {
       console.error("Voice note start error:", error);
     }
@@ -594,6 +604,12 @@ export default function RecordScreen() {
 
   const stopVoiceNote = async () => {
     if (!voiceNoteRecording) return;
+    // Clear timer
+    if (voiceNoteTimerRef.current) {
+      clearInterval(voiceNoteTimerRef.current);
+      voiceNoteTimerRef.current = null;
+    }
+    setVoiceNoteElapsed(0);
     try {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1546,6 +1562,18 @@ export default function RecordScreen() {
                     <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
                     <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Eigene Vorlage erstellen</Text>
                   </Pressable>
+                  {/* Template library button */}
+                  <Pressable
+                    onPress={() => { setShowTemplateSelector(false); setShowTemplateLibrary(true); }}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="cloud-download" size={22} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Vorlagen-Bibliothek</Text>
+                      <Text style={{ fontSize: 11, color: colors.muted }}>Community-Vorlagen herunterladen</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                  </Pressable>
                 </ScrollView>
               </View>
             </View>
@@ -1757,25 +1785,33 @@ export default function RecordScreen() {
             )}
             {/* Voice note button for last photo */}
             {capturedPhotos.length > 0 && isRecording && (
-              <Pressable
-                onPress={() => {
-                  if (voiceNoteRecording) {
-                    stopVoiceNote();
-                  } else {
-                    startVoiceNote(capturedPhotos.length - 1);
-                  }
-                }}
-                style={({ pressed }) => [styles.photoCountBadge, {
-                  marginLeft: 6,
-                  backgroundColor: voiceNoteRecording ? "rgba(244,67,54,0.8)" : "rgba(76,175,80,0.8)",
-                  opacity: pressed ? 0.7 : 1,
-                }]}
-              >
-                <MaterialIcons name={voiceNoteRecording ? "stop" : "mic"} size={14} color="#FFFFFF" />
-                <Text style={styles.photoCountText}>
-                  {voiceNoteRecording ? "Stopp" : "Notiz"}
-                </Text>
-              </Pressable>
+              <View style={{ marginLeft: 6 }}>
+                <Pressable
+                  onPress={() => {
+                    if (voiceNoteRecording) {
+                      stopVoiceNote();
+                    } else {
+                      startVoiceNote(capturedPhotos.length - 1);
+                    }
+                  }}
+                  style={({ pressed }) => [styles.photoCountBadge, {
+                    backgroundColor: voiceNoteRecording ? "rgba(244,67,54,0.8)" : "rgba(76,175,80,0.8)",
+                    opacity: pressed ? 0.7 : 1,
+                    minWidth: voiceNoteRecording ? 80 : undefined,
+                  }]}
+                >
+                  <MaterialIcons name={voiceNoteRecording ? "stop" : "mic"} size={14} color="#FFFFFF" />
+                  <Text style={styles.photoCountText}>
+                    {voiceNoteRecording ? `${30 - voiceNoteElapsed}s` : "Notiz"}
+                  </Text>
+                </Pressable>
+                {/* Countdown progress bar */}
+                {voiceNoteRecording && (
+                  <View style={{ height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)", marginTop: 3, overflow: "hidden" }}>
+                    <View style={{ height: 3, borderRadius: 2, backgroundColor: "#F44336", width: `${(voiceNoteElapsed / 30) * 100}%` }} />
+                  </View>
+                )}
+              </View>
             )}
             {/* Location badge */}
             {recordingLocation && (
@@ -2150,6 +2186,79 @@ export default function RecordScreen() {
                   </Pressable>
                 )}
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Template Library Modal */}
+      <Modal visible={showTemplateLibrary} animationType="slide" transparent>
+        <View style={styles.templateModalOverlay}>
+          <Pressable style={styles.templateModalDismiss} onPress={() => setShowTemplateLibrary(false)} />
+          <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.templateSheetHeader}>
+              <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
+                Vorlagen-Bibliothek
+              </Text>
+              <Pressable onPress={() => setShowTemplateLibrary(false)}>
+                <MaterialIcons name="close" size={24} color={colors.muted} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 13, color: colors.muted, paddingHorizontal: 20, marginBottom: 12 }}>
+              Community-Vorlagen herunterladen und als eigene Vorlage speichern.
+            </Text>
+            <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+              {[
+                { name: "Abnahmeprotokoll", desc: "Formelle Abnahme mit Mängelliste, Teilnehmern und Unterschriftsfeld", category: "bau" as TemplateCategory, icon: "assignment-turned-in", prompt: "Erstelle ein formelles Abnahmeprotokoll mit: 1. Objekt/Bauvorhaben, 2. Datum und Teilnehmer, 3. Gegenstand der Abnahme, 4. Festgestellte Mängel (nummeriert mit Frist), 5. Vereinbarungen, 6. Ergebnis (abgenommen/nicht abgenommen/unter Vorbehalt), 7. Unterschriftsfeld." },
+                { name: "Wartungsprotokoll", desc: "Dokumentation von Wartungsarbeiten an technischen Anlagen", category: "bau" as TemplateCategory, icon: "build", prompt: "Erstelle ein Wartungsprotokoll mit: 1. Anlage/Gerät, 2. Standort, 3. Datum und Techniker, 4. Durchgeführte Arbeiten (Checkliste), 5. Festgestellte Mängel, 6. Empfohlene Maßnahmen, 7. Nächster Wartungstermin." },
+                { name: "Brandschutzbegehung", desc: "Protokoll einer Brandschutzbegehung mit Checkliste", category: "bau" as TemplateCategory, icon: "local-fire-department", prompt: "Erstelle ein Brandschutzbegehungsprotokoll mit: 1. Objekt und Datum, 2. Teilnehmer, 3. Geprüfte Bereiche, 4. Checkliste (Fluchtweg frei, Feuerlöscher vorhanden, Brandschutztüren funktionsfähig, etc.), 5. Festgestellte Mängel mit Priorität, 6. Maßnahmen und Fristen." },
+                { name: "Projektstatusbericht", desc: "Wöchentlicher Statusbericht für Projektleitung", category: "meeting" as TemplateCategory, icon: "trending-up", prompt: "Erstelle einen Projektstatusbericht mit: 1. Projekttitel und Berichtszeitraum, 2. Gesamtstatus (Ampel), 3. Erledigte Aufgaben, 4. Laufende Aufgaben, 5. Risiken und Probleme, 6. Nächste Schritte, 7. Entscheidungsbedarf." },
+                { name: "Kundengespräch", desc: "Strukturierte Zusammenfassung eines Kundengesprächs", category: "meeting" as TemplateCategory, icon: "people", prompt: "Erstelle eine strukturierte Zusammenfassung des Kundengesprächs mit: 1. Kunde und Ansprechpartner, 2. Datum und Dauer, 3. Besprochene Themen, 4. Kundenwünsche/-anforderungen, 5. Vereinbarte nächste Schritte, 6. Offene Punkte, 7. Follow-up Termin." },
+                { name: "Schulungsprotokoll", desc: "Dokumentation einer Schulung oder Unterweisung", category: "meeting" as TemplateCategory, icon: "school", prompt: "Erstelle ein Schulungsprotokoll mit: 1. Thema der Schulung, 2. Datum, Ort und Dauer, 3. Referent/Trainer, 4. Teilnehmerliste, 5. Behandelte Inhalte (Stichpunkte), 6. Praktische Übungen, 7. Offene Fragen, 8. Teilnahmebestätigung." },
+                { name: "Schadensgutachten", desc: "Gutachterliche Bewertung eines Schadens", category: "gutachten" as TemplateCategory, icon: "report-problem", prompt: "Erstelle ein Schadensgutachten mit: 1. Objekt und Standort, 2. Auftraggeber, 3. Datum der Besichtigung, 4. Schadensbeschreibung (detailliert), 5. Schadensursache (soweit erkennbar), 6. Schadensumfang und Bewertung, 7. Empfohlene Sanierungsmaßnahmen, 8. Geschätzte Kosten." },
+                { name: "Energieausweis-Begehung", desc: "Datenaufnahme für energetische Bewertung", category: "gutachten" as TemplateCategory, icon: "bolt", prompt: "Erstelle ein Begehungsprotokoll für die energetische Bewertung mit: 1. Gebäudedaten (Baujahr, Fläche, Geschosse), 2. Außenhülle (Wände, Dach, Fenster, Kellerdecke), 3. Heizungsanlage, 4. Warmwasserbereitung, 5. Lüftung, 6. Festgestellte energetische Schwachstellen, 7. Modernisierungsempfehlungen." },
+                { name: "Telefonnotiz", desc: "Schnelle Notiz eines Telefonats mit Aktionspunkten", category: "allgemein" as TemplateCategory, icon: "phone", prompt: "Erstelle eine Telefonnotiz mit: 1. Datum und Uhrzeit, 2. Gesprächspartner, 3. Betreff, 4. Gesprächsinhalt (Zusammenfassung), 5. Vereinbarungen/Aktionspunkte, 6. Wiedervorlage/Frist." },
+                { name: "Tagesrapport", desc: "Täglicher Arbeitsrapport mit Stunden und Material", category: "bau" as TemplateCategory, icon: "schedule", prompt: "Erstelle einen Tagesrapport mit: 1. Datum und Baustelle, 2. Wetter, 3. Arbeitskräfte (Name, Stunden, Tätigkeit), 4. Eingesetzte Geräte, 5. Verbrauchtes Material, 6. Ausgeführte Arbeiten, 7. Besondere Vorkommnisse, 8. Arbeitsstand." },
+              ].map((libTemplate, idx) => (
+                <Pressable
+                  key={idx}
+                  onPress={async () => {
+                    const newTemplate: ProtocolTemplate = {
+                      id: `community-${Date.now()}-${idx}`,
+                      name: libTemplate.name,
+                      icon: libTemplate.icon,
+                      description: libTemplate.desc,
+                      category: libTemplate.category,
+                      systemPrompt: libTemplate.prompt,
+                    };
+                    const updated = [...customTemplates, newTemplate];
+                    setCustomTemplates(updated);
+                    await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
+                    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert("Hinzugefügt", `"${libTemplate.name}" wurde zu deinen Vorlagen hinzugefügt.`);
+                  }}
+                  style={({ pressed }) => [{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                    <MaterialIcons name={libTemplate.icon as any} size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{libTemplate.name}</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted }} numberOfLines={2}>{libTemplate.desc}</Text>
+                  </View>
+                  <MaterialIcons name="add-circle" size={22} color={colors.primary} />
+                </Pressable>
+              ))}
+              <View style={{ height: 40 }} />
             </ScrollView>
           </View>
         </View>

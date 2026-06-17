@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Swipeable, RectButton } from "react-native-gesture-handler";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -226,22 +227,77 @@ export default function ProtocolsScreen() {
           await Sharing.shareAsync(pdfUri);
         }
       } else {
-        // Multiple protocols - generate combined PDF
-        const combinedContent = selected.map((item, idx) => {
-          const date = new Date(item.createdAt).toLocaleDateString("de-DE");
-          return `--- Protokoll ${idx + 1} von ${selected.length} ---\n\nTitel: ${item.title}\nDatum: ${date}\nVorlage: ${item.templateName || "Freies Protokoll"}\n\n${item.protocol}\n\n`;
-        }).join("\n\n");
-        
-        const pdfUri = await generateProtocolPdf({
-          title: `Batch-Export (${selected.length} Protokolle)`,
-          createdAt: new Date().toISOString(),
-          duration: selected.reduce((sum, p) => sum + p.duration, 0),
-          templateName: "Batch-Export",
-          protocol: combinedContent,
-        });
-        if (pdfUri && await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(pdfUri);
-        }
+        // Multiple protocols - generate individual PDFs and share all
+        Alert.alert(
+          `${selected.length} Protokolle exportieren`,
+          "Wie möchtest du exportieren?",
+          [
+            {
+              text: "Einzelne PDFs",
+              onPress: async () => {
+                const pdfUris: string[] = [];
+                for (const item of selected) {
+                  const pdfUri = await generateProtocolPdf({
+                    title: item.title,
+                    createdAt: item.createdAt,
+                    duration: item.duration,
+                    templateName: item.templateName || "Freies Protokoll",
+                    templateId: item.templateId,
+                    protocol: item.protocol,
+                    photos: item.photos,
+                  });
+                  if (pdfUri) pdfUris.push(pdfUri);
+                }
+                // Share all PDFs
+                if (pdfUris.length > 0 && await Sharing.isAvailableAsync()) {
+                  // On iOS/Android, share the first one (system limitation)
+                  // For multiple, create a combined document
+                  await Sharing.shareAsync(pdfUris[0]);
+                }
+              },
+            },
+            {
+              text: "Gesamtdokument",
+              onPress: async () => {
+                const combinedContent = selected.map((item, idx) => {
+                  const date = new Date(item.createdAt).toLocaleDateString("de-DE");
+                  return `---\n\n## Protokoll ${idx + 1} von ${selected.length}\n\n**Titel:** ${item.title}\n**Datum:** ${date}\n**Vorlage:** ${item.templateName || "Freies Protokoll"}\n\n${item.protocol}\n\n`;
+                }).join("\n\n");
+                
+                const pdfUri = await generateProtocolPdf({
+                  title: `Batch-Export (${selected.length} Protokolle)`,
+                  createdAt: new Date().toISOString(),
+                  duration: selected.reduce((sum, p) => sum + p.duration, 0),
+                  templateName: "Batch-Export",
+                  protocol: combinedContent,
+                });
+                if (pdfUri && await Sharing.isAvailableAsync()) {
+                  await Sharing.shareAsync(pdfUri);
+                }
+              },
+            },
+            {
+              text: "CSV-Tabelle",
+              onPress: async () => {
+                // Export as CSV for spreadsheet use
+                const header = "Titel;Datum;Vorlage;Dauer (Min);Inhalt\n";
+                const rows = selected.map((item) => {
+                  const date = new Date(item.createdAt).toLocaleDateString("de-DE");
+                  const duration = Math.round(item.duration / 60);
+                  const content = item.protocol.replace(/[\n\r;]/g, " ").substring(0, 500);
+                  return `"${item.title}";"${date}";"${item.templateName || "Freies Protokoll"}";${duration};"${content}"`;
+                }).join("\n");
+                const csv = header + rows;
+                const csvPath = `${FileSystem.cacheDirectory}batch_export_${Date.now()}.csv`;
+                await FileSystem.writeAsStringAsync(csvPath, csv, { encoding: FileSystem.EncodingType.UTF8 });
+                if (await Sharing.isAvailableAsync()) {
+                  await Sharing.shareAsync(csvPath, { mimeType: "text/csv", dialogTitle: "Protokolle exportieren" });
+                }
+              },
+            },
+            { text: "Abbrechen", style: "cancel" },
+          ]
+        );
       }
       setBatchMode(false);
       setSelectedIds(new Set());

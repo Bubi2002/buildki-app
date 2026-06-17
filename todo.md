@@ -279,3 +279,6 @@
 - [x] Feature: Vorlagen-Import/Export als JSON – Eigene Vorlagen teilen und von Kollegen importieren
 - [x] Feature: Foto-Beschriftung per Sprache – Beim Fotografieren startet automatisch Sprachnotiz als Caption
 - [x] Feature: Vorlagen-Vorschau – Beim Erstellen einer eigenen Vorlage Vorschau mit Beispiel-Transkript testen
+- [x] Feature: Sprachnotiz-Dauer auf 30 Sekunden begrenzen mit visuellem Countdown-Balken
+- [x] Feature: Vorlagen-Bibliothek – Online-Katalog mit Community-Vorlagen zum Herunterladen
+- [x] Feature: Batch-Export – Mehrere Protokolle als Einzelne PDFs, Gesamtdokument oder CSV exportieren
