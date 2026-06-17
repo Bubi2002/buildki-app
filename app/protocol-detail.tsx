@@ -1401,9 +1401,15 @@ export default function ProtocolDetailScreen() {
                           </View>
                         )}
                       </View>
-                      <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }} numberOfLines={4}>
-                        {currentCaption || "Kein zugeordneter Text"}
-                      </Text>
+                      <Pressable
+                        onLongPress={() => editPhotoCaption(index, currentCaption)}
+                        onPress={() => editPhotoCaption(index, currentCaption)}
+                        style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                      >
+                        <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }} numberOfLines={4}>
+                          {currentCaption || "Tippen zum Bearbeiten"}
+                        </Text>
+                      </Pressable>
                       {/* Voice note indicator */}
                       {(protocol as any).photoVoiceNotes?.[index] && (
                         <Pressable

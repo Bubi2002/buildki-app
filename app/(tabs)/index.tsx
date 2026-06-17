@@ -78,6 +78,12 @@ export default function RecordScreen() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [templateSearch, setTemplateSearch] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<TemplateCategory[]>(["bau", "meeting", "gutachten", "allgemein"]);
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDesc, setNewTemplateDesc] = useState("");
+  const [newTemplatePrompt, setNewTemplatePrompt] = useState("");
+  const [newTemplateCategory, setNewTemplateCategory] = useState<TemplateCategory>("allgemein");
+  const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoTimestamps, setPhotoTimestamps] = useState<number[]>([]); // recording time when each photo was taken
   const [photoVoiceNotes, setPhotoVoiceNotes] = useState<(string | null)[]>([]); // voice note URI per photo
@@ -220,14 +226,26 @@ export default function RecordScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  // Load custom templates from storage
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem("custom-templates");
+        if (stored) setCustomTemplates(JSON.parse(stored));
+      } catch {}
+    })();
+  }, []);
+
+  const allTemplates = useMemo(() => [...PROTOCOL_TEMPLATES, ...customTemplates], [customTemplates]);
+
   // Filter templates by search
   const filteredTemplates = useMemo(() => {
-    if (!templateSearch.trim()) return PROTOCOL_TEMPLATES;
+    if (!templateSearch.trim()) return allTemplates;
     const q = templateSearch.toLowerCase();
-    return PROTOCOL_TEMPLATES.filter(
+    return allTemplates.filter(
       (t) => t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
     );
-  }, [templateSearch]);
+  }, [templateSearch, allTemplates]);
 
   // Group templates by category
   const groupedTemplates = useMemo(() => {
@@ -241,6 +259,40 @@ export default function RecordScreen() {
     setExpandedCategories((prev) =>
       prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
     );
+  };
+
+  const saveCustomTemplate = async () => {
+    if (!newTemplateName.trim() || !newTemplatePrompt.trim()) {
+      Alert.alert("Fehler", "Name und Prompt sind erforderlich.");
+      return;
+    }
+    const newTemplate: ProtocolTemplate = {
+      id: `custom-${Date.now()}`,
+      name: newTemplateName.trim(),
+      icon: "auto-awesome",
+      description: newTemplateDesc.trim() || "Benutzerdefinierte Vorlage",
+      category: newTemplateCategory,
+      systemPrompt: newTemplatePrompt.trim(),
+    };
+    const updated = [...customTemplates, newTemplate];
+    setCustomTemplates(updated);
+    await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
+    setShowCreateTemplate(false);
+    setNewTemplateName("");
+    setNewTemplateDesc("");
+    setNewTemplatePrompt("");
+    setNewTemplateCategory("allgemein");
+    selectTemplate(newTemplate);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const deleteCustomTemplate = async (templateId: string) => {
+    const updated = customTemplates.filter(t => t.id !== templateId);
+    setCustomTemplates(updated);
+    await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
+    if (selectedTemplate.id === templateId) {
+      setSelectedTemplate(PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
+    }
   };
 
   // --- PROJECT SELECTION FUNCTIONS ---
@@ -1425,6 +1477,14 @@ export default function RecordScreen() {
                       ))}
                     </View>
                   ))}
+                  {/* Create custom template button */}
+                  <Pressable
+                    onPress={() => { setShowTemplateSelector(false); setShowCreateTemplate(true); }}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 12, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Eigene Vorlage erstellen</Text>
+                  </Pressable>
                 </ScrollView>
               </View>
             </View>
@@ -1788,6 +1848,14 @@ export default function RecordScreen() {
                     ))}
                   </View>
                 ))}
+                {/* Create custom template button */}
+                <Pressable
+                  onPress={() => { setShowTemplateSelector(false); setShowCreateTemplate(true); }}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 12, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Eigene Vorlage erstellen</Text>
+                </Pressable>
               </ScrollView>
             </View>
           </View>
@@ -1883,6 +1951,85 @@ export default function RecordScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Create Custom Template Modal */}
+      <Modal visible={showCreateTemplate} animationType="slide" transparent>
+        <View style={styles.templateModalOverlay}>
+          <Pressable style={styles.templateModalDismiss} onPress={() => setShowCreateTemplate(false)} />
+          <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.templateSheetHeader}>
+              <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>Eigene Vorlage</Text>
+              <Pressable onPress={() => setShowCreateTemplate(false)}>
+                <MaterialIcons name="close" size={24} color={colors.muted} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, marginTop: 8 }}>Name *</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
+                placeholder="z.B. Abnahmeprotokoll"
+                placeholderTextColor={colors.muted}
+                value={newTemplateName}
+                onChangeText={setNewTemplateName}
+                returnKeyType="next"
+              />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>Beschreibung</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
+                placeholder="Kurze Beschreibung der Vorlage"
+                placeholderTextColor={colors.muted}
+                value={newTemplateDesc}
+                onChangeText={setNewTemplateDesc}
+                returnKeyType="next"
+              />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>Kategorie</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                {TEMPLATE_CATEGORIES.map((cat) => (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => setNewTemplateCategory(cat.id)}
+                    style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: newTemplateCategory === cat.id ? colors.primary : colors.border, backgroundColor: newTemplateCategory === cat.id ? colors.primary + "15" : "transparent", opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <Text style={{ fontSize: 13, color: newTemplateCategory === cat.id ? colors.primary : colors.foreground }}>{cat.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>KI-Anweisung (Prompt) *</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 16, minHeight: 120, textAlignVertical: "top" }}
+                placeholder="Beschreibe, wie die KI das Transkript verarbeiten soll. Z.B.: Erstelle ein strukturiertes Abnahmeprotokoll mit Mängelliste, Teilnehmern und Ergebnis."
+                placeholderTextColor={colors.muted}
+                value={newTemplatePrompt}
+                onChangeText={setNewTemplatePrompt}
+                multiline
+                numberOfLines={6}
+              />
+              <Pressable
+                onPress={saveCustomTemplate}
+                style={({ pressed }) => [{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: "center", opacity: pressed ? 0.8 : 1, marginBottom: 20 }]}
+              >
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Vorlage speichern</Text>
+              </Pressable>
+
+              {/* List existing custom templates with delete */}
+              {customTemplates.length > 0 && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>Meine Vorlagen</Text>
+                  {customTemplates.map((ct) => (
+                    <View key={ct.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
+                      <Text style={{ flex: 1, marginLeft: 10, fontSize: 14, color: colors.foreground }}>{ct.name}</Text>
+                      <Pressable onPress={() => { Alert.alert("Löschen?", `Vorlage "${ct.name}" wirklich löschen?`, [{ text: "Abbrechen" }, { text: "Löschen", style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
+                        <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

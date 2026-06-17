@@ -273,3 +273,6 @@
 - [x] Bug: "Plaud" Name überall aus der UI und Templates entfernen
 - [x] Bug: Foto-Beschriftungen im PDF sollen nur den fettgedruckten Text zeigen, nicht den gesamten Transkriptionstext
 - [x] Feature: KI-generierte Zusammenfassung/Protokoll als PDF exportieren können (aktive Version wird exportiert)
+- [x] Feature: Eigene Vorlagen erstellen – Button im Template-Modal zum Anlegen benutzerdefinierter Vorlagen mit eigenem Prompt
+- [x] Feature: PDF-Dateiname automatisch mit Vorlagenname versehen (z.B. "Mühlenstr_35_Begründungszusammenfassung.pdf")
+- [x] Feature: Foto-Beschriftungen manuell editierbar machen (Tippen auf Bildunterschrift → Bearbeiten)

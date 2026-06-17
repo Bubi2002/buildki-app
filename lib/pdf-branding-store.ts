@@ -53,7 +53,9 @@ export function generateFilename(
   const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
   const dateStr = date.toISOString().slice(0, 10); // YYYY-MM-DD
   const proj = projectName ? sanitize(projectName) : "Protokoll";
-  const nr = protocolNumber || templateName ? sanitize(protocolNumber || templateName) : "Export";
+  const tmpl = sanitize(templateName || "Protokoll");
+  // Include both protocol number and template name when available
+  const nr = protocolNumber ? `${sanitize(protocolNumber)}_${tmpl}` : tmpl;
 
   switch (schema) {
     case "project_date_nr":
