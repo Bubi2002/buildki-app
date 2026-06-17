@@ -1,8 +1,18 @@
+export type TemplateCategory = "bau" | "meeting" | "gutachten" | "allgemein";
+
+export const TEMPLATE_CATEGORIES: { id: TemplateCategory; name: string; icon: string }[] = [
+  { id: "bau", name: "Bau & Technik", icon: "construction" },
+  { id: "meeting", name: "Meetings & Besprechungen", icon: "groups" },
+  { id: "gutachten", name: "Gutachten & Bewertung", icon: "verified" },
+  { id: "allgemein", name: "Allgemein", icon: "edit-note" },
+];
+
 export type ProtocolTemplate = {
   id: string;
   name: string;
   icon: string; // MaterialIcons name
   description: string;
+  category: TemplateCategory;
   systemPrompt: string;
 };
 
@@ -11,6 +21,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
     id: "baustellenbericht",
     name: "Baustellenbericht",
     icon: "construction",
+    category: "bau",
     description: "Täglicher Bericht über Baufortschritt, Wetter, Personal und Materialien",
     systemPrompt: `Du bist ein erfahrener Bauleiter. Erstelle aus dem folgenden transkribierten Text einen professionellen Baustellenbericht.
 
@@ -29,6 +40,7 @@ Schreibe sachlich und präzise. Verwende Fachbegriffe aus dem Bauwesen. Nummerie
     id: "besprechungsnotiz",
     name: "Besprechungsnotiz",
     icon: "groups",
+    category: "meeting",
     description: "Strukturierte Zusammenfassung eines Meetings mit Teilnehmern und Beschlüssen",
     systemPrompt: `Du bist ein professioneller Protokollant. Erstelle aus dem folgenden transkribierten Text eine strukturierte Besprechungsnotiz.
 
@@ -46,6 +58,7 @@ Formuliere klar und verbindlich. Beschlüsse sollen eindeutig sein.`,
     id: "maengelliste",
     name: "Mängelliste",
     icon: "report-problem",
+    category: "bau",
     description: "Dokumentation von Mängeln mit Ort, Beschreibung und Priorität",
     systemPrompt: `Du bist ein Sachverständiger für Baumängel. Erstelle aus dem folgenden transkribierten Text eine strukturierte Mängelliste.
 
@@ -68,6 +81,7 @@ Sei präzise bei Ortsangaben und Beschreibungen. Priorisiere sicherheitsrelevant
     id: "tagesbericht",
     name: "Tagesbericht",
     icon: "today",
+    category: "allgemein",
     description: "Allgemeiner Tagesbericht über erledigte Aufgaben und Fortschritt",
     systemPrompt: `Du bist ein Projektassistent. Erstelle aus dem folgenden transkribierten Text einen übersichtlichen Tagesbericht.
 
@@ -86,6 +100,7 @@ Halte den Bericht knapp und übersichtlich. Fokussiere auf Ergebnisse.`,
     id: "abnahmeprotokoll",
     name: "Abnahmeprotokoll",
     icon: "verified",
+    category: "bau",
     description: "Formelles Protokoll für Bau- oder Leistungsabnahmen",
     systemPrompt: `Du bist ein erfahrener Bauleiter bei einer formellen Abnahme. Erstelle aus dem folgenden transkribierten Text ein Abnahmeprotokoll.
 
@@ -107,6 +122,7 @@ Formuliere rechtssicher und formal. Verwende die übliche Terminologie des Baure
     id: "zusammenfassung-plaud",
     name: "Zusammenfassung (Plaud)",
     icon: "lightbulb",
+    category: "meeting",
     description: "Ultra-Kurzfassung: Kernerkenntnisse und nächste Schritte auf einer Seite",
     systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle eine extrem kompakte Zusammenfassung (Distillation) aus dem folgenden transkribierten Text.
 
@@ -125,6 +141,7 @@ Regeln:
     id: "besprechungszusammenfassung-plaud",
     name: "Besprechungszusammenfassung (Plaud)",
     icon: "groups",
+    category: "meeting",
     description: "Management-taugliche Zusammenfassung mit Kernpunkten, Entscheidungen und Aufgabentabelle",
     systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle eine strukturierte Besprechungszusammenfassung aus dem folgenden transkribierten Text.
 
@@ -147,6 +164,7 @@ Regeln:
     id: "begruendungszusammenfassung-plaud",
     name: "Begründungszusammenfassung (Plaud)",
     icon: "psychology",
+    category: "meeting",
     description: "Analytisches Narrativ mit thematischen Kapiteln und Herleitung",
     systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle eine ausführliche Begründungszusammenfassung aus dem folgenden transkribierten Text.
 
@@ -172,6 +190,7 @@ Regeln:
     id: "sitzungsprotokoll-plaud",
     name: "Sitzungsprotokoll (Plaud)",
     icon: "event-note",
+    category: "meeting",
     description: "Detailliertes Protokoll mit Zeitcodes, Maßnahmen und Entscheidungen",
     systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle ein detailliertes Sitzungsprotokoll aus dem folgenden transkribierten Text.
 
@@ -198,6 +217,7 @@ Regeln:
     id: "gutachterliche-bewertung",
     name: "Gutachterliche Bewertung",
     icon: "verified",
+    category: "gutachten",
     description: "Formeller Bewertungsbericht mit Befundaufnahme, Mängeltabelle und Gesamturteil",
     systemPrompt: `Du bist ein erfahrener Sachverständiger und Gutachter. Erstelle aus dem folgenden transkribierten Text einen formellen gutachterlichen Bewertungsbericht.
 
@@ -247,6 +267,7 @@ Regeln:
     id: "freitext",
     name: "Freies Protokoll",
     icon: "edit-note",
+    category: "allgemein",
     description: "Allgemeines Protokoll ohne feste Vorlage",
     systemPrompt: `Du bist ein professioneller Protokollant. Erstelle aus dem folgenden transkribierten Text ein strukturiertes Protokoll.
 

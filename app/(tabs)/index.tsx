@@ -30,7 +30,7 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
+import { PROTOCOL_TEMPLATES, TEMPLATE_CATEGORIES, type ProtocolTemplate, type TemplateCategory } from "@/shared/templates";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
@@ -76,6 +76,8 @@ export default function RecordScreen() {
     PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]
   );
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<TemplateCategory[]>(["bau", "meeting", "gutachten", "allgemein"]);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [photoTimestamps, setPhotoTimestamps] = useState<number[]>([]); // recording time when each photo was taken
   const [photoVoiceNotes, setPhotoVoiceNotes] = useState<(string | null)[]>([]); // voice note URI per photo
@@ -189,6 +191,13 @@ export default function RecordScreen() {
 
   const loadDefaultTemplate = async () => {
     try {
+      // First try last-used template
+      const lastUsedId = await AsyncStorage.getItem("last-used-template-id");
+      if (lastUsedId) {
+        const template = PROTOCOL_TEMPLATES.find((t) => t.id === lastUsedId);
+        if (template) { setSelectedTemplate(template); return; }
+      }
+      // Fallback to settings default
       const settingsStr = await AsyncStorage.getItem("protokoll-settings");
       if (settingsStr) {
         const settings = JSON.parse(settingsStr);
@@ -200,6 +209,38 @@ export default function RecordScreen() {
     } catch (error) {
       // Use default
     }
+  };
+
+  // Save last-used template when it changes
+  const selectTemplate = (template: ProtocolTemplate) => {
+    setSelectedTemplate(template);
+    setShowTemplateSelector(false);
+    setTemplateSearch("");
+    AsyncStorage.setItem("last-used-template-id", template.id);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  // Filter templates by search
+  const filteredTemplates = useMemo(() => {
+    if (!templateSearch.trim()) return PROTOCOL_TEMPLATES;
+    const q = templateSearch.toLowerCase();
+    return PROTOCOL_TEMPLATES.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+    );
+  }, [templateSearch]);
+
+  // Group templates by category
+  const groupedTemplates = useMemo(() => {
+    return TEMPLATE_CATEGORIES.map((cat) => ({
+      ...cat,
+      templates: filteredTemplates.filter((t) => t.category === cat.id),
+    })).filter((g) => g.templates.length > 0);
+  }, [filteredTemplates]);
+
+  const toggleCategory = (catId: TemplateCategory) => {
+    setExpandedCategories((prev) =>
+      prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
+    );
   };
 
   // --- PROJECT SELECTION FUNCTIONS ---
@@ -1284,73 +1325,105 @@ export default function RecordScreen() {
           {/* Template selector modal */}
           <Modal visible={showTemplateSelector && !isRecording} animationType="slide" transparent>
             <View style={styles.templateModalOverlay}>
-              <Pressable style={styles.templateModalDismiss} onPress={() => setShowTemplateSelector(false)} />
+              <Pressable style={styles.templateModalDismiss} onPress={() => { setShowTemplateSelector(false); setTemplateSearch(""); }} />
               <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
                 <View style={styles.templateSheetHeader}>
                   <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
                     Vorlage wählen
                   </Text>
-                  <Pressable onPress={() => setShowTemplateSelector(false)}>
+                  <Pressable onPress={() => { setShowTemplateSelector(false); setTemplateSearch(""); }}>
                     <MaterialIcons name="close" size={24} color={colors.muted} />
                   </Pressable>
                 </View>
+                {/* Search field */}
+                <View style={[styles.templateSearchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <MaterialIcons name="search" size={20} color={colors.muted} />
+                  <TextInput
+                    style={[styles.templateSearchInput, { color: colors.foreground }]}
+                    placeholder="Vorlage suchen..."
+                    placeholderTextColor={colors.muted}
+                    value={templateSearch}
+                    onChangeText={setTemplateSearch}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                  />
+                  {templateSearch.length > 0 && (
+                    <Pressable onPress={() => setTemplateSearch("")}>
+                      <MaterialIcons name="close" size={18} color={colors.muted} />
+                    </Pressable>
+                  )}
+                </View>
+                {/* Categorized list */}
                 <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
-                  {PROTOCOL_TEMPLATES.map((template) => (
-                    <Pressable
-                      key={template.id}
-                      onPress={() => {
-                        setSelectedTemplate(template);
-                        setShowTemplateSelector(false);
-                      }}
-                      style={({ pressed }) => [
-                        styles.templateListItem,
-                        {
-                          backgroundColor:
-                            selectedTemplate.id === template.id
-                              ? colors.primary + "15"
-                              : "transparent",
-                          borderColor:
-                            selectedTemplate.id === template.id
-                              ? colors.primary
-                              : colors.border,
-                          opacity: pressed ? 0.7 : 1,
-                        },
-                      ]}
-                    >
-                      <MaterialIcons
-                        name={template.icon as any}
-                        size={22}
-                        color={
-                          selectedTemplate.id === template.id
-                            ? colors.primary
-                            : colors.muted
-                        }
-                      />
-                      <View style={styles.templateListText}>
-                        <Text
-                          style={[
-                            styles.templateListName,
+                  {groupedTemplates.map((group) => (
+                    <View key={group.id} style={{ marginBottom: 8 }}>
+                      <Pressable
+                        onPress={() => toggleCategory(group.id)}
+                        style={({ pressed }) => [styles.templateCategoryHeader, { opacity: pressed ? 0.7 : 1 }]}
+                      >
+                        <MaterialIcons name={group.icon as any} size={18} color={colors.muted} />
+                        <Text style={[styles.templateCategoryTitle, { color: colors.muted }]}>{group.name}</Text>
+                        <MaterialIcons
+                          name={expandedCategories.includes(group.id) ? "expand-less" : "expand-more"}
+                          size={20}
+                          color={colors.muted}
+                        />
+                      </Pressable>
+                      {expandedCategories.includes(group.id) && group.templates.map((template) => (
+                        <Pressable
+                          key={template.id}
+                          onPress={() => selectTemplate(template)}
+                          style={({ pressed }) => [
+                            styles.templateListItem,
                             {
-                              color:
+                              backgroundColor:
+                                selectedTemplate.id === template.id
+                                  ? colors.primary + "15"
+                                  : "transparent",
+                              borderColor:
                                 selectedTemplate.id === template.id
                                   ? colors.primary
-                                  : colors.foreground,
+                                  : colors.border,
+                              opacity: pressed ? 0.7 : 1,
                             },
                           ]}
                         >
-                          {template.name}
-                        </Text>
-                        <Text
-                          style={[styles.templateListDesc, { color: colors.muted }]}
-                          numberOfLines={1}
-                        >
-                          {template.description}
-                        </Text>
-                      </View>
-                      {selectedTemplate.id === template.id && (
-                        <MaterialIcons name="check-circle" size={20} color={colors.primary} />
-                      )}
-                    </Pressable>
+                          <MaterialIcons
+                            name={template.icon as any}
+                            size={22}
+                            color={
+                              selectedTemplate.id === template.id
+                                ? colors.primary
+                                : colors.muted
+                            }
+                          />
+                          <View style={styles.templateListText}>
+                            <Text
+                              style={[
+                                styles.templateListName,
+                                {
+                                  color:
+                                    selectedTemplate.id === template.id
+                                      ? colors.primary
+                                      : colors.foreground,
+                                },
+                              ]}
+                            >
+                              {template.name}
+                            </Text>
+                            <Text
+                              style={[styles.templateListDesc, { color: colors.muted }]}
+                              numberOfLines={1}
+                            >
+                              {template.description}
+                            </Text>
+                          </View>
+                          {selectedTemplate.id === template.id && (
+                            <MaterialIcons name="check-circle" size={20} color={colors.primary} />
+                          )}
+                        </Pressable>
+                      ))}
+                    </View>
                   ))}
                 </ScrollView>
               </View>
@@ -1617,73 +1690,105 @@ export default function RecordScreen() {
         {/* Template selector modal */}
         <Modal visible={showTemplateSelector && !isRecording} animationType="slide" transparent>
           <View style={styles.templateModalOverlay}>
-            <Pressable style={styles.templateModalDismiss} onPress={() => setShowTemplateSelector(false)} />
+            <Pressable style={styles.templateModalDismiss} onPress={() => { setShowTemplateSelector(false); setTemplateSearch(""); }} />
             <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
               <View style={styles.templateSheetHeader}>
                 <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
                   Vorlage wählen
                 </Text>
-                <Pressable onPress={() => setShowTemplateSelector(false)}>
+                <Pressable onPress={() => { setShowTemplateSelector(false); setTemplateSearch(""); }}>
                   <MaterialIcons name="close" size={24} color={colors.muted} />
                 </Pressable>
               </View>
+              {/* Search field */}
+              <View style={[styles.templateSearchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <MaterialIcons name="search" size={20} color={colors.muted} />
+                <TextInput
+                  style={[styles.templateSearchInput, { color: colors.foreground }]}
+                  placeholder="Vorlage suchen..."
+                  placeholderTextColor={colors.muted}
+                  value={templateSearch}
+                  onChangeText={setTemplateSearch}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                />
+                {templateSearch.length > 0 && (
+                  <Pressable onPress={() => setTemplateSearch("")}>
+                    <MaterialIcons name="close" size={18} color={colors.muted} />
+                  </Pressable>
+                )}
+              </View>
+              {/* Categorized list */}
               <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
-                {PROTOCOL_TEMPLATES.map((template) => (
-                  <Pressable
-                    key={template.id}
-                    onPress={() => {
-                      setSelectedTemplate(template);
-                      setShowTemplateSelector(false);
-                    }}
-                    style={({ pressed }) => [
-                      styles.templateListItem,
-                      {
-                        backgroundColor:
-                          selectedTemplate.id === template.id
-                            ? colors.primary + "15"
-                            : "transparent",
-                        borderColor:
-                          selectedTemplate.id === template.id
-                            ? colors.primary
-                            : colors.border,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name={template.icon as any}
-                      size={22}
-                      color={
-                        selectedTemplate.id === template.id
-                          ? colors.primary
-                          : colors.muted
-                      }
-                    />
-                    <View style={styles.templateListText}>
-                      <Text
-                        style={[
-                          styles.templateListName,
+                {groupedTemplates.map((group) => (
+                  <View key={group.id} style={{ marginBottom: 8 }}>
+                    <Pressable
+                      onPress={() => toggleCategory(group.id)}
+                      style={({ pressed }) => [styles.templateCategoryHeader, { opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <MaterialIcons name={group.icon as any} size={18} color={colors.muted} />
+                      <Text style={[styles.templateCategoryTitle, { color: colors.muted }]}>{group.name}</Text>
+                      <MaterialIcons
+                        name={expandedCategories.includes(group.id) ? "expand-less" : "expand-more"}
+                        size={20}
+                        color={colors.muted}
+                      />
+                    </Pressable>
+                    {expandedCategories.includes(group.id) && group.templates.map((template) => (
+                      <Pressable
+                        key={template.id}
+                        onPress={() => selectTemplate(template)}
+                        style={({ pressed }) => [
+                          styles.templateListItem,
                           {
-                            color:
+                            backgroundColor:
+                              selectedTemplate.id === template.id
+                                ? colors.primary + "15"
+                                : "transparent",
+                            borderColor:
                               selectedTemplate.id === template.id
                                 ? colors.primary
-                                : colors.foreground,
+                                : colors.border,
+                            opacity: pressed ? 0.7 : 1,
                           },
                         ]}
                       >
-                        {template.name}
-                      </Text>
-                      <Text
-                        style={[styles.templateListDesc, { color: colors.muted }]}
-                        numberOfLines={1}
-                      >
-                        {template.description}
-                      </Text>
-                    </View>
-                    {selectedTemplate.id === template.id && (
-                      <MaterialIcons name="check-circle" size={20} color={colors.primary} />
-                    )}
-                  </Pressable>
+                        <MaterialIcons
+                          name={template.icon as any}
+                          size={22}
+                          color={
+                            selectedTemplate.id === template.id
+                              ? colors.primary
+                              : colors.muted
+                          }
+                        />
+                        <View style={styles.templateListText}>
+                          <Text
+                            style={[
+                              styles.templateListName,
+                              {
+                                color:
+                                  selectedTemplate.id === template.id
+                                    ? colors.primary
+                                    : colors.foreground,
+                              },
+                            ]}
+                          >
+                            {template.name}
+                          </Text>
+                          <Text
+                            style={[styles.templateListDesc, { color: colors.muted }]}
+                            numberOfLines={1}
+                          >
+                            {template.description}
+                          </Text>
+                        </View>
+                        {selectedTemplate.id === template.id && (
+                          <MaterialIcons name="check-circle" size={20} color={colors.primary} />
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
                 ))}
               </ScrollView>
             </View>
@@ -1926,6 +2031,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
     maxHeight: "75%",
+  },
+  templateSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+    gap: 8,
+  },
+  templateSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    padding: 0,
+  },
+  templateCategoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  templateCategoryTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   templateSheetHeader: {
     flexDirection: "row",
