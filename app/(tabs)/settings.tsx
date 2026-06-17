@@ -116,7 +116,7 @@ function BiometricLockSection({ colors }: { colors: any }) {
             <MaterialIcons name="fingerprint" size={24} color={colors.muted} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[biometricStyles.label, { color: colors.foreground }]}>App-Sperre</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Nur auf Ger\u00e4ten mit Biometrie verf\u00fcgbar</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Nur auf Geräten mit Biometrie verfügbar</Text>
             </View>
             <View style={[biometricStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
               <View style={[biometricStyles.toggleThumb, { transform: [{ translateX: enabled ? 18 : 2 }] }]} />
@@ -160,7 +160,7 @@ function BiometricLockSection({ colors }: { colors: any }) {
             App-Sperre mit {label}
           </Text>
           <Text style={{ fontSize: 12, color: colors.muted }}>
-            {enabled ? 'Aktiv \u2013 App wird beim Start gesperrt' : 'Tippe zum Aktivieren'}
+            {enabled ? 'Aktiv – App wird beim Start gesperrt' : 'Tippe zum Aktivieren'}
           </Text>
         </View>
         <View style={[biometricStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
@@ -442,7 +442,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
   return (
     <View style={{ marginBottom: 28 }}>
       <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Aufgaben-Erinnerungen</Text>
-      <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Benachrichtigungen bei f\u00e4lligen Aufgaben</Text>
+      <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Benachrichtigungen bei fälligen Aufgaben</Text>
 
       <Pressable
         onPress={() => toggleEnabled(!enabled)}
@@ -482,7 +482,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
             ))}
           </View>
           {Platform.OS !== "web" && !permissionGranted && (
-            <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>\u26a0\ufe0f Benachrichtigungs-Berechtigung noch nicht erteilt</Text>
+            <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>⚠️ Benachrichtigungs-Berechtigung noch nicht erteilt</Text>
           )}
         </View>
       )}

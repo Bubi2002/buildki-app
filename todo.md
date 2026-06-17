@@ -266,3 +266,7 @@
 - [x] UX: Vorlage-Liste in Kategorien gruppieren (Bau, Meeting, Gutachten) mit aufklappbaren Sektionen
 - [x] UX: Suchfeld oben im Vorlage-Modal für schnelles Finden
 - [x] UX: Zuletzt verwendete Vorlage automatisch vorauswählen (statt immer "Freies Protokoll")
+- [x] Bug: Roter Punkt im Aufnahme-Button nicht symmetrisch zentriert (Audio+Foto Modus, vor Start)
+- [x] Bug: Zoom-Steuerung fehlt während der Aufnahme im Audio+Foto Modus
+- [x] Bug: Button-Labels (FOTO, STOPP, MARKER) zu klein/schlecht lesbar im Audio+Foto Modus
+- [x] Bug: Unicode-Escape-Sequenzen (\u00xx) werden als roher Text angezeigt statt als echte Umlaute (Schließen, Zurück, etc.)

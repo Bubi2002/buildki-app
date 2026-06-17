@@ -1264,7 +1264,7 @@ export default function RecordScreen() {
         {!selectedProject && (
           <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.warning + "10", gap: 8, opacity: pressed ? 0.8 : 1 }]}>
             <MaterialIcons name="warning" size={16} color={colors.warning} />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.warning }}>Kein Projekt gew\u00e4hlt</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.warning }}>Kein Projekt gewählt</Text>
             <MaterialIcons name="chevron-right" size={16} color={colors.warning} />
           </Pressable>
         )}
@@ -1591,32 +1591,30 @@ export default function RecordScreen() {
           </Pressable>
         )}
 
-        {/* Zoom slider */}
-        {!isRecording && (
-          <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
-            <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4 }}>
-              <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
-                <MaterialIcons name="add" size={18} color="#FFFFFF" />
+        {/* Zoom slider - always visible */}
+        <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
+          <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4 }}>
+            <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
+              <MaterialIcons name="add" size={18} color="#FFFFFF" />
+            </Pressable>
+            {[{ label: "5x", value: 0.44 }, { label: "2x", value: 0.11 }, { label: "1x", value: 0 }, { label: "0.5x", value: -0.05 }].map((preset) => (
+              <Pressable
+                key={preset.label}
+                onPress={() => setCameraZoom(Math.max(0, preset.value))}
+                style={({ pressed }) => [{
+                  paddingHorizontal: 6, paddingVertical: 3, borderRadius: 10,
+                  backgroundColor: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "rgba(255,255,255,0.3)" : "transparent",
+                  opacity: pressed ? 0.5 : 1,
+                }]}
+              >
+                <Text style={{ fontSize: 11, color: "#FFFFFF", fontWeight: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "800" : "500" }}>{preset.label}</Text>
               </Pressable>
-              {[{ label: "5x", value: 0.44 }, { label: "2x", value: 0.11 }, { label: "1x", value: 0 }, { label: "0.5x", value: -0.05 }].map((preset) => (
-                <Pressable
-                  key={preset.label}
-                  onPress={() => setCameraZoom(Math.max(0, preset.value))}
-                  style={({ pressed }) => [{
-                    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 10,
-                    backgroundColor: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "rgba(255,255,255,0.3)" : "transparent",
-                    opacity: pressed ? 0.5 : 1,
-                  }]}
-                >
-                  <Text style={{ fontSize: 9, color: "#FFFFFF", fontWeight: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "800" : "500" }}>{preset.label}</Text>
-                </Pressable>
-              ))}
-              <Pressable onPress={() => setCameraZoom(Math.max(0, cameraZoom - 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
-                <MaterialIcons name="remove" size={18} color="#FFFFFF" />
-              </Pressable>
-            </View>
+            ))}
+            <Pressable onPress={() => setCameraZoom(Math.max(0, cameraZoom - 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
+              <MaterialIcons name="remove" size={18} color="#FFFFFF" />
+            </Pressable>
           </View>
-        )}
+        </View>
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}
 
@@ -1835,24 +1833,26 @@ export default function RecordScreen() {
             )}
 
             {/* Record / Stop button - smaller, with label */}
-            <Pressable
-              onPress={isRecording ? stopRecording : startRecording}
-              style={({ pressed }) => [
-                styles.recordButtonSmall,
-                {
-                  borderColor: isRecording ? "#F44336" : "#FFFFFF",
-                  transform: [{ scale: pressed ? 0.93 : 1 }],
-                },
-              ]}
-            >
-              <View
-                style={[
-                  isRecording ? styles.stopIcon : styles.recordIconSmall,
-                  { backgroundColor: isRecording ? "#F44336" : colors.primary },
+            <View style={{ alignItems: "center" }}>
+              <Pressable
+                onPress={isRecording ? stopRecording : startRecording}
+                style={({ pressed }) => [
+                  styles.recordButtonSmall,
+                  {
+                    borderColor: isRecording ? "#F44336" : "#FFFFFF",
+                    transform: [{ scale: pressed ? 0.93 : 1 }],
+                  },
                 ]}
-              />
+              >
+                <View
+                  style={[
+                    isRecording ? styles.stopIcon : styles.recordIconSmall,
+                    { backgroundColor: isRecording ? "#F44336" : colors.primary },
+                  ]}
+                />
+              </Pressable>
               <Text style={styles.recordButtonLabel}>{isRecording ? "Stopp" : "Start"}</Text>
-            </Pressable>
+            </View>
 
             {/* Marker button - larger, orange color */}
             {isRecording ? (
@@ -2144,9 +2144,9 @@ const styles = StyleSheet.create({
   },
   actionButtonLabel: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: "700",
-    marginTop: 2,
+    marginTop: 3,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -2192,7 +2192,7 @@ const styles = StyleSheet.create({
   },
   recordButtonLabel: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: "700",
     marginTop: 2,
     textTransform: "uppercase",

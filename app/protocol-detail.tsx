@@ -41,12 +41,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const LANGUAGES = [
   { code: "de", name: "Deutsch" },
   { code: "en", name: "Englisch" },
-  { code: "fr", name: "Franz\u00f6sisch" },
+  { code: "fr", name: "Französisch" },
   { code: "es", name: "Spanisch" },
   { code: "it", name: "Italienisch" },
-  { code: "nl", name: "Niederl\u00e4ndisch" },
+  { code: "nl", name: "Niederländisch" },
   { code: "pl", name: "Polnisch" },
-  { code: "tr", name: "T\u00fcrkisch" },
+  { code: "tr", name: "Türkisch" },
   { code: "pt", name: "Portugiesisch" },
   { code: "ru", name: "Russisch" },
   { code: "ar", name: "Arabisch" },
@@ -133,7 +133,7 @@ export default function ProtocolDetailScreen() {
   type SignatureEntry = { role: string; paths: string[]; signedAt: string };
   const [signatures, setSignatures] = useState<SignatureEntry[]>([]);
   const [activeSignRole, setActiveSignRole] = useState<string>("");
-  const SIGNATURE_ROLES = ["Auftraggeber", "Auftragnehmer", "Zeuge", "Pr\u00fcfer"];
+  const SIGNATURE_ROLES = ["Auftraggeber", "Auftragnehmer", "Zeuge", "Prüfer"];
   const translateMutation = trpc.translate.translateProtocol.useMutation();
   const [featureFlags, setFeatureFlags] = useState({ photoAnnotation: true, signature: true, multiSignature: false, tags: true });
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -320,7 +320,7 @@ export default function ProtocolDetailScreen() {
     setIsGeneratingSummary(true);
     try {
       const result = await translateMutation.mutateAsync({
-        text: "Fasse folgendes Protokoll in 2-3 pr\u00e4gnanten S\u00e4tzen zusammen: " + protocol.protocol,
+        text: "Fasse folgendes Protokoll in 2-3 prägnanten Sätzen zusammen: " + protocol.protocol,
         targetLanguage: "de",
       });
       setSummary(result.translated);
@@ -980,12 +980,12 @@ export default function ProtocolDetailScreen() {
       }
     } else {
       Alert.prompt
-        ? Alert.prompt("Foto-Beschreibung", `Text f\u00fcr Foto ${photoIndex + 1} bearbeiten:`, [
+        ? Alert.prompt("Foto-Beschreibung", `Text für Foto ${photoIndex + 1} bearbeiten:`, [
             { text: "Abbrechen", style: "cancel" },
             { text: "Speichern", onPress: (text?: string) => savePhotoCaption(photoIndex, text || "") },
           ], "plain-text", currentCaption || "")
         : Alert.alert("Foto-Beschreibung", `Aktuelle Beschreibung:\n\n${currentCaption || "(leer)"}`, [
-            { text: "L\u00f6schen", style: "destructive", onPress: () => savePhotoCaption(photoIndex, "") },
+            { text: "Löschen", style: "destructive", onPress: () => savePhotoCaption(photoIndex, "") },
             { text: "OK" },
           ]);
     }
@@ -1192,11 +1192,11 @@ export default function ProtocolDetailScreen() {
                 </Text>
                 <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 2 }}>
                   {protocol.processingStep === "uploading" && "Audio wird hochgeladen..."}
-                  {protocol.processingStep === "transcribing" && "Spracherkennung l\u00e4uft..."}
+                  {protocol.processingStep === "transcribing" && "Spracherkennung läuft..."}
                   {protocol.processingStep === "generating" && "Protokoll wird erstellt..."}
                   {protocol.processingStep === "extracting-todos" && "Aufgaben werden extrahiert..."}
                   {protocol.processingStep === "failed" && `Fehler: ${protocol.processingError || "Unbekannt"}`}
-                  {!protocol.processingStep && "Verarbeitung l\u00e4uft..."}
+                  {!protocol.processingStep && "Verarbeitung läuft..."}
                 </Text>
                 {protocol.processingStep === "failed" && (
                   <Text style={{ fontSize: 11, color: "#E65100", marginTop: 4 }}>
@@ -1367,7 +1367,7 @@ export default function ProtocolDetailScreen() {
                     <View style={{ flex: 1, justifyContent: "flex-start" }}>
                       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
                         <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted }}>
-                          Foto {index + 1}{timestamps[index] != null ? ` \u2013 ${Math.floor(timestamps[index] / 60)}:${(timestamps[index] % 60).toString().padStart(2, "0")} Min.` : ""}
+                          Foto {index + 1}{timestamps[index] != null ? ` – ${Math.floor(timestamps[index] / 60)}:${(timestamps[index] % 60).toString().padStart(2, "0")} Min.` : ""}
                         </Text>
                         <Pressable
                           onPress={() => editPhotoCaption(index, currentCaption)}
@@ -1454,7 +1454,7 @@ export default function ProtocolDetailScreen() {
                 onPress={() => toggleTodo(index)}
                 onLongPress={() => {
                   if (Platform.OS === "web") {
-                    const input = prompt("F\u00e4lligkeitsdatum (TT.MM.JJJJ):", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
+                    const input = prompt("Fälligkeitsdatum (TT.MM.JJJJ):", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
                     if (input) {
                       const parts = input.split(".");
                       if (parts.length === 3) {
@@ -1474,7 +1474,7 @@ export default function ProtocolDetailScreen() {
                       }
                     }
                   } else {
-                    Alert.prompt ? Alert.prompt("F\u00e4lligkeitsdatum", "Format: TT.MM.JJJJ", (input) => {
+                    Alert.prompt ? Alert.prompt("Fälligkeitsdatum", "Format: TT.MM.JJJJ", (input) => {
                       if (input) {
                         const parts = input.split(".");
                         if (parts.length === 3) {
@@ -1493,7 +1493,7 @@ export default function ProtocolDetailScreen() {
                           }
                         }
                       }
-                    }, "plain-text", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "") : Alert.alert("Hinweis", "Halte eine Aufgabe gedr\u00fcckt um ein F\u00e4lligkeitsdatum zu setzen.");
+                    }, "plain-text", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "") : Alert.alert("Hinweis", "Halte eine Aufgabe gedrückt um ein Fälligkeitsdatum zu setzen.");
                   }
                 }}
                 style={({ pressed }) => [
@@ -1968,7 +1968,7 @@ export default function ProtocolDetailScreen() {
         {protocol.status === "processing" && (
           <View style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}>
             <Text style={{ fontSize: 12, color: "#FF9800", fontWeight: "500" }}>
-              Versenden erst m\u00f6glich wenn Verarbeitung abgeschlossen
+              Versenden erst möglich wenn Verarbeitung abgeschlossen
             </Text>
           </View>
         )}
@@ -2140,7 +2140,7 @@ export default function ProtocolDetailScreen() {
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Pressable onPress={() => setShowPdfPreview(false)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-              <Text style={{ fontSize: 16, color: colors.primary }}>Schlie\u00dfen</Text>
+              <Text style={{ fontSize: 16, color: colors.primary }}>Schließen</Text>
             </Pressable>
             <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>PDF-Vorschau</Text>
             <Pressable onPress={sharePdfFromPreview} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
@@ -2178,7 +2178,7 @@ export default function ProtocolDetailScreen() {
                   onPress={() => setShowPdfPreview(false)}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zur\u00fcck</Text>
+                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zurück</Text>
                 </Pressable>
               </View>
             </View>
@@ -2192,7 +2192,7 @@ export default function ProtocolDetailScreen() {
                 </Text>
                 <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
                   {photos.length > 0 ? `${photos.length} Foto(s) enthalten` : "Ohne Fotos"}
-                  {inlinePlacedCount > 0 ? ` \u2022 ${inlinePlacedCount} inline platziert` : ""}
+                  {inlinePlacedCount > 0 ? ` • ${inlinePlacedCount} inline platziert` : ""}
                 </Text>
               </View>
               <View style={{ paddingVertical: 12, gap: 8 }}>
@@ -2207,7 +2207,7 @@ export default function ProtocolDetailScreen() {
                   onPress={() => setShowPdfPreview(false)}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zur\u00fcck</Text>
+                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zurück</Text>
                 </Pressable>
               </View>
             </View>

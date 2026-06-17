@@ -268,7 +268,7 @@ export default function ProjectsScreen() {
               <TextInput
                 value={newPrefix}
                 onChangeText={(v) => setNewPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
-                placeholder="Protokoll-Pr\u00e4fix (z.B. BST, MNG)"
+                placeholder="Protokoll-Präfix (z.B. BST, MNG)"
                 placeholderTextColor={colors.muted}
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                 autoCapitalize="characters"
@@ -278,7 +278,7 @@ export default function ProjectsScreen() {
                 {newPrefix ? `Nummerierung: ${newPrefix}-001, ${newPrefix}-002, ...` : 'Optional: Automatische Nummerierung (z.B. BST-001)'}
               </Text>
 
-              <Text style={[styles.colorLabel, { color: colors.muted }]}>Farbe w\u00e4hlen</Text>
+              <Text style={[styles.colorLabel, { color: colors.muted }]}>Farbe wählen</Text>
               <View style={styles.colorGrid}>
                 {PROJECT_COLORS.map((color) => (
                   <Pressable
