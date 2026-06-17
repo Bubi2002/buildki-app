@@ -262,3 +262,4 @@
 - [x] Feature: Automatische Dokumenttyp-Erkennung – KI schlägt basierend auf Inhalt den passenden Output-Typ vor
 - [x] Feature: Neuer Template-Typ "Gutachterliche Bewertung" – Formeller Bewertungsbericht nach Vorbild Shell Karlsruhe (Befundaufnahme, Mängeltabelle, Gesamturteil, Empfehlung)
 - [x] Feature: Gutachten-PDF-Styling – Dunkelblaue Kapitelüberschriften, gelbe Bewertungsboxen, rote Fazitbox, grüne Empfehlungsbox
+- [x] UX-Fix: Vorlage-wählen-Modal unübersichtlich – überlappt Aufnahme-Button und Letzte Protokolle, muss als sauberes Bottom-Sheet erscheinen

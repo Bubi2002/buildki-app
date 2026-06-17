@@ -1281,78 +1281,81 @@ export default function RecordScreen() {
             </Pressable>
           )}
 
-          {/* Template selector */}
-          {showTemplateSelector && !isRecording && (
-            <View style={[styles.templateSheetAudio, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.templateSheetHeader}>
-                <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
-                  Vorlage wählen
-                </Text>
-                <Pressable onPress={() => setShowTemplateSelector(false)}>
-                  <MaterialIcons name="close" size={24} color={colors.muted} />
-                </Pressable>
-              </View>
-              <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
-                {PROTOCOL_TEMPLATES.map((template) => (
-                  <Pressable
-                    key={template.id}
-                    onPress={() => {
-                      setSelectedTemplate(template);
-                      setShowTemplateSelector(false);
-                    }}
-                    style={({ pressed }) => [
-                      styles.templateListItem,
-                      {
-                        backgroundColor:
-                          selectedTemplate.id === template.id
-                            ? colors.primary + "15"
-                            : "transparent",
-                        borderColor:
+          {/* Template selector modal */}
+          <Modal visible={showTemplateSelector && !isRecording} animationType="slide" transparent>
+            <View style={styles.templateModalOverlay}>
+              <Pressable style={styles.templateModalDismiss} onPress={() => setShowTemplateSelector(false)} />
+              <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
+                <View style={styles.templateSheetHeader}>
+                  <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
+                    Vorlage wählen
+                  </Text>
+                  <Pressable onPress={() => setShowTemplateSelector(false)}>
+                    <MaterialIcons name="close" size={24} color={colors.muted} />
+                  </Pressable>
+                </View>
+                <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
+                  {PROTOCOL_TEMPLATES.map((template) => (
+                    <Pressable
+                      key={template.id}
+                      onPress={() => {
+                        setSelectedTemplate(template);
+                        setShowTemplateSelector(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.templateListItem,
+                        {
+                          backgroundColor:
+                            selectedTemplate.id === template.id
+                              ? colors.primary + "15"
+                              : "transparent",
+                          borderColor:
+                            selectedTemplate.id === template.id
+                              ? colors.primary
+                              : colors.border,
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name={template.icon as any}
+                        size={22}
+                        color={
                           selectedTemplate.id === template.id
                             ? colors.primary
-                            : colors.border,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name={template.icon as any}
-                      size={22}
-                      color={
-                        selectedTemplate.id === template.id
-                          ? colors.primary
-                          : colors.muted
-                      }
-                    />
-                    <View style={styles.templateListText}>
-                      <Text
-                        style={[
-                          styles.templateListName,
-                          {
-                            color:
-                              selectedTemplate.id === template.id
-                                ? colors.primary
-                                : colors.foreground,
-                          },
-                        ]}
-                      >
-                        {template.name}
-                      </Text>
-                      <Text
-                        style={[styles.templateListDesc, { color: colors.muted }]}
-                        numberOfLines={1}
-                      >
-                        {template.description}
-                      </Text>
-                    </View>
-                    {selectedTemplate.id === template.id && (
-                      <MaterialIcons name="check-circle" size={20} color={colors.primary} />
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
+                            : colors.muted
+                        }
+                      />
+                      <View style={styles.templateListText}>
+                        <Text
+                          style={[
+                            styles.templateListName,
+                            {
+                              color:
+                                selectedTemplate.id === template.id
+                                  ? colors.primary
+                                  : colors.foreground,
+                            },
+                          ]}
+                        >
+                          {template.name}
+                        </Text>
+                        <Text
+                          style={[styles.templateListDesc, { color: colors.muted }]}
+                          numberOfLines={1}
+                        >
+                          {template.description}
+                        </Text>
+                      </View>
+                      {selectedTemplate.id === template.id && (
+                        <MaterialIcons name="check-circle" size={20} color={colors.primary} />
+                      )}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
             </View>
-          )}
+          </Modal>
 
           {/* Controls */}
           <View style={styles.audioControls}>
@@ -1611,10 +1614,11 @@ export default function RecordScreen() {
           </View>
         )}
 
-        {/* Template selector overlay */}
-        {showTemplateSelector && !isRecording && (
-          <View style={styles.templateOverlay}>
-            <View style={[styles.templateSheet, { backgroundColor: colors.background }]}>
+        {/* Template selector modal */}
+        <Modal visible={showTemplateSelector && !isRecording} animationType="slide" transparent>
+          <View style={styles.templateModalOverlay}>
+            <Pressable style={styles.templateModalDismiss} onPress={() => setShowTemplateSelector(false)} />
+            <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
               <View style={styles.templateSheetHeader}>
                 <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
                   Vorlage wählen
@@ -1684,7 +1688,7 @@ export default function RecordScreen() {
               </ScrollView>
             </View>
           </View>
-        )}
+        </Modal>
 
         {/* Controls */}
         <View style={styles.controlsContainer}>
@@ -1906,6 +1910,22 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderWidth: 1,
     maxHeight: 350,
+  },
+  templateModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  templateModalDismiss: {
+    flex: 1,
+  },
+  templateModalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    maxHeight: "75%",
   },
   templateSheetHeader: {
     flexDirection: "row",
