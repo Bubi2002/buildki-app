@@ -144,7 +144,7 @@ export default function ProtocolDetailScreen() {
   const [showGallery, setShowGallery] = useState(false);
   // Voice note playback
   const [playingVoiceNote, setPlayingVoiceNote] = useState<number | null>(null);
-  // Multi-output (Plaud-style)
+  // Multi-output (KI-Zusammenfassungen)
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [suggestedDocType, setSuggestedDocType] = useState<{ type: string; confidence: number; reason: string } | null>(null);
   const [isDetectingType, setIsDetectingType] = useState(false);
@@ -519,7 +519,7 @@ export default function ProtocolDetailScreen() {
     }
   };
 
-  // Multi-output: Regenerate with different template (Plaud-style)
+  // Multi-output: Regenerate with different template
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
 
@@ -796,10 +796,14 @@ export default function ProtocolDetailScreen() {
 
     setIsExporting(true);
     try {
+      // Use the currently displayed text (may be a KI-regenerated version)
+      const activeVersion = activeVersionId ? versions.find(v => v.id === activeVersionId) : null;
+      const pdfText = activeVersion?.text || protocol.protocol;
+      const pdfTemplateName = activeVersion?.templateName || protocol.templateName;
       const pdfUri = await generateProtocolPdf({
         title: protocol.title,
-        protocol: protocol.protocol,
-        templateName: protocol.templateName,
+        protocol: pdfText,
+        templateName: pdfTemplateName,
         templateId: protocol.templateId,
         photos: protocol.photos,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
@@ -820,8 +824,8 @@ export default function ProtocolDetailScreen() {
       if (Platform.OS === "web") {
         const html = await generateProtocolHtmlPreview({
           title: protocol.title,
-          protocol: protocol.protocol,
-          templateName: protocol.templateName,
+          protocol: pdfText,
+          templateName: pdfTemplateName,
           templateId: protocol.templateId,
           photos: protocol.photos,
           photoTimestamps: (protocol as any).photoTimestamps || undefined,
@@ -1544,7 +1548,7 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* KI-Werkzeuge - Plaud-Style */}
+        {/* KI-Werkzeuge */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
             <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
@@ -2343,9 +2347,9 @@ export default function ProtocolDetailScreen() {
                     </Text>
                   </View>
                 )}
-                {/* Plaud-Style Formate */}
-                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Plaud-Formate</Text>
-                {availableTemplates.filter(t => t.id.includes("plaud")).map((t) => (
+                {/* KI-Zusammenfassungen */}
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>KI-Zusammenfassungen</Text>
+                {availableTemplates.filter(t => t.id.includes("-ki")).map((t) => (
                   <Pressable
                     key={t.id}
                     onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}
@@ -2355,7 +2359,7 @@ export default function ProtocolDetailScreen() {
                       <MaterialIcons name={(t as any).icon || "auto-awesome"} size={22} color={colors.primary} />
                     </View>
                     <View style={{ marginLeft: 14, flex: 1 }}>
-                      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>{t.name.replace(" (Plaud)", "")}</Text>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>{t.name}</Text>
                       <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t.description}</Text>
                     </View>
                     <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
@@ -2363,7 +2367,7 @@ export default function ProtocolDetailScreen() {
                 ))}
                 {/* Fach-Templates */}
                 <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 10 }}>Fach-Vorlagen</Text>
-                {availableTemplates.filter(t => !t.id.includes("plaud")).map((t) => (
+                {availableTemplates.filter(t => !t.id.includes("-ki")).map((t) => (
                   <Pressable
                     key={t.id}
                     onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}

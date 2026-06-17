@@ -270,3 +270,6 @@
 - [x] Bug: Zoom-Steuerung fehlt während der Aufnahme im Audio+Foto Modus
 - [x] Bug: Button-Labels (FOTO, STOPP, MARKER) zu klein/schlecht lesbar im Audio+Foto Modus
 - [x] Bug: Unicode-Escape-Sequenzen (\u00xx) werden als roher Text angezeigt statt als echte Umlaute (Schließen, Zurück, etc.)
+- [x] Bug: "Plaud" Name überall aus der UI und Templates entfernen
+- [x] Bug: Foto-Beschriftungen im PDF sollen nur den fettgedruckten Text zeigen, nicht den gesamten Transkriptionstext
+- [x] Feature: KI-generierte Zusammenfassung/Protokoll als PDF exportieren können (aktive Version wird exportiert)

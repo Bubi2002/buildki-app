@@ -627,10 +627,10 @@ Wichtige Regeln:
               content: `Du bist ein Dokumenttyp-Erkennungssystem. Analysiere die folgende Transkription und bestimme, welcher Dokumenttyp am besten passt.
 
 Verfügbare Typen:
-- "zusammenfassung-plaud" - Kurze Zusammenfassung (für allgemeine Gespräche, Interviews)
-- "besprechungszusammenfassung-plaud" - Besprechungszusammenfassung (für Meetings mit mehreren Teilnehmern)
-- "begruendungszusammenfassung-plaud" - Begründungszusammenfassung (für Entscheidungen, Gutachten)
-- "sitzungsprotokoll-plaud" - Formelles Sitzungsprotokoll (für offizielle Sitzungen)
+- "zusammenfassung-ki" - Kurze Zusammenfassung (für allgemeine Gespräche, Interviews)
+- "besprechungszusammenfassung-ki" - Besprechungszusammenfassung (für Meetings mit mehreren Teilnehmern)
+- "begruendungszusammenfassung-ki" - Begründungszusammenfassung (für Entscheidungen, Gutachten)
+- "sitzungsprotokoll-ki" - Formelles Sitzungsprotokoll (für offizielle Sitzungen)
 - "baustellenbericht" - Baustellenbericht (für Baustellen, Bauarbeiten, Handwerk)
 - "besprechungsnotiz" - Besprechungsnotiz (für informelle Besprechungen)
 - "maengelliste" - Mängelliste (für Mängel, Schäden, Reklamationen)

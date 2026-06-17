@@ -119,12 +119,12 @@ Das Protokoll soll folgende Struktur haben:
 Formuliere rechtssicher und formal. Verwende die übliche Terminologie des Baurechts.`,
   },
   {
-    id: "zusammenfassung-plaud",
-    name: "Zusammenfassung (Plaud)",
+    id: "zusammenfassung-ki",
+    name: "Zusammenfassung",
     icon: "lightbulb",
     category: "meeting",
     description: "Ultra-Kurzfassung: Kernerkenntnisse und nächste Schritte auf einer Seite",
-    systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle eine extrem kompakte Zusammenfassung (Distillation) aus dem folgenden transkribierten Text.
+    systemPrompt: `Du bist ein KI-Assistent für professionelle Protokollerstellung. Erstelle eine extrem kompakte Zusammenfassung (Distillation) aus dem folgenden transkribierten Text.
 
 Format:
 1. **Titel** (aus dem Kontext ableiten)
@@ -138,12 +138,12 @@ Regeln:
 - Fokus auf: Was wurde entschieden? Was ist die Erkenntnis? Was muss getan werden?`,
   },
   {
-    id: "besprechungszusammenfassung-plaud",
-    name: "Besprechungszusammenfassung (Plaud)",
+    id: "besprechungszusammenfassung-ki",
+    name: "Besprechungszusammenfassung",
     icon: "groups",
     category: "meeting",
     description: "Management-taugliche Zusammenfassung mit Kernpunkten, Entscheidungen und Aufgabentabelle",
-    systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle eine strukturierte Besprechungszusammenfassung aus dem folgenden transkribierten Text.
+    systemPrompt: `Du bist ein KI-Assistent für professionelle Protokollerstellung. Erstelle eine strukturierte Besprechungszusammenfassung aus dem folgenden transkribierten Text.
 
 Format:
 1. **Titel** (Datum + Thema)
@@ -161,12 +161,12 @@ Regeln:
 - Keine Wiederholungen zwischen Abschnitten`,
   },
   {
-    id: "begruendungszusammenfassung-plaud",
-    name: "Begründungszusammenfassung (Plaud)",
+    id: "begruendungszusammenfassung-ki",
+    name: "Begründungszusammenfassung",
     icon: "psychology",
     category: "meeting",
     description: "Analytisches Narrativ mit thematischen Kapiteln und Herleitung",
-    systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle eine ausführliche Begründungszusammenfassung aus dem folgenden transkribierten Text.
+    systemPrompt: `Du bist ein KI-Assistent für professionelle Protokollerstellung. Erstelle eine ausführliche Begründungszusammenfassung aus dem folgenden transkribierten Text.
 
 Format:
 1. **Titel** (Datum + ausführlicher Betreff)
@@ -187,12 +187,12 @@ Regeln:
 - Nächste Schritte immer mit Personenzuordnung`,
   },
   {
-    id: "sitzungsprotokoll-plaud",
-    name: "Sitzungsprotokoll (Plaud)",
+    id: "sitzungsprotokoll-ki",
+    name: "Sitzungsprotokoll",
     icon: "event-note",
     category: "meeting",
     description: "Detailliertes Protokoll mit Zeitcodes, Maßnahmen und Entscheidungen",
-    systemPrompt: `Du bist ein KI-Assistent im Stil von Plaud Note. Erstelle ein detailliertes Sitzungsprotokoll aus dem folgenden transkribierten Text.
+    systemPrompt: `Du bist ein KI-Assistent für professionelle Protokollerstellung. Erstelle ein detailliertes Sitzungsprotokoll aus dem folgenden transkribierten Text.
 
 Format:
 1. **Titel** (Datum + Meeting-Titel)

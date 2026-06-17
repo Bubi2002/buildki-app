@@ -227,35 +227,21 @@ function generatePdfHtml(
     if (protocol.photoCaptions && protocol.photoCaptions[photoIndex]) {
       return protocol.photoCaptions[photoIndex];
     }
-    // Priority 2: Match segments by timestamp with highlight
+    // Priority 2: Match segments by timestamp - only show the exact sentence at photo time (bold only)
     if (protocol.transcriptionSegments && protocol.transcriptionSegments.length > 0 && protocol.photoTimestamps && protocol.photoTimestamps[photoIndex] != null) {
       const photoTime = protocol.photoTimestamps[photoIndex];
-      // Find segments that overlap with a window around the photo time (±15 seconds before, +5 after)
-      const windowStart = Math.max(0, photoTime - 15);
-      const windowEnd = photoTime + 5;
-      const matchingSegments = protocol.transcriptionSegments.filter(
-        (seg) => seg.end >= windowStart && seg.start <= windowEnd
+      // Find the exact segment that contains the photo timestamp (spoken at that moment)
+      const exactSegment = protocol.transcriptionSegments.find(
+        (seg) => seg.start <= photoTime && seg.end >= photoTime
       );
-      if (matchingSegments.length > 0) {
-        // Find the exact segment that contains the photo timestamp (spoken at that moment)
-        const exactSegment = protocol.transcriptionSegments.find(
-          (seg) => seg.start <= photoTime && seg.end >= photoTime
-        );
-        // Build caption with highlight on the exact sentence
-        const captionParts = matchingSegments.map(s => {
-          const text = s.text.trim();
-          if (exactSegment && s.start === exactSegment.start && s.end === exactSegment.end) {
-            return `<strong style="background-color: rgba(255, 235, 59, 0.3); padding: 1px 3px; border-radius: 2px;">${text}</strong>`;
-          }
-          return text;
-        });
-        return captionParts.join(" ").trim();
+      if (exactSegment) {
+        return `<strong>${exactSegment.text.trim()}</strong>`;
       }
       // Fallback: find the closest segment before the photo
       const beforeSegments = protocol.transcriptionSegments.filter(seg => seg.start <= photoTime);
       if (beforeSegments.length > 0) {
         const closest = beforeSegments[beforeSegments.length - 1];
-        return `<strong style="background-color: rgba(255, 235, 59, 0.3); padding: 1px 3px; border-radius: 2px;">${closest.text.trim()}</strong>`;
+        return `<strong>${closest.text.trim()}</strong>`;
       }
     }
     // Priority 3: No segments available – use empty
