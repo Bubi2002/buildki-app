@@ -331,3 +331,6 @@
 - [x] Bug-Fix: PDF-Vorschau zeigt nur "PDF erstellt" Icon statt das eigentliche PDF-Dokument anzuzeigen (WebView-basierte Vorschau)
 - [x] Bug-Fix: Bilder fehlen im Abnahmeprotokoll-PDF (iOS URI-Fallback, inline Foto-Embedding, photoCaptions übergeben)
 - [x] Bug-Fix: Fotos fehlen im Baustellenbericht-PDF – Regex erkennt jetzt auch LLM-generiertes "[Foto X – siehe Fotodokumentation]" Pattern, Fotodokumentation-Fallback wenn inline-Platzierung fehlschlägt, besseres Logging
+- [x] Verbesserung: LLM-Prompt anpassen – nur [FOTO X] Marker statt "[Foto X – siehe Fotodokumentation]"
+- [x] Verbesserung: Foto-Komprimierung vor PDF-Export (Bilder verkleinern für kleinere PDFs)
+- [x] Verbesserung: Zuverlässige Foto-Persistenz sicherstellen (Fotos immer in documentDirectory kopieren)

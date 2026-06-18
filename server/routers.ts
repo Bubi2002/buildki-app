@@ -119,9 +119,9 @@ export const appRouter = router({
               const secs = Math.floor(ts % 60);
               userMessage += `  Foto ${i + 1}: bei ${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")} Min.\n`;
             });
-            userMessage += `\nFüge an der thematisch passenden Stelle im Protokoll den Platzhalter [FOTO X] ein (z.B. [FOTO 1], [FOTO 2] etc.), damit die Fotos im fertigen Dokument inline erscheinen.\n\n`;
+            userMessage += `\nWICHTIG: Füge an der thematisch passenden Stelle im Protokoll den Platzhalter [FOTO X] ein. Verwende EXAKT dieses Format: [FOTO 1], [FOTO 2], [FOTO 3] etc. NICHT "[Foto 1 – siehe Fotodokumentation]" oder ähnliche Varianten. Nur [FOTO X] in Großbuchstaben mit der Nummer.\n\n`;
           } else {
-            userMessage += `FOTOS: ${input.photoCount} Foto(s) wurden während der Aufnahme gemacht und sind dem Protokoll beigefügt.\n\n`;
+            userMessage += `FOTOS: ${input.photoCount} Foto(s) wurden während der Aufnahme gemacht.\nWICHTIG: Füge am Ende des Protokolls unter einer Überschrift "Fotos / Hinweise" die Platzhalter [FOTO 1], [FOTO 2] etc. ein. Verwende EXAKT dieses Format: [FOTO X] in Großbuchstaben. NICHT "[Foto X – siehe Fotodokumentation]" oder ähnliche Varianten.\n\n`;
           }
         }
 

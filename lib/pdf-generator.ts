@@ -1,6 +1,29 @@
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+/**
+ * Compress a photo for PDF embedding - resize to max 1200px width and compress to 60% JPEG quality.
+ * This significantly reduces base64 size and PDF file size.
+ */
+async function compressPhotoForPdf(uri: string): Promise<string> {
+  try {
+    // Skip compression on web (ImageManipulator has limited web support)
+    if (Platform.OS === "web") return uri;
+    
+    const manipResult = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1200 } }], // Max 1200px width for PDF (plenty for print quality)
+      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    return manipResult.uri;
+  } catch (error) {
+    console.warn("[PDF-Gen] Photo compression failed, using original:", error);
+    return uri; // Fallback to original if compression fails
+  }
+}
 
 type TodoItem = {
   task: string;
@@ -725,16 +748,30 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     for (let i = 0; i < protocol.photos.length; i++) {
       const photoUri = protocol.photos[i];
       console.log(`[PDF-Gen] Photo ${i + 1}: ${photoUri}`);
-      let dataUri = await fileToBase64DataUri(photoUri);
+      
+      // Step 1: Compress the photo for smaller PDF size
+      const compressedUri = await compressPhotoForPdf(photoUri);
+      const uriToRead = compressedUri || photoUri;
+      
+      let dataUri = await fileToBase64DataUri(uriToRead);
+      // If compressed version fails, try original
+      if (!dataUri && compressedUri !== photoUri) {
+        dataUri = await fileToBase64DataUri(photoUri);
+      }
       // If direct read fails, try copying to a temp location first (handles iOS ph:// and picker URIs)
       if (!dataUri && photoUri) {
         console.log(`[PDF-Gen] Photo ${i + 1}: Direct read failed, trying copy fallback...`);
         try {
           const tempPath = `${FileSystem.cacheDirectory}pdf-photo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}.jpg`;
           await FileSystem.copyAsync({ from: photoUri, to: tempPath });
-          dataUri = await fileToBase64DataUri(tempPath);
-          // Clean up temp file
+          // Compress the copied file too
+          const compressedTemp = await compressPhotoForPdf(tempPath);
+          dataUri = await fileToBase64DataUri(compressedTemp || tempPath);
+          // Clean up temp files
           try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch {}
+          if (compressedTemp && compressedTemp !== tempPath) {
+            try { await FileSystem.deleteAsync(compressedTemp, { idempotent: true }); } catch {}
+          }
         } catch (copyErr) {
           console.warn(`[PDF-Gen] Photo ${i + 1}: Copy fallback also failed:`, copyErr);
         }
