@@ -61,6 +61,14 @@ export default function RecordScreen() {
   const zoomBadgeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashMode, setFlashMode] = useState<"off" | "on" | "auto">("auto");
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"front" | "back">("back");
+  const [photoTimer, setPhotoTimer] = useState<0 | 3 | 5 | 10>(0);
+  const [timerCountdown, setTimerCountdown] = useState<number | null>(null);
+  const timerCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showAnnotation, setShowAnnotation] = useState(false);
+  const [annotationText, setAnnotationText] = useState("");
+  const [annotatingPhotoIndex, setAnnotatingPhotoIndex] = useState<number | null>(null);
+  const [photoAnnotations, setPhotoAnnotations] = useState<Record<number, string>>({});
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -646,6 +654,30 @@ export default function RecordScreen() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  // Take photo with optional timer countdown
+  const takePhotoWithTimer = useCallback(() => {
+    if (photoTimer === 0) {
+      takePhoto();
+      return;
+    }
+    // Start countdown
+    setTimerCountdown(photoTimer);
+    let remaining = photoTimer;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    timerCountdownRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (timerCountdownRef.current) clearInterval(timerCountdownRef.current);
+        timerCountdownRef.current = null;
+        setTimerCountdown(null);
+        takePhoto();
+      } else {
+        setTimerCountdown(remaining);
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }, 1000);
+  }, [photoTimer]);
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
@@ -1962,7 +1994,7 @@ export default function RecordScreen() {
           <CameraView
             ref={cameraRef}
             style={styles.camera}
-            facing="back"
+            facing={cameraFacing}
             mode="picture"
             zoom={cameraZoom}
             flash={flashMode}
@@ -1990,22 +2022,50 @@ export default function RecordScreen() {
           </Pressable>
         )}
 
-        {/* Flash toggle - top right */}
-        <Pressable
-          onPress={() => {
-            const modes: Array<"auto" | "on" | "off"> = ["auto", "on", "off"];
-            const idx = modes.indexOf(flashMode);
-            setFlashMode(modes[(idx + 1) % 3]);
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }}
-          style={({ pressed }) => [{ position: "absolute", top: 12, right: 16, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <MaterialIcons
-            name={flashMode === "on" ? "flash-on" : flashMode === "auto" ? "flash-auto" : "flash-off"}
-            size={22}
-            color={flashMode === "off" ? "rgba(255,255,255,0.5)" : "#FFD700"}
-          />
-        </Pressable>
+        {/* Camera controls - top right */}
+        <View style={{ position: "absolute", top: 12, right: 16, flexDirection: "row", gap: 8 }}>
+          {/* Timer button */}
+          <Pressable
+            onPress={() => {
+              const timers: Array<0 | 3 | 5 | 10> = [0, 3, 5, 10];
+              const idx = timers.indexOf(photoTimer);
+              setPhotoTimer(timers[(idx + 1) % 4]);
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={{ alignItems: "center" }}>
+              <MaterialIcons name="timer" size={22} color={photoTimer > 0 ? "#FFD700" : "rgba(255,255,255,0.5)"} />
+              {photoTimer > 0 && <Text style={{ fontSize: 9, color: "#FFD700", fontWeight: "700", marginTop: -2 }}>{photoTimer}s</Text>}
+            </View>
+          </Pressable>
+          {/* Flash toggle */}
+          <Pressable
+            onPress={() => {
+              const modes: Array<"auto" | "on" | "off"> = ["auto", "on", "off"];
+              const idx = modes.indexOf(flashMode);
+              setFlashMode(modes[(idx + 1) % 3]);
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons
+              name={flashMode === "on" ? "flash-on" : flashMode === "auto" ? "flash-auto" : "flash-off"}
+              size={22}
+              color={flashMode === "off" ? "rgba(255,255,255,0.5)" : "#FFD700"}
+            />
+          </Pressable>
+          {/* Camera flip */}
+          <Pressable
+            onPress={() => {
+              setCameraFacing(prev => prev === "back" ? "front" : "back");
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="flip-camera-ios" size={22} color="#FFFFFF" />
+          </Pressable>
+        </View>
 
         {/* Zoom slider - always visible */}
         <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
@@ -2058,6 +2118,15 @@ export default function RecordScreen() {
 
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}
+
+        {/* Timer countdown overlay */}
+        {timerCountdown !== null && (
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.3)", zIndex: 100 }}>
+            <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "#FFD700" }}>
+              <Text style={{ fontSize: 48, fontWeight: "800", color: "#FFD700" }}>{timerCountdown}</Text>
+            </View>
+          </View>
+        )}
 
         {/* Timer overlay */}
         {isRecording && (
@@ -2271,7 +2340,7 @@ export default function RecordScreen() {
             {/* Photo button - larger, blue color */}
             {isRecording ? (
               <Pressable
-                onPress={takePhoto}
+                onPress={takePhotoWithTimer}
                 style={({ pressed }) => [
                   styles.actionButtonLarge,
                   { backgroundColor: "#2196F3", transform: [{ scale: pressed ? 0.9 : 1 }] },
@@ -2376,9 +2445,72 @@ export default function RecordScreen() {
                 <View style={{ position: "absolute", bottom: 6, left: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
                   <Text style={{ fontSize: 11, color: "#FFFFFF", fontWeight: "600" }}>#{index + 1}</Text>
                 </View>
+                {/* Annotation button */}
+                <Pressable
+                  onPress={() => {
+                    setAnnotatingPhotoIndex(index);
+                    setAnnotationText(photoAnnotations[index] || "");
+                    setShowAnnotation(true);
+                  }}
+                  style={({ pressed }) => [{ position: "absolute", top: 6, right: 6, backgroundColor: photoAnnotations[index] ? "#4CAF50" : "rgba(0,0,0,0.6)", borderRadius: 14, padding: 6, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={photoAnnotations[index] ? "edit-note" : "add-comment"} size={16} color="#FFFFFF" />
+                </Pressable>
+                {/* Show annotation preview */}
+                {photoAnnotations[index] && (
+                  <View style={{ position: "absolute", top: 6, left: 6, right: 34, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 10, color: "#FFFFFF" }} numberOfLines={1}>{photoAnnotations[index]}</Text>
+                  </View>
+                )}
               </View>
             )}
           />
+        </View>
+      </Modal>
+
+      {/* Photo Annotation Modal */}
+      <Modal visible={showAnnotation} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", padding: 24 }}>
+          <View style={{ backgroundColor: colors.background, borderRadius: 16, padding: 20 }}>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Foto-Notiz</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Beschreibung oder Anmerkung zu Foto #{annotatingPhotoIndex !== null ? annotatingPhotoIndex + 1 : ""}</Text>
+            <TextInput
+              value={annotationText}
+              onChangeText={setAnnotationText}
+              placeholder="z.B. Riss an der Decke, ca. 30cm"
+              placeholderTextColor={colors.muted}
+              multiline
+              numberOfLines={3}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, minHeight: 80, textAlignVertical: "top", marginBottom: 16 }}
+              autoFocus
+            />
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => {
+                  setShowAnnotation(false);
+                  setAnnotationText("");
+                  setAnnotatingPhotoIndex(null);
+                }}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (annotatingPhotoIndex !== null) {
+                    setPhotoAnnotations(prev => ({ ...prev, [annotatingPhotoIndex]: annotationText.trim() }));
+                  }
+                  setShowAnnotation(false);
+                  setAnnotationText("");
+                  setAnnotatingPhotoIndex(null);
+                  if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Speichern</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
 

@@ -300,3 +300,6 @@
 - [x] Feature: Kamera-Blitz-Steuerung – Toggle für Auto/An/Aus im Kamera-Overlay
 - [x] Feature: Foto-Galerie-Vorschau – Thumbnail der letzten Aufnahme + Galerie-Modal
 - [x] Feature: Sprachgesteuerte Foto-Aufnahme – "Foto" sagen löst automatisch ein Foto aus
+- [x] Feature: Foto-Annotation – Nach Foto-Aufnahme Textnotiz auf dem Bild hinzufügen
+- [x] Feature: Front-/Rückkamera-Toggle für Selfie-Dokumentation
+- [x] Feature: Foto-Timer – 3/5/10 Sekunden Selbstauslöser für freihändige Dokumentation
