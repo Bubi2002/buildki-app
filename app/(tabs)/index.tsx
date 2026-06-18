@@ -42,6 +42,7 @@ import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/loc
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 import { getApiBaseUrl } from "@/constants/oauth";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 type RecordingMode = "audio" | "audio-photo";
 
@@ -52,6 +53,7 @@ export default function RecordScreen() {
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraZoom, setCameraZoom] = useState(0);
+  const pinchZoomBase = useRef(0);
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -1875,18 +1877,33 @@ export default function RecordScreen() {
     );
   }
 
+  // Pinch-to-zoom gesture for camera
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      pinchZoomBase.current = cameraZoom;
+    })
+    .onUpdate((e) => {
+      const newZoom = Math.min(1, Math.max(0, pinchZoomBase.current + (e.scale - 1) * 0.5));
+      setCameraZoom(newZoom);
+    })
+    .runOnJS(true);
+
   return (
     <View style={styles.container}>
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing="back"
-        mode="picture"
-        zoom={cameraZoom}
-        active={isFocused}
-        onCameraReady={() => setCameraReady(true)}
-        onMountError={(e) => console.warn("Camera mount error:", e?.message)}
-      />
+      <GestureDetector gesture={pinchGesture}>
+        <View style={StyleSheet.absoluteFill}>
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing="back"
+            mode="picture"
+            zoom={cameraZoom}
+            active={isFocused}
+            onCameraReady={() => setCameraReady(true)}
+            onMountError={(e) => console.warn("Camera mount error:", e?.message)}
+          />
+        </View>
+      </GestureDetector>
       {/* Overlay layer on top of camera */}
       <View style={[styles.overlayContainer, { pointerEvents: "box-none" }]}>
         {/* Active Project Header (top of camera) */}

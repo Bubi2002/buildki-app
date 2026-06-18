@@ -54,15 +54,38 @@ export default function ProtocolsScreen() {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [featureFlags, setFeatureFlags] = useState({ protocolCompare: false, csvExport: true, statistics: true });
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
+  const [showAllProjects, setShowAllProjects] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
+      loadActiveProject();
       loadProtocols();
       loadFeatureFlags();
       setBatchMode(false);
       setSelectedIds(new Set());
     }, [])
   );
+
+  const loadActiveProject = async () => {
+    try {
+      const lastId = await AsyncStorage.getItem("last-selected-project-id");
+      if (lastId) {
+        setActiveProjectId(lastId);
+        const projectsStr = await AsyncStorage.getItem("projects");
+        const projects = projectsStr ? JSON.parse(projectsStr) : [];
+        const found = projects.find((p: any) => p.id === lastId);
+        setActiveProjectName(found ? found.name : null);
+      } else {
+        setActiveProjectId(null);
+        setActiveProjectName(null);
+      }
+    } catch {
+      setActiveProjectId(null);
+      setActiveProjectName(null);
+    }
+  };
 
   const loadFeatureFlags = async () => {
     const { isFeatureEnabled } = require("@/lib/feature-toggles");
@@ -357,6 +380,11 @@ export default function ProtocolsScreen() {
 
   const getDisplayedProtocols = (): Protocol[] => {
     let filtered = protocols;
+
+    // Filter by active project (unless showAllProjects is toggled)
+    if (activeProjectId && !showAllProjects) {
+      filtered = filtered.filter((p) => p.projectId === activeProjectId);
+    }
 
     // Filter by category
     switch (filterBy) {
@@ -736,6 +764,26 @@ export default function ProtocolsScreen() {
           </Pressable>
         </View>
 
+        {/* Active Project Filter Banner */}
+        {activeProjectId && activeProjectName && (
+          <View style={[styles.projectFilterBanner, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+              <MaterialIcons name="folder" size={16} color={colors.primary} />
+              <Text style={[styles.projectFilterText, { color: colors.primary }]} numberOfLines={1}>
+                {activeProjectName}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setShowAllProjects(!showAllProjects)}
+              style={({ pressed }) => [styles.projectFilterToggle, { backgroundColor: showAllProjects ? colors.primary : "transparent", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "600", color: showAllProjects ? "#fff" : colors.primary }}>
+                {showAllProjects ? "Alle" : "Projekt"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Sort Menu */}
         {showSortMenu && (
           <View style={[styles.sortMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -826,6 +874,9 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", gap: 8, marginTop: 12, alignItems: "center" },
   filterTab: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1 },
   filterTabText: { fontSize: 12, fontWeight: "500" },
+  projectFilterBanner: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  projectFilterText: { fontSize: 13, fontWeight: "600", marginLeft: 6, flex: 1 },
+  projectFilterToggle: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
   sortMenu: { marginTop: 8, borderRadius: 10, borderWidth: 1, overflow: "hidden" },
   sortOption: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   sortOptionText: { flex: 1, fontSize: 14 },

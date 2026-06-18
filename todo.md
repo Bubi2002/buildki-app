@@ -292,3 +292,5 @@
 - [x] Feature: Aufnahme-Pause/Fortsetzen – Pause-Button während der Aufnahme
 - [x] Feature: Audio-Qualitätsanzeige – Dezibel-Indikator (zu leise/gut/zu laut)
 - [x] Feature: Schnellzugriff – App Quick Actions für sofortigen Aufnahmestart
+- [x] Bug-Fix: Protokolle-Tab zeigt nur Protokolle des aktiven Projekts (mit Toggle für alle)
+- [x] Bug-Fix: Kamera Pinch-to-Zoom implementiert (GestureDetector mit Pinch-Geste)
