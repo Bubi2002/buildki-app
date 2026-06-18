@@ -330,3 +330,4 @@
 - [x] Bug-Fix: Checkliste Tastatur überdeckt Eingabefeld + Text "Prüfpunkt hinzufügen" statt Unicode-Escape
 - [x] Bug-Fix: PDF-Vorschau zeigt nur "PDF erstellt" Icon statt das eigentliche PDF-Dokument anzuzeigen (WebView-basierte Vorschau)
 - [x] Bug-Fix: Bilder fehlen im Abnahmeprotokoll-PDF (iOS URI-Fallback, inline Foto-Embedding, photoCaptions übergeben)
+- [x] Bug-Fix: Fotos fehlen im Baustellenbericht-PDF – Regex erkennt jetzt auch LLM-generiertes "[Foto X – siehe Fotodokumentation]" Pattern, Fotodokumentation-Fallback wenn inline-Platzierung fehlschlägt, besseres Logging

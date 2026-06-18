@@ -186,8 +186,8 @@ function generatePdfHtml(
     .split("\n")
     .map((line) => {
       const trimmed = line.trim();
-      // Check for inline photo placeholder [FOTO X]
-      const photoMatch = trimmed.match(/^\[FOTO\s*(\d+)\]$/i);
+      // Check for inline photo placeholder [FOTO X] or [Foto X – siehe Fotodokumentation]
+      const photoMatch = trimmed.match(/^\*?\s*\[Foto\s*(\d+)(?:\s*[\u2013\-–]\s*[^\]]*)?\]\s*$/i);
       if (photoMatch) {
         const photoIdx = parseInt(photoMatch[1], 10) - 1;
         if (photoIdx >= 0 && photoIdx < photoDataUris.length && photoDataUris[photoIdx]) {
@@ -203,18 +203,18 @@ function generatePdfHtml(
           </div>`;
         }
       }
-      // Also handle inline [FOTO X] within a text line - embed images after the text
-      const inlinePhotoRegex = /\[FOTO\s*(\d+)\]/gi;
+      // Also handle inline [FOTO X] or [Foto X – ...] within a text line - embed images after the text
+      const inlinePhotoRegex = /\[Foto\s*(\d+)(?:\s*[\u2013\-–][^\]]*)?\]/gi;
       if (inlinePhotoRegex.test(trimmed) && !photoMatch) {
         // Collect all photo indices referenced in this line
         const referencedPhotos: number[] = [];
         let inlineM;
-        const regex2 = /\[FOTO\s*(\d+)\]/gi;
+        const regex2 = /\[Foto\s*(\d+)(?:\s*[\u2013\-–][^\]]*)?\]/gi;
         while ((inlineM = regex2.exec(trimmed)) !== null) {
           referencedPhotos.push(parseInt(inlineM[1], 10) - 1);
         }
-        // Remove [FOTO X] from text and render the text
-        let cleanedText = trimmed.replace(/\[FOTO\s*\d+\]/gi, '').trim();
+        // Remove [Foto X ...] from text and render the text
+        let cleanedText = trimmed.replace(/\[Foto\s*\d+(?:\s*[\u2013\-–][^\]]*)?\]/gi, '').trim();
         // Handle **bold** in the cleaned text
         cleanedText = cleanedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         let htmlResult = cleanedText ? `<p style="margin: 4px 0; line-height: 1.6;">${cleanedText}</p>` : '';
@@ -278,16 +278,27 @@ function generatePdfHtml(
     })
     .join("\n");
 
-  // Check which photos were already placed inline via [FOTO X] placeholders
+  // Check which photos were already placed inline via [FOTO X] or [Foto X – ...] placeholders
   const inlinePlacedPhotos = new Set<number>();
-  const inlineRegex = /\[FOTO\s*(\d+)\]/gi;
+  const inlineRegex = /\[Foto\s*(\d+)(?:\s*[\u2013\-–][^\]]*)?\]/gi;
   let inlineMatch;
   while ((inlineMatch = inlineRegex.exec(protocol.protocol)) !== null) {
     inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
   }
   // Only show remaining (non-inline) photos in the Fotodokumentation section
   // Also filter out empty entries (photos that couldn't be read)
-  const remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i) && photoDataUris[i]);
+  let remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i) && photoDataUris[i]);
+  // If ALL photos were "inline placed" but the inline rendering couldn't embed them (because photoDataUris was empty at render time),
+  // show all valid photos in the Fotodokumentation section as fallback
+  const validPhotoCount = photoDataUris.filter(u => u).length;
+  if (remainingPhotoIndices.length === 0 && validPhotoCount > 0 && inlinePlacedPhotos.size > 0) {
+    // Check if any inline photos were actually rendered (they need valid photoDataUris)
+    const inlineRenderedCount = Array.from(inlinePlacedPhotos).filter(i => i >= 0 && i < photoDataUris.length && photoDataUris[i]).length;
+    if (inlineRenderedCount === 0) {
+      // None were actually rendered inline, show all in Fotodokumentation
+      remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
+    }
+  }
 
   const photosHtml =
     remainingPhotoIndices.length > 0
@@ -710,10 +721,14 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   // Convert photos to base64 data URIs
   const photoDataUris: string[] = [];
   if (protocol.photos && protocol.photos.length > 0) {
-    for (const photoUri of protocol.photos) {
+    console.log(`[PDF-Gen] Processing ${protocol.photos.length} photos...`);
+    for (let i = 0; i < protocol.photos.length; i++) {
+      const photoUri = protocol.photos[i];
+      console.log(`[PDF-Gen] Photo ${i + 1}: ${photoUri}`);
       let dataUri = await fileToBase64DataUri(photoUri);
       // If direct read fails, try copying to a temp location first (handles iOS ph:// and picker URIs)
       if (!dataUri && photoUri) {
+        console.log(`[PDF-Gen] Photo ${i + 1}: Direct read failed, trying copy fallback...`);
         try {
           const tempPath = `${FileSystem.cacheDirectory}pdf-photo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}.jpg`;
           await FileSystem.copyAsync({ from: photoUri, to: tempPath });
@@ -721,16 +736,19 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
           // Clean up temp file
           try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch {}
         } catch (copyErr) {
-          console.warn("Could not copy photo for PDF:", photoUri, copyErr);
+          console.warn(`[PDF-Gen] Photo ${i + 1}: Copy fallback also failed:`, copyErr);
         }
       }
       if (dataUri) {
+        console.log(`[PDF-Gen] Photo ${i + 1}: ✓ Converted to base64 (${Math.round(dataUri.length / 1024)}KB)`);
         photoDataUris.push(dataUri);
       } else {
+        console.warn(`[PDF-Gen] Photo ${i + 1}: ✗ FAILED to convert - will be missing from PDF`);
         // Push empty placeholder to keep indices aligned with protocol text [FOTO X] references
         photoDataUris.push("");
       }
     }
+    console.log(`[PDF-Gen] Successfully converted ${photoDataUris.filter(u => u).length}/${protocol.photos.length} photos`);
   }
 
   // Convert plan image to base64 if available

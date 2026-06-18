@@ -1145,7 +1145,7 @@ export default function ProtocolDetailScreen() {
   };
 
   const photos = protocol.photos || [];
-  const inlinePlacedCount = (protocol?.protocol || '').match(/\[FOTO\s*\d+\]/gi)?.length || 0;
+  const inlinePlacedCount = (protocol?.protocol || '').match(/\[Foto\s*\d+(?:\s*[\u2013\-–][^\]]*)?\]/gi)?.length || 0;
 
   return (
     <ScreenContainer edges={["top", "left", "right", "bottom"]}>
