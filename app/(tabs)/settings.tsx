@@ -48,6 +48,7 @@ type Settings = {
   targetLanguage: string;
   remindersEnabled: boolean;
   reminderHoursBefore: number;
+  audioQuality: "standard" | "high" | "maximum";
 };
 
 type CompanySettings = {
@@ -71,6 +72,7 @@ const DEFAULT_SETTINGS: Settings = {
   targetLanguage: "en",
   remindersEnabled: true,
   reminderHoursBefore: 24,
+  audioQuality: "high",
 };
 
 const DEFAULT_COMPANY: CompanySettings = {
@@ -1358,6 +1360,39 @@ return (
               )}
             </View>
           )}
+        </View>
+
+        {/* Audio Quality Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Aufnahme-Qualität
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Höhere Qualität = größere Dateien, bessere Transkription
+          </Text>
+          <View style={styles.optionRow}>
+            <Pressable
+              onPress={() => updateSetting("audioQuality", "standard")}
+              style={[styles.optionButton, { backgroundColor: settings.audioQuality === "standard" ? colors.primary : colors.surface, borderColor: settings.audioQuality === "standard" ? colors.primary : colors.border }]}
+            >
+              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "standard" ? "#FFFFFF" : colors.foreground }]}>Standard</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => updateSetting("audioQuality", "high")}
+              style={[styles.optionButton, { backgroundColor: settings.audioQuality === "high" ? colors.primary : colors.surface, borderColor: settings.audioQuality === "high" ? colors.primary : colors.border }]}
+            >
+              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "high" ? "#FFFFFF" : colors.foreground }]}>Hoch</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => updateSetting("audioQuality", "maximum")}
+              style={[styles.optionButton, { backgroundColor: settings.audioQuality === "maximum" ? colors.primary : colors.surface, borderColor: settings.audioQuality === "maximum" ? colors.primary : colors.border }]}
+            >
+              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "maximum" ? "#FFFFFF" : colors.foreground }]}>Maximum</Text>
+            </Pressable>
+          </View>
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
+            {settings.audioQuality === "standard" ? "44.1 kHz, 64 kbps – Kompakt, für Sprachnotizen" : settings.audioQuality === "high" ? "44.1 kHz, 128 kbps – Empfohlen für Protokolle" : "48 kHz, 256 kbps – Studioqualität, große Dateien"}
+          </Text>
         </View>
 
         {/* Protocol Style Section */}

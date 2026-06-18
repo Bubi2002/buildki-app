@@ -303,3 +303,9 @@
 - [x] Feature: Foto-Annotation – Nach Foto-Aufnahme Textnotiz auf dem Bild hinzufügen
 - [x] Feature: Front-/Rückkamera-Toggle für Selfie-Dokumentation
 - [x] Feature: Foto-Timer – 3/5/10 Sekunden Selbstauslöser für freihändige Dokumentation
+- [x] Feature: Foto-Löschfunktion – Einzelne Fotos in der Galerie löschen (Long-Press)
+- [x] Feature: Kamera-Raster – 3x3 Grid-Overlay als Kompositionshilfe
+- [x] Feature: Foto-Reihenfolge – Fotos in der Galerie umsortieren können
+- [x] Feature: Aufnahme-Qualitätseinstellungen – Audio-Qualität wählen (Standard/Hoch/Maximum)
+- [x] Feature: Protokoll-Export als PDF – bereits vorhanden im Protokoll-Detail
+- [x] UX: Aufnahme-Fortschrittsbalken – Visueller Balken bei langer Aufnahme

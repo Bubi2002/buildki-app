@@ -69,6 +69,7 @@ export default function RecordScreen() {
   const [annotationText, setAnnotationText] = useState("");
   const [annotatingPhotoIndex, setAnnotatingPhotoIndex] = useState<number | null>(null);
   const [photoAnnotations, setPhotoAnnotations] = useState<Record<number, string>>({});
+  const [showGrid, setShowGrid] = useState(false);
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -1653,6 +1654,11 @@ export default function RecordScreen() {
                 </Text>
               </View>
             )}
+            {isRecording && (
+              <View style={{ width: "80%", height: 3, backgroundColor: colors.border, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+                <View style={{ height: "100%", backgroundColor: isPaused ? "#F59E0B" : colors.primary, borderRadius: 2, width: `${Math.min(100, (recordingDuration / 3600) * 100)}%` }} />
+              </View>
+            )}
             {!isRecording && (
               <Text style={[styles.audioHintText, { color: colors.muted }]}>
                 Tippe zum Starten • Lang drücken für Schnellstart
@@ -2065,6 +2071,16 @@ export default function RecordScreen() {
           >
             <MaterialIcons name="flip-camera-ios" size={22} color="#FFFFFF" />
           </Pressable>
+          {/* Grid toggle */}
+          <Pressable
+            onPress={() => {
+              setShowGrid(prev => !prev);
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="grid-on" size={22} color={showGrid ? "#FFD700" : "rgba(255,255,255,0.5)"} />
+          </Pressable>
         </View>
 
         {/* Zoom slider - always visible */}
@@ -2116,6 +2132,18 @@ export default function RecordScreen() {
           />
         )}
 
+        {/* Camera grid overlay */}
+        {showGrid && (
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 }} pointerEvents="none">
+            {/* Horizontal lines */}
+            <View style={{ position: "absolute", top: "33.33%", left: 0, right: 0, height: 0.5, backgroundColor: "rgba(255,255,255,0.4)" }} />
+            <View style={{ position: "absolute", top: "66.66%", left: 0, right: 0, height: 0.5, backgroundColor: "rgba(255,255,255,0.4)" }} />
+            {/* Vertical lines */}
+            <View style={{ position: "absolute", left: "33.33%", top: 0, bottom: 0, width: 0.5, backgroundColor: "rgba(255,255,255,0.4)" }} />
+            <View style={{ position: "absolute", left: "66.66%", top: 0, bottom: 0, width: 0.5, backgroundColor: "rgba(255,255,255,0.4)" }} />
+          </View>
+        )}
+
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}
 
@@ -2136,6 +2164,10 @@ export default function RecordScreen() {
               <Text style={styles.timerText}>
                 {formatDuration(recordingDuration)}
               </Text>
+            </View>
+            {/* Progress bar */}
+            <View style={{ width: 100, height: 2, backgroundColor: "rgba(255,255,255,0.3)", borderRadius: 1, marginTop: 4, overflow: "hidden" }}>
+              <View style={{ height: "100%", backgroundColor: isPaused ? "#F59E0B" : "#FF3B30", borderRadius: 1, width: `${Math.min(100, (recordingDuration / 3600) * 100)}%` }} />
             </View>
             {/* Photo counter */}
             {capturedPhotos.length > 0 && (
@@ -2429,7 +2461,10 @@ export default function RecordScreen() {
       <Modal visible={showPhotoGallery} animationType="slide" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""}</Text>
+            <View>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""}</Text>
+              <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>Lang drücken zum Löschen</Text>
+            </View>
             <Pressable onPress={() => setShowPhotoGallery(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.7 : 1 }]}>
               <MaterialIcons name="close" size={28} color="#FFFFFF" />
             </Pressable>
@@ -2440,10 +2475,100 @@ export default function RecordScreen() {
             numColumns={2}
             contentContainerStyle={{ padding: 8 }}
             renderItem={({ item, index }) => (
-              <View style={{ flex: 1, margin: 4, borderRadius: 8, overflow: "hidden" }}>
+              <Pressable
+                onLongPress={() => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                  Alert.alert(
+                    "Foto löschen",
+                    `Foto #${index + 1} wirklich löschen?`,
+                    [
+                      { text: "Abbrechen", style: "cancel" },
+                      {
+                        text: "Löschen",
+                        style: "destructive",
+                        onPress: () => {
+                          setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
+                          setPhotoTimestamps(prev => prev.filter((_, i) => i !== index));
+                          setPhotoVoiceNotes(prev => prev.filter((_, i) => i !== index));
+                          // Rebuild annotations with shifted indices
+                          setPhotoAnnotations(prev => {
+                            const newAnnotations: Record<number, string> = {};
+                            Object.entries(prev).forEach(([k, v]) => {
+                              const key = parseInt(k);
+                              if (key < index) newAnnotations[key] = v;
+                              else if (key > index) newAnnotations[key - 1] = v;
+                            });
+                            return newAnnotations;
+                          });
+                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        },
+                      },
+                    ]
+                  );
+                }}
+                style={({ pressed }) => [{ flex: 1, margin: 4, borderRadius: 8, overflow: "hidden", opacity: pressed ? 0.8 : 1 }]}
+              >
                 <Image source={{ uri: item }} style={{ width: "100%", aspectRatio: 1 }} contentFit="cover" />
                 <View style={{ position: "absolute", bottom: 6, left: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
                   <Text style={{ fontSize: 11, color: "#FFFFFF", fontWeight: "600" }}>#{index + 1}</Text>
+                </View>
+                {/* Move/reorder buttons */}
+                <View style={{ position: "absolute", bottom: 6, right: 6, flexDirection: "row", gap: 4 }}>
+                  {index > 0 && (
+                    <Pressable
+                      onPress={() => {
+                        const newPhotos = [...capturedPhotos];
+                        [newPhotos[index - 1], newPhotos[index]] = [newPhotos[index], newPhotos[index - 1]];
+                        setCapturedPhotos(newPhotos);
+                        const newTimestamps = [...photoTimestamps];
+                        [newTimestamps[index - 1], newTimestamps[index]] = [newTimestamps[index], newTimestamps[index - 1]];
+                        setPhotoTimestamps(newTimestamps);
+                        const newNotes = [...photoVoiceNotes];
+                        [newNotes[index - 1], newNotes[index]] = [newNotes[index], newNotes[index - 1]];
+                        setPhotoVoiceNotes(newNotes);
+                        // Swap annotations
+                        setPhotoAnnotations(prev => {
+                          const updated = { ...prev };
+                          const a = updated[index - 1];
+                          const b = updated[index];
+                          if (b) updated[index - 1] = b; else delete updated[index - 1];
+                          if (a) updated[index] = a; else delete updated[index];
+                          return updated;
+                        });
+                        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 10, padding: 4, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="arrow-back" size={14} color="#FFFFFF" />
+                    </Pressable>
+                  )}
+                  {index < capturedPhotos.length - 1 && (
+                    <Pressable
+                      onPress={() => {
+                        const newPhotos = [...capturedPhotos];
+                        [newPhotos[index], newPhotos[index + 1]] = [newPhotos[index + 1], newPhotos[index]];
+                        setCapturedPhotos(newPhotos);
+                        const newTimestamps = [...photoTimestamps];
+                        [newTimestamps[index], newTimestamps[index + 1]] = [newTimestamps[index + 1], newTimestamps[index]];
+                        setPhotoTimestamps(newTimestamps);
+                        const newNotes = [...photoVoiceNotes];
+                        [newNotes[index], newNotes[index + 1]] = [newNotes[index + 1], newNotes[index]];
+                        setPhotoVoiceNotes(newNotes);
+                        setPhotoAnnotations(prev => {
+                          const updated = { ...prev };
+                          const a = updated[index];
+                          const b = updated[index + 1];
+                          if (b) updated[index] = b; else delete updated[index];
+                          if (a) updated[index + 1] = a; else delete updated[index + 1];
+                          return updated;
+                        });
+                        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 10, padding: 4, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="arrow-forward" size={14} color="#FFFFFF" />
+                    </Pressable>
+                  )}
                 </View>
                 {/* Annotation button */}
                 <Pressable
@@ -2462,7 +2587,7 @@ export default function RecordScreen() {
                     <Text style={{ fontSize: 10, color: "#FFFFFF" }} numberOfLines={1}>{photoAnnotations[index]}</Text>
                   </View>
                 )}
-              </View>
+              </Pressable>
             )}
           />
         </View>
