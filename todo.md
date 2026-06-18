@@ -325,3 +325,6 @@
 - [x] Feature: Projekt-Menü (3 Punkte): Löschen mit Bestätigung + Archivieren + Teilen
 - [x] Feature: Projekt weiterschicken/teilen damit andere es bearbeiten können
 - [x] Feature: Pläne im PDF-Export anzeigen (bereits implementiert mit Gesamtplan + Zoom-Ausschnitt)
+- [x] Bug-Fix: Neues Projekt Modal als zentrierten Kasten (nicht am unteren Rand) – Tastatur überdeckt nichts
+- [x] Bug-Fix: Beschreibung-Feld Tastatur schließen bei Enter/Return
+- [x] Bug-Fix: Checkliste Tastatur überdeckt Eingabefeld + Text "Prüfpunkt hinzufügen" statt Unicode-Escape

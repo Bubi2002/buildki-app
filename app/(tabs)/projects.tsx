@@ -173,7 +173,7 @@ export default function ProjectsTab() {
         <View>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Projekte</Text>
           <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-            {activeCount} aktiv{archivedCount > 0 ? ` • ${archivedCount} archiviert` : ""}
+            {activeCount} aktiv{archivedCount > 0 ? ` \u2022 ${archivedCount} archiviert` : ""}
           </Text>
         </View>
         <Pressable
@@ -323,11 +323,11 @@ export default function ProjectsTab() {
                   } else {
                     Alert.alert(
                       item.name,
-                      "Was m\u00f6chtest du tun?",
+                      "Was möchtest du tun?",
                       [
                         { text: "Archivieren", onPress: () => archiveProject(item.id) },
                         { text: "Teilen", onPress: () => Share.share({ message: `Projekt: ${item.name}${item.description ? '\n' + item.description : ''}` }) },
-                        { text: "L\u00f6schen", style: "destructive", onPress: () => deleteProject(item.id) },
+                        { text: "Löschen", style: "destructive", onPress: () => deleteProject(item.id) },
                         { text: "Abbrechen", style: "cancel" },
                       ]
                     );
@@ -343,88 +343,138 @@ export default function ProjectsTab() {
         )}
       />
 
-      {/* Create Project Modal */}
-      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet">
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      {/* Create Project Modal - Centered Card */}
+      <Modal visible={showCreate} animationType="fade" transparent={true}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Pressable onPress={() => setShowCreate(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
-              <Text style={{ fontSize: 16, color: colors.muted }}>Abbrechen</Text>
-            </Pressable>
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
-            <Pressable onPress={createProject} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
-              <Text style={{ fontSize: 16, fontWeight: "600", color: colors.primary }}>Erstellen</Text>
-            </Pressable>
-          </View>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={styles.modalKeyboardView}
+            >
+              <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                {/* Modal Header */}
+                <View style={[styles.modalCardHeader, { borderBottomColor: colors.border }]}>
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
+                  <Pressable onPress={() => { setShowCreate(false); Keyboard.dismiss(); }} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
+                    <MaterialIcons name="close" size={22} color={colors.muted} />
+                  </Pressable>
+                </View>
 
-          <View style={{ padding: 20, gap: 16 }}>
-            <View>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Projektname *</Text>
-              <TextInput
-                value={newName}
-                onChangeText={setNewName}
-                placeholder="z.B. Neubau Musterstraße 5"
-                placeholderTextColor={colors.muted}
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-                autoFocus
-              />
-            </View>
+                {/* Modal Content */}
+                <ScrollView style={{ maxHeight: 400 }} keyboardShouldPersistTaps="handled">
+                  <View style={{ padding: 20, gap: 16 }}>
+                    <View>
+                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Projektname *</Text>
+                      <TextInput
+                        value={newName}
+                        onChangeText={setNewName}
+                        placeholder="z.B. Neubau Musterstraße 5"
+                        placeholderTextColor={colors.muted}
+                        returnKeyType="next"
+                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                        autoFocus
+                      />
+                    </View>
 
-            <View>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Beschreibung</Text>
-              <TextInput
-                value={newDesc}
-                onChangeText={setNewDesc}
-                placeholder="Kurze Projektbeschreibung"
-                placeholderTextColor={colors.muted}
-                multiline
-                numberOfLines={2}
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 60, textAlignVertical: "top" }]}
-              />
-            </View>
+                    <View>
+                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Beschreibung (optional)</Text>
+                      <TextInput
+                        value={newDesc}
+                        onChangeText={setNewDesc}
+                        placeholder="Kurze Projektbeschreibung"
+                        placeholderTextColor={colors.muted}
+                        returnKeyType="done"
+                        blurOnSubmit={true}
+                        onSubmitEditing={() => Keyboard.dismiss()}
+                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, minHeight: 50, textAlignVertical: "top" }]}
+                      />
+                    </View>
 
-            <View>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Protokoll-Präfix</Text>
-              <TextInput
-                value={newPrefix}
-                onChangeText={(t) => setNewPrefix(t.toUpperCase())}
-                placeholder="z.B. BST (auto: erste 3 Buchstaben)"
-                placeholderTextColor={colors.muted}
-                maxLength={5}
-                autoCapitalize="characters"
-                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-              />
-            </View>
+                    <View>
+                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Protokoll-Präfix</Text>
+                      <TextInput
+                        value={newPrefix}
+                        onChangeText={(t) => setNewPrefix(t.toUpperCase())}
+                        placeholder="z.B. BST, MNG (auto: erste 3 Buchstaben)"
+                        placeholderTextColor={colors.muted}
+                        maxLength={5}
+                        autoCapitalize="characters"
+                        returnKeyType="done"
+                        blurOnSubmit={true}
+                        onSubmitEditing={() => Keyboard.dismiss()}
+                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                      />
+                      <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
+                        Optional: Automatische Nummerierung (z.B. BST-001)
+                      </Text>
+                    </View>
 
-            <View>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Farbe</Text>
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                {PROJECT_COLORS.map((c) => (
+                    <View>
+                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Farbe wählen</Text>
+                      <View style={{ flexDirection: "row", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+                        {PROJECT_COLORS.map((c) => (
+                          <Pressable
+                            key={c}
+                            onPress={() => setNewColor(c)}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              backgroundColor: c,
+                              borderWidth: newColor === c ? 3 : 0,
+                              borderColor: "#FFF",
+                              shadowColor: newColor === c ? c : "transparent",
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.4,
+                              shadowRadius: 4,
+                              elevation: newColor === c ? 4 : 0,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {newColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                {/* Modal Footer */}
+                <View style={[styles.modalCardFooter, { borderTopColor: colors.border }]}>
                   <Pressable
-                    key={c}
-                    onPress={() => setNewColor(c)}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: c,
-                      borderWidth: newColor === c ? 3 : 0,
-                      borderColor: "#FFF",
-                      shadowColor: newColor === c ? c : "transparent",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.4,
-                      shadowRadius: 4,
-                      elevation: newColor === c ? 4 : 0,
-                    }}
-                  />
-                ))}
+                    onPress={() => { setShowCreate(false); Keyboard.dismiss(); }}
+                    style={({ pressed }) => [{
+                      flex: 1,
+                      paddingVertical: 14,
+                      borderRadius: 10,
+                      alignItems: "center",
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    }]}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={createProject}
+                    style={({ pressed }) => [{
+                      flex: 1,
+                      paddingVertical: 14,
+                      borderRadius: 10,
+                      alignItems: "center",
+                      backgroundColor: colors.primary,
+                      opacity: pressed ? 0.8 : 1,
+                    }]}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Erstellen</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
         </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
       </Modal>
     </ScreenContainer>
   );
@@ -457,16 +507,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
   },
-  modalHeader: {
+  modalKeyboardView: {
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 440,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
+  },
+  modalCardFooter: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
   },
   fieldLabel: {
     fontSize: 14,

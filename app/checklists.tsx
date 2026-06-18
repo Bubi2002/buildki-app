@@ -9,6 +9,8 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -315,6 +317,7 @@ export default function ChecklistsScreen() {
 
       {/* Active Checklist Modal */}
       <Modal visible={!!selectedChecklist && !!activeResult} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             {selectedChecklist && activeResult && (
@@ -377,7 +380,7 @@ export default function ChecklistsScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <TextInput
                       style={{ flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, color: colors.foreground, backgroundColor: colors.background }}
-                      placeholder="Neuer Pr\u00fcfpunkt..."
+                      placeholder="Neuen Prüfpunkt eingeben..."
                       placeholderTextColor={colors.muted}
                       value={newItemText}
                       onChangeText={setNewItemText}
@@ -398,12 +401,12 @@ export default function ChecklistsScreen() {
                     style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="add-circle-outline" size={20} color={colors.primary} />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Pr\u00fcfpunkt hinzuf\u00fcgen</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{"Prüfpunkt hinzufügen"}</Text>
                   </Pressable>
                 )}
                 <View style={styles.modalButtons}>
                   <Pressable
-                    onPress={() => { setActiveResult(null); setSelectedChecklist(null); }}
+                    onPress={() => { setActiveResult(null); setSelectedChecklist(null); Keyboard.dismiss(); }}
                     style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
                   >
                     <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
@@ -419,6 +422,7 @@ export default function ChecklistsScreen() {
             )}
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Template Selection Modal */}
