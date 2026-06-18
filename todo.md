@@ -282,3 +282,4 @@
 - [x] Feature: Sprachnotiz-Dauer auf 30 Sekunden begrenzen mit visuellem Countdown-Balken
 - [x] Feature: Vorlagen-Bibliothek – Online-Katalog mit Community-Vorlagen zum Herunterladen
 - [x] Feature: Batch-Export – Mehrere Protokolle als Einzelne PDFs, Gesamtdokument oder CSV exportieren
+- [x] UX-Fix: Nur-Audio-Aufnahme-Screen Layout überarbeiten – Elemente überlappen sich, Abstände zu eng

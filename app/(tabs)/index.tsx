@@ -1398,27 +1398,55 @@ export default function RecordScreen() {
           </Pressable>
         )}
 
-        {/* Audio waveform area */}
+        {/* Audio recording area - clean vertical layout */}
         <View style={styles.audioContainer}>
-          {/* Mode toggle */}
-          <View style={styles.modeToggleTop}>
-            <Pressable
-              onPress={() => { if (!isRecording) setMode("audio-photo"); }}
-              style={({ pressed }) => [
-                styles.modeButton,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <MaterialIcons name="photo-camera" size={20} color={colors.muted} />
-              <Text style={[styles.modeButtonText, { color: colors.muted }]}>Audio+Foto</Text>
-            </Pressable>
-            <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}>
-              <MaterialIcons name="mic" size={20} color={colors.primary} />
-              <Text style={[styles.modeButtonText, { color: colors.primary, fontWeight: "700" }]}>Nur Audio</Text>
+          {/* Top section: Mode toggle + Template badge */}
+          <View style={{ alignItems: "center", paddingTop: 16 }}>
+            {/* Mode toggle */}
+            <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginBottom: 16 }}>
+              <Pressable
+                onPress={() => { if (!isRecording) setMode("audio-photo"); }}
+                style={({ pressed }) => [
+                  styles.modeButton,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name="photo-camera" size={20} color={colors.muted} />
+                <Text style={[styles.modeButtonText, { color: colors.muted }]}>Audio+Foto</Text>
+              </Pressable>
+              <View style={[styles.modeButton, styles.modeButtonActive, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}>
+                <MaterialIcons name="mic" size={20} color={colors.primary} />
+                <Text style={[styles.modeButtonText, { color: colors.primary, fontWeight: "700" }]}>Nur Audio</Text>
+              </View>
             </View>
+
+            {/* Template badge */}
+            {!isRecording && (
+              <Pressable
+                onPress={() => setShowTemplateSelector(true)}
+                style={({ pressed }) => [
+                  styles.templateBadgeAudio,
+                  { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name={selectedTemplate.icon as any} size={16} color={colors.primary} />
+                <Text style={[styles.templateBadgeTextAudio, { color: colors.foreground }]}>{selectedTemplate.name}</Text>
+                <MaterialIcons name="expand-more" size={16} color={colors.muted} />
+              </Pressable>
+            )}
+
+            {/* Location badge during recording */}
+            {recordingLocation && isRecording && (
+              <View style={[styles.templateBadgeAudio, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <MaterialIcons name="location-on" size={16} color={colors.primary} />
+                <Text style={[styles.templateBadgeTextAudio, { color: colors.muted }]} numberOfLines={1}>
+                  {recordingLocation.address || recordingLocation.city || `${recordingLocation.latitude.toFixed(4)}, ${recordingLocation.longitude.toFixed(4)}`}
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Audio visualization */}
+          {/* Center section: Microphone circle */}
           <View style={styles.audioVisualArea}>
             <View style={[styles.audioCircle, { borderColor: isRecording ? colors.primary : colors.border }]}>
               <MaterialIcons
@@ -1442,14 +1470,31 @@ export default function RecordScreen() {
             )}
           </View>
 
-          {/* Project badge */}
-          {!isRecording && selectedProject && (
-            <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignSelf: "center", marginBottom: 8, opacity: pressed ? 0.7 : 1 }]}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedProject.color }} />
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.foreground }}>{selectedProject.name}</Text>
-              <MaterialIcons name="swap-horiz" size={14} color={colors.muted} />
+          {/* Bottom section: Record button + controls */}
+          <View style={styles.audioControls}>
+            {/* Record button */}
+            <Pressable
+              onPress={isRecording ? stopRecording : startRecording}
+              style={({ pressed }) => [
+                styles.recordButton,
+                {
+                  borderColor: colors.primary,
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                },
+              ]}
+            >
+              <View
+                style={[
+                  isRecording ? styles.stopIcon : styles.recordIcon,
+                  { backgroundColor: colors.primary },
+                ]}
+              />
             </Pressable>
-          )}
+
+            <Text style={[styles.audioControlHint, { color: colors.muted }]}>
+              {isRecording ? "Tippe zum Stoppen" : "Nur Sprache \u2022 Ohne Kamera"}
+            </Text>
+          </View>
 
           {/* Template selector modal */}
           <Modal visible={showTemplateSelector && !isRecording} animationType="slide" transparent>
@@ -1579,78 +1624,27 @@ export default function RecordScreen() {
             </View>
           </Modal>
 
-          {/* Controls */}
-          <View style={styles.audioControls}>
-            {/* Template badge */}
-            {!isRecording && (
-              <Pressable
-                onPress={() => setShowTemplateSelector(true)}
-                style={({ pressed }) => [
-                  styles.templateBadgeAudio,
-                  { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-                ]}
-              >
-                <MaterialIcons name={selectedTemplate.icon as any} size={16} color={colors.primary} />
-                <Text style={[styles.templateBadgeTextAudio, { color: colors.foreground }]}>{selectedTemplate.name}</Text>
-                <MaterialIcons name="expand-more" size={16} color={colors.muted} />
-              </Pressable>
-            )}
-
-            {/* Location badge */}
-            {recordingLocation && isRecording && (
-              <View style={[styles.templateBadgeAudio, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <MaterialIcons name="location-on" size={16} color={colors.primary} />
-                <Text style={[styles.templateBadgeTextAudio, { color: colors.muted }]} numberOfLines={1}>
-                  {recordingLocation.address || recordingLocation.city || `${recordingLocation.latitude.toFixed(4)}, ${recordingLocation.longitude.toFixed(4)}`}
-                </Text>
-              </View>
-            )}
-
-            {/* Record button */}
-            <Pressable
-              onPress={isRecording ? stopRecording : startRecording}
-              style={({ pressed }) => [
-                styles.recordButton,
-                {
-                  borderColor: colors.primary,
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                },
-              ]}
-            >
-              <View
-                style={[
-                  isRecording ? styles.stopIcon : styles.recordIcon,
-                  { backgroundColor: colors.primary },
-                ]}
-              />
-            </Pressable>
-
-            <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-              {isRecording ? "Tippe zum Stoppen" : "Nur Sprache • Ohne Kamera"}
-            </Text>
-
-            {/* Quick access: last 3 protocols */}
-            {!isRecording && recentProtocols.length > 0 && (
-              <View style={{ marginTop: 24, width: "100%", paddingHorizontal: 20 }}>
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Letzte Protokolle</Text>
-                {recentProtocols.map((p: any) => (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, marginBottom: 6, opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <MaterialIcons name={p.recordingMode === "audio" ? "mic" : "photo-camera"} size={16} color={colors.primary} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>{p.templateName || "Protokoll"}</Text>
-                      <Text style={{ fontSize: 11, color: colors.muted }}>{new Date(p.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</Text>
-                    </View>
-                    {p.protocolNumber && <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>{p.protocolNumber}</Text>}
-                    <MaterialIcons name="chevron-right" size={16} color={colors.muted} />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </View>
+          {/* Quick access: last 3 protocols */}
+          {!isRecording && recentProtocols.length > 0 && (
+            <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Letzte Protokolle</Text>
+              {recentProtocols.map((p: any) => (
+                <Pressable
+                  key={p.id}
+                  onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, marginBottom: 6, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={p.recordingMode === "audio" ? "mic" : "photo-camera"} size={16} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }} numberOfLines={1}>{p.templateName || "Protokoll"}</Text>
+                    <Text style={{ fontSize: 11, color: colors.muted }}>{new Date(p.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</Text>
+                  </View>
+                  {p.protocolNumber && <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "600" }}>{p.protocolNumber}</Text>}
+                  <MaterialIcons name="chevron-right" size={16} color={colors.muted} />
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
       </View>
     );
@@ -2346,8 +2340,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 12,
-    paddingTop: 60,
-    paddingBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   modeButton: {
     flexDirection: "row",
@@ -2642,8 +2636,9 @@ const styles = StyleSheet.create({
   },
   audioControls: {
     alignItems: "center",
-    paddingBottom: 60,
-    gap: 16,
+    paddingBottom: 32,
+    paddingTop: 8,
+    gap: 12,
   },
   templateBadgeAudio: {
     flexDirection: "row",
