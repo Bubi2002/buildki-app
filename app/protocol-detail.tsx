@@ -30,6 +30,8 @@ import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { WebView } from "react-native-webview";
 import { getVoiceProfiles, saveVoiceProfile, matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
 import { saveDelegation, formatDelegationNotification, TaskDelegation } from "@/lib/task-delegation";
 import { generateTimeline, formatTimestamp, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
@@ -810,6 +812,7 @@ export default function ProtocolDetailScreen() {
         photos: protocol.photos,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
         transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
+        photoCaptions: (protocol as any).photoCaptions || undefined,
         todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
@@ -832,6 +835,7 @@ export default function ProtocolDetailScreen() {
           photos: protocol.photos,
           photoTimestamps: (protocol as any).photoTimestamps || undefined,
           transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
+          photoCaptions: (protocol as any).photoCaptions || undefined,
           todos,
           duration: protocol.duration,
           createdAt: protocol.createdAt,
@@ -888,6 +892,7 @@ export default function ProtocolDetailScreen() {
         photos: protocol.photos,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
         transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
+        photoCaptions: (protocol as any).photoCaptions || undefined,
         todos,
         duration: protocol.duration,
         createdAt: protocol.createdAt,
@@ -1065,13 +1070,30 @@ export default function ProtocolDetailScreen() {
         quality: 0.8,
       });
       if (!result.canceled && result.assets.length > 0) {
-        const newUris = result.assets.map(a => a.uri);
+        // Copy photos to persistent app storage to ensure they remain readable
+        const photoDir = `${FileSystem.documentDirectory}photos/`;
+        const dirInfo = await FileSystem.getInfoAsync(photoDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(photoDir, { intermediates: true });
+        }
+        const persistedUris: string[] = [];
+        for (const asset of result.assets) {
+          try {
+            const filename = `photo-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
+            const destUri = `${photoDir}${filename}`;
+            await FileSystem.copyAsync({ from: asset.uri, to: destUri });
+            persistedUris.push(destUri);
+          } catch (copyErr) {
+            // Fallback to original URI if copy fails
+            persistedUris.push(asset.uri);
+          }
+        }
         const protocolsStr = await AsyncStorage.getItem("protocols");
         const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
         const idx = protocols.findIndex((p: any) => p.id === protocol!.id);
         if (idx !== -1) {
           const p = protocols[idx];
-          p.photos = [...(p.photos || []), ...newUris];
+          p.photos = [...(p.photos || []), ...persistedUris];
           protocols[idx] = p;
           await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
           setProtocol({ ...protocol!, photos: p.photos } as any);
@@ -2274,19 +2296,25 @@ export default function ProtocolDetailScreen() {
               </View>
             </View>
           ) : previewPdfUri && Platform.OS !== "web" ? (
-            <View style={{ flex: 1, padding: 8 }}>
-              <View style={{ flex: 1, backgroundColor: "#f8f8f8", borderRadius: 8, padding: 16, justifyContent: "center", alignItems: "center" }}>
-                <MaterialIcons name="picture-as-pdf" size={64} color={colors.primary} />
-                <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>PDF erstellt</Text>
-                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8, textAlign: "center" }}>
-                  {protocol?.title || "Protokoll"}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
-                  {photos.length > 0 ? `${photos.length} Foto(s) enthalten` : "Ohne Fotos"}
-                  {inlinePlacedCount > 0 ? ` • ${inlinePlacedCount} inline platziert` : ""}
-                </Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <WebView
+                  source={{ uri: previewPdfUri }}
+                  style={{ flex: 1 }}
+                  originWhitelist={["*"]}
+                  allowFileAccess={true}
+                  allowFileAccessFromFileURLs={true}
+                  allowUniversalAccessFromFileURLs={true}
+                  startInLoadingState={true}
+                  renderLoading={() => (
+                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#f8f8f8" }}>
+                      <ActivityIndicator size="large" color={colors.primary} />
+                      <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>PDF wird geladen...</Text>
+                    </View>
+                  )}
+                />
               </View>
-              <View style={{ paddingVertical: 12, gap: 8 }}>
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
                 <Pressable
                   onPress={sharePdfFromPreview}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}

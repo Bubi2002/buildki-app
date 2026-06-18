@@ -328,3 +328,5 @@
 - [x] Bug-Fix: Neues Projekt Modal als zentrierten Kasten (nicht am unteren Rand) – Tastatur überdeckt nichts
 - [x] Bug-Fix: Beschreibung-Feld Tastatur schließen bei Enter/Return
 - [x] Bug-Fix: Checkliste Tastatur überdeckt Eingabefeld + Text "Prüfpunkt hinzufügen" statt Unicode-Escape
+- [x] Bug-Fix: PDF-Vorschau zeigt nur "PDF erstellt" Icon statt das eigentliche PDF-Dokument anzuzeigen (WebView-basierte Vorschau)
+- [x] Bug-Fix: Bilder fehlen im Abnahmeprotokoll-PDF (iOS URI-Fallback, inline Foto-Embedding, photoCaptions übergeben)

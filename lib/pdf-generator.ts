@@ -153,6 +153,34 @@ function generatePdfHtml(
       </div>`
     : "";
 
+  // Helper: Get caption text for a photo based on its timestamp and transcription segments
+  // Returns HTML with the exact sentence at photo time highlighted in bold
+  const getPhotoCaptionFromSegments = (photoIndex: number): string => {
+    // Priority 1: Pre-computed captions (no highlight for manually edited captions)
+    if (protocol.photoCaptions && protocol.photoCaptions[photoIndex]) {
+      return protocol.photoCaptions[photoIndex];
+    }
+    // Priority 2: Match segments by timestamp - only show the exact sentence at photo time (bold only)
+    if (protocol.transcriptionSegments && protocol.transcriptionSegments.length > 0 && protocol.photoTimestamps && protocol.photoTimestamps[photoIndex] != null) {
+      const photoTime = protocol.photoTimestamps[photoIndex];
+      // Find the exact segment that contains the photo timestamp (spoken at that moment)
+      const exactSegment = protocol.transcriptionSegments.find(
+        (seg) => seg.start <= photoTime && seg.end >= photoTime
+      );
+      if (exactSegment) {
+        return `<strong>${exactSegment.text.trim()}</strong>`;
+      }
+      // Fallback: find the closest segment before the photo
+      const beforeSegments = protocol.transcriptionSegments.filter(seg => seg.start <= photoTime);
+      if (beforeSegments.length > 0) {
+        const closest = beforeSegments[beforeSegments.length - 1];
+        return `<strong>${closest.text.trim()}</strong>`;
+      }
+    }
+    // Priority 3: No segments available – use empty
+    return "";
+  };
+
   // Convert protocol text to HTML (handle line breaks, bullet points, and inline photo placeholders)
   const protocolHtml = protocol.protocol
     .split("\n")
@@ -162,7 +190,7 @@ function generatePdfHtml(
       const photoMatch = trimmed.match(/^\[FOTO\s*(\d+)\]$/i);
       if (photoMatch) {
         const photoIdx = parseInt(photoMatch[1], 10) - 1;
-        if (photoIdx >= 0 && photoIdx < photoDataUris.length) {
+        if (photoIdx >= 0 && photoIdx < photoDataUris.length && photoDataUris[photoIdx]) {
           const caption = getPhotoCaptionFromSegments(photoIdx);
           const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[photoIdx] != null
             ? `${Math.floor(protocol.photoTimestamps[photoIdx] / 60)}:${(protocol.photoTimestamps[photoIdx] % 60).toString().padStart(2, '0')} Min.`
@@ -175,18 +203,41 @@ function generatePdfHtml(
           </div>`;
         }
       }
-      // Also handle inline [FOTO X] within a text line
+      // Also handle inline [FOTO X] within a text line - embed images after the text
       const inlinePhotoRegex = /\[FOTO\s*(\d+)\]/gi;
       if (inlinePhotoRegex.test(trimmed) && !photoMatch) {
-        let result = trimmed;
-        result = result.replace(/\[FOTO\s*(\d+)\]/gi, (match, num) => {
-          const idx = parseInt(num, 10) - 1;
-          if (idx >= 0 && idx < photoDataUris.length) {
-            return `<span style="color: ${accentColor || '#0a7ea4'}; font-weight: 600;">[Foto ${idx + 1} \u2013 siehe Fotodokumentation]</span>`;
+        // Collect all photo indices referenced in this line
+        const referencedPhotos: number[] = [];
+        let inlineM;
+        const regex2 = /\[FOTO\s*(\d+)\]/gi;
+        while ((inlineM = regex2.exec(trimmed)) !== null) {
+          referencedPhotos.push(parseInt(inlineM[1], 10) - 1);
+        }
+        // Remove [FOTO X] from text and render the text
+        let cleanedText = trimmed.replace(/\[FOTO\s*\d+\]/gi, '').trim();
+        // Handle **bold** in the cleaned text
+        cleanedText = cleanedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        let htmlResult = cleanedText ? `<p style="margin: 4px 0; line-height: 1.6;">${cleanedText}</p>` : '';
+        // Embed referenced photos as a grid below the text
+        const validPhotos = referencedPhotos.filter(idx => idx >= 0 && idx < photoDataUris.length && photoDataUris[idx]);
+        if (validPhotos.length > 0) {
+          const cols = validPhotos.length >= 3 ? 3 : validPhotos.length;
+          htmlResult += `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px 0;">`;
+          for (const idx of validPhotos) {
+            const caption = getPhotoCaptionFromSegments(idx);
+            const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[idx] != null
+              ? `${Math.floor(protocol.photoTimestamps[idx] / 60)}:${(protocol.photoTimestamps[idx] % 60).toString().padStart(2, '0')}`
+              : null;
+            htmlResult += `
+              <div style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'}; page-break-inside: avoid;">
+                <img src="${photoDataUris[idx]}" style="width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+                <p style="font-size: 9px; color: #666; margin: 4px 0 0 0;">Foto ${idx + 1}${timestamp ? ` (${timestamp})` : ''}</p>
+                ${caption ? `<p style="font-size: 9px; color: #444; margin: 2px 0 0 0;">${caption}</p>` : ''}
+              </div>`;
           }
-          return match;
-        });
-        return `<p style="margin: 4px 0; line-height: 1.6;">${result}</p>`;
+          htmlResult += `</div>`;
+        }
+        return htmlResult;
       }
       if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
         return `<li>${trimmed.substring(2)}</li>`;
@@ -227,34 +278,6 @@ function generatePdfHtml(
     })
     .join("\n");
 
-  // Helper: Get caption text for a photo based on its timestamp and transcription segments
-  // Returns HTML with the exact sentence at photo time highlighted in bold
-  const getPhotoCaptionFromSegments = (photoIndex: number): string => {
-    // Priority 1: Pre-computed captions (no highlight for manually edited captions)
-    if (protocol.photoCaptions && protocol.photoCaptions[photoIndex]) {
-      return protocol.photoCaptions[photoIndex];
-    }
-    // Priority 2: Match segments by timestamp - only show the exact sentence at photo time (bold only)
-    if (protocol.transcriptionSegments && protocol.transcriptionSegments.length > 0 && protocol.photoTimestamps && protocol.photoTimestamps[photoIndex] != null) {
-      const photoTime = protocol.photoTimestamps[photoIndex];
-      // Find the exact segment that contains the photo timestamp (spoken at that moment)
-      const exactSegment = protocol.transcriptionSegments.find(
-        (seg) => seg.start <= photoTime && seg.end >= photoTime
-      );
-      if (exactSegment) {
-        return `<strong>${exactSegment.text.trim()}</strong>`;
-      }
-      // Fallback: find the closest segment before the photo
-      const beforeSegments = protocol.transcriptionSegments.filter(seg => seg.start <= photoTime);
-      if (beforeSegments.length > 0) {
-        const closest = beforeSegments[beforeSegments.length - 1];
-        return `<strong>${closest.text.trim()}</strong>`;
-      }
-    }
-    // Priority 3: No segments available – use empty
-    return "";
-  };
-
   // Check which photos were already placed inline via [FOTO X] placeholders
   const inlinePlacedPhotos = new Set<number>();
   const inlineRegex = /\[FOTO\s*(\d+)\]/gi;
@@ -263,7 +286,8 @@ function generatePdfHtml(
     inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
   }
   // Only show remaining (non-inline) photos in the Fotodokumentation section
-  const remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i));
+  // Also filter out empty entries (photos that couldn't be read)
+  const remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i) && photoDataUris[i]);
 
   const photosHtml =
     remainingPhotoIndices.length > 0
@@ -687,9 +711,24 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   const photoDataUris: string[] = [];
   if (protocol.photos && protocol.photos.length > 0) {
     for (const photoUri of protocol.photos) {
-      const dataUri = await fileToBase64DataUri(photoUri);
+      let dataUri = await fileToBase64DataUri(photoUri);
+      // If direct read fails, try copying to a temp location first (handles iOS ph:// and picker URIs)
+      if (!dataUri && photoUri) {
+        try {
+          const tempPath = `${FileSystem.cacheDirectory}pdf-photo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}.jpg`;
+          await FileSystem.copyAsync({ from: photoUri, to: tempPath });
+          dataUri = await fileToBase64DataUri(tempPath);
+          // Clean up temp file
+          try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch {}
+        } catch (copyErr) {
+          console.warn("Could not copy photo for PDF:", photoUri, copyErr);
+        }
+      }
       if (dataUri) {
         photoDataUris.push(dataUri);
+      } else {
+        // Push empty placeholder to keep indices aligned with protocol text [FOTO X] references
+        photoDataUris.push("");
       }
     }
   }
