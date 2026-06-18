@@ -107,6 +107,8 @@ export default function RecordScreen() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [recentProtocols, setRecentProtocols] = useState<any[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [waveformBars, setWaveformBars] = useState<number[]>([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
+  const waveformInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // --- PROJECT SELECTION STATE ---
   type ProjectItem = { id: string; name: string; description: string; color: string; createdAt: string; protocolPrefix?: string; protocolCounter?: number; };
@@ -538,6 +540,24 @@ export default function RecordScreen() {
     }
   }, [isRecording]);
 
+  // Waveform simulation during recording
+  useEffect(() => {
+    if (isRecording) {
+      waveformInterval.current = setInterval(() => {
+        setWaveformBars(prev => prev.map(() => 0.2 + Math.random() * 0.8));
+      }, 150);
+      return () => {
+        if (waveformInterval.current) clearInterval(waveformInterval.current);
+      };
+    } else {
+      if (waveformInterval.current) {
+        clearInterval(waveformInterval.current);
+        waveformInterval.current = null;
+      }
+      setWaveformBars([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
+    }
+  }, [isRecording]);
+
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
     timerRef.current = setInterval(() => {
@@ -711,6 +731,7 @@ export default function RecordScreen() {
 
   // --- UNIFIED RECORDING CONTROLS ---
   const startRecording = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     startListening();
     // Capture location and weather at recording start
     if (Platform.OS !== "web") {
@@ -724,6 +745,7 @@ export default function RecordScreen() {
   };
 
   const stopRecording = () => {
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     stopListening();
     stopAudioRecording();
   };
@@ -1472,15 +1494,40 @@ export default function RecordScreen() {
             )}
           </View>
 
-          {/* Center section: Microphone circle */}
+          {/* Center section: Microphone circle with waveform */}
           <View style={styles.audioVisualArea}>
-            <Animated.View style={[styles.audioCircle, { borderColor: isRecording ? colors.primary : colors.border, transform: [{ scale: pulseAnim }] }]}>
-              <MaterialIcons
-                name={isRecording ? "graphic-eq" : "mic"}
-                size={64}
-                color={isRecording ? colors.primary : colors.muted}
-              />
-            </Animated.View>
+            <Pressable
+              onLongPress={() => {
+                if (!isRecording) {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                  startRecording();
+                }
+              }}
+              delayLongPress={600}
+              style={({ pressed }) => [{ opacity: !isRecording && pressed ? 0.8 : 1 }]}
+            >
+              <Animated.View style={[styles.audioCircle, { borderColor: isRecording ? colors.primary : colors.border, transform: [{ scale: pulseAnim }] }]}>
+                {isRecording ? (
+                  <View style={styles.waveformContainer}>
+                    {waveformBars.map((height, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.waveformBar,
+                          {
+                            height: 10 + height * 50,
+                            backgroundColor: colors.primary,
+                            opacity: 0.6 + height * 0.4,
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <MaterialIcons name="mic" size={64} color={colors.muted} />
+                )}
+              </Animated.View>
+            </Pressable>
             {isRecording && (
               <View style={styles.timerContainerAudio}>
                 <View style={styles.recordDot} />
@@ -1491,7 +1538,7 @@ export default function RecordScreen() {
             )}
             {!isRecording && (
               <Text style={[styles.audioHintText, { color: colors.muted }]}>
-                Tippe zum Starten der Sprachaufnahme
+                Tippe zum Starten • Lang drücken für Schnellstart
               </Text>
             )}
           </View>
@@ -2660,6 +2707,18 @@ const styles = StyleSheet.create({
   },
   audioHintText: {
     fontSize: 15,
+  },
+  waveformContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    height: 60,
+  },
+  waveformBar: {
+    width: 4,
+    borderRadius: 2,
+    minHeight: 8,
   },
   audioControls: {
     alignItems: "center",

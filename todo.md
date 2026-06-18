@@ -286,3 +286,6 @@
 - [x] UX: Audio+Foto-Modus Layout Abstände auf kleineren Geräten prüfen und fixen
 - [x] UX: Pulsierende Animation am Mikrofon-Kreis während der Aufnahme (Nur-Audio-Modus)
 - [x] UX: Landscape-Modus Layout testen und korrekt darstellen (App ist portrait-only, kein Fix nötig)
+- [x] UX: Haptisches Feedback beim Aufnahme-Start/Stopp (Vibration beim Record-Button)
+- [x] UX: Audio-Wellenform während der Aufnahme anzeigen (statt nur pulsierendem Kreis)
+- [x] UX: Long-Press auf Mikrofon-Kreis für Schnellstart ohne Template-Auswahl
