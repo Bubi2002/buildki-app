@@ -294,3 +294,6 @@
 - [x] Feature: Schnellzugriff – App Quick Actions für sofortigen Aufnahmestart
 - [x] Bug-Fix: Protokolle-Tab zeigt nur Protokolle des aktiven Projekts (mit Toggle für alle)
 - [x] Bug-Fix: Kamera Pinch-to-Zoom implementiert (GestureDetector mit Pinch-Geste)
+- [x] UX: Protokoll-Suche innerhalb des gefilterten Projekts (Volltextsuche – bereits korrekt implementiert)
+- [x] Feature: Kamera Tap-to-Focus – Antippen zeigt Fokus-Indikator mit Animation
+- [x] UX: Zoom-Level-Anzeige als Overlay auf dem Kamerabild (z.B. "2.3x")

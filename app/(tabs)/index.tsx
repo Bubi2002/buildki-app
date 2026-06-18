@@ -54,6 +54,10 @@ export default function RecordScreen() {
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraZoom, setCameraZoom] = useState(0);
   const pinchZoomBase = useRef(0);
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const focusAnim = useRef(new Animated.Value(0)).current;
+  const [showZoomBadge, setShowZoomBadge] = useState(false);
+  const zoomBadgeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -1877,20 +1881,62 @@ export default function RecordScreen() {
     );
   }
 
+  // Tap-to-focus handler
+  const handleTapFocus = (x: number, y: number) => {
+    setFocusPoint({ x, y });
+    focusAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(focusAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(800),
+      Animated.timing(focusAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setFocusPoint(null));
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  // Show zoom badge temporarily
+  const showZoomLevel = () => {
+    setShowZoomBadge(true);
+    if (zoomBadgeTimeout.current) clearTimeout(zoomBadgeTimeout.current);
+    zoomBadgeTimeout.current = setTimeout(() => setShowZoomBadge(false), 1500);
+  };
+
   // Pinch-to-zoom gesture for camera
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
       pinchZoomBase.current = cameraZoom;
+      showZoomLevel();
     })
     .onUpdate((e) => {
       const newZoom = Math.min(1, Math.max(0, pinchZoomBase.current + (e.scale - 1) * 0.5));
       setCameraZoom(newZoom);
+      showZoomLevel();
     })
     .runOnJS(true);
 
+  // Tap gesture for focus
+  const tapGesture = Gesture.Tap()
+    .onEnd((e) => {
+      handleTapFocus(e.x, e.y);
+    })
+    .runOnJS(true);
+
+  // Combine pinch and tap gestures
+  const combinedGesture = Gesture.Race(pinchGesture, tapGesture);
+
+  // Calculate zoom display value
+  const getZoomDisplayValue = () => {
+    // Map 0-1 range to approximate optical zoom values
+    if (cameraZoom <= 0) return "1x";
+    if (cameraZoom <= 0.11) return `${(1 + cameraZoom * 9).toFixed(1)}x`;
+    if (cameraZoom <= 0.44) return `${(2 + (cameraZoom - 0.11) * 9).toFixed(1)}x`;
+    return `${(5 + (cameraZoom - 0.44) * 9).toFixed(1)}x`;
+  };
+
   return (
     <View style={styles.container}>
-      <GestureDetector gesture={pinchGesture}>
+      <GestureDetector gesture={combinedGesture}>
         <View style={StyleSheet.absoluteFill}>
           <CameraView
             ref={cameraRef}
@@ -1945,6 +1991,31 @@ export default function RecordScreen() {
             </Pressable>
           </View>
         </View>
+        {/* Zoom level badge */}
+        {showZoomBadge && (
+          <View style={{ position: "absolute", top: "50%", alignSelf: "center", marginTop: -20, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{getZoomDisplayValue()}</Text>
+          </View>
+        )}
+
+        {/* Tap-to-focus indicator */}
+        {focusPoint && (
+          <Animated.View
+            style={{
+              position: "absolute",
+              left: focusPoint.x - 30,
+              top: focusPoint.y - 30,
+              width: 60,
+              height: 60,
+              borderRadius: 30,
+              borderWidth: 2,
+              borderColor: "#FFD700",
+              opacity: focusAnim,
+              transform: [{ scale: focusAnim.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }],
+            }}
+          />
+        )}
+
         {/* Photo flash effect */}
         {photoFlash && <View style={styles.flashOverlay} />}
 
