@@ -27,6 +27,8 @@ import {
   getLockTimeout,
 } from "@/lib/biometric-lock";
 import { NetworkBanner } from "@/components/network-banner";
+import * as QuickActions from "expo-quick-actions";
+import { useRouter as useQuickRouter } from "expo-router";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -114,6 +116,8 @@ export default function RootLayout() {
   const [offlineModeEnabled, setOfflineModeEnabled] = useState(true);
   const backgroundTimeRef = useRef<number | null>(null);
 
+  const quickRouter = useQuickRouter();
+
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
@@ -123,6 +127,45 @@ export default function RootLayout() {
       setOfflineModeEnabled(await isFeatureEnabled("offlineMode"));
     })();
   }, []);
+
+  // Setup Quick Actions (iOS 3D Touch / Android App Shortcuts)
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    QuickActions.setItems([
+      {
+        id: "quick_record_audio",
+        title: "Schnellaufnahme",
+        subtitle: "Sofort Sprache aufnehmen",
+        icon: "audio",
+      },
+      {
+        id: "quick_record_photo",
+        title: "Audio + Foto",
+        subtitle: "Aufnahme mit Kamera",
+        icon: "capturePhoto",
+      },
+    ]);
+
+    // Handle quick action if app was launched from one
+    if (QuickActions.initial) {
+      handleQuickAction(QuickActions.initial);
+    }
+
+    const subscription = QuickActions.addListener((action) => {
+      handleQuickAction(action);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const handleQuickAction = (action: QuickActions.Action) => {
+    if (action.id === "quick_record_audio" || action.id === "quick_record_photo") {
+      // Navigate to recording tab with mode parameter
+      quickRouter.replace({
+        pathname: "/(tabs)",
+        params: { quickAction: action.id },
+      });
+    }
+  };
 
   // Biometric lock on app start
   useEffect(() => {

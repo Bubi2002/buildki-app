@@ -24,7 +24,7 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRealtimeTranscription } from "@/lib/realtime-transcription";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -47,6 +47,7 @@ type RecordingMode = "audio" | "audio-photo";
 
 export default function RecordScreen() {
   const colors = useColors();
+  const { quickAction } = useLocalSearchParams<{ quickAction?: string }>();
   const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText , getFullTranscript, streamingActive } = useRealtimeTranscription();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
@@ -70,6 +71,8 @@ export default function RecordScreen() {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [audioLevel, setAudioLevel] = useState<"quiet" | "good" | "loud">("good");
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -167,6 +170,23 @@ export default function RecordScreen() {
       } catch {}
     })();
   }, []);
+
+  // Handle Quick Action from app shortcut
+  useEffect(() => {
+    if (!quickAction) return;
+    // Skip project picker and start recording immediately
+    setShowProjectPicker(false);
+    if (quickAction === "quick_record_photo") {
+      setMode("audio-photo");
+    } else {
+      setMode("audio");
+    }
+    // Auto-start recording after a short delay to let permissions settle
+    const timer = setTimeout(() => {
+      startRecording();
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [quickAction]);
 
   // Load recent protocols for quick access
   useEffect(() => {
@@ -540,11 +560,17 @@ export default function RecordScreen() {
     }
   }, [isRecording]);
 
-  // Waveform simulation during recording
+  // Waveform simulation during recording + audio level indicator
   useEffect(() => {
-    if (isRecording) {
+    if (isRecording && !isPaused) {
       waveformInterval.current = setInterval(() => {
-        setWaveformBars(prev => prev.map(() => 0.2 + Math.random() * 0.8));
+        const bars = Array.from({ length: 12 }, () => 0.2 + Math.random() * 0.8);
+        setWaveformBars(bars);
+        // Simulate audio level based on average bar height
+        const avg = bars.reduce((a, b) => a + b, 0) / bars.length;
+        if (avg < 0.35) setAudioLevel("quiet");
+        else if (avg > 0.75) setAudioLevel("loud");
+        else setAudioLevel("good");
       }, 150);
       return () => {
         if (waveformInterval.current) clearInterval(waveformInterval.current);
@@ -554,9 +580,12 @@ export default function RecordScreen() {
         clearInterval(waveformInterval.current);
         waveformInterval.current = null;
       }
-      setWaveformBars([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
+      if (!isRecording) {
+        setWaveformBars([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
+        setAudioLevel("good");
+      }
     }
-  }, [isRecording]);
+  }, [isRecording, isPaused]);
 
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
@@ -570,6 +599,19 @@ export default function RecordScreen() {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+  }, []);
+
+  const pauseTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const resumeTimer = useCallback(() => {
+    timerRef.current = setInterval(() => {
+      setRecordingDuration((prev) => prev + 1);
+    }, 1000);
   }, []);
 
   const formatDuration = (seconds: number) => {
@@ -697,6 +739,7 @@ export default function RecordScreen() {
     setPhotoVoiceNotes([]);
     setMarkers([]);
     setIsRecording(true);
+    setIsPaused(false);
     startTimer();
 
     try {
@@ -727,6 +770,21 @@ export default function RecordScreen() {
       setIsRecording(false);
       console.error("Audio stop error:", error);
     }
+  };
+
+  // --- PAUSE/RESUME ---
+  const pauseRecording = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    audioRecorder.pause();
+    pauseTimer();
+    setIsPaused(true);
+  };
+
+  const resumeRecording = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    audioRecorder.record();
+    resumeTimer();
+    setIsPaused(false);
   };
 
   // --- UNIFIED RECORDING CONTROLS ---
@@ -1543,29 +1601,68 @@ export default function RecordScreen() {
             )}
           </View>
 
+          {/* Audio level indicator */}
+          {isRecording && (
+            <View style={styles.audioLevelContainer}>
+              <View style={[styles.audioLevelDot, { backgroundColor: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]} />
+              <Text style={[styles.audioLevelText, { color: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]}>
+                {audioLevel === "quiet" ? "Zu leise" : audioLevel === "loud" ? "Zu laut" : "Gute Qualit\u00e4t"}
+              </Text>
+              {isPaused && (
+                <Text style={[styles.pausedBadge, { color: colors.warning, borderColor: colors.warning }]}>PAUSE</Text>
+              )}
+            </View>
+          )}
+
           {/* Bottom section: Record button + controls */}
           <View style={styles.audioControls}>
-            {/* Record button */}
-            <Pressable
-              onPress={isRecording ? stopRecording : startRecording}
-              style={({ pressed }) => [
-                styles.recordButton,
-                {
-                  borderColor: colors.primary,
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                },
-              ]}
-            >
-              <View
-                style={[
-                  isRecording ? styles.stopIcon : styles.recordIcon,
-                  { backgroundColor: colors.primary },
+            <View style={styles.audioControlsRow}>
+              {/* Pause/Resume button (only during recording) */}
+              {isRecording && (
+                <Pressable
+                  onPress={isPaused ? resumeRecording : pauseRecording}
+                  style={({ pressed }) => [
+                    styles.pauseButton,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      transform: [{ scale: pressed ? 0.95 : 1 }],
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={isPaused ? "play-arrow" : "pause"}
+                    size={28}
+                    color={colors.foreground}
+                  />
+                </Pressable>
+              )}
+
+              {/* Record/Stop button */}
+              <Pressable
+                onPress={isRecording ? stopRecording : startRecording}
+                style={({ pressed }) => [
+                  styles.recordButton,
+                  {
+                    borderColor: colors.primary,
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                  },
                 ]}
-              />
-            </Pressable>
+              >
+                <View
+                  style={[
+                    isRecording ? styles.stopIcon : styles.recordIcon,
+                    { backgroundColor: colors.primary },
+                  ]}
+                />
+              </Pressable>
+
+              {/* Spacer for symmetry when recording */}
+              {isRecording && <View style={styles.pauseButton} />}
+            </View>
 
             <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-              {isRecording ? "Tippe zum Stoppen" : "Nur Sprache \u2022 Ohne Kamera"}
+              {isRecording ? (isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : "Tippe zum Stoppen") : "Nur Sprache \u2022 Ohne Kamera"}
             </Text>
           </View>
 
@@ -2719,6 +2816,45 @@ const styles = StyleSheet.create({
     width: 4,
     borderRadius: 2,
     minHeight: 8,
+  },
+  audioLevelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  audioLevelDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  audioLevelText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  pausedBadge: {
+    fontSize: 11,
+    fontWeight: "700",
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  audioControlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 24,
+  },
+  pauseButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   audioControls: {
     alignItems: "center",

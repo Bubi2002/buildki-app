@@ -80,6 +80,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    "expo-quick-actions",
     [
       "expo-camera",
       {

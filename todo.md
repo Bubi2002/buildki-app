@@ -289,3 +289,6 @@
 - [x] UX: Haptisches Feedback beim Aufnahme-Start/Stopp (Vibration beim Record-Button)
 - [x] UX: Audio-Wellenform während der Aufnahme anzeigen (statt nur pulsierendem Kreis)
 - [x] UX: Long-Press auf Mikrofon-Kreis für Schnellstart ohne Template-Auswahl
+- [x] Feature: Aufnahme-Pause/Fortsetzen – Pause-Button während der Aufnahme
+- [x] Feature: Audio-Qualitätsanzeige – Dezibel-Indikator (zu leise/gut/zu laut)
+- [x] Feature: Schnellzugriff – App Quick Actions für sofortigen Aufnahmestart
