@@ -29,6 +29,8 @@ import {
   saveChecklistResult,
   deleteChecklistResult,
   getChecklistCompletionRate,
+  saveModifiedBuiltInChecklist,
+  getModifiedChecklistItems,
 } from "@/lib/checklist-store";
 
 export default function ChecklistsScreen() {
@@ -48,6 +50,8 @@ export default function ChecklistsScreen() {
   const [newCategory, setNewCategory] = useState("");
   const [newItems, setNewItems] = useState("");
   const [inspectorName, setInspectorName] = useState("");
+  const [newItemText, setNewItemText] = useState("");
+  const [showAddItem, setShowAddItem] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -97,6 +101,62 @@ export default function ChecklistsScreen() {
     setActiveResult(null);
     setSelectedChecklist(null);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const addItemToChecklist = async () => {
+    if (!newItemText.trim() || !selectedChecklist) return;
+    const newItem: ChecklistItem = {
+      id: `item-${Date.now()}`,
+      text: newItemText.trim(),
+      required: false,
+    };
+    const updatedItems = [...selectedChecklist.items, newItem];
+    const updatedChecklist = { ...selectedChecklist, items: updatedItems };
+    setSelectedChecklist(updatedChecklist);
+    // Also add to activeResult
+    if (activeResult) {
+      setActiveResult({
+        ...activeResult,
+        results: [...activeResult.results, { itemId: newItem.id, checked: false }],
+      });
+    }
+    // Persist the modification
+    if (updatedChecklist.isBuiltIn) {
+      await saveModifiedBuiltInChecklist(updatedChecklist);
+    } else {
+      await saveCustomChecklist(updatedChecklist);
+    }
+    setNewItemText("");
+    setShowAddItem(false);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const deleteItemFromChecklist = async (itemId: string) => {
+    if (!selectedChecklist) return;
+    Alert.alert("Pr\u00fcfpunkt l\u00f6schen", "Diesen Pr\u00fcfpunkt wirklich entfernen?", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "L\u00f6schen",
+        style: "destructive",
+        onPress: async () => {
+          const updatedItems = selectedChecklist.items.filter((i) => i.id !== itemId);
+          const updatedChecklist = { ...selectedChecklist, items: updatedItems };
+          setSelectedChecklist(updatedChecklist);
+          if (activeResult) {
+            setActiveResult({
+              ...activeResult,
+              results: activeResult.results.filter((r) => r.itemId !== itemId),
+            });
+          }
+          if (updatedChecklist.isBuiltIn) {
+            await saveModifiedBuiltInChecklist(updatedChecklist);
+          } else {
+            await saveCustomChecklist(updatedChecklist);
+          }
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        },
+      },
+    ]);
   };
 
   const createCustomChecklist = async () => {
@@ -272,38 +332,75 @@ export default function ChecklistsScreen() {
                     const result = activeResult.results.find((r) => r.itemId === item.id);
                     const isChecked = result?.checked ?? false;
                     return (
-                      <Pressable
-                        onPress={() => toggleItem(item.id)}
-                        style={({ pressed }) => [
-                          styles.itemRow,
-                          { borderBottomColor: colors.border },
-                          pressed && { opacity: 0.7 },
-                        ]}
-                      >
-                        <MaterialIcons
-                          name={isChecked ? "check-box" : "check-box-outline-blank"}
-                          size={22}
-                          color={isChecked ? colors.success : colors.muted}
-                        />
-                        <View style={styles.itemContent}>
-                          <Text
-                            style={[
-                              styles.itemText,
-                              { color: isChecked ? colors.muted : colors.foreground },
-                              isChecked && styles.itemChecked,
-                            ]}
-                          >
-                            {item.text}
-                          </Text>
-                          {item.required && (
-                            <Text style={[styles.requiredBadge, { color: colors.error }]}>Pflicht</Text>
-                          )}
-                        </View>
-                      </Pressable>
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <Pressable
+                          onPress={() => toggleItem(item.id)}
+                          style={({ pressed }) => [
+                            styles.itemRow,
+                            { borderBottomColor: colors.border, flex: 1 },
+                            pressed && { opacity: 0.7 },
+                          ]}
+                        >
+                          <MaterialIcons
+                            name={isChecked ? "check-box" : "check-box-outline-blank"}
+                            size={22}
+                            color={isChecked ? colors.success : colors.muted}
+                          />
+                          <View style={styles.itemContent}>
+                            <Text
+                              style={[
+                                styles.itemText,
+                                { color: isChecked ? colors.muted : colors.foreground },
+                                isChecked && styles.itemChecked,
+                              ]}
+                            >
+                              {item.text}
+                            </Text>
+                            {item.required && (
+                              <Text style={[styles.requiredBadge, { color: colors.error }]}>Pflicht</Text>
+                            )}
+                          </View>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => deleteItemFromChecklist(item.id)}
+                          style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}
+                        >
+                          <MaterialIcons name="delete-outline" size={18} color={colors.error + "80"} />
+                        </Pressable>
+                      </View>
                     );
                   }}
                   style={styles.itemList}
                 />
+                {/* Add item section */}
+                {showAddItem ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <TextInput
+                      style={{ flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, color: colors.foreground, backgroundColor: colors.background }}
+                      placeholder="Neuer Pr\u00fcfpunkt..."
+                      placeholderTextColor={colors.muted}
+                      value={newItemText}
+                      onChangeText={setNewItemText}
+                      autoFocus
+                      returnKeyType="done"
+                      onSubmitEditing={addItemToChecklist}
+                    />
+                    <Pressable onPress={addItemToChecklist} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.6 : 1 }]}>
+                      <MaterialIcons name="check" size={24} color={colors.success} />
+                    </Pressable>
+                    <Pressable onPress={() => { setShowAddItem(false); setNewItemText(""); }} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.6 : 1 }]}>
+                      <MaterialIcons name="close" size={24} color={colors.muted} />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => setShowAddItem(true)}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="add-circle-outline" size={20} color={colors.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Pr\u00fcfpunkt hinzuf\u00fcgen</Text>
+                  </Pressable>
+                )}
                 <View style={styles.modalButtons}>
                   <Pressable
                     onPress={() => { setActiveResult(null); setSelectedChecklist(null); }}

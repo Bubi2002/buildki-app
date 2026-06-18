@@ -148,6 +148,8 @@ export function pathsToSvgString(paths: string[], width: number, height: number)
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+    paddingBottom: 32,
+    marginBottom: 80,
   },
   title: {
     fontSize: 18,

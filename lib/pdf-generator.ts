@@ -45,6 +45,13 @@ type PdfProtocol = {
   } | null;
   signaturePaths?: string[];
   signatures?: { role: string; paths: string[]; signedAt: string }[];
+  checklistResults?: Array<{
+    name: string;
+    inspector: string;
+    completedAt?: string;
+    items: Array<{ text: string; checked: boolean; note?: string }>;
+    completionRate: number;
+  }>;
 };
 
 type CompanySettings = {
@@ -540,11 +547,6 @@ function generatePdfHtml(
         ? `<tr><td>Standort</td><td>${protocol.location.address || `${protocol.location.latitude.toFixed(5)}, ${protocol.location.longitude.toFixed(5)}`}</td></tr>`
         : ""
     }
-    ${
-      protocol.weather
-        ? `<tr><td>Wetter</td><td>${protocol.weather}</td></tr>`
-        : ""
-    }
   </table>
 
   ${todos.length > 0 ? `
@@ -584,6 +586,29 @@ function generatePdfHtml(
   ${planHtml}
 
   ${photosHtml}
+
+  ${protocol.checklistResults && protocol.checklistResults.length > 0 ? `
+  <div style="margin-top: 30px; page-break-inside: avoid;">
+    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Checklisten-Ergebnisse</h3>
+    ${protocol.checklistResults.map(cl => `
+      <div style="margin-bottom: 16px; border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 600; font-size: 13px; color: #333;">${cl.name}</div>
+          <div style="font-size: 11px; color: ${cl.completionRate === 100 ? '#22c55e' : '#f59e0b'}; font-weight: 600;">${cl.completionRate}%</div>
+        </div>
+        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">Pr\u00fcfer: ${cl.inspector}${cl.completedAt ? ` \u2022 ${new Date(cl.completedAt).toLocaleDateString('de-DE')}` : ''}</div>
+        <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+          ${cl.items.map(item => `
+            <tr style="border-bottom: 1px solid #f0f0f0;">
+              <td style="padding: 4px 8px 4px 0; width: 20px; color: ${item.checked ? '#22c55e' : '#ef4444'};">${item.checked ? '\u2713' : '\u2717'}</td>
+              <td style="padding: 4px 0;">${item.text}${item.note ? ` <span style="color: #888; font-style: italic;">\u2013 ${item.note}</span>` : ''}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    `).join('')}
+  </div>
+  ` : ''}
 
   ${protocol.signatures && protocol.signatures.length > 0 ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">

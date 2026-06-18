@@ -16,6 +16,7 @@ import {
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
+import { MarkdownText } from "@/components/markdown-text";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
@@ -28,6 +29,7 @@ import { trpc } from "@/lib/trpc";
 import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
 
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { getVoiceProfiles, saveVoiceProfile, matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
 import { saveDelegation, formatDelegationNotification, TaskDelegation } from "@/lib/task-delegation";
 import { generateTimeline, formatTimestamp, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
@@ -812,7 +814,7 @@ export default function ProtocolDetailScreen() {
         duration: protocol.duration,
         createdAt: protocol.createdAt,
         location: protocol.location,
-        weather: protocol.weather,
+        weather: null, // removed per user request
         protocolNumber: protocol.protocolNumber,
         projectName: protocol.projectName || undefined,
         projectColor: (protocol as any).projectColor || undefined,
@@ -834,7 +836,7 @@ export default function ProtocolDetailScreen() {
           duration: protocol.duration,
           createdAt: protocol.createdAt,
           location: protocol.location,
-          weather: protocol.weather,
+          weather: null, // removed per user request
           protocolNumber: protocol.protocolNumber,
           projectName: protocol.projectName || undefined,
           projectColor: (protocol as any).projectColor || undefined,
@@ -890,7 +892,7 @@ export default function ProtocolDetailScreen() {
         duration: protocol.duration,
         createdAt: protocol.createdAt,
         location: protocol.location,
-        weather: protocol.weather,
+        weather: null, // removed per user request
         protocolNumber: protocol.protocolNumber,
         projectName: protocol.projectName || undefined,
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
@@ -1052,6 +1054,32 @@ export default function ProtocolDetailScreen() {
       }
     } catch (error) {
       console.error("Error reordering photos:", error);
+    }
+  };
+
+  const addPhotoFromGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const newUris = result.assets.map(a => a.uri);
+        const protocolsStr = await AsyncStorage.getItem("protocols");
+        const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+        const idx = protocols.findIndex((p: any) => p.id === protocol!.id);
+        if (idx !== -1) {
+          const p = protocols[idx];
+          p.photos = [...(p.photos || []), ...newUris];
+          protocols[idx] = p;
+          await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+          setProtocol({ ...protocol!, photos: p.photos } as any);
+          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
+    } catch (error) {
+      console.error("Error adding photo:", error);
     }
   };
 
@@ -1246,14 +1274,7 @@ export default function ProtocolDetailScreen() {
               </Text>
             </View>
           )}
-          {protocol.weather && (
-            <View style={styles.metaRow}>
-              <MaterialIcons name="cloud" size={18} color={colors.primary} />
-              <Text style={[styles.metaText, { color: colors.muted }]}>
-                {protocol.weather}
-              </Text>
-            </View>
-          )}
+
           {/* Recording Mode Badge */}
           {protocol.recordingMode && (
             <View style={styles.metaRow}>
@@ -1459,6 +1480,54 @@ export default function ProtocolDetailScreen() {
             <Text style={[styles.photoHint, { color: colors.muted }]}>
               Tippe zum Vergrößern • Halte gedrückt zum Teilen • ✏️ Annotieren
             </Text>
+            <Pressable
+              onPress={addPhotoFromGallery}
+              style={({ pressed }) => [{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                borderWidth: 1.5,
+                borderColor: colors.primary,
+                borderStyle: "dashed" as any,
+                backgroundColor: colors.primary + "08",
+                marginTop: 8,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Fotos hinzufügen</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Add photos button when no photos exist */}
+        {photos.length === 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fotos</Text>
+            <Pressable
+              onPress={addPhotoFromGallery}
+              style={({ pressed }) => [{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                borderWidth: 1.5,
+                borderColor: colors.border,
+                borderStyle: "dashed" as any,
+                backgroundColor: colors.surface,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <MaterialIcons name="add-photo-alternate" size={24} color={colors.muted} />
+              <Text style={{ fontSize: 14, color: colors.muted }}>Fotos aus Galerie hinzufügen</Text>
+            </Pressable>
           </View>
         )}
 
@@ -1780,9 +1849,7 @@ export default function ProtocolDetailScreen() {
                 </View>
               )}
               {!showSpeakers && (
-                <Text style={[styles.protocolText, { color: colors.foreground }]}>
-                  {displayedProtocolText}
-                </Text>
+                <MarkdownText text={displayedProtocolText} color={colors.foreground} />
               )}
             </View>
           )}
@@ -1953,7 +2020,7 @@ export default function ProtocolDetailScreen() {
 
           {showTranslation && translatedText && (
             <View style={[styles.transcriptionBox, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
-              <Text style={[styles.protocolText, { color: colors.foreground }]}>{translatedText}</Text>
+              <MarkdownText text={translatedText} color={colors.foreground} />
             </View>
           )}
         </View>

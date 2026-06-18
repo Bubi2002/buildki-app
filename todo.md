@@ -309,3 +309,19 @@
 - [x] Feature: Aufnahme-Qualitätseinstellungen – Audio-Qualität wählen (Standard/Hoch/Maximum)
 - [x] Feature: Protokoll-Export als PDF – bereits vorhanden im Protokoll-Detail
 - [x] UX: Aufnahme-Fortschrittsbalken – Visueller Balken bei langer Aufnahme
+- [x] Bug-Fix: Tastatur geht nicht weg bei Projekt-Beschreibung Eingabe
+- [x] Bug-Fix: Tastatur überdeckt Eingabefelder bei neuem Projekt anlegen
+- [x] Bug-Fix: Zeuge-Unterschrift-Fenster kann nicht geschlossen/bestätigt werden
+- [x] Bug-Fix: Sprache umstellen funktioniert nicht (zeigt Meldung aber ändert nichts)
+- [x] Bug-Fix: Plan-Marker Position verschoben (resizeMode stretch statt contain)
+- [x] Bug-Fix: Plan-Beschreibung Tastatur überdeckt Eingabefeld (blurOnSubmit + returnKeyType)
+- [x] Feature: Wetter aus Protokoll entfernen
+- [x] Feature: Fotos/Video im Baustellenbericht anzeigen + manuell Fotos hinzufügen mit Markierungen
+- [x] Feature: Tutorial was man alles sagen kann (Anwesende, Arbeiten, Material, Probleme, etc.)
+- [x] Feature: Mehr Sprachen im Protokoll-Stil (bereits 11 Sprachen vorhanden: DE, EN, FR, ES, IT, NL, PL, TR, PT, RU, AR)
+- [x] Feature: Eigene Punkte in Checkliste hinzufügen/löschen pro Kategorie
+- [x] Feature: Checkliste im Baustellenbericht anzeigen oder separat versenden
+- [x] Feature: Protokoll-Formatierung: Fett statt ** und * für Überschriften (MarkdownText-Komponente)
+- [x] Feature: Projekt-Menü (3 Punkte): Löschen mit Bestätigung + Archivieren + Teilen
+- [x] Feature: Projekt weiterschicken/teilen damit andere es bearbeiten können
+- [x] Feature: Pläne im PDF-Export anzeigen (bereits implementiert mit Gesamtplan + Zoom-Ausschnitt)

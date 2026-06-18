@@ -22,6 +22,7 @@ import { getDelegations, TaskDelegation } from "@/lib/task-delegation";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
+import { setLanguage } from "@/lib/i18n";
 import { useThemeContext, type ThemeMode } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
@@ -1493,7 +1494,7 @@ return (
           </Text>
           <View style={styles.optionRow}>
             <Pressable
-              onPress={() => updateSetting("language", "de")}
+              onPress={() => { updateSetting("language", "de"); setLanguage("de"); }}
               style={[
                 styles.optionButton,
                 {
@@ -1512,7 +1513,7 @@ return (
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => updateSetting("language", "en")}
+              onPress={() => { updateSetting("language", "en"); setLanguage("en"); }}
               style={[
                 styles.optionButton,
                 {

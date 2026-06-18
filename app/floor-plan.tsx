@@ -154,12 +154,12 @@ export default function FloorPlanScreen() {
   const handlePlanPress = (event: any) => {
     if (!selectedPlan) return;
     const { locationX, locationY } = event.nativeEvent;
-    const containerWidth = SCREEN_WIDTH - 32;
-    const aspectRatio = imageSize.width / imageSize.height;
-    const containerHeight = containerWidth / aspectRatio;
+    const cw = SCREEN_WIDTH - 32;
+    const ar = imageSize.width / imageSize.height;
+    const ch = Math.min(cw / ar, SCREEN_HEIGHT * 0.5);
 
-    const x = locationX / containerWidth;
-    const y = locationY / containerHeight;
+    const x = locationX / cw;
+    const y = locationY / ch;
 
     if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
       setPendingPin({ x, y });
@@ -344,7 +344,7 @@ export default function FloorPlanScreen() {
                 <RNImage
                   source={{ uri: selectedPlan.imageUri }}
                   style={{ width: containerWidth, height: containerHeight }}
-                  resizeMode="contain"
+                  resizeMode="stretch"
                 />
                 {/* Render Pins */}
                 {filteredPins.map((pin) => (
@@ -544,6 +544,9 @@ export default function FloorPlanScreen() {
               onChangeText={setPinDescription}
               multiline
               numberOfLines={3}
+              blurOnSubmit={true}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
 
             <View style={styles.modalButtons}>

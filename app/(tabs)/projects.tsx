@@ -9,6 +9,11 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Share,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -312,10 +317,25 @@ export default function ProjectsTab() {
 
               {/* Actions */}
               <Pressable
-                onPress={() => deleteProject(item.id)}
+                onPress={() => {
+                  if (item.archived) {
+                    archiveProject(item.id);
+                  } else {
+                    Alert.alert(
+                      item.name,
+                      "Was m\u00f6chtest du tun?",
+                      [
+                        { text: "Archivieren", onPress: () => archiveProject(item.id) },
+                        { text: "Teilen", onPress: () => Share.share({ message: `Projekt: ${item.name}${item.description ? '\n' + item.description : ''}` }) },
+                        { text: "L\u00f6schen", style: "destructive", onPress: () => deleteProject(item.id) },
+                        { text: "Abbrechen", style: "cancel" },
+                      ]
+                    );
+                  }
+                }}
                 style={({ pressed }) => [{ padding: 6, opacity: pressed ? 0.5 : 1 }]}
               >
-                <MaterialIcons name={item.archived ? "unarchive" : "more-vert"} size={18} color={colors.muted} />
+                <MaterialIcons name={item.archived ? "unarchive" : "more-vert"} size={20} color={colors.muted} />
               </Pressable>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </View>
@@ -325,6 +345,8 @@ export default function ProjectsTab() {
 
       {/* Create Project Modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Pressable onPress={() => setShowCreate(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
@@ -401,6 +423,8 @@ export default function ProjectsTab() {
             </View>
           </View>
         </View>
+        </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenContainer>
   );

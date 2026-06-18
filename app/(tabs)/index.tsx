@@ -70,6 +70,7 @@ export default function RecordScreen() {
   const [annotatingPhotoIndex, setAnnotatingPhotoIndex] = useState<number | null>(null);
   const [photoAnnotations, setPhotoAnnotations] = useState<Record<number, string>>({});
   const [showGrid, setShowGrid] = useState(false);
+  const [showRecordingTips, setShowRecordingTips] = useState(false);
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -1660,9 +1661,18 @@ export default function RecordScreen() {
               </View>
             )}
             {!isRecording && (
-              <Text style={[styles.audioHintText, { color: colors.muted }]}>
-                Tippe zum Starten • Lang drücken für Schnellstart
-              </Text>
+              <View style={{ alignItems: "center", gap: 8 }}>
+                <Text style={[styles.audioHintText, { color: colors.muted }]}>
+                  Tippe zum Starten • Lang drücken für Schnellstart
+                </Text>
+                <Pressable
+                  onPress={() => setShowRecordingTips(true)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "12", opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="lightbulb-outline" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Aufnahme-Tipps</Text>
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -1730,6 +1740,54 @@ export default function RecordScreen() {
               {isRecording ? (isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : "Tippe zum Stoppen") : "Nur Sprache \u2022 Ohne Kamera"}
             </Text>
           </View>
+
+          {/* Recording Tips Modal */}
+          <Modal visible={showRecordingTips} animationType="slide" transparent>
+            <View style={styles.templateModalOverlay}>
+              <Pressable style={styles.templateModalDismiss} onPress={() => setShowRecordingTips(false)} />
+              <View style={[styles.templateModalContent, { backgroundColor: colors.background, maxHeight: "80%" }]}>
+                <View style={styles.templateSheetHeader}>
+                  <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
+                    Aufnahme-Tipps
+                  </Text>
+                  <Pressable onPress={() => setShowRecordingTips(false)}>
+                    <MaterialIcons name="close" size={24} color={colors.muted} />
+                  </Pressable>
+                </View>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>
+                    Was du während der Aufnahme sagen kannst:
+                  </Text>
+                  {[
+                    { icon: "people", title: "Anwesende Personen", example: "\"Anwesend sind Herr Müller von der Firma XY, Frau Schmidt als Bauleiterin...\"" },
+                    { icon: "construction", title: "Ausgeführte Arbeiten", example: "\"Heute wurden die Estricharbeiten im 2. OG abgeschlossen, die Elektroinstallation in Raum 3.01 begonnen...\"" },
+                    { icon: "local-shipping", title: "Materiallieferungen", example: "\"Geliefert wurden 20 Paletten Ziegel, 5 Kubikmeter Beton von Firma ABC...\"" },
+                    { icon: "warning", title: "Besondere Vorkommnisse / Probleme", example: "\"Wassereinbruch im Keller festgestellt, Ursache wird untersucht. Verzögerung bei Fensterlieferung um 2 Wochen...\"" },
+                    { icon: "event", title: "Geplante Arbeiten für morgen", example: "\"Morgen sind geplant: Fortsetzung der Malerarbeiten, Anlieferung der Türen, Abnahme der Heizungsanlage...\"" },
+                    { icon: "thermostat", title: "Wetter & Bedingungen", example: "\"Wetter: bedeckt, 12 Grad, leichter Regen am Nachmittag. Außenarbeiten eingeschränkt.\"" },
+                    { icon: "camera-alt", title: "Foto-Auslöser", example: "Sage \"Foto\" während der Aufnahme – die Kamera löst automatisch aus (nur im Audio+Foto-Modus)" },
+                    { icon: "checklist", title: "Aufgaben & Mängel", example: "\"Mangel: Riss in der Decke Raum 2.05, muss nachgebessert werden. Aufgabe für Firma XY: Nachbesserung bis Freitag.\"" },
+                  ].map((tip, i) => (
+                    <View key={i} style={{ flexDirection: "row", gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border + "40" }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                        <MaterialIcons name={tip.icon as any} size={18} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{tip.title}</Text>
+                        <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18, fontStyle: "italic" }}>{tip.example}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <View style={{ marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "20" }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary, marginBottom: 4 }}>Tipp:</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
+                      Sprich natürlich und in ganzen Sätzen. Die KI erkennt automatisch die Struktur und erstellt daraus ein professionelles Protokoll. Du musst keine bestimmte Reihenfolge einhalten.
+                    </Text>
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
 
           {/* Template selector modal */}
           <Modal visible={showTemplateSelector && !isRecording} animationType="slide" transparent>

@@ -180,6 +180,20 @@ export async function saveCustomChecklist(checklist: Checklist): Promise<void> {
   await AsyncStorage.setItem(CHECKLISTS_KEY, JSON.stringify(custom));
 }
 
+export async function saveModifiedBuiltInChecklist(checklist: Checklist): Promise<void> {
+  const key = `checklist-modified-${checklist.id}`;
+  await AsyncStorage.setItem(key, JSON.stringify(checklist.items));
+}
+
+export async function getModifiedChecklistItems(checklistId: string): Promise<ChecklistItem[] | null> {
+  try {
+    const raw = await AsyncStorage.getItem(`checklist-modified-${checklistId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteCustomChecklist(checklistId: string): Promise<void> {
   const raw = await AsyncStorage.getItem(CHECKLISTS_KEY);
   const custom: Checklist[] = raw ? JSON.parse(raw) : [];
