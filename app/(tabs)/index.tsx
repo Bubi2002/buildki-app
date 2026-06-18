@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  Animated,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import {
@@ -65,6 +66,7 @@ export default function RecordScreen() {
   }, [isFocused]);
   const router = useRouter();
   const cameraRef = useRef<CameraView>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [isRecording, setIsRecording] = useState(false);
@@ -511,6 +513,30 @@ export default function RecordScreen() {
       getCurrentEvent().then(setCurrentCalendarEvent).catch(() => {});
     }
   }, []);
+
+  // Pulse animation for mic circle during recording
+  useEffect(() => {
+    if (isRecording) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isRecording]);
 
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
@@ -1448,13 +1474,13 @@ export default function RecordScreen() {
 
           {/* Center section: Microphone circle */}
           <View style={styles.audioVisualArea}>
-            <View style={[styles.audioCircle, { borderColor: isRecording ? colors.primary : colors.border }]}>
+            <Animated.View style={[styles.audioCircle, { borderColor: isRecording ? colors.primary : colors.border, transform: [{ scale: pulseAnim }] }]}>
               <MaterialIcons
                 name={isRecording ? "graphic-eq" : "mic"}
                 size={64}
                 color={isRecording ? colors.primary : colors.muted}
               />
-            </View>
+            </Animated.View>
             {isRecording && (
               <View style={styles.timerContainerAudio}>
                 <View style={styles.recordDot} />
@@ -2331,10 +2357,10 @@ const styles = StyleSheet.create({
   // Mode toggle
   modeToggleCamera: {
     position: "absolute",
-    top: 60,
-    right: 16,
+    top: 50,
+    right: 12,
     flexDirection: "column",
-    gap: 8,
+    gap: 6,
   },
   modeToggleTop: {
     flexDirection: "row",
@@ -2470,17 +2496,18 @@ const styles = StyleSheet.create({
   },
   controlsContainer: {
     position: "absolute",
-    bottom: 50,
+    bottom: 30,
     width: "100%",
     alignItems: "center",
+    paddingBottom: 10,
   },
   controlsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    paddingHorizontal: 40,
-    gap: 30,
+    paddingHorizontal: 24,
+    gap: 20,
   },
   templateBadge: {
     flexDirection: "row",

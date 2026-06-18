@@ -283,3 +283,6 @@
 - [x] Feature: Vorlagen-Bibliothek – Online-Katalog mit Community-Vorlagen zum Herunterladen
 - [x] Feature: Batch-Export – Mehrere Protokolle als Einzelne PDFs, Gesamtdokument oder CSV exportieren
 - [x] UX-Fix: Nur-Audio-Aufnahme-Screen Layout überarbeiten – Elemente überlappen sich, Abstände zu eng
+- [x] UX: Audio+Foto-Modus Layout Abstände auf kleineren Geräten prüfen und fixen
+- [x] UX: Pulsierende Animation am Mikrofon-Kreis während der Aufnahme (Nur-Audio-Modus)
+- [x] UX: Landscape-Modus Layout testen und korrekt darstellen (App ist portrait-only, kein Fix nötig)
