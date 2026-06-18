@@ -297,3 +297,6 @@
 - [x] UX: Protokoll-Suche innerhalb des gefilterten Projekts (Volltextsuche – bereits korrekt implementiert)
 - [x] Feature: Kamera Tap-to-Focus – Antippen zeigt Fokus-Indikator mit Animation
 - [x] UX: Zoom-Level-Anzeige als Overlay auf dem Kamerabild (z.B. "2.3x")
+- [x] Feature: Kamera-Blitz-Steuerung – Toggle für Auto/An/Aus im Kamera-Overlay
+- [x] Feature: Foto-Galerie-Vorschau – Thumbnail der letzten Aufnahme + Galerie-Modal
+- [x] Feature: Sprachgesteuerte Foto-Aufnahme – "Foto" sagen löst automatisch ein Foto aus

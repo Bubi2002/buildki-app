@@ -43,6 +43,7 @@ import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } fro
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Image } from "expo-image";
 
 type RecordingMode = "audio" | "audio-photo";
 
@@ -58,6 +59,8 @@ export default function RecordScreen() {
   const focusAnim = useRef(new Animated.Value(0)).current;
   const [showZoomBadge, setShowZoomBadge] = useState(false);
   const zoomBadgeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [flashMode, setFlashMode] = useState<"off" | "on" | "auto">("auto");
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
 
   // When screen regains focus after navigation, camera needs to re-initialize
   // The active={isFocused} prop pauses/resumes the camera, and onCameraReady fires again
@@ -592,6 +595,24 @@ export default function RecordScreen() {
       }
     }
   }, [isRecording, isPaused]);
+
+  // Voice-triggered photo capture: detect "Foto" keyword in live transcription
+  const lastVoicePhotoRef = useRef<number>(0);
+  useEffect(() => {
+    if (!isRecording || !liveText || mode !== "audio-photo") return;
+    const lower = liveText.toLowerCase();
+    // Check for "foto" keyword (with cooldown of 3 seconds to prevent duplicates)
+    if (lower.includes("foto") || lower.includes("photo")) {
+      const now = Date.now();
+      if (now - lastVoicePhotoRef.current > 3000) {
+        lastVoicePhotoRef.current = now;
+        takePhoto();
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
+    }
+  }, [liveText, isRecording, mode]);
 
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
@@ -1944,6 +1965,8 @@ export default function RecordScreen() {
             facing="back"
             mode="picture"
             zoom={cameraZoom}
+            flash={flashMode}
+            enableTorch={flashMode === "on"}
             active={isFocused}
             onCameraReady={() => setCameraReady(true)}
             onMountError={(e) => console.warn("Camera mount error:", e?.message)}
@@ -1966,6 +1989,23 @@ export default function RecordScreen() {
             <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Kein Projekt</Text>
           </Pressable>
         )}
+
+        {/* Flash toggle - top right */}
+        <Pressable
+          onPress={() => {
+            const modes: Array<"auto" | "on" | "off"> = ["auto", "on", "off"];
+            const idx = modes.indexOf(flashMode);
+            setFlashMode(modes[(idx + 1) % 3]);
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={({ pressed }) => [{ position: "absolute", top: 12, right: 16, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <MaterialIcons
+            name={flashMode === "on" ? "flash-on" : flashMode === "auto" ? "flash-auto" : "flash-off"}
+            size={22}
+            color={flashMode === "off" ? "rgba(255,255,255,0.5)" : "#FFD700"}
+          />
+        </Pressable>
 
         {/* Zoom slider - always visible */}
         <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
@@ -2293,6 +2333,21 @@ export default function RecordScreen() {
             )}
           </View>
 
+          {/* Photo gallery thumbnail */}
+          {capturedPhotos.length > 0 && (
+            <Pressable
+              onPress={() => setShowPhotoGallery(true)}
+              style={({ pressed }) => [{ position: "absolute", left: 16, bottom: 16, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 8, borderWidth: 2, borderColor: "#FFFFFF", overflow: "hidden" }}>
+                <Image source={{ uri: capturedPhotos[capturedPhotos.length - 1] }} style={{ width: 48, height: 48 }} contentFit="cover" />
+              </View>
+              <View style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#2196F3", borderRadius: 10, minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length}</Text>
+              </View>
+            </Pressable>
+          )}
+
           <Text style={styles.hintText}>
             {isRecording
               ? ""
@@ -2300,6 +2355,32 @@ export default function RecordScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Photo Gallery Modal */}
+      <Modal visible={showPhotoGallery} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""}</Text>
+            <Pressable onPress={() => setShowPhotoGallery(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.7 : 1 }]}>
+              <MaterialIcons name="close" size={28} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          <FlatList
+            data={capturedPhotos}
+            keyExtractor={(_, i) => i.toString()}
+            numColumns={2}
+            contentContainerStyle={{ padding: 8 }}
+            renderItem={({ item, index }) => (
+              <View style={{ flex: 1, margin: 4, borderRadius: 8, overflow: "hidden" }}>
+                <Image source={{ uri: item }} style={{ width: "100%", aspectRatio: 1 }} contentFit="cover" />
+                <View style={{ position: "absolute", bottom: 6, left: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 11, color: "#FFFFFF", fontWeight: "600" }}>#{index + 1}</Text>
+                </View>
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
 
       {/* Create Custom Template Modal */}
       <Modal visible={showCreateTemplate} animationType="slide" transparent>
