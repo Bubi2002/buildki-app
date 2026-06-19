@@ -1663,10 +1663,15 @@ export default function RecordScreen() {
                     ))}
                   </View>
                 ) : (
-                  <MaterialIcons name="mic" size={64} color={colors.muted} />
+                  <MaterialIcons name="mic" size={56} color={colors.muted} />
                 )}
               </Animated.View>
             </Pressable>
+            {!isRecording && (
+              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 12, textAlign: "center" }}>
+                Tippe auf den Button zum Starten
+              </Text>
+            )}
             {isRecording && (
               <View style={styles.timerContainerAudio}>
                 <View style={styles.recordDot} />
@@ -1680,37 +1685,22 @@ export default function RecordScreen() {
                 <View style={{ height: "100%", backgroundColor: isPaused ? "#F59E0B" : colors.primary, borderRadius: 2, width: `${Math.min(100, (recordingDuration / 3600) * 100)}%` }} />
               </View>
             )}
-            {!isRecording && (
-              <Text style={[styles.audioHintText, { color: colors.muted }]}>
-                Tippe zum Starten • Lang drücken für Schnellstart
-              </Text>
+            {/* Audio level indicator */}
+            {isRecording && (
+              <View style={styles.audioLevelContainer}>
+                <View style={[styles.audioLevelDot, { backgroundColor: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]} />
+                <Text style={[styles.audioLevelText, { color: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]}>
+                  {audioLevel === "quiet" ? "Zu leise" : audioLevel === "loud" ? "Zu laut" : "Gute Qualit\u00e4t"}
+                </Text>
+                {isPaused && (
+                  <Text style={[styles.pausedBadge, { color: colors.warning, borderColor: colors.warning }]}>PAUSE</Text>
+                )}
+              </View>
             )}
           </View>
 
-          {/* Audio level indicator */}
-          {isRecording && (
-            <View style={styles.audioLevelContainer}>
-              <View style={[styles.audioLevelDot, { backgroundColor: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]} />
-              <Text style={[styles.audioLevelText, { color: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]}>
-                {audioLevel === "quiet" ? "Zu leise" : audioLevel === "loud" ? "Zu laut" : "Gute Qualit\u00e4t"}
-              </Text>
-              {isPaused && (
-                <Text style={[styles.pausedBadge, { color: colors.warning, borderColor: colors.warning }]}>PAUSE</Text>
-              )}
-            </View>
-          )}
-
           {/* Bottom section: Record button + controls */}
           <View style={styles.audioControls}>
-            {!isRecording && (
-              <Pressable
-                onPress={() => setShowRecordingTips(true)}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "12", opacity: pressed ? 0.7 : 1, marginBottom: 4 }]}
-              >
-                <MaterialIcons name="lightbulb-outline" size={16} color={colors.primary} />
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Aufnahme-Tipps</Text>
-              </Pressable>
-            )}
             <View style={styles.audioControlsRow}>
               {/* Pause/Resume button (only during recording) */}
               {isRecording && (
@@ -1779,9 +1769,17 @@ export default function RecordScreen() {
               )}
             </View>
 
-            <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-              {isRecording ? (isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Tippe zum Stoppen \u2022 Marker f\u00fcr Wichtiges") : "Nur Sprache \u2022 Ohne Kamera"}
-            </Text>
+            {isRecording ? (
+              <Text style={[styles.audioControlHint, { color: colors.muted }]}>
+                {isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Tippe zum Stoppen \u2022 Marker f\u00fcr Wichtiges"}
+              </Text>
+            ) : (
+              <Pressable onPress={() => setShowRecordingTips(true)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                <Text style={[styles.audioControlHint, { color: colors.primary }]}>
+                  Aufnahme-Tipps anzeigen
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Recording Tips Modal */}
@@ -3313,9 +3311,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   audioCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",

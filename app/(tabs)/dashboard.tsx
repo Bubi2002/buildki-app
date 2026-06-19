@@ -73,7 +73,16 @@ export default function DashboardScreen() {
       if (Platform.OS !== "web") {
         try {
           const events = await getUpcomingEvents(7);
-          setUpcomingEvents(events.slice(0, 5));
+          // Deduplicate events by title + startDate to avoid showing the same event multiple times
+          // (can happen when event exists in multiple calendars)
+          const seen = new Set<string>();
+          const uniqueEvents = events.filter((e) => {
+            const key = `${e.title}_${e.startDate.getTime()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          setUpcomingEvents(uniqueEvents.slice(0, 5));
         } catch {
           setUpcomingEvents([]);
         }

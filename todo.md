@@ -365,3 +365,5 @@
 - [x] Feature: Digitale Unterschrift auf Protokollen (bereits vorhanden – Multi-Rollen-Signaturen)
 - [x] Feature: Nachfolge-Erinnerungen für offene Punkte (bereits vorhanden – task-reminders.ts)
 - [x] Bug-Fix: Layout Überschneidung im Nur-Audio-Modus – Aufnahme-Tipps Button unter Record-Button verschoben, gap reduziert
+- [x] Bug-Fix: Audio-Modus Layout komplett überarbeitet – Hint-Text und Tipps-Button nicht mehr überlappend, Mic-Kreis verkleinert (140px), saubere Trennung zwischen Mic-Bereich und Record-Button
+- [x] Bug-Fix: Dashboard doppelte Kalendertermine – Deduplizierung nach Titel+Startzeit (Events aus mehreren Kalendern werden zusammengefasst)
