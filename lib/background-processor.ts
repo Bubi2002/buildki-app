@@ -122,6 +122,22 @@ async function autoSendPdfIfEnabled(protocolId: string) {
     return;
   }
   
+  // Apply email templates with placeholders
+  const datumStr = new Date(protocol.createdAt).toLocaleDateString("de-DE");
+  const replacePlaceholders = (template: string) => {
+    return template
+      .replace(/\{vorlage\}/g, protocol.templateName || "Protokoll")
+      .replace(/\{titel\}/g, protocol.title || protocol.templateName || "Protokoll")
+      .replace(/\{datum\}/g, datumStr)
+      .replace(/\{projekt\}/g, protocol.projectName || "");
+  };
+  const subjectText = branding.emailSubjectTemplate
+    ? replacePlaceholders(branding.emailSubjectTemplate)
+    : `${protocol.templateName || "Protokoll"} - ${protocol.title || datumStr}`;
+  const bodyText = branding.emailBodyTemplate
+    ? replacePlaceholders(branding.emailBodyTemplate)
+    : `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
+
   // Send via mail composer
   try {
     const MailComposer = await import("expo-mail-composer");
@@ -129,8 +145,8 @@ async function autoSendPdfIfEnabled(protocolId: string) {
     if (isAvailable) {
       await MailComposer.composeAsync({
         recipients,
-        subject: `${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`,
-        body: `Anbei das automatisch erstellte Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`,
+        subject: subjectText,
+        body: bodyText,
         attachments: [pdfUri],
       });
       console.log(`[BG-Processor] Auto-send email composed for ${protocolId}`);

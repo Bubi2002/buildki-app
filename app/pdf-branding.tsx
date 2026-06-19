@@ -344,6 +344,26 @@ export default function PdfBrandingScreen() {
               thumbColor={branding.autoSendEmail === true ? colors.primary : colors.muted}
             />
           </View>
+
+          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 16 }]}>E-Mail-Betreff (Platzhalter: {'{vorlage}'}, {'{titel}'}, {'{datum}'}, {'{projekt}'})</Text>
+          <TextInput
+            value={branding.emailSubjectTemplate || ""}
+            onChangeText={(v) => updateField("emailSubjectTemplate", v)}
+            placeholder="z.B. {vorlage} - {titel}"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+          />
+
+          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>E-Mail-Text (Platzhalter: {'{vorlage}'}, {'{titel}'}, {'{datum}'}, {'{projekt}'})</Text>
+          <TextInput
+            value={branding.emailBodyTemplate || ""}
+            onChangeText={(v) => updateField("emailBodyTemplate", v)}
+            placeholder={'Anbei das Protokoll "{titel}" vom {datum}.\n\nMit freundlichen Gr\u00fc\u00dfen'}
+            placeholderTextColor={colors.muted}
+            multiline
+            numberOfLines={4}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 80, textAlignVertical: "top" }]}
+          />
         </View>
 
         {/* Filename Schema */}

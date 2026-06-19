@@ -347,3 +347,6 @@
 - [x] Feature: Mehrere E-Mail-Empfänger (komma-getrennte Liste) in PDF-Einstellungen und Versand
 - [x] Feature: PDF-Vorlagen-Editor (Layout-Anpassung: Transkription, Aufgaben, Metadaten, Unterschriften, Foto-Größe)
 - [x] Feature: Automatischer PDF-Versand nach Protokoll-Erstellung (Toggle in Einstellungen)
+- [x] Feature: Layout-Toggles im PDF-Generator anwenden (showTranscription, showTodos, showMetadata, showSignatures)
+- [x] Feature: Foto-Größe (photoSize: klein/mittel/groß) im PDF-Generator anwenden
+- [x] Feature: Konfigurierbare E-Mail-Vorlagen (Betreff + Body) in PDF-Einstellungen

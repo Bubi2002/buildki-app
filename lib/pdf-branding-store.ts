@@ -31,6 +31,8 @@ export type PdfBranding = {
   showMetadata: boolean; // show metadata (location, weather, participants) in PDF
   showSignatures: boolean; // show signature fields in PDF
   photoSize: "klein" | "mittel" | "gro\u00df"; // photo size in PDF
+  emailSubjectTemplate: string; // email subject template (placeholders: {vorlage}, {titel}, {datum}, {projekt})
+  emailBodyTemplate: string; // email body template (placeholders: {vorlage}, {titel}, {datum}, {projekt})
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -58,6 +60,8 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showMetadata: true,
   showSignatures: true,
   photoSize: "mittel" as const,
+  emailSubjectTemplate: "{vorlage} - {titel}",
+  emailBodyTemplate: "Anbei das Protokoll \"{titel}\" vom {datum}.\n\nMit freundlichen Gr\u00fc\u00dfen",
 };
 
 /**

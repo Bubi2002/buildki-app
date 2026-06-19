@@ -892,8 +892,22 @@ export default function ProtocolDetailScreen() {
       const branding = await getPdfBranding();
       const emailAddressRaw = branding.defaultEmailAddress || "info@iserloh.net";
       const recipients = emailAddressRaw.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
-      const subjectText = `${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`;
-      const bodyText = `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
+      
+      // Apply email templates with placeholders
+      const datumStr = new Date(protocol.createdAt).toLocaleDateString("de-DE");
+      const replacePlaceholders = (template: string) => {
+        return template
+          .replace(/\{vorlage\}/g, protocol.templateName || "Protokoll")
+          .replace(/\{titel\}/g, protocol.title || protocol.templateName || "Protokoll")
+          .replace(/\{datum\}/g, datumStr)
+          .replace(/\{projekt\}/g, protocol.projectName || "");
+      };
+      const subjectText = branding.emailSubjectTemplate
+        ? replacePlaceholders(branding.emailSubjectTemplate)
+        : `${protocol.templateName || "Protokoll"} - ${protocol.title || datumStr}`;
+      const bodyText = branding.emailBodyTemplate
+        ? replacePlaceholders(branding.emailBodyTemplate)
+        : `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
 
       // Use expo-mail-composer if available, otherwise fallback to sharing
       try {

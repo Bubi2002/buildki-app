@@ -137,6 +137,14 @@ async function loadCompanySettings(): Promise<CompanySettings> {
 /**
  * Generate professional PDF HTML from protocol data
  */
+interface LayoutOptions {
+  showTranscription?: boolean;
+  showTodos?: boolean;
+  showMetadata?: boolean;
+  showSignatures?: boolean;
+  photoSize?: "klein" | "mittel" | "gro\u00df";
+}
+
 function generatePdfHtml(
   protocol: PdfProtocol,
   company: CompanySettings,
@@ -145,8 +153,20 @@ function generatePdfHtml(
   accentColor?: string,
   pdfTemplate: PdfTemplate = "standard",
   photoWatermark: boolean = true,
-  watermarkText: string = ""
+  watermarkText: string = "",
+  layoutOptions: LayoutOptions = {}
 ): string {
+  // Layout options with defaults
+  const layoutShowTranscription = layoutOptions.showTranscription !== false;
+  const layoutShowTodos = layoutOptions.showTodos !== false;
+  const layoutShowMetadata = layoutOptions.showMetadata !== false;
+  const layoutShowSignatures = layoutOptions.showSignatures !== false;
+  const layoutPhotoSize = layoutOptions.photoSize || "mittel";
+  
+  // Photo size mapping to max-width
+  const photoMaxWidth = layoutPhotoSize === "klein" ? "250px" : layoutPhotoSize === "gro\u00df" ? "100%" : "450px";
+  const photoGridMaxWidth = layoutPhotoSize === "klein" ? "150px" : layoutPhotoSize === "gro\u00df" ? "300px" : "200px";
+
   // Template-specific overrides
   const showPhotos = pdfTemplate !== "no_photos";
   const isCompact = pdfTemplate === "compact";
@@ -225,7 +245,7 @@ function generatePdfHtml(
           return `
           <div class="photo-block" style="margin: 12px 0; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
             <div style="position:relative;display:inline-block;width:100%;">
-              <img src="${photoDataUris[photoIdx]}" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 4px;" />
+              <img src="${photoDataUris[photoIdx]}" style="width: 100%; max-width: ${photoMaxWidth}; max-height: 240px; object-fit: contain; border-radius: 4px;" />
               ${watermarkOverlay}
             </div>
             <p style="font-size: 10px; color: #555; font-weight: 600; margin: 8px 0 2px 0;">Foto ${photoIdx + 1}${timestamp ? ` \u2013 ${timestamp}` : ''}</p>
@@ -263,7 +283,7 @@ function generatePdfHtml(
             htmlResult += `
               <div class="photo-block" style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'};">
                 <div style="position:relative;">
-                  <img src="${photoDataUris[idx]}" style="width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+                  <img src="${photoDataUris[idx]}" style="width: 100%; max-width: ${photoGridMaxWidth}; max-height: 180px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
                   ${gridWatermark}
                 </div>
                 <p style="font-size: 9px; color: #666; margin: 4px 0 0 0;">Foto ${idx + 1}${timestamp ? ` (${timestamp})` : ''}</p>
@@ -355,7 +375,7 @@ function generatePdfHtml(
           <div class="photo-block" style="width: 100%; margin-bottom: 20px;">
             <div style="display: flex; align-items: flex-start; gap: 16px;">
               <div style="flex: 0 0 55%; position:relative;">
-                <img src="${uri}" style="width: 100%; max-height: 280px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+                <img src="${uri}" style="width: 100%; max-width: ${photoMaxWidth}; max-height: 280px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
                 ${docWatermark}
               </div>
               <div style="flex: 1; padding-top: 4px;">
@@ -609,7 +629,7 @@ function generatePdfHtml(
   </div>
   `}
 
-  <table class="meta-table">
+  ${layoutShowMetadata ? `<table class="meta-table">
     ${protocol.protocolNumber ? `<tr><td>Protokoll-Nr.</td><td><strong>${protocol.protocolNumber}</strong></td></tr>` : ''}
     ${protocol.projectName ? `<tr><td>Projekt</td><td><strong>${protocol.projectName}</strong></td></tr>` : ''}
     <tr>
@@ -630,7 +650,7 @@ function generatePdfHtml(
     </tr>
     ${
       photoDataUris.length > 0
-        ? `<tr><td>Anhänge</td><td>${photoDataUris.length} Foto${photoDataUris.length !== 1 ? "s" : ""}</td></tr>`
+        ? `<tr><td>Anh\u00e4nge</td><td>${photoDataUris.length} Foto${photoDataUris.length !== 1 ? "s" : ""}</td></tr>`
         : ""
     }
     ${
@@ -638,9 +658,9 @@ function generatePdfHtml(
         ? `<tr><td>Standort</td><td>${protocol.location.address || `${protocol.location.latitude.toFixed(5)}, ${protocol.location.longitude.toFixed(5)}`}</td></tr>`
         : ""
     }
-  </table>
+  </table>` : ''}
 
-  ${todos.length > 0 ? `
+  ${todos.length > 0 && layoutShowTodos ? `
   <div style="margin-bottom: 20px;">
     <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
       Aufgaben (${todos.filter(t => t.done).length}/${todos.length} erledigt)
@@ -701,7 +721,7 @@ function generatePdfHtml(
   </div>
   ` : ''}
 
-  ${protocol.signatures && protocol.signatures.length > 0 ? `
+  ${protocol.signatures && protocol.signatures.length > 0 && layoutShowSignatures ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">
     <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Unterschriften</h3>
     <div style="display: flex; flex-wrap: wrap; gap: 20px;">
@@ -716,7 +736,7 @@ function generatePdfHtml(
       `).join('')}
     </div>
   </div>
-  ` : protocol.signaturePaths && protocol.signaturePaths.length > 0 ? `
+  ` : protocol.signaturePaths && protocol.signaturePaths.length > 0 && layoutShowSignatures ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">
     <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Unterschrift</h3>
     <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa; display: inline-block;">
@@ -833,6 +853,11 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   let photoWatermark = true;
   let showCoverPage = true;
   let watermarkText = "";
+  let showTranscription = true;
+  let showTodos = true;
+  let showMetadata = true;
+  let showSignatures = true;
+  let photoSize: "klein" | "mittel" | "gro\u00df" = "mittel";
   let brandingData: any = null;
   try {
     const brandingStr = await AsyncStorage.getItem("pdf-branding");
@@ -844,11 +869,16 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       if (branding.photoWatermark === false) photoWatermark = false;
       if (branding.showCoverPage === false) showCoverPage = false;
       if (branding.watermarkText) watermarkText = branding.watermarkText;
+      if (branding.showTranscription === false) showTranscription = false;
+      if (branding.showTodos === false) showTodos = false;
+      if (branding.showMetadata === false) showMetadata = false;
+      if (branding.showSignatures === false) showSignatures = false;
+      if (branding.photoSize) photoSize = branding.photoSize;
     }
   } catch {}
 
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText);
+  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize });
 
   // Generate cover page if enabled
   let coverPageHtml = "";
