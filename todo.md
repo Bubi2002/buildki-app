@@ -340,3 +340,4 @@
 - [x] Feature: Foto-Wasserzeichen im PDF (Datum/Uhrzeit + Projektname dezent auf jedem Foto)
 - [x] Feature: Professionelles PDF-Deckblatt mit Logo, Projektname und Datum
 - [x] Feature: Batch-Export aller Protokolle eines Projekts als einzelne PDFs
+- [x] Feature: Sichtbare Toggles in PDF-Einstellungen für Deckblatt und Foto-Wasserzeichen

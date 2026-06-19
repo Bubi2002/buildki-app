@@ -250,6 +250,32 @@ export default function PdfBrandingScreen() {
               thumbColor={branding.showProjectName ? colors.primary : colors.muted}
             />
           </View>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Deckblatt</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>Professionelles Deckblatt mit Logo, Titel und Projektinfo</Text>
+            </View>
+            <Switch
+              value={branding.showCoverPage !== false}
+              onValueChange={(v) => updateField("showCoverPage", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.showCoverPage !== false ? colors.primary : colors.muted}
+            />
+          </View>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Foto-Wasserzeichen</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>Datum und Projektname dezent auf jedem Foto</Text>
+            </View>
+            <Switch
+              value={branding.photoWatermark !== false}
+              onValueChange={(v) => updateField("photoWatermark", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.photoWatermark !== false ? colors.primary : colors.muted}
+            />
+          </View>
         </View>
 
         {/* Filename Schema */}
