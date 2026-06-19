@@ -143,7 +143,8 @@ function generatePdfHtml(
   photoDataUris: string[],
   planImageBase64?: string | null,
   accentColor?: string,
-  pdfTemplate: PdfTemplate = "standard"
+  pdfTemplate: PdfTemplate = "standard",
+  photoWatermark: boolean = true
 ): string {
   // Template-specific overrides
   const showPhotos = pdfTemplate !== "no_photos";
@@ -218,9 +219,13 @@ function generatePdfHtml(
           const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[photoIdx] != null
             ? `${Math.floor(protocol.photoTimestamps[photoIdx] / 60)}:${(protocol.photoTimestamps[photoIdx] % 60).toString().padStart(2, '0')} Min.`
             : null;
+          const watermarkOverlay = photoWatermark ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}</div>` : "";
           return `
           <div class="photo-block" style="margin: 12px 0; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
-            <img src="${photoDataUris[photoIdx]}" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 4px;" />
+            <div style="position:relative;display:inline-block;width:100%;">
+              <img src="${photoDataUris[photoIdx]}" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 4px;" />
+              ${watermarkOverlay}
+            </div>
             <p style="font-size: 10px; color: #555; font-weight: 600; margin: 8px 0 2px 0;">Foto ${photoIdx + 1}${timestamp ? ` \u2013 ${timestamp}` : ''}</p>
             ${caption ? `<p style="font-size: 11px; color: #333; line-height: 1.4; margin: 0;">${caption}</p>` : ''}
           </div>`;
@@ -251,9 +256,13 @@ function generatePdfHtml(
             const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[idx] != null
               ? `${Math.floor(protocol.photoTimestamps[idx] / 60)}:${(protocol.photoTimestamps[idx] % 60).toString().padStart(2, '0')}`
               : null;
+            const gridWatermark = photoWatermark ? `<div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;padding:1px 4px;border-radius:2px;">${new Date(protocol.createdAt).toLocaleDateString("de-DE")}${protocol.projectName ? " | " + protocol.projectName : ""}</div>` : "";
             htmlResult += `
               <div class="photo-block" style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'};">
-                <img src="${photoDataUris[idx]}" style="width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+                <div style="position:relative;">
+                  <img src="${photoDataUris[idx]}" style="width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+                  ${gridWatermark}
+                </div>
                 <p style="font-size: 9px; color: #666; margin: 4px 0 0 0;">Foto ${idx + 1}${timestamp ? ` (${timestamp})` : ''}</p>
                 ${caption ? `<p style="font-size: 9px; color: #444; margin: 2px 0 0 0;">${caption}</p>` : ''}
               </div>`;
@@ -337,11 +346,13 @@ function generatePdfHtml(
             ? `${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.`
             : null;
           const caption = getPhotoCaptionFromSegments(i);
+          const docWatermark = photoWatermark ? `<div style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}</div>` : "";
           return `
           <div class="photo-block" style="width: 100%; margin-bottom: 20px;">
             <div style="display: flex; align-items: flex-start; gap: 16px;">
-              <div style="flex: 0 0 55%;">
+              <div style="flex: 0 0 55%; position:relative;">
                 <img src="${uri}" style="width: 100%; max-height: 280px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
+                ${docWatermark}
               </div>
               <div style="flex: 1; padding-top: 4px;">
                 <p style="font-size: 10px; color: #555; font-weight: 600; margin: 0 0 4px 0;">Foto ${i + 1}${timestamp ? ` – ${timestamp}` : ''}</p>
@@ -815,21 +826,49 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   // Load PDF branding accent color and template
   let accentColor: string | undefined;
   let pdfTemplate: PdfTemplate = "standard";
+  let photoWatermark = true;
+  let showCoverPage = true;
+  let brandingData: any = null;
   try {
     const brandingStr = await AsyncStorage.getItem("pdf-branding");
     if (brandingStr) {
       const branding = JSON.parse(brandingStr);
+      brandingData = branding;
       if (branding.accentColor) accentColor = branding.accentColor;
       if (branding.pdfTemplate) pdfTemplate = branding.pdfTemplate;
+      if (branding.photoWatermark === false) photoWatermark = false;
+      if (branding.showCoverPage === false) showCoverPage = false;
     }
   } catch {}
 
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate);
+  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark);
+
+  // Generate cover page if enabled
+  let coverPageHtml = "";
+  if (showCoverPage) {
+    try {
+      const { getPdfBranding, generateCoverPage } = await import("./pdf-branding-store");
+      const fullBranding = await getPdfBranding();
+      // Convert logo to base64 if available
+      let logoBase64: string | null = null;
+      if (fullBranding.logoUri) {
+        logoBase64 = await fileToBase64DataUri(fullBranding.logoUri);
+      }
+      coverPageHtml = generateCoverPage(fullBranding, protocol, logoBase64);
+    } catch (e) {
+      console.warn("[PDF-Gen] Cover page generation failed:", e);
+    }
+  }
+
+  // Insert cover page before the body content if available
+  const finalHtml = coverPageHtml
+    ? html.replace("<body>", `<body>\n${coverPageHtml}`)
+    : html;
 
   // Generate PDF
   const { uri } = await Print.printToFileAsync({
-    html,
+    html: finalHtml,
     margins: {
       left: 20,
       top: 20,

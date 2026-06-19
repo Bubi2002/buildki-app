@@ -337,3 +337,6 @@
 - [x] Feature: Nachträgliche Foto-Beschriftungen (Bildunterschriften bearbeiten pro Foto – Modal mit mehrzeiligem TextInput)
 - [x] Feature: "Fotos neu einbetten" Button für bestehende Protokolle mit altem Format
 - [x] Feature: Intelligente PDF-Seitenumbrüche (CSS page-break-inside: avoid für Fotos, Headings, Sections)
+- [x] Feature: Foto-Wasserzeichen im PDF (Datum/Uhrzeit + Projektname dezent auf jedem Foto)
+- [x] Feature: Professionelles PDF-Deckblatt mit Logo, Projektname und Datum
+- [x] Feature: Batch-Export aller Protokolle eines Projekts als einzelne PDFs

@@ -21,6 +21,8 @@ export type PdfBranding = {
   accentColor: string; // hex color for header line
   filenameSchema: FilenameSchema;
   pdfTemplate: PdfTemplate; // layout variant
+  photoWatermark: boolean; // show date/time + project name watermark on photos
+  showCoverPage: boolean; // show professional cover page as first page
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -38,6 +40,8 @@ export const DEFAULT_BRANDING: PdfBranding = {
   accentColor: "#0a7ea4",
   filenameSchema: "project_date_nr",
   pdfTemplate: "standard" as PdfTemplate,
+  photoWatermark: true,
+  showCoverPage: true,
 };
 
 /**
@@ -157,4 +161,82 @@ export function generatePdfFooter(branding: PdfBranding, pageNum?: number, total
   }
 
   return parts.join("\n");
+}
+
+/**
+ * Generate a professional cover page HTML for PDF export
+ */
+export function generateCoverPage(
+  branding: PdfBranding,
+  protocol: {
+    title: string;
+    templateName?: string;
+    projectName?: string;
+    projectColor?: string;
+    createdAt: string;
+    protocolNumber?: string;
+    location?: { address?: string | null; city?: string | null } | null;
+  },
+  logoBase64?: string | null
+): string {
+  const accentColor = branding.accentColor || protocol.projectColor || "#0a7ea4";
+  const date = new Date(protocol.createdAt);
+  const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
+  const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+
+  return `
+  <div style="page-break-after: always; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; text-align: center;">
+    <!-- Logo -->
+    ${logoBase64 ? `<img src="${logoBase64}" style="height: 80px; width: auto; object-fit: contain; margin-bottom: 32px;" />` : ""}
+    ${!logoBase64 && branding.companyName ? `<div style="font-size: 28px; font-weight: 800; color: ${accentColor}; margin-bottom: 32px; letter-spacing: -0.5px;">${branding.companyName}</div>` : ""}
+    
+    <!-- Accent line -->
+    <div style="width: 80px; height: 4px; background: ${accentColor}; border-radius: 2px; margin-bottom: 40px;"></div>
+    
+    <!-- Document type -->
+    <div style="font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">
+      ${protocol.templateName || "Protokoll"}
+    </div>
+    
+    <!-- Title -->
+    <div style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; max-width: 80%; line-height: 1.3;">
+      ${protocol.title}
+    </div>
+    
+    <!-- Project name -->
+    ${protocol.projectName ? `<div style="font-size: 16px; color: ${accentColor}; font-weight: 600; margin-top: 12px;">Projekt: ${protocol.projectName}</div>` : ""}
+    
+    <!-- Protocol number -->
+    ${protocol.protocolNumber ? `<div style="font-size: 13px; color: #666; margin-top: 8px;">Nr. ${protocol.protocolNumber}</div>` : ""}
+    
+    <!-- Spacer -->
+    <div style="flex: 1; min-height: 60px;"></div>
+    
+    <!-- Meta info -->
+    <div style="width: 100%; max-width: 400px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 11px; color: #888;">Datum:</span>
+        <span style="font-size: 11px; color: #333; font-weight: 600;">${dateStr}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 11px; color: #888;">Uhrzeit:</span>
+        <span style="font-size: 11px; color: #333; font-weight: 600;">${timeStr} Uhr</span>
+      </div>
+      ${protocol.location?.address ? `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 11px; color: #888;">Ort:</span>
+        <span style="font-size: 11px; color: #333; font-weight: 600;">${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}</span>
+      </div>` : ""}
+      ${branding.companyName ? `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 11px; color: #888;">Erstellt von:</span>
+        <span style="font-size: 11px; color: #333; font-weight: 600;">${branding.companyName}</span>
+      </div>` : ""}
+    </div>
+    
+    <!-- Footer -->
+    <div style="margin-top: 24px; font-size: 9px; color: #bbb;">
+      ${branding.footerText || "Erstellt mit ProtoKI"}
+    </div>
+  </div>`;
 }

@@ -53,6 +53,7 @@ export default function ProjectDetailScreen() {
   const [allProtocols, setAllProtocols] = useState<Protocol[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingZip, setIsExportingZip] = useState(false);
   const [planCount, setPlanCount] = useState(0);
   const [defectCount, setDefectCount] = useState({ open: 0, total: 0 });
 
@@ -257,6 +258,125 @@ export default function ProjectDetailScreen() {
     }
   };
 
+  const exportAllAsZip = async () => {
+    if (protocols.length === 0) {
+      Alert.alert("Hinweis", "Keine Protokolle zum Exportieren vorhanden.");
+      return;
+    }
+
+    setIsExportingZip(true);
+    try {
+      if (Platform.OS === 'web') {
+        Alert.alert('Hinweis', 'ZIP-Export ist nur auf dem Handy verf\u00fcgbar.');
+        return;
+      }
+
+      // Create a temp directory for individual PDFs
+      const zipDir = `${FileSystem.cacheDirectory}zip-export-${Date.now()}/`;
+      await FileSystem.makeDirectoryAsync(zipDir, { intermediates: true });
+
+      const pdfPaths: string[] = [];
+
+      // Generate individual PDFs for each protocol
+      for (const p of protocols) {
+        try {
+          // Load full protocol data from AsyncStorage
+          const fullProtocolData = await AsyncStorage.getItem(`protocol-${p.id}`);
+          const fullProtocol = fullProtocolData ? JSON.parse(fullProtocolData) : p;
+
+          const pdfUri = await generateProtocolPdf({
+            title: fullProtocol.title || p.title,
+            protocol: fullProtocol.protocol || p.protocol || '',
+            templateName: fullProtocol.templateName || p.templateName,
+            templateId: fullProtocol.templateId,
+            photos: fullProtocol.photos || p.photos || [],
+            photoTimestamps: fullProtocol.photoTimestamps,
+            transcriptionSegments: fullProtocol.transcriptionSegments,
+            photoCaptions: fullProtocol.photoCaptions,
+            todos: fullProtocol.todos || p.todos || [],
+            duration: fullProtocol.duration || p.duration || 0,
+            createdAt: fullProtocol.createdAt || p.createdAt,
+            location: fullProtocol.location || p.location,
+            weather: fullProtocol.weather || p.weather,
+            protocolNumber: fullProtocol.protocolNumber || p.protocolNumber,
+            projectName: project?.name,
+            projectColor: project?.color,
+            planData: fullProtocol.planData,
+            signaturePaths: fullProtocol.signaturePaths,
+            signatures: fullProtocol.signatures,
+            checklistResults: fullProtocol.checklistResults,
+          });
+
+          if (pdfUri) {
+            // Copy to zip directory with meaningful name
+            const filename = pdfUri.split('/').pop() || `protokoll-${p.id}.pdf`;
+            const destPath = zipDir + filename;
+            await FileSystem.copyAsync({ from: pdfUri, to: destPath });
+            pdfPaths.push(destPath);
+          }
+        } catch (e) {
+          console.warn(`[ZIP-Export] Failed to generate PDF for protocol ${p.id}:`, e);
+        }
+      }
+
+      if (pdfPaths.length === 0) {
+        Alert.alert('Fehler', 'Keine PDFs konnten erstellt werden.');
+        return;
+      }
+
+      // Since we can't create a real ZIP on native without a library,
+      // share all PDFs sequentially or share the directory
+      // Best approach: share each PDF one by one, or share the first and inform user
+      if (pdfPaths.length === 1) {
+        await Sharing.shareAsync(pdfPaths[0], {
+          mimeType: 'application/pdf',
+          dialogTitle: `${project?.name || 'Projekt'} \u2013 Protokoll`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        // On iOS, we can share multiple files by sharing the directory
+        // But expo-sharing only supports single files, so we share them one at a time
+        // Alternative: create a combined PDF instead
+        Alert.alert(
+          `${pdfPaths.length} PDFs erstellt`,
+          `Die einzelnen PDFs werden nacheinander zum Teilen angeboten. Jedes Protokoll ist ein separates PDF.`,
+          [
+            {
+              text: 'Alle teilen',
+              onPress: async () => {
+                for (const path of pdfPaths) {
+                  try {
+                    await Sharing.shareAsync(path, {
+                      mimeType: 'application/pdf',
+                      dialogTitle: path.split('/').pop()?.replace('.pdf', '') || 'Protokoll',
+                      UTI: 'com.adobe.pdf',
+                    });
+                  } catch { /* user cancelled */ }
+                }
+              },
+            },
+            {
+              text: 'Erstes teilen',
+              onPress: async () => {
+                await Sharing.shareAsync(pdfPaths[0], {
+                  mimeType: 'application/pdf',
+                  dialogTitle: pdfPaths[0].split('/').pop()?.replace('.pdf', '') || 'Protokoll',
+                  UTI: 'com.adobe.pdf',
+                });
+              },
+            },
+            { text: 'Abbrechen', style: 'cancel' },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('ZIP export error:', error);
+      Alert.alert('Fehler', 'Export konnte nicht erstellt werden.');
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
   if (!project) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
@@ -291,7 +411,7 @@ export default function ProjectDetailScreen() {
           <Text style={[styles.description, { color: colors.muted }]}>{project.description}</Text>
         ) : null}
 
-        {/* Export button */}
+        {/* Export buttons */}
         <Pressable
           onPress={exportAllAsPdf}
           disabled={isExporting || protocols.length === 0}
@@ -310,9 +430,33 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
           )}
           <Text style={[styles.exportButtonText, { color: colors.primary }]}>
-            {isExporting ? 'Wird erstellt...' : `Alle ${protocols.length} Protokolle als PDF`}
+            {isExporting ? 'Wird erstellt...' : `Alle als Sammel-PDF`}
           </Text>
           {!isExporting && <MaterialIcons name="chevron-right" size={18} color={colors.primary} />}
+        </Pressable>
+
+        <Pressable
+          onPress={exportAllAsZip}
+          disabled={isExportingZip || protocols.length === 0}
+          style={({ pressed }) => [
+            styles.exportButton,
+            {
+              backgroundColor: '#4CAF50' + '10',
+              borderColor: '#4CAF50' + '40',
+              opacity: pressed || isExportingZip ? 0.7 : 1,
+              marginTop: 8,
+            },
+          ]}
+        >
+          {isExportingZip ? (
+            <ActivityIndicator size="small" color="#4CAF50" />
+          ) : (
+            <MaterialIcons name="folder-zip" size={20} color="#4CAF50" />
+          )}
+          <Text style={[styles.exportButtonText, { color: '#4CAF50' }]}>
+            {isExportingZip ? 'Wird erstellt...' : `Einzelne PDFs exportieren (${protocols.length})`}
+          </Text>
+          {!isExportingZip && <MaterialIcons name="chevron-right" size={18} color="#4CAF50" />}
         </Pressable>
 
                 {/* Tools Grid - Professional 3-column layout */}
