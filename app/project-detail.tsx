@@ -19,6 +19,7 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
+import { exportAndShareTasks } from "@/lib/excel-export";
 
 type Project = {
   id: string;
@@ -130,6 +131,14 @@ export default function ProjectDetailScreen() {
   };
 
   const unassignedProtocols = allProtocols.filter((p) => !p.projectId);
+
+  const handleExcelExport = async () => {
+    if (!project) return;
+    const success = await exportAndShareTasks(project.id);
+    if (!success) {
+      Alert.alert("Hinweis", "Keine Aufgaben zum Exportieren vorhanden.");
+    }
+  };
 
   const exportAllAsPdf = async () => {
     if (protocols.length === 0) {
@@ -567,6 +576,33 @@ export default function ProjectDetailScreen() {
                 <MaterialIcons name="ios-share" size={22} color="#43A047" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Export</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleExcelExport}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#2E7D3215' }]}>
+                <MaterialIcons name="table-chart" size={22} color="#2E7D32" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Excel</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/photo-compare?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
+                <MaterialIcons name="compare" size={22} color="#5C6BC0" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Vergleich</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/calendar-view" as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#EF6C0015' }]}>
+                <MaterialIcons name="calendar-today" size={22} color="#EF6C00" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Kalender</Text>
             </Pressable>
           </View>
         </View>

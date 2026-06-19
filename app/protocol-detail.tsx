@@ -64,6 +64,7 @@ type TodoItem = {
   deadline: string;
   done: boolean;
   dueDate?: string;
+  status?: "offen" | "in_arbeit" | "erledigt";
 };
 
 type Protocol = {
@@ -252,8 +253,20 @@ export default function ProtocolDetailScreen() {
 
   const toggleTodo = async (index: number) => {
     const updated = [...todos];
-    updated[index] = { ...updated[index], done: !updated[index].done };
+    const current = updated[index];
+    // Cycle: offen → in_arbeit → erledigt → offen
+    const currentStatus = current.status || (current.done ? "erledigt" : "offen");
+    const nextStatus = currentStatus === "offen" ? "in_arbeit" : currentStatus === "in_arbeit" ? "erledigt" : "offen";
+    updated[index] = { ...current, status: nextStatus, done: nextStatus === "erledigt" };
     setTodos(updated);
+
+    // Also update kanban-state
+    try {
+      const kanbanState = JSON.parse(await AsyncStorage.getItem("kanban-state") || "{}");
+      const taskId = `${id}-${index}`;
+      kanbanState[taskId] = nextStatus;
+      await AsyncStorage.setItem("kanban-state", JSON.stringify(kanbanState));
+    } catch { /* ignore */ }
 
     // Persist to AsyncStorage
     try {
@@ -268,6 +281,7 @@ export default function ProtocolDetailScreen() {
     } catch (error) {
       console.error("Error saving todo state:", error);
     }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const toggleFavorite = async () => {
@@ -296,6 +310,39 @@ export default function ProtocolDetailScreen() {
       }
     } catch (error) {
       console.error("Error updating tags:", error);
+    }
+  };
+
+  // Duplicate protocol
+  const duplicateProtocol = async () => {
+    if (!protocol) return;
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      let newNumber: string | undefined;
+      if (protocol.projectId) {
+        const { getNextProtocolNumber } = await import("@/lib/protocol-numbering");
+        newNumber = (await getNextProtocolNumber(protocol.projectId)) || undefined;
+      }
+      const duplicate = {
+        ...protocol,
+        id: Date.now().toString(),
+        title: `${protocol.title} (Kopie)`,
+        createdAt: new Date().toISOString(),
+        status: "ready" as const,
+        isFavorite: false,
+        isArchived: false,
+        protocolNumber: newNumber || protocol.protocolNumber,
+        todos: protocol.todos?.map(t => ({ ...t, done: false, status: "offen" as const })),
+      };
+      await AsyncStorage.setItem("protocols", JSON.stringify([duplicate, ...protocols]));
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Dupliziert", `Protokoll wurde als Kopie erstellt.${newNumber ? ` Neue Nr: ${newNumber}` : ""}`, [
+        { text: "Öffnen", onPress: () => router.replace({ pathname: "/protocol-detail", params: { id: duplicate.id } }) },
+        { text: "OK" },
+      ]);
+    } catch (e) {
+      console.error("Error duplicating protocol:", e);
+      Alert.alert("Fehler", "Protokoll konnte nicht dupliziert werden.");
     }
   };
 
@@ -1299,6 +1346,13 @@ export default function ProtocolDetailScreen() {
           >
             <MaterialIcons name="label" size={24} color={tags.length > 0 ? colors.primary : colors.muted} />
           </Pressable>
+          {/* Duplicate button */}
+          <Pressable
+            onPress={duplicateProtocol}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <MaterialIcons name="content-copy" size={22} color={colors.muted} />
+          </Pressable>
           {/* PDF Export button in header */}
           <Pressable
             onPress={exportPdf}
@@ -1707,8 +1761,13 @@ export default function ProtocolDetailScreen() {
             <View style={styles.todoHeader}>
               <MaterialIcons name="checklist" size={20} color={colors.primary} />
               <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0, marginLeft: 8 }]}>
-                Aufgaben ({displayedTodos.filter(t => t.done).length}/{displayedTodos.length})
+                Aufgaben ({displayedTodos.filter(t => (t.status || (t.done ? "erledigt" : "offen")) === "erledigt").length}/{displayedTodos.length})
               </Text>
+              {displayedTodos.some(t => t.status === "in_arbeit") && (
+                <Text style={{ fontSize: 11, color: "#F59E0B", marginLeft: 8 }}>
+                  {displayedTodos.filter(t => t.status === "in_arbeit").length} in Arbeit
+                </Text>
+              )}
             </View>
             {todos.map((todo, index) => (
               <Pressable
@@ -1763,13 +1822,19 @@ export default function ProtocolDetailScreen() {
                   { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
-                <View style={[styles.todoCheckbox, { borderColor: todo.done ? colors.primary : colors.muted, backgroundColor: todo.done ? colors.primary : "transparent" }]}>
-                  {todo.done && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
+                <View style={[styles.todoCheckbox, { borderColor: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "#22C55E" : (todo.status === "in_arbeit" ? "#F59E0B" : "#EF4444"), backgroundColor: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "#22C55E" : (todo.status === "in_arbeit" ? "#F59E0B" : "transparent") }]}>
+                  {(todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
+                  {todo.status === "in_arbeit" && <MaterialIcons name="autorenew" size={14} color="#FFFFFF" />}
                 </View>
                 <View style={styles.todoContent}>
-                  <Text style={[styles.todoTask, { color: colors.foreground, textDecorationLine: todo.done ? "line-through" : "none", opacity: todo.done ? 0.6 : 1 }]}>
+                  <Text style={[styles.todoTask, { color: colors.foreground, textDecorationLine: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "line-through" : "none", fontStyle: todo.status === "in_arbeit" ? "italic" : "normal", opacity: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? 0.6 : 1 }]}>
                     {todo.task}
                   </Text>
+                  {todo.status && todo.status !== "offen" && (
+                    <Text style={{ fontSize: 10, color: todo.status === "in_arbeit" ? "#F59E0B" : "#22C55E", fontWeight: "500", marginTop: 2 }}>
+                      {todo.status === "in_arbeit" ? "▶ In Arbeit" : "✓ Erledigt"}
+                    </Text>
+                  )}
                   <View style={styles.todoMeta}>
                     {todo.assignee !== "Nicht zugewiesen" && (
                       <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>

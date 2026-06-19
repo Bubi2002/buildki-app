@@ -128,6 +128,7 @@ export default function RecordScreen() {
   const [recordingLocation, setRecordingLocation] = useState<LocationData | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [recentProtocols, setRecentProtocols] = useState<any[]>([]);
+  const [isOffline, setIsOffline] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [waveformBars, setWaveformBars] = useState<number[]>([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
   const waveformInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -231,6 +232,18 @@ export default function RecordScreen() {
   // Load default template from settings
   useEffect(() => {
     loadDefaultTemplate();
+  }, []);
+
+  // Network monitoring for offline indicator
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    const checkNetwork = async () => {
+      const online = await isOnline();
+      setIsOffline(!online);
+    };
+    checkNetwork();
+    interval = setInterval(checkNetwork, 10000); // Check every 10s
+    return () => clearInterval(interval);
   }, []);
 
   // Setup audio mode for recording - only enable allowsRecording when actually recording
@@ -1564,6 +1577,13 @@ export default function RecordScreen() {
             <MaterialIcons name="chevron-right" size={16} color={colors.warning} />
           </Pressable>
         )}
+        {/* Offline indicator */}
+        {isOffline && (
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 6, backgroundColor: "#EF444415", borderBottomWidth: 1, borderBottomColor: "#EF444430", gap: 6 }}>
+            <MaterialIcons name="cloud-off" size={14} color="#EF4444" />
+            <Text style={{ fontSize: 11, fontWeight: "600", color: "#EF4444" }}>Offline – Aufnahmen werden lokal gespeichert</Text>
+          </View>
+        )}
 
         {/* Audio recording area - clean vertical layout */}
         <View style={styles.audioContainer}>
@@ -1732,12 +1752,35 @@ export default function RecordScreen() {
                 />
               </Pressable>
 
-              {/* Spacer for symmetry when recording */}
-              {isRecording && <View style={styles.pauseButton} />}
+              {/* Bookmark/Marker button (only during recording) */}
+              {isRecording && (
+                <Pressable
+                  onPress={() => addMarker("Wichtig")}
+                  style={({ pressed }) => [
+                    styles.pauseButton,
+                    {
+                      backgroundColor: markers.length > 0 ? "#FF980015" : colors.surface,
+                      borderColor: markers.length > 0 ? "#FF9800" : colors.border,
+                      transform: [{ scale: pressed ? 0.95 : 1 }],
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="bookmark-add"
+                    size={28}
+                    color={markers.length > 0 ? "#FF9800" : colors.foreground}
+                  />
+                  {markers.length > 0 && (
+                    <View style={{ position: "absolute", top: -4, right: -4, backgroundColor: "#E53935", borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 9, color: "#FFF", fontWeight: "700" }}>{markers.length}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              )}
             </View>
 
             <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-              {isRecording ? (isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : "Tippe zum Stoppen") : "Nur Sprache \u2022 Ohne Kamera"}
+              {isRecording ? (isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Tippe zum Stoppen \u2022 Marker f\u00fcr Wichtiges") : "Nur Sprache \u2022 Ohne Kamera"}
             </Text>
           </View>
 

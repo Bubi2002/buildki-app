@@ -353,3 +353,14 @@
 - [x] Feature: CC/BCC-Felder in E-Mail-Einstellungen und Mail-Composer
 - [x] Feature: PDF-Export-Verlauf (Datum, Empfänger, Dateiname)
 - [x] Feature: PDF-Branding-Einstellungen Import/Export
+- [x] Feature: Protokoll-Duplikat (bestehendes Protokoll als Vorlage kopieren – Button in Protokoll-Detail)
+- [x] Feature: Protokoll-Serien (automatische Nummerierung innerhalb eines Projekts – bereits vorhanden)
+- [x] Feature: Status-Tracking für Mängel/Aufgaben (offen/in Bearbeitung/erledigt – Farbcodes + Tap-to-Cycle)
+- [x] Feature: Offline-Modus-Indikator (visuelles Feedback bei fehlender Verbindung – gelbes Banner)
+- [x] Feature: Sprach-Lesezeichen während Aufnahme (Marker-Button im Audio-Modus)
+- [x] Feature: Foto-Annotation (Pfeile, Kreise, Text auf Fotos zeichnen – bereits vorhanden)
+- [x] Feature: Vorher/Nachher-Fotovergleich (photo-compare.tsx mit Slider)
+- [x] Feature: Kalender-Ansicht für Protokolle (calendar-view.tsx mit Monatsansicht)
+- [x] Feature: Excel-Export für Mängel-/Aufgabenlisten (CSV + Share in Projekt-Detail)
+- [x] Feature: Digitale Unterschrift auf Protokollen (bereits vorhanden – Multi-Rollen-Signaturen)
+- [x] Feature: Nachfolge-Erinnerungen für offene Punkte (bereits vorhanden – task-reminders.ts)
