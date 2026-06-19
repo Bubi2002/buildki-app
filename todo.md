@@ -364,3 +364,4 @@
 - [x] Feature: Excel-Export für Mängel-/Aufgabenlisten (CSV + Share in Projekt-Detail)
 - [x] Feature: Digitale Unterschrift auf Protokollen (bereits vorhanden – Multi-Rollen-Signaturen)
 - [x] Feature: Nachfolge-Erinnerungen für offene Punkte (bereits vorhanden – task-reminders.ts)
+- [x] Bug-Fix: Layout Überschneidung im Nur-Audio-Modus – Aufnahme-Tipps Button unter Record-Button verschoben, gap reduziert

@@ -1681,18 +1681,9 @@ export default function RecordScreen() {
               </View>
             )}
             {!isRecording && (
-              <View style={{ alignItems: "center", gap: 8 }}>
-                <Text style={[styles.audioHintText, { color: colors.muted }]}>
-                  Tippe zum Starten • Lang drücken für Schnellstart
-                </Text>
-                <Pressable
-                  onPress={() => setShowRecordingTips(true)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "12", opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name="lightbulb-outline" size={16} color={colors.primary} />
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Aufnahme-Tipps</Text>
-                </Pressable>
-              </View>
+              <Text style={[styles.audioHintText, { color: colors.muted }]}>
+                Tippe zum Starten • Lang drücken für Schnellstart
+              </Text>
             )}
           </View>
 
@@ -1711,6 +1702,15 @@ export default function RecordScreen() {
 
           {/* Bottom section: Record button + controls */}
           <View style={styles.audioControls}>
+            {!isRecording && (
+              <Pressable
+                onPress={() => setShowRecordingTips(true)}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: colors.primary + "12", opacity: pressed ? 0.7 : 1, marginBottom: 4 }]}
+              >
+                <MaterialIcons name="lightbulb-outline" size={16} color={colors.primary} />
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Aufnahme-Tipps</Text>
+              </Pressable>
+            )}
             <View style={styles.audioControlsRow}>
               {/* Pause/Resume button (only during recording) */}
               {isRecording && (
@@ -3310,7 +3310,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 24,
+    gap: 12,
   },
   audioCircle: {
     width: 160,
