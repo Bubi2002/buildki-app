@@ -81,6 +81,8 @@ async function autoSendPdfIfEnabled(protocolId: string) {
   
   const emailAddressRaw = branding.defaultEmailAddress || "info@iserloh.net";
   const recipients = emailAddressRaw.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+  const ccRecipients = (branding.emailCc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+  const bccRecipients = (branding.emailBcc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
   
   if (recipients.length === 0) {
     console.log(`[BG-Processor] No email recipients configured, skipping auto-send`);
@@ -145,6 +147,8 @@ async function autoSendPdfIfEnabled(protocolId: string) {
     if (isAvailable) {
       await MailComposer.composeAsync({
         recipients,
+        ccRecipients,
+        bccRecipients,
         subject: subjectText,
         body: bodyText,
         attachments: [pdfUri],

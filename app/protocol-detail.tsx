@@ -866,7 +866,7 @@ export default function ProtocolDetailScreen() {
   const sharePdfFromPreview = async () => {
     if (!previewPdfUri || !protocol) return;
     if (Platform.OS === "web") {
-      Alert.alert("PDF erstellt", "PDF-Export ist nur auf dem Handy verfügbar.");
+      Alert.alert("PDF erstellt", "PDF-Export ist nur auf dem Handy verf\u00fcgbar.");
       return;
     }
     const isAvailable = await Sharing.isAvailableAsync();
@@ -876,8 +876,21 @@ export default function ProtocolDetailScreen() {
         dialogTitle: `${protocol.templateName || "Protokoll"} als PDF teilen`,
         UTI: "com.adobe.pdf",
       });
+      // Log to export history
+      try {
+        const { addExportEntry } = await import("@/lib/pdf-export-history");
+        await addExportEntry({
+          filename: previewPdfUri.split("/").pop() || "protokoll.pdf",
+          protocolTitle: protocol.title || "",
+          templateName: protocol.templateName || "Protokoll",
+          projectName: protocol.projectName || "",
+          recipients: [],
+          ccRecipients: [],
+          method: "share",
+        });
+      } catch {}
     } else {
-      Alert.alert("Fehler", "Teilen ist auf diesem Gerät nicht verfügbar.");
+      Alert.alert("Fehler", "Teilen ist auf diesem Ger\u00e4t nicht verf\u00fcgbar.");
     }
   };
 
@@ -892,6 +905,8 @@ export default function ProtocolDetailScreen() {
       const branding = await getPdfBranding();
       const emailAddressRaw = branding.defaultEmailAddress || "info@iserloh.net";
       const recipients = emailAddressRaw.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+      const ccRecipients = (branding.emailCc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+      const bccRecipients = (branding.emailBcc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
       
       // Apply email templates with placeholders
       const datumStr = new Date(protocol.createdAt).toLocaleDateString("de-DE");
@@ -916,10 +931,25 @@ export default function ProtocolDetailScreen() {
         if (isAvailable) {
           await MailComposer.composeAsync({
             recipients,
+            ccRecipients,
+            bccRecipients,
             subject: subjectText,
             body: bodyText,
             attachments: [previewPdfUri],
           });
+          // Log to export history
+          try {
+            const { addExportEntry } = await import("@/lib/pdf-export-history");
+            await addExportEntry({
+              filename: previewPdfUri.split("/").pop() || "protokoll.pdf",
+              protocolTitle: protocol.title || "",
+              templateName: protocol.templateName || "Protokoll",
+              projectName: protocol.projectName || "",
+              recipients,
+              ccRecipients,
+              method: "email",
+            });
+          } catch {}
           return;
         }
       } catch {

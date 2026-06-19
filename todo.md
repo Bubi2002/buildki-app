@@ -350,3 +350,6 @@
 - [x] Feature: Layout-Toggles im PDF-Generator anwenden (showTranscription, showTodos, showMetadata, showSignatures)
 - [x] Feature: Foto-Größe (photoSize: klein/mittel/groß) im PDF-Generator anwenden
 - [x] Feature: Konfigurierbare E-Mail-Vorlagen (Betreff + Body) in PDF-Einstellungen
+- [x] Feature: CC/BCC-Felder in E-Mail-Einstellungen und Mail-Composer
+- [x] Feature: PDF-Export-Verlauf (Datum, Empfänger, Dateiname)
+- [x] Feature: PDF-Branding-Einstellungen Import/Export

@@ -38,6 +38,64 @@ export default function PdfBrandingScreen() {
     Alert.alert("Gespeichert", "PDF-Branding wurde aktualisiert.");
   };
 
+  const handleExportSettings = async () => {
+    try {
+      const { Platform } = await import("react-native");
+      const exportData = { ...branding, logoUri: null }; // Don't export local logo path
+      const jsonStr = JSON.stringify(exportData, null, 2);
+      
+      if (Platform.OS === "web") {
+        Alert.alert("Export", "Export ist nur auf dem Handy verf\u00fcgbar.");
+        return;
+      }
+      
+      const FileSystem = await import("expo-file-system/legacy");
+      const Sharing = await import("expo-sharing");
+      const filePath = `${FileSystem.documentDirectory}protoki-branding.json`;
+      await FileSystem.writeAsStringAsync(filePath, jsonStr);
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(filePath, {
+          mimeType: "application/json",
+          dialogTitle: "PDF-Branding exportieren",
+        });
+      }
+    } catch (e) {
+      Alert.alert("Fehler", "Export fehlgeschlagen.");
+    }
+  };
+
+  const handleImportSettings = async () => {
+    try {
+      const { Platform } = await import("react-native");
+      if (Platform.OS === "web") {
+        Alert.alert("Import", "Import ist nur auf dem Handy verf\u00fcgbar.");
+        return;
+      }
+      
+      const DocumentPicker = await import("expo-document-picker");
+      const FileSystem = await import("expo-file-system/legacy");
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/json",
+        copyToCacheDirectory: true,
+      });
+      
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+      
+      const fileUri = result.assets[0].uri;
+      const content = await FileSystem.readAsStringAsync(fileUri);
+      const imported = JSON.parse(content);
+      
+      // Merge with defaults to ensure all fields exist
+      const merged = { ...DEFAULT_BRANDING, ...imported, logoUri: branding.logoUri };
+      setBranding(merged);
+      setHasChanges(true);
+      Alert.alert("Importiert", "Einstellungen wurden geladen. Bitte speichern.");
+    } catch (e) {
+      Alert.alert("Fehler", "Import fehlgeschlagen. Ung\u00fcltige Datei.");
+    }
+  };
+
   const pickLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -364,6 +422,28 @@ export default function PdfBrandingScreen() {
             numberOfLines={4}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 80, textAlignVertical: "top" }]}
           />
+
+          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>CC (komma-getrennt)</Text>
+          <TextInput
+            value={branding.emailCc || ""}
+            onChangeText={(v) => updateField("emailCc", v)}
+            placeholder="z.B. bauleiter@firma.de"
+            placeholderTextColor={colors.muted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+          />
+
+          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>BCC (komma-getrennt)</Text>
+          <TextInput
+            value={branding.emailBcc || ""}
+            onChangeText={(v) => updateField("emailBcc", v)}
+            placeholder="z.B. archiv@firma.de"
+            placeholderTextColor={colors.muted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+          />
         </View>
 
         {/* Filename Schema */}
@@ -551,6 +631,28 @@ export default function PdfBrandingScreen() {
             <Text style={{ fontSize: 8, color: "#999" }}>
               {branding.showDate ? "15.06.2026" : ""}{branding.showDate && branding.showPageNumbers ? " | " : ""}{branding.showPageNumbers ? "Seite 1 / 3" : ""}
             </Text>
+          </View>
+        </View>
+
+        {/* Import/Export */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Einstellungen sichern</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>PDF-Branding-Einstellungen exportieren oder von einem anderen Gerät importieren</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+            <Pressable
+              onPress={handleExportSettings}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="file-upload" size={18} color="#FFF" />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFF" }}>Exportieren</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleImportSettings}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="file-download" size={18} color={colors.foreground} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Importieren</Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>
