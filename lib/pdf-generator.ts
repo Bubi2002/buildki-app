@@ -219,7 +219,7 @@ function generatePdfHtml(
             ? `${Math.floor(protocol.photoTimestamps[photoIdx] / 60)}:${(protocol.photoTimestamps[photoIdx] % 60).toString().padStart(2, '0')} Min.`
             : null;
           return `
-          <div style="margin: 12px 0; page-break-inside: avoid; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
+          <div class="photo-block" style="margin: 12px 0; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
             <img src="${photoDataUris[photoIdx]}" style="width: 100%; max-height: 240px; object-fit: contain; border-radius: 4px;" />
             <p style="font-size: 10px; color: #555; font-weight: 600; margin: 8px 0 2px 0;">Foto ${photoIdx + 1}${timestamp ? ` \u2013 ${timestamp}` : ''}</p>
             ${caption ? `<p style="font-size: 11px; color: #333; line-height: 1.4; margin: 0;">${caption}</p>` : ''}
@@ -252,7 +252,7 @@ function generatePdfHtml(
               ? `${Math.floor(protocol.photoTimestamps[idx] / 60)}:${(protocol.photoTimestamps[idx] % 60).toString().padStart(2, '0')}`
               : null;
             htmlResult += `
-              <div style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'}; page-break-inside: avoid;">
+              <div class="photo-block" style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'};">
                 <img src="${photoDataUris[idx]}" style="width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
                 <p style="font-size: 9px; color: #666; margin: 4px 0 0 0;">Foto ${idx + 1}${timestamp ? ` (${timestamp})` : ''}</p>
                 ${caption ? `<p style="font-size: 9px; color: #444; margin: 2px 0 0 0;">${caption}</p>` : ''}
@@ -338,7 +338,7 @@ function generatePdfHtml(
             : null;
           const caption = getPhotoCaptionFromSegments(i);
           return `
-          <div style="width: 100%; margin-bottom: 20px; page-break-inside: avoid;">
+          <div class="photo-block" style="width: 100%; margin-bottom: 20px;">
             <div style="display: flex; align-items: flex-start; gap: 16px;">
               <div style="flex: 0 0 55%;">
                 <img src="${uri}" style="width: 100%; max-height: 280px; object-fit: contain; border: 1px solid #eee; border-radius: 4px;" />
@@ -413,6 +413,24 @@ function generatePdfHtml(
       line-height: 1.5;
       margin: 0;
       padding: 0;
+    }
+    /* Intelligent page breaks */
+    h2, h3 {
+      page-break-after: avoid;
+    }
+    img {
+      page-break-inside: avoid;
+      page-break-before: auto;
+    }
+    .photo-block {
+      page-break-inside: avoid;
+      margin-bottom: 16px;
+    }
+    .section-block {
+      page-break-inside: avoid;
+    }
+    tr {
+      page-break-inside: avoid;
     }
     .header {
       display: flex;

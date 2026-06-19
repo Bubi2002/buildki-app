@@ -334,3 +334,6 @@
 - [x] Verbesserung: LLM-Prompt anpassen – nur [FOTO X] Marker statt "[Foto X – siehe Fotodokumentation]"
 - [x] Verbesserung: Foto-Komprimierung vor PDF-Export (Bilder verkleinern für kleinere PDFs)
 - [x] Verbesserung: Zuverlässige Foto-Persistenz sicherstellen (Fotos immer in documentDirectory kopieren)
+- [x] Feature: Nachträgliche Foto-Beschriftungen (Bildunterschriften bearbeiten pro Foto – Modal mit mehrzeiligem TextInput)
+- [x] Feature: "Fotos neu einbetten" Button für bestehende Protokolle mit altem Format
+- [x] Feature: Intelligente PDF-Seitenumbrüche (CSS page-break-inside: avoid für Fotos, Headings, Sections)

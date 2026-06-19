@@ -146,6 +146,9 @@ export default function ProtocolDetailScreen() {
   // Fullscreen gallery with swipe
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
+  const [showCaptionEdit, setShowCaptionEdit] = useState(false);
+  const [captionEditIndex, setCaptionEditIndex] = useState(0);
+  const [captionEditText, setCaptionEditText] = useState("");
   // Voice note playback
   const [playingVoiceNote, setPlayingVoiceNote] = useState<number | null>(null);
   // Multi-output (KI-Zusammenfassungen)
@@ -984,22 +987,9 @@ export default function ProtocolDetailScreen() {
   };
 
   const editPhotoCaption = (photoIndex: number, currentCaption: string) => {
-    if (Platform.OS === "web") {
-      const newCaption = prompt("Foto-Beschreibung bearbeiten:", currentCaption || "");
-      if (newCaption !== null) {
-        savePhotoCaption(photoIndex, newCaption);
-      }
-    } else {
-      Alert.prompt
-        ? Alert.prompt("Foto-Beschreibung", `Text für Foto ${photoIndex + 1} bearbeiten:`, [
-            { text: "Abbrechen", style: "cancel" },
-            { text: "Speichern", onPress: (text?: string) => savePhotoCaption(photoIndex, text || "") },
-          ], "plain-text", currentCaption || "")
-        : Alert.alert("Foto-Beschreibung", `Aktuelle Beschreibung:\n\n${currentCaption || "(leer)"}`, [
-            { text: "Löschen", style: "destructive", onPress: () => savePhotoCaption(photoIndex, "") },
-            { text: "OK" },
-          ]);
-    }
+    setCaptionEditIndex(photoIndex);
+    setCaptionEditText(currentCaption || "");
+    setShowCaptionEdit(true);
   };
 
   const savePhotoCaption = async (photoIndex: number, caption: string) => {
@@ -1019,6 +1009,32 @@ export default function ProtocolDetailScreen() {
       }
     } catch (error) {
       console.error("Error saving photo caption:", error);
+    }
+  };
+
+  const reEmbedPhotos = async () => {
+    if (!protocol) return;
+    try {
+      // Replace old-format "[Foto X – siehe Fotodokumentation]" with clean "[FOTO X]" markers
+      let updatedText = protocol.protocol;
+      updatedText = updatedText.replace(/\[Foto\s*(\d+)\s*[\u2013\-–]\s*[^\]]*\]/gi, (_, num) => `[FOTO ${num}]`);
+      
+      // Save updated protocol text
+      const protocolsStr = await AsyncStorage.getItem("protocols");
+      const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+      const idx = protocols.findIndex((p: any) => p.id === protocol.id);
+      if (idx !== -1) {
+        protocols[idx].protocol = updatedText;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        setProtocol({ ...protocol, protocol: updatedText } as any);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        Alert.alert("Fotos aktualisiert", "Die Foto-Referenzen wurden auf das neue Format aktualisiert. Beim nächsten PDF-Export werden die Fotos inline eingebettet.");
+      }
+    } catch (error) {
+      console.error("Error re-embedding photos:", error);
+      Alert.alert("Fehler", "Fotos konnten nicht aktualisiert werden.");
     }
   };
 
@@ -1523,6 +1539,29 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Fotos hinzufügen</Text>
             </Pressable>
+            {/* Show re-embed button if protocol text has old-format photo references */}
+            {protocol.protocol && /\[Foto\s*\d+\s*[\u2013\-–]\s*siehe/i.test(protocol.protocol) && (
+              <Pressable
+                onPress={reEmbedPhotos}
+                style={({ pressed }) => [{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 10,
+                  backgroundColor: "#F59E0B" + "15",
+                  borderWidth: 1,
+                  borderColor: "#F59E0B",
+                  marginTop: 8,
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <MaterialIcons name="refresh" size={18} color="#F59E0B" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#F59E0B" }}>Fotos neu einbetten</Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -2140,6 +2179,99 @@ export default function ProtocolDetailScreen() {
           </>
         )}
       </View>
+
+      {/* Photo Caption Edit Modal */}
+      <Modal
+        visible={showCaptionEdit}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCaptionEdit(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 24 }}
+          onPress={() => setShowCaptionEdit(false)}
+        >
+          <Pressable
+            style={{ width: "100%", maxWidth: 400, backgroundColor: colors.background, borderRadius: 16, padding: 20 }}
+            onPress={() => {}}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>
+              Foto {captionEditIndex + 1} – Beschreibung
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>
+              Diese Beschreibung erscheint im PDF unter dem Foto.
+            </Text>
+            <TextInput
+              value={captionEditText}
+              onChangeText={setCaptionEditText}
+              placeholder="Beschreibung eingeben..."
+              placeholderTextColor={colors.muted}
+              multiline
+              numberOfLines={5}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 10,
+                padding: 12,
+                fontSize: 14,
+                color: colors.foreground,
+                minHeight: 120,
+                textAlignVertical: "top",
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+              autoFocus
+            />
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 16, gap: 12 }}>
+              <Pressable
+                onPress={() => {
+                  setCaptionEditText("");
+                  savePhotoCaption(captionEditIndex, "");
+                  setShowCaptionEdit(false);
+                }}
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  backgroundColor: colors.error + "15",
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error }}>Löschen</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowCaptionEdit(false)}
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  backgroundColor: colors.surface,
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  savePhotoCaption(captionEditIndex, captionEditText);
+                  setShowCaptionEdit(false);
+                }}
+                style={({ pressed }) => [{
+                  flex: 1.5,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  backgroundColor: colors.primary,
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>Speichern</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Full-screen photo gallery with swipe */}
       <Modal
