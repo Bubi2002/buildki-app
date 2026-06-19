@@ -67,6 +67,81 @@ export function isJobActive(protocolId: string): boolean {
  * Start background processing for a protocol.
  * The protocol placeholder must already be saved in AsyncStorage.
  */
+/**
+ * Auto-send PDF via email after protocol creation if enabled in settings.
+ */
+async function autoSendPdfIfEnabled(protocolId: string) {
+  const { getPdfBranding } = await import("@/lib/pdf-branding-store");
+  const branding = await getPdfBranding();
+  
+  if (!branding.autoSendEmail) {
+    console.log(`[BG-Processor] Auto-send disabled, skipping email for ${protocolId}`);
+    return;
+  }
+  
+  const emailAddressRaw = branding.defaultEmailAddress || "info@iserloh.net";
+  const recipients = emailAddressRaw.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+  
+  if (recipients.length === 0) {
+    console.log(`[BG-Processor] No email recipients configured, skipping auto-send`);
+    return;
+  }
+  
+  // Load the protocol data
+  const protocolsStr = await AsyncStorage.getItem("protocols");
+  const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+  const protocol = protocols.find((p: any) => p.id === protocolId);
+  
+  if (!protocol || !protocol.protocol) {
+    console.log(`[BG-Processor] Protocol not found or empty, skipping auto-send`);
+    return;
+  }
+  
+  // Generate PDF
+  const { generateProtocolPdf } = await import("@/lib/pdf-generator");
+  const pdfUri = await generateProtocolPdf({
+    title: protocol.title || "",
+    protocol: protocol.protocol,
+    templateName: protocol.templateName || "Protokoll",
+    templateId: protocol.templateId,
+    photos: protocol.photos || [],
+    photoCaptions: protocol.photoCaptions ? Object.values(protocol.photoCaptions) : undefined,
+    todos: protocol.todos || [],
+    duration: protocol.duration || 0,
+    createdAt: protocol.createdAt,
+    transcription: protocol.transcription,
+    location: protocol.location,
+    weather: protocol.weather,
+    protocolNumber: protocol.protocolNumber,
+    projectName: protocol.projectName || "",
+    projectColor: protocol.projectColor,
+  });
+  
+  if (!pdfUri) {
+    console.log(`[BG-Processor] PDF generation failed, skipping auto-send`);
+    return;
+  }
+  
+  // Send via mail composer
+  try {
+    const MailComposer = await import("expo-mail-composer");
+    const isAvailable = await MailComposer.isAvailableAsync();
+    if (isAvailable) {
+      await MailComposer.composeAsync({
+        recipients,
+        subject: `${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`,
+        body: `Anbei das automatisch erstellte Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`,
+        attachments: [pdfUri],
+      });
+      console.log(`[BG-Processor] Auto-send email composed for ${protocolId}`);
+    } else {
+      console.log(`[BG-Processor] Mail composer not available, skipping auto-send`);
+    }
+  } catch (mailErr) {
+    console.warn(`[BG-Processor] Mail composer failed:`, mailErr);
+  }
+}
+
 export async function startBackgroundProcessing(job: PendingJob, apiClient: {
   upload: (base64: string, mimeType: string, filename: string) => Promise<{ url: string }>;
   transcribe: (audioUrl: string, language: string) => Promise<{ text: string; segments?: Array<{ start: number; end: number; text: string }> }>;
@@ -168,6 +243,13 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     
     notifyListeners(job.protocolId, "done");
     activeJobs.delete(job.protocolId);
+    
+    // Auto-send email if enabled
+    try {
+      await autoSendPdfIfEnabled(job.protocolId);
+    } catch (autoSendErr) {
+      console.warn("[BG-Processor] Auto-send email failed (non-critical):", autoSendErr);
+    }
     
   } catch (error: any) {
     const errMsg = error?.message || String(error);

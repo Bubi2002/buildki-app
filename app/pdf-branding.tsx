@@ -318,17 +318,32 @@ export default function PdfBrandingScreen() {
         {/* E-Mail-Versand */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>E-Mail-Versand</Text>
-          <Text style={[styles.sectionHint, { color: colors.muted }]}>Standard-Empf\u00e4nger f\u00fcr PDF-Direktversand</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Empf\u00e4nger f\u00fcr PDF-Direktversand (komma-getrennt f\u00fcr mehrere)</Text>
 
           <TextInput
             value={branding.defaultEmailAddress || ""}
             onChangeText={(v) => updateField("defaultEmailAddress", v)}
-            placeholder="E-Mail-Adresse"
+            placeholder="z.B. info@firma.de, bauleiter@firma.de"
             placeholderTextColor={colors.muted}
             keyboardType="email-address"
             autoCapitalize="none"
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+            multiline
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 44 }]}
           />
+          <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Mehrere Adressen mit Komma trennen</Text>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border, marginTop: 12 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Auto-Versand</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>PDF automatisch nach Protokoll-Erstellung senden</Text>
+            </View>
+            <Switch
+              value={branding.autoSendEmail === true}
+              onValueChange={(v) => updateField("autoSendEmail", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.autoSendEmail === true ? colors.primary : colors.muted}
+            />
+          </View>
         </View>
 
         {/* Filename Schema */}
@@ -407,6 +422,88 @@ export default function PdfBrandingScreen() {
               </View>
             </Pressable>
           ))}
+        </View>
+
+        {/* Custom Layout Editor */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Layout-Anpassung</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Feineinstellungen f\u00fcr das gew\u00e4hlte Layout</Text>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Transkription anzeigen</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>Originaler Sprachtext unter dem Protokoll</Text>
+            </View>
+            <Switch
+              value={branding.showTranscription !== false}
+              onValueChange={(v) => updateField("showTranscription", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.showTranscription !== false ? colors.primary : colors.muted}
+            />
+          </View>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Aufgabenliste</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>Offene Aufgaben/Todos im PDF anzeigen</Text>
+            </View>
+            <Switch
+              value={branding.showTodos !== false}
+              onValueChange={(v) => updateField("showTodos", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.showTodos !== false ? colors.primary : colors.muted}
+            />
+          </View>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Metadaten</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>Ort, Wetter, Teilnehmer etc. anzeigen</Text>
+            </View>
+            <Switch
+              value={branding.showMetadata !== false}
+              onValueChange={(v) => updateField("showMetadata", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.showMetadata !== false ? colors.primary : colors.muted}
+            />
+          </View>
+
+          <View style={[styles.toggleRow, { borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Unterschriften</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>Unterschriftenfelder im PDF anzeigen</Text>
+            </View>
+            <Switch
+              value={branding.showSignatures !== false}
+              onValueChange={(v) => updateField("showSignatures", v)}
+              trackColor={{ false: colors.border, true: colors.primary + "50" }}
+              thumbColor={branding.showSignatures !== false ? colors.primary : colors.muted}
+            />
+          </View>
+
+          <View style={{ marginTop: 12 }}>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Foto-Gr\u00f6\u00dfe</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(["klein", "mittel", "gro\u00df"] as const).map((size) => (
+                <Pressable
+                  key={size}
+                  onPress={() => updateField("photoSize", size)}
+                  style={({ pressed }) => [{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    backgroundColor: (branding.photoSize || "mittel") === size ? colors.primary + "15" : colors.surface,
+                    borderWidth: (branding.photoSize || "mittel") === size ? 1.5 : 1,
+                    borderColor: (branding.photoSize || "mittel") === size ? colors.primary : colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: (branding.photoSize || "mittel") === size ? colors.primary : colors.foreground }}>{size.charAt(0).toUpperCase() + size.slice(1)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </View>
 
         {/* Preview */}

@@ -890,9 +890,10 @@ export default function ProtocolDetailScreen() {
     try {
       const { getPdfBranding } = await import("@/lib/pdf-branding-store");
       const branding = await getPdfBranding();
-      const emailAddress = branding.defaultEmailAddress || "info@iserloh.net";
-      const subject = encodeURIComponent(`${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`);
-      const body = encodeURIComponent(`Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`);
+      const emailAddressRaw = branding.defaultEmailAddress || "info@iserloh.net";
+      const recipients = emailAddressRaw.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+      const subjectText = `${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`;
+      const bodyText = `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
 
       // Use expo-mail-composer if available, otherwise fallback to sharing
       try {
@@ -900,9 +901,9 @@ export default function ProtocolDetailScreen() {
         const isAvailable = await MailComposer.isAvailableAsync();
         if (isAvailable) {
           await MailComposer.composeAsync({
-            recipients: [emailAddress],
-            subject: `${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`,
-            body: `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`,
+            recipients,
+            subject: subjectText,
+            body: bodyText,
             attachments: [previewPdfUri],
           });
           return;
@@ -912,7 +913,7 @@ export default function ProtocolDetailScreen() {
       }
 
       // Fallback: open mailto link and share PDF separately
-      const mailtoUrl = `mailto:${emailAddress}?subject=${subject}&body=${body}`;
+      const mailtoUrl = `mailto:${recipients.join(",")}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
       const canOpen = await Linking.canOpenURL(mailtoUrl);
       if (canOpen) {
         await Linking.openURL(mailtoUrl);

@@ -344,3 +344,6 @@
 - [x] Feature: Konfigurierbarer Wasserzeichen-Text in PDF-Einstellungen
 - [x] Feature: E-Mail-Direktversand für PDFs (Standard: info@iserloh.net)
 - [x] Feature: Deckblatt-Vorschau in den PDF-Einstellungen
+- [x] Feature: Mehrere E-Mail-Empfänger (komma-getrennte Liste) in PDF-Einstellungen und Versand
+- [x] Feature: PDF-Vorlagen-Editor (Layout-Anpassung: Transkription, Aufgaben, Metadaten, Unterschriften, Foto-Größe)
+- [x] Feature: Automatischer PDF-Versand nach Protokoll-Erstellung (Toggle in Einstellungen)

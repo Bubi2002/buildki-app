@@ -24,7 +24,13 @@ export type PdfBranding = {
   photoWatermark: boolean; // show date/time + project name watermark on photos
   showCoverPage: boolean; // show professional cover page as first page
   watermarkText: string; // custom watermark text (empty = use date + project name)
-  defaultEmailAddress: string; // default email for PDF direct send
+  defaultEmailAddress: string; // default email for PDF direct send (comma-separated for multiple)
+  autoSendEmail: boolean; // automatically send PDF via email after protocol creation
+  showTranscription: boolean; // show original transcription in PDF
+  showTodos: boolean; // show task list in PDF
+  showMetadata: boolean; // show metadata (location, weather, participants) in PDF
+  showSignatures: boolean; // show signature fields in PDF
+  photoSize: "klein" | "mittel" | "gro\u00df"; // photo size in PDF
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -46,6 +52,12 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showCoverPage: true,
   watermarkText: "",
   defaultEmailAddress: "info@iserloh.net",
+  autoSendEmail: false,
+  showTranscription: true,
+  showTodos: true,
+  showMetadata: true,
+  showSignatures: true,
+  photoSize: "mittel" as const,
 };
 
 /**
