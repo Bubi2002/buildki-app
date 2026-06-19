@@ -341,3 +341,6 @@
 - [x] Feature: Professionelles PDF-Deckblatt mit Logo, Projektname und Datum
 - [x] Feature: Batch-Export aller Protokolle eines Projekts als einzelne PDFs
 - [x] Feature: Sichtbare Toggles in PDF-Einstellungen für Deckblatt und Foto-Wasserzeichen
+- [x] Feature: Konfigurierbarer Wasserzeichen-Text in PDF-Einstellungen
+- [x] Feature: E-Mail-Direktversand für PDFs (Standard: info@iserloh.net)
+- [x] Feature: Deckblatt-Vorschau in den PDF-Einstellungen

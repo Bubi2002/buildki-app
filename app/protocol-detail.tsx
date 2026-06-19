@@ -881,6 +881,69 @@ export default function ProtocolDetailScreen() {
     }
   };
 
+  const sendPdfViaEmail = async () => {
+    if (!previewPdfUri || !protocol) return;
+    if (Platform.OS === "web") {
+      Alert.alert("Hinweis", "E-Mail-Versand ist nur auf dem Handy verf\u00fcgbar.");
+      return;
+    }
+    try {
+      const { getPdfBranding } = await import("@/lib/pdf-branding-store");
+      const branding = await getPdfBranding();
+      const emailAddress = branding.defaultEmailAddress || "info@iserloh.net";
+      const subject = encodeURIComponent(`${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`);
+      const body = encodeURIComponent(`Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`);
+
+      // Use expo-mail-composer if available, otherwise fallback to sharing
+      try {
+        const MailComposer = await import("expo-mail-composer");
+        const isAvailable = await MailComposer.isAvailableAsync();
+        if (isAvailable) {
+          await MailComposer.composeAsync({
+            recipients: [emailAddress],
+            subject: `${protocol.templateName || "Protokoll"} - ${protocol.title || new Date(protocol.createdAt).toLocaleDateString("de-DE")}`,
+            body: `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}.\n\nMit freundlichen Gr\u00fc\u00dfen`,
+            attachments: [previewPdfUri],
+          });
+          return;
+        }
+      } catch {
+        // expo-mail-composer not available, fallback
+      }
+
+      // Fallback: open mailto link and share PDF separately
+      const mailtoUrl = `mailto:${emailAddress}?subject=${subject}&body=${body}`;
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+        // Also share the PDF so user can attach it
+        setTimeout(async () => {
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(previewPdfUri, {
+              mimeType: "application/pdf",
+              dialogTitle: "PDF anh\u00e4ngen",
+              UTI: "com.adobe.pdf",
+            });
+          }
+        }, 1000);
+      } else {
+        Alert.alert("Hinweis", "Kein E-Mail-Programm gefunden. PDF wird zum Teilen angeboten.");
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(previewPdfUri, {
+            mimeType: "application/pdf",
+            dialogTitle: `${protocol.templateName || "Protokoll"} per E-Mail senden`,
+            UTI: "com.adobe.pdf",
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[Email] Error:", e);
+      Alert.alert("Fehler", "E-Mail konnte nicht ge\u00f6ffnet werden.");
+    }
+  };
+
   const shareViaWhatsApp = async () => {
     if (!protocol) return;
 
@@ -2453,6 +2516,13 @@ export default function ProtocolDetailScreen() {
                 >
                   <MaterialIcons name="share" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
+                </Pressable>
+                <Pressable
+                  onPress={sendPdfViaEmail}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="email" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>Per E-Mail senden</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}

@@ -144,7 +144,8 @@ function generatePdfHtml(
   planImageBase64?: string | null,
   accentColor?: string,
   pdfTemplate: PdfTemplate = "standard",
-  photoWatermark: boolean = true
+  photoWatermark: boolean = true,
+  watermarkText: string = ""
 ): string {
   // Template-specific overrides
   const showPhotos = pdfTemplate !== "no_photos";
@@ -219,7 +220,8 @@ function generatePdfHtml(
           const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[photoIdx] != null
             ? `${Math.floor(protocol.photoTimestamps[photoIdx] / 60)}:${(protocol.photoTimestamps[photoIdx] % 60).toString().padStart(2, '0')} Min.`
             : null;
-          const watermarkOverlay = photoWatermark ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}</div>` : "";
+          const wmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}`;
+          const watermarkOverlay = photoWatermark ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${wmContent}</div>` : "";
           return `
           <div class="photo-block" style="margin: 12px 0; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
             <div style="position:relative;display:inline-block;width:100%;">
@@ -256,7 +258,8 @@ function generatePdfHtml(
             const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[idx] != null
               ? `${Math.floor(protocol.photoTimestamps[idx] / 60)}:${(protocol.photoTimestamps[idx] % 60).toString().padStart(2, '0')}`
               : null;
-            const gridWatermark = photoWatermark ? `<div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;padding:1px 4px;border-radius:2px;">${new Date(protocol.createdAt).toLocaleDateString("de-DE")}${protocol.projectName ? " | " + protocol.projectName : ""}</div>` : "";
+            const gridWmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString("de-DE")}${protocol.projectName ? " | " + protocol.projectName : ""}`;
+            const gridWatermark = photoWatermark ? `<div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;padding:1px 4px;border-radius:2px;">${gridWmContent}</div>` : "";
             htmlResult += `
               <div class="photo-block" style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'};">
                 <div style="position:relative;">
@@ -346,7 +349,8 @@ function generatePdfHtml(
             ? `${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.`
             : null;
           const caption = getPhotoCaptionFromSegments(i);
-          const docWatermark = photoWatermark ? `<div style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}</div>` : "";
+          const docWmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}`;
+          const docWatermark = photoWatermark ? `<div style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${docWmContent}</div>` : "";
           return `
           <div class="photo-block" style="width: 100%; margin-bottom: 20px;">
             <div style="display: flex; align-items: flex-start; gap: 16px;">
@@ -828,6 +832,7 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   let pdfTemplate: PdfTemplate = "standard";
   let photoWatermark = true;
   let showCoverPage = true;
+  let watermarkText = "";
   let brandingData: any = null;
   try {
     const brandingStr = await AsyncStorage.getItem("pdf-branding");
@@ -838,11 +843,12 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       if (branding.pdfTemplate) pdfTemplate = branding.pdfTemplate;
       if (branding.photoWatermark === false) photoWatermark = false;
       if (branding.showCoverPage === false) showCoverPage = false;
+      if (branding.watermarkText) watermarkText = branding.watermarkText;
     }
   } catch {}
 
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark);
+  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText);
 
   // Generate cover page if enabled
   let coverPageHtml = "";

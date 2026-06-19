@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, Alert, Switch, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -264,6 +265,28 @@ export default function PdfBrandingScreen() {
             />
           </View>
 
+          {branding.showCoverPage !== false && (
+            <View style={{ marginTop: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 16, backgroundColor: colors.surface }}>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, textAlign: "center" }}>Deckblatt-Vorschau</Text>
+              <View style={{ alignItems: "center", paddingVertical: 12 }}>
+                {branding.logoUri ? (
+                  <View style={{ width: 40, height: 40, borderRadius: 4, backgroundColor: colors.border, marginBottom: 8, overflow: "hidden" }}>
+                    <Image source={{ uri: branding.logoUri }} style={{ width: 40, height: 40 }} />
+                  </View>
+                ) : (
+                  <View style={{ width: 40, height: 40, borderRadius: 4, backgroundColor: colors.border, marginBottom: 8, alignItems: "center", justifyContent: "center" }}>
+                    <MaterialIcons name="business" size={20} color={colors.muted} />
+                  </View>
+                )}
+                <Text style={{ fontSize: 10, color: colors.muted, marginBottom: 4 }}>{branding.companyName || "Firmenname"}</Text>
+                <View style={{ width: 60, height: 2, backgroundColor: branding.accentColor || colors.primary, marginVertical: 6, borderRadius: 1 }} />
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, textAlign: "center" }}>Baustellenbericht</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 4 }}>Beispielprojekt</Text>
+                <Text style={{ fontSize: 9, color: colors.muted, marginTop: 2 }}>{new Date().toLocaleDateString("de-DE")}</Text>
+              </View>
+            </View>
+          )}
+
           <View style={[styles.toggleRow, { borderColor: colors.border }]}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Foto-Wasserzeichen</Text>
@@ -276,6 +299,36 @@ export default function PdfBrandingScreen() {
               thumbColor={branding.photoWatermark !== false ? colors.primary : colors.muted}
             />
           </View>
+
+          {branding.photoWatermark !== false && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Wasserzeichen-Text (optional)</Text>
+              <TextInput
+                value={branding.watermarkText || ""}
+                onChangeText={(v) => updateField("watermarkText", v)}
+                placeholder="Leer = Datum + Projektname"
+                placeholderTextColor={colors.muted}
+                style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+              />
+              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>z.B. "Vertraulich" oder "Entwurf" – leer lassen f\u00fcr Standard</Text>
+            </View>
+          )}
+        </View>
+
+        {/* E-Mail-Versand */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>E-Mail-Versand</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Standard-Empf\u00e4nger f\u00fcr PDF-Direktversand</Text>
+
+          <TextInput
+            value={branding.defaultEmailAddress || ""}
+            onChangeText={(v) => updateField("defaultEmailAddress", v)}
+            placeholder="E-Mail-Adresse"
+            placeholderTextColor={colors.muted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+          />
         </View>
 
         {/* Filename Schema */}

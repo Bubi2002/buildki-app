@@ -23,6 +23,8 @@ export type PdfBranding = {
   pdfTemplate: PdfTemplate; // layout variant
   photoWatermark: boolean; // show date/time + project name watermark on photos
   showCoverPage: boolean; // show professional cover page as first page
+  watermarkText: string; // custom watermark text (empty = use date + project name)
+  defaultEmailAddress: string; // default email for PDF direct send
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -42,6 +44,8 @@ export const DEFAULT_BRANDING: PdfBranding = {
   pdfTemplate: "standard" as PdfTemplate,
   photoWatermark: true,
   showCoverPage: true,
+  watermarkText: "",
+  defaultEmailAddress: "info@iserloh.net",
 };
 
 /**
