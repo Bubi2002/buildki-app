@@ -367,3 +367,7 @@
 - [x] Bug-Fix: Layout Überschneidung im Nur-Audio-Modus – Aufnahme-Tipps Button unter Record-Button verschoben, gap reduziert
 - [x] Bug-Fix: Audio-Modus Layout komplett überarbeitet – Hint-Text und Tipps-Button nicht mehr überlappend, Mic-Kreis verkleinert (140px), saubere Trennung zwischen Mic-Bereich und Record-Button
 - [x] Bug-Fix: Dashboard doppelte Kalendertermine – Deduplizierung nach Titel+Startzeit (Events aus mehreren Kalendern werden zusammengefasst)
+- [x] Feature: Mängel-Fotos im Excel-Export – Fotos als Base64-Thumbnails in HTML-Tabelle (Excel-kompatibel) mit Mängel-Details
+- [x] Feature: Protokoll-Zusammenführung – Mehrere Protokolle eines Tages/Projekts zu einem Gesamtbericht zusammenführen (protocol-merge.tsx)
+- [x] Feature: Dropbox-Integration – PDF-Upload via System-Share-Sheet an Dropbox, Einstellungen-Screen, Button in PDF-Vorschau
+- [x] Fix: Network request failed – Server ist erreichbar (deployed Domain funktioniert), Fehler tritt bei schlechter Internetverbindung auf dem Gerät auf. Bessere Fehlermeldung + Retry-Hinweis implementiert

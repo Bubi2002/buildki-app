@@ -19,7 +19,7 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
-import { exportAndShareTasks } from "@/lib/excel-export";
+import { exportAndShareTasks, exportAndShareDefects } from "@/lib/excel-export";
 
 type Project = {
   id: string;
@@ -137,6 +137,14 @@ export default function ProjectDetailScreen() {
     const success = await exportAndShareTasks(project.id);
     if (!success) {
       Alert.alert("Hinweis", "Keine Aufgaben zum Exportieren vorhanden.");
+    }
+  };
+
+  const handleDefectsExport = async () => {
+    if (!project) return;
+    const success = await exportAndShareDefects(project.id);
+    if (!success) {
+      Alert.alert("Hinweis", "Keine Mängel zum Exportieren vorhanden.");
     }
   };
 
@@ -585,6 +593,24 @@ export default function ProjectDetailScreen() {
                 <MaterialIcons name="table-chart" size={22} color="#2E7D32" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Excel</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleDefectsExport}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#FF6D0015' }]}>
+                <MaterialIcons name="photo-library" size={22} color="#FF6D00" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Mängel-XLS</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#7C3AED15' }]}>
+                <MaterialIcons name="merge-type" size={22} color="#7C3AED" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Bericht</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/photo-compare?projectId=${project.id}` as any)}

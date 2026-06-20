@@ -1764,6 +1764,34 @@ return (
         {/* Backup */}
         <BackupSection colors={colors} />
 
+        {/* Dropbox Integration */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Dropbox
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Automatischer PDF-Upload in deinen Dropbox-Ordner
+          </Text>
+          <Pressable
+            onPress={() => router.push("/dropbox-settings" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 10,
+              borderWidth: 1, borderColor: colors.border,
+              opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#0061FF15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="cloud-upload" size={20} color="#0061FF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Dropbox-Einstellungen</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Ordner, Dateinamen & Auto-Upload</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+        </View>
+
         {/* Darstellung / Dark Mode */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>

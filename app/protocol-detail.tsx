@@ -1431,9 +1431,19 @@ export default function ProtocolDetailScreen() {
                   {!protocol.processingStep && "Verarbeitung läuft..."}
                 </Text>
                 {protocol.processingStep === "failed" && (
-                  <Text style={{ fontSize: 11, color: "#E65100", marginTop: 4 }}>
-                    Tipp: Versuche es erneut mit dem Audio-Modus.
-                  </Text>
+                  <View style={{ marginTop: 4 }}>
+                    <Text style={{ fontSize: 11, color: "#E65100" }}>
+                      {(protocol.processingError || "").includes("Network") || (protocol.processingError || "").includes("network")
+                        ? "Tipp: Prüfe deine Internetverbindung und versuche es erneut."
+                        : "Tipp: Versuche es erneut mit dem Audio-Modus."}
+                    </Text>
+                    <Pressable
+                      onPress={() => router.push("/(tabs)" as any)}
+                      style={({ pressed }) => [{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#FF9800", borderRadius: 6, alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Neue Aufnahme starten</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
             </View>
@@ -2633,6 +2643,26 @@ export default function ProtocolDetailScreen() {
                 >
                   <MaterialIcons name="email" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>Per E-Mail senden</Text>
+                </Pressable>
+                <Pressable
+                  onPress={async () => {
+                    if (!previewPdfUri || !protocol) return;
+                    try {
+                      const { uploadPdfToDropbox } = await import("@/lib/dropbox-integration");
+                      await uploadPdfToDropbox(previewPdfUri, {
+                        projectName: protocol.projectName || undefined,
+                        protocolTitle: protocol.title,
+                        protocolNumber: protocol.protocolNumber || undefined,
+                        protocolDate: protocol.createdAt?.split("T")[0],
+                      });
+                    } catch (e: any) {
+                      Alert.alert("Fehler", e.message || "Dropbox-Upload fehlgeschlagen");
+                    }
+                  }}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: "#0061FF", opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="cloud-upload" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>In Dropbox speichern</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}
