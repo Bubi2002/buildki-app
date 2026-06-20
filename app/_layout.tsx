@@ -126,6 +126,11 @@ export default function RootLayout() {
       const { isFeatureEnabled } = require("@/lib/feature-toggles");
       setOfflineModeEnabled(await isFeatureEnabled("offlineMode"));
     })();
+    // Initialize offline sync manager
+    if (Platform.OS !== "web") {
+      const { initSyncManager } = require("@/lib/offline-sync-manager");
+      initSyncManager();
+    }
   }, []);
 
   // Setup Quick Actions (iOS 3D Touch / Android App Shortcuts)

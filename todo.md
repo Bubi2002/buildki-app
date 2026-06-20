@@ -377,3 +377,6 @@
 - [x] Setup: Dropbox App-Credentials (DROPBOX_APP_KEY, DROPBOX_APP_SECRET) als Secrets eingerichtet
 - [x] Feature: Mängel-Fotos direkt aus Kamera – Kamera-Button + Galerie-Button im Mängel-Detail-Modal, Foto-Vorschau mit Löschen
 - [x] Feature: Automatischer Gesamtbericht – Einstellungen-Screen (Häufigkeit, Uhrzeit, Wochentag, Inhalt, Auto-Versand), Push-Benachrichtigung als Trigger
+- [x] Feature: Offline-Modus verbessern – Aufnahme ohne Internet + Auto-Sync bei Reconnect (offline-sync-manager.ts, use-network-status.ts, _layout.tsx)
+- [x] Feature: PDF-Vorlagen anpassen – Firmenlogo + Kopfzeile für alle PDFs konfigurierbar (pdf-branding.tsx, pdf-branding-store.ts – bereits vollständig implementiert)
+- [ ] Hinweis: Dropbox Permissions (files.content.write + files.content.read) in Developer Console aktivieren

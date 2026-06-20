@@ -11,9 +11,11 @@ export type NetworkStatus = {
 
 const PENDING_SYNC_KEY = "pending-sync-queue";
 const LAST_SYNCED_KEY = "last-synced-at";
+const OFFLINE_QUEUE_KEY = "offline-recording-queue";
 
 /**
- * Hook to monitor network connectivity and manage sync queue
+ * Hook to monitor network connectivity and manage sync queue.
+ * Integrates with the offline-sync-manager for recording queue status.
  */
 export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any) => Promise<void>; triggerSync: () => Promise<void> } {
   const [isConnected, setIsConnected] = useState(true);
@@ -28,7 +30,24 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
 
     // Check connectivity periodically
     checkConnectivity();
-    intervalRef.current = setInterval(checkConnectivity, 10000); // every 10s
+    intervalRef.current = setInterval(() => {
+      checkConnectivity();
+      loadSyncState(); // Also refresh queue count
+    }, 10000); // every 10s
+
+    // Subscribe to sync manager updates on native
+    let unsubscribe: (() => void) | null = null;
+    if (Platform.OS !== "web") {
+      try {
+        const { onSyncStatusChange } = require("@/lib/offline-sync-manager");
+        unsubscribe = onSyncStatusChange((status: any) => {
+          setIsConnected(status.isOnline);
+          setIsSyncing(status.isSyncing);
+          setPendingSyncCount(status.pendingCount);
+          if (status.lastSyncAt) setLastSyncedAt(status.lastSyncAt);
+        });
+      } catch {}
+    }
 
     // Web: listen to online/offline events
     if (Platform.OS === "web") {
@@ -44,11 +63,13 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
         window.removeEventListener("online", handleOnline);
         window.removeEventListener("offline", handleOffline);
         if (intervalRef.current) clearInterval(intervalRef.current);
+        if (unsubscribe) unsubscribe();
       };
     }
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
@@ -76,9 +97,17 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
 
   const loadSyncState = async () => {
     try {
+      // Count from both general sync queue and offline recording queue
       const queue = await AsyncStorage.getItem(PENDING_SYNC_KEY);
-      const items = queue ? JSON.parse(queue) : [];
-      setPendingSyncCount(items.length);
+      const generalItems = queue ? JSON.parse(queue) : [];
+      
+      const offlineQueue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+      const offlineItems = offlineQueue ? JSON.parse(offlineQueue) : [];
+      const pendingOffline = offlineItems.filter((i: any) => i.status === "pending" || i.status === "failed");
+      
+      const totalPending = generalItems.length + pendingOffline.length;
+      setPendingSyncCount(totalPending);
+      
       const lastSync = await AsyncStorage.getItem(LAST_SYNCED_KEY);
       setLastSyncedAt(lastSync);
     } catch { /* ignore */ }
@@ -89,7 +118,7 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
       const queue = JSON.parse((await AsyncStorage.getItem(PENDING_SYNC_KEY)) || "[]");
       queue.push({ ...item, queuedAt: new Date().toISOString() });
       await AsyncStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(queue));
-      setPendingSyncCount(queue.length);
+      setPendingSyncCount(prev => prev + 1);
     } catch { /* ignore */ }
   };
 
@@ -97,19 +126,25 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
     if (isSyncing) return;
     setIsSyncing(true);
     try {
-      const queue = JSON.parse((await AsyncStorage.getItem(PENDING_SYNC_KEY)) || "[]");
-      if (queue.length === 0) {
-        setIsSyncing(false);
-        return;
+      // Trigger the offline sync manager on native
+      if (Platform.OS !== "web") {
+        try {
+          const { triggerSync: triggerOfflineSync } = require("@/lib/offline-sync-manager");
+          await triggerOfflineSync();
+        } catch {}
       }
 
-      // Process sync queue (in a real app, this would send to server)
-      // For now, we just clear the queue and mark as synced
-      await AsyncStorage.setItem(PENDING_SYNC_KEY, "[]");
-      const now = new Date().toISOString();
-      await AsyncStorage.setItem(LAST_SYNCED_KEY, now);
-      setPendingSyncCount(0);
-      setLastSyncedAt(now);
+      // Process general sync queue
+      const queue = JSON.parse((await AsyncStorage.getItem(PENDING_SYNC_KEY)) || "[]");
+      if (queue.length > 0) {
+        await AsyncStorage.setItem(PENDING_SYNC_KEY, "[]");
+        const now = new Date().toISOString();
+        await AsyncStorage.setItem(LAST_SYNCED_KEY, now);
+        setLastSyncedAt(now);
+      }
+      
+      // Reload counts
+      await loadSyncState();
     } catch { /* ignore */ }
     setIsSyncing(false);
   };
