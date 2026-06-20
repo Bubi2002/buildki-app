@@ -9,6 +9,59 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import { getApiBaseUrl } from "@/constants/oauth";
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2000; // 2s, 4s, 8s exponential backoff
+
+/**
+ * Check if an error is a network/transient error that should be retried.
+ */
+function isRetryableError(error: any): boolean {
+  const msg = (error?.message || String(error)).toLowerCase();
+  return (
+    msg.includes("network") ||
+    msg.includes("timeout") ||
+    msg.includes("econnrefused") ||
+    msg.includes("econnreset") ||
+    msg.includes("socket") ||
+    msg.includes("abort") ||
+    msg.includes("failed to fetch") ||
+    msg.includes("internet") ||
+    msg.includes("offline") ||
+    msg.includes("502") ||
+    msg.includes("503") ||
+    msg.includes("504")
+  );
+}
+
+/**
+ * Execute an async function with exponential backoff retry on network errors.
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  stepName: string,
+  protocolId: string,
+  onRetry?: (attempt: number, maxRetries: number) => void
+): Promise<T> {
+  let lastError: any;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      if (attempt < MAX_RETRIES && isRetryableError(error)) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+        console.log(`[BG-Processor] ${protocolId}: ${stepName} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${delay}ms...`);
+        if (onRetry) onRetry(attempt + 1, MAX_RETRIES);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw lastError;
+}
+
 // Types
 export interface PendingJob {
   protocolId: string;
@@ -186,7 +239,12 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     });
     
     const ext = "m4a";
-    const uploadResult = await apiClient.upload(base64, job.mimeType, `recording-${Date.now()}.${ext}`);
+    const uploadResult = await withRetry(
+      () => apiClient.upload(base64, job.mimeType, `recording-${Date.now()}.${ext}`),
+      "Upload",
+      job.protocolId,
+      (attempt, max) => updateProtocolStep(job.protocolId, `uploading (Versuch ${attempt + 1}/${max + 1})`)
+    );
     console.log(`[BG-Processor] ${job.protocolId}: Upload complete`);
     
     // Step 2: Transcribe
@@ -199,7 +257,12 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       audioUrl = `${getApiBaseUrl()}${audioUrl}`;
     }
     
-    const transcription = await apiClient.transcribe(audioUrl, "de");
+    const transcription = await withRetry(
+      () => apiClient.transcribe(audioUrl, "de"),
+      "Transcription",
+      job.protocolId,
+      (attempt, max) => updateProtocolStep(job.protocolId, `transcribing (Versuch ${attempt + 1}/${max + 1})`)
+    );
     const transcriptionSegments = transcription.segments || [];
     console.log(`[BG-Processor] ${job.protocolId}: Transcription complete (${transcriptionSegments.length} segments)`);
     
@@ -208,15 +271,20 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     notifyListeners(job.protocolId, "generating");
     await updateProtocolStep(job.protocolId, "generating");
     
-    const protocol = await apiClient.generateProtocol(
-      transcription.text,
-      job.templateId,
-      job.style,
-      job.format,
-      job.createdAt,
-      job.markers,
-      job.photos?.length || 0,
-      job.photoTimestamps,
+    const protocol = await withRetry(
+      () => apiClient.generateProtocol(
+        transcription.text,
+        job.templateId,
+        job.style,
+        job.format,
+        job.createdAt,
+        job.markers,
+        job.photos?.length || 0,
+        job.photoTimestamps,
+      ),
+      "Protocol generation",
+      job.protocolId,
+      (attempt, max) => updateProtocolStep(job.protocolId, `generating (Versuch ${attempt + 1}/${max + 1})`)
     );
     console.log(`[BG-Processor] ${job.protocolId}: Protocol generated`);
     

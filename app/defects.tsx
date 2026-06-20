@@ -26,6 +26,10 @@ import {
   deleteDefect,
   updateDefectStatus,
   getDefectStats,
+  recordDefectCreated,
+  getDefectHistory,
+  formatHistoryEntry,
+  type DefectHistoryEntry,
 } from "@/lib/defect-store";
 
 export default function DefectsScreen() {
@@ -42,6 +46,9 @@ export default function DefectsScreen() {
   const [newPriority, setNewPriority] = useState<DefectPriority>("mittel");
   const [newCategory, setNewCategory] = useState(DEFECT_CATEGORIES[0]);
   const [newLocation, setNewLocation] = useState("");
+  const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
+  const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -75,6 +82,7 @@ export default function DefectsScreen() {
     };
 
     await saveDefect(defect);
+    await recordDefectCreated(defect.id);
     setDefects([defect, ...defects]);
     setShowCreateModal(false);
     setNewTitle("");
@@ -128,9 +136,16 @@ export default function DefectsScreen() {
     niedrig: "arrow-downward",
   };
 
+  const openDetail = async (defect: Defect) => {
+    setSelectedDefect(defect);
+    const history = await getDefectHistory(defect.id);
+    setDefectHistoryEntries(history);
+    setShowDetailModal(true);
+  };
+
   const renderDefect = ({ item }: { item: Defect }) => (
     <Pressable
-      onPress={() => cycleStatus(item)}
+      onPress={() => openDetail(item)}
       onLongPress={() => removeDefect(item.id)}
       style={({ pressed }) => [
         styles.defectCard,
@@ -220,6 +235,111 @@ export default function DefectsScreen() {
           </View>
         }
       />
+
+      {/* Detail Modal with History */}
+      <Modal visible={showDetailModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            {selectedDefect && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>{selectedDefect.title}</Text>
+                  <Pressable onPress={() => setShowDetailModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+                    <MaterialIcons name="close" size={24} color={colors.muted} />
+                  </Pressable>
+                </View>
+
+                {/* Status + Priority */}
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: statusColors[selectedDefect.status] + "20" }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: statusColors[selectedDefect.status] }}>
+                      {statusLabels[selectedDefect.status]}
+                    </Text>
+                  </View>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.border + "40" }}>
+                    <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.priority}</Text>
+                  </View>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.border + "40" }}>
+                    <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.category}</Text>
+                  </View>
+                </View>
+
+                {selectedDefect.description ? (
+                  <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: 12, lineHeight: 20 }}>{selectedDefect.description}</Text>
+                ) : null}
+
+                {selectedDefect.location ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                    <MaterialIcons name="place" size={16} color={colors.muted} />
+                    <Text style={{ fontSize: 13, color: colors.muted }}>{selectedDefect.location}</Text>
+                  </View>
+                ) : null}
+
+                {/* Quick Status Change */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Status \u00e4ndern</Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {(["offen", "in_bearbeitung", "erledigt"] as DefectStatus[]).map((s) => (
+                      <Pressable
+                        key={s}
+                        onPress={async () => {
+                          await updateDefectStatus(selectedDefect.id, s);
+                          const updated = { ...selectedDefect, status: s, updatedAt: new Date().toISOString() };
+                          setSelectedDefect(updated);
+                          const history = await getDefectHistory(selectedDefect.id);
+                          setDefectHistoryEntries(history);
+                          await loadDefects();
+                          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={({ pressed }) => [{
+                          flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center",
+                          borderWidth: 1,
+                          borderColor: selectedDefect.status === s ? statusColors[s] : colors.border,
+                          backgroundColor: selectedDefect.status === s ? statusColors[s] + "15" : "transparent",
+                          opacity: pressed ? 0.7 : 1,
+                        }]}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: selectedDefect.status === s ? statusColors[s] : colors.muted }}>
+                          {statusLabels[s]}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {/* History Timeline */}
+                <View style={{ marginBottom: 20 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Verlauf</Text>
+                  {defectHistoryEntries.length === 0 ? (
+                    <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }}>Noch keine \u00c4nderungen erfasst</Text>
+                  ) : (
+                    defectHistoryEntries.map((entry, idx) => (
+                      <View key={entry.id} style={{ flexDirection: "row", marginBottom: 10 }}>
+                        <View style={{ width: 20, alignItems: "center" }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: idx === defectHistoryEntries.length - 1 ? colors.primary : colors.border, marginTop: 4 }} />
+                          {idx < defectHistoryEntries.length - 1 && (
+                            <View style={{ width: 1, flex: 1, backgroundColor: colors.border, marginTop: 2 }} />
+                          )}
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={{ fontSize: 13, color: colors.foreground }}>{formatHistoryEntry(entry)}</Text>
+                          <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+                            {new Date(entry.timestamp).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center" }}>
+                  Erstellt: {new Date(selectedDefect.createdAt).toLocaleString("de-DE")}
+                </Text>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Create Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide">

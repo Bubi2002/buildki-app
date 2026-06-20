@@ -371,3 +371,6 @@
 - [x] Feature: Protokoll-Zusammenführung – Mehrere Protokolle eines Tages/Projekts zu einem Gesamtbericht zusammenführen (protocol-merge.tsx)
 - [x] Feature: Dropbox-Integration – PDF-Upload via System-Share-Sheet an Dropbox, Einstellungen-Screen, Button in PDF-Vorschau
 - [x] Fix: Network request failed – Server ist erreichbar (deployed Domain funktioniert), Fehler tritt bei schlechter Internetverbindung auf dem Gerät auf. Bessere Fehlermeldung + Retry-Hinweis implementiert
+- [x] Feature: Retry-Mechanismus – Automatisches Wiederholen bei Netzwerk-Fehler mit exponential backoff (3 Versuche, 2s/4s/8s Delay)
+- [x] Feature: Dropbox OAuth – Direkte API-Anbindung mit Server-Proxy (Token-Exchange, Refresh, Upload, Ordner-Erstellung)
+- [x] Feature: Mängel-Statusverlauf – Änderungshistorie pro Mangel (Timeline in Detail-Modal, Status/Priorität/Foto-Änderungen)

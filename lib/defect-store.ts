@@ -1,9 +1,31 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DEFECTS_KEY = "defects";
+const DEFECT_HISTORY_KEY = "defect_history";
 
 export type DefectStatus = "offen" | "in_bearbeitung" | "erledigt";
 export type DefectPriority = "hoch" | "mittel" | "niedrig";
+
+export type DefectHistoryAction = 
+  | "created"
+  | "status_changed"
+  | "priority_changed"
+  | "assignee_changed"
+  | "photo_added"
+  | "photo_removed"
+  | "edited"
+  | "resolved"
+  | "reopened";
+
+export type DefectHistoryEntry = {
+  id: string;
+  defectId: string;
+  action: DefectHistoryAction;
+  timestamp: string;
+  oldValue?: string;
+  newValue?: string;
+  note?: string;
+};
 
 export type Defect = {
   id: string;
@@ -66,10 +88,15 @@ export async function updateDefectStatus(defectId: string, status: DefectStatus)
   const defects = await getDefects();
   const idx = defects.findIndex((d) => d.id === defectId);
   if (idx >= 0) {
+    const oldStatus = defects[idx].status;
     defects[idx].status = status;
     defects[idx].updatedAt = new Date().toISOString();
     if (status === "erledigt") defects[idx].resolvedAt = new Date().toISOString();
     await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(defects));
+    
+    // Record history
+    const action: DefectHistoryAction = status === "erledigt" ? "resolved" : oldStatus === "erledigt" ? "reopened" : "status_changed";
+    await addHistoryEntry(defectId, action, oldStatus, status);
   }
 }
 
@@ -81,4 +108,145 @@ export function getDefectStats(defects: Defect[]) {
     erledigt: defects.filter((d) => d.status === "erledigt").length,
     hoch: defects.filter((d) => d.priority === "hoch" && d.status !== "erledigt").length,
   };
+}
+
+// ============ Defect History ============
+
+/**
+ * Add a history entry for a defect change
+ */
+export async function addHistoryEntry(
+  defectId: string,
+  action: DefectHistoryAction,
+  oldValue?: string,
+  newValue?: string,
+  note?: string
+): Promise<void> {
+  try {
+    const history = await getDefectHistory(defectId);
+    history.push({
+      id: `hist_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      defectId,
+      action,
+      timestamp: new Date().toISOString(),
+      oldValue,
+      newValue,
+      note,
+    });
+    
+    // Store all history
+    const allHistory = await getAllHistory();
+    const otherHistory = allHistory.filter(h => h.defectId !== defectId);
+    const combined = [...otherHistory, ...history];
+    await AsyncStorage.setItem(DEFECT_HISTORY_KEY, JSON.stringify(combined));
+  } catch {
+    // Silently fail - history is non-critical
+  }
+}
+
+/**
+ * Get history entries for a specific defect
+ */
+export async function getDefectHistory(defectId: string): Promise<DefectHistoryEntry[]> {
+  try {
+    const allHistory = await getAllHistory();
+    return allHistory
+      .filter(h => h.defectId === defectId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get all history entries
+ */
+async function getAllHistory(): Promise<DefectHistoryEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(DEFECT_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Record defect creation in history
+ */
+export async function recordDefectCreated(defectId: string): Promise<void> {
+  await addHistoryEntry(defectId, "created", undefined, undefined, "Mangel angelegt");
+}
+
+/**
+ * Record defect edit (title, description, category, etc.)
+ */
+export async function recordDefectEdited(defectId: string, field: string, oldValue: string, newValue: string): Promise<void> {
+  await addHistoryEntry(defectId, "edited", `${field}: ${oldValue}`, `${field}: ${newValue}`);
+}
+
+/**
+ * Record priority change
+ */
+export async function recordPriorityChanged(defectId: string, oldPriority: string, newPriority: string): Promise<void> {
+  await addHistoryEntry(defectId, "priority_changed", oldPriority, newPriority);
+}
+
+/**
+ * Record assignee change
+ */
+export async function recordAssigneeChanged(defectId: string, oldAssignee: string | undefined, newAssignee: string): Promise<void> {
+  await addHistoryEntry(defectId, "assignee_changed", oldAssignee || "(niemand)", newAssignee);
+}
+
+/**
+ * Record photo added
+ */
+export async function recordPhotoAdded(defectId: string): Promise<void> {
+  await addHistoryEntry(defectId, "photo_added", undefined, undefined, "Foto hinzugefügt");
+}
+
+/**
+ * Record photo removed
+ */
+export async function recordPhotoRemoved(defectId: string): Promise<void> {
+  await addHistoryEntry(defectId, "photo_removed", undefined, undefined, "Foto entfernt");
+}
+
+/**
+ * Format a history entry for display
+ */
+export function formatHistoryEntry(entry: DefectHistoryEntry): string {
+  const statusLabels: Record<string, string> = {
+    offen: "Offen",
+    in_bearbeitung: "In Bearbeitung",
+    erledigt: "Erledigt",
+  };
+  const priorityLabels: Record<string, string> = {
+    hoch: "Hoch",
+    mittel: "Mittel",
+    niedrig: "Niedrig",
+  };
+
+  switch (entry.action) {
+    case "created":
+      return "Mangel angelegt";
+    case "status_changed":
+      return `Status: ${statusLabels[entry.oldValue || ""] || entry.oldValue} → ${statusLabels[entry.newValue || ""] || entry.newValue}`;
+    case "resolved":
+      return "Als erledigt markiert ✓";
+    case "reopened":
+      return "Wieder geöffnet";
+    case "priority_changed":
+      return `Priorität: ${priorityLabels[entry.oldValue || ""] || entry.oldValue} → ${priorityLabels[entry.newValue || ""] || entry.newValue}`;
+    case "assignee_changed":
+      return `Zuständig: ${entry.oldValue || "(niemand)"} → ${entry.newValue}`;
+    case "photo_added":
+      return "Foto hinzugefügt";
+    case "photo_removed":
+      return "Foto entfernt";
+    case "edited":
+      return `Bearbeitet: ${entry.newValue || ""}`;
+    default:
+      return entry.note || "Änderung";
+  }
 }
