@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  Image,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -16,6 +17,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import {
   Defect,
   DefectStatus,
@@ -27,6 +29,8 @@ import {
   updateDefectStatus,
   getDefectStats,
   recordDefectCreated,
+  recordPhotoAdded,
+  recordPhotoRemoved,
   getDefectHistory,
   formatHistoryEntry,
   type DefectHistoryEntry,
@@ -274,6 +278,111 @@ export default function DefectsScreen() {
                     <Text style={{ fontSize: 13, color: colors.muted }}>{selectedDefect.location}</Text>
                   </View>
                 ) : null}
+
+                {/* Photos Section */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Fotos ({selectedDefect.photos.length})</Text>
+                  
+                  {selectedDefect.photos.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                      {selectedDefect.photos.map((photo, idx) => (
+                        <Pressable
+                          key={idx}
+                          onLongPress={() => {
+                            Alert.alert("Foto entfernen", "Dieses Foto vom Mangel entfernen?", [
+                              { text: "Abbrechen", style: "cancel" },
+                              {
+                                text: "Entfernen",
+                                style: "destructive",
+                                onPress: async () => {
+                                  const updatedPhotos = selectedDefect.photos.filter((_, i) => i !== idx);
+                                  const updatedDefect = { ...selectedDefect, photos: updatedPhotos };
+                                  await saveDefect(updatedDefect);
+                                  await recordPhotoRemoved(selectedDefect.id);
+                                  setSelectedDefect(updatedDefect);
+                                  const history = await getDefectHistory(selectedDefect.id);
+                                  setDefectHistoryEntries(history);
+                                  await loadDefects();
+                                },
+                              },
+                            ]);
+                          }}
+                          style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1, marginRight: 8 }]}
+                        >
+                          <Image source={{ uri: photo }} style={{ width: 80, height: 80, borderRadius: 8 }} />
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <Pressable
+                      onPress={async () => {
+                        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                        if (status !== "granted") {
+                          Alert.alert("Berechtigung", "Kamera-Zugriff wird ben\u00f6tigt.");
+                          return;
+                        }
+                        const result = await ImagePicker.launchCameraAsync({
+                          mediaTypes: ["images"],
+                          quality: 0.8,
+                        });
+                        if (!result.canceled && result.assets[0]) {
+                          const updatedPhotos = [...selectedDefect.photos, result.assets[0].uri];
+                          const updatedDefect = { ...selectedDefect, photos: updatedPhotos };
+                          await saveDefect(updatedDefect);
+                          await recordPhotoAdded(selectedDefect.id);
+                          setSelectedDefect(updatedDefect);
+                          const history = await getDefectHistory(selectedDefect.id);
+                          setDefectHistoryEntries(history);
+                          await loadDefects();
+                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                      }}
+                      style={({ pressed }) => [{
+                        flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                        paddingVertical: 10, borderRadius: 8, backgroundColor: colors.primary + "15",
+                        borderWidth: 1, borderColor: colors.primary + "40",
+                        opacity: pressed ? 0.7 : 1,
+                      }]}
+                    >
+                      <MaterialIcons name="camera-alt" size={18} color={colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Kamera</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                          mediaTypes: ["images"],
+                          quality: 0.8,
+                          allowsMultipleSelection: true,
+                          selectionLimit: 5,
+                        });
+                        if (!result.canceled && result.assets.length > 0) {
+                          const newUris = result.assets.map(a => a.uri);
+                          const updatedPhotos = [...selectedDefect.photos, ...newUris];
+                          const updatedDefect = { ...selectedDefect, photos: updatedPhotos };
+                          await saveDefect(updatedDefect);
+                          for (const _ of newUris) await recordPhotoAdded(selectedDefect.id);
+                          setSelectedDefect(updatedDefect);
+                          const history = await getDefectHistory(selectedDefect.id);
+                          setDefectHistoryEntries(history);
+                          await loadDefects();
+                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                      }}
+                      style={({ pressed }) => [{
+                        flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                        paddingVertical: 10, borderRadius: 8, backgroundColor: colors.border + "30",
+                        borderWidth: 1, borderColor: colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      }]}
+                    >
+                      <MaterialIcons name="photo-library" size={18} color={colors.muted} />
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted }}>Galerie</Text>
+                    </Pressable>
+                  </View>
+                </View>
 
                 {/* Quick Status Change */}
                 <View style={{ marginBottom: 16 }}>

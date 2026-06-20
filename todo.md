@@ -374,3 +374,6 @@
 - [x] Feature: Retry-Mechanismus – Automatisches Wiederholen bei Netzwerk-Fehler mit exponential backoff (3 Versuche, 2s/4s/8s Delay)
 - [x] Feature: Dropbox OAuth – Direkte API-Anbindung mit Server-Proxy (Token-Exchange, Refresh, Upload, Ordner-Erstellung)
 - [x] Feature: Mängel-Statusverlauf – Änderungshistorie pro Mangel (Timeline in Detail-Modal, Status/Priorität/Foto-Änderungen)
+- [x] Setup: Dropbox App-Credentials (DROPBOX_APP_KEY, DROPBOX_APP_SECRET) als Secrets eingerichtet
+- [x] Feature: Mängel-Fotos direkt aus Kamera – Kamera-Button + Galerie-Button im Mängel-Detail-Modal, Foto-Vorschau mit Löschen
+- [x] Feature: Automatischer Gesamtbericht – Einstellungen-Screen (Häufigkeit, Uhrzeit, Wochentag, Inhalt, Auto-Versand), Push-Benachrichtigung als Trigger

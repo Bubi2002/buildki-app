@@ -1792,6 +1792,33 @@ return (
           </Pressable>
         </View>
 
+        {/* Auto-Bericht */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Automatischer Bericht
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Täglicher oder wöchentlicher Gesamtbericht aller Protokolle
+          </Text>
+          <Pressable
+            onPress={() => router.push("/auto-report-settings" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: colors.success + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="schedule" size={20} color={colors.success} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Auto-Bericht Einstellungen</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Häufigkeit, Uhrzeit & Versand konfigurieren</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+        </View>
+
         {/* Darstellung / Dark Mode */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
