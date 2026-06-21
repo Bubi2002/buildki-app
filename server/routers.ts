@@ -100,14 +100,31 @@ export const appRouter = router({
 
         // Add markers context for section structure
         if (input.markers && input.markers.length > 0) {
-          userMessage += "MARKIERUNGEN (Abschnitt-Trenner während der Aufnahme gesetzt):\n";
-          input.markers.forEach((m, i) => {
-            const mins = Math.floor(m.time / 60);
-            const secs = Math.floor(m.time % 60);
-            const timeCode = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-            userMessage += `  [${timeCode}] Markierung ${i + 1}: ${m.label || "Abschnitt"}\n`;
-          });
-          userMessage += "\nBitte strukturiere das Protokoll anhand dieser Markierungen in entsprechende Abschnitte. Füge zwischen den Abschnitten einen klaren Trenner ein.\n\n";
+          const chapters = input.markers.filter(m => m.label.startsWith("KAPITEL:"));
+          const regularMarkers = input.markers.filter(m => !m.label.startsWith("KAPITEL:"));
+
+          if (chapters.length > 0) {
+            userMessage += "KAPITEL-STRUKTUR (vom Benutzer gesprochene Kapitelüberschriften während der Aufnahme):\n";
+            chapters.forEach((m, i) => {
+              const mins = Math.floor(m.time / 60);
+              const secs = Math.floor(m.time % 60);
+              const timeCode = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+              const chapterName = m.label.replace("KAPITEL: ", "");
+              userMessage += `  [${timeCode}] Kapitel: ${chapterName}\n`;
+            });
+            userMessage += "\nWICHTIG: Strukturiere das Protokoll anhand dieser Kapitel. Verwende für jedes Kapitel eine Markdown-Überschrift im Format '# Kapitelname' (mit # am Zeilenanfang). Der Kapitelname soll exakt so übernommen werden wie angegeben. Der Text nach jeder Kapitelüberschrift enthält die Inhalte, die ab diesem Zeitpunkt gesprochen wurden.\n\n";
+          }
+
+          if (regularMarkers.length > 0) {
+            userMessage += "MARKIERUNGEN (Abschnitt-Trenner während der Aufnahme gesetzt):\n";
+            regularMarkers.forEach((m, i) => {
+              const mins = Math.floor(m.time / 60);
+              const secs = Math.floor(m.time % 60);
+              const timeCode = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+              userMessage += `  [${timeCode}] Markierung ${i + 1}: ${m.label || "Abschnitt"}\n`;
+            });
+            userMessage += "\nBitte strukturiere das Protokoll anhand dieser Markierungen in entsprechende Abschnitte.\n\n";
+          }
         }
 
         // Add photo context with timestamps for inline placement

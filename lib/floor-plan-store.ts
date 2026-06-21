@@ -19,10 +19,11 @@ export type PlanPin = {
   projectId: string;
   x: number; // 0-1 relative position
   y: number; // 0-1 relative position
-  type: "photo" | "defect" | "note" | "protocol";
+  type: "photo" | "defect" | "note" | "protocol" | "chapter";
   label: string;
   description?: string;
   photoUri?: string;
+  photos?: string[]; // multiple photos linked to this pin
   protocolId?: string;
   defectId?: string;
   color: string;

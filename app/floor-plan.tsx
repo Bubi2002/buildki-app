@@ -42,6 +42,7 @@ const PIN_COLORS: Record<PlanPin["type"], string> = {
   defect: "#F44336",
   note: "#FF9800",
   protocol: "#4CAF50",
+  chapter: "#9C27B0",
 };
 
 const PIN_ICONS: Record<PlanPin["type"], string> = {
@@ -49,6 +50,7 @@ const PIN_ICONS: Record<PlanPin["type"], string> = {
   defect: "report-problem",
   note: "edit-note",
   protocol: "description",
+  chapter: "bookmark",
 };
 
 export default function FloorPlanScreen() {
@@ -242,11 +244,46 @@ export default function FloorPlanScreen() {
   const filteredPins = filterType === "all" ? pins : pins.filter((p) => p.type === filterType);
 
   const pinTypeOptions: Array<{ type: PlanPin["type"]; label: string; icon: string; color: string }> = [
+    { type: "chapter", label: "Kapitel", icon: "bookmark", color: PIN_COLORS.chapter },
     { type: "note", label: "Notiz", icon: "edit-note", color: PIN_COLORS.note },
     { type: "defect", label: "Mangel", icon: "report-problem", color: PIN_COLORS.defect },
     { type: "photo", label: "Foto", icon: "photo-camera", color: PIN_COLORS.photo },
     { type: "protocol", label: "Protokoll", icon: "description", color: PIN_COLORS.protocol },
   ];
+
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+  const [galleryTitle, setGalleryTitle] = useState("");
+
+  const addPhotoToPin = async (pin: PlanPin) => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const newPhotos = result.assets.map(a => a.uri);
+      const updatedPin: PlanPin = {
+        ...pin,
+        photos: [...(pin.photos || []), ...newPhotos],
+      };
+      await savePlanPin(updatedPin);
+      setPins(pins.map(p => p.id === pin.id ? updatedPin : p));
+      setShowPinDetail(updatedPin);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const viewPinPhotos = (pin: PlanPin) => {
+    const photos = pin.photos || (pin.photoUri ? [pin.photoUri] : []);
+    if (photos.length === 0) {
+      Alert.alert("Keine Fotos", "Diesem Marker sind noch keine Fotos zugeordnet. Tippe auf 'Fotos hinzuf\u00fcgen' um Bilder zu verlinken.");
+      return;
+    }
+    setGalleryPhotos(photos);
+    setGalleryTitle(pin.label);
+    setShowPhotoGallery(true);
+  };
 
   return (
     <ScreenContainer className="flex-1">
@@ -618,7 +655,7 @@ export default function FloorPlanScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{showPinDetail.label}</Text>
                     <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                      {pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label} • {new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                      {pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label} \u2022 {new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
                     </Text>
                   </View>
                 </View>
@@ -627,6 +664,45 @@ export default function FloorPlanScreen() {
                     <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>{showPinDetail.description}</Text>
                   </View>
                 )}
+
+                {/* Photos linked to this pin */}
+                {((showPinDetail.photos && showPinDetail.photos.length > 0) || showPinDetail.photoUri) && (
+                  <View style={{ marginBottom: 12 }}>
+                    <Pressable
+                      onPress={() => viewPinPhotos(showPinDetail)}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.primary + "10", borderWidth: 1, borderColor: colors.primary + "30", opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <MaterialIcons name="photo-library" size={20} color={colors.primary} />
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary, flex: 1 }}>
+                        {(showPinDetail.photos?.length || 1)} Foto{(showPinDetail.photos?.length || 1) !== 1 ? "s" : ""} anzeigen
+                      </Text>
+                      <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
+                    </Pressable>
+                    {/* Photo thumbnails */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                      {(showPinDetail.photos || (showPinDetail.photoUri ? [showPinDetail.photoUri] : [])).slice(0, 5).map((uri, idx) => (
+                        <Pressable key={idx} onPress={() => viewPinPhotos(showPinDetail)}>
+                          <RNImage source={{ uri }} style={{ width: 60, height: 60, borderRadius: 8, marginRight: 6 }} />
+                        </Pressable>
+                      ))}
+                      {(showPinDetail.photos?.length || 0) > 5 && (
+                        <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>+{(showPinDetail.photos?.length || 0) - 5}</Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Add photos button */}
+                <Pressable
+                  onPress={() => addPhotoToPin(showPinDetail)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Fotos hinzuf\u00fcgen</Text>
+                </Pressable>
+
                 <View style={[styles.detailCoords, { backgroundColor: colors.surface }]}>
                   <MaterialIcons name="my-location" size={14} color={colors.muted} />
                   <Text style={{ fontSize: 11, color: colors.muted, marginLeft: 6 }}>
@@ -638,12 +714,43 @@ export default function FloorPlanScreen() {
                   style={({ pressed }) => [styles.deleteBtn, { borderColor: colors.error }, pressed && { opacity: 0.7 }]}
                 >
                   <MaterialIcons name="delete-outline" size={18} color={colors.error} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>Markierung löschen</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>Markierung l\u00f6schen</Text>
                 </Pressable>
               </>
             )}
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Photo Gallery Modal - shows photos linked to a pin */}
+      <Modal visible={showPhotoGallery} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
+            <Pressable onPress={() => setShowPhotoGallery(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.6 : 1 }]}>
+              <MaterialIcons name="close" size={24} color="#FFF" />
+            </Pressable>
+            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: "#FFF", textAlign: "center" }}>{galleryTitle}</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <FlatList
+            data={galleryPhotos}
+            keyExtractor={(_, idx) => `photo-${idx}`}
+            numColumns={2}
+            contentContainerStyle={{ padding: 8 }}
+            renderItem={({ item: uri, index }) => (
+              <View style={{ flex: 1, padding: 4 }}>
+                <RNImage source={{ uri }} style={{ width: "100%", aspectRatio: 1, borderRadius: 8 }} resizeMode="cover" />
+                <Text style={{ fontSize: 10, color: "#AAA", textAlign: "center", marginTop: 4 }}>Foto {index + 1}</Text>
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={{ alignItems: "center", paddingTop: 80 }}>
+                <MaterialIcons name="photo-library" size={48} color="#666" />
+                <Text style={{ fontSize: 14, color: "#888", marginTop: 12 }}>Keine Fotos vorhanden</Text>
+              </View>
+            }
+          />
+        </View>
       </Modal>
     </ScreenContainer>
   );

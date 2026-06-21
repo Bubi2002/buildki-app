@@ -119,7 +119,7 @@ export default function RecordScreen() {
   const voiceNoteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("audio");
-  const [markers, setMarkers] = useState<Array<{ time: number; label: string }>>([]);
+  const [markers, setMarkers] = useState<Array<{ time: number; label: string; photos?: string[] }>>([]);
   const [processingSource, setProcessingSource] = useState<"audio" | null>(null);
   const [processingStep, setProcessingStep] = useState<"compress" | "upload" | "transcription" | "protocol" | "saving" | "done">("upload");
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
@@ -727,6 +727,19 @@ export default function RecordScreen() {
         setPhotoTimestamps((prev) => [...prev, recordingDuration]);
         setPhotoVoiceNotes((prev) => [...prev, null]); // placeholder for voice note
 
+        // Auto-link photo to the last chapter marker (if any)
+        setMarkers((prev) => {
+          const lastChapterIdx = [...prev].reverse().findIndex(m => m.label.startsWith("KAPITEL:"));
+          if (lastChapterIdx === -1) return prev;
+          const actualIdx = prev.length - 1 - lastChapterIdx;
+          const updated = [...prev];
+          updated[actualIdx] = {
+            ...updated[actualIdx],
+            photos: [...(updated[actualIdx].photos || []), newUri],
+          };
+          return updated;
+        });
+
         // Auto-start voice note for caption dictation
         // Small delay to let state update
         const newPhotoIndex = capturedPhotos.length; // current length = new index
@@ -798,11 +811,33 @@ export default function RecordScreen() {
   };
 
   // --- VIDEO RECORDING ---
+  const [chapterMode, setChapterMode] = useState(false);
+  const [chapterPromptVisible, setChapterPromptVisible] = useState(false);
+  const [chapterInput, setChapterInput] = useState("");
+
   const addMarker = (label: string) => {
     setMarkers((prev) => [...prev, { time: recordingDuration, label }]);
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+  };
+
+  const startChapterMarker = () => {
+    // Show chapter input prompt
+    setChapterInput("");
+    setChapterPromptVisible(true);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  };
+
+  const confirmChapter = (name: string) => {
+    if (name.trim()) {
+      // Prefix with "KAPITEL:" so the LLM and renderer know it's a chapter heading
+      addMarker(`KAPITEL: ${name.trim()}`);
+    }
+    setChapterPromptVisible(false);
+    setChapterInput("");
   };
 
   // --- AUDIO RECORDING ---
@@ -1742,10 +1777,10 @@ export default function RecordScreen() {
                 />
               </Pressable>
 
-              {/* Bookmark/Marker button (only during recording) */}
+              {/* Bookmark/Marker button (only during recording) - now opens chapter input */}
               {isRecording && (
                 <Pressable
-                  onPress={() => addMarker("Wichtig")}
+                  onPress={startChapterMarker}
                   style={({ pressed }) => [
                     styles.pauseButton,
                     {
@@ -2514,14 +2549,14 @@ export default function RecordScreen() {
             {/* Marker button - larger, orange color */}
             {isRecording ? (
               <Pressable
-                onPress={() => addMarker("Markierung")}
+                onPress={startChapterMarker}
                 style={({ pressed }) => [
                   styles.actionButtonLarge,
                   { backgroundColor: "#FF9800", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
                 <MaterialIcons name="bookmark-add" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>Marker</Text>
+                <Text style={styles.actionButtonLabel}>Kapitel</Text>
                 {markers.length > 0 && (
                   <View style={[styles.photoBadge, { backgroundColor: "#E53935" }]}>
                     <Text style={styles.photoBadgeText}>{markers.length}</Text>
@@ -2949,6 +2984,40 @@ export default function RecordScreen() {
               ))}
               <View style={{ height: 40 }} />
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Chapter Name Input Modal */}
+      <Modal visible={chapterPromptVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Neues Kapitel</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Kapitelname eingeben oder einsprechen (z.B. "Schlafzimmer", "K\u00fcche", "Fassade")</Text>
+            <TextInput
+              value={chapterInput}
+              onChangeText={setChapterInput}
+              placeholder="Kapitelname..."
+              placeholderTextColor={colors.muted}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => confirmChapter(chapterInput)}
+              style={{ fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground, marginBottom: 16 }}
+            />
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => setChapterPromptVisible(false)}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => confirmChapter(chapterInput)}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#FF9800", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Kapitel setzen</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>

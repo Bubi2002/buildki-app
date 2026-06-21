@@ -396,3 +396,5 @@
 - [x] Feature: Projekt-Fortschrittsanzeige – Prozentuale Fortschrittsleiste pro Projekt basierend auf erledigten Mängeln/Aufgaben (project-detail.tsx Progress-Bar)
 - [x] Feature: Export-Verlauf – Liste aller exportierten PDFs mit Datum und Empfänger (bereits vorhanden: export-history.tsx + pdf-export-history.ts)
 - [x] Feature: Schnellerfassung-Widget – Floating Action Button für sofortige Aufnahme von jedem Screen (bereits vorhanden: Quick-Actions in Dashboard + expo-quick-actions in _layout.tsx)
+- [x] Feature: Kapitel-Marker per Sprache – Marker-Button während Aufnahme drücken → nächstes gesprochenes Wort wird als Kapitelüberschrift erkannt und im Protokoll groß+fett dargestellt (index.tsx: Kapitel-Modal, server/routers.ts: KAPITEL-Prompt, markdown-text.tsx: # Heading-Rendering)
+- [x] Feature: Interaktiver Grundrissplan – Pinch-to-Zoom auf Plan, Marker setzen an besprochener Stelle, Fotos automatisch dem Marker zuordnen, Antippen zeigt zugehörige Fotos (floor-plan.tsx: Kapitel-Pin-Typ, Foto-Galerie-Modal, Fotos hinzufügen; index.tsx: Auto-Link Fotos zum letzten Kapitel-Marker)

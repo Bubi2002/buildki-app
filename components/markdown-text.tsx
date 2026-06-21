@@ -9,7 +9,7 @@ interface MarkdownTextProps {
 
 /**
  * Simple Markdown renderer for protocol text.
- * Supports: **bold**, *italic*, headings (lines starting with **text**), and line breaks.
+ * Supports: # H1, ## H2, **bold**, *italic*, headings (lines starting with **text**), and line breaks.
  */
 export function MarkdownText({ text, style, color = "#000" }: MarkdownTextProps) {
   if (!text) return null;
@@ -22,6 +22,26 @@ export function MarkdownText({ text, style, color = "#000" }: MarkdownTextProps)
         const trimmed = line.trim();
         if (!trimmed) {
           return <View key={lineIdx} style={{ height: 8 }} />;
+        }
+
+        // Check for # chapter heading (large, bold)
+        if (trimmed.startsWith("# ") && !trimmed.startsWith("## ")) {
+          const headingText = trimmed.substring(2);
+          return (
+            <Text key={lineIdx} style={[styles.chapterHeading, { color }]}>
+              {headingText}
+            </Text>
+          );
+        }
+
+        // Check for ## sub-heading
+        if (trimmed.startsWith("## ")) {
+          const headingText = trimmed.substring(3);
+          return (
+            <Text key={lineIdx} style={[styles.subHeading, { color }]}>
+              {headingText}
+            </Text>
+          );
         }
 
         // Check if line is a heading (starts and ends with ** or is all bold)
@@ -106,5 +126,20 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     marginTop: 12,
     marginBottom: 4,
+  },
+  chapterHeading: {
+    fontSize: 20,
+    fontWeight: "800",
+    lineHeight: 28,
+    marginTop: 20,
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  subHeading: {
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 24,
+    marginTop: 14,
+    marginBottom: 6,
   },
 });
