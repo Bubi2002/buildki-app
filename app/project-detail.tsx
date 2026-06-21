@@ -428,6 +428,25 @@ export default function ProjectDetailScreen() {
           <Text style={[styles.description, { color: colors.muted }]}>{project.description}</Text>
         ) : null}
 
+        {/* Progress Bar */}
+        {(defectCount.total > 0 || protocols.length > 0) && (
+          <View style={{ marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Projektfortschritt</Text>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: defectCount.total > 0 ? (defectCount.open === 0 ? colors.success : colors.primary) : colors.muted }}>
+                {defectCount.total > 0 ? Math.round(((defectCount.total - defectCount.open) / defectCount.total) * 100) : 0}%
+              </Text>
+            </View>
+            <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.border }}>
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: defectCount.open === 0 && defectCount.total > 0 ? colors.success : colors.primary, width: defectCount.total > 0 ? `${Math.round(((defectCount.total - defectCount.open) / defectCount.total) * 100)}%` : "0%" }} />
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{protocols.length} Protokolle</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.total - defectCount.open}/{defectCount.total} M\u00e4ngel erledigt</Text>
+            </View>
+          </View>
+        )}
+
         {/* Export buttons */}
         <Pressable
           onPress={exportAllAsPdf}

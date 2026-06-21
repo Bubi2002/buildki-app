@@ -56,6 +56,9 @@ export default function DefectsScreen() {
   const [newCategory, setNewCategory] = useState(DEFECT_CATEGORIES[0]);
   const [newLocation, setNewLocation] = useState("");
   const [newGewerk, setNewGewerk] = useState<string>(GEWERKE[0]);
+  const [newDueDate, setNewDueDate] = useState<string>("");
+  const [newAssignee, setNewAssignee] = useState<string>("");
+  const [gewerkFilter, setGewerkFilter] = useState<string>("alle");
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -71,13 +74,17 @@ export default function DefectsScreen() {
     setDefects(loaded);
   };
 
-  const filteredDefects = filter === "alle" ? defects : defects.filter((d) => d.status === filter);
+  const filteredDefects = defects.filter((d) => {
+    if (filter !== "alle" && d.status !== filter) return false;
+    if (gewerkFilter !== "alle" && (d as any).gewerk !== gewerkFilter) return false;
+    return true;
+  });
   const stats = getDefectStats(defects);
 
   const createDefect = async () => {
     if (!newTitle.trim()) return;
 
-    const defect: Defect & { gewerk?: string } = {
+    const defect: Defect & { gewerk?: string; dueDate?: string; assignee?: string } = {
       id: `defect-${Date.now()}`,
       projectId,
       title: newTitle.trim(),
@@ -88,6 +95,8 @@ export default function DefectsScreen() {
       photos: [],
       location: newLocation.trim() || undefined,
       gewerk: newGewerk,
+      dueDate: newDueDate || undefined,
+      assignee: newAssignee.trim() || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -100,6 +109,8 @@ export default function DefectsScreen() {
     setNewDescription("");
     setNewPriority("mittel");
     setNewLocation("");
+    setNewDueDate("");
+    setNewAssignee("");
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -228,7 +239,7 @@ export default function DefectsScreen() {
         </View>
       </View>
 
-      {/* Filter */}
+      {/* Status Filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
         {(["alle", "offen", "in_bearbeitung", "erledigt"] as const).map((f) => (
           <Pressable
@@ -243,6 +254,33 @@ export default function DefectsScreen() {
             <Text style={[styles.filterText, { color: filter === f ? colors.primary : colors.muted }]}>
               {f === "alle" ? "Alle" : f === "in_bearbeitung" ? "In Arbeit" : f === "offen" ? "Offen" : "Erledigt"}
             </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* Gewerk Filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterRow, { marginBottom: 12 }]}>
+        <Pressable
+          onPress={() => setGewerkFilter("alle")}
+          style={[
+            styles.filterBtn,
+            { borderColor: gewerkFilter === "alle" ? colors.primary : colors.border },
+            gewerkFilter === "alle" && { backgroundColor: colors.primary + "15" },
+          ]}
+        >
+          <Text style={[styles.filterText, { color: gewerkFilter === "alle" ? colors.primary : colors.muted }]}>Alle Gewerke</Text>
+        </Pressable>
+        {GEWERKE.map((g) => (
+          <Pressable
+            key={g}
+            onPress={() => setGewerkFilter(g)}
+            style={[
+              styles.filterBtn,
+              { borderColor: gewerkFilter === g ? colors.primary : colors.border },
+              gewerkFilter === g && { backgroundColor: colors.primary + "15" },
+            ]}
+          >
+            <Text style={[styles.filterText, { color: gewerkFilter === g ? colors.primary : colors.muted }]}>{g}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -301,6 +339,30 @@ export default function DefectsScreen() {
                     <Text style={{ fontSize: 13, color: colors.muted }}>{selectedDefect.location}</Text>
                   </View>
                 ) : null}
+
+                {/* Gewerk, Frist, Verantwortlicher */}
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                  {(selectedDefect as any).gewerk ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primary + "12" }}>
+                      <MaterialIcons name="construction" size={14} color={colors.primary} />
+                      <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "500" }}>{(selectedDefect as any).gewerk}</Text>
+                    </View>
+                  ) : null}
+                  {(selectedDefect as any).dueDate ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error + "12" : colors.warning + "12" }}>
+                      <MaterialIcons name="event" size={14} color={new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning} />
+                      <Text style={{ fontSize: 12, color: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning, fontWeight: "500" }}>
+                        Frist: {new Date((selectedDefect as any).dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {(selectedDefect as any).assignee ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.surface }}>
+                      <MaterialIcons name="person" size={14} color={colors.muted} />
+                      <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{(selectedDefect as any).assignee}</Text>
+                    </View>
+                  ) : null}
+                </View>
 
                 {/* Photos Section */}
                 <View style={{ marginBottom: 16 }}>
@@ -564,6 +626,45 @@ export default function DefectsScreen() {
                 </Pressable>
               ))}
             </ScrollView>
+
+            {/* Deadline */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Frist (optional)</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+              {[7, 14, 30, 60].map((days) => {
+                const d = new Date();
+                d.setDate(d.getDate() + days);
+                const iso = d.toISOString().split("T")[0];
+                return (
+                  <Pressable
+                    key={days}
+                    onPress={() => setNewDueDate(newDueDate === iso ? "" : iso)}
+                    style={[
+                      styles.categoryBtn,
+                      { borderColor: newDueDate === iso ? colors.primary : colors.border },
+                      newDueDate === iso && { backgroundColor: colors.primary + "15" },
+                    ]}
+                  >
+                    <Text style={[styles.categoryText, { color: newDueDate === iso ? colors.primary : colors.muted }]}>
+                      {days} Tage
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {newDueDate ? (
+              <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 12, marginTop: -8 }}>
+                Frist: {new Date(newDueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+              </Text>
+            ) : null}
+
+            {/* Verantwortlicher */}
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+              placeholder="Verantwortlicher (optional)"
+              placeholderTextColor={colors.muted}
+              value={newAssignee}
+              onChangeText={setNewAssignee}
+            />
 
             <View style={styles.modalButtons}>
               <Pressable
