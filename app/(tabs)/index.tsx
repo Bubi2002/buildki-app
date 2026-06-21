@@ -814,6 +814,9 @@ export default function RecordScreen() {
   const [chapterMode, setChapterMode] = useState(false);
   const [chapterPromptVisible, setChapterPromptVisible] = useState(false);
   const [chapterInput, setChapterInput] = useState("");
+  const [chapterListening, setChapterListening] = useState(false);
+  const [chapterRecording, setChapterRecording] = useState(false);
+  const chapterRecorderRef = useRef<any>(null);
 
   const addMarker = (label: string) => {
     setMarkers((prev) => [...prev, { time: recordingDuration, label }]);
@@ -823,11 +826,64 @@ export default function RecordScreen() {
   };
 
   const startChapterMarker = () => {
-    // Show chapter input prompt
+    // Show chapter input prompt with speech option
     setChapterInput("");
     setChapterPromptVisible(true);
+    setChapterListening(false);
+    setChapterRecording(false);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // Auto-start speech recording after a short delay
+    setTimeout(() => startChapterSpeech(), 400);
+  };
+
+  const startChapterSpeech = async () => {
+    try {
+      setChapterListening(true);
+      setChapterRecording(true);
+      // Use a separate short recording for chapter name
+      const { AudioRecorder, RecordingPresets: RP } = require("expo-audio");
+      const recorder = new AudioRecorder(RP.HIGH_QUALITY);
+      chapterRecorderRef.current = recorder;
+      await recorder.prepareToRecordAsync();
+      await recorder.record();
+      // Auto-stop after 4 seconds
+      setTimeout(() => {
+        if (chapterRecorderRef.current && chapterRecording) {
+          stopChapterSpeech();
+        }
+      }, 4000);
+    } catch (err) {
+      console.log("Chapter speech recording failed, using text input", err);
+      setChapterListening(false);
+      setChapterRecording(false);
+    }
+  };
+
+  const stopChapterSpeech = async () => {
+    try {
+      setChapterRecording(false);
+      setChapterListening(false);
+      if (!chapterRecorderRef.current) return;
+      await chapterRecorderRef.current.stop();
+      const uri = chapterRecorderRef.current.uri;
+      chapterRecorderRef.current = null;
+      if (!uri) return;
+
+      // Read the file and transcribe
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      const uploadResult = await uploadMutation.mutateAsync({ base64, mimeType: "audio/m4a", filename: `chapter-${Date.now()}.m4a` });
+      const transcribeResult = await transcribeMutation.mutateAsync({ audioUrl: uploadResult.url, language: "de" });
+      const chapterName = (transcribeResult.text || "").trim().replace(/[.!?,;:]+$/g, "");
+      if (chapterName) {
+        setChapterInput(chapterName);
+        // Auto-confirm after successful transcription
+        confirmChapter(chapterName);
+      }
+    } catch (err) {
+      console.log("Chapter transcription failed", err);
+      // Keep modal open for manual input
     }
   };
 
@@ -838,6 +894,8 @@ export default function RecordScreen() {
     }
     setChapterPromptVisible(false);
     setChapterInput("");
+    setChapterListening(false);
+    setChapterRecording(false);
   };
 
   // --- AUDIO RECORDING ---
@@ -2993,30 +3051,70 @@ export default function RecordScreen() {
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Neues Kapitel</Text>
-            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Kapitelname eingeben oder einsprechen (z.B. "Schlafzimmer", "K\u00fcche", "Fassade")</Text>
-            <TextInput
-              value={chapterInput}
-              onChangeText={setChapterInput}
-              placeholder="Kapitelname..."
-              placeholderTextColor={colors.muted}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => confirmChapter(chapterInput)}
-              style={{ fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground, marginBottom: 16 }}
-            />
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
+              {chapterListening ? "H\u00f6re zu... Sprich den Kapitelnamen" : "Sprich den Kapitelnamen oder tippe ihn ein"}
+            </Text>
+
+            {/* Speech indicator */}
+            {chapterListening && (
+              <View style={{ alignItems: "center", paddingVertical: 16 }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#FF9800" + "20", alignItems: "center", justifyContent: "center" }}>
+                  <MaterialIcons name="mic" size={32} color="#FF9800" />
+                </View>
+                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>Aufnahme l\u00e4uft...</Text>
+              </View>
+            )}
+
+            {/* Manual text input (always available as fallback) */}
+            {!chapterListening && (
+              <TextInput
+                value={chapterInput}
+                onChangeText={setChapterInput}
+                placeholder="Kapitelname..."
+                placeholderTextColor={colors.muted}
+                autoFocus={false}
+                returnKeyType="done"
+                onSubmitEditing={() => confirmChapter(chapterInput)}
+                style={{ fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground, marginBottom: 12 }}
+              />
+            )}
+
+            {/* Mic button to restart speech */}
+            {!chapterListening && (
+              <Pressable
+                onPress={startChapterSpeech}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 10, backgroundColor: "#FF9800" + "15", borderWidth: 1, borderColor: "#FF9800" + "40", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="mic" size={20} color="#FF9800" />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#FF9800" }}>Erneut einsprechen</Text>
+              </Pressable>
+            )}
+
+            {/* Stop speech button */}
+            {chapterListening && (
+              <Pressable
+                onPress={stopChapterSpeech}
+                style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Fertig - Kapitel setzen</Text>
+              </Pressable>
+            )}
+
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
-                onPress={() => setChapterPromptVisible(false)}
+                onPress={() => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderRef.current) { try { chapterRecorderRef.current.stop(); } catch {} chapterRecorderRef.current = null; } }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
               </Pressable>
-              <Pressable
-                onPress={() => confirmChapter(chapterInput)}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#FF9800", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Kapitel setzen</Text>
-              </Pressable>
+              {!chapterListening && chapterInput.trim() && (
+                <Pressable
+                  onPress={() => confirmChapter(chapterInput)}
+                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#FF9800", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Kapitel setzen</Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </View>

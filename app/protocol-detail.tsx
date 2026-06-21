@@ -1316,7 +1316,11 @@ export default function ProtocolDetailScreen() {
   };
 
   const photos = protocol.photos || [];
-  const inlinePlacedCount = (protocol?.protocol || '').match(/\[Foto\s*\d+(?:\s*[\u2013\-–][^\]]*)?\]/gi)?.length || 0;
+  // Count inline photo references in BOTH formats: [FOTO X] and [Foto X ...]
+  const inlineFotoCount = (protocol?.protocol || '').match(/\[FOTO\s*\d+\]/gi)?.length || 0;
+  const inlineFotoAltCount = (protocol?.protocol || '').match(/\[Foto\s*\d+(?:\s*[\u2013\-\u2013][^\]]*)?\]/gi)?.length || 0;
+  const inlinePlacedCount = inlineFotoCount + inlineFotoAltCount;
+  const allPhotosInlined = inlinePlacedCount >= photos.length && photos.length > 0;
 
   return (
     <ScreenContainer edges={["top", "left", "right", "bottom"]}>
@@ -1531,8 +1535,8 @@ export default function ProtocolDetailScreen() {
           )}
         </Pressable>
 
-        {/* Photos Gallery */}
-        {photos.length > 0 && (
+        {/* Photos Gallery - only show if photos are NOT already all referenced inline in text */}
+        {photos.length > 0 && !allPhotosInlined && (
           <View style={styles.section}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -2102,7 +2106,29 @@ export default function ProtocolDetailScreen() {
                 </View>
               )}
               {!showSpeakers && (
-                <MarkdownText text={displayedProtocolText} color={colors.foreground} />
+                <View>
+                  {displayedProtocolText.split(/(\[FOTO\s*\d+\])/gi).map((part, idx) => {
+                    const fotoMatch = part.match(/^\[FOTO\s*(\d+)\]$/i);
+                    if (fotoMatch) {
+                      const photoIdx = parseInt(fotoMatch[1], 10) - 1;
+                      const photoUri = photos[photoIdx];
+                      if (photoUri) {
+                        return (
+                          <View key={`inline-photo-${idx}`} style={{ marginVertical: 8, alignItems: "center" }}>
+                            <Pressable onPress={() => { setGalleryIndex(photoIdx); setShowGallery(true); }}>
+                              <Image source={{ uri: photoUri }} style={{ width: SCREEN_WIDTH - 64, height: 180, borderRadius: 10 }} contentFit="cover" />
+                            </Pressable>
+                            <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Foto {photoIdx + 1}</Text>
+                          </View>
+                        );
+                      }
+                    }
+                    if (part.trim()) {
+                      return <MarkdownText key={`text-${idx}`} text={part} color={colors.foreground} />;
+                    }
+                    return null;
+                  })}
+                </View>
               )}
             </View>
           )}

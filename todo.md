@@ -398,3 +398,6 @@
 - [x] Feature: Schnellerfassung-Widget – Floating Action Button für sofortige Aufnahme von jedem Screen (bereits vorhanden: Quick-Actions in Dashboard + expo-quick-actions in _layout.tsx)
 - [x] Feature: Kapitel-Marker per Sprache – Marker-Button während Aufnahme drücken → nächstes gesprochenes Wort wird als Kapitelüberschrift erkannt und im Protokoll groß+fett dargestellt (index.tsx: Kapitel-Modal, server/routers.ts: KAPITEL-Prompt, markdown-text.tsx: # Heading-Rendering)
 - [x] Feature: Interaktiver Grundrissplan – Pinch-to-Zoom auf Plan, Marker setzen an besprochener Stelle, Fotos automatisch dem Marker zuordnen, Antippen zeigt zugehörige Fotos (floor-plan.tsx: Kapitel-Pin-Typ, Foto-Galerie-Modal, Fotos hinzufügen; index.tsx: Auto-Link Fotos zum letzten Kapitel-Marker)
+- [x] Bug: Kapitel-Spracheingabe funktioniert nicht – Fix: Auto-Mikrofon-Aufnahme beim Öffnen des Kapitel-Modals, Transkription via Server, Fallback auf Texteingabe
+- [x] Bug: Überschrift fehlt im fertigen Protokoll – Fix: Server-Prompt verstärkt (KRITISCH-PFLICHT für # Headings), MarkdownText rendert # als große fette Überschrift
+- [x] Bug: Bilder werden doppelt eingefügt ohne Text – Fix: Galerie wird ausgeblendet wenn alle Fotos inline referenziert, [FOTO X] wird als Inline-Bild im Text gerendert, inlinePlacedCount erkennt jetzt auch [FOTO X] Format

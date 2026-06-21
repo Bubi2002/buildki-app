@@ -112,7 +112,7 @@ export const appRouter = router({
               const chapterName = m.label.replace("KAPITEL: ", "");
               userMessage += `  [${timeCode}] Kapitel: ${chapterName}\n`;
             });
-            userMessage += "\nWICHTIG: Strukturiere das Protokoll anhand dieser Kapitel. Verwende für jedes Kapitel eine Markdown-Überschrift im Format '# Kapitelname' (mit # am Zeilenanfang). Der Kapitelname soll exakt so übernommen werden wie angegeben. Der Text nach jeder Kapitelüberschrift enthält die Inhalte, die ab diesem Zeitpunkt gesprochen wurden.\n\n";
+            userMessage += "\nKRITISCH - PFLICHT: Jedes Kapitel MUSS als Markdown-Überschrift mit einem einzelnen # am Zeilenanfang geschrieben werden. Format: '# Kapitelname' (Raute, Leerzeichen, dann der exakte Kapitelname). Dies ist NICHT optional. Jedes genannte Kapitel MUSS als # Überschrift im Ergebnis vorkommen. Der Text nach jeder Kapitelüberschrift enthält die Inhalte, die ab diesem Zeitpunkt gesprochen wurden. Beginne das Protokoll mit dem ersten Kapitel.\n\n";
           }
 
           if (regularMarkers.length > 0) {
