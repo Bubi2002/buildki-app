@@ -91,6 +91,7 @@ export default function RecordScreen() {
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [audioLevel, setAudioLevel] = useState<"quiet" | "good" | "loud">("good");
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -842,15 +843,22 @@ export default function RecordScreen() {
     try {
       setChapterListening(true);
       setChapterRecording(true);
-      // Use a separate short recording for chapter name
-      const { AudioRecorder, RecordingPresets: RP } = require("expo-audio");
-      const recorder = new AudioRecorder(RP.HIGH_QUALITY);
-      chapterRecorderRef.current = recorder;
-      await recorder.prepareToRecordAsync();
-      await recorder.record();
+      // Pause main recording to free the audio session
+      if (isRecording && !isPaused) {
+        audioRecorder.pause();
+        pauseTimer();
+      }
+      // Set audio mode to allow recording
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      // Use expo-audio Recording API (legacy approach that works)
+      const { Audio } = require("expo-av");
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.startAsync();
+      chapterRecorderRef.current = recording;
       // Auto-stop after 4 seconds
       setTimeout(() => {
-        if (chapterRecorderRef.current && chapterRecording) {
+        if (chapterRecorderRef.current) {
           stopChapterSpeech();
         }
       }, 4000);
@@ -858,6 +866,11 @@ export default function RecordScreen() {
       console.log("Chapter speech recording failed, using text input", err);
       setChapterListening(false);
       setChapterRecording(false);
+      // Resume main recording
+      if (isRecording) {
+        audioRecorder.record();
+        resumeTimer();
+      }
     }
   };
 
@@ -866,9 +879,19 @@ export default function RecordScreen() {
       setChapterRecording(false);
       setChapterListening(false);
       if (!chapterRecorderRef.current) return;
-      await chapterRecorderRef.current.stop();
-      const uri = chapterRecorderRef.current.uri;
+      const recording = chapterRecorderRef.current;
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
       chapterRecorderRef.current = null;
+      
+      // Resume main recording
+      if (isRecording) {
+        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+        audioRecorder.record();
+        resumeTimer();
+        setIsPaused(false);
+      }
+      
       if (!uri) return;
 
       // Read the file and transcribe
@@ -883,6 +906,14 @@ export default function RecordScreen() {
       }
     } catch (err) {
       console.log("Chapter transcription failed", err);
+      // Resume main recording on error too
+      if (isRecording) {
+        try {
+          audioRecorder.record();
+          resumeTimer();
+          setIsPaused(false);
+        } catch {}
+      }
       // Keep modal open for manual input
     }
   };
@@ -970,9 +1001,33 @@ export default function RecordScreen() {
   };
 
   const stopRecording = () => {
+    // Show confirmation dialog instead of immediately stopping
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Pause the recording first so nothing is lost
+    if (!isPaused) {
+      pauseRecording();
+    }
+    setShowStopConfirm(true);
+  };
+
+  const confirmStopRecording = () => {
+    setShowStopConfirm(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     stopListening();
+    // Resume briefly to allow stop (if paused)
+    if (isPaused) {
+      audioRecorder.record();
+      setIsPaused(false);
+    }
     stopAudioRecording();
+  };
+
+  const cancelStopRecording = () => {
+    setShowStopConfirm(false);
+    // Resume recording if it was paused by the stop action
+    if (isPaused) {
+      resumeRecording();
+    }
   };
 
   const processRecording = async (fileUri: string, mimeType: string) => {
@@ -3046,6 +3101,37 @@ export default function RecordScreen() {
         </View>
       </Modal>
 
+      {/* Stop Confirmation Modal */}
+      <Modal visible={showStopConfirm} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 24, alignItems: "center" }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+              <MaterialIcons name="stop-circle" size={32} color={colors.primary} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8, textAlign: "center" }}>Aufnahme beenden?</Text>
+            <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 20, lineHeight: 20 }}>
+              M\u00f6chtest du die Aufnahme abschlie\u00dfen und das Protokoll erstellen, oder m\u00f6chtest du weiter aufnehmen?
+            </Text>
+            <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
+              <Pressable
+                onPress={cancelStopRecording}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="play-arrow" size={20} color={colors.foreground} style={{ marginBottom: 4 }} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Fortsetzen</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmStopRecording}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="check-circle" size={20} color="#FFF" style={{ marginBottom: 4 }} />
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Abschlie\u00dfen</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Chapter Name Input Modal */}
       <Modal visible={chapterPromptVisible} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
@@ -3102,7 +3188,7 @@ export default function RecordScreen() {
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
-                onPress={() => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderRef.current) { try { chapterRecorderRef.current.stop(); } catch {} chapterRecorderRef.current = null; } }}
+                onPress={async () => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderRef.current) { try { await chapterRecorderRef.current.stopAndUnloadAsync(); } catch {} chapterRecorderRef.current = null; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>

@@ -401,3 +401,5 @@
 - [x] Bug: Kapitel-Spracheingabe funktioniert nicht – Fix: Auto-Mikrofon-Aufnahme beim Öffnen des Kapitel-Modals, Transkription via Server, Fallback auf Texteingabe
 - [x] Bug: Überschrift fehlt im fertigen Protokoll – Fix: Server-Prompt verstärkt (KRITISCH-PFLICHT für # Headings), MarkdownText rendert # als große fette Überschrift
 - [x] Bug: Bilder werden doppelt eingefügt ohne Text – Fix: Galerie wird ausgeblendet wenn alle Fotos inline referenziert, [FOTO X] wird als Inline-Bild im Text gerendert, inlinePlacedCount erkennt jetzt auch [FOTO X] Format
+- [x] Fix: Stopp-Button zeigt Bestätigungs-Dialog (Fortsetzen/Abschließen) statt sofort Protokoll abzuschließen
+- [x] Bug: Kapitel-Spracheingabe funktioniert immer noch nicht – Fix: expo-av Recording API statt nicht-existierender AudioRecorder-Klasse, Hauptaufnahme wird pausiert/fortgesetzt
