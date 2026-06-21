@@ -35,6 +35,11 @@ import {
   formatHistoryEntry,
   type DefectHistoryEntry,
 } from "@/lib/defect-store";
+import { GEWERKE } from "@/lib/defect-pdf-export";
+import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
+import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
+import * as FileSystem from "expo-file-system/legacy";
 
 export default function DefectsScreen() {
   const colors = useColors();
@@ -50,6 +55,7 @@ export default function DefectsScreen() {
   const [newPriority, setNewPriority] = useState<DefectPriority>("mittel");
   const [newCategory, setNewCategory] = useState(DEFECT_CATEGORIES[0]);
   const [newLocation, setNewLocation] = useState("");
+  const [newGewerk, setNewGewerk] = useState<string>(GEWERKE[0]);
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -71,7 +77,7 @@ export default function DefectsScreen() {
   const createDefect = async () => {
     if (!newTitle.trim()) return;
 
-    const defect: Defect = {
+    const defect: Defect & { gewerk?: string } = {
       id: `defect-${Date.now()}`,
       projectId,
       title: newTitle.trim(),
@@ -81,6 +87,7 @@ export default function DefectsScreen() {
       category: newCategory,
       photos: [],
       location: newLocation.trim() || undefined,
+      gewerk: newGewerk,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -166,7 +173,7 @@ export default function DefectsScreen() {
           <MaterialIcons name={priorityIcons[item.priority] as any} size={18} color={item.priority === "hoch" ? colors.error : colors.muted} />
         </View>
         <Text style={[styles.defectMeta, { color: colors.muted }]}>
-          {item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
+          {(item as any).gewerk || item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
         </Text>
         {item.description ? (
           <Text style={[styles.defectDesc, { color: colors.muted }]} numberOfLines={2}>
@@ -184,6 +191,22 @@ export default function DefectsScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>Mängel</Text>
+        <Pressable
+          onPress={async () => {
+            try {
+              const html = await generateDefectPdfHtml(projectId, "Projekt", { includePhotos: true });
+              const { uri } = await Print.printToFileAsync({ html, base64: false });
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+              }
+            } catch (e: any) {
+              Alert.alert("Fehler", e?.message || "PDF-Export fehlgeschlagen");
+            }
+          }}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+        >
+          <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
+        </Pressable>
         <Pressable onPress={() => setShowCreateModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="add" size={24} color={colors.primary} />
         </Pressable>
@@ -501,6 +524,26 @@ export default function DefectsScreen() {
                 </Pressable>
               ))}
             </View>
+
+            {/* Gewerk */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Gewerk</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+              {GEWERKE.map((g) => (
+                <Pressable
+                  key={g}
+                  onPress={() => setNewGewerk(g)}
+                  style={[
+                    styles.categoryBtn,
+                    { borderColor: newGewerk === g ? colors.primary : colors.border },
+                    newGewerk === g && { backgroundColor: colors.primary + "15" },
+                  ]}
+                >
+                  <Text style={[styles.categoryText, { color: newGewerk === g ? colors.primary : colors.muted }]}>
+                    {g}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
 
             {/* Category */}
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>Kategorie</Text>

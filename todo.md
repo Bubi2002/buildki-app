@@ -380,3 +380,11 @@
 - [x] Feature: Offline-Modus verbessern – Aufnahme ohne Internet + Auto-Sync bei Reconnect (offline-sync-manager.ts, use-network-status.ts, _layout.tsx)
 - [x] Feature: PDF-Vorlagen anpassen – Firmenlogo + Kopfzeile für alle PDFs konfigurierbar (pdf-branding.tsx, pdf-branding-store.ts – bereits vollständig implementiert)
 - [ ] Hinweis: Dropbox Permissions (files.content.write + files.content.read) in Developer Console aktivieren
+- [x] Feature: Mängel-PDF-Export – Professioneller PDF-Bericht aller Mängel eines Projekts mit Fotos, Status, Priorität und Gewerk (defect-pdf-export.ts, PDF-Button in defects.tsx)
+- [x] Feature: Mängel-Zuweisung an Gewerke – Gewerk-Feld (Elektro, Sanitär, Rohbau, etc.) pro Mangel mit Filterung (Gewerk-Auswahl im Create-Modal, Anzeige in Karten)
+- [x] Feature: Projekt-Vorlagen – Vordefinierte Projekt-Templates (Baustelle, Büro, Gutachten) mit passenden Standardeinstellungen (project-templates.ts, Template-Auswahl in projects.tsx)
+- [x] Feature: Protokoll-Versionierung – Versionshistorie pro Protokoll mit Diff-Anzeige und Wiederherstellung (protocol-versions.ts, protocol-versions.tsx)
+- [x] Feature: Schnellaktionen auf Dashboard – Quick-Action-Buttons (Neue Aufnahme, Letztes Projekt, Offene Mängel) (dashboard.tsx Schnellaktionen-Sektion)
+- [x] Feature: Dashboard-Statistiken erweitern – Mängel-Übersicht (offen/erledigt), Projektfortschritt, Wochen-Aktivität (dashboard.tsx mit Defect-Stats)
+- [x] Feature: Mängel-Frist-Erinnerung – Push-Benachrichtigung bei ablaufender Mängel-Frist (daily-summary.ts, daily-summary-settings.tsx)
+- [x] Feature: Tages-Zusammenfassung per Push – Abendliche Push mit Zusammenfassung der Tagesaktivitäten (daily-summary.ts, daily-summary-settings.tsx, _layout.tsx Init)

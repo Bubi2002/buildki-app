@@ -21,6 +21,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { PROJECT_TEMPLATES, type ProjectTemplate } from "@/lib/project-templates";
 
 type ProjectItem = {
   id: string;
@@ -48,6 +49,7 @@ export default function ProjectsTab() {
   const [newDesc, setNewDesc] = useState("");
   const [newPrefix, setNewPrefix] = useState("");
   const [newColor, setNewColor] = useState(PROJECT_COLORS[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -363,6 +365,37 @@ export default function ProjectsTab() {
                 {/* Modal Content */}
                 <ScrollView style={{ maxHeight: 400 }} keyboardShouldPersistTaps="handled">
                   <View style={{ padding: 20, gap: 16 }}>
+                    {/* Template Selection */}
+                    <View>
+                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Vorlage (optional)</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                        {PROJECT_TEMPLATES.map((t) => (
+                          <Pressable
+                            key={t.id}
+                            onPress={() => {
+                              if (selectedTemplate === t.id) {
+                                setSelectedTemplate(null);
+                              } else {
+                                setSelectedTemplate(t.id);
+                                setNewColor(t.color);
+                                setNewPrefix(t.defaultPrefix);
+                              }
+                            }}
+                            style={({ pressed }) => [{
+                              paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginRight: 8,
+                              borderWidth: 1.5, flexDirection: "row", alignItems: "center", gap: 6,
+                              borderColor: selectedTemplate === t.id ? t.color : colors.border,
+                              backgroundColor: selectedTemplate === t.id ? t.color + "15" : "transparent",
+                              opacity: pressed ? 0.7 : 1,
+                            }]}
+                          >
+                            <MaterialIcons name={t.icon as any} size={18} color={selectedTemplate === t.id ? t.color : colors.muted} />
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: selectedTemplate === t.id ? t.color : colors.muted }}>{t.name}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+
                     <View>
                       <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Projektname *</Text>
                       <TextInput

@@ -8,6 +8,9 @@ import { getDelegations, TaskDelegation } from "@/lib/task-delegation";
 import { getTeamContacts, TeamContact } from "@/lib/team-contacts";
 import { getSyncStatus, SyncStatus } from "@/lib/offline-sync";
 import { getUpcomingEvents, CalendarEvent } from "@/lib/calendar-integration";
+import { getDefects, getDefectStats } from "@/lib/defect-store";
+import { getOverdueDefects } from "@/lib/defect-pdf-export";
+import { useRouter } from "expo-router";
 import { Platform } from "react-native";
 
 type DashboardStats = {
@@ -17,10 +20,13 @@ type DashboardStats = {
   completedTasks: number;
   delegatedTasks: number;
   upcomingMeetings: number;
+  openDefects: number;
+  overdueDefects: number;
 };
 
 export default function DashboardScreen() {
   const colors = useColors();
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalProtocols: 0,
@@ -29,6 +35,8 @@ export default function DashboardScreen() {
     completedTasks: 0,
     delegatedTasks: 0,
     upcomingMeetings: 0,
+    openDefects: 0,
+    overdueDefects: 0,
   });
   const [delegations, setDelegations] = useState<TaskDelegation[]>([]);
   const [contacts, setContacts] = useState<TeamContact[]>([]);
@@ -109,6 +117,11 @@ export default function DashboardScreen() {
       activity.sort((a, b) => b.time.localeCompare(a.time));
       setRecentActivity(activity.slice(0, 8));
 
+      // Load defect stats
+      const allDefects = await getDefects();
+      const defectStats = getDefectStats(allDefects);
+      const overdueDefects = getOverdueDefects(allDefects);
+
       setStats({
         totalProtocols: protocols.length,
         thisWeekProtocols: thisWeek.length,
@@ -116,6 +129,8 @@ export default function DashboardScreen() {
         completedTasks,
         delegatedTasks: dels.filter(d => d.status === "sent" || d.status === "pending").length,
         upcomingMeetings: upcomingEvents.length,
+        openDefects: defectStats.offen + defectStats.inBearbeitung,
+        overdueDefects: overdueDefects.length,
       });
     } catch (e) {
       console.error("Dashboard load error:", e);
@@ -167,12 +182,42 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* Quick Actions */}
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 10 }}>Schnellaktionen</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable
+              onPress={() => router.push("/(tabs)" as any)}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.primary + "12", borderRadius: 10, padding: 12, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="mic" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Aufnahme</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/projects" as any)}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#8B5CF612", borderRadius: 10, padding: 12, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="folder" size={20} color="#8B5CF6" />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#8B5CF6" }}>Projekte</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/protocols" as any)}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#22C55E12", borderRadius: 10, padding: 12, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="list-alt" size={20} color="#22C55E" />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#22C55E" }}>Protokolle</Text>
+            </Pressable>
+          </View>
+        </View>
+
         {/* Stats Grid */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
           <StatCard icon="description" label="Protokolle gesamt" value={stats.totalProtocols} color="#0a7ea4" />
           <StatCard icon="trending-up" label="Diese Woche" value={stats.thisWeekProtocols} color="#8B5CF6" />
           <StatCard icon="check-circle" label="Offene Aufgaben" value={stats.openTasks} color="#F59E0B" />
           <StatCard icon="done-all" label="Erledigt" value={stats.completedTasks} color="#22C55E" />
+          <StatCard icon="warning" label="Offene M\u00e4ngel" value={stats.openDefects} color="#EF4444" />
+          <StatCard icon="schedule" label="\u00dcberf\u00e4llig" value={stats.overdueDefects} color="#DC2626" />
           <StatCard icon="send" label="Delegiert" value={stats.delegatedTasks} color="#EC4899" />
           <StatCard icon="event" label="Meetings (7 Tage)" value={upcomingEvents.length} color="#0EA5E9" />
         </View>

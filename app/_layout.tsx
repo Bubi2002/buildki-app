@@ -131,6 +131,11 @@ export default function RootLayout() {
       const { initSyncManager } = require("@/lib/offline-sync-manager");
       initSyncManager();
     }
+    // Initialize daily summary & defect deadline reminders
+    if (Platform.OS !== "web") {
+      const { initDailySummary } = require("@/lib/daily-summary");
+      initDailySummary();
+    }
   }, []);
 
   // Setup Quick Actions (iOS 3D Touch / Android App Shortcuts)
