@@ -17,6 +17,7 @@ import {
   type TimeEntry,
   type ActiveTimer,
 } from "@/lib/time-tracking-store";
+import { exportTaqlohnzettelPdf, exportWeeklyPdf, shareTaqlohnzettel } from "@/lib/taglohnzettel-export";
 
 const CATEGORIES: { id: TimeEntry["category"]; label: string; icon: string; color: string }[] = [
   { id: "arbeit", label: "Arbeit", icon: "engineering", color: "#0a7ea4" },
@@ -240,6 +241,42 @@ export default function TimeTrackingScreen() {
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Einträge</Text>
                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{entries.length}</Text>
               </View>
+            </View>
+
+            {/* Export Buttons */}
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+              <Pressable
+                onPress={async () => {
+                  if (!projectId || !projectName) {
+                    Alert.alert("Fehler", "Bitte zuerst ein Projekt auswählen.");
+                    return;
+                  }
+                  try {
+                    const uri = await exportTaqlohnzettelPdf(projectName, projectId, new Date());
+                    await shareTaqlohnzettel(uri);
+                  } catch (e: any) {
+                    Alert.alert("Fehler", e.message || "Export fehlgeschlagen");
+                  }
+                }}
+                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary + "40", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="receipt-long" size={16} color={colors.primary} />
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Taglohnzettel</Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  try {
+                    const uri = await exportWeeklyPdf(projectId, projectName);
+                    await shareTaqlohnzettel(uri);
+                  } catch (e: any) {
+                    Alert.alert("Fehler", e.message || "Export fehlgeschlagen");
+                  }
+                }}
+                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="summarize" size={16} color={colors.foreground} />
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>Wochenbericht</Text>
+              </Pressable>
             </View>
 
             {/* History Header */}

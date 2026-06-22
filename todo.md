@@ -403,3 +403,4 @@
 - [x] Bug: Bilder werden doppelt eingefügt ohne Text – Fix: Galerie wird ausgeblendet wenn alle Fotos inline referenziert, [FOTO X] wird als Inline-Bild im Text gerendert, inlinePlacedCount erkennt jetzt auch [FOTO X] Format
 - [x] Fix: Stopp-Button zeigt Bestätigungs-Dialog (Fortsetzen/Abschließen) statt sofort Protokoll abzuschließen
 - [x] Bug: Kapitel-Spracheingabe funktioniert immer noch nicht – Fix: expo-av Recording API statt nicht-existierender AudioRecorder-Klasse, Hauptaufnahme wird pausiert/fortgesetzt
+- [x] Feature: Zeiterfassung erweitert – Taglohnzettel-PDF-Export, Wochenbericht-PDF, Firmenbranding im Export, Pausen-Tracking, Kategorien (Arbeit/Besprechung/Fahrt/Pause)
