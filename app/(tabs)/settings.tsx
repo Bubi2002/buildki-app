@@ -1980,6 +1980,33 @@ return (
           </View>
         )}
 
+{/* KI-Support */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Hilfe & Support
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            KI-gestützter Support-Chat und häufige Fragen
+          </Text>
+          <Pressable
+            onPress={() => router.push("/support-chat" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="support-agent" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>KI-Support Chat</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Fragen zur App, Hilfe bei Problemen, FAQ</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+        </View>
+
 {/* Feature-Toggles */}
         <FeatureTogglesSection colors={colors} />
 

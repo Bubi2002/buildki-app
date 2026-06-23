@@ -412,3 +412,9 @@
 - [x] Design-Redesign: Einstellungen-Screen mit eckigen Kästen
 - [x] Design-Redesign: Aufnahme-Screen mit eckigen Kästen
 - [x] Design-Redesign: Alle sekundären Screens (30+) mit eckigen Kästen
+- [x] Feature: KI-Support-Chat Screen mit Chat-Interface (Nachrichten-Blasen, Eingabefeld)
+- [x] Feature: Server-Endpunkt für KI-Support (LLM mit App-Dokumentation als System-Prompt)
+- [x] Feature: FAQ-Bereich mit häufigen Fragen und Antworten
+- [x] Feature: Technische Hilfe (Fehlerbehebung, Tipps)
+- [x] Feature: Zugang zum Support über Einstellungen-Screen
+- [x] Feature: Eckiges dunkles Design passend zum Rest der App
