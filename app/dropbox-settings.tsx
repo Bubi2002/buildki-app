@@ -121,15 +121,15 @@ export default function DropboxSettingsScreen() {
               {settings.isConnected ? "Verbunden – Automatischer Upload" : "Nicht verbunden"}
             </Text>
           </View>
-          <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: settings.isConnected ? "#0061FF15" : colors.border + "30", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: settings.isConnected ? "#0061FF15" : colors.border + "30", alignItems: "center", justifyContent: "center" }}>
             <MaterialIcons name="cloud" size={20} color={settings.isConnected ? "#0061FF" : colors.muted} />
           </View>
         </View>
 
         {/* Connection Status Card */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: settings.isConnected ? "#0061FF30" : colors.border }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: settings.isConnected ? "#0061FF30" : colors.border }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: settings.isConnected ? "#0061FF15" : colors.border + "30", alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: settings.isConnected ? "#0061FF15" : colors.border + "30", alignItems: "center", justifyContent: "center" }}>
               <MaterialIcons name={settings.isConnected ? "cloud-done" : "cloud-off"} size={24} color={settings.isConnected ? "#0061FF" : colors.muted} />
             </View>
             <View style={{ flex: 1 }}>
@@ -154,7 +154,7 @@ export default function DropboxSettingsScreen() {
                 onPress={handleDisconnect}
                 style={({ pressed }) => [{
                   flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-                  paddingVertical: 10, borderRadius: 8, borderWidth: 1,
+                  paddingVertical: 10, borderRadius: 0, borderWidth: 1,
                   backgroundColor: colors.error + "08", borderColor: colors.error + "40",
                   opacity: pressed ? 0.7 : 1,
                 }]}
@@ -168,7 +168,7 @@ export default function DropboxSettingsScreen() {
                 disabled={isConnecting}
                 style={({ pressed }) => [{
                   flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-                  paddingVertical: 12, borderRadius: 8,
+                  paddingVertical: 12, borderRadius: 0,
                   backgroundColor: "#0061FF", opacity: pressed ? 0.8 : 1,
                 }]}
               >
@@ -189,7 +189,7 @@ export default function DropboxSettingsScreen() {
         {settings.isConnected && (
           <>
             {/* Auto-Upload Options */}
-            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Automatisch hochladen
               </Text>
@@ -219,7 +219,7 @@ export default function DropboxSettingsScreen() {
             </View>
 
             {/* Folder Settings */}
-            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Ordner-Einstellungen
               </Text>
@@ -231,7 +231,7 @@ export default function DropboxSettingsScreen() {
                 placeholderTextColor={colors.muted}
                 style={{
                   backgroundColor: colors.background,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   padding: 10,
                   fontSize: 14,
                   color: colors.foreground,
@@ -254,7 +254,7 @@ export default function DropboxSettingsScreen() {
             </View>
 
             {/* File Naming */}
-            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Dateiname
               </Text>
@@ -270,7 +270,7 @@ export default function DropboxSettingsScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     padding: 10,
-                    borderRadius: 8,
+                    borderRadius: 0,
                     marginBottom: 6,
                     backgroundColor: settings.fileNamingPattern === option.key ? "#0061FF10" : "transparent",
                     borderWidth: 1,
@@ -300,7 +300,7 @@ export default function DropboxSettingsScreen() {
                     placeholderTextColor={colors.muted}
                     style={{
                       backgroundColor: colors.background,
-                      borderRadius: 8,
+                      borderRadius: 0,
                       padding: 10,
                       fontSize: 14,
                       color: colors.foreground,
@@ -319,7 +319,7 @@ export default function DropboxSettingsScreen() {
 
         {/* Info Box (when not connected) */}
         {!settings.isConnected && (
-          <View style={{ backgroundColor: "#0061FF08", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "#0061FF20" }}>
+          <View style={{ backgroundColor: "#0061FF08", borderRadius: 0, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "#0061FF20" }}>
             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
               <MaterialIcons name="info-outline" size={18} color="#0061FF" style={{ marginRight: 8, marginTop: 1 }} />
               <View style={{ flex: 1 }}>

@@ -143,7 +143,7 @@ export default function QRScannerScreen() {
           </Text>
           <Pressable
             onPress={requestPermission}
-            style={({ pressed }) => [{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, marginTop: 24, opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 0, marginTop: 24, opacity: pressed ? 0.8 : 1 }]}
           >
             <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Kamera erlauben</Text>
           </Pressable>
@@ -191,7 +191,7 @@ export default function QRScannerScreen() {
               return (
                 <View style={[styles.historyItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                       <MaterialIcons name={(cat?.icon || "qr-code") as any} size={20} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -216,7 +216,7 @@ export default function QRScannerScreen() {
       ) : showCamera ? (
         /* Camera View */
         <View style={{ flex: 1 }}>
-          <View style={{ flex: 1, borderRadius: 12, overflow: "hidden", margin: 16 }}>
+          <View style={{ flex: 1, borderRadius: 0, overflow: "hidden", margin: 16 }}>
             {Platform.OS === "web" ? (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface }}>
                 <MaterialIcons name="qr-code-scanner" size={64} color={colors.muted} />
@@ -227,7 +227,7 @@ export default function QRScannerScreen() {
                 <TextInput
                   placeholder="QR-Code Daten manuell eingeben"
                   placeholderTextColor={colors.muted}
-                  style={{ marginTop: 20, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, width: "80%", fontSize: 14 }}
+                  style={{ marginTop: 20, padding: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, width: "80%", fontSize: 14 }}
                   onSubmitEditing={(e) => {
                     if (e.nativeEvent.text.trim()) {
                       onBarcodeScanned({ type: "qr", data: e.nativeEvent.text.trim(), cornerPoints: [], bounds: { origin: { x: 0, y: 0 }, size: { width: 0, height: 0 } } });
@@ -272,7 +272,7 @@ export default function QRScannerScreen() {
               <MaterialIcons name="qr-code" size={24} color={colors.success} />
               <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>Scan erfolgreich</Text>
             </View>
-            <Text style={{ fontSize: 12, color: colors.muted, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: colors.background, padding: 10, borderRadius: 6 }}>
+            <Text style={{ fontSize: 12, color: colors.muted, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: colors.background, padding: 10, borderRadius: 0 }}>
               {scanResult?.data}
             </Text>
             <Text style={{ fontSize: 11, color: colors.muted, marginTop: 6 }}>
@@ -293,7 +293,7 @@ export default function QRScannerScreen() {
                   gap: 6,
                   paddingHorizontal: 12,
                   paddingVertical: 8,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   borderWidth: 1.5,
                   borderColor: category === cat.id ? colors.primary : colors.border,
                   backgroundColor: category === cat.id ? colors.primary + "10" : "transparent",
@@ -313,7 +313,7 @@ export default function QRScannerScreen() {
             onChangeText={setLabel}
             placeholder="z.B. Stahlträger HEB 200"
             placeholderTextColor={colors.muted}
-            style={{ padding: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.foreground, fontSize: 15 }}
+            style={{ padding: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.foreground, fontSize: 15 }}
           />
 
           {/* Note */}
@@ -326,20 +326,20 @@ export default function QRScannerScreen() {
             multiline
             numberOfLines={3}
             textAlignVertical="top"
-            style={{ padding: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.foreground, fontSize: 14, minHeight: 80 }}
+            style={{ padding: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.foreground, fontSize: 14, minHeight: 80 }}
           />
 
           {/* Actions */}
           <View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
             <Pressable
               onPress={resetScan}
-              style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Erneut scannen</Text>
             </Pressable>
             <Pressable
               onPress={saveScan}
-              style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
             >
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Speichern</Text>
             </Pressable>
@@ -393,12 +393,12 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
   },
   historyItem: {
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 10,
   },

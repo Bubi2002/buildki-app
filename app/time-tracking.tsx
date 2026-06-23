@@ -175,7 +175,7 @@ export default function TimeTrackingScreen() {
                           gap: 6,
                           paddingHorizontal: 12,
                           paddingVertical: 8,
-                          borderRadius: 8,
+                          borderRadius: 0,
                           borderWidth: 1.5,
                           borderColor: selectedCategory === cat.id ? cat.color : colors.border,
                           backgroundColor: selectedCategory === cat.id ? cat.color + "15" : "transparent",
@@ -194,19 +194,19 @@ export default function TimeTrackingScreen() {
                     onChangeText={setNote}
                     placeholder="Notiz (optional)"
                     placeholderTextColor={colors.muted}
-                    style={{ padding: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, fontSize: 14, marginBottom: 12 }}
+                    style={{ padding: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, fontSize: 14, marginBottom: 12 }}
                   />
 
                   <View style={{ flexDirection: "row", gap: 10 }}>
                     <Pressable
                       onPress={() => setShowStartForm(false)}
-                      style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                      style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                     >
                       <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Abbrechen</Text>
                     </Pressable>
                     <Pressable
                       onPress={handleStart}
-                      style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                      style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                     >
                       <MaterialIcons name="play-arrow" size={20} color="#FFF" />
                       <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>Starten</Text>
@@ -258,7 +258,7 @@ export default function TimeTrackingScreen() {
                     Alert.alert("Fehler", e.message || "Export fehlgeschlagen");
                   }
                 }}
-                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary + "40", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 0, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary + "40", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="receipt-long" size={16} color={colors.primary} />
                 <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Taglohnzettel</Text>
@@ -272,7 +272,7 @@ export default function TimeTrackingScreen() {
                     Alert.alert("Fehler", e.message || "Export fehlgeschlagen");
                   }
                 }}
-                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="summarize" size={16} color={colors.foreground} />
                 <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>Wochenbericht</Text>
@@ -294,7 +294,7 @@ export default function TimeTrackingScreen() {
           return (
             <View style={[styles.entryItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: (cat?.color || colors.primary) + "15", alignItems: "center", justifyContent: "center" }}>
+                <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: (cat?.color || colors.primary) + "15", alignItems: "center", justifyContent: "center" }}>
                   <MaterialIcons name={(cat?.icon || "timer") as any} size={18} color={cat?.color || colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   timerCard: {
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     alignItems: "center",
   },
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 30,
+    borderRadius: 0,
   },
   stopButton: {
     flexDirection: "row",
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 30,
+    borderRadius: 0,
   },
   buttonText: {
     color: "#FFF",
@@ -369,12 +369,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
   },
   entryItem: {
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 8,
   },

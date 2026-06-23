@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 0,
   },
   statNumber: {
     fontSize: 22,
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 0,
     gap: 3,
   },
   badgeText: {

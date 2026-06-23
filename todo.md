@@ -404,3 +404,11 @@
 - [x] Fix: Stopp-Button zeigt Bestätigungs-Dialog (Fortsetzen/Abschließen) statt sofort Protokoll abzuschließen
 - [x] Bug: Kapitel-Spracheingabe funktioniert immer noch nicht – Fix: expo-av Recording API statt nicht-existierender AudioRecorder-Klasse, Hauptaufnahme wird pausiert/fortgesetzt
 - [x] Feature: Zeiterfassung erweitert – Taglohnzettel-PDF-Export, Wochenbericht-PDF, Firmenbranding im Export, Pausen-Tracking, Kategorien (Arbeit/Besprechung/Fahrt/Pause)
+- [ ] Design: Komplettes Redesign – Dunkles Schwarz/Dunkelblau-Theme, eckige Kästen (keine Rundungen), milchige Farbverläufe, glasartige Karten, elegante Typografie, hohe Lesbarkeit
+- [x] Design-Redesign: Alle Kästen/Karten auf eckige Ecken (borderRadius: 0) umstellen
+- [x] Design-Redesign: Dashboard mit dunklem Navy-Theme und eckigen Kästen
+- [x] Design-Redesign: Projekte-Screen mit dunklem Navy-Theme und eckigen Kästen
+- [x] Design-Redesign: Protokolle-Screen mit eckigen Kästen
+- [x] Design-Redesign: Einstellungen-Screen mit eckigen Kästen
+- [x] Design-Redesign: Aufnahme-Screen mit eckigen Kästen
+- [x] Design-Redesign: Alle sekundären Screens (30+) mit eckigen Kästen

@@ -126,7 +126,7 @@ export default function PdfBrandingScreen() {
           style={({ pressed }) => [{
             paddingHorizontal: 14,
             paddingVertical: 8,
-            borderRadius: 8,
+            borderRadius: 0,
             backgroundColor: hasChanges ? colors.primary : colors.surface,
             opacity: pressed ? 0.7 : 1,
           }]}
@@ -148,10 +148,10 @@ export default function PdfBrandingScreen() {
                 <MaterialIcons name="check-circle" size={24} color={colors.success} style={{ marginTop: 8 }} />
               </View>
               <View style={{ flexDirection: "row", gap: 8, padding: 12 }}>
-                <Pressable onPress={pickLogo} style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.primary + "10", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
+                <Pressable onPress={pickLogo} style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.primary + "10", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
                   <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Ändern</Text>
                 </Pressable>
-                <Pressable onPress={removeLogo} style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 6, backgroundColor: colors.error + "10", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
+                <Pressable onPress={removeLogo} style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.error + "10", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
                   <Text style={{ fontSize: 12, fontWeight: "600", color: colors.error }}>Entfernen</Text>
                 </Pressable>
               </View>
@@ -251,7 +251,7 @@ export default function PdfBrandingScreen() {
                 style={({ pressed }) => [{
                   width: 36,
                   height: 36,
-                  borderRadius: 18,
+                  borderRadius: 0,
                   backgroundColor: color,
                   borderWidth: branding.accentColor === color ? 3 : 0,
                   borderColor: "#FFF",
@@ -324,7 +324,7 @@ export default function PdfBrandingScreen() {
           </View>
 
           {branding.showCoverPage !== false && (
-            <View style={{ marginTop: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 16, backgroundColor: colors.surface }}>
+            <View style={{ marginTop: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 16, backgroundColor: colors.surface }}>
               <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, textAlign: "center" }}>Deckblatt-Vorschau</Text>
               <View style={{ alignItems: "center", paddingVertical: 12 }}>
                 {branding.logoUri ? (
@@ -466,7 +466,7 @@ export default function PdfBrandingScreen() {
                 alignItems: "center",
                 paddingVertical: 12,
                 paddingHorizontal: 14,
-                borderRadius: 10,
+                borderRadius: 0,
                 marginBottom: 6,
                 backgroundColor: branding.filenameSchema === schema.key ? colors.primary + "12" : colors.surface,
                 borderWidth: branding.filenameSchema === schema.key ? 1.5 : 1,
@@ -474,7 +474,7 @@ export default function PdfBrandingScreen() {
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: branding.filenameSchema === schema.key ? colors.primary : colors.muted, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <View style={{ width: 20, height: 20, borderRadius: 0, borderWidth: 2, borderColor: branding.filenameSchema === schema.key ? colors.primary : colors.muted, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 {branding.filenameSchema === schema.key && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary }} />}
               </View>
               <View style={{ flex: 1 }}>
@@ -504,7 +504,7 @@ export default function PdfBrandingScreen() {
                 alignItems: "center",
                 paddingVertical: 12,
                 paddingHorizontal: 14,
-                borderRadius: 10,
+                borderRadius: 0,
                 marginBottom: 6,
                 backgroundColor: branding.pdfTemplate === template.key ? colors.primary + "12" : colors.surface,
                 borderWidth: branding.pdfTemplate === template.key ? 1.5 : 1,
@@ -512,7 +512,7 @@ export default function PdfBrandingScreen() {
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: branding.pdfTemplate === template.key ? colors.primary : colors.muted, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <View style={{ width: 20, height: 20, borderRadius: 0, borderWidth: 2, borderColor: branding.pdfTemplate === template.key ? colors.primary : colors.muted, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                 {branding.pdfTemplate === template.key && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary }} />}
               </View>
               <MaterialIcons name={template.icon} size={20} color={branding.pdfTemplate === template.key ? colors.primary : colors.muted} style={{ marginRight: 10 }} />
@@ -591,7 +591,7 @@ export default function PdfBrandingScreen() {
                   style={({ pressed }) => [{
                     flex: 1,
                     paddingVertical: 10,
-                    borderRadius: 8,
+                    borderRadius: 0,
                     alignItems: "center",
                     backgroundColor: (branding.photoSize || "mittel") === size ? colors.primary + "15" : colors.surface,
                     borderWidth: (branding.photoSize || "mittel") === size ? 1.5 : 1,
@@ -641,14 +641,14 @@ export default function PdfBrandingScreen() {
           <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
             <Pressable
               onPress={handleExportSettings}
-              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="file-upload" size={18} color="#FFF" />
               <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFF" }}>Exportieren</Text>
             </Pressable>
             <Pressable
               onPress={handleImportSettings}
-              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="file-download" size={18} color={colors.foreground} />
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Importieren</Text>
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
   },
   input: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
     fontSize: 14,
     marginBottom: 10,
@@ -702,12 +702,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
     borderStyle: "dashed",
   },
   logoPreview: {
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     overflow: "hidden",
   },
@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
   },
   previewBox: {
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

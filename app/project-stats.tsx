@@ -149,7 +149,7 @@ export default function ProjectStatsScreen() {
           <Pressable onPress={() => router.back()} style={({ pressed }) => [{ marginRight: 12, opacity: pressed ? 0.5 : 1 }]}>
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
-          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: project.color + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: project.color + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
             <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: project.color }} />
           </View>
           <View style={{ flex: 1 }}>
@@ -164,7 +164,7 @@ export default function ProjectStatsScreen() {
             <Pressable
               key={range}
               onPress={() => setTimeRange(range)}
-              style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: timeRange === range ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: timeRange === range ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 0, alignItems: "center", backgroundColor: timeRange === range ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: timeRange === range ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 13, fontWeight: "600", color: timeRange === range ? colors.primary : colors.muted }}>
                 {range === "week" ? "7 Tage" : range === "month" ? "30 Tage" : "Gesamt"}
@@ -175,17 +175,17 @@ export default function ProjectStatsScreen() {
 
         {/* Key Metrics */}
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 14, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 28, fontWeight: "800", color: colors.primary }}>{stats.totalProtocols}</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
             <Text style={{ fontSize: 11, color: colors.primary, marginTop: 4 }}>{stats.avgProtocolsPerWeek}/Woche</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 14, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 28, fontWeight: "800", color: stats.defectOpen > 0 ? colors.error : colors.success }}>{stats.totalDefects}</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Mängel</Text>
             <Text style={{ fontSize: 11, color: stats.defectOpen > 0 ? colors.error : colors.success, marginTop: 4 }}>{stats.defectOpen} offen</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 14, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 28, fontWeight: "800", color: colors.foreground }}>{stats.todosTotal > 0 ? Math.round((stats.todosDone / stats.todosTotal) * 100) : 0}%</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Aufgaben</Text>
             <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{stats.todosDone}/{stats.todosTotal}</Text>
@@ -193,7 +193,7 @@ export default function ProjectStatsScreen() {
         </View>
 
         {/* Protocols Bar Chart */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Protokolle (letzte 7 Tage)</Text>
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6, height: 100 }}>
             {stats.protocolsByDay.map((day, i) => (
@@ -208,7 +208,7 @@ export default function ProjectStatsScreen() {
 
         {/* Defect Status */}
         {stats.totalDefects > 0 && (
-          <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Mängel-Status</Text>
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -238,22 +238,22 @@ export default function ProjectStatsScreen() {
 
         {/* Priority Breakdown */}
         {stats.totalDefects > 0 && (
-          <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Mängel nach Priorität</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.error + "15" }}>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.error + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.error }}>{stats.defectCritical}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Kritisch</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.warning + "15" }}>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.warning + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.warning }}>{stats.defectHigh}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Hoch</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.primary + "15" }}>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.primary + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.primary }}>{stats.defectMedium}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Mittel</Text>
               </View>
-              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 8, backgroundColor: colors.muted + "15" }}>
+              <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.muted + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.muted }}>{stats.defectLow}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Niedrig</Text>
               </View>
@@ -262,7 +262,7 @@ export default function ProjectStatsScreen() {
         )}
 
         {/* Activity Heatmap */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
           <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Aktivität (30 Tage)</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
             {stats.activityHeatmap.map((day, i) => (
@@ -285,7 +285,7 @@ export default function ProjectStatsScreen() {
         </View>
 
         {/* Project Info */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border }}>
           <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Projektinfo</Text>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

@@ -48,7 +48,7 @@ export default function LanguageSettingsScreen() {
         </View>
 
         {/* Language Options */}
-        <View style={{ borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+        <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
           {LANGUAGE_OPTIONS.map((option, index) => (
             <Pressable
               key={option.id}
@@ -78,7 +78,7 @@ export default function LanguageSettingsScreen() {
         </View>
 
         {/* Info */}
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 10, backgroundColor: colors.primary + "08", marginTop: 20 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 0, backgroundColor: colors.primary + "08", marginTop: 20 }}>
           <MaterialIcons name="info-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
           <Text style={{ flex: 1, fontSize: 12, color: colors.muted, lineHeight: 18 }}>
             Die Spracheinstellung betrifft die App-Oberfläche. Die KI-generierte Protokoll-Sprache wird separat in den Vorlagen-Einstellungen konfiguriert.
@@ -86,7 +86,7 @@ export default function LanguageSettingsScreen() {
         </View>
 
         {/* Protocol Language Note */}
-        <View style={{ marginTop: 20, padding: 16, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+        <View style={{ marginTop: 20, padding: 16, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>Protokoll-Sprache</Text>
           <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20 }}>
             Die Sprache der generierten Protokolle kann unabhängig von der App-Sprache eingestellt werden. Gehe dazu in Einstellungen → Allgemein → Protokoll-Sprache.

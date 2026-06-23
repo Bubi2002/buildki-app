@@ -1372,7 +1372,7 @@ export default function ProtocolDetailScreen() {
         
             <Pressable
               onPress={() => setShowEmailModal(true)}
-              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: "#3B82F6" + "15", opacity: pressed ? 0.5 : 1, marginLeft: 8 }]}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0, backgroundColor: "#3B82F6" + "15", opacity: pressed ? 0.5 : 1, marginLeft: 8 }]}
             >
               <Text style={{ fontSize: 11, color: "#3B82F6", fontWeight: "600" }}>📧 Senden</Text>
             </Pressable></View>
@@ -1388,7 +1388,7 @@ export default function ProtocolDetailScreen() {
             <Text style={[{ fontSize: 14, fontWeight: "600", marginBottom: 8, color: colors.foreground }]}>Tags</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
               {tags.map((tag) => (
-                <Pressable key={tag} onPress={() => updateTags(tags.filter(t => t !== tag))} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}>
+                <Pressable key={tag} onPress={() => updateTags(tags.filter(t => t !== tag))} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 }}>
                   <Text style={{ fontSize: 12, color: colors.primary }}>{tag}</Text>
                   <MaterialIcons name="close" size={12} color={colors.primary} />
                 </Pressable>
@@ -1397,7 +1397,7 @@ export default function ProtocolDetailScreen() {
                 onPress={() => {
                   Alert.prompt ? Alert.prompt("Tag hinzufügen", "Name des Tags:", (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert("Tag hinzufügen", "Nutze die Protokoll-Liste (langes Drücken) um Tags zu verwalten.");
                 }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.border + "50", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.border + "50", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 }}
               >
                 <MaterialIcons name="add" size={14} color={colors.muted} />
                 <Text style={{ fontSize: 12, color: colors.muted }}>Tag</Text>
@@ -1410,7 +1410,7 @@ export default function ProtocolDetailScreen() {
         {!showTagEditor && tags.length > 0 && (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
             {tags.map((tag) => (
-              <View key={tag} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+              <View key={tag} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0 }}>
                 <Text style={{ fontSize: 11, color: colors.primary }}>{tag}</Text>
               </View>
             ))}
@@ -1443,7 +1443,7 @@ export default function ProtocolDetailScreen() {
                     </Text>
                     <Pressable
                       onPress={() => router.push("/(tabs)" as any)}
-                      style={({ pressed }) => [{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#FF9800", borderRadius: 6, alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}
+                      style={({ pressed }) => [{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#FF9800", borderRadius: 0, alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}
                     >
                       <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Neue Aufnahme starten</Text>
                     </Pressable>
@@ -1608,7 +1608,7 @@ export default function ProtocolDetailScreen() {
                           bottom: 4,
                           right: 4,
                           backgroundColor: 'rgba(0,0,0,0.7)',
-                          borderRadius: 12,
+                          borderRadius: 0,
                           padding: 4,
                           opacity: pressed ? 0.6 : 1,
                         }]}
@@ -1671,7 +1671,7 @@ export default function ProtocolDetailScreen() {
                             paddingVertical: 3,
                             paddingHorizontal: 8,
                             backgroundColor: playingVoiceNote === index ? "rgba(76,175,80,0.15)" : "rgba(0,0,0,0.05)",
-                            borderRadius: 12,
+                            borderRadius: 0,
                             alignSelf: "flex-start",
                             opacity: pressed ? 0.6 : 1,
                           }]}
@@ -1703,7 +1703,7 @@ export default function ProtocolDetailScreen() {
                 gap: 8,
                 paddingVertical: 12,
                 paddingHorizontal: 16,
-                borderRadius: 10,
+                borderRadius: 0,
                 borderWidth: 1.5,
                 borderColor: colors.primary,
                 borderStyle: "dashed" as any,
@@ -1726,7 +1726,7 @@ export default function ProtocolDetailScreen() {
                   gap: 8,
                   paddingVertical: 12,
                   paddingHorizontal: 16,
-                  borderRadius: 10,
+                  borderRadius: 0,
                   backgroundColor: "#F59E0B" + "15",
                   borderWidth: 1,
                   borderColor: "#F59E0B",
@@ -1754,7 +1754,7 @@ export default function ProtocolDetailScreen() {
                 gap: 8,
                 paddingVertical: 16,
                 paddingHorizontal: 16,
-                borderRadius: 10,
+                borderRadius: 0,
                 borderWidth: 1.5,
                 borderColor: colors.border,
                 borderStyle: "dashed" as any,
@@ -1861,7 +1861,7 @@ export default function ProtocolDetailScreen() {
                         {todo.priority === "hoch" ? "⚠️ Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
                       </Text>
                     </View>
-                    <Pressable onPress={() => { setDelegatingTask({ task: todo.task, assignee: todo.assignee, priority: todo.priority, deadline: todo.deadline }); setShowDelegateModal(true); }} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "#22C55E15", opacity: pressed ? 0.7 : 1 }]}>
+                    <Pressable onPress={() => { setDelegatingTask({ task: todo.task, assignee: todo.assignee, priority: todo.priority, deadline: todo.deadline }); setShowDelegateModal(true); }} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: "#22C55E15", opacity: pressed ? 0.7 : 1 }]}>
                       <Text style={{ fontSize: 10, color: "#22C55E", fontWeight: "500" }}>📤 Delegieren</Text>
                     </Pressable>
                     {todo.deadline !== "Offen" && (
@@ -1897,12 +1897,12 @@ export default function ProtocolDetailScreen() {
               onPress={generateSummary}
               disabled={isGeneratingSummary}
               style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
                 backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "25",
                 opacity: pressed || isGeneratingSummary ? 0.7 : 1,
               }]}
             >
-              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                 {isGeneratingSummary ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="summarize" size={20} color={colors.primary} />}
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -1915,12 +1915,12 @@ export default function ProtocolDetailScreen() {
             <Pressable
               onPress={() => setShowRegenerateModal(true)}
               style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
                 backgroundColor: "#8B5CF6" + "08", borderWidth: 1, borderColor: "#8B5CF6" + "25",
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: "#8B5CF6" + "15", alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#8B5CF6" + "15", alignItems: "center", justifyContent: "center" }}>
                 <MaterialIcons name="refresh" size={20} color="#8B5CF6" />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -1934,12 +1934,12 @@ export default function ProtocolDetailScreen() {
               onPress={identifySpeakers}
               disabled={isIdentifyingSpeakers}
               style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12,
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
                 backgroundColor: "#059669" + "08", borderWidth: 1, borderColor: "#059669" + "25",
                 opacity: pressed || isIdentifyingSpeakers ? 0.7 : 1,
               }]}
             >
-              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: "#059669" + "15", alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#059669" + "15", alignItems: "center", justifyContent: "center" }}>
                 {isIdentifyingSpeakers ? <ActivityIndicator size="small" color="#059669" /> : <MaterialIcons name="record-voice-over" size={20} color="#059669" />}
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
@@ -1954,7 +1954,7 @@ export default function ProtocolDetailScreen() {
                 onPress={generateTimelineView}
                 style={({ pressed }) => [{
                   flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: 12, borderRadius: 10, backgroundColor: "#0EA5E9" + "10", borderWidth: 1, borderColor: "#0EA5E9" + "20",
+                  padding: 12, borderRadius: 0, backgroundColor: "#0EA5E9" + "10", borderWidth: 1, borderColor: "#0EA5E9" + "20",
                   opacity: pressed ? 0.7 : 1,
                 }]}
               >
@@ -1966,7 +1966,7 @@ export default function ProtocolDetailScreen() {
                 disabled={isGeneratingMindmap}
                 style={({ pressed }) => [{
                   flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: 12, borderRadius: 10, backgroundColor: "#22C55E" + "10", borderWidth: 1, borderColor: "#22C55E" + "20",
+                  padding: 12, borderRadius: 0, backgroundColor: "#22C55E" + "10", borderWidth: 1, borderColor: "#22C55E" + "20",
                   opacity: pressed || isGeneratingMindmap ? 0.7 : 1,
                 }]}
               >
@@ -1977,7 +1977,7 @@ export default function ProtocolDetailScreen() {
                 onPress={() => setShowStats(true)}
                 style={({ pressed }) => [{
                   flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: 12, borderRadius: 10, backgroundColor: "#F59E0B" + "10", borderWidth: 1, borderColor: "#F59E0B" + "20",
+                  padding: 12, borderRadius: 0, backgroundColor: "#F59E0B" + "10", borderWidth: 1, borderColor: "#F59E0B" + "20",
                   opacity: pressed ? 0.7 : 1,
                 }]}
               >
@@ -1988,7 +1988,7 @@ export default function ProtocolDetailScreen() {
           </View>
           {/* Summary result display */}
           {summary && (
-            <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 10, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+            <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 0, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
               <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 21 }}>{summary}</Text>
             </View>
           )}
@@ -2000,14 +2000,14 @@ export default function ProtocolDetailScreen() {
             <View style={{ flexDirection: "row", gap: 6 }}>
               <Pressable
                 onPress={() => router.push(`/protocol-versions?protocolId=${protocol.id}&protocolTitle=${encodeURIComponent(protocol.title || "Protokoll")}` as any)}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="history" size={15} color={colors.muted} />
                 <Text style={{ fontSize: 12, fontWeight: "500", color: colors.muted }}>Versionen</Text>
               </Pressable>
               <Pressable
                 onPress={isEditing ? saveEdit : startEditing}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: isEditing ? colors.success + "12" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, backgroundColor: isEditing ? colors.success + "12" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name={isEditing ? "check" : "edit"} size={15} color={isEditing ? colors.success : colors.muted} />
                 <Text style={{ fontSize: 13, fontWeight: "500", color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
@@ -2020,7 +2020,7 @@ export default function ProtocolDetailScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
               <Pressable
                 onPress={() => switchToVersion(null)}
-                style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: !activeVersionId ? colors.primary : colors.surface, borderWidth: 1, borderColor: !activeVersionId ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0, backgroundColor: !activeVersionId ? colors.primary : colors.surface, borderWidth: 1, borderColor: !activeVersionId ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 12, fontWeight: "500", color: !activeVersionId ? "#FFFFFF" : colors.muted }}>
                   Original ({protocol.templateName || "Freitext"})
@@ -2030,7 +2030,7 @@ export default function ProtocolDetailScreen() {
                 <View key={v.id} style={{ flexDirection: "row", alignItems: "center" }}>
                   <Pressable
                     onPress={() => switchToVersion(v.id)}
-                    style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: activeVersionId === v.id ? colors.primary : colors.surface, borderWidth: 1, borderColor: activeVersionId === v.id ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0, backgroundColor: activeVersionId === v.id ? colors.primary : colors.surface, borderWidth: 1, borderColor: activeVersionId === v.id ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <Text style={{ fontSize: 12, fontWeight: "500", color: activeVersionId === v.id ? "#FFFFFF" : colors.muted }}>
                       {v.templateName}
@@ -2049,7 +2049,7 @@ export default function ProtocolDetailScreen() {
 
           {/* Regenerating indicator */}
           {isRegenerating && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: colors.primary + "08", borderRadius: 8, marginBottom: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: colors.primary + "08", borderRadius: 0, marginBottom: 12 }}>
               <ActivityIndicator size="small" color={colors.primary} />
               <Text style={{ fontSize: 13, color: colors.primary }}>Wird neu generiert...</Text>
             </View>
@@ -2061,14 +2061,14 @@ export default function ProtocolDetailScreen() {
               value={editedText}
               onChangeText={setEditedText}
               multiline
-              style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 8, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
+              style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
             />
           ) : (
             <View>
               {extractedKeywords.length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                   {extractedKeywords.map((kw, i) => (
-                    <View key={i} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                    <View key={i} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0 }}>
                       <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "500" }}>{kw}</Text>
                     </View>
                   ))}
@@ -2116,7 +2116,7 @@ export default function ProtocolDetailScreen() {
                         return (
                           <View key={`inline-photo-${idx}`} style={{ marginVertical: 8, alignItems: "center" }}>
                             <Pressable onPress={() => { setGalleryIndex(photoIdx); setShowGallery(true); }}>
-                              <Image source={{ uri: photoUri }} style={{ width: SCREEN_WIDTH - 64, height: 180, borderRadius: 10 }} contentFit="cover" />
+                              <Image source={{ uri: photoUri }} style={{ width: SCREEN_WIDTH - 64, height: 180, borderRadius: 0 }} contentFit="cover" />
                             </Pressable>
                             <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Foto {photoIdx + 1}</Text>
                           </View>
@@ -2143,7 +2143,7 @@ export default function ProtocolDetailScreen() {
 
           {/* Existing signatures */}
           {signatures.map((sig, idx) => (
-            <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, marginBottom: 8 }}>
+            <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1, borderColor: colors.border, marginBottom: 8 }}>
               <MaterialIcons name="verified" size={18} color={colors.success} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{sig.role}</Text>
@@ -2219,7 +2219,7 @@ export default function ProtocolDetailScreen() {
                     style={({ pressed }) => [{
                       flexDirection: "row", alignItems: "center", gap: 6,
                       paddingHorizontal: 14, paddingVertical: 10,
-                      backgroundColor: colors.surface, borderRadius: 20,
+                      backgroundColor: colors.surface, borderRadius: 0,
                       borderWidth: 1, borderColor: colors.border, borderStyle: "dashed",
                       opacity: pressed ? 0.7 : 1,
                     }]}
@@ -2242,7 +2242,7 @@ export default function ProtocolDetailScreen() {
             </View>
             <Pressable
               onPress={() => setShowLangPicker(!showLangPicker)}
-              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 13, color: colors.foreground }}>{LANGUAGES.find(l => l.code === targetLang)?.name || targetLang}</Text>
               <MaterialIcons name="expand-more" size={16} color={colors.muted} />
@@ -2255,7 +2255,7 @@ export default function ProtocolDetailScreen() {
                 <Pressable
                   key={lang.code}
                   onPress={() => { setTargetLang(lang.code); setShowLangPicker(false); setTranslatedText(null); }}
-                  style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: targetLang === lang.code ? colors.primary : colors.surface, borderWidth: 1, borderColor: targetLang === lang.code ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0, backgroundColor: targetLang === lang.code ? colors.primary : colors.surface, borderWidth: 1, borderColor: targetLang === lang.code ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={{ fontSize: 12, color: targetLang === lang.code ? "#FFFFFF" : colors.foreground }}>{lang.name}</Text>
                 </Pressable>
@@ -2285,7 +2285,7 @@ export default function ProtocolDetailScreen() {
               }
             }}
             disabled={isTranslating}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: showTranslation ? colors.surface : colors.primary + "15", borderWidth: 1, borderColor: showTranslation ? colors.border : colors.primary + "40", opacity: (pressed || isTranslating) ? 0.6 : 1 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 0, backgroundColor: showTranslation ? colors.surface : colors.primary + "15", borderWidth: 1, borderColor: showTranslation ? colors.border : colors.primary + "40", opacity: (pressed || isTranslating) ? 0.6 : 1 }]}
           >
             {isTranslating ? (
               <ActivityIndicator size="small" color={colors.primary} />
@@ -2410,7 +2410,7 @@ export default function ProtocolDetailScreen() {
           onPress={() => setShowCaptionEdit(false)}
         >
           <Pressable
-            style={{ width: "100%", maxWidth: 400, backgroundColor: colors.background, borderRadius: 16, padding: 20 }}
+            style={{ width: "100%", maxWidth: 400, backgroundColor: colors.background, borderRadius: 0, padding: 20 }}
             onPress={() => {}}
           >
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>
@@ -2428,7 +2428,7 @@ export default function ProtocolDetailScreen() {
               numberOfLines={5}
               style={{
                 backgroundColor: colors.surface,
-                borderRadius: 10,
+                borderRadius: 0,
                 padding: 12,
                 fontSize: 14,
                 color: colors.foreground,
@@ -2449,7 +2449,7 @@ export default function ProtocolDetailScreen() {
                 style={({ pressed }) => [{
                   flex: 1,
                   paddingVertical: 12,
-                  borderRadius: 10,
+                  borderRadius: 0,
                   alignItems: "center",
                   backgroundColor: colors.error + "15",
                   opacity: pressed ? 0.7 : 1,
@@ -2462,7 +2462,7 @@ export default function ProtocolDetailScreen() {
                 style={({ pressed }) => [{
                   flex: 1,
                   paddingVertical: 12,
-                  borderRadius: 10,
+                  borderRadius: 0,
                   alignItems: "center",
                   backgroundColor: colors.surface,
                   opacity: pressed ? 0.7 : 1,
@@ -2478,7 +2478,7 @@ export default function ProtocolDetailScreen() {
                 style={({ pressed }) => [{
                   flex: 1.5,
                   paddingVertical: 12,
-                  borderRadius: 10,
+                  borderRadius: 0,
                   alignItems: "center",
                   backgroundColor: colors.primary,
                   opacity: pressed ? 0.7 : 1,
@@ -2508,7 +2508,7 @@ export default function ProtocolDetailScreen() {
           </Pressable>
 
           {/* Photo counter */}
-          <View style={{ position: "absolute", top: 60, alignSelf: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, zIndex: 10 }}>
+          <View style={{ position: "absolute", top: 60, alignSelf: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 0, zIndex: 10 }}>
             <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
               {galleryIndex + 1} / {photos.length}
             </Text>
@@ -2535,7 +2535,7 @@ export default function ProtocolDetailScreen() {
                 left: 12,
                 top: "50%",
                 backgroundColor: "rgba(0,0,0,0.5)",
-                borderRadius: 24,
+                borderRadius: 0,
                 padding: 8,
                 opacity: pressed ? 0.6 : 1,
               }]}
@@ -2551,7 +2551,7 @@ export default function ProtocolDetailScreen() {
                 right: 12,
                 top: "50%",
                 backgroundColor: "rgba(0,0,0,0.5)",
-                borderRadius: 24,
+                borderRadius: 0,
                 padding: 8,
                 opacity: pressed ? 0.6 : 1,
               }]}
@@ -2614,7 +2614,7 @@ export default function ProtocolDetailScreen() {
           {Platform.OS === "web" && previewHtml ? (
             <View style={{ flex: 1 }}>
               <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-                <View style={{ backgroundColor: "#fff", borderRadius: 8, padding: 16, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}>
+                <View style={{ backgroundColor: "#fff", borderRadius: 0, padding: 16, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}>
                   <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textAlign: "center" }}>PDF-Vorschau (Druckansicht)</Text>
                   {/* Render HTML preview as text summary on web */}
                   <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 4, padding: 12 }}>
@@ -2632,14 +2632,14 @@ export default function ProtocolDetailScreen() {
               <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
                 <Pressable
                   onPress={sharePdfFromPreview}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="share" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen / herunterladen</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <Text style={{ fontSize: 16, color: colors.foreground }}>Zurück</Text>
                 </Pressable>
@@ -2667,14 +2667,14 @@ export default function ProtocolDetailScreen() {
               <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
                 <Pressable
                   onPress={sharePdfFromPreview}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="share" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
                 </Pressable>
                 <Pressable
                   onPress={sendPdfViaEmail}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="email" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>Per E-Mail senden</Text>
@@ -2694,14 +2694,14 @@ export default function ProtocolDetailScreen() {
                       Alert.alert("Fehler", e.message || "Dropbox-Upload fehlgeschlagen");
                     }
                   }}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: "#0061FF", opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#0061FF", opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="cloud-upload" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>In Dropbox speichern</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <Text style={{ fontSize: 16, color: colors.foreground }}>Zurück</Text>
                 </Pressable>
@@ -2729,16 +2729,16 @@ export default function ProtocolDetailScreen() {
             <ScrollView contentContainerStyle={{ padding: 20, alignItems: "center" }}>
               {mindmapData && (
                 <View style={{ alignItems: "center" }}>
-                  <View style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginBottom: 30 }}>
+                  <View style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 0, marginBottom: 30 }}>
                     <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>{mindmapData.topic}</Text>
                   </View>
                   {mindmapData.branches.map((branch, idx) => (
                     <View key={idx} style={{ marginBottom: 20, alignItems: "center", width: "100%" }}>
-                      <View style={{ backgroundColor: branch.color + "20", borderWidth: 2, borderColor: branch.color, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, marginBottom: 8 }}>
+                      <View style={{ backgroundColor: branch.color + "20", borderWidth: 2, borderColor: branch.color, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 0, marginBottom: 8 }}>
                         <Text style={{ fontSize: 14, fontWeight: "600", color: branch.color }}>{branch.title}</Text>
                       </View>
                       {branch.items.map((item, iIdx) => (
-                        <View key={iIdx} style={{ backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 4, maxWidth: "90%" }}>
+                        <View key={iIdx} style={{ backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0, marginBottom: 4, maxWidth: "90%" }}>
                           <Text style={{ fontSize: 12, color: colors.foreground }}>{item}</Text>
                         </View>
                       ))}
@@ -2769,7 +2769,7 @@ export default function ProtocolDetailScreen() {
                     { label: "Wörter/Min", value: speechStats.wordsPerMinute.toString() },
                     { label: "Ø Satzlänge", value: speechStats.avgSentenceLength + " Wörter" },
                   ].map((stat, idx) => (
-                    <View key={idx} style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 12, minWidth: "45%", flex: 1 }}>
+                    <View key={idx} style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 0, minWidth: "45%", flex: 1 }}>
                       <Text style={{ fontSize: 22, fontWeight: "700", color: colors.primary }}>{stat.value}</Text>
                       <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{stat.label}</Text>
                     </View>
@@ -2778,8 +2778,8 @@ export default function ProtocolDetailScreen() {
                 <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>Häufigste Wörter</Text>
                 {speechStats.topWords.map((w, idx) => (
                   <View key={idx} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                    <View style={{ flex: 1, height: 24, backgroundColor: colors.surface, borderRadius: 6, overflow: "hidden" }}>
-                      <View style={{ height: 24, backgroundColor: colors.primary + "30", borderRadius: 6, width: `${(w.count / (speechStats.topWords[0]?.count || 1)) * 100}%` as any }} />
+                    <View style={{ flex: 1, height: 24, backgroundColor: colors.surface, borderRadius: 0, overflow: "hidden" }}>
+                      <View style={{ height: 24, backgroundColor: colors.primary + "30", borderRadius: 0, width: `${(w.count / (speechStats.topWords[0]?.count || 1)) * 100}%` as any }} />
                     </View>
                     <Text style={{ fontSize: 12, color: colors.foreground, marginLeft: 8, width: 80 }}>{w.word} ({w.count})</Text>
                   </View>
@@ -2800,7 +2800,7 @@ export default function ProtocolDetailScreen() {
             </View>
             <ScrollView contentContainerStyle={{ padding: 20 }}>
               {chapters.map((ch, idx) => (
-                <Pressable key={idx} onPress={() => setShowChapters(false)} style={({ pressed }) => [{ backgroundColor: colors.surface, padding: 16, borderRadius: 12, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}>
+                <Pressable key={idx} onPress={() => setShowChapters(false)} style={({ pressed }) => [{ backgroundColor: colors.surface, padding: 16, borderRadius: 0, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{ch.title}</Text>
                   {ch.preview ? <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }} numberOfLines={2}>{ch.preview}</Text> : null}
                 </Pressable>
@@ -2825,7 +2825,7 @@ export default function ProtocolDetailScreen() {
                 <Pressable
                   onPress={detectDocumentType}
                   disabled={isDetectingType}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12, borderRadius: 10, backgroundColor: suggestedDocType ? "#E8F5E9" : "#F3E8FF", opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12, borderRadius: 0, backgroundColor: suggestedDocType ? "#E8F5E9" : "#F3E8FF", opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name={suggestedDocType ? "check-circle" : "auto-awesome"} size={20} color={suggestedDocType ? "#4CAF50" : "#7C3AED"} />
                   <Text style={{ fontSize: 14, fontWeight: "600", color: suggestedDocType ? "#2E7D32" : "#7C3AED" }}>
@@ -2833,7 +2833,7 @@ export default function ProtocolDetailScreen() {
                   </Text>
                 </Pressable>
                 {suggestedDocType && (
-                  <View style={{ marginBottom: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#E8F5E9", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: "#4CAF50" }}>
+                  <View style={{ marginBottom: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#E8F5E9", borderRadius: 0, borderLeftWidth: 3, borderLeftColor: "#4CAF50" }}>
                     <Text style={{ fontSize: 12, color: "#2E7D32", fontWeight: "500" }}>
                       Konfidenz: {suggestedDocType.confidence}% – Typ: {suggestedDocType.type}
                     </Text>
@@ -2845,9 +2845,9 @@ export default function ProtocolDetailScreen() {
                   <Pressable
                     key={t.id}
                     onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: colors.primary + "06", borderRadius: 14, marginBottom: 8, borderWidth: 1.5, borderColor: colors.primary + "30", opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: colors.primary + "06", borderRadius: 0, marginBottom: 8, borderWidth: 1.5, borderColor: colors.primary + "30", opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                       <MaterialIcons name={(t as any).icon || "auto-awesome"} size={22} color={colors.primary} />
                     </View>
                     <View style={{ marginLeft: 14, flex: 1 }}>
@@ -2863,9 +2863,9 @@ export default function ProtocolDetailScreen() {
                   <Pressable
                     key={t.id}
                     onPress={() => { setShowRegenerateModal(false); regenerateWithTemplate(t.id, t.name); }}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, backgroundColor: colors.surface, borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, backgroundColor: colors.surface, borderRadius: 0, marginBottom: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.border + "40", alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.border + "40", alignItems: "center", justifyContent: "center" }}>
                       <MaterialIcons name={(t as any).icon || "description"} size={18} color={colors.muted} />
                     </View>
                     <View style={{ marginLeft: 12, flex: 1 }}>
@@ -2903,7 +2903,7 @@ export default function ProtocolDetailScreen() {
                 autoCapitalize="none"
                 style={{ 
                   backgroundColor: colors.surface, 
-                  borderRadius: 12, 
+                  borderRadius: 0, 
                   padding: 14, 
                   fontSize: 15, 
                   color: colors.foreground,
@@ -2920,9 +2920,9 @@ export default function ProtocolDetailScreen() {
                     <Pressable
                       key={contact.id}
                       onPress={() => selectTeamContact(contact)}
-                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: pressed ? "#1e202220" : "transparent", marginBottom: 2 }]}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 0, backgroundColor: pressed ? "#1e202220" : "transparent", marginBottom: 2 }]}
                     >
-                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                      <View style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
                         <Text style={{ fontSize: 12, fontWeight: "600", color: "#0a7ea4" }}>{contact.name.charAt(0).toUpperCase()}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
@@ -2940,15 +2940,15 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ fontSize: 12, color: "#0a7ea4" }}>+ Neuen Kontakt speichern</Text>
                 </Pressable>
               ) : (
-                <View style={{ marginTop: 8, padding: 10, backgroundColor: "#f5f5f5", borderRadius: 8 }}>
+                <View style={{ marginTop: 8, padding: 10, backgroundColor: "#f5f5f5", borderRadius: 0 }}>
                   <TextInput placeholder="Name" value={newContactName} onChangeText={setNewContactName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
                   <TextInput placeholder="E-Mail" value={newContactEmail} onChangeText={setNewContactEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
                   <TextInput placeholder="Rolle (optional)" value={newContactRole} onChangeText={setNewContactRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 8 }} />
                   <View style={{ flexDirection: "row", gap: 8 }}>
-                    <Pressable onPress={addNewTeamContact} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 8, borderRadius: 6, alignItems: "center" }}>
+                    <Pressable onPress={addNewTeamContact} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 8, borderRadius: 0, alignItems: "center" }}>
                       <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>Speichern</Text>
                     </Pressable>
-                    <Pressable onPress={() => setShowAddContact(false)} style={{ flex: 1, backgroundColor: "#E5E7EB", paddingVertical: 8, borderRadius: 6, alignItems: "center" }}>
+                    <Pressable onPress={() => setShowAddContact(false)} style={{ flex: 1, backgroundColor: "#E5E7EB", paddingVertical: 8, borderRadius: 0, alignItems: "center" }}>
                       <Text style={{ fontSize: 12, color: "#687076" }}>Abbrechen</Text>
                     </Pressable>
                   </View>
@@ -2970,7 +2970,7 @@ export default function ProtocolDetailScreen() {
                 disabled={isSendingEmail || !emailRecipient}
                 style={({ pressed }) => [{
                   backgroundColor: emailRecipient ? colors.primary : colors.border,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   padding: 14,
                   alignItems: "center",
                   opacity: pressed ? 0.8 : 1,
@@ -2989,21 +2989,21 @@ export default function ProtocolDetailScreen() {
         {/* Speaker Name Edit Modal */}
         <Modal visible={!!editingSpeakerLabel} transparent animationType="fade" onRequestClose={() => setEditingSpeakerLabel(null)}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ backgroundColor: "white", borderRadius: 16, padding: 24, width: "80%", maxWidth: 320 }}>
+            <View style={{ backgroundColor: "white", borderRadius: 0, padding: 24, width: "80%", maxWidth: 320 }}>
               <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Sprecher benennen</Text>
               <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Name für "{editingSpeakerLabel}" eingeben. Wird für zukünftige Protokolle gespeichert.</Text>
               <TextInput
                 value={speakerNameInput}
                 onChangeText={setSpeakerNameInput}
                 placeholder="Name eingeben..."
-                style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 16 }}
+                style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 16 }}
                 autoFocus
               />
               <View style={{ flexDirection: "row", gap: 8 }}>
-                <Pressable onPress={() => { if (editingSpeakerLabel && speakerNameInput.trim()) saveSpeakerName(editingSpeakerLabel, speakerNameInput.trim()); }} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 12, borderRadius: 8, alignItems: "center" }}>
+                <Pressable onPress={() => { if (editingSpeakerLabel && speakerNameInput.trim()) saveSpeakerName(editingSpeakerLabel, speakerNameInput.trim()); }} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 12, borderRadius: 0, alignItems: "center" }}>
                   <Text style={{ color: "white", fontWeight: "600" }}>Speichern</Text>
                 </Pressable>
-                <Pressable onPress={() => setEditingSpeakerLabel(null)} style={{ flex: 1, backgroundColor: "#f5f5f5", paddingVertical: 12, borderRadius: 8, alignItems: "center" }}>
+                <Pressable onPress={() => setEditingSpeakerLabel(null)} style={{ flex: 1, backgroundColor: "#f5f5f5", paddingVertical: 12, borderRadius: 0, alignItems: "center" }}>
                   <Text style={{ color: "#687076" }}>Abbrechen</Text>
                 </Pressable>
               </View>
@@ -3056,12 +3056,12 @@ export default function ProtocolDetailScreen() {
         {/* Task Delegation Modal */}
         <Modal visible={showDelegateModal} transparent animationType="fade" onRequestClose={() => setShowDelegateModal(false)}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ backgroundColor: "white", borderRadius: 16, padding: 24, width: "85%", maxWidth: 360 }}>
+            <View style={{ backgroundColor: "white", borderRadius: 0, padding: 24, width: "85%", maxWidth: 360 }}>
               <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Aufgabe delegieren</Text>
               <Text style={{ fontSize: 12, color: "#687076", marginBottom: 16 }}>Push-Benachrichtigung an Teammitglied senden</Text>
               {delegatingTask && (
                 <View style={{ marginBottom: 16 }}>
-                  <View style={{ backgroundColor: "#f5f5f5", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                  <View style={{ backgroundColor: "#f5f5f5", borderRadius: 0, padding: 12, marginBottom: 12 }}>
                     <Text style={{ fontSize: 13, fontWeight: "600", marginBottom: 4 }}>{delegatingTask.task}</Text>
                     <View style={{ flexDirection: "row", gap: 8 }}>
                       <Text style={{ fontSize: 11, color: "#687076" }}>👤 {delegatingTask.assignee}</Text>
@@ -3073,8 +3073,8 @@ export default function ProtocolDetailScreen() {
                     <View style={{ marginBottom: 12 }}>
                       <Text style={{ fontSize: 12, color: "#687076", marginBottom: 6 }}>An Kontakt senden:</Text>
                       {teamContacts.slice(0, 3).map(contact => (
-                        <Pressable key={contact.id} onPress={() => delegateTask(delegatingTask.task, contact.name, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: pressed ? "#f0f0f0" : "transparent", marginBottom: 2 }]}>
-                          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#22C55E20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                        <Pressable key={contact.id} onPress={() => delegateTask(delegatingTask.task, contact.name, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 0, backgroundColor: pressed ? "#f0f0f0" : "transparent", marginBottom: 2 }]}>
+                          <View style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: "#22C55E20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
                             <Text style={{ fontSize: 12, fontWeight: "600", color: "#22C55E" }}>{contact.name.charAt(0)}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
@@ -3085,7 +3085,7 @@ export default function ProtocolDetailScreen() {
                       ))}
                     </View>
                   )}
-                  <Pressable onPress={() => delegateTask(delegatingTask.task, delegatingTask.assignee, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ backgroundColor: "#22C55E", paddingVertical: 12, borderRadius: 8, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+                  <Pressable onPress={() => delegateTask(delegatingTask.task, delegatingTask.assignee, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ backgroundColor: "#22C55E", paddingVertical: 12, borderRadius: 0, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
                     {isDelegating ? <ActivityIndicator color="white" size="small" /> : <Text style={{ color: "white", fontWeight: "600" }}>📤 Jetzt delegieren</Text>}
                   </Pressable>
                 </View>
@@ -3124,7 +3124,7 @@ const styles = StyleSheet.create({
   },
   metaCard: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 14,
     gap: 10,
@@ -3143,7 +3143,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
     marginBottom: 20,
     gap: 12,
@@ -3175,7 +3175,7 @@ const styles = StyleSheet.create({
   photoThumbnail: {
     width: PHOTO_SIZE,
     height: PHOTO_SIZE,
-    borderRadius: 8,
+    borderRadius: 0,
     overflow: "hidden",
   },
   photoImage: {
@@ -3189,7 +3189,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3219,7 +3219,7 @@ const styles = StyleSheet.create({
   },
   transcriptionBox: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 0.5,
     marginTop: 8,
   },
@@ -3240,7 +3240,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 0,
     gap: 4,
   },
   actionButtonText: {
@@ -3252,7 +3252,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   backButtonText: {
     color: "#FFFFFF",
@@ -3274,7 +3274,7 @@ const styles = StyleSheet.create({
   modalImage: {
     width: SCREEN_WIDTH - 32,
     height: SCREEN_WIDTH - 32,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   modalCloseButton: {
     position: "absolute",
@@ -3282,7 +3282,7 @@ const styles = StyleSheet.create({
     right: 20,
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 0,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
@@ -3294,7 +3294,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 0,
     gap: 8,
   },
   modalShareText: {
@@ -3317,7 +3317,7 @@ const styles = StyleSheet.create({
   todoCheckbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 0,
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
@@ -3342,7 +3342,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 0,
     gap: 4,
   },
   todoBadgeText: {

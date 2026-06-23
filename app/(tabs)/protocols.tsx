@@ -466,7 +466,7 @@ export default function ProtocolsScreen() {
     return (
       <View style={{ flexDirection: "row", marginBottom: 10 }}>
         <RectButton
-          style={{ backgroundColor: colors.error, justifyContent: "center", alignItems: "center", width: 72, borderTopRightRadius: 12, borderBottomRightRadius: 12 }}
+          style={{ backgroundColor: colors.error, justifyContent: "center", alignItems: "center", width: 72, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
           onPress={() => deleteProtocol(item.id)}
         >
           <MaterialIcons name="delete" size={22} color="#FFF" />
@@ -483,7 +483,7 @@ export default function ProtocolsScreen() {
     return (
       <View style={{ flexDirection: "row", marginBottom: 10 }}>
         <RectButton
-          style={{ backgroundColor: colors.primary, justifyContent: "center", alignItems: "center", width: 72, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}
+          style={{ backgroundColor: colors.primary, justifyContent: "center", alignItems: "center", width: 72, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
           onPress={() => shareProtocol(item)}
         >
           <MaterialIcons name="share" size={22} color="#FFF" />
@@ -866,39 +866,39 @@ const styles = StyleSheet.create({
   headerContainer: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   headerActions: { flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", maxWidth: 220 },
-  headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  headerBtn: { width: 36, height: 36, borderRadius: 0, alignItems: "center", justifyContent: "center" },
   todoBadge: { position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   todoBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "700" },
   screenTitle: { fontSize: 26, fontWeight: "700" },
   screenSubtitle: { fontSize: 13, marginTop: 2 },
   filterRow: { flexDirection: "row", gap: 8, marginTop: 12, alignItems: "center" },
-  filterTab: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1 },
+  filterTab: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, borderWidth: 1 },
   filterTabText: { fontSize: 12, fontWeight: "500" },
-  projectFilterBanner: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  projectFilterBanner: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1 },
   projectFilterText: { fontSize: 13, fontWeight: "600", marginLeft: 6, flex: 1 },
-  projectFilterToggle: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
-  sortMenu: { marginTop: 8, borderRadius: 10, borderWidth: 1, overflow: "hidden" },
+  projectFilterToggle: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, borderWidth: 1 },
+  sortMenu: { marginTop: 8, borderRadius: 0, borderWidth: 1, overflow: "hidden" },
   sortOption: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   sortOptionText: { flex: 1, fontSize: 14 },
-  searchBar: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, gap: 8 },
+  searchBar: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 0, borderWidth: 1, gap: 8 },
   searchInput: { flex: 1, fontSize: 14, padding: 0 },
-  batchBar: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 10, borderWidth: 1, gap: 6 },
-  batchBtn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  batchBar: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 0, borderWidth: 1, gap: 6 },
+  batchBtn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0 },
   batchBtnText: { fontSize: 11, fontWeight: "500" },
   batchCount: { marginLeft: "auto", fontSize: 11 },
   listContent: { paddingHorizontal: 16, paddingBottom: 100, flexGrow: 1 },
-  card: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 10 },
+  card: { padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 10 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, marginRight: 8 },
   cardTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0 },
   statusText: { fontSize: 10, fontWeight: "600" },
   templateBadge: { fontSize: 11, fontWeight: "500", marginBottom: 4 },
-  numberBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  numberBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 0, borderWidth: 1 },
   numberBadgeText: { fontSize: 11, fontWeight: "700", fontVariant: ["tabular-nums"] as any },
   cardPreview: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
   tagRow: { flexDirection: "row", gap: 6, marginBottom: 8, flexWrap: "wrap" },
-  tagChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  tagChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0 },
   tagChipText: { fontSize: 10, fontWeight: "500" },
   moreTagsText: { fontSize: 10, alignSelf: "center" },
   cardFooter: { flexDirection: "row", gap: 12 },

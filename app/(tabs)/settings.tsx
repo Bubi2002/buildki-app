@@ -182,7 +182,7 @@ const biometricStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
   },
   label: { fontSize: 15, fontWeight: '500' },
@@ -302,11 +302,11 @@ const annotStyles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
   sectionDescription: { fontSize: 13, marginBottom: 12 },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 0, borderWidth: 1 },
   chipText: { fontSize: 13, fontWeight: '500' },
   addRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  addInput: { flex: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
-  addBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  addInput: { flex: 1, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  addBtn: { width: 38, height: 38, borderRadius: 0, alignItems: 'center', justifyContent: 'center' },
 });
 
 const WATERMARK_STORAGE_KEY = 'watermark-settings';
@@ -379,11 +379,11 @@ const wmStyles = StyleSheet.create({
   section: { marginBottom: 28 },
   sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
   sectionDescription: { fontSize: 13, marginBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 0, borderWidth: 1 },
   label: { fontSize: 15, fontWeight: '500' },
   toggleTrack: { width: 44, height: 26, borderRadius: 13, justifyContent: 'center' },
   toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' },
-  input: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, borderWidth: 1 },
+  input: { borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, borderWidth: 1 },
 });
 
 function TaskReminderSection({ colors }: { colors: any }) {
@@ -451,7 +451,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
         onPress={() => toggleEnabled(!enabled)}
         style={({ pressed }) => [{
           flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-          padding: 14, borderRadius: 12, borderWidth: 1,
+          padding: 14, borderRadius: 0, borderWidth: 1,
           backgroundColor: colors.surface, borderColor: colors.border,
           opacity: pressed ? 0.7 : 1,
         }]}
@@ -474,7 +474,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
                 key={h}
                 onPress={() => changeHour(h)}
                 style={({ pressed }) => [{
-                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0,
                   backgroundColor: reminderHour === h ? colors.primary : colors.surface,
                   borderWidth: 1, borderColor: reminderHour === h ? colors.primary : colors.border,
                   opacity: pressed ? 0.7 : 1,
@@ -546,7 +546,7 @@ function FeatureTogglesSection({ colors }: { colors: any }) {
                   onPress={() => handleToggle(toggle.key, !toggle.enabled)}
                   style={({ pressed }) => [{
                     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-                    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, marginBottom: 4,
+                    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 0, marginBottom: 4,
                     backgroundColor: toggle.enabled ? colors.surface : "transparent",
                     opacity: pressed ? 0.7 : 1,
                   }]}
@@ -617,7 +617,7 @@ function BackupSection({ colors }: { colors: any }) {
           disabled={loading}
           style={({ pressed }) => [{
             flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-            paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary,
+            paddingVertical: 12, borderRadius: 0, backgroundColor: colors.primary,
             opacity: pressed || loading ? 0.7 : 1,
           }]}
         >
@@ -630,7 +630,7 @@ function BackupSection({ colors }: { colors: any }) {
           disabled={loading}
           style={({ pressed }) => [{
             flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-            paddingVertical: 12, borderRadius: 12, borderWidth: 1,
+            paddingVertical: 12, borderRadius: 0, borderWidth: 1,
             borderColor: colors.border, backgroundColor: colors.surface,
             opacity: pressed || loading ? 0.7 : 1,
           }]}
@@ -1652,7 +1652,7 @@ return (
                     key={hours}
                     onPress={() => setSettings({ ...settings, reminderHoursBefore: hours })}
                     style={({ pressed }) => [{
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0,
                       backgroundColor: settings.reminderHoursBefore === hours ? colors.primary : colors.surface,
                       borderWidth: 1, borderColor: settings.reminderHoursBefore === hours ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
@@ -1674,7 +1674,7 @@ return (
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>Erinnerungen für Mängel und Checklisten</Text>
           <Pressable
             onPress={() => router.push("/notifications-settings" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="notifications" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1685,7 +1685,7 @@ return (
           </Pressable>
           <Pressable
             onPress={() => router.push("/daily-summary-settings" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
           >
             <MaterialIcons name="summarize" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1702,7 +1702,7 @@ return (
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>App-Sprache für internationale Baustellen</Text>
           <Pressable
             onPress={() => router.push("/language-settings" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="translate" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1719,7 +1719,7 @@ return (
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>Firmenlogo und Kopf-/Fußzeile für exportierte PDFs</Text>
           <Pressable
             onPress={() => router.push("/pdf-branding" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1730,7 +1730,7 @@ return (
           </Pressable>
           <Pressable
             onPress={() => router.push("/export-history" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
           >
             <MaterialIcons name="history" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1741,7 +1741,7 @@ return (
           </Pressable>
           <Pressable
             onPress={() => router.push("/calendar-view" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
           >
             <MaterialIcons name="calendar-today" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1752,7 +1752,7 @@ return (
           </Pressable>
           <Pressable
             onPress={() => router.push("/photo-compare" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
           >
             <MaterialIcons name="compare" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -1787,12 +1787,12 @@ return (
             onPress={() => router.push("/dropbox-settings" as any)}
             style={({ pressed }) => [{
               flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 10,
+              backgroundColor: colors.surface, borderRadius: 0,
               borderWidth: 1, borderColor: colors.border,
               opacity: pressed ? 0.7 : 1,
             }]}
           >
-            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#0061FF15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#0061FF15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
               <MaterialIcons name="cloud-upload" size={20} color="#0061FF" />
             </View>
             <View style={{ flex: 1 }}>
@@ -1815,11 +1815,11 @@ return (
             onPress={() => router.push("/auto-report-settings" as any)}
             style={({ pressed }) => [{
               flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
               borderColor: colors.border, opacity: pressed ? 0.7 : 1,
             }]}
           >
-            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: colors.success + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.success + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
               <MaterialIcons name="schedule" size={20} color={colors.success} />
             </View>
             <View style={{ flex: 1 }}>
@@ -1881,12 +1881,12 @@ return (
 
 
         {/* Team-Kontaktbuch */}
-        <View style={{ marginTop: 24, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+        <View style={{ marginTop: 24, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Team-Kontaktbuch</Text>
           <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Gespeicherte Kontakte für schnellen E-Mail-Versand von Aufgaben.</Text>
           {teamContacts.map(contact => (
             <View key={contact.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a7ea4" }}>{contact.name.charAt(0)}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -1899,11 +1899,11 @@ return (
             </View>
           ))}
           {!showAddTeamContact ? (
-            <Pressable onPress={() => setShowAddTeamContact(true)} style={{ marginTop: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, borderStyle: "dashed" }}>
+            <Pressable onPress={() => setShowAddTeamContact(true)} style={{ marginTop: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 0, borderStyle: "dashed" }}>
               <Text style={{ fontSize: 13, color: "#0a7ea4" }}>+ Kontakt hinzufügen</Text>
             </Pressable>
           ) : (
-            <View style={{ marginTop: 10, padding: 12, backgroundColor: "#f9f9f9", borderRadius: 8 }}>
+            <View style={{ marginTop: 10, padding: 12, backgroundColor: "#f9f9f9", borderRadius: 0 }}>
               <TextInput placeholder="Name" value={tcName} onChangeText={setTcName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 6 }} />
               <TextInput placeholder="E-Mail" value={tcEmail} onChangeText={setTcEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 6 }} />
               <TextInput placeholder="Rolle (optional)" value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 10 }} />
@@ -1921,7 +1921,7 @@ return (
 
         {/* Gespeicherte Sprecher */}
         {speakerProfiles.length > 0 && (
-          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
             <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Gespeicherte Sprecher</Text>
             <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Automatisch erkannte Sprecher mit zugewiesenen Namen.</Text>
             {speakerProfiles.map(profile => (
@@ -1941,12 +1941,12 @@ return (
         
         {/* Stimmprofile */}
         {voiceProfiles.length > 0 && (
-          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
             <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Stimmprofile</Text>
             <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Automatisch erkannte Stimmcharakteristiken für Sprecher-Zuweisung.</Text>
             {voiceProfiles.map(profile => (
               <View key={profile.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#8B5CF620", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: "#8B5CF620", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
                   <Text style={{ fontSize: 14 }}>🎙️</Text>
                 </View>
                 <View style={{ flex: 1 }}>
@@ -1963,7 +1963,7 @@ return (
 
         {/* Delegierte Aufgaben */}
         {delegations.length > 0 && (
-          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 12, padding: 16 }}>
+          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
             <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Delegierte Aufgaben</Text>
             <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Übersicht aller delegierten Aufgaben und deren Status.</Text>
             {delegations.slice(0, 10).map(del => (
@@ -2047,7 +2047,7 @@ const styles = StyleSheet.create({
   logoPreview: {
     width: "100%",
     height: 80,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   logoActions: {
     flexDirection: "row",
@@ -2059,7 +2059,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
   },
   logoActionText: {
@@ -2070,7 +2070,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 24,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 2,
     borderStyle: "dashed",
     gap: 6,
@@ -2090,7 +2090,7 @@ const styles = StyleSheet.create({
   templateCard: {
     width: "48%",
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
     minHeight: 100,
   },
@@ -2124,7 +2124,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -2145,7 +2145,7 @@ const styles = StyleSheet.create({
   optionButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     alignItems: "center",
   },
@@ -2159,7 +2159,7 @@ const styles = StyleSheet.create({
   customTemplateRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 6,
   },
@@ -2169,7 +2169,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1.5,
     borderStyle: "dashed",
     marginBottom: 8,
@@ -2188,7 +2188,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1.5,
   },
   themeOptionText: {
@@ -2200,7 +2200,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 12,
   },
@@ -2246,7 +2246,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     gap: 8,
     marginTop: 8,
   },
@@ -2259,7 +2259,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 10,
   },
@@ -2276,7 +2276,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     gap: 8,
     marginTop: 4,
   },
@@ -2288,7 +2288,7 @@ const styles = StyleSheet.create({
   loginButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   toggleTrack: {
     width: 44,

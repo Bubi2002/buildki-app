@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     padding: 14,
   },
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 0,
   },
   methodText: {
     fontSize: 11,

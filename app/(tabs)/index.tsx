@@ -1246,7 +1246,7 @@ export default function RecordScreen() {
           {/* Header */}
           <View style={{ marginBottom: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                 <MaterialIcons name="business" size={20} color={colors.primary} />
               </View>
               <View>
@@ -1262,19 +1262,19 @@ export default function RecordScreen() {
           {/* Summary Stats */}
           {projects.length > 0 && (
             <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
-              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.primary }}>{projects.filter((p: any) => !p.isArchived).length}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Aktiv</Text>
               </View>
-              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.success }}>{projects.reduce((sum, p: any) => sum + (p._protocolCount || 0), 0)}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
               </View>
-              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: "#FDD835" }}>{projects.filter((p: any) => p.isFavorite && !p.isArchived).length}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Favoriten</Text>
               </View>
-              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.muted }}>{projects.filter((p: any) => p.isArchived).length}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Archiv</Text>
               </View>
@@ -1282,7 +1282,7 @@ export default function RecordScreen() {
           )}
 
           {/* Search Bar */}
-          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, marginBottom: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, marginBottom: 10 }}>
             <MaterialIcons name="search" size={20} color={colors.muted} />
             <TextInput
               value={projectSearch}
@@ -1303,26 +1303,26 @@ export default function RecordScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 6 }}>
             <Pressable
               onPress={() => setProjectSort("activity")}
-              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: projectSort === "activity" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "activity" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: projectSort === "activity" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "activity" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "activity" ? colors.primary : colors.muted }}>Aktivität</Text>
             </Pressable>
             <Pressable
               onPress={() => setProjectSort("name")}
-              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: projectSort === "name" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "name" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: projectSort === "name" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "name" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "name" ? colors.primary : colors.muted }}>Name</Text>
             </Pressable>
             <Pressable
               onPress={() => setProjectSort("created")}
-              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: projectSort === "created" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "created" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: projectSort === "created" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "created" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "created" ? colors.primary : colors.muted }}>Erstellt</Text>
             </Pressable>
             <View style={{ flex: 1 }} />
             <Pressable
               onPress={() => setShowArchived(!showArchived)}
-              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: showArchived ? colors.warning + "15" : colors.surface, borderWidth: 1, borderColor: showArchived ? colors.warning : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: showArchived ? colors.warning + "15" : colors.surface, borderWidth: 1, borderColor: showArchived ? colors.warning : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name={showArchived ? "inventory" : "archive"} size={14} color={showArchived ? colors.warning : colors.muted} />
               <Text style={{ fontSize: 12, fontWeight: "600", color: showArchived ? colors.warning : colors.muted }}>{showArchived ? "Archiv" : "Archiv"}</Text>
@@ -1334,8 +1334,8 @@ export default function RecordScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 140 }}
             ListHeaderComponent={
-              <Pressable onPress={() => setShowCreateProject(true)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 14, borderWidth: 1.5, borderColor: colors.primary, borderStyle: "dashed", marginBottom: 14, gap: 12, opacity: pressed ? 0.7 : 1 }]}>
-                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+              <Pressable onPress={() => setShowCreateProject(true)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 0, borderWidth: 1.5, borderColor: colors.primary, borderStyle: "dashed", marginBottom: 14, gap: 12, opacity: pressed ? 0.7 : 1 }]}>
+                <View style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                   <MaterialIcons name="add" size={26} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -1350,7 +1350,7 @@ export default function RecordScreen() {
               const isSelected = selectedProject?.id === item.id;
               const isFav = pItem.isFavorite;
               return (
-                <Pressable onPress={() => selectProject(item)} style={({ pressed }) => [{ padding: 14, borderRadius: 14, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, marginBottom: 10, opacity: pressed ? 0.7 : 1 }]}>
+                <Pressable onPress={() => selectProject(item)} style={({ pressed }) => [{ padding: 14, borderRadius: 0, borderWidth: isSelected ? 2 : 1, borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, marginBottom: 10, opacity: pressed ? 0.7 : 1 }]}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     {/* Favorite Star */}
                     <Pressable
@@ -1359,7 +1359,7 @@ export default function RecordScreen() {
                     >
                       <MaterialIcons name={isFav ? "star" : "star-border"} size={22} color={isFav ? "#FDD835" : colors.border} />
                     </Pressable>
-                    <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: item.color + "20", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                    <View style={{ width: 42, height: 42, borderRadius: 0, backgroundColor: item.color + "20", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                       <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: item.color }} />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -1391,13 +1391,13 @@ export default function RecordScreen() {
                       <>
                         <Pressable
                           onPress={() => deleteProject(item.id)}
-                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.error + "15", opacity: pressed ? 0.6 : 1 }]}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.error + "15", opacity: pressed ? 0.6 : 1 }]}
                         >
                           <MaterialIcons name="delete" size={14} color={colors.error} />
                         </Pressable>
                         <Pressable
                           onPress={() => unarchiveProject(item.id)}
-                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.success + "15", opacity: pressed ? 0.6 : 1 }]}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.success + "15", opacity: pressed ? 0.6 : 1 }]}
                         >
                           <MaterialIcons name="unarchive" size={14} color={colors.success} />
                         </Pressable>
@@ -1406,19 +1406,19 @@ export default function RecordScreen() {
                       <>
                         <Pressable
                           onPress={() => openEditProject(item)}
-                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
                         >
                           <MaterialIcons name="edit" size={14} color={colors.primary} />
                         </Pressable>
                         <Pressable
                           onPress={() => archiveProject(item.id)}
-                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.muted + "15", opacity: pressed ? 0.6 : 1 }]}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.muted + "15", opacity: pressed ? 0.6 : 1 }]}
                         >
                           <MaterialIcons name="archive" size={14} color={colors.muted} />
                         </Pressable>
                         <Pressable
                           onPress={() => { selectProject(item); setShowProjectPicker(false); router.push(`/project-detail?id=${item.id}` as any); }}
-                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
+                          style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1 }]}
                         >
                           <MaterialIcons name="open-in-new" size={14} color={colors.primary} />
                         </Pressable>
@@ -1430,7 +1430,7 @@ export default function RecordScreen() {
             }}
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 50 }}>
-                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <View style={{ width: 80, height: 80, borderRadius: 0, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                   <MaterialIcons name={showArchived ? "inventory" : "folder-open"} size={40} color={colors.border} />
                 </View>
                 <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>{showArchived ? "Kein archiviertes Projekt" : (projectSearch ? "Keine Treffer" : "Noch keine Projekte")}</Text>
@@ -1441,7 +1441,7 @@ export default function RecordScreen() {
 
           {/* Bottom Buttons */}
           <View style={{ position: "absolute", bottom: 24, left: 20, right: 20, gap: 10 }}>
-            <Pressable onPress={selectWithoutProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1, backgroundColor: colors.background }]}>
+            <Pressable onPress={selectWithoutProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1, backgroundColor: colors.background }]}>
               <Text style={{ fontSize: 14, fontWeight: "500", color: colors.muted }}>Ohne Projekt fortfahren</Text>
             </Pressable>
           </View>
@@ -1455,19 +1455,19 @@ export default function RecordScreen() {
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
                 <Pressable onPress={() => setShowCreateProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
               </View>
-              <TextInput value={newProjectName} onChangeText={setNewProjectName} placeholder="Projektname (z.B. Baustelle Mühlenstraße)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
-              <TextInput value={newProjectDesc} onChangeText={setNewProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
-              <TextInput value={newProjectPrefix} onChangeText={(v) => setNewProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
+              <TextInput value={newProjectName} onChangeText={setNewProjectName} placeholder="Projektname (z.B. Baustelle Mühlenstraße)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
+              <TextInput value={newProjectDesc} onChangeText={setNewProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
+              <TextInput value={newProjectPrefix} onChangeText={(v) => setNewProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
               <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{newProjectPrefix ? `Nummerierung: ${newProjectPrefix}-001, ${newProjectPrefix}-002, ...` : "Optional: Automatische Nummerierung (z.B. BST-001)"}</Text>
               <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Farbe wählen</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
                 {PROJECT_COLORS.map((c) => (
-                  <Pressable key={c} onPress={() => setNewProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 16, backgroundColor: c, alignItems: "center", justifyContent: "center" }, newProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
+                  <Pressable key={c} onPress={() => setNewProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 0, backgroundColor: c, alignItems: "center", justifyContent: "center" }, newProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
                     {newProjectColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
                   </Pressable>
                 ))}
               </View>
-              <Pressable onPress={createAndSelectProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+              <Pressable onPress={createAndSelectProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
                 <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Projekt erstellen & auswählen</Text>
               </Pressable>
             </View>
@@ -1482,29 +1482,29 @@ export default function RecordScreen() {
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Projekt bearbeiten</Text>
                 <Pressable onPress={() => setShowEditProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
               </View>
-              <TextInput value={editProjectName} onChangeText={setEditProjectName} placeholder="Projektname" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
-              <TextInput value={editProjectDesc} onChangeText={setEditProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
-              <TextInput value={editProjectPrefix} onChangeText={(v) => setEditProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
+              <TextInput value={editProjectName} onChangeText={setEditProjectName} placeholder="Projektname" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
+              <TextInput value={editProjectDesc} onChangeText={setEditProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
+              <TextInput value={editProjectPrefix} onChangeText={(v) => setEditProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
               <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{editProjectPrefix ? `Präfix: ${editProjectPrefix}` : "Kein Präfix"}</Text>
               <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Farbe wählen</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
                 {PROJECT_COLORS.map((c) => (
-                  <Pressable key={c} onPress={() => setEditProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 16, backgroundColor: c, alignItems: "center", justifyContent: "center" }, editProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
+                  <Pressable key={c} onPress={() => setEditProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 0, backgroundColor: c, alignItems: "center", justifyContent: "center" }, editProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
                     {editProjectColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
                   </Pressable>
                 ))}
               </View>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                <Pressable onPress={() => { setShowEditProject(false); const proj = projects.find((p: any) => p.id === editProjectId); if (proj) duplicateProject(proj); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+                <Pressable onPress={() => { setShowEditProject(false); const proj = projects.find((p: any) => p.id === editProjectId); if (proj) duplicateProject(proj); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
                   <MaterialIcons name="content-copy" size={16} color={colors.primary} />
                   <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>Duplizieren</Text>
                 </Pressable>
-                <Pressable onPress={() => { setShowEditProject(false); deleteProject(editProjectId!); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.error + "15", borderWidth: 1, borderColor: colors.error, opacity: pressed ? 0.8 : 1 }]}>
+                <Pressable onPress={() => { setShowEditProject(false); deleteProject(editProjectId!); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.error + "15", borderWidth: 1, borderColor: colors.error, opacity: pressed ? 0.8 : 1 }]}>
                   <MaterialIcons name="delete" size={16} color={colors.error} />
                   <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>Löschen</Text>
                 </Pressable>
               </View>
-              <Pressable onPress={saveEditProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+              <Pressable onPress={saveEditProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
                 <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Speichern</Text>
               </Pressable>
             </View>
@@ -1635,7 +1635,7 @@ export default function RecordScreen() {
                   <View style={{
                     width: 32,
                     height: 32,
-                    borderRadius: 16,
+                    borderRadius: 0,
                     backgroundColor: isCompleted ? colors.success : isCurrent ? colors.primary : colors.surface,
                     borderWidth: isCurrent ? 2 : 1,
                     borderColor: isCompleted ? colors.success : isCurrent ? colors.primary : colors.border,
@@ -1710,7 +1710,7 @@ export default function RecordScreen() {
         {/* Active Project Header */}
         {selectedProject && (
           <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10, opacity: pressed ? 0.8 : 1 }]}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: selectedProject.color }} />
+            <View style={{ width: 12, height: 12, borderRadius: 0, backgroundColor: selectedProject.color }} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>{selectedProject.name}</Text>
               {selectedProject.description ? <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>{selectedProject.description}</Text> : null}
@@ -1909,7 +1909,7 @@ export default function RecordScreen() {
                     color={markers.length > 0 ? "#FF9800" : colors.foreground}
                   />
                   {markers.length > 0 && (
-                    <View style={{ position: "absolute", top: -4, right: -4, backgroundColor: "#E53935", borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ position: "absolute", top: -4, right: -4, backgroundColor: "#E53935", borderRadius: 0, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center" }}>
                       <Text style={{ fontSize: 9, color: "#FFF", fontWeight: "700" }}>{markers.length}</Text>
                     </View>
                   )}
@@ -1958,7 +1958,7 @@ export default function RecordScreen() {
                     { icon: "checklist", title: "Aufgaben & Mängel", example: "\"Mangel: Riss in der Decke Raum 2.05, muss nachgebessert werden. Aufgabe für Firma XY: Nachbesserung bis Freitag.\"" },
                   ].map((tip, i) => (
                     <View key={i} style={{ flexDirection: "row", gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border + "40" }}>
-                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                         <MaterialIcons name={tip.icon as any} size={18} color={colors.primary} />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -1967,7 +1967,7 @@ export default function RecordScreen() {
                       </View>
                     </View>
                   ))}
-                  <View style={{ marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "20" }}>
+                  <View style={{ marginTop: 8, padding: 12, borderRadius: 0, backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "20" }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary, marginBottom: 4 }}>Tipp:</Text>
                     <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                       Sprich natürlich und in ganzen Sätzen. Die KI erkennt automatisch die Struktur und erstellt daraus ein professionelles Protokoll. Du musst keine bestimmte Reihenfolge einhalten.
@@ -2084,7 +2084,7 @@ export default function RecordScreen() {
                   {/* Create custom template button */}
                   <Pressable
                     onPress={() => { setShowTemplateSelector(false); setShowCreateTemplate(true); }}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 12, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 0, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
                     <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Eigene Vorlage erstellen</Text>
@@ -2092,7 +2092,7 @@ export default function RecordScreen() {
                   {/* Template library button */}
                   <Pressable
                     onPress={() => { setShowTemplateSelector(false); setShowTemplateLibrary(true); }}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="cloud-download" size={22} color={colors.primary} />
                     <View style={{ flex: 1 }}>
@@ -2114,7 +2114,7 @@ export default function RecordScreen() {
                 <Pressable
                   key={p.id}
                   onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, marginBottom: 6, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 0, backgroundColor: colors.surface, marginBottom: 6, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name={p.recordingMode === "audio" ? "mic" : "photo-camera"} size={16} color={colors.primary} />
                   <View style={{ flex: 1 }}>
@@ -2145,14 +2145,14 @@ export default function RecordScreen() {
             <Text style={{ fontSize: 13, color: colors.muted }}>Prüfe das generierte Protokoll vor dem Speichern</Text>
           </View>
 
-          <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{newProtocol.templateName || "Protokoll"}</Text>
             {newProtocol.protocolNumber && <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 8 }}>{newProtocol.protocolNumber}</Text>}
             <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 22 }} numberOfLines={30}>{newProtocol.protocol}</Text>
           </View>
 
           {newProtocol.todos && newProtocol.todos.length > 0 && (
-            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Aufgaben ({newProtocol.todos.length})</Text>
               {newProtocol.todos.slice(0, 5).map((t: any, i: number) => (
                 <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -2172,13 +2172,13 @@ export default function RecordScreen() {
         <View style={{ position: "absolute", bottom: 30, left: 16, right: 16, flexDirection: "row", gap: 12 }}>
           <Pressable
             onPress={() => { setShowPreview(false); setPreviewProtocol(null); setCapturedPhotos([]); setPhotoTimestamps([]); }}
-            style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
           >
             <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Verwerfen</Text>
           </Pressable>
           <Pressable
             onPress={confirmSaveProtocol}
-            style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
           >
             <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Speichern</Text>
           </Pressable>
@@ -2262,14 +2262,14 @@ export default function RecordScreen() {
       <View style={[styles.overlayContainer, { pointerEvents: "box-none" }]}>
         {/* Active Project Header (top of camera) */}
         {selectedProject && (
-          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 20, gap: 8, backgroundColor: "rgba(0,0,0,0.5)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 0, gap: 8, backgroundColor: "rgba(0,0,0,0.5)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: selectedProject.color, borderWidth: 1, borderColor: "rgba(255,255,255,0.5)" }} />
             <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>{selectedProject.name}</Text>
             <MaterialIcons name="swap-horiz" size={14} color="rgba(255,255,255,0.7)" />
           </Pressable>
         )}
         {!selectedProject && (
-          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 20, gap: 6, backgroundColor: "rgba(255,152,0,0.8)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 0, gap: 6, backgroundColor: "rgba(255,152,0,0.8)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
             <MaterialIcons name="warning" size={14} color="#FFFFFF" />
             <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Kein Projekt</Text>
           </Pressable>
@@ -2285,7 +2285,7 @@ export default function RecordScreen() {
               setPhotoTimer(timers[(idx + 1) % 4]);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
           >
             <View style={{ alignItems: "center" }}>
               <MaterialIcons name="timer" size={22} color={photoTimer > 0 ? "#FFD700" : "rgba(255,255,255,0.5)"} />
@@ -2300,7 +2300,7 @@ export default function RecordScreen() {
               setFlashMode(modes[(idx + 1) % 3]);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons
               name={flashMode === "on" ? "flash-on" : flashMode === "auto" ? "flash-auto" : "flash-off"}
@@ -2314,7 +2314,7 @@ export default function RecordScreen() {
               setCameraFacing(prev => prev === "back" ? "front" : "back");
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="flip-camera-ios" size={22} color="#FFFFFF" />
           </Pressable>
@@ -2324,7 +2324,7 @@ export default function RecordScreen() {
               setShowGrid(prev => !prev);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="grid-on" size={22} color={showGrid ? "#FFD700" : "rgba(255,255,255,0.5)"} />
           </Pressable>
@@ -2332,7 +2332,7 @@ export default function RecordScreen() {
 
         {/* Zoom slider - always visible */}
         <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
-          <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4 }}>
+          <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 0, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4 }}>
             <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
               <MaterialIcons name="add" size={18} color="#FFFFFF" />
             </Pressable>
@@ -2341,7 +2341,7 @@ export default function RecordScreen() {
                 key={preset.label}
                 onPress={() => setCameraZoom(Math.max(0, preset.value))}
                 style={({ pressed }) => [{
-                  paddingHorizontal: 6, paddingVertical: 3, borderRadius: 10,
+                  paddingHorizontal: 6, paddingVertical: 3, borderRadius: 0,
                   backgroundColor: Math.abs(cameraZoom - Math.max(0, preset.value)) < 0.02 ? "rgba(255,255,255,0.3)" : "transparent",
                   opacity: pressed ? 0.5 : 1,
                 }]}
@@ -2356,7 +2356,7 @@ export default function RecordScreen() {
         </View>
         {/* Zoom level badge */}
         {showZoomBadge && (
-          <View style={{ position: "absolute", top: "50%", alignSelf: "center", marginTop: -20, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16 }}>
+          <View style={{ position: "absolute", top: "50%", alignSelf: "center", marginTop: -20, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 0 }}>
             <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{getZoomDisplayValue()}</Text>
           </View>
         )}
@@ -2370,7 +2370,7 @@ export default function RecordScreen() {
               top: focusPoint.y - 30,
               width: 60,
               height: 60,
-              borderRadius: 30,
+              borderRadius: 0,
               borderWidth: 2,
               borderColor: "#FFD700",
               opacity: focusAnim,
@@ -2397,7 +2397,7 @@ export default function RecordScreen() {
         {/* Timer countdown overlay */}
         {timerCountdown !== null && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.3)", zIndex: 100 }}>
-            <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "#FFD700" }}>
+            <View style={{ width: 100, height: 100, borderRadius: 0, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "#FFD700" }}>
               <Text style={{ fontSize: 48, fontWeight: "800", color: "#FFD700" }}>{timerCountdown}</Text>
             </View>
           </View>
@@ -2588,7 +2588,7 @@ export default function RecordScreen() {
                 {/* Create custom template button */}
                 <Pressable
                   onPress={() => { setShowTemplateSelector(false); setShowCreateTemplate(true); }}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 12, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 0, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
                   <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Eigene Vorlage erstellen</Text>
@@ -2687,10 +2687,10 @@ export default function RecordScreen() {
               onPress={() => setShowPhotoGallery(true)}
               style={({ pressed }) => [{ position: "absolute", left: 16, bottom: 16, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={{ width: 48, height: 48, borderRadius: 8, borderWidth: 2, borderColor: "#FFFFFF", overflow: "hidden" }}>
+              <View style={{ width: 48, height: 48, borderRadius: 0, borderWidth: 2, borderColor: "#FFFFFF", overflow: "hidden" }}>
                 <Image source={{ uri: capturedPhotos[capturedPhotos.length - 1] }} style={{ width: 48, height: 48 }} contentFit="cover" />
               </View>
-              <View style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#2196F3", borderRadius: 10, minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
+              <View style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#2196F3", borderRadius: 0, minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }}>
                 <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length}</Text>
               </View>
             </Pressable>
@@ -2753,10 +2753,10 @@ export default function RecordScreen() {
                     ]
                   );
                 }}
-                style={({ pressed }) => [{ flex: 1, margin: 4, borderRadius: 8, overflow: "hidden", opacity: pressed ? 0.8 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, margin: 4, borderRadius: 0, overflow: "hidden", opacity: pressed ? 0.8 : 1 }]}
               >
                 <Image source={{ uri: item }} style={{ width: "100%", aspectRatio: 1 }} contentFit="cover" />
-                <View style={{ position: "absolute", bottom: 6, left: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <View style={{ position: "absolute", bottom: 6, left: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 0, paddingHorizontal: 8, paddingVertical: 2 }}>
                   <Text style={{ fontSize: 11, color: "#FFFFFF", fontWeight: "600" }}>#{index + 1}</Text>
                 </View>
                 {/* Move/reorder buttons */}
@@ -2784,7 +2784,7 @@ export default function RecordScreen() {
                         });
                         if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
-                      style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 10, padding: 4, opacity: pressed ? 0.6 : 1 }]}
+                      style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 0, padding: 4, opacity: pressed ? 0.6 : 1 }]}
                     >
                       <MaterialIcons name="arrow-back" size={14} color="#FFFFFF" />
                     </Pressable>
@@ -2811,7 +2811,7 @@ export default function RecordScreen() {
                         });
                         if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
-                      style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 10, padding: 4, opacity: pressed ? 0.6 : 1 }]}
+                      style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 0, padding: 4, opacity: pressed ? 0.6 : 1 }]}
                     >
                       <MaterialIcons name="arrow-forward" size={14} color="#FFFFFF" />
                     </Pressable>
@@ -2824,13 +2824,13 @@ export default function RecordScreen() {
                     setAnnotationText(photoAnnotations[index] || "");
                     setShowAnnotation(true);
                   }}
-                  style={({ pressed }) => [{ position: "absolute", top: 6, right: 6, backgroundColor: photoAnnotations[index] ? "#4CAF50" : "rgba(0,0,0,0.6)", borderRadius: 14, padding: 6, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ position: "absolute", top: 6, right: 6, backgroundColor: photoAnnotations[index] ? "#4CAF50" : "rgba(0,0,0,0.6)", borderRadius: 0, padding: 6, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name={photoAnnotations[index] ? "edit-note" : "add-comment"} size={16} color="#FFFFFF" />
                 </Pressable>
                 {/* Show annotation preview */}
                 {photoAnnotations[index] && (
-                  <View style={{ position: "absolute", top: 6, left: 6, right: 34, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 }}>
+                  <View style={{ position: "absolute", top: 6, left: 6, right: 34, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 0, paddingHorizontal: 6, paddingVertical: 3 }}>
                     <Text style={{ fontSize: 10, color: "#FFFFFF" }} numberOfLines={1}>{photoAnnotations[index]}</Text>
                   </View>
                 )}
@@ -2843,7 +2843,7 @@ export default function RecordScreen() {
       {/* Photo Annotation Modal */}
       <Modal visible={showAnnotation} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", padding: 24 }}>
-          <View style={{ backgroundColor: colors.background, borderRadius: 16, padding: 20 }}>
+          <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 20 }}>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Foto-Notiz</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Beschreibung oder Anmerkung zu Foto #{annotatingPhotoIndex !== null ? annotatingPhotoIndex + 1 : ""}</Text>
             <TextInput
@@ -2853,7 +2853,7 @@ export default function RecordScreen() {
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={3}
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, minHeight: 80, textAlignVertical: "top", marginBottom: 16 }}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, minHeight: 80, textAlignVertical: "top", marginBottom: 16 }}
               autoFocus
             />
             <View style={{ flexDirection: "row", gap: 10 }}>
@@ -2863,7 +2863,7 @@ export default function RecordScreen() {
                   setAnnotationText("");
                   setAnnotatingPhotoIndex(null);
                 }}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.surface, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.surface, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
               </Pressable>
@@ -2877,7 +2877,7 @@ export default function RecordScreen() {
                   setAnnotatingPhotoIndex(null);
                   if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Speichern</Text>
               </Pressable>
@@ -2900,7 +2900,7 @@ export default function RecordScreen() {
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, marginTop: 8 }}>Name *</Text>
               <TextInput
-                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
                 placeholder="z.B. Abnahmeprotokoll"
                 placeholderTextColor={colors.muted}
                 value={newTemplateName}
@@ -2909,7 +2909,7 @@ export default function RecordScreen() {
               />
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>Beschreibung</Text>
               <TextInput
-                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
                 placeholder="Kurze Beschreibung der Vorlage"
                 placeholderTextColor={colors.muted}
                 value={newTemplateDesc}
@@ -2922,7 +2922,7 @@ export default function RecordScreen() {
                   <Pressable
                     key={cat.id}
                     onPress={() => setNewTemplateCategory(cat.id)}
-                    style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: newTemplateCategory === cat.id ? colors.primary : colors.border, backgroundColor: newTemplateCategory === cat.id ? colors.primary + "15" : "transparent", opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1, borderColor: newTemplateCategory === cat.id ? colors.primary : colors.border, backgroundColor: newTemplateCategory === cat.id ? colors.primary + "15" : "transparent", opacity: pressed ? 0.7 : 1 }]}
                   >
                     <Text style={{ fontSize: 13, color: newTemplateCategory === cat.id ? colors.primary : colors.foreground }}>{cat.name}</Text>
                   </Pressable>
@@ -2930,7 +2930,7 @@ export default function RecordScreen() {
               </View>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>KI-Anweisung (Prompt) *</Text>
               <TextInput
-                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 16, minHeight: 120, textAlignVertical: "top" }}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 16, minHeight: 120, textAlignVertical: "top" }}
                 placeholder="Beschreibe, wie die KI das Transkript verarbeiten soll. Z.B.: Erstelle ein strukturiertes Abnahmeprotokoll mit Mängelliste, Teilnehmern und Ergebnis."
                 placeholderTextColor={colors.muted}
                 value={newTemplatePrompt}
@@ -2958,7 +2958,7 @@ export default function RecordScreen() {
                     setIsGeneratingPreview(false);
                   }
                 }}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, borderRadius: 12, opacity: pressed ? 0.7 : 1, marginBottom: 10, backgroundColor: colors.surface }]}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, borderRadius: 0, opacity: pressed ? 0.7 : 1, marginBottom: 10, backgroundColor: colors.surface }]}
               >
                 {isGeneratingPreview ? (
                   <ActivityIndicator size="small" color={colors.primary} />
@@ -2970,7 +2970,7 @@ export default function RecordScreen() {
 
               {/* Preview result */}
               {templatePreview && (
-                <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+                <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>Vorschau</Text>
                     <Pressable onPress={() => setTemplatePreview(null)}>
@@ -2983,7 +2983,7 @@ export default function RecordScreen() {
 
               <Pressable
                 onPress={saveCustomTemplate}
-                style={({ pressed }) => [{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: "center", opacity: pressed ? 0.8 : 1, marginBottom: 20 }]}
+                style={({ pressed }) => [{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 0, alignItems: "center", opacity: pressed ? 0.8 : 1, marginBottom: 20 }]}
               >
                 <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Vorlage speichern</Text>
               </Pressable>
@@ -3008,7 +3008,7 @@ export default function RecordScreen() {
               <View style={{ flexDirection: "row", gap: 10, marginTop: 16, marginBottom: 20 }}>
                 <Pressable
                   onPress={importCustomTemplates}
-                  style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="file-download" size={18} color={colors.foreground} />
                   <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Importieren</Text>
@@ -3016,7 +3016,7 @@ export default function RecordScreen() {
                 {customTemplates.length > 0 && (
                   <Pressable
                     onPress={exportCustomTemplates}
-                    style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="file-upload" size={18} color={colors.foreground} />
                     <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Exportieren</Text>
@@ -3085,7 +3085,7 @@ export default function RecordScreen() {
                     opacity: pressed ? 0.7 : 1,
                   }]}
                 >
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
                     <MaterialIcons name={libTemplate.icon as any} size={20} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -3104,8 +3104,8 @@ export default function RecordScreen() {
       {/* Stop Confirmation Modal */}
       <Modal visible={showStopConfirm} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 24, alignItems: "center" }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 24, alignItems: "center" }}>
+            <View style={{ width: 56, height: 56, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
               <MaterialIcons name="stop-circle" size={32} color={colors.primary} />
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8, textAlign: "center" }}>Aufnahme beenden?</Text>
@@ -3115,14 +3115,14 @@ export default function RecordScreen() {
             <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
               <Pressable
                 onPress={cancelStopRecording}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="play-arrow" size={20} color={colors.foreground} style={{ marginBottom: 4 }} />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Fortsetzen</Text>
               </Pressable>
               <Pressable
                 onPress={confirmStopRecording}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="check-circle" size={20} color="#FFF" style={{ marginBottom: 4 }} />
                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Abschlie\u00dfen</Text>
@@ -3135,7 +3135,7 @@ export default function RecordScreen() {
       {/* Chapter Name Input Modal */}
       <Modal visible={chapterPromptVisible} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Neues Kapitel</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
               {chapterListening ? "H\u00f6re zu... Sprich den Kapitelnamen" : "Sprich den Kapitelnamen oder tippe ihn ein"}
@@ -3144,7 +3144,7 @@ export default function RecordScreen() {
             {/* Speech indicator */}
             {chapterListening && (
               <View style={{ alignItems: "center", paddingVertical: 16 }}>
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#FF9800" + "20", alignItems: "center", justifyContent: "center" }}>
+                <View style={{ width: 64, height: 64, borderRadius: 0, backgroundColor: "#FF9800" + "20", alignItems: "center", justifyContent: "center" }}>
                   <MaterialIcons name="mic" size={32} color="#FF9800" />
                 </View>
                 <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>Aufnahme l\u00e4uft...</Text>
@@ -3161,7 +3161,7 @@ export default function RecordScreen() {
                 autoFocus={false}
                 returnKeyType="done"
                 onSubmitEditing={() => confirmChapter(chapterInput)}
-                style={{ fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground, marginBottom: 12 }}
+                style={{ fontSize: 16, padding: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground, marginBottom: 12 }}
               />
             )}
 
@@ -3169,7 +3169,7 @@ export default function RecordScreen() {
             {!chapterListening && (
               <Pressable
                 onPress={startChapterSpeech}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 10, backgroundColor: "#FF9800" + "15", borderWidth: 1, borderColor: "#FF9800" + "40", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 0, backgroundColor: "#FF9800" + "15", borderWidth: 1, borderColor: "#FF9800" + "40", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="mic" size={20} color="#FF9800" />
                 <Text style={{ fontSize: 13, fontWeight: "600", color: "#FF9800" }}>Erneut einsprechen</Text>
@@ -3180,7 +3180,7 @@ export default function RecordScreen() {
             {chapterListening && (
               <Pressable
                 onPress={stopChapterSpeech}
-                style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 0, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Fertig - Kapitel setzen</Text>
               </Pressable>
@@ -3189,14 +3189,14 @@ export default function RecordScreen() {
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
                 onPress={async () => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderRef.current) { try { await chapterRecorderRef.current.stopAndUnloadAsync(); } catch {} chapterRecorderRef.current = null; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
               </Pressable>
               {!chapterListening && chapterInput.trim() && (
                 <Pressable
                   onPress={() => confirmChapter(chapterInput)}
-                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#FF9800", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: "#FF9800", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Kapitel setzen</Text>
                 </Pressable>
@@ -3247,7 +3247,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 0,
   },
   recordDot: {
     width: 10,
@@ -3268,7 +3268,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 14,
+    borderRadius: 0,
     gap: 4,
   },
   photoCountText: {
@@ -3296,7 +3296,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 0,
     gap: 6,
     borderWidth: 1,
     borderColor: "transparent",
@@ -3331,7 +3331,7 @@ const styles = StyleSheet.create({
     bottom: 200,
     left: 16,
     right: 16,
-    borderRadius: 16,
+    borderRadius: 0,
     paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 16,
@@ -3359,7 +3359,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 12,
     gap: 8,
@@ -3400,7 +3400,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 8,
     gap: 12,
@@ -3437,7 +3437,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 0,
     marginBottom: 20,
     gap: 6,
   },
@@ -3449,7 +3449,7 @@ const styles = StyleSheet.create({
   photoButton: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: 0,
     backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
@@ -3459,7 +3459,7 @@ const styles = StyleSheet.create({
   actionButtonLarge: {
     width: 72,
     height: 72,
-    borderRadius: 36,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -3484,7 +3484,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E53935",
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3500,7 +3500,7 @@ const styles = StyleSheet.create({
   recordButton: {
     width: 80,
     height: 80,
-    borderRadius: 40,
+    borderRadius: 0,
     borderWidth: 4,
     alignItems: "center",
     justifyContent: "center",
@@ -3508,7 +3508,7 @@ const styles = StyleSheet.create({
   recordButtonSmall: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 0,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
@@ -3524,12 +3524,12 @@ const styles = StyleSheet.create({
   recordIcon: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 0,
   },
   recordIconSmall: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 0,
   },
   stopIcon: {
     width: 24,
@@ -3545,7 +3545,7 @@ const styles = StyleSheet.create({
   permissionButton: {
     paddingHorizontal: 24,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 0,
   },
   permissionButtonText: {
     color: "#FFFFFF",
@@ -3566,7 +3566,7 @@ const styles = StyleSheet.create({
   audioCircle: {
     width: 140,
     height: 140,
-    borderRadius: 70,
+    borderRadius: 0,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
@@ -3629,7 +3629,7 @@ const styles = StyleSheet.create({
   pauseButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 0,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -3645,7 +3645,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 0,
     gap: 6,
     borderWidth: 1,
   },
@@ -3660,7 +3660,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
   },
   sourceBadgeText: {

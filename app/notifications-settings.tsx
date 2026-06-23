@@ -79,7 +79,7 @@ export default function NotificationsSettingsScreen() {
         {!hasPermission && Platform.OS !== "web" && (
           <Pressable
             onPress={enableNotifications}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 12, backgroundColor: colors.warning + "15", borderWidth: 1, borderColor: colors.warning, marginBottom: 20, opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 0, backgroundColor: colors.warning + "15", borderWidth: 1, borderColor: colors.warning, marginBottom: 20, opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="notifications-off" size={24} color={colors.warning} />
             <View style={{ flex: 1 }}>
@@ -91,8 +91,8 @@ export default function NotificationsSettingsScreen() {
         )}
 
         {/* Master Toggle */}
-        <View style={{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20 }}>
-          <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20 }}>
+          <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
             <MaterialIcons name="notifications-active" size={22} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
@@ -109,7 +109,7 @@ export default function NotificationsSettingsScreen() {
 
         {/* Reminder Types */}
         <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Erinnerungen</Text>
-        <View style={{ borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20, overflow: "hidden" }}>
+        <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20, overflow: "hidden" }}>
           {/* Open Defects */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <MaterialIcons name="warning" size={20} color={colors.warning} style={{ marginRight: 12 }} />
@@ -161,7 +161,7 @@ export default function NotificationsSettingsScreen() {
 
         {/* Reminder Time */}
         <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Erinnerungszeit</Text>
-        <View style={{ borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 20 }}>
+        <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 20 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>
             Tägliche Erinnerung um {String(prefs.reminderHour).padStart(2, "0")}:{String(prefs.reminderMinute).padStart(2, "0")} Uhr
           </Text>
@@ -170,7 +170,7 @@ export default function NotificationsSettingsScreen() {
               <Pressable
                 key={hour}
                 onPress={() => updatePref("reminderHour", hour)}
-                style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: prefs.reminderHour === hour ? colors.primary + "15" : "transparent", borderWidth: 1, borderColor: prefs.reminderHour === hour ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, backgroundColor: prefs.reminderHour === hour ? colors.primary + "15" : "transparent", borderWidth: 1, borderColor: prefs.reminderHour === hour ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 13, fontWeight: "600", color: prefs.reminderHour === hour ? colors.primary : colors.muted }}>{String(hour).padStart(2, "0")}:00</Text>
               </Pressable>
@@ -179,7 +179,7 @@ export default function NotificationsSettingsScreen() {
         </View>
 
         {/* Info */}
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 10, backgroundColor: colors.primary + "08" }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 0, backgroundColor: colors.primary + "08" }}>
           <MaterialIcons name="info-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
           <Text style={{ flex: 1, fontSize: 12, color: colors.muted, lineHeight: 18 }}>
             Benachrichtigungen werden lokal auf deinem Gerät geplant. Sie funktionieren auch ohne Internetverbindung. Die Erinnerungen werden täglich zur eingestellten Uhrzeit ausgelöst, wenn offene Punkte vorhanden sind.

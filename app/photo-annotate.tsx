@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   saveBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
   canvasContainer: {
@@ -834,19 +834,19 @@ const styles = StyleSheet.create({
   colorIndicator: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.5)",
   },
   sizeIndicator: {
-    borderRadius: 20,
+    borderRadius: 0,
   },
   pathCount: { fontSize: 12, marginLeft: "auto" },
   pickerPanel: {
     position: "absolute",
     left: 16,
     right: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   colorDot: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
   sizeDot: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   },
   textInputModal: {
     width: "100%",
-    borderRadius: 16,
+    borderRadius: 0,
     padding: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   textInputTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   textInputField: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -920,13 +920,13 @@ const styles = StyleSheet.create({
   textInputBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     alignItems: "center",
   },
   textInputBtnText: { fontSize: 15, fontWeight: "600" },
-  zoomResetBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, marginTop: 4 },
+  zoomResetBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0, borderWidth: 1, marginTop: 4 },
   zoomResetText: { fontSize: 12, fontWeight: "600" },
   templateRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
-  templateChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
+  templateChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, borderWidth: 1 },
   templateChipText: { fontSize: 12, fontWeight: "500" },
 });

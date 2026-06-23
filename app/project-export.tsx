@@ -171,7 +171,7 @@ export default function ProjectExportScreen() {
               <Pressable
                 key={fmt.key}
                 onPress={() => setExportFormat(fmt.key)}
-                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 8, backgroundColor: exportFormat === fmt.key ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: exportFormat === fmt.key ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 0, backgroundColor: exportFormat === fmt.key ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: exportFormat === fmt.key ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name={fmt.icon as any} size={16} color={exportFormat === fmt.key ? colors.primary : colors.muted} />
                 <Text style={{ fontSize: 12, fontWeight: "600", color: exportFormat === fmt.key ? colors.primary : colors.muted }}>{fmt.label}</Text>
@@ -185,11 +185,11 @@ export default function ProjectExportScreen() {
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, flex: 1 }}>
             {selectedProtocols.size}/{protocols.length} Protokolle ausgewählt
           </Text>
-          <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, opacity: pressed ? 0.6 : 1 }]}>
+          <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Alle</Text>
           </Pressable>
           <Text style={{ color: colors.border, marginHorizontal: 4 }}>|</Text>
-          <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, opacity: pressed ? 0.6 : 1 }]}>
+          <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>Keine</Text>
           </Pressable>
         </View>
@@ -202,7 +202,7 @@ export default function ProjectExportScreen() {
               <Pressable
                 key={protocol.id}
                 onPress={() => toggleProtocol(protocol.id)}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 10, marginBottom: 8, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, borderWidth: 1, borderColor: isSelected ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 0, marginBottom: 8, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, borderWidth: 1, borderColor: isSelected ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name={isSelected ? "check-box" : "check-box-outline-blank"} size={22} color={isSelected ? colors.primary : colors.border} style={{ marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
@@ -229,7 +229,7 @@ export default function ProjectExportScreen() {
           <Pressable
             onPress={exportProject}
             disabled={isExporting || selectedProtocols.size === 0}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 12, backgroundColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 0, backgroundColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             {isExporting ? (
               <ActivityIndicator size="small" color="#FFF" />

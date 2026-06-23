@@ -150,7 +150,7 @@ export default function RecurringMeetingsScreen() {
               <Text style={{ fontSize: 12, color: colors.muted }}>Automatisch Protokolle vorbereiten</Text>
             </View>
           </View>
-          <Pressable onPress={() => openEditor()} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, backgroundColor: colors.primary, borderRadius: 20, width: 36, height: 36, alignItems: "center", justifyContent: "center" })}>
+          <Pressable onPress={() => openEditor()} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, backgroundColor: colors.primary, borderRadius: 0, width: 36, height: 36, alignItems: "center", justifyContent: "center" })}>
             <MaterialIcons name="add" size={20} color="#fff" />
           </Pressable>
         </View>
@@ -172,7 +172,7 @@ export default function RecurringMeetingsScreen() {
                 style={({ pressed }) => ({
                   opacity: pressed ? 0.8 : 1,
                   backgroundColor: colors.surface,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   padding: 16,
                   marginBottom: 12,
                   borderWidth: 1,
@@ -232,7 +232,7 @@ export default function RecurringMeetingsScreen() {
               onChangeText={setTitle}
               placeholder="z.B. Wöchentliches Team-Meeting"
               placeholderTextColor={colors.muted}
-              style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
+              style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
             />
 
             {/* Description */}
@@ -243,7 +243,7 @@ export default function RecurringMeetingsScreen() {
               placeholder="Optionale Beschreibung"
               placeholderTextColor={colors.muted}
               multiline
-              style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16, minHeight: 60 }}
+              style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16, minHeight: 60 }}
             />
 
             {/* Recurrence */}
@@ -253,7 +253,7 @@ export default function RecurringMeetingsScreen() {
                 <Pressable
                   key={r}
                   onPress={() => setRecurrence(r)}
-                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: recurrence === r ? colors.primary : colors.surface, borderWidth: 1, borderColor: recurrence === r ? colors.primary : colors.border }}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, backgroundColor: recurrence === r ? colors.primary : colors.surface, borderWidth: 1, borderColor: recurrence === r ? colors.primary : colors.border }}
                 >
                   <Text style={{ fontSize: 13, color: recurrence === r ? "#fff" : colors.foreground }}>
                     {r === "daily" ? "Täglich" : r === "weekly" ? "Wöchentlich" : r === "biweekly" ? "Alle 2 Wochen" : "Monatlich"}
@@ -288,7 +288,7 @@ export default function RecurringMeetingsScreen() {
                   value={dayOfMonth.toString()}
                   onChangeText={(v) => setDayOfMonth(Math.min(31, Math.max(1, parseInt(v) || 1)))}
                   keyboardType="number-pad"
-                  style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 80 }}
+                  style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 80 }}
                 />
               </View>
             )}
@@ -301,7 +301,7 @@ export default function RecurringMeetingsScreen() {
                 onChangeText={(v) => setTimeHour(Math.min(23, Math.max(0, parseInt(v) || 0)))}
                 keyboardType="number-pad"
                 maxLength={2}
-                style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 60, textAlign: "center" }}
+                style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 60, textAlign: "center" }}
               />
               <Text style={{ fontSize: 20, color: colors.foreground }}>:</Text>
               <TextInput
@@ -309,7 +309,7 @@ export default function RecurringMeetingsScreen() {
                 onChangeText={(v) => setTimeMinute(Math.min(59, Math.max(0, parseInt(v) || 0)))}
                 keyboardType="number-pad"
                 maxLength={2}
-                style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 60, textAlign: "center" }}
+                style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 60, textAlign: "center" }}
               />
               <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>Uhr</Text>
             </View>
@@ -320,7 +320,7 @@ export default function RecurringMeetingsScreen() {
               value={duration.toString()}
               onChangeText={(v) => setDuration(parseInt(v) || 30)}
               keyboardType="number-pad"
-              style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 100, marginBottom: 16 }}
+              style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 100, marginBottom: 16 }}
             />
 
             {/* Template */}
@@ -330,7 +330,7 @@ export default function RecurringMeetingsScreen() {
               onChangeText={setTemplateName}
               placeholder="Vorlage wählen"
               placeholderTextColor={colors.muted}
-              style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
+              style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
             />
 
             {/* Participants */}
@@ -340,7 +340,7 @@ export default function RecurringMeetingsScreen() {
               onChangeText={setParticipants}
               placeholder="z.B. Max Müller, Anna Schmidt"
               placeholderTextColor={colors.muted}
-              style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
+              style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
             />
 
             {/* Notes */}
@@ -351,7 +351,7 @@ export default function RecurringMeetingsScreen() {
               placeholder="Agenda-Punkte, Hinweise..."
               placeholderTextColor={colors.muted}
               multiline
-              style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, minHeight: 80 }}
+              style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, minHeight: 80 }}
             />
           </ScrollView>
         </View>

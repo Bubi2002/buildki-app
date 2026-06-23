@@ -430,7 +430,7 @@ export default function ProjectDetailScreen() {
 
         {/* Progress Bar */}
         {(defectCount.total > 0 || protocols.length > 0) && (
-          <View style={{ marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Projektfortschritt</Text>
               <Text style={{ fontSize: 13, fontWeight: "700", color: defectCount.total > 0 ? (defectCount.open === 0 ? colors.success : colors.primary) : colors.muted }}>
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
   headerCenter: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginHorizontal: 16 },
-  headerDot: { width: 12, height: 12, borderRadius: 6 },
+  headerDot: { width: 12, height: 12, borderRadius: 0 },
   headerTitle: { fontSize: 20, fontWeight: "800", flex: 1 },
   description: { fontSize: 14, paddingHorizontal: 16, marginBottom: 12 },
   statsRow: { flexDirection: "row", marginHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, marginBottom: 16 },
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, marginTop: 2 },
   statDivider: { width: 1, alignSelf: "stretch" },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
-  protocolItem: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 10, borderWidth: 1, marginBottom: 8 },
+  protocolItem: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
   protocolInfo: { flex: 1 },
   protocolTitle: { fontSize: 16, fontWeight: "600", marginBottom: 3 },
   protocolDate: { fontSize: 13 },
@@ -776,15 +776,15 @@ const styles = StyleSheet.create({
   assignItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1 },
   assignTitle: { fontSize: 15, fontWeight: "500" },
   assignDate: { fontSize: 12 },
-  exportButton: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1 },
+  exportButton: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 12, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 0, borderWidth: 1 },
   exportButtonText: { fontSize: 14, fontWeight: "600", flex: 1 },
   toolsSection: { paddingHorizontal: 16, marginBottom: 16 },
   toolsSectionTitle: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   toolsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  toolCard: { width: "30.5%", alignItems: "center", paddingVertical: 14, borderRadius: 12, position: "relative" },
-  toolIconBg: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  toolCard: { width: "30.5%", alignItems: "center", paddingVertical: 14, borderRadius: 0, position: "relative" },
+  toolIconBg: { width: 42, height: 42, borderRadius: 0, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   toolCardLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
   toolCardBadge: { fontSize: 10, marginTop: 2 },
-  toolBadge: { position: "absolute", top: 6, right: "20%", minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  toolBadge: { position: "absolute", top: 6, right: "20%", minWidth: 16, height: 16, borderRadius: 0, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   toolBadgeText: { fontSize: 9, fontWeight: "700", color: "#FFFFFF" },
 });

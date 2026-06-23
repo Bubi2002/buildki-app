@@ -670,7 +670,7 @@ export default function FloorPlanScreen() {
                   <View style={{ marginBottom: 12 }}>
                     <Pressable
                       onPress={() => viewPinPhotos(showPinDetail)}
-                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.primary + "10", borderWidth: 1, borderColor: colors.primary + "30", opacity: pressed ? 0.7 : 1 }]}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 0, backgroundColor: colors.primary + "10", borderWidth: 1, borderColor: colors.primary + "30", opacity: pressed ? 0.7 : 1 }]}
                     >
                       <MaterialIcons name="photo-library" size={20} color={colors.primary} />
                       <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary, flex: 1 }}>
@@ -682,11 +682,11 @@ export default function FloorPlanScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                       {(showPinDetail.photos || (showPinDetail.photoUri ? [showPinDetail.photoUri] : [])).slice(0, 5).map((uri, idx) => (
                         <Pressable key={idx} onPress={() => viewPinPhotos(showPinDetail)}>
-                          <RNImage source={{ uri }} style={{ width: 60, height: 60, borderRadius: 8, marginRight: 6 }} />
+                          <RNImage source={{ uri }} style={{ width: 60, height: 60, borderRadius: 0, marginRight: 6 }} />
                         </Pressable>
                       ))}
                       {(showPinDetail.photos?.length || 0) > 5 && (
-                        <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                        <View style={{ width: 60, height: 60, borderRadius: 0, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
                           <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>+{(showPinDetail.photos?.length || 0) - 5}</Text>
                         </View>
                       )}
@@ -697,7 +697,7 @@ export default function FloorPlanScreen() {
                 {/* Add photos button */}
                 <Pressable
                   onPress={() => addPhotoToPin(showPinDetail)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
                   <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Fotos hinzuf\u00fcgen</Text>
@@ -739,7 +739,7 @@ export default function FloorPlanScreen() {
             contentContainerStyle={{ padding: 8 }}
             renderItem={({ item: uri, index }) => (
               <View style={{ flex: 1, padding: 4 }}>
-                <RNImage source={{ uri }} style={{ width: "100%", aspectRatio: 1, borderRadius: 8 }} resizeMode="cover" />
+                <RNImage source={{ uri }} style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} resizeMode="cover" />
                 <Text style={{ fontSize: 10, color: "#AAA", textAlign: "center", marginTop: 4 }}>Foto {index + 1}</Text>
               </View>
             )}
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   headerAction: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 0,
     borderWidth: 1,
     marginRight: 8,
   },
@@ -798,11 +798,11 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 1,
   },
   planImageContainer: {
-    borderRadius: 12,
+    borderRadius: 0,
     overflow: "hidden",
     borderWidth: 1,
   },
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   pinMarker: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginTop: 12,
   },
@@ -848,14 +848,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 6,
   },
   pinListDot: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -864,14 +864,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 8,
   },
   pinListDotLarge: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 80,
     height: 80,
-    borderRadius: 40,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 24,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 0,
   },
   uploadBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
@@ -917,25 +917,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
   },
   typeBtnIcon: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
   typeBtnText: { fontSize: 11, fontWeight: "700" },
-  input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15, marginBottom: 12 },
+  input: { borderWidth: 1, borderRadius: 0, padding: 14, fontSize: 15, marginBottom: 12 },
   textArea: { minHeight: 80, textAlignVertical: "top" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  saveBtn: { flex: 1.5, paddingVertical: 14, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row" },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  saveBtn: { flex: 1.5, paddingVertical: 14, borderRadius: 0, alignItems: "center", justifyContent: "center", flexDirection: "row" },
   nameModalContent: {
     marginHorizontal: 24,
-    borderRadius: 20,
+    borderRadius: 0,
     padding: 24,
   },
   detailModalContent: {
@@ -947,13 +947,13 @@ const styles = StyleSheet.create({
   detailIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
   detailDescBox: {
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 12,
   },
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 0,
     marginBottom: 16,
   },
   deleteBtn: {
@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
   },
 });

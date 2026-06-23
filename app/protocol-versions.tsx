@@ -123,7 +123,7 @@ export default function ProtocolVersionsScreen() {
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: idx === 0 ? colors.primary + "20" : colors.border + "40", alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: idx === 0 ? colors.primary + "20" : colors.border + "40", alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: idx === 0 ? colors.primary : colors.muted }}>V{v.version}</Text>
                   </View>
                   <View>
@@ -138,7 +138,7 @@ export default function ProtocolVersionsScreen() {
                   </View>
                 </View>
                 {idx === 0 && (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: colors.primary + "15" }}>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: colors.primary + "15" }}>
                     <Text style={{ fontSize: 10, fontWeight: "600", color: colors.primary }}>Aktuell</Text>
                   </View>
                 )}
@@ -211,15 +211,15 @@ export default function ProtocolVersionsScreen() {
                 </View>
 
                 <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
-                  <View style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: "#22C55E10" }}>
+                  <View style={{ flex: 1, padding: 10, borderRadius: 0, backgroundColor: "#22C55E10" }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: "#22C55E" }}>+{diffData.added.length}</Text>
                     <Text style={{ fontSize: 11, color: "#22C55E" }}>Hinzugefügt</Text>
                   </View>
-                  <View style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: "#EF444410" }}>
+                  <View style={{ flex: 1, padding: 10, borderRadius: 0, backgroundColor: "#EF444410" }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: "#EF4444" }}>-{diffData.removed.length}</Text>
                     <Text style={{ fontSize: 11, color: "#EF4444" }}>Entfernt</Text>
                   </View>
-                  <View style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: colors.border + "20" }}>
+                  <View style={{ flex: 1, padding: 10, borderRadius: 0, backgroundColor: colors.border + "20" }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: colors.muted }}>{diffData.unchanged}</Text>
                     <Text style={{ fontSize: 11, color: colors.muted }}>Unverändert</Text>
                   </View>
@@ -250,8 +250,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
   backBtn: { padding: 8, marginRight: 8 },
   title: { fontSize: 20, fontWeight: "700" },
-  versionCard: { borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 10 },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1 },
+  versionCard: { borderWidth: 1, borderRadius: 0, padding: 14, marginBottom: 10 },
+  actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, borderWidth: 1 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "80%" },
 });

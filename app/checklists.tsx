@@ -379,7 +379,7 @@ export default function ChecklistsScreen() {
                 {showAddItem ? (
                   <View style={{ flexDirection: "row", alignItems: "center", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <TextInput
-                      style={{ flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, color: colors.foreground, backgroundColor: colors.background }}
+                      style={{ flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, color: colors.foreground, backgroundColor: colors.background }}
                       placeholder="Neuen Prüfpunkt eingeben..."
                       placeholderTextColor={colors.muted}
                       value={newItemText}
@@ -556,15 +556,15 @@ const styles = StyleSheet.create({
   section: { marginBottom: 8 },
   sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 10 },
   list: { paddingBottom: 20 },
-  checklistCard: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  checklistCard: { padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
   checklistHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   checklistInfo: { flex: 1 },
   checklistName: { fontSize: 15, fontWeight: "600" },
   checklistCategory: { fontSize: 12, marginTop: 2 },
   checklistDesc: { fontSize: 13, marginTop: 6 },
-  itemCountBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  itemCountBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0 },
   itemCountText: { fontSize: 12, fontWeight: "600" },
-  resultCard: { padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 8 },
+  resultCard: { padding: 12, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
   resultHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   resultName: { fontSize: 14, fontWeight: "600", flex: 1 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 },
@@ -588,19 +588,19 @@ const styles = StyleSheet.create({
   formLabel: { fontSize: 13, fontWeight: "500", marginBottom: 6, marginTop: 8 },
   sectionLabel: { fontSize: 13, fontWeight: "500", marginBottom: 10, marginTop: 12 },
   templateList: { maxHeight: 280 },
-  templateCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 8 },
+  templateCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
   templateInfo: { flex: 1 },
   templateTitle: { fontSize: 14, fontWeight: "600" },
   templateCount: { fontSize: 12, marginTop: 2 },
   divider: { height: 1, marginVertical: 16 },
-  customBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 10, borderWidth: 1.5, borderStyle: "dashed" },
+  customBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, borderWidth: 1.5, borderStyle: "dashed" },
   customBtnText: { fontSize: 15, fontWeight: "600" },
   cancelFullBtn: { paddingVertical: 14, alignItems: "center", marginTop: 8 },
-  input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 12 },
+  input: { borderWidth: 1, borderRadius: 0, padding: 12, fontSize: 15, marginBottom: 12 },
   textArea: { minHeight: 150, textAlignVertical: "top" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 16 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, alignItems: "center" },
   cancelBtnText: { fontSize: 15, fontWeight: "600" },
-  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
+  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, alignItems: "center" },
   saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });

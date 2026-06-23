@@ -125,7 +125,7 @@ export default function PhotoGalleryScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, gap: 8 }} style={{ flexGrow: 0 }}>
             <Pressable
               onPress={() => setFilterMonth(null)}
-              style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: !filterMonth ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: !filterMonth ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 0, backgroundColor: !filterMonth ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: !filterMonth ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 13, fontWeight: "600", color: !filterMonth ? colors.primary : colors.muted }}>Alle</Text>
             </Pressable>
@@ -137,7 +137,7 @@ export default function PhotoGalleryScreen() {
                 <Pressable
                   key={month}
                   onPress={() => setFilterMonth(isActive ? null : month)}
-                  style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: isActive ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: isActive ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 0, backgroundColor: isActive ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: isActive ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={{ fontSize: 13, fontWeight: "600", color: isActive ? colors.primary : colors.muted }}>{label}</Text>
                 </Pressable>
@@ -188,7 +188,7 @@ export default function PhotoGalleryScreen() {
             {/* Close Button */}
             <Pressable
               onPress={() => setSelectedPhoto(null)}
-              style={({ pressed }) => [{ position: "absolute", top: 60, right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [{ position: "absolute", top: 60, right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 0, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 }]}
             >
               <MaterialIcons name="close" size={24} color="#FFF" />
             </Pressable>

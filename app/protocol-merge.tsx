@@ -129,7 +129,7 @@ export default function ProtocolMergeScreen() {
         </View>
 
         {/* Options */}
-        <View style={{ marginBottom: 16, backgroundColor: colors.surface, borderRadius: 10, padding: 12 }}>
+        <View style={{ marginBottom: 16, backgroundColor: colors.surface, borderRadius: 0, padding: 12 }}>
           <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Optionen</Text>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <Text style={{ fontSize: 13, color: colors.foreground }}>Fotos referenzieren</Text>
@@ -150,14 +150,14 @@ export default function ProtocolMergeScreen() {
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, flex: 1 }}>
             {selectedProtocols.size}/{protocols.length} ausgewählt
           </Text>
-          <Pressable onPress={selectToday} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1, marginRight: 8 }]}>
+          <Pressable onPress={selectToday} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1, marginRight: 8 }]}>
             <Text style={{ fontSize: 11, fontWeight: "600", color: colors.primary }}>Heute</Text>
           </Pressable>
-          <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, opacity: pressed ? 0.6 : 1 }]}>
+          <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Alle</Text>
           </Pressable>
           <Text style={{ color: colors.border, marginHorizontal: 4 }}>|</Text>
-          <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, opacity: pressed ? 0.6 : 1 }]}>
+          <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>Keine</Text>
           </Pressable>
         </View>
@@ -177,7 +177,7 @@ export default function ProtocolMergeScreen() {
                       flexDirection: "row",
                       alignItems: "center",
                       padding: 12,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       marginBottom: 6,
                       backgroundColor: isSelected ? colors.primary + "08" : colors.surface,
                       borderWidth: 1,
@@ -222,7 +222,7 @@ export default function ProtocolMergeScreen() {
               justifyContent: "center",
               gap: 8,
               paddingVertical: 16,
-              borderRadius: 12,
+              borderRadius: 0,
               backgroundColor: selectedProtocols.size >= 2 ? colors.primary : colors.border,
               opacity: pressed || isExporting ? 0.8 : 1,
             }]}

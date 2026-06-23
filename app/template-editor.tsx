@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   saveHeaderText: {
     color: "#FFFFFF",
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
   },
   iconPickerText: {
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     marginTop: 8,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
   },
   iconOption: {
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1.5,
   },
   sectionHeader: {
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   sectionInput: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1.5,
     borderStyle: "dashed",
     marginTop: 4,
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   },
   previewBox: {
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
   },
   previewTitle: {

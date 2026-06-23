@@ -316,15 +316,15 @@ export default function DefectsScreen() {
 
                 {/* Status + Priority */}
                 <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: statusColors[selectedDefect.status] + "20" }}>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: statusColors[selectedDefect.status] + "20" }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: statusColors[selectedDefect.status] }}>
                       {statusLabels[selectedDefect.status]}
                     </Text>
                   </View>
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.border + "40" }}>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.border + "40" }}>
                     <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.priority}</Text>
                   </View>
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: colors.border + "40" }}>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.border + "40" }}>
                     <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.category}</Text>
                   </View>
                 </View>
@@ -343,13 +343,13 @@ export default function DefectsScreen() {
                 {/* Gewerk, Frist, Verantwortlicher */}
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                   {(selectedDefect as any).gewerk ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primary + "12" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "12" }}>
                       <MaterialIcons name="construction" size={14} color={colors.primary} />
                       <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "500" }}>{(selectedDefect as any).gewerk}</Text>
                     </View>
                   ) : null}
                   {(selectedDefect as any).dueDate ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error + "12" : colors.warning + "12" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error + "12" : colors.warning + "12" }}>
                       <MaterialIcons name="event" size={14} color={new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning} />
                       <Text style={{ fontSize: 12, color: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning, fontWeight: "500" }}>
                         Frist: {new Date((selectedDefect as any).dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
@@ -357,7 +357,7 @@ export default function DefectsScreen() {
                     </View>
                   ) : null}
                   {(selectedDefect as any).assignee ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.surface }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.surface }}>
                       <MaterialIcons name="person" size={14} color={colors.muted} />
                       <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{(selectedDefect as any).assignee}</Text>
                     </View>
@@ -394,7 +394,7 @@ export default function DefectsScreen() {
                           }}
                           style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1, marginRight: 8 }]}
                         >
-                          <Image source={{ uri: photo }} style={{ width: 80, height: 80, borderRadius: 8 }} />
+                          <Image source={{ uri: photo }} style={{ width: 80, height: 80, borderRadius: 0 }} />
                         </Pressable>
                       ))}
                     </ScrollView>
@@ -426,7 +426,7 @@ export default function DefectsScreen() {
                       }}
                       style={({ pressed }) => [{
                         flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                        paddingVertical: 10, borderRadius: 8, backgroundColor: colors.primary + "15",
+                        paddingVertical: 10, borderRadius: 0, backgroundColor: colors.primary + "15",
                         borderWidth: 1, borderColor: colors.primary + "40",
                         opacity: pressed ? 0.7 : 1,
                       }]}
@@ -458,7 +458,7 @@ export default function DefectsScreen() {
                       }}
                       style={({ pressed }) => [{
                         flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                        paddingVertical: 10, borderRadius: 8, backgroundColor: colors.border + "30",
+                        paddingVertical: 10, borderRadius: 0, backgroundColor: colors.border + "30",
                         borderWidth: 1, borderColor: colors.border,
                         opacity: pressed ? 0.7 : 1,
                       }]}
@@ -486,7 +486,7 @@ export default function DefectsScreen() {
                           if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         }}
                         style={({ pressed }) => [{
-                          flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center",
+                          flex: 1, paddingVertical: 8, borderRadius: 0, alignItems: "center",
                           borderWidth: 1,
                           borderColor: selectedDefect.status === s ? statusColors[s] : colors.border,
                           backgroundColor: selectedDefect.status === s ? statusColors[s] + "15" : "transparent",
@@ -693,14 +693,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "700", flex: 1 },
   addBtn: { padding: 8 },
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  statBadge: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10 },
+  statBadge: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 0 },
   statNum: { fontSize: 20, fontWeight: "700" },
   statLabel: { fontSize: 11, fontWeight: "500", marginTop: 2 },
   filterRow: { marginBottom: 12, maxHeight: 36 },
-  filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, borderWidth: 1, marginRight: 8 },
+  filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 0, borderWidth: 1, marginRight: 8 },
   filterText: { fontSize: 13, fontWeight: "500" },
   list: { paddingBottom: 20 },
-  defectCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  defectCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
   statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
   defectContent: { flex: 1 },
   defectHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -712,18 +712,18 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "85%" },
   modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
-  input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 12 },
+  input: { borderWidth: 1, borderRadius: 0, padding: 12, fontSize: 15, marginBottom: 12 },
   textArea: { minHeight: 80, textAlignVertical: "top" },
   sectionLabel: { fontSize: 13, fontWeight: "500", marginBottom: 8 },
   priorityRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  priorityBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  priorityBtn: { flex: 1, paddingVertical: 10, borderRadius: 0, borderWidth: 1, alignItems: "center" },
   priorityText: { fontSize: 14, fontWeight: "500" },
   categoryScroll: { marginBottom: 16, maxHeight: 36 },
-  categoryBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, marginRight: 8 },
+  categoryBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 0, borderWidth: 1, marginRight: 8 },
   categoryText: { fontSize: 13, fontWeight: "500" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, alignItems: "center" },
   cancelBtnText: { fontSize: 15, fontWeight: "600" },
-  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
+  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, alignItems: "center" },
   saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });

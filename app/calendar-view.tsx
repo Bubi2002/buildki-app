@@ -142,7 +142,7 @@ export default function CalendarViewScreen() {
             <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Kalender</Text>
             <Text style={{ fontSize: 12, color: colors.muted }}>Protokoll-Timeline</Text>
           </View>
-          <Pressable onPress={goToToday} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary + "15", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }]}>
+          <Pressable onPress={goToToday} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary + "15", borderRadius: 0, paddingHorizontal: 10, paddingVertical: 4 }]}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Heute</Text>
           </Pressable>
         </View>
@@ -194,7 +194,7 @@ export default function CalendarViewScreen() {
                 }]}
               >
                 <View style={[
-                  { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+                  { width: 36, height: 36, borderRadius: 0, alignItems: "center", justifyContent: "center" },
                   isSelected && { backgroundColor: colors.primary },
                   isToday && !isSelected && { borderWidth: 2, borderColor: colors.primary },
                 ]}>
@@ -232,7 +232,7 @@ export default function CalendarViewScreen() {
                       flexDirection: "row",
                       alignItems: "center",
                       backgroundColor: colors.surface,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       padding: 12,
                       gap: 10,
                       borderWidth: 1,

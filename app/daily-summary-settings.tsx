@@ -172,7 +172,7 @@ export default function DailySummarySettingsScreen() {
         )}
 
         {/* Info */}
-        <View style={{ marginTop: 16, padding: 16, backgroundColor: colors.primary + "08", borderRadius: 12 }}>
+        <View style={{ marginTop: 16, padding: 16, backgroundColor: colors.primary + "08", borderRadius: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <MaterialIcons name="info-outline" size={18} color={colors.primary} />
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Hinweis</Text>
@@ -191,10 +191,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
   backBtn: { padding: 8, marginRight: 8 },
   title: { fontSize: 20, fontWeight: "700", flex: 1 },
-  section: { borderRadius: 12, borderWidth: 1, padding: 16, marginBottom: 12 },
+  section: { borderRadius: 0, borderWidth: 1, padding: 16, marginBottom: 12 },
   sectionTitle: { fontSize: 14, fontWeight: "700" },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   rowTitle: { fontSize: 14, fontWeight: "500" },
   rowSubtitle: { fontSize: 12, marginTop: 2 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, marginRight: 8 },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1, marginRight: 8 },
 });

@@ -35,7 +35,7 @@ type ProjectItem = {
   favorite?: boolean;
 };
 
-const PROJECT_COLORS = ["#EF4444", "#F59E0B", "#22C55E", "#0EA5E9", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"];
+const PROJECT_COLORS = ["#F87171", "#FBBF24", "#4ADE80", "#38BDF8", "#A78BFA", "#F472B6", "#2DD4BF", "#818CF8"];
 
 export default function ProjectsTab() {
   const colors = useColors();
@@ -75,13 +75,12 @@ export default function ProjectsTab() {
           (p.protocolPrefix || "").toLowerCase().includes(q)
       );
     }
-    // Favorites first
     const favs = list.filter((p) => p.favorite);
     const rest = list.filter((p) => !p.favorite);
     const sortFn = (a: ProjectItem, b: ProjectItem) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "created") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // activity = created for now
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     };
     return [...favs.sort(sortFn), ...rest.sort(sortFn)];
   }, [projects, search, sortBy, showArchived]);
@@ -110,7 +109,6 @@ export default function ProjectsTab() {
     setNewPrefix("");
     setNewColor(PROJECT_COLORS[0]);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // Set as active project
     await AsyncStorage.setItem("last-selected-project-id", np.id);
     router.push(`/project-detail?id=${np.id}` as any);
   };
@@ -171,45 +169,36 @@ export default function ProjectsTab() {
   return (
     <ScreenContainer className="flex-1">
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <View>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Projekte</Text>
-          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+          <Text style={styles.headerTitle}>Projekte</Text>
+          <Text style={styles.headerSub}>
             {activeCount} aktiv{archivedCount > 0 ? ` \u2022 ${archivedCount} archiviert` : ""}
           </Text>
         </View>
         <Pressable
           onPress={() => setShowCreate(true)}
-          style={({ pressed }) => [{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 10,
-            backgroundColor: colors.primary,
-            opacity: pressed ? 0.8 : 1,
-          }]}
+          style={({ pressed }) => [styles.newBtn, { opacity: pressed ? 0.8 : 1 }]}
         >
           <MaterialIcons name="add" size={18} color="#FFF" />
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>Neu</Text>
+          <Text style={styles.newBtnText}>Neu</Text>
         </Pressable>
       </View>
 
       {/* Search & Filter */}
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-        <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <MaterialIcons name="search" size={18} color={colors.muted} />
+        <View style={styles.searchBox}>
+          <MaterialIcons name="search" size={18} color="#8FA3B8" />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Projekt suchen..."
-            placeholderTextColor={colors.muted}
-            style={{ flex: 1, fontSize: 14, color: colors.foreground, marginLeft: 8 }}
+            placeholderTextColor="#8FA3B8"
+            style={styles.searchInput}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch("")}>
-              <MaterialIcons name="close" size={16} color={colors.muted} />
+              <MaterialIcons name="close" size={16} color="#8FA3B8" />
             </Pressable>
           )}
         </View>
@@ -224,14 +213,14 @@ export default function ProjectsTab() {
                 style={({ pressed }) => [{
                   paddingHorizontal: 10,
                   paddingVertical: 6,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   borderWidth: 1,
-                  borderColor: sortBy === s ? colors.primary : colors.border,
-                  backgroundColor: sortBy === s ? colors.primary + "10" : "transparent",
+                  borderColor: sortBy === s ? "#5DADE2" : "#1E3A5F",
+                  backgroundColor: sortBy === s ? "#5DADE215" : "transparent",
                   opacity: pressed ? 0.7 : 1,
                 }]}
               >
-                <Text style={{ fontSize: 11, fontWeight: "600", color: sortBy === s ? colors.primary : colors.muted }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: sortBy === s ? "#5DADE2" : "#8FA3B8" }}>
                   {s === "activity" ? "Aktivität" : s === "name" ? "Name" : "Erstellt"}
                 </Text>
               </Pressable>
@@ -242,15 +231,15 @@ export default function ProjectsTab() {
             style={({ pressed }) => [{
               paddingHorizontal: 10,
               paddingVertical: 6,
-              borderRadius: 6,
+              borderRadius: 0,
               borderWidth: 1,
-              borderColor: showArchived ? colors.warning : colors.border,
-              backgroundColor: showArchived ? colors.warning + "10" : "transparent",
+              borderColor: showArchived ? "#FBBF24" : "#1E3A5F",
+              backgroundColor: showArchived ? "#FBBF2415" : "transparent",
               opacity: pressed ? 0.7 : 1,
             }]}
           >
-            <Text style={{ fontSize: 11, fontWeight: "600", color: showArchived ? colors.warning : colors.muted }}>
-              {showArchived ? "Archiv" : "Archiv"}
+            <Text style={{ fontSize: 11, fontWeight: "600", color: showArchived ? "#FBBF24" : "#8FA3B8" }}>
+              Archiv
             </Text>
           </Pressable>
         </View>
@@ -263,17 +252,17 @@ export default function ProjectsTab() {
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         ListEmptyComponent={
           <View style={{ alignItems: "center", paddingTop: 60 }}>
-            <MaterialIcons name={showArchived ? "archive" : "folder-open"} size={48} color={colors.muted} />
-            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>
+            <MaterialIcons name={showArchived ? "archive" : "folder-open"} size={48} color="#8FA3B8" />
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#F0F4F8", marginTop: 12 }}>
               {showArchived ? "Kein archiviertes Projekt" : "Noch keine Projekte"}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>
+            <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4, textAlign: "center" }}>
               {showArchived ? "Archivierte Projekte erscheinen hier." : "Erstelle dein erstes Projekt, um loszulegen."}
             </Text>
             {!showArchived && (
               <Pressable
                 onPress={() => setShowCreate(true)}
-                style={({ pressed }) => [{ marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                style={({ pressed }) => [{ marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 0, backgroundColor: "#5DADE2", opacity: pressed ? 0.8 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>Erstes Projekt anlegen</Text>
               </Pressable>
@@ -284,40 +273,36 @@ export default function ProjectsTab() {
           <Pressable
             onPress={() => selectProject(item)}
             onLongPress={() => archiveProject(item.id)}
-            style={({ pressed }) => [styles.projectCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [styles.projectCard, { opacity: pressed ? 0.8 : 1 }]}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              {/* Favorite */}
               <Pressable onPress={() => toggleFavorite(item.id)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
                 <MaterialIcons
                   name={item.favorite ? "star" : "star-outline"}
                   size={20}
-                  color={item.favorite ? "#F59E0B" : colors.muted}
+                  color={item.favorite ? "#FBBF24" : "#8FA3B8"}
                 />
               </Pressable>
 
-              {/* Color dot */}
-              <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: item.color }} />
+              <View style={{ width: 4, height: 32, backgroundColor: item.color, borderRadius: 0 }} />
 
-              {/* Info */}
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{item.name}</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#F0F4F8" }}>{item.name}</Text>
                 {item.description ? (
-                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{item.description}</Text>
+                  <Text style={{ fontSize: 12, color: "#8FA3B8", marginTop: 2 }} numberOfLines={1}>{item.description}</Text>
                 ) : null}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
                   {item.protocolPrefix && (
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.primary, backgroundColor: colors.primary + "10", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "600", color: "#5DADE2", backgroundColor: "#5DADE215", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 0 }}>
                       {item.protocolPrefix}-{String((item.protocolCounter || 0) + 1).padStart(3, "0")}
                     </Text>
                   )}
-                  <Text style={{ fontSize: 10, color: colors.muted }}>
+                  <Text style={{ fontSize: 10, color: "#8FA3B8" }}>
                     {new Date(item.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
                   </Text>
                 </View>
               </View>
 
-              {/* Actions */}
               <Pressable
                 onPress={() => {
                   if (item.archived) {
@@ -337,15 +322,15 @@ export default function ProjectsTab() {
                 }}
                 style={({ pressed }) => [{ padding: 6, opacity: pressed ? 0.5 : 1 }]}
               >
-                <MaterialIcons name={item.archived ? "unarchive" : "more-vert"} size={20} color={colors.muted} />
+                <MaterialIcons name={item.archived ? "unarchive" : "more-vert"} size={20} color="#8FA3B8" />
               </Pressable>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
             </View>
           </Pressable>
         )}
       />
 
-      {/* Create Project Modal - Centered Card */}
+      {/* Create Project Modal */}
       <Modal visible={showCreate} animationType="fade" transparent={true}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
@@ -353,12 +338,12 @@ export default function ProjectsTab() {
               behavior={Platform.OS === "ios" ? "padding" : "height"}
               style={styles.modalKeyboardView}
             >
-              <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.modalCard}>
                 {/* Modal Header */}
-                <View style={[styles.modalCardHeader, { borderBottomColor: colors.border }]}>
-                  <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
+                <View style={styles.modalCardHeader}>
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: "#F0F4F8" }}>Neues Projekt</Text>
                   <Pressable onPress={() => { setShowCreate(false); Keyboard.dismiss(); }} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
-                    <MaterialIcons name="close" size={22} color={colors.muted} />
+                    <MaterialIcons name="close" size={22} color="#8FA3B8" />
                   </Pressable>
                 </View>
 
@@ -367,7 +352,7 @@ export default function ProjectsTab() {
                   <View style={{ padding: 20, gap: 16 }}>
                     {/* Template Selection */}
                     <View>
-                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Vorlage (optional)</Text>
+                      <Text style={styles.fieldLabel}>Vorlage (optional)</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                         {PROJECT_TEMPLATES.map((t) => (
                           <Pressable
@@ -382,68 +367,68 @@ export default function ProjectsTab() {
                               }
                             }}
                             style={({ pressed }) => [{
-                              paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginRight: 8,
-                              borderWidth: 1.5, flexDirection: "row", alignItems: "center", gap: 6,
-                              borderColor: selectedTemplate === t.id ? t.color : colors.border,
+                              paddingHorizontal: 14, paddingVertical: 10, borderRadius: 0, marginRight: 8,
+                              borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6,
+                              borderColor: selectedTemplate === t.id ? t.color : "#1E3A5F",
                               backgroundColor: selectedTemplate === t.id ? t.color + "15" : "transparent",
                               opacity: pressed ? 0.7 : 1,
                             }]}
                           >
-                            <MaterialIcons name={t.icon as any} size={18} color={selectedTemplate === t.id ? t.color : colors.muted} />
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: selectedTemplate === t.id ? t.color : colors.muted }}>{t.name}</Text>
+                            <MaterialIcons name={t.icon as any} size={18} color={selectedTemplate === t.id ? t.color : "#8FA3B8"} />
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: selectedTemplate === t.id ? t.color : "#8FA3B8" }}>{t.name}</Text>
                           </Pressable>
                         ))}
                       </ScrollView>
                     </View>
 
                     <View>
-                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Projektname *</Text>
+                      <Text style={styles.fieldLabel}>Projektname *</Text>
                       <TextInput
                         value={newName}
                         onChangeText={setNewName}
                         placeholder="z.B. Neubau Musterstraße 5"
-                        placeholderTextColor={colors.muted}
+                        placeholderTextColor="#8FA3B8"
                         returnKeyType="next"
-                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                        style={styles.input}
                         autoFocus
                       />
                     </View>
 
                     <View>
-                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Beschreibung (optional)</Text>
+                      <Text style={styles.fieldLabel}>Beschreibung (optional)</Text>
                       <TextInput
                         value={newDesc}
                         onChangeText={setNewDesc}
                         placeholder="Kurze Projektbeschreibung"
-                        placeholderTextColor={colors.muted}
+                        placeholderTextColor="#8FA3B8"
                         returnKeyType="done"
                         blurOnSubmit={true}
                         onSubmitEditing={() => Keyboard.dismiss()}
-                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, minHeight: 50, textAlignVertical: "top" }]}
+                        style={[styles.input, { minHeight: 50, textAlignVertical: "top" }]}
                       />
                     </View>
 
                     <View>
-                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Protokoll-Präfix</Text>
+                      <Text style={styles.fieldLabel}>Protokoll-Präfix</Text>
                       <TextInput
                         value={newPrefix}
                         onChangeText={(t) => setNewPrefix(t.toUpperCase())}
                         placeholder="z.B. BST, MNG (auto: erste 3 Buchstaben)"
-                        placeholderTextColor={colors.muted}
+                        placeholderTextColor="#8FA3B8"
                         maxLength={5}
                         autoCapitalize="characters"
                         returnKeyType="done"
                         blurOnSubmit={true}
                         onSubmitEditing={() => Keyboard.dismiss()}
-                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                        style={styles.input}
                       />
-                      <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: "#8FA3B8", marginTop: 4 }}>
                         Optional: Automatische Nummerierung (z.B. BST-001)
                       </Text>
                     </View>
 
                     <View>
-                      <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Farbe wählen</Text>
+                      <Text style={styles.fieldLabel}>Farbe wählen</Text>
                       <View style={{ flexDirection: "row", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
                         {PROJECT_COLORS.map((c) => (
                           <Pressable
@@ -452,15 +437,10 @@ export default function ProjectsTab() {
                             style={{
                               width: 32,
                               height: 32,
-                              borderRadius: 16,
+                              borderRadius: 0,
                               backgroundColor: c,
                               borderWidth: newColor === c ? 3 : 0,
                               borderColor: "#FFF",
-                              shadowColor: newColor === c ? c : "transparent",
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.4,
-                              shadowRadius: 4,
-                              elevation: newColor === c ? 4 : 0,
                               alignItems: "center",
                               justifyContent: "center",
                             }}
@@ -474,32 +454,16 @@ export default function ProjectsTab() {
                 </ScrollView>
 
                 {/* Modal Footer */}
-                <View style={[styles.modalCardFooter, { borderTopColor: colors.border }]}>
+                <View style={styles.modalCardFooter}>
                   <Pressable
                     onPress={() => { setShowCreate(false); Keyboard.dismiss(); }}
-                    style={({ pressed }) => [{
-                      flex: 1,
-                      paddingVertical: 14,
-                      borderRadius: 10,
-                      alignItems: "center",
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      opacity: pressed ? 0.7 : 1,
-                    }]}
+                    style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#8FA3B8" }}>Abbrechen</Text>
                   </Pressable>
                   <Pressable
                     onPress={createProject}
-                    style={({ pressed }) => [{
-                      flex: 1,
-                      paddingVertical: 14,
-                      borderRadius: 10,
-                      alignItems: "center",
-                      backgroundColor: colors.primary,
-                      opacity: pressed ? 0.8 : 1,
-                    }]}
+                    style={({ pressed }) => [styles.createBtn, { opacity: pressed ? 0.8 : 1 }]}
                   >
                     <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Erstellen</Text>
                   </Pressable>
@@ -521,28 +485,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+    borderBottomColor: "#1E3A5F",
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
+    color: "#F0F4F8",
+    letterSpacing: -0.3,
+  },
+  headerSub: {
+    fontSize: 12,
+    color: "#8FA3B8",
+    marginTop: 2,
+  },
+  newBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 0,
+    backgroundColor: "#5DADE2",
+  },
+  newBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFF",
   },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#0F1E30",
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#F0F4F8",
+    marginLeft: 8,
   },
   projectCard: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#0F1E30",
     marginBottom: 10,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.75)",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
@@ -555,14 +551,11 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 440,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#0F1E30",
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
   },
   modalCardHeader: {
     flexDirection: "row",
@@ -571,6 +564,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
+    borderBottomColor: "#1E3A5F",
   },
   modalCardFooter: {
     flexDirection: "row",
@@ -578,16 +572,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
+    borderTopColor: "#1E3A5F",
   },
   fieldLabel: {
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 6,
+    color: "#F0F4F8",
   },
   input: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
     fontSize: 15,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#0B1622",
+    color: "#F0F4F8",
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 0,
+    alignItems: "center",
+    backgroundColor: "#0B1622",
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+  },
+  createBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 0,
+    alignItems: "center",
+    backgroundColor: "#5DADE2",
   },
 });

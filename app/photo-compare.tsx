@@ -179,14 +179,14 @@ export default function PhotoCompareScreen() {
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.error, marginBottom: 4, textAlign: "center" }}>VORHER</Text>
-                  <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 8 }} contentFit="cover" />
+                  <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 0 }} contentFit="cover" />
                   <Text style={{ fontSize: 10, color: colors.muted, textAlign: "center", marginTop: 4 }}>{formatDate(selectedPair.beforeDate)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.success, marginBottom: 4, textAlign: "center" }}>NACHHER</Text>
                   {selectedPair.afterUri ? (
                     <>
-                      <Image source={{ uri: selectedPair.afterUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 8 }} contentFit="cover" />
+                      <Image source={{ uri: selectedPair.afterUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 0 }} contentFit="cover" />
                       <Text style={{ fontSize: 10, color: colors.muted, textAlign: "center", marginTop: 4 }}>{formatDate(selectedPair.afterDate!)}</Text>
                     </>
                   ) : (
@@ -195,7 +195,7 @@ export default function PhotoCompareScreen() {
                       style={({ pressed }) => [{
                         width: "100%",
                         height: imgHeight / 2,
-                        borderRadius: 8,
+                        borderRadius: 0,
                         borderWidth: 2,
                         borderStyle: "dashed",
                         borderColor: colors.border,
@@ -217,12 +217,12 @@ export default function PhotoCompareScreen() {
             <View style={{ gap: 12 }}>
               <View>
                 <Text style={{ fontSize: 11, fontWeight: "600", color: colors.error, marginBottom: 4 }}>Vorher – {formatDate(selectedPair.beforeDate)}</Text>
-                <Image source={{ uri: selectedPair.beforeUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 8 }} contentFit="contain" />
+                <Image source={{ uri: selectedPair.beforeUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 0 }} contentFit="contain" />
               </View>
               {selectedPair.afterUri && (
                 <View>
                   <Text style={{ fontSize: 11, fontWeight: "600", color: colors.success, marginBottom: 4 }}>Nachher – {formatDate(selectedPair.afterDate!)}</Text>
-                  <Image source={{ uri: selectedPair.afterUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 8 }} contentFit="contain" />
+                  <Image source={{ uri: selectedPair.afterUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 0 }} contentFit="contain" />
                 </View>
               )}
             </View>
@@ -245,7 +245,7 @@ export default function PhotoCompareScreen() {
             <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Vorher/Nachher</Text>
             <Text style={{ fontSize: 12, color: colors.muted }}>Fortschrittsdokumentation</Text>
           </View>
-          <Pressable onPress={createNewComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }]}>
+          <Pressable onPress={createNewComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }]}>
             <MaterialIcons name="add" size={18} color="#FFF" />
             <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFF" }}>Neu</Text>
           </Pressable>
@@ -260,7 +260,7 @@ export default function PhotoCompareScreen() {
             </Text>
             <Pressable
               onPress={createNewComparison}
-              style={({ pressed }) => [{ marginTop: 20, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10, opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [{ marginTop: 20, backgroundColor: colors.primary, borderRadius: 0, paddingHorizontal: 20, paddingVertical: 10, opacity: pressed ? 0.8 : 1 }]}
             >
               <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Ersten Vergleich erstellen</Text>
             </Pressable>
@@ -275,7 +275,7 @@ export default function PhotoCompareScreen() {
                 style={({ pressed }) => [{
                   flexDirection: "row",
                   backgroundColor: colors.surface,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   padding: 12,
                   gap: 12,
                   borderWidth: 1,
@@ -284,16 +284,16 @@ export default function PhotoCompareScreen() {
                 }]}
               >
                 {/* Before thumbnail */}
-                <Image source={{ uri: pair.beforeUri }} style={{ width: 60, height: 60, borderRadius: 8 }} contentFit="cover" />
+                <Image source={{ uri: pair.beforeUri }} style={{ width: 60, height: 60, borderRadius: 0 }} contentFit="cover" />
                 {/* Arrow */}
                 <View style={{ alignItems: "center", justifyContent: "center" }}>
                   <MaterialIcons name="arrow-forward" size={20} color={colors.muted} />
                 </View>
                 {/* After thumbnail */}
                 {pair.afterUri ? (
-                  <Image source={{ uri: pair.afterUri }} style={{ width: 60, height: 60, borderRadius: 8 }} contentFit="cover" />
+                  <Image source={{ uri: pair.afterUri }} style={{ width: 60, height: 60, borderRadius: 0 }} contentFit="cover" />
                 ) : (
-                  <View style={{ width: 60, height: 60, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 60, height: 60, borderRadius: 0, borderWidth: 1, borderStyle: "dashed", borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
                     <MaterialIcons name="add" size={20} color={colors.muted} />
                   </View>
                 )}
