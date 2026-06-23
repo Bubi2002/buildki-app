@@ -418,3 +418,6 @@
 - [x] Feature: Technische Hilfe (Fehlerbehebung, Tipps)
 - [x] Feature: Zugang zum Support über Einstellungen-Screen
 - [x] Feature: Eckiges dunkles Design passend zum Rest der App
+- [ ] Feature: Chat-Verlauf in AsyncStorage speichern und beim Öffnen laden
+- [ ] Feature: Feedback-Buttons (Daumen hoch/runter) nach jeder KI-Antwort
+- [ ] Feature: Kontaktformular als Fallback wenn KI nicht helfen kann

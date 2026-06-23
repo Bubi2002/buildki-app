@@ -14,16 +14,29 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "simulator": false
-      }
-    },
-    "production": {
-      "ios": {
-        "autoIncrement": true
+        "buildConfiguration": "Release"
       },
       "android": {
-        "autoIncrement": true
+        "buildType": "apk"
       }
+    },
+    "testflight": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "channel": "testflight"
+    },
+    "production": {
+      "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "channel": "production"
     }
   },
   "submit": {
