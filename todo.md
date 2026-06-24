@@ -247,7 +247,7 @@
 - [x] Feature: Protokoll-Vorlagen-Marktplatz – Vorlagen mit anderen Nutzern teilen und importieren
 - [x] Feature: KI-gestützte Agenda-Vorbereitung – Aus vorherigen Protokollen automatisch Agenda-Punkte vorschlagen
 - [x] Feature: Aufgaben-Kanban-Board – Visuelle Aufgabenverwaltung mit Drag-and-Drop (Offen/In Arbeit/Erledigt)
-- [ ] Feature: Foto-Export über Cloud-Dienste (Dropbox, Google Drive, OneDrive) – Bilder aus Protokollen direkt in Cloud-Speicher exportieren
+- [x] Feature: Foto-Export über Cloud-Dienste (Dropbox, Google Drive, OneDrive) – Bilder aus Protokollen direkt in Cloud-Speicher exportieren
 - [x] UI: Projekt-Detail Layout Redesign – 3-Spalten Icon-Grid (PlanRadar-Style)
 - [x] UI: Protokoll-Detail KI-Werkzeuge – Plaud-Style Auswahl mit großen Karten statt kleiner Buttons
 - [x] UI: Verbesserte Lesbarkeit – Größere Schriften, bessere Abstände, klarere Hierarchie
@@ -379,7 +379,7 @@
 - [x] Feature: Automatischer Gesamtbericht – Einstellungen-Screen (Häufigkeit, Uhrzeit, Wochentag, Inhalt, Auto-Versand), Push-Benachrichtigung als Trigger
 - [x] Feature: Offline-Modus verbessern – Aufnahme ohne Internet + Auto-Sync bei Reconnect (offline-sync-manager.ts, use-network-status.ts, _layout.tsx)
 - [x] Feature: PDF-Vorlagen anpassen – Firmenlogo + Kopfzeile für alle PDFs konfigurierbar (pdf-branding.tsx, pdf-branding-store.ts – bereits vollständig implementiert)
-- [ ] Hinweis: Dropbox Permissions (files.content.write + files.content.read) in Developer Console aktivieren
+- [x] Hinweis: Dropbox Permissions (files.content.write + files.content.read) in Developer Console aktivieren
 - [x] Feature: Mängel-PDF-Export – Professioneller PDF-Bericht aller Mängel eines Projekts mit Fotos, Status, Priorität und Gewerk (defect-pdf-export.ts, PDF-Button in defects.tsx)
 - [x] Feature: Mängel-Zuweisung an Gewerke – Gewerk-Feld (Elektro, Sanitär, Rohbau, etc.) pro Mangel mit Filterung (Gewerk-Auswahl im Create-Modal, Anzeige in Karten)
 - [x] Feature: Projekt-Vorlagen – Vordefinierte Projekt-Templates (Baustelle, Büro, Gutachten) mit passenden Standardeinstellungen (project-templates.ts, Template-Auswahl in projects.tsx)
@@ -404,7 +404,7 @@
 - [x] Fix: Stopp-Button zeigt Bestätigungs-Dialog (Fortsetzen/Abschließen) statt sofort Protokoll abzuschließen
 - [x] Bug: Kapitel-Spracheingabe funktioniert immer noch nicht – Fix: expo-av Recording API statt nicht-existierender AudioRecorder-Klasse, Hauptaufnahme wird pausiert/fortgesetzt
 - [x] Feature: Zeiterfassung erweitert – Taglohnzettel-PDF-Export, Wochenbericht-PDF, Firmenbranding im Export, Pausen-Tracking, Kategorien (Arbeit/Besprechung/Fahrt/Pause)
-- [ ] Design: Komplettes Redesign – Dunkles Schwarz/Dunkelblau-Theme, eckige Kästen (keine Rundungen), milchige Farbverläufe, glasartige Karten, elegante Typografie, hohe Lesbarkeit
+- [x] Design: Komplettes Redesign – Dunkles Schwarz/Dunkelblau-Theme, eckige Kästen (keine Rundungen), milchige Farbverläufe, glasartige Karten, elegante Typografie, hohe Lesbarkeit
 - [x] Design-Redesign: Alle Kästen/Karten auf eckige Ecken (borderRadius: 0) umstellen
 - [x] Design-Redesign: Dashboard mit dunklem Navy-Theme und eckigen Kästen
 - [x] Design-Redesign: Projekte-Screen mit dunklem Navy-Theme und eckigen Kästen
@@ -418,6 +418,6 @@
 - [x] Feature: Technische Hilfe (Fehlerbehebung, Tipps)
 - [x] Feature: Zugang zum Support über Einstellungen-Screen
 - [x] Feature: Eckiges dunkles Design passend zum Rest der App
-- [ ] Feature: Chat-Verlauf in AsyncStorage speichern und beim Öffnen laden
-- [ ] Feature: Feedback-Buttons (Daumen hoch/runter) nach jeder KI-Antwort
-- [ ] Feature: Kontaktformular als Fallback wenn KI nicht helfen kann
+- [x] Feature: Chat-Verlauf in AsyncStorage speichern und beim Öffnen laden
+- [x] Feature: Feedback-Buttons (Daumen hoch/runter) nach jeder KI-Antwort
+- [x] Feature: Kontaktformular als Fallback wenn KI nicht helfen kann
