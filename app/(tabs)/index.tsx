@@ -44,6 +44,7 @@ import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 
 type RecordingMode = "audio" | "audio-photo";
 
@@ -750,6 +751,55 @@ export default function RecordScreen() {
       }
     } catch (error) {
       console.error("Photo capture error:", error);
+    }
+  };
+
+  // --- PICK FROM GALLERY ---
+  const pickFromGallery = async () => {
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 20,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        const photoDir = `${FileSystem.documentDirectory}photos/`;
+        const dirInfo = await FileSystem.getInfoAsync(photoDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(photoDir, { intermediates: true });
+        }
+
+        for (const asset of result.assets) {
+          const filename = `gallery-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+          const newUri = `${photoDir}${filename}`;
+          await FileSystem.copyAsync({ from: asset.uri, to: newUri });
+
+          setCapturedPhotos((prev) => [...prev, newUri]);
+          setPhotoTimestamps((prev) => [...prev, recordingDuration]);
+          setPhotoVoiceNotes((prev) => [...prev, null]);
+
+          // Auto-link to last chapter marker
+          setMarkers((prev) => {
+            const lastChapterIdx = [...prev].reverse().findIndex(m => m.label.startsWith("KAPITEL:"));
+            if (lastChapterIdx === -1) return prev;
+            const actualIdx = prev.length - 1 - lastChapterIdx;
+            const updated = [...prev];
+            updated[actualIdx] = {
+              ...updated[actualIdx],
+              photos: [...(updated[actualIdx].photos || []), newUri],
+            };
+            return updated;
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Gallery pick error:", error);
     }
   };
 
@@ -2618,23 +2668,55 @@ export default function RecordScreen() {
           <View style={styles.controlsRow}>
             {/* Photo button - larger, blue color */}
             {isRecording ? (
+              <View style={{ alignItems: "center", gap: 8 }}>
+                <Pressable
+                  onPress={takePhotoWithTimer}
+                  style={({ pressed }) => [
+                    styles.actionButtonLarge,
+                    { backgroundColor: "#2196F3", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                  ]}
+                >
+                  <MaterialIcons name="photo-camera" size={32} color="#FFFFFF" />
+                  <Text style={styles.actionButtonLabel}>Foto</Text>
+                  {capturedPhotos.length > 0 && (
+                    <View style={styles.photoBadge}>
+                      <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
+                    </View>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={pickFromGallery}
+                  style={({ pressed }) => [{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 0,
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.3)",
+                    transform: [{ scale: pressed ? 0.9 : 1 }],
+                  }]}
+                >
+                  <MaterialIcons name="photo-library" size={22} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ) : (
               <Pressable
-                onPress={takePhotoWithTimer}
+                onPress={pickFromGallery}
                 style={({ pressed }) => [
                   styles.actionButtonLarge,
-                  { backgroundColor: "#2196F3", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                  { backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
-                <MaterialIcons name="photo-camera" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>Foto</Text>
+                <MaterialIcons name="photo-library" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>Galerie</Text>
                 {capturedPhotos.length > 0 && (
                   <View style={styles.photoBadge}>
                     <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
                   </View>
                 )}
               </Pressable>
-            ) : (
-              <View style={styles.actionButtonPlaceholder} />
             )}
 
             {/* Record / Stop button - smaller, with label */}

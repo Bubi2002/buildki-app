@@ -421,3 +421,6 @@
 - [x] Feature: Chat-Verlauf in AsyncStorage speichern und beim Öffnen laden
 - [x] Feature: Feedback-Buttons (Daumen hoch/runter) nach jeder KI-Antwort
 - [x] Feature: Kontaktformular als Fallback wenn KI nicht helfen kann
+- [x] Feature: Fotos/Videos aus Galerie hochladen (ImagePicker) – nicht nur Live-Kamera, sondern auch bestehende Medien auswählen
+- [x] Feature: Galerie-Button im Audio+Foto-Modus neben dem Foto-Button
+- [x] Feature: Mehrfachauswahl aus Galerie möglich
