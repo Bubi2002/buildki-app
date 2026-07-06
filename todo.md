@@ -439,3 +439,4 @@
 - [x] Bug-Fix: "Erneut einsprechen" Button – Audio-Session-Konflikt behoben (Hauptaufnahme wird vorher pausiert)
 - [x] Bug-Fix: "Kapitel setzen" Button – Hauptaufnahme wird nach Kapitelsetzen fortgesetzt, Button immer sichtbar
 - [x] Bug-Fix: Protokoll-Liste aktualisiert sich jetzt automatisch (Polling alle 3s + onJobUpdate Listener) – "Wird verarbeitet" wechselt zu "Fertig" sobald Background-Processor fertig ist
+- [x] UX: App-Logo in blauen Farbton der App angepasst (dunkelblauer Hintergrund, hellblaues Icon)

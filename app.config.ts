@@ -23,7 +23,7 @@ const schemeFromBundleId = `manus${timestamp}`;
 const env = {
   appName: "ProtoKI",
   appSlug: "protokoll-app",
-  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663729981946/C7amCXpPYwQNP8pDBUNaVq/icon-Brwx2xBR5aE7C6SDGZjqpj.png",
+  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663729981946/C7amCXpPYwQNP8pDBUNaVq/icon-jqkvjdAT5U49vB6tPnVhoj.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -50,7 +50,7 @@ const config: ExpoConfig = {
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: "#E53935",
+      backgroundColor: "#0B1622",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
