@@ -431,3 +431,4 @@
 - [x] Feature: Gespeicherte Kontakte/Teammitglieder für schnelles Delegieren
 - [x] Feature: Benachrichtigung per E-Mail/WhatsApp an delegierte Person (Option A)
 - [x] Feature: Push-Benachrichtigung an App-Nutzer wenn delegiert (Option B)
+- [x] Bug-Fix: PDF Unterschriften – Strich überlappt Kasten, Kästen sollen schwarzen Rand haben, Unterschriften sind verschoben
