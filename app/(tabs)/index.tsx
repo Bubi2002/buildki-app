@@ -877,7 +877,7 @@ export default function RecordScreen() {
   };
 
   const startChapterMarker = () => {
-    // Show chapter input prompt with speech option
+    // Show chapter input prompt (text input only - no auto-speech to avoid audio conflicts)
     setChapterInput("");
     setChapterPromptVisible(true);
     setChapterListening(false);
@@ -885,22 +885,21 @@ export default function RecordScreen() {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    // Auto-start speech recording after a short delay
-    setTimeout(() => startChapterSpeech(), 400);
+    // Pause main recording while chapter modal is open
+    if (isRecording && !isPaused) {
+      audioRecorder.pause();
+      pauseTimer();
+    }
   };
 
   const startChapterSpeech = async () => {
     try {
       setChapterListening(true);
       setChapterRecording(true);
-      // Pause main recording to free the audio session
-      if (isRecording && !isPaused) {
-        audioRecorder.pause();
-        pauseTimer();
-      }
+      // Main recording is already paused by startChapterMarker
       // Set audio mode to allow recording
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      // Use expo-audio Recording API (legacy approach that works)
+      // Use expo-av Recording API for chapter name speech
       const { Audio } = require("expo-av");
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
@@ -916,11 +915,6 @@ export default function RecordScreen() {
       console.log("Chapter speech recording failed, using text input", err);
       setChapterListening(false);
       setChapterRecording(false);
-      // Resume main recording
-      if (isRecording) {
-        audioRecorder.record();
-        resumeTimer();
-      }
     }
   };
 
@@ -977,6 +971,16 @@ export default function RecordScreen() {
     setChapterInput("");
     setChapterListening(false);
     setChapterRecording(false);
+    // Resume main recording after chapter is set
+    if (isRecording) {
+      try {
+        setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true }).then(() => {
+          audioRecorder.record();
+          resumeTimer();
+          setIsPaused(false);
+        });
+      } catch {}
+    }
   };
 
   // --- AUDIO RECORDING ---
@@ -3275,10 +3279,10 @@ export default function RecordScreen() {
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
               </Pressable>
-              {!chapterListening && chapterInput.trim() && (
+              {!chapterListening && (
                 <Pressable
-                  onPress={() => confirmChapter(chapterInput)}
-                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: "#FF9800", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                  onPress={() => confirmChapter(chapterInput || `Kapitel ${markers.filter(m => m.label.startsWith("KAPITEL:")).length + 1}`)}
+                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: chapterInput.trim() ? "#FF9800" : "#FF980080", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Kapitel setzen</Text>
                 </Pressable>
