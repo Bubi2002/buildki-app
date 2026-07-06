@@ -435,3 +435,4 @@
 - [x] Feature: Zeiterfassung-Einstellungen – Tagessatz, Stundensatz, Person, Firma hinterlegen
 - [x] Bug-Fix: Team-Screen – "Person hinzufügen" Button funktionierte nicht, Modal öffnete sich nicht. Jetzt zentriertes Modal mit Name/E-Mail/Telefon-Eingabe, Rollenauswahl, Einladung per E-Mail/SMS, und Kontaktoptionen beim Tippen auf Mitglieder
 - [x] UX-Fix: Protokoll-Liste zeigt jetzt Projektname als Überschrift anstatt des gesprochenen Textes
+- [x] UX-Fix: Aufnahme-Button rund statt eckig (borderRadius auf 50%)

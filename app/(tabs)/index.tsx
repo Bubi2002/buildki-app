@@ -3582,7 +3582,7 @@ const styles = StyleSheet.create({
   recordButton: {
     width: 80,
     height: 80,
-    borderRadius: 0,
+    borderRadius: 40,
     borderWidth: 4,
     alignItems: "center",
     justifyContent: "center",
@@ -3590,7 +3590,7 @@ const styles = StyleSheet.create({
   recordButtonSmall: {
     width: 60,
     height: 60,
-    borderRadius: 0,
+    borderRadius: 30,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
@@ -3606,12 +3606,12 @@ const styles = StyleSheet.create({
   recordIcon: {
     width: 60,
     height: 60,
-    borderRadius: 0,
+    borderRadius: 30,
   },
   recordIconSmall: {
     width: 40,
     height: 40,
-    borderRadius: 0,
+    borderRadius: 20,
   },
   stopIcon: {
     width: 24,
