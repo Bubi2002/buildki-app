@@ -425,3 +425,4 @@
 - [x] Feature: Galerie-Button im Audio+Foto-Modus neben dem Foto-Button
 - [x] Feature: Mehrfachauswahl aus Galerie möglich
 - [x] Bug-Fix: "Neues Projekt"-Modal nach oben verschieben – wird von Tastatur überdeckt
+- [x] Bug-Fix: Mängelliste als echte Tabelle darstellen statt unleserliche Pipe-Zeichen
