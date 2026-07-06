@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { onJobUpdate } from "@/lib/background-processor";
 
 type Protocol = {
   id: string;
@@ -58,6 +59,8 @@ export default function ProtocolsScreen() {
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
   const [showAllProjects, setShowAllProjects] = useState(false);
 
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       loadActiveProject();
@@ -65,8 +68,30 @@ export default function ProtocolsScreen() {
       loadFeatureFlags();
       setBatchMode(false);
       setSelectedIds(new Set());
+
+      // Poll for updates when there are processing protocols
+      pollingRef.current = setInterval(() => {
+        loadProtocols();
+      }, 3000);
+
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      };
     }, [])
   );
+
+  // Listen for background processor job updates
+  useEffect(() => {
+    const unsubscribe = onJobUpdate((protocolId, status) => {
+      if (status === "done" || status === "failed") {
+        loadProtocols();
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const loadActiveProject = async () => {
     try {
