@@ -546,7 +546,7 @@ export default function ProtocolsScreen() {
             style={[styles.cardTitle, { color: colors.foreground }]}
             numberOfLines={1}
           >
-            {item.title}
+            {item.projectName || item.title}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + "20" }]}>
