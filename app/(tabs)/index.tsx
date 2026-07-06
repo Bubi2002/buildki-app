@@ -3361,7 +3361,7 @@ const styles = StyleSheet.create({
   // Mode toggle
   modeToggleCamera: {
     position: "absolute",
-    top: 50,
+    top: 80,
     right: 12,
     flexDirection: "column",
     gap: 6,
