@@ -9,13 +9,15 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import {
   TeamMember,
   TEAM_ROLES,
@@ -36,6 +38,7 @@ export default function TeamScreen() {
   const [newPhone, setNewPhone] = useState("");
   const [newRole, setNewRole] = useState<TeamMember["role"]>("handwerker");
   const [newColor, setNewColor] = useState(MEMBER_COLORS[0]);
+  const [sendInvite, setSendInvite] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,7 +52,10 @@ export default function TeamScreen() {
   };
 
   const createMember = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      Alert.alert("Fehler", "Bitte einen Namen eingeben.");
+      return;
+    }
 
     const member: TeamMember = {
       id: `member-${Date.now()}`,
@@ -63,13 +69,42 @@ export default function TeamScreen() {
 
     await saveTeamMember(member);
     await loadMembers();
+
+    // Send invite if requested
+    if (sendInvite && (newEmail.trim() || newPhone.trim())) {
+      const inviteMessage = `Hallo ${newName.trim()},\n\nDu wurdest als ${getRoleLabel(newRole)} zum Team in ProtoKI eingeladen.\n\nLade dir die App herunter um gemeinsam an Projekten zu arbeiten.\n\nViele Grüße`;
+
+      if (newEmail.trim()) {
+        const subject = encodeURIComponent("Einladung zum ProtoKI-Team");
+        const body = encodeURIComponent(inviteMessage);
+        const mailUrl = `mailto:${newEmail.trim()}?subject=${subject}&body=${body}`;
+        try {
+          await Linking.openURL(mailUrl);
+        } catch {
+          // Silently fail if mail app not available
+        }
+      } else if (newPhone.trim()) {
+        const smsBody = encodeURIComponent(inviteMessage);
+        const smsUrl = Platform.OS === "ios"
+          ? `sms:${newPhone.trim()}&body=${smsBody}`
+          : `sms:${newPhone.trim()}?body=${smsBody}`;
+        try {
+          await Linking.openURL(smsUrl);
+        } catch {
+          // Silently fail if SMS not available
+        }
+      }
+    }
+
     setShowCreateModal(false);
     setNewName("");
     setNewEmail("");
     setNewPhone("");
     setNewRole("handwerker");
     setNewColor(MEMBER_COLORS[Math.floor(Math.random() * MEMBER_COLORS.length)]);
+    setSendInvite(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Hinzugefügt", `${member.name} wurde zum Team hinzugefügt.`);
   };
 
   const removeMember = (memberId: string, name: string) => {
@@ -81,6 +116,7 @@ export default function TeamScreen() {
         onPress: async () => {
           await deleteTeamMember(memberId);
           await loadMembers();
+          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
       },
     ]);
@@ -90,8 +126,42 @@ export default function TeamScreen() {
     return TEAM_ROLES.find((r) => r.key === role)?.label || role;
   };
 
+  const contactMember = (member: TeamMember) => {
+    const options: { text: string; onPress?: () => void }[] = [];
+
+    if (member.email) {
+      options.push({
+        text: `E-Mail: ${member.email}`,
+        onPress: () => Linking.openURL(`mailto:${member.email}`),
+      });
+    }
+    if (member.phone) {
+      options.push({
+        text: `Anrufen: ${member.phone}`,
+        onPress: () => Linking.openURL(`tel:${member.phone}`),
+      });
+      options.push({
+        text: `SMS: ${member.phone}`,
+        onPress: () => {
+          const url = Platform.OS === "ios" ? `sms:${member.phone}` : `sms:${member.phone}`;
+          Linking.openURL(url);
+        },
+      });
+    }
+
+    options.push({
+      text: "Entfernen",
+      onPress: () => removeMember(member.id, member.name),
+    });
+
+    options.push({ text: "Abbrechen" });
+
+    Alert.alert(member.name, getRoleLabel(member.role), options);
+  };
+
   const renderMember = ({ item }: { item: TeamMember }) => (
     <Pressable
+      onPress={() => contactMember(item)}
       onLongPress={() => removeMember(item.id, item.name)}
       style={({ pressed }) => [
         styles.memberCard,
@@ -107,6 +177,9 @@ export default function TeamScreen() {
         <Text style={[styles.memberRole, { color: colors.muted }]}>{getRoleLabel(item.role)}</Text>
         {item.email && (
           <Text style={[styles.memberContact, { color: colors.muted }]}>{item.email}</Text>
+        )}
+        {item.phone && !item.email && (
+          <Text style={[styles.memberContact, { color: colors.muted }]}>{item.phone}</Text>
         )}
       </View>
       <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
@@ -150,96 +223,145 @@ export default function TeamScreen() {
             <MaterialIcons name="group-add" size={48} color={colors.muted} />
             <Text style={[styles.emptyText, { color: colors.muted }]}>Noch keine Teammitglieder</Text>
             <Text style={[styles.emptySubtext, { color: colors.muted }]}>
-              Füge Teammitglieder hinzu um Aufgaben zuzuweisen und Projekte zu teilen
+              Tippe auf das + Symbol oben rechts um Teammitglieder hinzuzufügen
             </Text>
+            <Pressable
+              onPress={() => setShowCreateModal(true)}
+              style={({ pressed }) => [styles.emptyAddBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="person-add" size={20} color="#FFF" />
+              <Text style={styles.emptyAddBtnText}>Person hinzufügen</Text>
+            </Pressable>
           </View>
         }
       />
 
       {/* Create Modal */}
-      <Modal visible={showCreateModal} transparent animationType="slide">
+      <Modal visible={showCreateModal} transparent animationType="fade" onRequestClose={() => setShowCreateModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Neues Teammitglied</Text>
-
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Name *"
-              placeholderTextColor={colors.muted}
-              value={newName}
-              onChangeText={setNewName}
-            />
-
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="E-Mail"
-              placeholderTextColor={colors.muted}
-              value={newEmail}
-              onChangeText={setNewEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Telefon"
-              placeholderTextColor={colors.muted}
-              value={newPhone}
-              onChangeText={setNewPhone}
-              keyboardType="phone-pad"
-            />
-
-            {/* Role Selection */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Rolle</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roleScroll}>
-              {TEAM_ROLES.map((role) => (
-                <Pressable
-                  key={role.key}
-                  onPress={() => setNewRole(role.key as TeamMember["role"])}
-                  style={[
-                    styles.roleBtn,
-                    { borderColor: newRole === role.key ? colors.primary : colors.border },
-                    newRole === role.key && { backgroundColor: colors.primary + "15" },
-                  ]}
-                >
-                  <Text style={[styles.roleText, { color: newRole === role.key ? colors.primary : colors.muted }]}>
-                    {role.label}
-                  </Text>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }}>
+            <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              {/* Modal Header */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Person einladen</Text>
+                <Pressable onPress={() => setShowCreateModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
+                  <MaterialIcons name="close" size={22} color={colors.muted} />
                 </Pressable>
-              ))}
-            </ScrollView>
+              </View>
 
-            {/* Color Selection */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Farbe</Text>
-            <View style={styles.colorRow}>
-              {MEMBER_COLORS.map((color) => (
-                <Pressable
-                  key={color}
-                  onPress={() => setNewColor(color)}
-                  style={[
-                    styles.colorDot,
-                    { backgroundColor: color },
-                    newColor === color && styles.colorDotSelected,
-                  ]}
+              <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+                {/* Name */}
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>Name *</Text>
+                <TextInput
+                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  placeholder="Vor- und Nachname"
+                  placeholderTextColor={colors.muted + "80"}
+                  value={newName}
+                  onChangeText={setNewName}
+                  returnKeyType="next"
                 />
-              ))}
-            </View>
 
-            <View style={styles.modalButtons}>
-              <Pressable
-                onPress={() => { setShowCreateModal(false); setNewName(""); setNewEmail(""); setNewPhone(""); }}
-                style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
-              >
-                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
-              </Pressable>
-              <Pressable
-                onPress={createMember}
-                style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
-              >
-                <Text style={styles.saveBtnText}>Hinzufügen</Text>
-              </Pressable>
+                {/* Email */}
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>E-Mail</Text>
+                <TextInput
+                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  placeholder="name@firma.de"
+                  placeholderTextColor={colors.muted + "80"}
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                />
+
+                {/* Phone */}
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>Telefon / Handynummer</Text>
+                <TextInput
+                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  placeholder="+49 170 1234567"
+                  placeholderTextColor={colors.muted + "80"}
+                  value={newPhone}
+                  onChangeText={setNewPhone}
+                  keyboardType="phone-pad"
+                />
+
+                {/* Role Selection */}
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>Rolle</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roleScroll}>
+                  {TEAM_ROLES.map((role) => (
+                    <Pressable
+                      key={role.key}
+                      onPress={() => setNewRole(role.key as TeamMember["role"])}
+                      style={({ pressed }) => [
+                        styles.roleBtn,
+                        { borderColor: newRole === role.key ? colors.primary : colors.border },
+                        newRole === role.key && { backgroundColor: colors.primary + "15" },
+                        pressed && { opacity: 0.7 },
+                      ]}
+                    >
+                      <Text style={[styles.roleText, { color: newRole === role.key ? colors.primary : colors.muted }]}>
+                        {role.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                {/* Color Selection */}
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>Farbe</Text>
+                <View style={styles.colorRow}>
+                  {MEMBER_COLORS.map((color) => (
+                    <Pressable
+                      key={color}
+                      onPress={() => setNewColor(color)}
+                      style={[
+                        styles.colorDot,
+                        { backgroundColor: color },
+                        newColor === color && styles.colorDotSelected,
+                      ]}
+                    />
+                  ))}
+                </View>
+
+                {/* Invite Toggle */}
+                <Pressable
+                  onPress={() => setSendInvite(!sendInvite)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8, marginBottom: 8, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons
+                    name={sendInvite ? "check-box" : "check-box-outline-blank"}
+                    size={22}
+                    color={sendInvite ? colors.primary : colors.muted}
+                  />
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>Einladung per E-Mail/SMS senden</Text>
+                </Pressable>
+
+                {/* Info */}
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 4, marginBottom: 4 }}>
+                  <MaterialIcons name="info-outline" size={14} color={colors.muted} style={{ marginTop: 2 }} />
+                  <Text style={{ fontSize: 12, color: colors.muted, flex: 1, lineHeight: 18 }}>
+                    Die Person wird zum Team hinzugefügt und kann per E-Mail oder Nummer eingeladen werden, um gemeinsam in der App zu arbeiten.
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={styles.modalButtons}>
+                <Pressable
+                  onPress={() => { setShowCreateModal(false); setNewName(""); setNewEmail(""); setNewPhone(""); }}
+                  style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+                >
+                  <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>Abbrechen</Text>
+                </Pressable>
+                <Pressable
+                  onPress={createMember}
+                  style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
+                >
+                  <MaterialIcons name="person-add" size={18} color="#FFF" />
+                  <Text style={styles.saveBtnText}>Hinzufügen</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </ScreenContainer>
@@ -266,20 +388,22 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16, fontWeight: "500" },
   emptySubtext: { fontSize: 13, textAlign: "center", paddingHorizontal: 32 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
-  input: { borderWidth: 1, borderRadius: 0, padding: 12, fontSize: 15, marginBottom: 12 },
-  sectionLabel: { fontSize: 13, fontWeight: "500", marginBottom: 8, marginTop: 4 },
-  roleScroll: { marginBottom: 16, maxHeight: 36 },
+  emptyAddBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 0, marginTop: 16 },
+  emptyAddBtnText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 20 },
+  modalContent: { width: "100%", maxWidth: 400, borderRadius: 0, borderWidth: 1, padding: 24, alignSelf: "center" },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
+  inputLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, marginTop: 4 },
+  input: { borderWidth: 1, borderRadius: 0, padding: 14, fontSize: 15, marginBottom: 14 },
+  roleScroll: { marginBottom: 16, maxHeight: 40 },
   roleBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, borderWidth: 1, marginRight: 8 },
   roleText: { fontSize: 13, fontWeight: "500" },
-  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 },
-  colorDot: { width: 30, height: 30, borderRadius: 15 },
+  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
+  colorDot: { width: 28, height: 28, borderRadius: 0 },
   colorDotSelected: { borderWidth: 3, borderColor: "#fff", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
-  modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
+  modalButtons: { flexDirection: "row", gap: 12, marginTop: 16 },
   cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, alignItems: "center" },
   cancelBtnText: { fontSize: 15, fontWeight: "600" },
-  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, alignItems: "center" },
+  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 },
   saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });
