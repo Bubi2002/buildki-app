@@ -1,4 +1,4 @@
-import { TimeEntry, formatDuration, getTimeEntries } from "./time-tracking-store";
+import { TimeEntry, formatDuration, getTimeEntries, getTimeTrackingSettings } from "./time-tracking-store";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { getPdfBranding } from "./pdf-branding-store";
@@ -9,6 +9,9 @@ export type TaqlohnzettelData = {
   date: string; // ISO date string
   entries: TimeEntry[];
   workerName: string;
+  companyName: string;
+  hourlyRate: number;
+  dailyRate: number;
   totalHours: number;
   signatureRequired: boolean;
 };
@@ -25,12 +28,17 @@ export async function generateTaqlohnzettelForDay(
   );
   const totalSeconds = dayEntries.reduce((sum, e) => sum + e.duration, 0);
 
+  const settings = await getTimeTrackingSettings();
+
   return {
     projectName,
     projectId,
     date: date.toISOString(),
     entries: dayEntries,
-    workerName: "",
+    workerName: settings.workerName || "",
+    companyName: settings.companyName || "",
+    hourlyRate: parseFloat(settings.hourlyRate) || 0,
+    dailyRate: parseFloat(settings.dailyRate) || 0,
     totalHours: totalSeconds / 3600,
     signatureRequired: true,
   };
@@ -118,8 +126,7 @@ function getCategoryLabel(cat: string): string {
 export async function exportTaqlohnzettelPdf(
   projectName: string,
   projectId: string,
-  date: Date,
-  workerName: string = ""
+  date: Date
 ): Promise<string> {
   const data = await generateTaqlohnzettelForDay(projectId, projectName, date);
   let branding: any = null;
@@ -128,9 +135,14 @@ export async function exportTaqlohnzettelPdf(
   } catch {}
 
   const dateStr = date.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-  const companyName = branding?.companyName || "";
+  // Use settings company if available, fall back to branding
+  const companyName = data.companyName || branding?.companyName || "";
   const companyAddress = branding?.companyAddress || "";
   const accentColor = branding?.accentColor || "#0a7ea4";
+  const workerName = data.workerName;
+  const hourlyRate = data.hourlyRate;
+  const dailyRate = data.dailyRate;
+  const earnings = hourlyRate > 0 ? (data.totalHours * hourlyRate) : 0;
 
   const entriesHtml = data.entries
     .map(
@@ -239,6 +251,18 @@ export async function exportTaqlohnzettelPdf(
       <span class="totals-label" style="font-weight:600;">Gesamt (netto):</span>
       <span class="totals-main">${data.totalHours.toFixed(2)} h</span>
     </div>
+    ${hourlyRate > 0 ? `<div class="totals-row" style="margin-top: 6px;">
+      <span class="totals-label">Stundensatz:</span>
+      <span class="totals-value">${hourlyRate.toFixed(2)} €/h</span>
+    </div>
+    <div class="totals-row">
+      <span class="totals-label" style="font-weight:700;">Betrag:</span>
+      <span class="totals-main">${earnings.toFixed(2)} €</span>
+    </div>` : ''}
+    ${dailyRate > 0 ? `<div class="totals-row" style="margin-top: 6px;">
+      <span class="totals-label">Tagessatz:</span>
+      <span class="totals-value">${dailyRate.toFixed(2)} €/Tag</span>
+    </div>` : ''}
   </div>
 
   <div class="signature-section">

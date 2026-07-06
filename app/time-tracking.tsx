@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { View, Text, Pressable, Alert, StyleSheet, FlatList, TextInput } from "react-native";
+import { View, Text, Pressable, Alert, StyleSheet, FlatList, TextInput, Modal, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
@@ -14,8 +14,11 @@ import {
   getWeekTotal,
   formatDuration,
   formatDurationShort,
+  getTimeTrackingSettings,
+  saveTimeTrackingSettings,
   type TimeEntry,
   type ActiveTimer,
+  type TimeTrackingSettings,
 } from "@/lib/time-tracking-store";
 import { exportTaqlohnzettelPdf, exportWeeklyPdf, shareTaqlohnzettel } from "@/lib/taglohnzettel-export";
 
@@ -39,8 +42,18 @@ export default function TimeTrackingScreen() {
   const [showStartForm, setShowStartForm] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Settings modal state
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<TimeTrackingSettings>({
+    workerName: "",
+    companyName: "",
+    hourlyRate: "",
+    dailyRate: "",
+  });
+
   useEffect(() => {
     loadData();
+    loadSettings();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -60,6 +73,17 @@ export default function TimeTrackingScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [activeTimer]);
+
+  const loadSettings = async () => {
+    const s = await getTimeTrackingSettings();
+    setSettings(s);
+  };
+
+  const handleSaveSettings = async () => {
+    await saveTimeTrackingSettings(settings);
+    setShowSettings(false);
+    Alert.alert("Gespeichert", "Einstellungen wurden gespeichert.");
+  };
 
   const loadData = async () => {
     const timer = await getActiveTimer();
@@ -127,7 +151,9 @@ export default function TimeTrackingScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Zeiterfassung</Text>
-        <View style={{ width: 24 }} />
+        <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+          <MaterialIcons name="settings" size={24} color={colors.foreground} />
+        </Pressable>
       </View>
 
       <FlatList
@@ -315,6 +341,99 @@ export default function TimeTrackingScreen() {
           );
         }}
       />
+
+      {/* Settings Modal */}
+      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }}>
+            <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              {/* Modal Header */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Zeiterfassung-Einstellungen</Text>
+                <Pressable onPress={() => setShowSettings(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
+                  <MaterialIcons name="close" size={22} color={colors.muted} />
+                </Pressable>
+              </View>
+
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                {/* Person / Name */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Person / Name</Text>
+                  <TextInput
+                    value={settings.workerName}
+                    onChangeText={(v) => setSettings({ ...settings, workerName: v })}
+                    placeholder="z.B. Max Mustermann"
+                    placeholderTextColor={colors.muted + "80"}
+                    style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                {/* Firma */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Firma</Text>
+                  <TextInput
+                    value={settings.companyName}
+                    onChangeText={(v) => setSettings({ ...settings, companyName: v })}
+                    placeholder="z.B. Musterbau GmbH"
+                    placeholderTextColor={colors.muted + "80"}
+                    style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                {/* Stundensatz */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Stundensatz (€/h)</Text>
+                  <TextInput
+                    value={settings.hourlyRate}
+                    onChangeText={(v) => setSettings({ ...settings, hourlyRate: v })}
+                    placeholder="z.B. 65"
+                    placeholderTextColor={colors.muted + "80"}
+                    keyboardType="decimal-pad"
+                    style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                {/* Tagessatz */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Tagessatz (€/Tag)</Text>
+                  <TextInput
+                    value={settings.dailyRate}
+                    onChangeText={(v) => setSettings({ ...settings, dailyRate: v })}
+                    placeholder="z.B. 520"
+                    placeholderTextColor={colors.muted + "80"}
+                    keyboardType="decimal-pad"
+                    style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+                  />
+                </View>
+
+                {/* Info text */}
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 8, paddingHorizontal: 2 }}>
+                  <MaterialIcons name="info-outline" size={14} color={colors.muted} style={{ marginTop: 2 }} />
+                  <Text style={{ fontSize: 12, color: colors.muted, flex: 1, lineHeight: 18 }}>
+                    Diese Daten werden im Taglohnzettel-PDF verwendet. Der Stundensatz wird mit der erfassten Arbeitszeit multipliziert.
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
+                <Pressable
+                  onPress={() => setShowSettings(false)}
+                  style={({ pressed }) => [{ flex: 1, paddingVertical: 13, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Abbrechen</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleSaveSettings}
+                  style={({ pressed }) => [{ flex: 1, paddingVertical: 13, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Speichern</Text>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -377,5 +496,33 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     borderWidth: 1,
     marginBottom: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 0,
+    borderWidth: 1,
+    padding: 24,
+    alignSelf: "center",
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  input: {
+    padding: 14,
+    borderRadius: 0,
+    borderWidth: 1,
+    fontSize: 15,
   },
 });

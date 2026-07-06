@@ -2,6 +2,37 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TIME_ENTRIES_KEY = "time-entries";
 const ACTIVE_TIMER_KEY = "active-timer";
+const TIME_TRACKING_SETTINGS_KEY = "time-tracking-settings";
+
+export type TimeTrackingSettings = {
+  workerName: string;
+  companyName: string;
+  hourlyRate: string; // stored as string for easy input handling
+  dailyRate: string;
+};
+
+const DEFAULT_TIME_TRACKING_SETTINGS: TimeTrackingSettings = {
+  workerName: "",
+  companyName: "",
+  hourlyRate: "",
+  dailyRate: "",
+};
+
+export async function getTimeTrackingSettings(): Promise<TimeTrackingSettings> {
+  try {
+    const stored = await AsyncStorage.getItem(TIME_TRACKING_SETTINGS_KEY);
+    if (stored) {
+      return { ...DEFAULT_TIME_TRACKING_SETTINGS, ...JSON.parse(stored) };
+    }
+    return DEFAULT_TIME_TRACKING_SETTINGS;
+  } catch {
+    return DEFAULT_TIME_TRACKING_SETTINGS;
+  }
+}
+
+export async function saveTimeTrackingSettings(settings: TimeTrackingSettings): Promise<void> {
+  await AsyncStorage.setItem(TIME_TRACKING_SETTINGS_KEY, JSON.stringify(settings));
+}
 
 export type TimeEntry = {
   id: string;
@@ -129,3 +160,5 @@ export function formatDurationShort(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
+
+export { DEFAULT_TIME_TRACKING_SETTINGS };
