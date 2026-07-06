@@ -424,3 +424,4 @@
 - [x] Feature: Fotos/Videos aus Galerie hochladen (ImagePicker) – nicht nur Live-Kamera, sondern auch bestehende Medien auswählen
 - [x] Feature: Galerie-Button im Audio+Foto-Modus neben dem Foto-Button
 - [x] Feature: Mehrfachauswahl aus Galerie möglich
+- [x] Bug-Fix: "Neues Projekt"-Modal nach oben verschieben – wird von Tastatur überdeckt

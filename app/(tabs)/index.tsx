@@ -1498,9 +1498,9 @@ export default function RecordScreen() {
         </View>
 
         {/* Create Project Modal */}
-        <Modal visible={showCreateProject} animationType="slide" transparent>
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, backgroundColor: colors.background }}>
+        <Modal visible={showCreateProject} animationType="fade" transparent>
+          <View style={{ flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.5)", paddingTop: 60, paddingHorizontal: 16 }}>
+            <View style={{ borderRadius: 0, padding: 24, paddingBottom: 24, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
                 <Pressable onPress={() => setShowCreateProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
@@ -1525,9 +1525,9 @@ export default function RecordScreen() {
         </Modal>
 
         {/* Edit Project Modal */}
-        <Modal visible={showEditProject} animationType="slide" transparent>
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, backgroundColor: colors.background }}>
+        <Modal visible={showEditProject} animationType="fade" transparent>
+          <View style={{ flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.5)", paddingTop: 60, paddingHorizontal: 16 }}>
+            <View style={{ borderRadius: 0, padding: 24, paddingBottom: 24, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Projekt bearbeiten</Text>
                 <Pressable onPress={() => setShowEditProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
