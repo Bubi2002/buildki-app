@@ -1499,7 +1499,7 @@ export default function RecordScreen() {
 
         {/* Create Project Modal */}
         <Modal visible={showCreateProject} animationType="fade" transparent>
-          <View style={{ flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.5)", paddingTop: 60, paddingHorizontal: 16 }}>
+          <View style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 16 }}>
             <View style={{ borderRadius: 0, padding: 24, paddingBottom: 24, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
@@ -1526,7 +1526,7 @@ export default function RecordScreen() {
 
         {/* Edit Project Modal */}
         <Modal visible={showEditProject} animationType="fade" transparent>
-          <View style={{ flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.5)", paddingTop: 60, paddingHorizontal: 16 }}>
+          <View style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 16 }}>
             <View style={{ borderRadius: 0, padding: 24, paddingBottom: 24, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Projekt bearbeiten</Text>
