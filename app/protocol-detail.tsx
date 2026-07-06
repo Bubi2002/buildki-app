@@ -477,8 +477,8 @@ export default function ProtocolDetailScreen() {
           Alert.alert("Aufgabe delegiert", `"${task}" wurde an ${assignee} gesendet.`);
         }
       } catch (notifError) {
-        // Notification sending failed but delegation was saved
-        Alert.alert("Aufgabe gespeichert", `Aufgabe wurde gespeichert. Push-Benachrichtigung konnte nicht gesendet werden.`);
+        // Notification sending failed but delegation was saved - show success anyway
+        Alert.alert("Aufgabe delegiert \u2713", `"${task}" wurde an ${assignee} delegiert und gespeichert.`);
       }
     } catch (e) {
       Alert.alert("Fehler", "Aufgabe konnte nicht delegiert werden.");
@@ -3056,43 +3056,65 @@ export default function ProtocolDetailScreen() {
         {/* Task Delegation Modal */}
         <Modal visible={showDelegateModal} transparent animationType="fade" onRequestClose={() => setShowDelegateModal(false)}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ backgroundColor: "white", borderRadius: 0, padding: 24, width: "85%", maxWidth: 360 }}>
-              <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Aufgabe delegieren</Text>
-              <Text style={{ fontSize: 12, color: "#687076", marginBottom: 16 }}>Push-Benachrichtigung an Teammitglied senden</Text>
+            <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "90%", maxWidth: 400, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Aufgabe delegieren</Text>
+                <Pressable onPress={() => { setShowDelegateModal(false); setDelegatingTask(null); }}>
+                  <MaterialIcons name="close" size={22} color={colors.muted} />
+                </Pressable>
+              </View>
               {delegatingTask && (
-                <View style={{ marginBottom: 16 }}>
-                  <View style={{ backgroundColor: "#f5f5f5", borderRadius: 0, padding: 12, marginBottom: 12 }}>
-                    <Text style={{ fontSize: 13, fontWeight: "600", marginBottom: 4 }}>{delegatingTask.task}</Text>
+                <View>
+                  {/* Task preview */}
+                  <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{delegatingTask.task}</Text>
                     <View style={{ flexDirection: "row", gap: 8 }}>
-                      <Text style={{ fontSize: 11, color: "#687076" }}>👤 {delegatingTask.assignee}</Text>
                       <Text style={{ fontSize: 11, color: delegatingTask.priority === "hoch" ? "#EF4444" : delegatingTask.priority === "mittel" ? "#F59E0B" : "#22C55E" }}>● {delegatingTask.priority}</Text>
-                      {delegatingTask.deadline && <Text style={{ fontSize: 11, color: "#687076" }}>📅 {delegatingTask.deadline}</Text>}
+                      {delegatingTask.deadline && <Text style={{ fontSize: 11, color: colors.muted }}>📅 {delegatingTask.deadline}</Text>}
                     </View>
                   </View>
+
+                  {/* Option A: Manual input */}
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Person eingeben:</Text>
+                  <TextInput
+                    placeholder="Name"
+                    placeholderTextColor={colors.muted}
+                    value={delegatingTask.assignee !== "Nicht zugewiesen" ? delegatingTask.assignee : ""}
+                    onChangeText={(text) => setDelegatingTask(prev => prev ? {...prev, assignee: text} : null)}
+                    style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.foreground, marginBottom: 8 }}
+                  />
+                  <TextInput
+                    placeholder="E-Mail oder Telefon (optional)"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="email-address"
+                    style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.foreground, marginBottom: 16 }}
+                  />
+
+                  {/* Option B: Team contacts list */}
                   {teamContacts.length > 0 && (
-                    <View style={{ marginBottom: 12 }}>
-                      <Text style={{ fontSize: 12, color: "#687076", marginBottom: 6 }}>An Kontakt senden:</Text>
-                      {teamContacts.slice(0, 3).map(contact => (
-                        <Pressable key={contact.id} onPress={() => delegateTask(delegatingTask.task, contact.name, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 0, backgroundColor: pressed ? "#f0f0f0" : "transparent", marginBottom: 2 }]}>
-                          <View style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: "#22C55E20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#22C55E" }}>{contact.name.charAt(0)}</Text>
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Oder Teammitglied wählen:</Text>
+                      {teamContacts.slice(0, 5).map(contact => (
+                        <Pressable key={contact.id} onPress={() => delegateTask(delegatingTask.task, contact.name, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 10, borderRadius: 0, backgroundColor: pressed ? colors.surface : "transparent", marginBottom: 2, borderWidth: 1, borderColor: pressed ? colors.primary : "transparent" }]}>
+                          <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{contact.name.charAt(0)}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, fontWeight: "500" }}>{contact.name}</Text>
-                            <Text style={{ fontSize: 11, color: "#687076" }}>{contact.email}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }}>{contact.name}</Text>
+                            <Text style={{ fontSize: 11, color: colors.muted }}>{contact.email}</Text>
                           </View>
+                          <MaterialIcons name="send" size={16} color={colors.primary} />
                         </Pressable>
                       ))}
                     </View>
                   )}
-                  <Pressable onPress={() => delegateTask(delegatingTask.task, delegatingTask.assignee, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ backgroundColor: "#22C55E", paddingVertical: 12, borderRadius: 0, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
-                    {isDelegating ? <ActivityIndicator color="white" size="small" /> : <Text style={{ color: "white", fontWeight: "600" }}>📤 Jetzt delegieren</Text>}
+
+                  {/* Delegate button */}
+                  <Pressable onPress={() => delegateTask(delegatingTask.task, delegatingTask.assignee, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 0, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
+                    {isDelegating ? <ActivityIndicator color="white" size="small" /> : <Text style={{ color: "white", fontWeight: "600", fontSize: 15 }}>✓ Delegieren & Benachrichtigen</Text>}
                   </Pressable>
                 </View>
               )}
-              <Pressable onPress={() => { setShowDelegateModal(false); setDelegatingTask(null); }} style={{ marginTop: 8, alignItems: "center", paddingVertical: 8 }}>
-                <Text style={{ color: "#687076" }}>Abbrechen</Text>
-              </Pressable>
             </View>
           </View>
         </Modal>

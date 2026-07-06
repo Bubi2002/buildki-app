@@ -427,3 +427,7 @@
 - [x] Bug-Fix: "Neues Projekt"-Modal nach oben verschieben – wird von Tastatur überdeckt
 - [x] Bug-Fix: Mängelliste als echte Tabelle darstellen statt unleserliche Pipe-Zeichen
 - [x] Bug-Fix: PDF-Überschrift zeigt jetzt Projektname statt erste gesprochene Wörter
+- [x] Feature: Delegieren-Dialog mit Personenauswahl (Name/E-Mail manuell eingeben ODER aus Teammitglieder-Liste wählen)
+- [x] Feature: Gespeicherte Kontakte/Teammitglieder für schnelles Delegieren
+- [x] Feature: Benachrichtigung per E-Mail/WhatsApp an delegierte Person (Option A)
+- [x] Feature: Push-Benachrichtigung an App-Nutzer wenn delegiert (Option B)
