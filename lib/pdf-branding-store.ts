@@ -222,13 +222,13 @@ export function generateCoverPage(
       ${protocol.templateName || "Protokoll"}
     </div>
     
-    <!-- Title -->
+    <!-- Title (Project name as main title, fallback to template name) -->
     <div style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; max-width: 80%; line-height: 1.3;">
-      ${protocol.title}
+      ${protocol.projectName || protocol.templateName || protocol.title}
     </div>
     
-    <!-- Project name -->
-    ${protocol.projectName ? `<div style="font-size: 16px; color: ${accentColor}; font-weight: 600; margin-top: 12px;">Projekt: ${protocol.projectName}</div>` : ""}
+    <!-- Subtitle (protocol title if project name is used as main title) -->
+    ${protocol.projectName && protocol.title ? `<div style="font-size: 14px; color: #666; margin-top: 8px; max-width: 80%; line-height: 1.4;">${protocol.title}</div>` : ""}
     
     <!-- Protocol number -->
     ${protocol.protocolNumber ? `<div style="font-size: 13px; color: #666; margin-top: 8px;">Nr. ${protocol.protocolNumber}</div>` : ""}
