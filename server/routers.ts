@@ -712,7 +712,7 @@ ProtoKI ist eine professionelle App für Baustellenprotokolle, Besprechungsnotiz
 6. FOTOS: Während Aufnahme Fotos machen, die dem Protokoll zugeordnet werden. Foto-Annotation mit Zeichenwerkzeugen.
 7. MÄNGELMANAGEMENT: Mängel erfassen mit Status (offen/in Bearbeitung/erledigt), Fotos, Priorität.
 8. GRUNDRISS: Pläne hochladen und Einträge/Fotos darauf markieren.
-9. ZEITERFASSUNG: Start/Stopp-Timer pro Projekt und Tag.
+9. ZEITERFASSUNG: Start/Stopp-Timer pro Projekt und Tag. In der Zeiterfassung gibt es oben rechts ein Zahnrad-Symbol (Einstellungen). Dort kann man den Stundensatz (€/h), Firmenname und Mitarbeitername eintragen. Der Stundensatz wird automatisch mit der erfassten Arbeitszeit multipliziert und im Taglohnzettel-PDF angezeigt.
 10. CHECKLISTEN: Vordefinierte Prüflisten (Abnahme, Brandschutz, Elektro).
 11. TEAM: Projekte mit Kollegen teilen, Aufgaben zuweisen.
 12. OFFLINE-MODUS: Aufnahmen werden lokal gespeichert und bei Internetverbindung automatisch synchronisiert.
@@ -726,6 +726,8 @@ Technische Hilfe:
 - Bei "PDF leer": Protokoll muss erst fertig verarbeitet sein (Status prüfen).
 - Bei "Login funktioniert nicht": Internetverbindung prüfen, App neu starten.
 - Bei "Fotos fehlen im PDF": Fotos müssen während der Aufnahme gemacht werden, nicht nachträglich.
+- Bei "Wo Stundensatz einstellen?": Im Zeiterfassung-Tab oben rechts auf das Zahnrad-Symbol tippen. Dort können Stundensatz (€/h), Tagessatz (€/Tag), Person/Name und Firma eingetragen werden.
+- Bei "Wo Firmenlogo für PDF?": In den Einstellungen (Tab "Einstellungen") unter "PDF & Branding" kann das Firmenlogo hochgeladen werden.
 
 Regeln:
 - Antworte IMMER auf Deutsch.
