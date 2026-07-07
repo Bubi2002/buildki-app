@@ -1794,7 +1794,13 @@ export default function RecordScreen() {
             {/* Mode toggle */}
             <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginBottom: 16 }}>
               <Pressable
-                onPress={() => { if (!isRecording) setMode("audio-photo"); }}
+                onPress={() => {
+                  if (isRecording) {
+                    // During recording: pause first, then switch mode
+                    if (!isPaused) pauseRecording();
+                  }
+                  setMode("audio-photo");
+                }}
                 style={({ pressed }) => [
                   styles.modeButton,
                   { opacity: pressed ? 0.7 : 1 },
@@ -1904,42 +1910,44 @@ export default function RecordScreen() {
           {/* Bottom section: Record button + controls */}
           <View style={styles.audioControls}>
             <View style={styles.audioControlsRow}>
-              {/* Pause/Resume button (only during recording) */}
+              {/* Stop/Finish button (only during recording) */}
               {isRecording && (
                 <Pressable
-                  onPress={isPaused ? resumeRecording : pauseRecording}
+                  onPress={stopRecording}
                   style={({ pressed }) => [
                     styles.pauseButton,
                     {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
+                      backgroundColor: "#E5393520",
+                      borderColor: "#E53935",
                       transform: [{ scale: pressed ? 0.95 : 1 }],
                     },
                   ]}
                 >
                   <MaterialIcons
-                    name={isPaused ? "play-arrow" : "pause"}
+                    name="stop"
                     size={28}
-                    color={colors.foreground}
+                    color="#E53935"
                   />
                 </Pressable>
               )}
 
-              {/* Record/Stop button */}
+              {/* Center button: Start / Pause / Resume */}
               <Pressable
-                onPress={isRecording ? stopRecording : startRecording}
+                onPress={isRecording ? (isPaused ? resumeRecording : pauseRecording) : startRecording}
                 style={({ pressed }) => [
                   styles.recordButton,
                   {
-                    borderColor: colors.primary,
+                    borderColor: isRecording ? (isPaused ? colors.primary : colors.warning) : colors.primary,
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   },
                 ]}
               >
                 <View
                   style={[
-                    isRecording ? styles.stopIcon : styles.recordIcon,
-                    { backgroundColor: colors.primary },
+                    isRecording
+                      ? (isPaused ? styles.recordIcon : { width: 20, height: 28, borderRadius: 4, backgroundColor: colors.warning })
+                      : styles.recordIcon,
+                    { backgroundColor: isRecording ? (isPaused ? colors.primary : colors.warning) : colors.primary },
                   ]}
                 />
               </Pressable>
@@ -1973,7 +1981,7 @@ export default function RecordScreen() {
 
             {isRecording ? (
               <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-                {isPaused ? "Pausiert \u2022 Fortsetzen oder Stoppen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Tippe zum Stoppen \u2022 Marker f\u00fcr Wichtiges"}
+                {isPaused ? "Pausiert – Tippe zum Fortsetzen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Aufnahme l\u00e4uft"}
               </Text>
             ) : (
               <Pressable onPress={() => setShowRecordingTips(true)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
