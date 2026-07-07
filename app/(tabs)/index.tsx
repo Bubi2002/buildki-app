@@ -2308,7 +2308,7 @@ export default function RecordScreen() {
         </View>
       </GestureDetector>
       {/* Overlay layer on top of camera */}
-      <View style={[styles.overlayContainer, { pointerEvents: "box-none" }]}>
+      <View style={[styles.overlayContainer, { pointerEvents: "box-none", paddingTop: insets.top }]}>
         {/* Active Project Header (top of camera) */}
         {selectedProject && (
           <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 0, gap: 8, backgroundColor: "rgba(0,0,0,0.5)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
@@ -2665,41 +2665,23 @@ export default function RecordScreen() {
           )}
 
           <View style={styles.controlsRow}>
-            {/* Photo button - larger, blue color */}
+            {/* Photo button - same height as STOPP and KAPITEL */}
             {isRecording ? (
-              <View style={{ alignItems: "center", gap: 8 }}>
-                <Pressable
-                  onPress={takePhotoWithTimer}
-                  style={({ pressed }) => [
-                    styles.actionButtonLarge,
-                    { backgroundColor: "#2196F3", transform: [{ scale: pressed ? 0.9 : 1 }] },
-                  ]}
-                >
-                  <MaterialIcons name="photo-camera" size={32} color="#FFFFFF" />
-                  <Text style={styles.actionButtonLabel}>Foto</Text>
-                  {capturedPhotos.length > 0 && (
-                    <View style={styles.photoBadge}>
-                      <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
-                    </View>
-                  )}
-                </Pressable>
-                <Pressable
-                  onPress={pickFromGallery}
-                  style={({ pressed }) => [{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 0,
-                    backgroundColor: "rgba(255,255,255,0.15)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.3)",
-                    transform: [{ scale: pressed ? 0.9 : 1 }],
-                  }]}
-                >
-                  <MaterialIcons name="photo-library" size={22} color="#FFFFFF" />
-                </Pressable>
-              </View>
+              <Pressable
+                onPress={takePhotoWithTimer}
+                style={({ pressed }) => [
+                  styles.actionButtonLarge,
+                  { backgroundColor: "#2196F3", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                ]}
+              >
+                <MaterialIcons name="photo-camera" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>Foto</Text>
+                {capturedPhotos.length > 0 && (
+                  <View style={styles.photoBadge}>
+                    <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
+                  </View>
+                )}
+              </Pressable>
             ) : (
               <Pressable
                 onPress={pickFromGallery}
@@ -2762,8 +2744,37 @@ export default function RecordScreen() {
             )}
           </View>
 
+          {/* Gallery button below controls row */}
+          {isRecording && (
+            <View style={{ alignItems: "center", marginTop: 12 }}>
+              <Pressable
+                onPress={pickFromGallery}
+                style={({ pressed }) => [{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 0,
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.3)",
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <MaterialIcons name="photo-library" size={18} color="#FFFFFF" />
+                <Text style={{ fontSize: 12, color: "#FFFFFF", fontWeight: "600" }}>Galerie</Text>
+                {capturedPhotos.length > 0 && (
+                  <View style={{ backgroundColor: "#2196F3", borderRadius: 0, minWidth: 18, height: 18, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          )}
+
           {/* Photo gallery thumbnail */}
-          {capturedPhotos.length > 0 && (
+          {capturedPhotos.length > 0 && !isRecording && (
             <Pressable
               onPress={() => setShowPhotoGallery(true)}
               style={({ pressed }) => [{ position: "absolute", left: 16, bottom: 16, opacity: pressed ? 0.7 : 1 }]}
