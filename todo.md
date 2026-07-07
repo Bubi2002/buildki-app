@@ -472,3 +472,5 @@
 - [x] Bug-Fix: KI weist zufällig Prioritäten/Deadlines zu - Standard auf "mittel" und "Offen" setzen, nur explizit genannte übernehmen
 - [x] Feature: E-Mail-Benachrichtigung senden wenn Person einer Aufgabe zugewiesen wird
 - [x] Bug-Fix: Spracheinstellung ändert nicht die gesamte App-Oberfläche - i18n-System implementieren
+- [x] Bug-Fix: Weißer Hintergrund bei "Delegierte Aufgaben" in Einstellungen entfernt (jetzt colors.surface)
+- [x] Bug-Fix: Unicode-Escape "\u00fc" bei "Manuell hinzufügen" korrigiert

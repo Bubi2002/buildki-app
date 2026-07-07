@@ -1936,7 +1936,7 @@ return (
           {!showAddTeamContact ? (
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
               <Pressable onPress={() => setShowAddTeamContact(true)} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
-                <Text style={{ fontSize: 13, color: colors.primary }}>+ Manuell hinzuf\u00fcgen</Text>
+                <Text style={{ fontSize: 13, color: colors.primary }}>+ Manuell hinzufügen</Text>
               </Pressable>
               <Pressable onPress={importFromPhoneContacts} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
                 <Text style={{ fontSize: 13, color: colors.primary }}>Aus Kontakten</Text>
@@ -2008,14 +2008,14 @@ return (
 
         {/* Delegierte Aufgaben */}
         {delegations.length > 0 && (
-          <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Delegierte Aufgaben</Text>
-            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Übersicht aller delegierten Aufgaben und deren Status.</Text>
+          <View style={{ marginTop: 16, backgroundColor: colors.surface, borderRadius: 0, padding: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Delegierte Aufgaben</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>Übersicht aller delegierten Aufgaben und deren Status.</Text>
             {delegations.slice(0, 10).map(del => (
-              <View key={del.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
-                <Text style={{ fontSize: 13, fontWeight: "500" }}>{del.taskText}</Text>
+              <View key={del.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }}>{del.taskText}</Text>
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-                  <Text style={{ fontSize: 11, color: "#687076" }}>👤 {del.assignee}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>👤 {del.assignee}</Text>
                   <Text style={{ fontSize: 11, color: del.status === "completed" ? "#22C55E" : del.status === "sent" ? "#0a7ea4" : "#F59E0B" }}>
                     {del.status === "completed" ? "✓ Erledigt" : del.status === "sent" ? "📤 Gesendet" : "⏳ Ausstehend"}
                   </Text>
