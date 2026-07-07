@@ -19,7 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTeamContacts, saveTeamContact, deleteTeamContact, updateTeamContact, TeamContact } from "@/lib/team-contacts";
 import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
 import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-profiles";
-import { getDelegations, TaskDelegation } from "@/lib/task-delegation";
+// delegations removed from settings
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
@@ -850,12 +850,11 @@ export default function SettingsScreen() {
   const [tcRole, setTcRole] = useState("");
   const [speakerProfiles, setSpeakerProfiles] = useState<SpeakerProfile[]>([]);
   const [voiceProfiles, setVoiceProfiles] = useState<VoiceProfile[]>([]);
-  const [delegations, setDelegations] = useState<TaskDelegation[]>([]);
+
 
   useEffect(() => {
     loadTeamContacts();
     loadVoiceProfiles();
-    loadDelegations();
     loadSpeakerProfiles();
   }, []);
 
@@ -874,10 +873,7 @@ export default function SettingsScreen() {
     setVoiceProfiles(profiles);
   };
 
-  const loadDelegations = async () => {
-    const dels = await getDelegations();
-    setDelegations(dels);
-  };
+
 
   const handleDeleteVoiceProfile = async (id: string) => {
     await deleteVoiceProfile(id);
@@ -2001,25 +1997,6 @@ return (
                 <Pressable onPress={() => handleDeleteVoiceProfile(profile.id)} style={{ padding: 6 }}>
                   <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
                 </Pressable>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Delegierte Aufgaben */}
-        {delegations.length > 0 && (
-          <View style={{ marginTop: 16, backgroundColor: colors.surface, borderRadius: 0, padding: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Delegierte Aufgaben</Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>Übersicht aller delegierten Aufgaben und deren Status.</Text>
-            {delegations.slice(0, 10).map(del => (
-              <View key={del.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }}>{del.taskText}</Text>
-                <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-                  <Text style={{ fontSize: 11, color: colors.muted }}>👤 {del.assignee}</Text>
-                  <Text style={{ fontSize: 11, color: del.status === "completed" ? "#22C55E" : del.status === "sent" ? "#0a7ea4" : "#F59E0B" }}>
-                    {del.status === "completed" ? "✓ Erledigt" : del.status === "sent" ? "📤 Gesendet" : "⏳ Ausstehend"}
-                  </Text>
-                </View>
               </View>
             ))}
           </View>
