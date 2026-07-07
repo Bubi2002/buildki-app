@@ -263,7 +263,37 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       job.protocolId,
       (attempt, max) => updateProtocolStep(job.protocolId, `transcribing (Versuch ${attempt + 1}/${max + 1})`)
     );
-    const transcriptionSegments = transcription.segments || [];
+    
+    // Filter known Whisper hallucinations (appears when audio is silent/too short)
+    const whisperHallucinations = [
+      "untertitel der amara.org",
+      "untertitel von amara.org",
+      "subtitles by the amara.org",
+      "amara.org community",
+      "amara.org-community",
+      "thanks for watching",
+      "vielen dank fürs zuschauen",
+      "vielen dank für's zuschauen",
+      "danke fürs zuschauen",
+      "please subscribe",
+      "bitte abonnieren",
+      "copyright",
+      "www.mooji.org",
+      "transcribed by",
+      "transkribiert von",
+    ];
+    const lowerText = transcription.text.toLowerCase().trim();
+    const isHallucination = whisperHallucinations.some(h => lowerText.includes(h)) || lowerText.length < 3;
+    if (isHallucination) {
+      transcription.text = "";
+      console.warn(`[BG-Processor] ${job.protocolId}: Whisper hallucination detected and removed`);
+    }
+    
+    // Also filter hallucinations from segments
+    const transcriptionSegments = (transcription.segments || []).filter(s => {
+      const segText = s.text.toLowerCase().trim();
+      return !whisperHallucinations.some(h => segText.includes(h));
+    });
     console.log(`[BG-Processor] ${job.protocolId}: Transcription complete (${transcriptionSegments.length} segments)`);
     
     // Step 3: Generate Protocol
