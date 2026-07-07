@@ -469,3 +469,6 @@
 - [x] Feature: Eigene Uhrzeit frei wählbar (Stunden + Minuten Picker statt nur Preset-Buttons)
 - [x] Feature: Wochentage auswählen für Erinnerungen (z.B. nur Mo-Fr oder bestimmte Tage)
 - [x] Feature: Sicherstellen dass die Erinnerung als echte Push-Nachricht kommt (expo-notifications weekly trigger)
+- [x] Bug-Fix: KI weist zufällig Prioritäten/Deadlines zu - Standard auf "mittel" und "Offen" setzen, nur explizit genannte übernehmen
+- [x] Feature: E-Mail-Benachrichtigung senden wenn Person einer Aufgabe zugewiesen wird
+- [x] Bug-Fix: Spracheinstellung ändert nicht die gesamte App-Oberfläche - i18n-System implementieren

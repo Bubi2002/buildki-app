@@ -185,6 +185,7 @@ export default function ProtocolDetailScreen() {
   const [editTodoPriority, setEditTodoPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
   const [editTodoDueDate, setEditTodoDueDate] = useState("");
   const [editTodoAssignee, setEditTodoAssignee] = useState("");
+  const [editTodoEmail, setEditTodoEmail] = useState("");
   const [editingSpeakerLabel, setEditingSpeakerLabel] = useState<string | null>(null);
   const [speakerNameInput, setSpeakerNameInput] = useState("");
   const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({});  const [emailRecipient, setEmailRecipient] = useState("");
@@ -304,6 +305,7 @@ export default function ProtocolDetailScreen() {
     setEditTodoPriority(todo.priority);
     setEditTodoDueDate(todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
     setEditTodoAssignee(todo.assignee && todo.assignee !== "Nicht zugewiesen" ? todo.assignee : "");
+    setEditTodoEmail((todo as any).assigneeEmail || "");
   };
 
   const saveEditTodo = async () => {
@@ -317,13 +319,17 @@ export default function ProtocolDetailScreen() {
         if (!isNaN(date.getTime())) dueDate = date.toISOString();
       }
     }
+    const assigneeName = editTodoAssignee.trim() || "Nicht zugewiesen";
+    const assigneeEmail = editTodoEmail.trim() || undefined;
+    const previousAssignee = updated[editingTodoIndex].assignee;
     updated[editingTodoIndex] = {
       ...updated[editingTodoIndex],
       task: editTodoTask.trim(),
       priority: editTodoPriority,
       dueDate,
-      assignee: editTodoAssignee.trim() || "Nicht zugewiesen",
-    };
+      assignee: assigneeName,
+      assigneeEmail,
+    } as any;
     setTodos(updated);
     setEditingTodoIndex(null);
     try {
@@ -331,6 +337,22 @@ export default function ProtocolDetailScreen() {
       const idx = protocols.findIndex((p: Protocol) => p.id === id);
       if (idx !== -1) { protocols[idx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
     } catch { /* ignore */ }
+    // Send email notification if person was assigned/changed and email is provided
+    if (assigneeEmail && assigneeName !== "Nicht zugewiesen" && assigneeName !== previousAssignee) {
+      try {
+        const { sendActionItemsEmail } = await import("@/lib/email-actions");
+        const protocolDate = protocol?.createdAt ? new Date(protocol.createdAt).toLocaleDateString("de-DE") : new Date().toLocaleDateString("de-DE");
+        await sendActionItemsEmail(
+          [{ task: editTodoTask.trim(), assignee: assigneeName, priority: editTodoPriority, deadline: editTodoDueDate || "Offen" }],
+          assigneeEmail,
+          protocol?.title || "Protokoll",
+          protocolDate,
+        );
+        Alert.alert("Benachrichtigung gesendet", `E-Mail an ${assigneeName} (${assigneeEmail}) wurde geöffnet.`);
+      } catch (emailErr) {
+        console.warn("Email notification failed:", emailErr);
+      }
+    }
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -3135,6 +3157,16 @@ export default function ProtocolDetailScreen() {
                 onChangeText={setEditTodoAssignee}
                 placeholder="z.B. Max Mustermann"
                 placeholderTextColor={colors.muted}
+                style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12 }}
+              />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>E-Mail (für Benachrichtigung)</Text>
+              <TextInput
+                value={editTodoEmail}
+                onChangeText={setEditTodoEmail}
+                placeholder="z.B. max@firma.de"
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
                 style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 16 }}
               />
               <View style={{ flexDirection: "row", gap: 8 }}>

@@ -4,31 +4,22 @@ import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { getLanguage, setLanguage, LANGUAGE_OPTIONS, type Language } from "@/lib/i18n";
+import { LANGUAGE_OPTIONS, type Language } from "@/lib/i18n";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function LanguageSettingsScreen() {
   const colors = useColors();
-  const [currentLang, setCurrentLang] = useState<Language>("de");
-
-  useEffect(() => {
-    loadLang();
-  }, []);
-
-  const loadLang = async () => {
-    const lang = await getLanguage();
-    setCurrentLang(lang);
-  };
+  const { language: currentLang, setLanguage } = useTranslation();
 
   const selectLanguage = async (lang: Language) => {
-    setCurrentLang(lang);
     await setLanguage(lang);
     Alert.alert(
       lang === "de" ? "Sprache geändert" : lang === "en" ? "Language Changed" : "Langue modifiée",
       lang === "de"
-        ? "Die App-Sprache wurde auf Deutsch umgestellt."
+        ? "Die App-Sprache wurde auf Deutsch umgestellt. Alle Texte werden jetzt auf Deutsch angezeigt."
         : lang === "en"
-        ? "The app language has been changed to English."
-        : "La langue de l'application a été changée en français.",
+        ? "The app language has been changed to English. All texts will now be displayed in English."
+        : "La langue de l'application a été changée en français. Tous les textes seront affichés en français.",
       [{ text: "OK" }]
     );
   };
@@ -81,7 +72,7 @@ export default function LanguageSettingsScreen() {
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 0, backgroundColor: colors.primary + "08", marginTop: 20 }}>
           <MaterialIcons name="info-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
           <Text style={{ flex: 1, fontSize: 12, color: colors.muted, lineHeight: 18 }}>
-            Die Spracheinstellung betrifft die App-Oberfläche. Die KI-generierte Protokoll-Sprache wird separat in den Vorlagen-Einstellungen konfiguriert.
+            Die Spracheinstellung ändert sofort die gesamte App-Oberfläche (Tabs, Buttons, Menüs). Die KI-generierte Protokoll-Sprache wird separat in den Vorlagen-Einstellungen konfiguriert.
           </Text>
         </View>
 

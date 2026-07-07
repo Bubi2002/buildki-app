@@ -174,17 +174,23 @@ export const appRouter = router({
 
 Analysiere den folgenden Protokolltext und die Originaltranskription. Extrahiere alle konkreten Aufgaben, Handlungsanweisungen, Vereinbarungen und offenen Punkte.
 
+WICHTIGE REGELN:
+- Extrahiere NUR Aufgaben, die tatsächlich im Text erwähnt oder klar impliziert werden.
+- "priority": Setze IMMER "mittel" als Standard. Setze "hoch" NUR wenn im Text explizit Wörter wie "dringend", "sofort", "unverzüglich", "kritisch", "Notfall" verwendet werden. Setze "niedrig" NUR wenn explizit "nicht eilig", "irgendwann", "bei Gelegenheit" gesagt wird.
+- "deadline": Setze IMMER "Offen" als Standard. Gib eine Frist NUR an, wenn im Text ein konkretes Datum, ein Wochentag oder eine explizite Zeitangabe (z.B. "bis Freitag", "nächste Woche", "in 3 Tagen") genannt wird. Erfinde NIEMALS Fristen.
+- "assignee": Setze "Nicht zugewiesen" wenn keine Person explizit genannt wird.
+
 Für jede Aufgabe gib an:
 - "task": Die konkrete Aufgabe in einem Satz
-- "assignee": Die verantwortliche Person (falls genannt, sonst "Nicht zugewiesen")
-- "priority": "hoch", "mittel" oder "niedrig" (basierend auf Dringlichkeit/Kontext)
-- "deadline": Frist falls genannt (sonst "Offen")
+- "assignee": Die verantwortliche Person (falls explizit genannt, sonst "Nicht zugewiesen")
+- "priority": "hoch", "mittel" oder "niedrig" (Standard: "mittel", nur ändern wenn explizit im Text begründet)
+- "deadline": Explizit genannte Frist (Standard: "Offen", NIEMALS erfinden)
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Array. Keine weiteren Erklärungen.
 Beispiel:
 [
-  {"task": "Angebot an Herrn Müller senden", "assignee": "Max", "priority": "hoch", "deadline": "Freitag"},
-  {"task": "Material für Dachsanierung bestellen", "assignee": "Nicht zugewiesen", "priority": "mittel", "deadline": "Offen"}
+  {"task": "Angebot an Herrn Müller senden", "assignee": "Max", "priority": "mittel", "deadline": "Offen"},
+  {"task": "Dach sofort abdichten wegen Wasserschaden", "assignee": "Nicht zugewiesen", "priority": "hoch", "deadline": "Offen"}
 ]
 
 Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;

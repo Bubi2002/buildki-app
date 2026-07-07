@@ -23,7 +23,7 @@ import { getDelegations, TaskDelegation } from "@/lib/task-delegation";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
-import { setLanguage } from "@/lib/i18n";
+import { useTranslation } from "@/lib/language-provider";
 import { useThemeContext } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
@@ -647,6 +647,7 @@ function BackupSection({ colors }: { colors: any }) {
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { setLanguage: globalSetLanguage } = useTranslation();
   const { setThemeMode } = useThemeContext();
   // Force dark mode always
   useEffect(() => { setThemeMode("dark"); }, []);
@@ -1572,7 +1573,7 @@ return (
           </Text>
           <View style={styles.optionRow}>
             <Pressable
-              onPress={() => { updateSetting("language", "de"); setLanguage("de"); }}
+              onPress={() => { updateSetting("language", "de"); globalSetLanguage("de"); }}
               style={[
                 styles.optionButton,
                 {
@@ -1591,7 +1592,7 @@ return (
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => { updateSetting("language", "en"); setLanguage("en"); }}
+              onPress={() => { updateSetting("language", "en"); globalSetLanguage("en"); }}
               style={[
                 styles.optionButton,
                 {

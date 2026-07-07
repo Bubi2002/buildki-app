@@ -34,6 +34,8 @@ export const translations = {
     // Navigation
     nav_home: "Aufnahme",
     nav_protocols: "Protokolle",
+    nav_projects: "Projekte",
+    nav_dashboard: "Dashboard",
     nav_settings: "Einstellungen",
 
     // Projects
@@ -173,6 +175,8 @@ export const translations = {
     // Navigation
     nav_home: "Record",
     nav_protocols: "Protocols",
+    nav_projects: "Projects",
+    nav_dashboard: "Dashboard",
     nav_settings: "Settings",
 
     // Projects
@@ -312,6 +316,8 @@ export const translations = {
     // Navigation
     nav_home: "Enregistrer",
     nav_protocols: "Protocoles",
+    nav_projects: "Projets",
+    nav_dashboard: "Tableau de bord",
     nav_settings: "Paramètres",
 
     // Projects

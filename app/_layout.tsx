@@ -18,6 +18,7 @@ import {
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
+import { LanguageProvider } from "@/lib/language-provider";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import {
   authenticate,
@@ -260,6 +261,7 @@ export default function RootLayout() {
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <LanguageProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <Stack screenOptions={{ headerShown: false }}>
@@ -277,6 +279,7 @@ export default function RootLayout() {
           biometricLabel={biometricLabel}
         />
       )}
+      </LanguageProvider>
     </GestureHandlerRootView>
   );
 
