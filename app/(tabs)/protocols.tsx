@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   Animated,
+  ScrollView,
 } from "react-native";
 import { Swipeable, RectButton } from "react-native-gesture-handler";
 import * as Sharing from "expo-sharing";
@@ -40,6 +41,18 @@ type Protocol = {
   projectName?: string;
 };
 
+type ProjectItem = {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdAt?: string;
+  protocolPrefix?: string;
+  protocolCounter?: number;
+  archived?: boolean;
+  favorite?: boolean;
+};
+
 type SortOption = "date_desc" | "date_asc" | "name_asc" | "name_desc" | "duration_desc";
 type FilterOption = "all" | "favorites" | "archived";
 
@@ -58,6 +71,7 @@ export default function ProtocolsScreen() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
   const [showAllProjects, setShowAllProjects] = useState(false);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -65,6 +79,7 @@ export default function ProtocolsScreen() {
     useCallback(() => {
       loadActiveProject();
       loadProtocols();
+      loadProjects();
       loadFeatureFlags();
       setBatchMode(false);
       setSelectedIds(new Set());
@@ -92,6 +107,21 @@ export default function ProtocolsScreen() {
     });
     return unsubscribe;
   }, []);
+
+  const loadProjects = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("projects");
+      if (stored) {
+        const parsed: ProjectItem[] = JSON.parse(stored);
+        // Only show non-archived projects
+        setProjects(parsed.filter((p) => !p.archived));
+      } else {
+        setProjects([]);
+      }
+    } catch {
+      setProjects([]);
+    }
+  };
 
   const loadActiveProject = async () => {
     try {
@@ -789,24 +819,79 @@ export default function ProtocolsScreen() {
           </Pressable>
         </View>
 
-        {/* Active Project Filter Banner */}
-        {activeProjectId && activeProjectName && (
-          <View style={[styles.projectFilterBanner, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-              <MaterialIcons name="folder" size={16} color={colors.primary} />
-              <Text style={[styles.projectFilterText, { color: colors.primary }]} numberOfLines={1}>
-                {activeProjectName}
-              </Text>
-            </View>
+        {/* Project Folder Chips */}
+        {projects.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.projectChipsRow}
+            contentContainerStyle={styles.projectChipsContent}
+          >
+            {/* "Alle" chip */}
             <Pressable
-              onPress={() => setShowAllProjects(!showAllProjects)}
-              style={({ pressed }) => [styles.projectFilterToggle, { backgroundColor: showAllProjects ? colors.primary : "transparent", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => {
+                setActiveProjectId(null);
+                setActiveProjectName(null);
+                setShowAllProjects(true);
+                AsyncStorage.removeItem("last-selected-project-id");
+              }}
+              style={({ pressed }) => [
+                styles.projectChip,
+                {
+                  backgroundColor: !activeProjectId || showAllProjects ? colors.primary + "20" : colors.surface,
+                  borderColor: !activeProjectId || showAllProjects ? colors.primary : colors.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
             >
-              <Text style={{ fontSize: 11, fontWeight: "600", color: showAllProjects ? "#fff" : colors.primary }}>
-                {showAllProjects ? "Alle" : "Projekt"}
-              </Text>
+              <MaterialIcons name="folder-open" size={14} color={!activeProjectId || showAllProjects ? colors.primary : colors.muted} />
+              <Text style={[styles.projectChipText, { color: !activeProjectId || showAllProjects ? colors.primary : colors.muted }]}>Alle</Text>
+              <View style={[styles.projectChipCount, { backgroundColor: !activeProjectId || showAllProjects ? colors.primary + "20" : colors.border + "60" }]}>
+                <Text style={[styles.projectChipCountText, { color: !activeProjectId || showAllProjects ? colors.primary : colors.muted }]}>
+                  {protocols.filter((p) => !p.isArchived).length}
+                </Text>
+              </View>
             </Pressable>
-          </View>
+
+            {/* Project chips */}
+            {projects.map((project) => {
+              const isActive = activeProjectId === project.id && !showAllProjects;
+              const protocolCount = protocols.filter((p) => p.projectId === project.id && !p.isArchived).length;
+              const chipColor = project.color || colors.primary;
+              return (
+                <Pressable
+                  key={project.id}
+                  onPress={() => {
+                    setActiveProjectId(project.id);
+                    setActiveProjectName(project.name);
+                    setShowAllProjects(false);
+                    AsyncStorage.setItem("last-selected-project-id", project.id);
+                  }}
+                  style={({ pressed }) => [
+                    styles.projectChip,
+                    {
+                      backgroundColor: isActive ? chipColor + "20" : colors.surface,
+                      borderColor: isActive ? chipColor : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <View style={[styles.projectColorDot, { backgroundColor: chipColor }]} />
+                  <Text
+                    style={[styles.projectChipText, { color: isActive ? chipColor : colors.foreground }]}
+                    numberOfLines={1}
+                  >
+                    {project.name}
+                  </Text>
+                  <View style={[styles.projectChipCount, { backgroundColor: isActive ? chipColor + "20" : colors.border + "60" }]}>
+                    <Text style={[styles.projectChipCountText, { color: isActive ? chipColor : colors.muted }]}>
+                      {protocolCount}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         )}
 
         {/* Sort Menu */}
@@ -932,4 +1017,11 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyTitle: { fontSize: 18, fontWeight: "600", marginTop: 16 },
   emptySubtitle: { fontSize: 14, textAlign: "center", marginTop: 8, paddingHorizontal: 40 },
+  projectChipsRow: { marginTop: 10, maxHeight: 42 },
+  projectChipsContent: { gap: 8, paddingRight: 8 },
+  projectChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderRadius: 0 },
+  projectChipText: { fontSize: 12, fontWeight: "500", maxWidth: 100 },
+  projectColorDot: { width: 8, height: 8, borderRadius: 4 },
+  projectChipCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 0, minWidth: 20, alignItems: "center" },
+  projectChipCountText: { fontSize: 10, fontWeight: "700" },
 });

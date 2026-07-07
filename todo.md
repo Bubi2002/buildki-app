@@ -443,3 +443,4 @@
 - [x] Bug-Fix: PDF-Export hängt sich nicht mehr auf – Timeouts für Foto-Kompression (10s), Logo-Konvertierung (5s) und PDF-Generierung (30s) hinzugefügt; Logo-URI wird jetzt persistent in App-Storage kopiert statt temporäre Picker-URI zu verwenden
 - [x] UX-Fix: Nur-Audio-Modus – Redundanter Play/Fortsetzen-Button links entfernt; Runder Button in der Mitte pausiert/setzt fort; Separater Stopp-Button (rot) links zum Abschließen der Aufnahme
 - [x] UX-Fix: Modus-Wechsel zu Audio+Foto funktioniert jetzt auch während der Aufnahme (pausiert automatisch und wechselt)
+- [x] Feature: Projektordner-Übersicht im Protokolle-Tab – Horizontale scrollbare Projekt-Chips mit Farbpunkt, Name und Protokoll-Anzahl; "Alle"-Chip zum Anzeigen aller Protokolle; Tippen auf Projekt filtert die Liste sofort; ersetzt den alten Projekt-Filter-Banner
