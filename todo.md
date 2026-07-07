@@ -449,3 +449,4 @@
 - [x] Bug-Fix: Kapitel-Marker werden im PDF nicht als Kapitelüberschriften angezeigt – Kapitel-Override im System-Prompt hinzugefügt, der Template-Struktur überschreibt wenn Kapitel vorhanden sind
 - [x] Bug-Fix: "Erneut einsprechen" Button flackert und funktioniert nicht – UI-State wird jetzt erst NACH erfolgreichem Recording-Start gesetzt, Haptic-Feedback bei Fehler hinzugefügt
 - [x] Bug-Fix: PDF-Deckblatt zeigt keine Transkriptions-Sätze mehr – Subtitle-Zeile (protocol.title = erste 50 Zeichen der Transkription) entfernt, Fallback auf Projektname/Templatename/"Protokoll"
+- [x] Bug-Fix: Audio-Aufnahme kann nicht abgeschlossen werden – stopRecording pausiert jetzt ohne isPaused zu setzen (Stop-Button bleibt sichtbar), confirmStopRecording stoppt direkt ohne Resume-Versuch, cancelStopRecording nimmt korrekt wieder auf

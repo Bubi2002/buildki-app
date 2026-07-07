@@ -1063,31 +1063,31 @@ export default function RecordScreen() {
   const stopRecording = () => {
     // Show confirmation dialog instead of immediately stopping
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Pause the recording first so nothing is lost
+    // Pause the recording so nothing is lost while user decides
     if (!isPaused) {
-      pauseRecording();
+      audioRecorder.pause();
+      pauseTimer();
+      // Note: Don't set isPaused here to keep the stop button visible
+      // The modal will handle the final state
     }
     setShowStopConfirm(true);
   };
 
-  const confirmStopRecording = () => {
+  const confirmStopRecording = async () => {
     setShowStopConfirm(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     stopListening();
-    // Resume briefly to allow stop (if paused)
-    if (isPaused) {
-      audioRecorder.record();
-      setIsPaused(false);
-    }
-    stopAudioRecording();
+    setIsPaused(false);
+    // Stop the recorder directly - expo-audio supports stopping from paused state
+    await stopAudioRecording();
   };
 
   const cancelStopRecording = () => {
     setShowStopConfirm(false);
-    // Resume recording if it was paused by the stop action
-    if (isPaused) {
-      resumeRecording();
-    }
+    // Resume recording - it was paused by the stop action
+    // (we paused without setting isPaused to keep the stop button visible)
+    audioRecorder.record();
+    resumeTimer();
   };
 
   const processRecording = async (fileUri: string, mimeType: string) => {
