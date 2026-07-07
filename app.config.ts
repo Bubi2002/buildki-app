@@ -42,10 +42,12 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
     appleTeamId: "TLHL2MRJB4",
+    backgroundColor: "#0B1622",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: "ProtoKI benötigt Zugriff auf die Kamera, um Videos aufzunehmen.",
       NSMicrophoneUsageDescription: "ProtoKI benötigt Zugriff auf das Mikrofon, um Sprache aufzuzeichnen.",
+      UIViewControllerBasedStatusBarAppearance: true,
     },
   },
   android: {
@@ -145,6 +147,12 @@ const config: ExpoConfig = {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
         },
+      },
+    ],
+    [
+      "expo-system-ui",
+      {
+        backgroundColor: "#0B1622",
       },
     ],
   ],
