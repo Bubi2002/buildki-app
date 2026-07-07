@@ -462,3 +462,4 @@
 - [x] Bug-Fix: PDF-Teilen Buttons zu einem einzigen "PDF teilen"-Button zusammengefasst – nutzt iOS Share Sheet (Sharing.shareAsync), Dropbox/Mail/AirDrop etc. alles über natives Teilen-Menü
 - [x] Bug-Fix: Fotos im PDF – Fallback-Logik verbessert: wenn inline-platzierte Fotos nicht gerendert werden konnten, erscheinen sie jetzt immer in der Fotodokumentation am Ende
 - [x] Bug-Fix: Performance/Crashes – Foto-Kompression für PDF auf 800px/50% reduziert (statt 1200px/60%), weniger RAM-Verbrauch bei PDF-Export
+- [x] Bug-Fix: Audio-Aufnahme UI überarbeitet – 3 separate Buttons während Aufnahme: Pause (links), Stop/Abschließen (Mitte, rot), Kapitel (rechts). Pause-Button zeigt "Fortsetzen" wenn pausiert. Klare Labels unter jedem Button. Start-Button nur vor Aufnahme sichtbar.
