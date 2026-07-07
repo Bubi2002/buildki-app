@@ -456,3 +456,4 @@
 - [x] Feature: Kontakte aus Telefonbuch importieren – dynamischer Import von expo-contacts, Alert-basierte Kontaktauswahl (Top 10), speichert Name/E-Mail/Telefon
 - [x] Feature: Kontakt bearbeiten (Name, E-Mail, Telefon, Rolle) – Edit-Button + Modal in Einstellungen und Protokoll-Detail
 - [x] Feature: Kontakt-Schnellauswahl beim PDF-Versand – Empfänger-Picker Modal mit gespeicherten Kontakten vor E-Mail-Versand
+- [x] Feature: Aufgaben bearbeiten – Titel, Priorität und Fälligkeitsdatum per Modal editierbar (Long-Press oder Bearbeiten-Button)

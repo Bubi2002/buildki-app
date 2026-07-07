@@ -180,6 +180,10 @@ export default function ProtocolDetailScreen() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editRole, setEditRole] = useState("");
+  const [editingTodoIndex, setEditingTodoIndex] = useState<number | null>(null);
+  const [editTodoTask, setEditTodoTask] = useState("");
+  const [editTodoPriority, setEditTodoPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [editTodoDueDate, setEditTodoDueDate] = useState("");
   const [editingSpeakerLabel, setEditingSpeakerLabel] = useState<string | null>(null);
   const [speakerNameInput, setSpeakerNameInput] = useState("");
   const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({});  const [emailRecipient, setEmailRecipient] = useState("");
@@ -289,6 +293,41 @@ export default function ProtocolDetailScreen() {
     } catch (error) {
       console.error("Error saving todo state:", error);
     }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const startEditTodo = (index: number) => {
+    const todo = todos[index];
+    setEditingTodoIndex(index);
+    setEditTodoTask(todo.task);
+    setEditTodoPriority(todo.priority);
+    setEditTodoDueDate(todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
+  };
+
+  const saveEditTodo = async () => {
+    if (editingTodoIndex === null || !editTodoTask.trim()) return;
+    const updated = [...todos];
+    let dueDate: string | undefined = undefined;
+    if (editTodoDueDate.trim()) {
+      const parts = editTodoDueDate.split(".");
+      if (parts.length === 3) {
+        const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        if (!isNaN(date.getTime())) dueDate = date.toISOString();
+      }
+    }
+    updated[editingTodoIndex] = {
+      ...updated[editingTodoIndex],
+      task: editTodoTask.trim(),
+      priority: editTodoPriority,
+      dueDate,
+    };
+    setTodos(updated);
+    setEditingTodoIndex(null);
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) { protocols[idx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
+    } catch { /* ignore */ }
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -1916,50 +1955,7 @@ export default function ProtocolDetailScreen() {
               <Pressable
                 key={index}
                 onPress={() => toggleTodo(index)}
-                onLongPress={() => {
-                  if (Platform.OS === "web") {
-                    const input = prompt("Fälligkeitsdatum (TT.MM.JJJJ):", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
-                    if (input) {
-                      const parts = input.split(".");
-                      if (parts.length === 3) {
-                        const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                        if (!isNaN(date.getTime())) {
-                          const updated = [...todos];
-                          updated[index] = { ...updated[index], dueDate: date.toISOString() };
-                          setTodos(updated);
-                          (async () => {
-                            try {
-                              const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
-                              const pidx = protocols.findIndex((p: any) => p.id === id);
-                              if (pidx !== -1) { protocols[pidx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
-                            } catch { /* ignore */ }
-                          })();
-                        }
-                      }
-                    }
-                  } else {
-                    Alert.prompt ? Alert.prompt("Fälligkeitsdatum", "Format: TT.MM.JJJJ", (input) => {
-                      if (input) {
-                        const parts = input.split(".");
-                        if (parts.length === 3) {
-                          const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                          if (!isNaN(date.getTime())) {
-                            const updated = [...todos];
-                            updated[index] = { ...updated[index], dueDate: date.toISOString() };
-                            setTodos(updated);
-                            (async () => {
-                              try {
-                                const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
-                                const pidx = protocols.findIndex((p: any) => p.id === id);
-                                if (pidx !== -1) { protocols[pidx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
-                              } catch { /* ignore */ }
-                            })();
-                          }
-                        }
-                      }
-                    }, "plain-text", todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "") : Alert.alert("Hinweis", "Halte eine Aufgabe gedrückt um ein Fälligkeitsdatum zu setzen.");
-                  }
-                }}
+                onLongPress={() => startEditTodo(index)}
                 style={({ pressed }) => [
                   styles.todoItem,
                   { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
@@ -1975,7 +1971,7 @@ export default function ProtocolDetailScreen() {
                   </Text>
                   {todo.status && todo.status !== "offen" && (
                     <Text style={{ fontSize: 10, color: todo.status === "in_arbeit" ? "#F59E0B" : "#22C55E", fontWeight: "500", marginTop: 2 }}>
-                      {todo.status === "in_arbeit" ? "▶ In Arbeit" : "✓ Erledigt"}
+                      {todo.status === "in_arbeit" ? "\u25b6 In Arbeit" : "\u2713 Erledigt"}
                     </Text>
                   )}
                   <View style={styles.todoMeta}>
@@ -1987,11 +1983,14 @@ export default function ProtocolDetailScreen() {
                     )}
                     <View style={[styles.todoBadge, { backgroundColor: todo.priority === "hoch" ? "#E5393520" : todo.priority === "mittel" ? "#FF980020" : colors.surface }]}>
                       <Text style={[styles.todoBadgeText, { color: todo.priority === "hoch" ? "#E53935" : todo.priority === "mittel" ? "#FF9800" : colors.muted }]}>
-                        {todo.priority === "hoch" ? "⚠️ Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
+                        {todo.priority === "hoch" ? "\u26a0\ufe0f Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
                       </Text>
                     </View>
+                    <Pressable onPress={() => startEditTodo(index)} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}>
+                      <Text style={{ fontSize: 10, color: colors.primary, fontWeight: "500" }}>\u270f\ufe0f Bearbeiten</Text>
+                    </Pressable>
                     <Pressable onPress={() => { setDelegatingTask({ task: todo.task, assignee: todo.assignee, priority: todo.priority, deadline: todo.deadline }); setShowDelegateModal(true); }} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: "#22C55E15", opacity: pressed ? 0.7 : 1 }]}>
-                      <Text style={{ fontSize: 10, color: "#22C55E", fontWeight: "500" }}>📤 Delegieren</Text>
+                      <Text style={{ fontSize: 10, color: "#22C55E", fontWeight: "500" }}>\ud83d\udce4 Delegieren</Text>
                     </Pressable>
                     {todo.deadline !== "Offen" && (
                       <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
@@ -3111,6 +3110,55 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>📧 E-Mail senden</Text>
                 )}
               </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Todo Modal */}
+        <Modal visible={editingTodoIndex !== null} transparent animationType="fade" onRequestClose={() => setEditingTodoIndex(null)}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "90%", maxWidth: 380, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>Aufgabe bearbeiten</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Titel</Text>
+              <TextInput
+                value={editTodoTask}
+                onChangeText={setEditTodoTask}
+                placeholder="Aufgabe beschreiben..."
+                placeholderTextColor={colors.muted}
+                multiline
+                style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12, minHeight: 60 }}
+              />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Priorit\u00e4t</Text>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                {(["hoch", "mittel", "niedrig"] as const).map(p => (
+                  <Pressable
+                    key={p}
+                    onPress={() => setEditTodoPriority(p)}
+                    style={{ flex: 1, paddingVertical: 8, alignItems: "center", borderWidth: 1, borderColor: editTodoPriority === p ? (p === "hoch" ? "#E53935" : p === "mittel" ? "#FF9800" : "#22C55E") : colors.border, backgroundColor: editTodoPriority === p ? (p === "hoch" ? "#E5393520" : p === "mittel" ? "#FF980020" : "#22C55E20") : "transparent" }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: editTodoPriority === p ? (p === "hoch" ? "#E53935" : p === "mittel" ? "#FF9800" : "#22C55E") : colors.muted }}>
+                      {p === "hoch" ? "\u26a0\ufe0f Hoch" : p === "mittel" ? "Mittel" : "Niedrig"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>F\u00e4lligkeitsdatum (TT.MM.JJJJ)</Text>
+              <TextInput
+                value={editTodoDueDate}
+                onChangeText={setEditTodoDueDate}
+                placeholder="z.B. 15.07.2026"
+                placeholderTextColor={colors.muted}
+                keyboardType="numbers-and-punctuation"
+                style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 16 }}
+              />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable onPress={saveEditTodo} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 0, alignItems: "center" }}>
+                  <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Speichern</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingTodoIndex(null)} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 12, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 14, color: colors.muted }}>Abbrechen</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>
