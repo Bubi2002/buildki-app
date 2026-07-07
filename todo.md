@@ -466,3 +466,6 @@
 - [x] UX-Fix: Stift-Icon rechts an jeder Aufgabe zum direkten Bearbeiten (statt nur Long-Press)
 - [x] Bug-Fix: Unicode-Escape-Zeichen im Aufgaben-Bearbeiten-Modal korrigiert (Priorität, Fälligkeitsdatum statt \u00e4t)
 - [x] Feature: Personen-Feld im Aufgaben-Bearbeiten-Modal hinzugefügt (Zuständige Person zuweisen)
+- [x] Feature: Eigene Uhrzeit frei wählbar (Stunden + Minuten Picker statt nur Preset-Buttons)
+- [x] Feature: Wochentage auswählen für Erinnerungen (z.B. nur Mo-Fr oder bestimmte Tage)
+- [x] Feature: Sicherstellen dass die Erinnerung als echte Push-Nachricht kommt (expo-notifications weekly trigger)

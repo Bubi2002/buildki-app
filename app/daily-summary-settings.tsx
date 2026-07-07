@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Alert, TextInput } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
@@ -11,23 +11,46 @@ import {
   DEFAULT_SUMMARY_SETTINGS,
 } from "@/lib/daily-summary";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-const TIME_OPTIONS = [
-  "07:00", "08:00", "09:00", "12:00", "15:00", "17:00", "18:00", "19:00", "20:00", "21:00",
-];
-
 const DEADLINE_DAYS_OPTIONS = [1, 2, 3, 5, 7];
+
+// Weekdays in expo-notifications convention: 1=Sunday, 2=Monday, ..., 7=Saturday
+const WEEKDAY_LABELS: { id: number; short: string; long: string }[] = [
+  { id: 2, short: "Mo", long: "Montag" },
+  { id: 3, short: "Di", long: "Dienstag" },
+  { id: 4, short: "Mi", long: "Mittwoch" },
+  { id: 5, short: "Do", long: "Donnerstag" },
+  { id: 6, short: "Fr", long: "Freitag" },
+  { id: 7, short: "Sa", long: "Samstag" },
+  { id: 1, short: "So", long: "Sonntag" },
+];
 
 export default function DailySummarySettingsScreen() {
   const colors = useColors();
   const router = useRouter();
   const [settings, setSettings] = useState<DailySummarySettings>(DEFAULT_SUMMARY_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadSettings();
+    checkPermission();
   }, []);
+
+  const checkPermission = async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    setPermissionGranted(status === "granted");
+  };
+
+  const requestPermission = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    setPermissionGranted(status === "granted");
+    if (status !== "granted") {
+      Alert.alert("Berechtigung verweigert", "Bitte erlaube Push-Benachrichtigungen in den Einstellungen deines Geräts.");
+    }
+  };
 
   const loadSettings = async () => {
     const s = await getDailySummarySettings();
@@ -39,11 +62,39 @@ export default function DailySummarySettingsScreen() {
     setHasChanges(true);
   };
 
+  const toggleWeekday = (dayId: number) => {
+    const current = settings.weekdays || [];
+    const updated = current.includes(dayId)
+      ? current.filter(d => d !== dayId)
+      : [...current, dayId];
+    updateSetting("weekdays", updated);
+  };
+
+  const adjustHour = (delta: number) => {
+    const newHour = (settings.hour + delta + 24) % 24;
+    updateSetting("hour", newHour);
+  };
+
+  const adjustMinute = (delta: number) => {
+    const newMinute = (settings.minute + delta + 60) % 60;
+    updateSetting("minute", newMinute);
+  };
+
   const saveSettings = async () => {
+    // Ensure permission before saving
+    if (!permissionGranted) {
+      await requestPermission();
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") return;
+    }
     await saveDailySummarySettings(settings);
     setHasChanges(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Gespeichert", "Benachrichtigungs-Einstellungen wurden aktualisiert.");
+    Alert.alert("Gespeichert", "Erinnerungen wurden aktualisiert und geplant.");
+  };
+
+  const formatTime = (h: number, m: number) => {
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
   return (
@@ -61,12 +112,26 @@ export default function DailySummarySettingsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Permission Warning */}
+        {permissionGranted === false && (
+          <Pressable onPress={requestPermission} style={[styles.section, { backgroundColor: "#E5393915", borderColor: "#E53935" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="notifications-off" size={20} color="#E53935" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#E53935" }}>Push-Berechtigung fehlt</Text>
+                <Text style={{ fontSize: 11, color: "#E53935", marginTop: 2 }}>Tippe hier, um Benachrichtigungen zu erlauben</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color="#E53935" />
+            </View>
+          </Pressable>
+        )}
+
         {/* Main Toggle */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.rowTitle, { color: colors.foreground }]}>Tages-Zusammenfassung</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>Abendliche Push-Benachrichtigung mit Tagesübersicht</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>Push-Benachrichtigung mit Tagesübersicht</Text>
             </View>
             <Switch
               value={settings.enabled}
@@ -78,26 +143,93 @@ export default function DailySummarySettingsScreen() {
 
         {settings.enabled && (
           <>
-            {/* Time Selection */}
+            {/* Time Picker */}
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Uhrzeit</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                {TIME_OPTIONS.map((t) => (
-                  <Pressable
-                    key={t}
-                    onPress={() => updateSetting("time", t)}
-                    style={[
-                      styles.chip,
-                      { borderColor: settings.time === t ? colors.primary : colors.border },
-                      settings.time === t && { backgroundColor: colors.primary + "15" },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: settings.time === t ? colors.primary : colors.muted }}>
-                      {t} Uhr
-                    </Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>Wann soll die Erinnerung kommen?</Text>
+              
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {/* Hour picker */}
+                <View style={{ alignItems: "center" }}>
+                  <Pressable onPress={() => adjustHour(1)} style={({ pressed }) => [styles.arrowBtn, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="keyboard-arrow-up" size={24} color={colors.foreground} />
                   </Pressable>
-                ))}
-              </ScrollView>
+                  <View style={[styles.timeDisplay, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}>
+                    <Text style={{ fontSize: 28, fontWeight: "700", color: colors.primary, fontVariant: ["tabular-nums"] }}>
+                      {String(settings.hour).padStart(2, "0")}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => adjustHour(-1)} style={({ pressed }) => [styles.arrowBtn, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.foreground} />
+                  </Pressable>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Stunde</Text>
+                </View>
+
+                <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginBottom: 20 }}>:</Text>
+
+                {/* Minute picker */}
+                <View style={{ alignItems: "center" }}>
+                  <Pressable onPress={() => adjustMinute(5)} style={({ pressed }) => [styles.arrowBtn, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="keyboard-arrow-up" size={24} color={colors.foreground} />
+                  </Pressable>
+                  <View style={[styles.timeDisplay, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}>
+                    <Text style={{ fontSize: 28, fontWeight: "700", color: colors.primary, fontVariant: ["tabular-nums"] }}>
+                      {String(settings.minute).padStart(2, "0")}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => adjustMinute(-5)} style={({ pressed }) => [styles.arrowBtn, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.foreground} />
+                  </Pressable>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Minute</Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 12 }}>
+                Erinnerung um {formatTime(settings.hour, settings.minute)} Uhr
+              </Text>
+            </View>
+
+            {/* Weekday Selection */}
+            <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Wochentage</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>An welchen Tagen erinnern?</Text>
+              
+              <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                {WEEKDAY_LABELS.map((day) => {
+                  const isSelected = (settings.weekdays || []).includes(day.id);
+                  return (
+                    <Pressable
+                      key={day.id}
+                      onPress={() => toggleWeekday(day.id)}
+                      style={[
+                        styles.dayChip,
+                        { borderColor: isSelected ? colors.primary : colors.border },
+                        isSelected && { backgroundColor: colors.primary + "15" },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: isSelected ? colors.primary : colors.muted }}>
+                        {day.short}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Quick select buttons */}
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                <Pressable
+                  onPress={() => updateSetting("weekdays", [2, 3, 4, 5, 6])}
+                  style={({ pressed }) => [styles.quickBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={{ fontSize: 11, color: colors.muted }}>Mo-Fr</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => updateSetting("weekdays", [1, 2, 3, 4, 5, 6, 7])}
+                  style={({ pressed }) => [styles.quickBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={{ fontSize: 11, color: colors.muted }}>Jeden Tag</Text>
+                </Pressable>
+              </View>
             </View>
 
             {/* Content Options */}
@@ -178,8 +310,8 @@ export default function DailySummarySettingsScreen() {
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Hinweis</Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
-            Die Tages-Zusammenfassung wird als lokale Push-Benachrichtigung zur gewählten Uhrzeit gesendet. 
-            Mängel-Frist-Erinnerungen werden beim App-Start geprüft und sofort gesendet, wenn Fristen bevorstehen oder überschritten sind.
+            Die Erinnerung wird als echte Push-Benachrichtigung an den gewählten Tagen zur eingestellten Uhrzeit gesendet – auch wenn die App geschlossen ist. 
+            Mängel-Frist-Erinnerungen werden beim App-Start geprüft und sofort gesendet.
           </Text>
         </View>
       </ScrollView>
@@ -197,4 +329,8 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 14, fontWeight: "500" },
   rowSubtitle: { fontSize: 12, marginTop: 2 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1, marginRight: 8 },
+  dayChip: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderWidth: 1, borderRadius: 0 },
+  quickBtn: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderRadius: 0 },
+  arrowBtn: { width: 44, height: 32, alignItems: "center", justifyContent: "center", borderWidth: 1, borderRadius: 0 },
+  timeDisplay: { width: 64, height: 56, alignItems: "center", justifyContent: "center", borderWidth: 2, borderRadius: 0, marginVertical: 4 },
 });

@@ -3,6 +3,7 @@
  * 
  * Generates a daily summary of activities and sends it as a push notification.
  * Also handles Mängel deadline reminders.
+ * Supports custom time (hour + minute) and weekday selection.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -13,17 +14,23 @@ const LAST_SUMMARY_KEY = "last-daily-summary";
 
 export type DailySummarySettings = {
   enabled: boolean;
-  time: string; // HH:MM format, e.g. "18:00"
+  hour: number; // 0-23
+  minute: number; // 0-59
+  time: string; // HH:MM format for backward compat
+  weekdays: number[]; // 1=Sunday, 2=Monday, ..., 7=Saturday (expo-notifications convention)
   includeProtocols: boolean;
   includeDefects: boolean;
   includeTasks: boolean;
-  defectDeadlineReminder: boolean; // Remind about upcoming deadlines
-  defectDeadlineDays: number; // Days before deadline to remind (default: 2)
+  defectDeadlineReminder: boolean;
+  defectDeadlineDays: number;
 };
 
 export const DEFAULT_SUMMARY_SETTINGS: DailySummarySettings = {
   enabled: true,
+  hour: 18,
+  minute: 0,
   time: "18:00",
+  weekdays: [2, 3, 4, 5, 6], // Mo-Fr (2=Monday ... 6=Friday in expo convention)
   includeProtocols: true,
   includeDefects: true,
   includeTasks: true,
@@ -37,7 +44,20 @@ export const DEFAULT_SUMMARY_SETTINGS: DailySummarySettings = {
 export async function getDailySummarySettings(): Promise<DailySummarySettings> {
   try {
     const raw = await AsyncStorage.getItem(DAILY_SUMMARY_SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SUMMARY_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate old format: if only "time" string exists, parse into hour/minute
+      if (parsed.time && parsed.hour === undefined) {
+        const [h, m] = parsed.time.split(":").map(Number);
+        parsed.hour = h;
+        parsed.minute = m;
+      }
+      // Migrate: if no weekdays, default to every day
+      if (!parsed.weekdays) {
+        parsed.weekdays = [1, 2, 3, 4, 5, 6, 7];
+      }
+      return { ...DEFAULT_SUMMARY_SETTINGS, ...parsed };
+    }
     return DEFAULT_SUMMARY_SETTINGS;
   } catch {
     return DEFAULT_SUMMARY_SETTINGS;
@@ -50,6 +70,8 @@ export async function getDailySummarySettings(): Promise<DailySummarySettings> {
 export async function saveDailySummarySettings(settings: Partial<DailySummarySettings>): Promise<void> {
   const current = await getDailySummarySettings();
   const updated = { ...current, ...settings };
+  // Keep time string in sync
+  updated.time = `${String(updated.hour).padStart(2, "0")}:${String(updated.minute).padStart(2, "0")}`;
   await AsyncStorage.setItem(DAILY_SUMMARY_SETTINGS_KEY, JSON.stringify(updated));
   
   // Reschedule notifications
@@ -61,7 +83,9 @@ export async function saveDailySummarySettings(settings: Partial<DailySummarySet
 }
 
 /**
- * Schedule the daily summary notification
+ * Schedule the daily summary notification.
+ * If weekdays are selected, schedules one WEEKLY trigger per weekday.
+ * If all 7 days are selected, uses a single DAILY trigger instead.
  */
 export async function scheduleDailySummary(settings?: DailySummarySettings): Promise<void> {
   const s = settings || await getDailySummarySettings();
@@ -70,21 +94,40 @@ export async function scheduleDailySummary(settings?: DailySummarySettings): Pro
   // Cancel existing
   await cancelDailySummary();
 
-  const [hours, minutes] = s.time.split(":").map(Number);
+  const { hour, minute, weekdays } = s;
 
-  // Schedule daily repeating notification
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "ProtoKI – Tages-Zusammenfassung",
-      body: "Tippe hier, um deine Tagesübersicht zu sehen.",
-      data: { type: "daily_summary" },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: hours,
-      minute: minutes,
-    },
-  });
+  // If all 7 days selected, use DAILY trigger (more efficient)
+  if (weekdays.length === 7 || weekdays.length === 0) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "ProtoKI \u2013 Tages-Zusammenfassung",
+        body: "Tippe hier, um deine Tages\u00fcbersicht zu sehen.",
+        data: { type: "daily_summary" },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+      },
+    });
+  } else {
+    // Schedule one WEEKLY trigger per selected weekday
+    for (const weekday of weekdays) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "ProtoKI \u2013 Tages-Zusammenfassung",
+          body: "Tippe hier, um deine Tages\u00fcbersicht zu sehen.",
+          data: { type: "daily_summary" },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday,
+          hour,
+          minute,
+        },
+      });
+    }
+  }
 }
 
 /**
@@ -126,7 +169,7 @@ export async function checkDefectDeadlines(): Promise<void> {
   if (overdueDefects.length > 0) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `⚠️ ${overdueDefects.length} überfällige Mängel`,
+        title: `\u26a0\ufe0f ${overdueDefects.length} \u00fcberf\u00e4llige M\u00e4ngel`,
         body: overdueDefects.slice(0, 3).map(d => d.title).join(", ") + 
           (overdueDefects.length > 3 ? ` und ${overdueDefects.length - 3} weitere` : ""),
         data: { type: "defect_overdue" },
@@ -138,7 +181,7 @@ export async function checkDefectDeadlines(): Promise<void> {
   if (upcomingDeadlines.length > 0) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `📋 ${upcomingDeadlines.length} Mängel-Fristen in ${settings.defectDeadlineDays} Tagen`,
+        title: `\ud83d\udccb ${upcomingDeadlines.length} M\u00e4ngel-Fristen in ${settings.defectDeadlineDays} Tagen`,
         body: upcomingDeadlines.slice(0, 3).map(d => d.title).join(", ") + 
           (upcomingDeadlines.length > 3 ? ` und ${upcomingDeadlines.length - 3} weitere` : ""),
         data: { type: "defect_deadline" },
@@ -199,13 +242,13 @@ export async function generateDailySummaryText(projectId?: string): Promise<{
 
   const parts: string[] = [];
   if (protocolsToday > 0) parts.push(`${protocolsToday} Protokoll${protocolsToday > 1 ? "e" : ""} erstellt`);
-  if (openDefects.length > 0) parts.push(`${openDefects.length} offene Mängel`);
-  if (overdueDefects.length > 0) parts.push(`${overdueDefects.length} überfällig`);
+  if (openDefects.length > 0) parts.push(`${openDefects.length} offene M\u00e4ngel`);
+  if (overdueDefects.length > 0) parts.push(`${overdueDefects.length} \u00fcberf\u00e4llig`);
   if (completedTasks > 0) parts.push(`${completedTasks} Aufgaben erledigt`);
 
   return {
-    title: `Tagesübersicht – ${dateStr}`,
-    body: parts.length > 0 ? parts.join(" | ") : "Keine Aktivitäten heute.",
+    title: `Tages\u00fcbersicht \u2013 ${dateStr}`,
+    body: parts.length > 0 ? parts.join(" | ") : "Keine Aktivit\u00e4ten heute.",
     stats: {
       protocolsToday,
       openDefects: openDefects.length,
