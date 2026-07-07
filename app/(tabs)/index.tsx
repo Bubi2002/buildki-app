@@ -1912,46 +1912,31 @@ export default function RecordScreen() {
           {/* Bottom section: Record button + controls */}
           <View style={styles.audioControls}>
             <View style={styles.audioControlsRow}>
-              {/* Stop/Finish button (only during recording) */}
+              {/* Spacer for symmetry when recording */}
               {isRecording && (
-                <Pressable
-                  onPress={stopRecording}
-                  style={({ pressed }) => [
-                    styles.pauseButton,
-                    {
-                      backgroundColor: "#E5393520",
-                      borderColor: "#E53935",
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name="stop"
-                    size={28}
-                    color="#E53935"
-                  />
-                </Pressable>
+                <View style={styles.pauseButton} />
               )}
 
-              {/* Center button: Start / Pause / Resume */}
+              {/* Center button: Start / Stop (shows confirm) / Resume */}
               <Pressable
-                onPress={isRecording ? (isPaused ? resumeRecording : pauseRecording) : startRecording}
+                onPress={isRecording ? (isPaused ? resumeRecording : stopRecording) : startRecording}
                 style={({ pressed }) => [
                   styles.recordButton,
                   {
-                    borderColor: isRecording ? (isPaused ? colors.primary : colors.warning) : colors.primary,
+                    borderColor: isRecording ? (isPaused ? colors.primary : "#E53935") : colors.primary,
                     transform: [{ scale: pressed ? 0.95 : 1 }],
                   },
                 ]}
               >
-                <View
-                  style={[
-                    isRecording
-                      ? (isPaused ? styles.recordIcon : { width: 20, height: 28, borderRadius: 4, backgroundColor: colors.warning })
-                      : styles.recordIcon,
-                    { backgroundColor: isRecording ? (isPaused ? colors.primary : colors.warning) : colors.primary },
-                  ]}
-                />
+                {isRecording ? (
+                  isPaused ? (
+                    <MaterialIcons name="play-arrow" size={32} color={colors.primary} />
+                  ) : (
+                    <MaterialIcons name="stop" size={32} color="#E53935" />
+                  )
+                ) : (
+                  <View style={[styles.recordIcon, { backgroundColor: colors.primary }]} />
+                )}
               </Pressable>
 
               {/* Bookmark/Marker button (only during recording) - now opens chapter input */}
@@ -1983,7 +1968,7 @@ export default function RecordScreen() {
 
             {isRecording ? (
               <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-                {isPaused ? "Pausiert – Tippe zum Fortsetzen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Aufnahme läuft"}
+                {isPaused ? "Pausiert – Tippe zum Fortsetzen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Aufnahme läuft – Tippe zum Beenden"}
               </Text>
             ) : (
               <Pressable onPress={() => setShowRecordingTips(true)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
