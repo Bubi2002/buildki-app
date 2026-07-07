@@ -204,12 +204,12 @@ function generatePdfHtml(
   const durationStr = `${durationMins}:${durationSecs.toString().padStart(2, "0")} Min.`;
 
   const logoHtml = company.logoBase64
-    ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 180px; object-fit: contain;" />`
+    ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 180px; object-fit: contain; display: block;" />`
     : "";
 
   const companyInfoHtml = company.companyName
-    ? `<div style="text-align: right; font-size: 10px; color: #666;">
-        <strong>${company.companyName}</strong><br/>
+    ? `<div style="text-align: right; font-size: 10px; color: #444;">
+        <strong style="color: #222;">${company.companyName}</strong><br/>
         ${company.companyAddress ? company.companyAddress.replace(/\n/g, "<br/>") : ""}
         ${company.companyPhone ? `<br/>Tel: ${company.companyPhone}` : ""}
       </div>`
@@ -332,10 +332,10 @@ function generatePdfHtml(
         return `<div class="gutachten-empfehlungsbox"><div class="gutachten-empfehlungsbox-title">${title}</div>`;
       }
       if (trimmed.startsWith("## ")) {
-        return `<h3 style="margin-top: 16px; margin-bottom: 8px; color: #1a1a1a; font-size: 14px;">${trimmed.substring(3)}</h3>`;
+        return `<h3 style="margin-top: 18px; margin-bottom: 8px; color: #111; font-size: 14px; font-weight: 600;">${trimmed.substring(3)}</h3>`;
       }
       if (trimmed.startsWith("# ")) {
-        return `<h2 style="margin-top: 20px; margin-bottom: 10px; color: #1a1a1a; font-size: 16px;">${trimmed.substring(2)}</h2>`;
+        return `<div style="margin-top: 28px; margin-bottom: 14px; border-bottom: 2px solid #333; padding-bottom: 6px;"><h2 style="margin: 0; color: #111; font-size: 18px; font-weight: 700;">${trimmed.substring(2)}</h2></div>`;
       }
       if (trimmed === "") return "<br/>";
       // Handle **bold** inline
@@ -346,7 +346,15 @@ function generatePdfHtml(
         if (cells.every(c => /^[-:]+$/.test(c.trim()))) return ''; // separator row
         return `<tr>${cells.map(c => `<td style="padding: 6px 10px; border: 1px solid #e0e0e0; font-size: 11px;">${c.trim()}</td>`).join('')}</tr>`;
       }
-      return `<p style="margin: 4px 0; line-height: 1.6;">${processed}</p>`;
+      // If the entire line is bold (starts and ends with **), render as a section sub-heading with divider
+      if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.includes('**', 2)) {
+        // Skip - already handled by the inline bold replacement above
+      }
+      // Lines that start with a number followed by a dot (e.g. "1. Datum und Wetter") = numbered section heading
+      if (/^\d+\.\s/.test(trimmed)) {
+        return `<div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid #ddd;"><p style="margin: 0; font-size: 13px; font-weight: 700; color: #111; line-height: 1.6;">${processed}</p></div>`;
+      }
+      return `<p style="margin: 5px 0; line-height: 1.7; color: #222;">${processed}</p>`;
     })
     .join("\n");
 
@@ -461,8 +469,8 @@ function generatePdfHtml(
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 12px;
-      color: #333;
-      line-height: 1.5;
+      color: #222;
+      line-height: 1.6;
       margin: 0;
       padding: 0;
     }
@@ -500,14 +508,14 @@ function generatePdfHtml(
       text-align: right;
     }
     .doc-title {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
-      color: #1a1a1a;
+      color: #111;
       margin: 0 0 4px 0;
     }
     .doc-subtitle {
       font-size: 12px;
-      color: #666;
+      color: #444;
       margin: 0;
     }
     .meta-table {
@@ -517,14 +525,15 @@ function generatePdfHtml(
       font-size: 11px;
     }
     .meta-table td {
-      padding: 6px 10px;
-      border: 1px solid #e0e0e0;
+      padding: 8px 12px;
+      border: 1px solid #d0d0d0;
+      color: #222;
     }
     .meta-table td:first-child {
       font-weight: 600;
       width: 140px;
-      background-color: #f8f8f8;
-      color: #555;
+      background-color: #f5f5f5;
+      color: #333;
     }
     .content {
       margin-bottom: 20px;
@@ -534,8 +543,12 @@ function generatePdfHtml(
       margin: 8px 0;
     }
     .content li {
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       line-height: 1.6;
+      color: #222;
+    }
+    .content p {
+      color: #222;
     }
     .footer {
       position: fixed;

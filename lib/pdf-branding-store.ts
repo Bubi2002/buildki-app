@@ -211,54 +211,52 @@ export function generateCoverPage(
   return `
   <div style="page-break-after: always; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; text-align: center;">
     <!-- Logo -->
-    ${logoBase64 ? `<img src="${logoBase64}" style="height: 80px; width: auto; object-fit: contain; margin-bottom: 32px;" />` : ""}
+    ${logoBase64 ? `<div style="margin-bottom: 32px; text-align: center;"><img src="${logoBase64}" style="height: 80px; width: auto; max-width: 200px; object-fit: contain; display: inline-block;" /></div>` : ""}
     ${!logoBase64 && branding.companyName ? `<div style="font-size: 28px; font-weight: 800; color: ${accentColor}; margin-bottom: 32px; letter-spacing: -0.5px;">${branding.companyName}</div>` : ""}
     
     <!-- Accent line -->
-    <div style="width: 80px; height: 4px; background: ${accentColor}; border-radius: 2px; margin-bottom: 40px;"></div>
+    <div style="width: 80px; height: 4px; background: ${accentColor}; margin-bottom: 40px;"></div>
     
     <!-- Document type -->
-    <div style="font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;">
+    <div style="font-size: 14px; color: #444; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; font-weight: 600;">
       ${protocol.templateName || "Protokoll"}
     </div>
     
     <!-- Title (Project name as main title, fallback to template name) -->
-    <div style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; max-width: 80%; line-height: 1.3;">
+    <div style="font-size: 28px; font-weight: 700; color: #111; margin-bottom: 8px; max-width: 80%; line-height: 1.3;">
       ${protocol.projectName || protocol.templateName || "Protokoll"}
     </div>
     
-
-    
     <!-- Protocol number -->
-    ${protocol.protocolNumber ? `<div style="font-size: 13px; color: #666; margin-top: 8px;">Nr. ${protocol.protocolNumber}</div>` : ""}
+    ${protocol.protocolNumber ? `<div style="font-size: 14px; color: #333; margin-top: 8px; font-weight: 500;">Nr. ${protocol.protocolNumber}</div>` : ""}
     
     <!-- Spacer -->
     <div style="flex: 1; min-height: 60px;"></div>
     
     <!-- Meta info -->
-    <div style="width: 100%; max-width: 400px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-size: 11px; color: #888;">Datum:</span>
-        <span style="font-size: 11px; color: #333; font-weight: 600;">${dateStr}</span>
+    <div style="width: 100%; max-width: 400px; border-top: 2px solid #333; padding-top: 20px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 12px; color: #555; font-weight: 500;">Datum:</span>
+        <span style="font-size: 12px; color: #111; font-weight: 600;">${dateStr}</span>
       </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-size: 11px; color: #888;">Uhrzeit:</span>
-        <span style="font-size: 11px; color: #333; font-weight: 600;">${timeStr} Uhr</span>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 12px; color: #555; font-weight: 500;">Uhrzeit:</span>
+        <span style="font-size: 12px; color: #111; font-weight: 600;">${timeStr} Uhr</span>
       </div>
       ${protocol.location?.address ? `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-size: 11px; color: #888;">Ort:</span>
-        <span style="font-size: 11px; color: #333; font-weight: 600;">${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}</span>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 12px; color: #555; font-weight: 500;">Ort:</span>
+        <span style="font-size: 12px; color: #111; font-weight: 600;">${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}</span>
       </div>` : ""}
       ${branding.companyName ? `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-size: 11px; color: #888;">Erstellt von:</span>
-        <span style="font-size: 11px; color: #333; font-weight: 600;">${branding.companyName}</span>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 12px; color: #555; font-weight: 500;">Erstellt von:</span>
+        <span style="font-size: 12px; color: #111; font-weight: 600;">${branding.companyName}</span>
       </div>` : ""}
     </div>
     
     <!-- Footer -->
-    <div style="margin-top: 24px; font-size: 9px; color: #bbb;">
+    <div style="margin-top: 24px; font-size: 10px; color: #666;">
       ${branding.footerText || "Erstellt mit ProtoKI"}
     </div>
   </div>`;

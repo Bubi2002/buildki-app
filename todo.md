@@ -457,3 +457,4 @@
 - [x] Feature: Kontakt bearbeiten (Name, E-Mail, Telefon, Rolle) – Edit-Button + Modal in Einstellungen und Protokoll-Detail
 - [x] Feature: Kontakt-Schnellauswahl beim PDF-Versand – Empfänger-Picker Modal mit gespeicherten Kontakten vor E-Mail-Versand
 - [x] Feature: Aufgaben bearbeiten – Titel, Priorität und Fälligkeitsdatum per Modal editierbar (Long-Press oder Bearbeiten-Button)
+- [x] Bug-Fix: PDF-Design überarbeitet – Logo-Ausrichtung korrigiert (display:block), Schrift auf Deckblatt und Inhalt deutlich dunkler (#111/#222 statt #888/#666), größere Überschriften (18px mit Trennlinie), nummerierte Abschnitte mit Divider, Meta-Tabelle kontrastreicher
