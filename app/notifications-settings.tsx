@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Switch, Alert, Platform } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { View, Text, ScrollView, Pressable, Switch, Alert, Platform, FlatList, Dimensions } from "react-native";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
@@ -12,6 +12,118 @@ import {
   type NotificationPreferences,
 } from "@/lib/notification-service";
 
+const ITEM_HEIGHT = 44;
+const VISIBLE_ITEMS = 5;
+const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
+
+// Generate arrays for hours (0-23) and minutes (0-55 in 5-min steps)
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+
+// Weekday names
+const WEEKDAYS = [
+  { key: 1, short: "Mo", label: "Montag" },
+  { key: 2, short: "Di", label: "Dienstag" },
+  { key: 3, short: "Mi", label: "Mittwoch" },
+  { key: 4, short: "Do", label: "Donnerstag" },
+  { key: 5, short: "Fr", label: "Freitag" },
+  { key: 6, short: "Sa", label: "Samstag" },
+  { key: 0, short: "So", label: "Sonntag" },
+];
+
+function WheelPicker({ data, selectedValue, onValueChange, colors, formatValue }: {
+  data: number[];
+  selectedValue: number;
+  onValueChange: (val: number) => void;
+  colors: any;
+  formatValue: (val: number) => string;
+}) {
+  const flatListRef = useRef<FlatList>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  const selectedIndex = data.indexOf(selectedValue);
+
+  useEffect(() => {
+    if (!isScrolling && flatListRef.current && selectedIndex >= 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: selectedIndex * ITEM_HEIGHT,
+          animated: false,
+        });
+      }, 100);
+    }
+  }, [selectedIndex]);
+
+  const handleScrollEnd = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const index = Math.round(offsetY / ITEM_HEIGHT);
+    const clampedIndex = Math.max(0, Math.min(index, data.length - 1));
+    if (data[clampedIndex] !== selectedValue) {
+      onValueChange(data[clampedIndex]);
+    }
+    setIsScrolling(false);
+  };
+
+  const renderItem = ({ item, index }: { item: number; index: number }) => {
+    const isSelected = item === selectedValue;
+    return (
+      <View style={{ height: ITEM_HEIGHT, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{
+          fontSize: isSelected ? 22 : 16,
+          fontWeight: isSelected ? "700" : "400",
+          color: isSelected ? colors.foreground : colors.muted + "60",
+        }}>
+          {formatValue(item)}
+        </Text>
+      </View>
+    );
+  };
+
+  // Padding to center the first/last items
+  const paddingVertical = (PICKER_HEIGHT - ITEM_HEIGHT) / 2;
+
+  return (
+    <View style={{ height: PICKER_HEIGHT, overflow: "hidden", width: 80 }}>
+      {/* Selection indicator */}
+      <View style={{
+        position: "absolute",
+        top: paddingVertical,
+        left: 4,
+        right: 4,
+        height: ITEM_HEIGHT,
+        backgroundColor: colors.primary + "15",
+        borderRadius: 0,
+        borderWidth: 1,
+        borderColor: colors.primary + "30",
+        zIndex: 0,
+      }} />
+      <FlatList
+        ref={flatListRef}
+        data={data}
+        keyExtractor={(item) => String(item)}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_HEIGHT}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingVertical }}
+        onScrollBeginDrag={() => setIsScrolling(true)}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={(e) => {
+          // For when user lifts finger without momentum
+          if (e.nativeEvent.velocity?.y === 0) {
+            handleScrollEnd(e);
+          }
+        }}
+        getItemLayout={(_, index) => ({
+          length: ITEM_HEIGHT,
+          offset: ITEM_HEIGHT * index,
+          index,
+        })}
+      />
+    </View>
+  );
+}
+
 export default function NotificationsSettingsScreen() {
   const colors = useColors();
   const [prefs, setPrefs] = useState<NotificationPreferences>({
@@ -22,6 +134,7 @@ export default function NotificationsSettingsScreen() {
     reminderHour: 8,
     reminderMinute: 0,
   });
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mo-Fr default
   const [hasPermission, setHasPermission] = useState(true);
 
   useEffect(() => {
@@ -31,6 +144,10 @@ export default function NotificationsSettingsScreen() {
   const loadPrefs = async () => {
     const saved = await getNotificationPreferences();
     setPrefs(saved);
+    // Load saved weekdays
+    if ((saved as any).weekdays) {
+      setSelectedDays((saved as any).weekdays);
+    }
     if (Platform.OS !== "web") {
       const perm = await requestPermissions();
       setHasPermission(perm);
@@ -40,7 +157,51 @@ export default function NotificationsSettingsScreen() {
   const updatePref = async (key: keyof NotificationPreferences, value: boolean | number) => {
     const updated = { ...prefs, [key]: value };
     setPrefs(updated);
-    await saveNotificationPreferences(updated);
+    await saveNotificationPreferences({ ...updated, weekdays: selectedDays } as any);
+    if (updated.enabled) {
+      await scheduleNotifications();
+    }
+  };
+
+  const updateHour = async (hour: number) => {
+    const updated = { ...prefs, reminderHour: hour };
+    setPrefs(updated);
+    await saveNotificationPreferences({ ...updated, weekdays: selectedDays } as any);
+    if (updated.enabled) await scheduleNotifications();
+  };
+
+  const updateMinute = async (minute: number) => {
+    const updated = { ...prefs, reminderMinute: minute };
+    setPrefs(updated);
+    await saveNotificationPreferences({ ...updated, weekdays: selectedDays } as any);
+    if (updated.enabled) await scheduleNotifications();
+  };
+
+  const toggleDay = async (day: number) => {
+    let newDays: number[];
+    if (selectedDays.includes(day)) {
+      newDays = selectedDays.filter(d => d !== day);
+      if (newDays.length === 0) newDays = [day]; // Must have at least one day
+    } else {
+      newDays = [...selectedDays, day];
+    }
+    setSelectedDays(newDays);
+    await saveNotificationPreferences({ ...prefs, weekdays: newDays } as any);
+    if (prefs.enabled) await scheduleNotifications();
+  };
+
+  const selectAllDays = async () => {
+    const allDays = [0, 1, 2, 3, 4, 5, 6];
+    setSelectedDays(allDays);
+    await saveNotificationPreferences({ ...prefs, weekdays: allDays } as any);
+    if (prefs.enabled) await scheduleNotifications();
+  };
+
+  const selectWeekdays = async () => {
+    const weekdays = [1, 2, 3, 4, 5];
+    setSelectedDays(weekdays);
+    await saveNotificationPreferences({ ...prefs, weekdays } as any);
+    if (prefs.enabled) await scheduleNotifications();
   };
 
   const enableNotifications = async () => {
@@ -58,8 +219,6 @@ export default function NotificationsSettingsScreen() {
       Alert.alert("Berechtigung verweigert", "Bitte aktiviere Benachrichtigungen in den Geräte-Einstellungen.");
     }
   };
-
-  const hours = Array.from({ length: 24 }, (_, i) => i);
 
   return (
     <ScreenContainer className="flex-1">
@@ -110,7 +269,6 @@ export default function NotificationsSettingsScreen() {
         {/* Reminder Types */}
         <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Erinnerungen</Text>
         <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20, overflow: "hidden" }}>
-          {/* Open Defects */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <MaterialIcons name="warning" size={20} color={colors.warning} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -125,8 +283,6 @@ export default function NotificationsSettingsScreen() {
               disabled={!prefs.enabled}
             />
           </View>
-
-          {/* Checklists */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <MaterialIcons name="checklist" size={20} color={"#8E24AA"} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -141,8 +297,6 @@ export default function NotificationsSettingsScreen() {
               disabled={!prefs.enabled}
             />
           </View>
-
-          {/* Daily Digest */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14 }}>
             <MaterialIcons name="today" size={20} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -159,30 +313,101 @@ export default function NotificationsSettingsScreen() {
           </View>
         </View>
 
-        {/* Reminder Time */}
-        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Erinnerungszeit</Text>
-        <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 20 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>
-            Tägliche Erinnerung um {String(prefs.reminderHour).padStart(2, "0")}:{String(prefs.reminderMinute).padStart(2, "0")} Uhr
+        {/* Time Picker - Apple Clock Style */}
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Uhrzeit</Text>
+        <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 20, marginBottom: 20, alignItems: "center" }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 16 }}>
+            Erinnerung um {String(prefs.reminderHour).padStart(2, "0")}:{String(prefs.reminderMinute).padStart(2, "0")} Uhr
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-            {[6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20].map((hour) => (
-              <Pressable
-                key={hour}
-                onPress={() => updatePref("reminderHour", hour)}
-                style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, backgroundColor: prefs.reminderHour === hour ? colors.primary + "15" : "transparent", borderWidth: 1, borderColor: prefs.reminderHour === hour ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "600", color: prefs.reminderHour === hour ? colors.primary : colors.muted }}>{String(hour).padStart(2, "0")}:00</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          
+          {/* Scroll Wheel Picker */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+            {/* Hours */}
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>Stunde</Text>
+              <WheelPicker
+                data={HOURS}
+                selectedValue={prefs.reminderHour}
+                onValueChange={updateHour}
+                colors={colors}
+                formatValue={(v) => String(v).padStart(2, "0")}
+              />
+            </View>
+
+            {/* Separator */}
+            <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginHorizontal: 8, marginTop: 20 }}>:</Text>
+
+            {/* Minutes */}
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>Minute</Text>
+              <WheelPicker
+                data={MINUTES}
+                selectedValue={prefs.reminderMinute}
+                onValueChange={updateMinute}
+                colors={colors}
+                formatValue={(v) => String(v).padStart(2, "0")}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Weekday Selection */}
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Wochentage</Text>
+        <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+            {WEEKDAYS.map(day => {
+              const isActive = selectedDays.includes(day.key);
+              return (
+                <Pressable
+                  key={day.key}
+                  onPress={() => toggleDay(day.key)}
+                  style={({ pressed }) => [{
+                    width: 40,
+                    height: 40,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 0,
+                    backgroundColor: isActive ? colors.primary : "transparent",
+                    borderWidth: 1,
+                    borderColor: isActive ? colors.primary : colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: isActive ? "#fff" : colors.muted }}>{day.short}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {/* Quick select buttons */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable
+              onPress={selectWeekdays}
+              style={({ pressed }) => [{
+                flex: 1, paddingVertical: 8, alignItems: "center",
+                borderWidth: 1, borderColor: colors.border, borderRadius: 0,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.primary }}>Mo – Fr</Text>
+            </Pressable>
+            <Pressable
+              onPress={selectAllDays}
+              style={({ pressed }) => [{
+                flex: 1, paddingVertical: 8, alignItems: "center",
+                borderWidth: 1, borderColor: colors.border, borderRadius: 0,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.primary }}>Jeden Tag</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Info */}
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 0, backgroundColor: colors.primary + "08" }}>
           <MaterialIcons name="info-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
           <Text style={{ flex: 1, fontSize: 12, color: colors.muted, lineHeight: 18 }}>
-            Benachrichtigungen werden lokal auf deinem Gerät geplant. Sie funktionieren auch ohne Internetverbindung. Die Erinnerungen werden täglich zur eingestellten Uhrzeit ausgelöst, wenn offene Punkte vorhanden sind.
+            Benachrichtigungen werden lokal auf deinem Gerät geplant. Sie funktionieren auch ohne Internetverbindung. Die Erinnerungen werden an den gewählten Tagen zur eingestellten Uhrzeit ausgelöst, wenn offene Punkte vorhanden sind.
           </Text>
         </View>
       </ScrollView>

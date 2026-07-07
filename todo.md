@@ -475,3 +475,4 @@
 - [x] Bug-Fix: Weißer Hintergrund bei "Delegierte Aufgaben" in Einstellungen entfernt (jetzt colors.surface)
 - [x] Bug-Fix: Unicode-Escape "\u00fc" bei "Manuell hinzufügen" korrigiert
 - [x] Bug-Fix: Mängel-Tabelle verschiebt sich bei langen Wörtern – Spaltenbreiten jetzt intelligent berechnet (Nr.=30px, Priorität=60px, Beschreibung=120px etc.), Text bricht korrekt um, kleinere Schrift (10/11px)
+- [x] Feature: Benachrichtigungen-Einstellungen mit Apple-Uhr-Style Scroll-Picker für Stunde/Minute (statt feste Buttons) + Wochentag-Auswahl
