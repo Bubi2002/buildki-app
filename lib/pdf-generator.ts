@@ -5,6 +5,19 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
+ * Helper: wrap a promise with a timeout to prevent hanging
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => {
+      console.warn(`[PDF-Gen] Operation timed out after ${ms}ms`);
+      resolve(fallback);
+    }, ms)),
+  ]);
+}
+
+/**
  * Compress a photo for PDF embedding - resize to max 1200px width and compress to 60% JPEG quality.
  * This significantly reduces base64 size and PDF file size.
  */
@@ -13,12 +26,16 @@ async function compressPhotoForPdf(uri: string): Promise<string> {
     // Skip compression on web (ImageManipulator has limited web support)
     if (Platform.OS === "web") return uri;
     
-    const manipResult = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1200 } }], // Max 1200px width for PDF (plenty for print quality)
-      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+    const manipResult = await withTimeout(
+      ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1200 } }], // Max 1200px width for PDF (plenty for print quality)
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+      ),
+      10000, // 10 second timeout
+      null
     );
-    return manipResult.uri;
+    return manipResult?.uri || uri;
   } catch (error) {
     console.warn("[PDF-Gen] Photo compression failed, using original:", error);
     return uri; // Fallback to original if compression fails
@@ -890,10 +907,17 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     try {
       const { getPdfBranding, generateCoverPage } = await import("./pdf-branding-store");
       const fullBranding = await getPdfBranding();
-      // Convert logo to base64 if available
+      // Convert logo to base64 if available (with timeout to prevent hanging)
       let logoBase64: string | null = null;
       if (fullBranding.logoUri) {
-        logoBase64 = await fileToBase64DataUri(fullBranding.logoUri);
+        logoBase64 = await withTimeout(
+          fileToBase64DataUri(fullBranding.logoUri),
+          5000, // 5 second timeout for logo
+          null
+        );
+        if (!logoBase64) {
+          console.warn("[PDF-Gen] Logo conversion failed or timed out, skipping logo");
+        }
       }
       coverPageHtml = generateCoverPage(fullBranding, protocol, logoBase64);
     } catch (e) {
@@ -906,16 +930,26 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     ? html.replace("<body>", `<body>\n${coverPageHtml}`)
     : html;
 
-  // Generate PDF
-  const { uri } = await Print.printToFileAsync({
-    html: finalHtml,
-    margins: {
-      left: 20,
-      top: 20,
-      right: 20,
-      bottom: 30,
-    },
-  });
+  // Generate PDF (with timeout to prevent hanging)
+  console.log("[PDF-Gen] Generating PDF file...");
+  const printResult = await withTimeout(
+    Print.printToFileAsync({
+      html: finalHtml,
+      margins: {
+        left: 20,
+        top: 20,
+        right: 20,
+        bottom: 30,
+      },
+    }),
+    30000, // 30 second timeout for PDF generation
+    null
+  );
+  if (!printResult) {
+    throw new Error("PDF-Generierung hat zu lange gedauert. Bitte versuche es erneut.");
+  }
+  const { uri } = printResult;
+  console.log("[PDF-Gen] PDF generated:", uri);
 
   // Rename to meaningful filename using configured schema
   try {

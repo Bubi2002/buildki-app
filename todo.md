@@ -440,3 +440,4 @@
 - [x] Bug-Fix: "Kapitel setzen" Button – Hauptaufnahme wird nach Kapitelsetzen fortgesetzt, Button immer sichtbar
 - [x] Bug-Fix: Protokoll-Liste aktualisiert sich jetzt automatisch (Polling alle 3s + onJobUpdate Listener) – "Wird verarbeitet" wechselt zu "Fertig" sobald Background-Processor fertig ist
 - [x] UX: App-Logo in blauen Farbton der App angepasst (dunkelblauer Hintergrund, hellblaues Icon)
+- [x] Bug-Fix: PDF-Export hängt sich nicht mehr auf – Timeouts für Foto-Kompression (10s), Logo-Konvertierung (5s) und PDF-Generierung (30s) hinzugefügt; Logo-URI wird jetzt persistent in App-Storage kopiert statt temporäre Picker-URI zu verwenden

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { View, Text, ScrollView, TextInput, Pressable, Alert, Switch, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
@@ -105,7 +106,21 @@ export default function PdfBrandingScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      updateField("logoUri", result.assets[0].uri);
+      try {
+        // Copy to persistent app storage so it's always accessible
+        const dir = FileSystem.documentDirectory + "branding/";
+        const dirInfo = await FileSystem.getInfoAsync(dir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+        }
+        const filename = `pdf-logo-${Date.now()}.jpg`;
+        const destUri = dir + filename;
+        await FileSystem.copyAsync({ from: result.assets[0].uri, to: destUri });
+        updateField("logoUri", destUri);
+      } catch (e) {
+        console.warn("[PDF-Branding] Logo copy failed, using picker URI:", e);
+        updateField("logoUri", result.assets[0].uri);
+      }
     }
   };
 
