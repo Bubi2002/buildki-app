@@ -106,15 +106,16 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
   
   const headerRow = rows[0];
   const dataRows = hasSeparator ? rows.slice(2) : rows.slice(1);
+  const colCount = headerRow.length;
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ borderWidth: 1, borderColor: colors.border }}>
-      <View>
+      <View style={{ minWidth: colCount * 110 }}>
         {/* Header row */}
         <View style={[tableStyles.row, { backgroundColor: colors.primary + "20" }]}>
           {headerRow.map((cell, colIdx) => (
-            <View key={`header-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border }]}>
-              <Text style={[tableStyles.headerText, { color: textColor }]} numberOfLines={2}>
+            <View key={`header-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, flex: 1 }]}>
+              <Text style={[tableStyles.headerText, { color: textColor }]}>
                 {cell}
               </Text>
             </View>
@@ -124,15 +125,15 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
         {dataRows.map((row, rowIdx) => (
           <View key={`row-${rowIdx}`} style={[tableStyles.row, { backgroundColor: rowIdx % 2 === 0 ? "transparent" : colors.surface }]}>
             {row.map((cell, colIdx) => (
-              <View key={`cell-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border }]}>
-                <Text style={[tableStyles.cellText, { color: textColor }]} numberOfLines={3}>
+              <View key={`cell-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, flex: 1 }]}>
+                <Text style={[tableStyles.cellText, { color: textColor }]}>
                   {cell}
                 </Text>
               </View>
             ))}
             {/* Fill missing cells if row has fewer columns than header */}
             {row.length < headerRow.length && Array.from({ length: headerRow.length - row.length }).map((_, colIdx) => (
-              <View key={`empty-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border }]}>
+              <View key={`empty-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, flex: 1 }]}>
                 <Text style={[tableStyles.cellText, { color: textColor }]}>-</Text>
               </View>
             ))}
@@ -197,22 +198,21 @@ const tableStyles = StyleSheet.create({
     flexDirection: "row",
   },
   cell: {
-    minWidth: 100,
-    maxWidth: 180,
-    paddingHorizontal: 10,
+    minWidth: 80,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     borderRightWidth: 0.5,
     borderBottomWidth: 0.5,
     justifyContent: "center",
   },
   headerText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    lineHeight: 16,
+    lineHeight: 15,
   },
   cellText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
 });
 
