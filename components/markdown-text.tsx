@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View, StyleSheet, ScrollView, type TextStyle } from "react-native";
+import { Text, View, StyleSheet, ScrollView, type TextStyle, Dimensions } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 
 interface MarkdownTextProps {
@@ -108,13 +108,36 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
   const dataRows = hasSeparator ? rows.slice(2) : rows.slice(1);
   const colCount = headerRow.length;
 
+  // Calculate column widths based on content
+  // Short columns (Nr., Priorität) get less space, long text columns get more
+  const screenWidth = Dimensions.get("window").width - 32; // minus padding
+  const getColumnWidth = (headerText: string, colIdx: number): number => {
+    const lower = headerText.toLowerCase();
+    if (lower === "nr." || lower === "nr" || lower === "#") return 30;
+    if (lower.includes("priorit")) return 60;
+    if (lower.includes("ort") || lower.includes("raum")) return 80;
+    if (lower.includes("beschreibung") || lower.includes("mangel")) return 120;
+    if (lower.includes("gewerk") || lower.includes("verantwort")) return 100;
+    if (lower.includes("frist") || lower.includes("beseitig") || lower.includes("datum")) return 100;
+    // Default: distribute evenly
+    return Math.max(80, Math.floor(screenWidth / colCount));
+  };
+
+  const colWidths = headerRow.map((h, idx) => getColumnWidth(h, idx));
+  const totalWidth = colWidths.reduce((sum, w) => sum + w, 0);
+  // Ensure table is at least as wide as the screen
+  const tableWidth = Math.max(totalWidth, screenWidth);
+  // Scale columns proportionally if total is less than screen width
+  const scale = tableWidth / totalWidth;
+  const scaledWidths = colWidths.map(w => Math.floor(w * scale));
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ borderWidth: 1, borderColor: colors.border }}>
-      <View style={{ minWidth: colCount * 110 }}>
+      <View style={{ width: tableWidth }}>
         {/* Header row */}
         <View style={[tableStyles.row, { backgroundColor: colors.primary + "20" }]}>
           {headerRow.map((cell, colIdx) => (
-            <View key={`header-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, flex: 1 }]}>
+            <View key={`header-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, width: scaledWidths[colIdx] }]}>
               <Text style={[tableStyles.headerText, { color: textColor }]}>
                 {cell}
               </Text>
@@ -125,7 +148,7 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
         {dataRows.map((row, rowIdx) => (
           <View key={`row-${rowIdx}`} style={[tableStyles.row, { backgroundColor: rowIdx % 2 === 0 ? "transparent" : colors.surface }]}>
             {row.map((cell, colIdx) => (
-              <View key={`cell-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, flex: 1 }]}>
+              <View key={`cell-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, width: scaledWidths[colIdx] || scaledWidths[0] }]}>
                 <Text style={[tableStyles.cellText, { color: textColor }]}>
                   {cell}
                 </Text>
@@ -133,7 +156,7 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
             ))}
             {/* Fill missing cells if row has fewer columns than header */}
             {row.length < headerRow.length && Array.from({ length: headerRow.length - row.length }).map((_, colIdx) => (
-              <View key={`empty-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, flex: 1 }]}>
+              <View key={`empty-${rowIdx}-${colIdx}`} style={[tableStyles.cell, { borderColor: colors.border, width: scaledWidths[row.length + colIdx] || 80 }]}>
                 <Text style={[tableStyles.cellText, { color: textColor }]}>-</Text>
               </View>
             ))}
@@ -198,21 +221,20 @@ const tableStyles = StyleSheet.create({
     flexDirection: "row",
   },
   cell: {
-    minWidth: 80,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     borderRightWidth: 0.5,
     borderBottomWidth: 0.5,
     justifyContent: "center",
   },
   headerText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    lineHeight: 15,
+    lineHeight: 14,
   },
   cellText: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 15,
   },
 });
 
