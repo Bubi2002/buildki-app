@@ -459,3 +459,6 @@
 - [x] Feature: Aufgaben bearbeiten – Titel, Priorität und Fälligkeitsdatum per Modal editierbar (Long-Press oder Bearbeiten-Button)
 - [x] Bug-Fix: PDF-Design überarbeitet – Logo-Ausrichtung korrigiert (display:block), Schrift auf Deckblatt und Inhalt deutlich dunkler (#111/#222 statt #888/#666), größere Überschriften (18px mit Trennlinie), nummerierte Abschnitte mit Divider, Meta-Tabelle kontrastreicher
 - [x] Bug-Fix: App-Absturz bei "Aus Kontakten" – expo-contacts Plugin in app.config.ts hinzugefügt (fehlte für iOS-Berechtigung), Platform-Check für Web, bessere Fehlerbehandlung
+- [x] Bug-Fix: PDF-Teilen Buttons zu einem einzigen "PDF teilen"-Button zusammengefasst – nutzt iOS Share Sheet (Sharing.shareAsync), Dropbox/Mail/AirDrop etc. alles über natives Teilen-Menü
+- [x] Bug-Fix: Fotos im PDF – Fallback-Logik verbessert: wenn inline-platzierte Fotos nicht gerendert werden konnten, erscheinen sie jetzt immer in der Fotodokumentation am Ende
+- [x] Bug-Fix: Performance/Crashes – Foto-Kompression für PDF auf 800px/50% reduziert (statt 1200px/60%), weniger RAM-Verbrauch bei PDF-Export

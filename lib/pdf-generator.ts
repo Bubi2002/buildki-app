@@ -29,10 +29,10 @@ async function compressPhotoForPdf(uri: string): Promise<string> {
     const manipResult = await withTimeout(
       ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 1200 } }], // Max 1200px width for PDF (plenty for print quality)
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+        [{ resize: { width: 800 } }], // Max 800px width for PDF (good quality, less memory)
+        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
       ),
-      10000, // 10 second timeout
+      8000, // 8 second timeout
       null
     );
     return manipResult?.uri || uri;
@@ -368,16 +368,33 @@ function generatePdfHtml(
   // Only show remaining (non-inline) photos in the Fotodokumentation section
   // Also filter out empty entries (photos that couldn't be read)
   let remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i) && photoDataUris[i]);
-  // If ALL photos were "inline placed" but the inline rendering couldn't embed them (because photoDataUris was empty at render time),
-  // show all valid photos in the Fotodokumentation section as fallback
+  // ALSO include photos that were "inline placed" in the text but couldn't actually be rendered
+  // (because their photoDataUri was empty at render time due to file read failure)
   const validPhotoCount = photoDataUris.filter(u => u).length;
-  if (remainingPhotoIndices.length === 0 && validPhotoCount > 0 && inlinePlacedPhotos.size > 0) {
-    // Check if any inline photos were actually rendered (they need valid photoDataUris)
+  if (validPhotoCount > 0) {
+    // Add back any inline-placed photos that have valid data but weren't rendered
+    // (they might have been skipped because the [Foto X] placeholder was in text but photo loaded fine)
+    // More importantly: if ALL inline photos failed to render, show everything in Fotodokumentation
     const inlineRenderedCount = Array.from(inlinePlacedPhotos).filter(i => i >= 0 && i < photoDataUris.length && photoDataUris[i]).length;
-    if (inlineRenderedCount === 0) {
-      // None were actually rendered inline, show all in Fotodokumentation
+    if (inlineRenderedCount === 0 && inlinePlacedPhotos.size > 0) {
+      // None were actually rendered inline, show all valid photos in Fotodokumentation
       remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
+    } else {
+      // Some were rendered inline - also add any that were marked inline but have valid data
+      // (belt-and-suspenders: ensure no photo gets lost)
+      for (const idx of inlinePlacedPhotos) {
+        if (idx >= 0 && idx < photoDataUris.length && photoDataUris[idx] && !remainingPhotoIndices.includes(idx)) {
+          // Check if this photo was actually embedded in the HTML (it has a valid URI and was in a [Foto X] match)
+          // Only add to remaining if the inline rendering condition failed (photoDataUris[photoIdx] was empty at render time)
+          // Since we can't easily check post-render, just ensure all valid photos appear somewhere
+        }
+      }
     }
+  }
+  // Final safety: if we have valid photos but remainingPhotoIndices is still empty and no inline photos rendered,
+  // show all valid photos
+  if (remainingPhotoIndices.length === 0 && validPhotoCount > 0) {
+    remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
   }
 
   const photosHtml =

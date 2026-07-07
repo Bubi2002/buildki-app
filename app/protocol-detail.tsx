@@ -2802,33 +2802,6 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
                 </Pressable>
                 <Pressable
-                  onPress={openPdfEmailPicker}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <MaterialIcons name="email" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>Per E-Mail senden</Text>
-                </Pressable>
-                <Pressable
-                  onPress={async () => {
-                    if (!previewPdfUri || !protocol) return;
-                    try {
-                      const { uploadPdfToDropbox } = await import("@/lib/dropbox-integration");
-                      await uploadPdfToDropbox(previewPdfUri, {
-                        projectName: protocol.projectName || undefined,
-                        protocolTitle: protocol.title,
-                        protocolNumber: protocol.protocolNumber || undefined,
-                        protocolDate: protocol.createdAt?.split("T")[0],
-                      });
-                    } catch (e: any) {
-                      Alert.alert("Fehler", e.message || "Dropbox-Upload fehlgeschlagen");
-                    }
-                  }}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#0061FF", opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <MaterialIcons name="cloud-upload" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>In Dropbox speichern</Text>
-                </Pressable>
-                <Pressable
                   onPress={() => setShowPdfPreview(false)}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
