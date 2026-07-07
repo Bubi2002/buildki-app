@@ -1898,7 +1898,7 @@ export default function RecordScreen() {
               <View style={styles.audioLevelContainer}>
                 <View style={[styles.audioLevelDot, { backgroundColor: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]} />
                 <Text style={[styles.audioLevelText, { color: audioLevel === "quiet" ? colors.warning : audioLevel === "loud" ? colors.error : colors.success }]}>
-                  {audioLevel === "quiet" ? "Zu leise" : audioLevel === "loud" ? "Zu laut" : "Gute Qualit\u00e4t"}
+                  {audioLevel === "quiet" ? "Zu leise" : audioLevel === "loud" ? "Zu laut" : "Gute Qualität"}
                 </Text>
                 {isPaused && (
                   <Text style={[styles.pausedBadge, { color: colors.warning, borderColor: colors.warning }]}>PAUSE</Text>
@@ -1981,7 +1981,7 @@ export default function RecordScreen() {
 
             {isRecording ? (
               <Text style={[styles.audioControlHint, { color: colors.muted }]}>
-                {isPaused ? "Pausiert – Tippe zum Fortsetzen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Aufnahme l\u00e4uft"}
+                {isPaused ? "Pausiert – Tippe zum Fortsetzen" : markers.length > 0 ? `${markers.length} Marker gesetzt` : "Aufnahme läuft"}
               </Text>
             ) : (
               <Pressable onPress={() => setShowRecordingTips(true)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
@@ -3090,7 +3090,7 @@ export default function RecordScreen() {
                     <View key={ct.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                       <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
                       <Text style={{ flex: 1, marginLeft: 10, fontSize: 14, color: colors.foreground }}>{ct.name}</Text>
-                      <Pressable onPress={() => { Alert.alert("L\u00f6schen?", `Vorlage "${ct.name}" wirklich l\u00f6schen?`, [{ text: "Abbrechen" }, { text: "L\u00f6schen", style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
+                      <Pressable onPress={() => { Alert.alert("Löschen?", `Vorlage "${ct.name}" wirklich löschen?`, [{ text: "Abbrechen" }, { text: "Löschen", style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
                         <MaterialIcons name="delete-outline" size={20} color={colors.error} />
                       </Pressable>
                     </View>
@@ -3204,7 +3204,7 @@ export default function RecordScreen() {
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8, textAlign: "center" }}>Aufnahme beenden?</Text>
             <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 20, lineHeight: 20 }}>
-              M\u00f6chtest du die Aufnahme abschlie\u00dfen und das Protokoll erstellen, oder m\u00f6chtest du weiter aufnehmen?
+              Möchtest du die Aufnahme abschließen und das Protokoll erstellen, oder möchtest du weiter aufnehmen?
             </Text>
             <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
               <Pressable
@@ -3219,7 +3219,7 @@ export default function RecordScreen() {
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="check-circle" size={20} color="#FFF" style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Abschlie\u00dfen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Abschließen</Text>
               </Pressable>
             </View>
           </View>
@@ -3232,7 +3232,7 @@ export default function RecordScreen() {
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Neues Kapitel</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-              {chapterListening ? "H\u00f6re zu... Sprich den Kapitelnamen" : "Sprich den Kapitelnamen oder tippe ihn ein"}
+              {chapterListening ? "Höre zu... Sprich den Kapitelnamen" : "Sprich den Kapitelnamen oder tippe ihn ein"}
             </Text>
 
             {/* Speech indicator */}
@@ -3241,7 +3241,7 @@ export default function RecordScreen() {
                 <View style={{ width: 64, height: 64, borderRadius: 0, backgroundColor: "#FF9800" + "20", alignItems: "center", justifyContent: "center" }}>
                   <MaterialIcons name="mic" size={32} color="#FF9800" />
                 </View>
-                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>Aufnahme l\u00e4uft...</Text>
+                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>Aufnahme läuft...</Text>
               </View>
             )}
 
