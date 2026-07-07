@@ -896,10 +896,7 @@ export default function RecordScreen() {
 
   const startChapterSpeech = async () => {
     try {
-      setChapterListening(true);
-      setChapterRecording(true);
-      // Main recording is already paused by startChapterMarker
-      // Set audio mode to allow recording
+      // Set audio mode to allow recording BEFORE changing UI state
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
       // Use expo-av Recording API for chapter name speech
       const { Audio } = require("expo-av");
@@ -907,6 +904,9 @@ export default function RecordScreen() {
       await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await recording.startAsync();
       chapterRecorderRef.current = recording;
+      // Only update UI state AFTER recording successfully started
+      setChapterListening(true);
+      setChapterRecording(true);
       // Auto-stop after 4 seconds
       setTimeout(() => {
         if (chapterRecorderRef.current) {
@@ -917,6 +917,10 @@ export default function RecordScreen() {
       console.log("Chapter speech recording failed, using text input", err);
       setChapterListening(false);
       setChapterRecording(false);
+      // Show alert so user knows to type instead
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
     }
   };
 

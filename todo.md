@@ -446,3 +446,5 @@
 - [x] Feature: Projektordner-Übersicht im Protokolle-Tab – Horizontale scrollbare Projekt-Chips mit Farbpunkt, Name und Protokoll-Anzahl; "Alle"-Chip zum Anzeigen aller Protokolle; Tippen auf Projekt filtert die Liste sofort; ersetzt den alten Projekt-Filter-Banner
 - [x] Bug-Fix: PDF-Unterschriften abgeschnitten – SVG viewBox von 340x200 auf 600x200 erweitert (passt zu Gerätebreiten), preserveAspectRatio="xMidYMid meet" hinzugefügt, Container min-height auf 100px erhöht, overflow: visible gesetzt
 - [x] Bug-Fix: Weißer Splash-Screen beim App-Start – expo-system-ui Plugin mit backgroundColor #0B1622 hinzugefügt, iOS backgroundColor in app.config.ts gesetzt, verhindert weißen Flash vor JS-Bundle-Load
+- [x] Bug-Fix: Kapitel-Marker werden im PDF nicht als Kapitelüberschriften angezeigt – Kapitel-Override im System-Prompt hinzugefügt, der Template-Struktur überschreibt wenn Kapitel vorhanden sind
+- [x] Bug-Fix: "Erneut einsprechen" Button flackert und funktioniert nicht – UI-State wird jetzt erst NACH erfolgreichem Recording-Start gesetzt, Haptic-Feedback bei Fehler hinzugefügt

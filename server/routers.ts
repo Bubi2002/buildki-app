@@ -77,7 +77,12 @@ export const appRouter = router({
             ? "Verwende Stichpunkte und klare Gliederung."
             : "Schreibe in Fließtext mit Absätzen.";
 
-        const systemPrompt = `${template.systemPrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
+        // Check if chapters are present - if so, override template structure
+        const hasChapters = input.markers && input.markers.some(m => m.label.startsWith("KAPITEL:"));
+        const chapterOverride = hasChapters
+          ? `\n\nWICHTIG - KAPITEL-OVERRIDE: Der Benutzer hat während der Aufnahme eigene Kapitelüberschriften gesetzt. Diese Kapitel haben ABSOLUTE PRIORITÄT über jede andere Gliederung. Ignoriere die oben genannte Struktur-Vorgabe und verwende STATTDESSEN die vom Benutzer gesprochenen Kapitel als Hauptgliederung. Jedes Kapitel MUSS als Markdown-Überschrift mit '# Kapitelname' (Raute + Leerzeichen + exakter Name) geschrieben werden. Ordne den Inhalt den Kapiteln zu, basierend auf dem Zeitpunkt der Kapitelmarker in der Aufnahme.`
+          : "";
+        const systemPrompt = `${template.systemPrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.${chapterOverride}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
 
         // Build user message with recording context
         let userMessage = "";
