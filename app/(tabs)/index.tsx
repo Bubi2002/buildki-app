@@ -15,6 +15,7 @@ import {
   Animated,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   useAudioRecorder,
   useAudioRecorderState,
@@ -50,6 +51,7 @@ type RecordingMode = "audio" | "audio-photo";
 
 export default function RecordScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { quickAction } = useLocalSearchParams<{ quickAction?: string }>();
   const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText , getFullTranscript, streamingActive } = useRealtimeTranscription();
   const isFocused = useIsFocused();
@@ -1760,7 +1762,7 @@ export default function RecordScreen() {
   if (mode === "audio") {
     // Pure audio mode - no camera
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         {/* Active Project Header */}
         {selectedProject && (
           <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, gap: 10, opacity: pressed ? 0.8 : 1 }]}>
