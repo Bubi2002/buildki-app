@@ -476,3 +476,6 @@
 - [x] Bug-Fix: Unicode-Escape "\u00fc" bei "Manuell hinzufügen" korrigiert
 - [x] Bug-Fix: Mängel-Tabelle verschiebt sich bei langen Wörtern – Spaltenbreiten jetzt intelligent berechnet (Nr.=30px, Priorität=60px, Beschreibung=120px etc.), Text bricht korrekt um, kleinere Schrift (10/11px)
 - [x] Feature: Benachrichtigungen-Einstellungen mit Apple-Uhr-Style Scroll-Picker für Stunde/Minute (statt feste Buttons) + Wochentag-Auswahl
+- [x] UI-Fix: Mehr Abstand zwischen Fotos-Kasten und Schrift in Protokoll-Detail
+- [x] UI-Fix: Unverzüglich/Frist-Badge und Datum-Badge bei Aufgaben entfernen (Priorität und Datum stehen schon da)
+- [x] UI-Fix: Timeline, Mindmap und Statistik Buttons aus Protokoll-Detail entfernen

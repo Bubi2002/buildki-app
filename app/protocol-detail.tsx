@@ -1938,7 +1938,7 @@ export default function ProtocolDetailScreen() {
         {/* Add photos button when no photos exist */}
         {photos.length === 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fotos</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 12 }]}>Fotos</Text>
             <Pressable
               onPress={addPhotoFromGallery}
               style={({ pressed }) => [{
@@ -1946,7 +1946,7 @@ export default function ProtocolDetailScreen() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                paddingVertical: 16,
+                paddingVertical: 20,
                 paddingHorizontal: 16,
                 borderRadius: 0,
                 borderWidth: 1.5,
@@ -2011,20 +2011,7 @@ export default function ProtocolDetailScreen() {
                           {todo.priority === "hoch" ? "\u26a0\ufe0f Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
                         </Text>
                       </View>
-                      {todo.deadline !== "Offen" && (
-                        <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
-                          <MaterialIcons name="schedule" size={12} color={colors.muted} />
-                          <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.deadline}</Text>
-                        </View>
-                      )}
-                      {todo.dueDate && (
-                        <View style={[styles.todoBadge, { backgroundColor: new Date(todo.dueDate) < new Date() && !todo.done ? "#E5393520" : colors.surface }]}>
-                          <MaterialIcons name="event" size={12} color={new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted} />
-                          <Text style={[styles.todoBadgeText, { color: new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted }]}>
-                            {new Date(todo.dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
-                          </Text>
-                        </View>
-                      )}
+
                     </View>
                   </View>
                 </Pressable>
@@ -2103,43 +2090,7 @@ export default function ProtocolDetailScreen() {
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
-            {/* Row with smaller buttons */}
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable
-                onPress={generateTimelineView}
-                style={({ pressed }) => [{
-                  flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: 12, borderRadius: 0, backgroundColor: "#0EA5E9" + "10", borderWidth: 1, borderColor: "#0EA5E9" + "20",
-                  opacity: pressed ? 0.7 : 1,
-                }]}
-              >
-                <MaterialIcons name="timeline" size={16} color="#0EA5E9" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0EA5E9" }}>Timeline</Text>
-              </Pressable>
-              <Pressable
-                onPress={generateMindmap}
-                disabled={isGeneratingMindmap}
-                style={({ pressed }) => [{
-                  flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: 12, borderRadius: 0, backgroundColor: "#22C55E" + "10", borderWidth: 1, borderColor: "#22C55E" + "20",
-                  opacity: pressed || isGeneratingMindmap ? 0.7 : 1,
-                }]}
-              >
-                <MaterialIcons name="hub" size={16} color="#22C55E" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>{isGeneratingMindmap ? "..." : "Mindmap"}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setShowStats(true)}
-                style={({ pressed }) => [{
-                  flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                  padding: 12, borderRadius: 0, backgroundColor: "#F59E0B" + "10", borderWidth: 1, borderColor: "#F59E0B" + "20",
-                  opacity: pressed ? 0.7 : 1,
-                }]}
-              >
-                <MaterialIcons name="bar-chart" size={16} color="#F59E0B" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#F59E0B" }}>Statistik</Text>
-              </Pressable>
-            </View>
+
           </View>
           {/* Summary result display */}
           {summary && (
