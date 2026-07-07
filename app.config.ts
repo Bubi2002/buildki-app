@@ -135,6 +135,12 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "expo-contacts",
+      {
+        contactsPermission: "ProtoKI benötigt Zugriff auf deine Kontakte, um Empfänger schnell auszuwählen.",
+      },
+    ],
+    [
       "expo-local-authentication",
       {
         faceIDPermission: "ProtoKI möchte Face ID verwenden, um die App zu entsperren.",

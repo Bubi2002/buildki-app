@@ -574,29 +574,30 @@ export default function ProtocolDetailScreen() {
   // Import contact from phone
   const importFromPhoneContacts = async () => {
     try {
+      if (Platform.OS === "web") {
+        Alert.alert("Nicht verfügbar", "Kontakt-Import ist nur auf dem Gerät verfügbar.");
+        return;
+      }
       const ContactsModule = await import("expo-contacts");
       const { status } = await ContactsModule.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert.");
+        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert. Bitte erlaube den Zugriff in den Einstellungen.");
         return;
       }
       const { data } = await ContactsModule.getContactsAsync({
         fields: [ContactsModule.Fields.Emails, ContactsModule.Fields.PhoneNumbers, ContactsModule.Fields.Name],
+        sort: ContactsModule.SortTypes?.FirstName || undefined,
       });
-      if (data.length === 0) {
-        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Ger\u00e4t gefunden.");
+      if (!data || data.length === 0) {
+        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Gerät gefunden.");
         return;
       }
-      // Show first 50 contacts sorted by name
-      const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 50);
-      const options = sorted.map(c => c.name || "Unbekannt");
-      // Use Alert with buttons for selection (max 10 shown)
-      const topContacts = sorted.slice(0, 10);
+      const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 10);
       Alert.alert(
         "Kontakt importieren",
-        "W\u00e4hle einen Kontakt:",
+        "Wähle einen Kontakt:",
         [
-          ...topContacts.map(c => ({
+          ...sorted.map(c => ({
             text: c.name || "Unbekannt",
             onPress: async () => {
               const email = c.emails?.[0]?.email || "";
@@ -613,9 +614,9 @@ export default function ProtocolDetailScreen() {
           { text: "Abbrechen", style: "cancel" },
         ]
       );
-    } catch (e) {
+    } catch (e: any) {
       console.error("Import contacts error:", e);
-      Alert.alert("Fehler", "Kontakte konnten nicht geladen werden.");
+      Alert.alert("Fehler", `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
     }
   };
 

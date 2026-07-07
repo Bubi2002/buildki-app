@@ -925,23 +925,28 @@ export default function SettingsScreen() {
 
   const importFromPhoneContacts = async () => {
     try {
+      if (Platform.OS === "web") {
+        Alert.alert("Nicht verfügbar", "Kontakt-Import ist nur auf dem Gerät verfügbar.");
+        return;
+      }
       const ContactsModule = await import("expo-contacts");
       const { status } = await ContactsModule.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert.");
+        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert. Bitte erlaube den Zugriff in den Einstellungen.");
         return;
       }
       const { data } = await ContactsModule.getContactsAsync({
         fields: [ContactsModule.Fields.Emails, ContactsModule.Fields.PhoneNumbers, ContactsModule.Fields.Name],
+        sort: ContactsModule.SortTypes?.FirstName || undefined,
       });
-      if (data.length === 0) {
-        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Ger\u00e4t gefunden.");
+      if (!data || data.length === 0) {
+        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Gerät gefunden.");
         return;
       }
       const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 10);
       Alert.alert(
         "Kontakt importieren",
-        "W\u00e4hle einen Kontakt:",
+        "Wähle einen Kontakt:",
         [
           ...sorted.map(c => ({
             text: c.name || "Unbekannt",
@@ -960,8 +965,9 @@ export default function SettingsScreen() {
           { text: "Abbrechen", style: "cancel" as const },
         ]
       );
-    } catch (e) {
-      Alert.alert("Fehler", "Kontakte konnten nicht geladen werden.");
+    } catch (e: any) {
+      console.error("Import contacts error:", e);
+      Alert.alert("Fehler", `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
     }
   };
 

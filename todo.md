@@ -458,3 +458,4 @@
 - [x] Feature: Kontakt-Schnellauswahl beim PDF-Versand – Empfänger-Picker Modal mit gespeicherten Kontakten vor E-Mail-Versand
 - [x] Feature: Aufgaben bearbeiten – Titel, Priorität und Fälligkeitsdatum per Modal editierbar (Long-Press oder Bearbeiten-Button)
 - [x] Bug-Fix: PDF-Design überarbeitet – Logo-Ausrichtung korrigiert (display:block), Schrift auf Deckblatt und Inhalt deutlich dunkler (#111/#222 statt #888/#666), größere Überschriften (18px mit Trennlinie), nummerierte Abschnitte mit Divider, Meta-Tabelle kontrastreicher
+- [x] Bug-Fix: App-Absturz bei "Aus Kontakten" – expo-contacts Plugin in app.config.ts hinzugefügt (fehlte für iOS-Berechtigung), Platform-Check für Web, bessere Fehlerbehandlung
