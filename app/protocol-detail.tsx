@@ -35,7 +35,8 @@ import { WebView } from "react-native-webview";
 import { getVoiceProfiles, saveVoiceProfile, matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
 import { saveDelegation, formatDelegationNotification, TaskDelegation } from "@/lib/task-delegation";
 import { generateTimeline, formatTimestamp, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
-import { getTeamContacts, saveTeamContact, markContactUsed, TeamContact, sortContactsByRecent } from "@/lib/team-contacts";
+import { getTeamContacts, saveTeamContact, markContactUsed, updateTeamContact, TeamContact, sortContactsByRecent } from "@/lib/team-contacts";
+// expo-contacts is imported dynamically to avoid web crashes
 import { getSpeakerName, updateSpeakerName, SpeakerProfile } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
 import { sendActionItemsEmail } from "@/lib/email-actions";
@@ -172,6 +173,13 @@ export default function ProtocolDetailScreen() {
   const [newContactName, setNewContactName] = useState("");
   const [newContactEmail, setNewContactEmail] = useState("");
   const [newContactRole, setNewContactRole] = useState("");
+  const [showPdfRecipientPicker, setShowPdfRecipientPicker] = useState(false);
+  const [pdfRecipientEmail, setPdfRecipientEmail] = useState("");
+  const [editingContact, setEditingContact] = useState<TeamContact | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState("");
   const [editingSpeakerLabel, setEditingSpeakerLabel] = useState<string | null>(null);
   const [speakerNameInput, setSpeakerNameInput] = useState("");
   const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({});  const [emailRecipient, setEmailRecipient] = useState("");
@@ -522,6 +530,127 @@ export default function ProtocolDetailScreen() {
     setNewContactEmail("");
     setNewContactRole("");
     setShowAddContact(false);
+  };
+
+  // Import contact from phone
+  const importFromPhoneContacts = async () => {
+    try {
+      const ContactsModule = await import("expo-contacts");
+      const { status } = await ContactsModule.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert.");
+        return;
+      }
+      const { data } = await ContactsModule.getContactsAsync({
+        fields: [ContactsModule.Fields.Emails, ContactsModule.Fields.PhoneNumbers, ContactsModule.Fields.Name],
+      });
+      if (data.length === 0) {
+        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Ger\u00e4t gefunden.");
+        return;
+      }
+      // Show first 50 contacts sorted by name
+      const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 50);
+      const options = sorted.map(c => c.name || "Unbekannt");
+      // Use Alert with buttons for selection (max 10 shown)
+      const topContacts = sorted.slice(0, 10);
+      Alert.alert(
+        "Kontakt importieren",
+        "W\u00e4hle einen Kontakt:",
+        [
+          ...topContacts.map(c => ({
+            text: c.name || "Unbekannt",
+            onPress: async () => {
+              const email = c.emails?.[0]?.email || "";
+              const phone = c.phoneNumbers?.[0]?.number || "";
+              const newC = await saveTeamContact({
+                name: c.name || "Unbekannt",
+                email,
+                phone: phone || undefined,
+                lastUsed: Date.now(),
+              });
+              setTeamContacts(prev => [newC, ...prev]);
+            },
+          })),
+          { text: "Abbrechen", style: "cancel" },
+        ]
+      );
+    } catch (e) {
+      console.error("Import contacts error:", e);
+      Alert.alert("Fehler", "Kontakte konnten nicht geladen werden.");
+    }
+  };
+
+  // Edit contact
+  const startEditContact = (contact: TeamContact) => {
+    setEditingContact(contact);
+    setEditName(contact.name);
+    setEditEmail(contact.email);
+    setEditPhone(contact.phone || "");
+    setEditRole(contact.role || "");
+  };
+
+  const saveEditContact = async () => {
+    if (!editingContact || !editName.trim()) return;
+    await updateTeamContact(editingContact.id, {
+      name: editName.trim(),
+      email: editEmail.trim(),
+      phone: editPhone.trim() || undefined,
+      role: editRole.trim() || undefined,
+    });
+    await loadTeamContacts();
+    setEditingContact(null);
+  };
+
+  // PDF email with contact picker
+  const openPdfEmailPicker = () => {
+    setShowPdfRecipientPicker(true);
+    setPdfRecipientEmail("");
+  };
+
+  const sendPdfToSelectedRecipient = async (email: string) => {
+    if (!previewPdfUri || !protocol || !email) return;
+    setShowPdfRecipientPicker(false);
+    try {
+      const { getPdfBranding } = await import("@/lib/pdf-branding-store");
+      const branding = await getPdfBranding();
+      const recipients = email.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+      const ccRecipients = (branding.emailCc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+      const bccRecipients = (branding.emailBcc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+      const datumStr = new Date(protocol.createdAt).toLocaleDateString("de-DE");
+      const replacePlaceholders = (template: string) => {
+        return template
+          .replace(/\{vorlage\}/g, protocol.templateName || "Protokoll")
+          .replace(/\{titel\}/g, protocol.title || protocol.templateName || "Protokoll")
+          .replace(/\{datum\}/g, datumStr)
+          .replace(/\{projekt\}/g, protocol.projectName || "");
+      };
+      const subjectText = branding.emailSubjectTemplate
+        ? replacePlaceholders(branding.emailSubjectTemplate)
+        : `${protocol.templateName || "Protokoll"} - ${protocol.title || datumStr}`;
+      const bodyText = branding.emailBodyTemplate
+        ? replacePlaceholders(branding.emailBodyTemplate)
+        : `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
+      try {
+        const MailComposer = await import("expo-mail-composer");
+        const isAvailable = await MailComposer.isAvailableAsync();
+        if (isAvailable) {
+          await MailComposer.composeAsync({
+            recipients,
+            ccRecipients,
+            bccRecipients,
+            subject: subjectText,
+            body: bodyText,
+            attachments: [previewPdfUri],
+          });
+          return;
+        }
+      } catch {}
+      // Fallback
+      const mailtoUrl = `mailto:${recipients.join(",")}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+      await Linking.openURL(mailtoUrl);
+    } catch (e) {
+      Alert.alert("Fehler", "E-Mail konnte nicht ge\u00f6ffnet werden.");
+    }
   };
 
   // Select a team contact for email
@@ -2673,7 +2802,7 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
                 </Pressable>
                 <Pressable
-                  onPress={sendPdfViaEmail}
+                  onPress={openPdfEmailPicker}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="email" size={20} color="#FFFFFF" />
@@ -2982,6 +3111,91 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>📧 E-Mail senden</Text>
                 )}
               </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* PDF Recipient Picker Modal */}
+        <Modal visible={showPdfRecipientPicker} animationType="slide" transparent onRequestClose={() => setShowPdfRecipientPicker(false)}>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "70%" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Empf\u00e4nger w\u00e4hlen</Text>
+                <Pressable onPress={() => setShowPdfRecipientPicker(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+                  <MaterialIcons name="close" size={24} color={colors.muted} />
+                </Pressable>
+              </View>
+              <TextInput
+                value={pdfRecipientEmail}
+                onChangeText={setPdfRecipientEmail}
+                placeholder="E-Mail-Adresse eingeben"
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 12 }}
+              />
+              {teamContacts.length > 0 && (
+                <ScrollView style={{ maxHeight: 200, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>Gespeicherte Kontakte:</Text>
+                  {teamContacts.map(contact => (
+                    <Pressable
+                      key={contact.id}
+                      onPress={() => {
+                        setPdfRecipientEmail(contact.email);
+                        markContactUsed(contact.id);
+                      }}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 10, backgroundColor: pressed ? colors.surface : "transparent", marginBottom: 2 }]}
+                    >
+                      <View style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{contact.name.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }}>{contact.name}</Text>
+                        <Text style={{ fontSize: 11, color: colors.muted }}>{contact.email}{contact.phone ? ` \u2022 ${contact.phone}` : ""}</Text>
+                      </View>
+                      {contact.role && <Text style={{ fontSize: 10, color: colors.muted, backgroundColor: colors.surface, paddingHorizontal: 6, paddingVertical: 2 }}>{contact.role}</Text>}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+              <Pressable
+                onPress={() => sendPdfToSelectedRecipient(pdfRecipientEmail)}
+                disabled={!pdfRecipientEmail.trim()}
+                style={({ pressed }) => [{ backgroundColor: pdfRecipientEmail.trim() ? "#059669" : colors.border, borderRadius: 0, padding: 14, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>E-Mail senden</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { setShowPdfRecipientPicker(false); sendPdfViaEmail(); }}
+                style={({ pressed }) => [{ marginTop: 8, borderRadius: 0, padding: 12, alignItems: "center", borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Text style={{ color: colors.muted, fontSize: 13 }}>Standard-Empf\u00e4nger verwenden</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Contact Modal */}
+        <Modal visible={!!editingContact} transparent animationType="fade" onRequestClose={() => setEditingContact(null)}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "85%", maxWidth: 360, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>Kontakt bearbeiten</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Name</Text>
+              <TextInput value={editName} onChangeText={setEditName} placeholder="Name" placeholderTextColor={colors.muted} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>E-Mail</Text>
+              <TextInput value={editEmail} onChangeText={setEditEmail} placeholder="E-Mail" placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Telefon</Text>
+              <TextInput value={editPhone} onChangeText={setEditPhone} placeholder="+49 123 456789" placeholderTextColor={colors.muted} keyboardType="phone-pad" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Rolle</Text>
+              <TextInput value={editRole} onChangeText={setEditRole} placeholder="z.B. Bauleiter" placeholderTextColor={colors.muted} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 16 }} />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable onPress={saveEditContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
+                  <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Speichern</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingContact(null)} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 14, color: colors.muted }}>Abbrechen</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>

@@ -453,3 +453,6 @@
 - [x] Bug-Fix: Support-Chat KI weiß jetzt über Stundensatz-Einstellung Bescheid – System-Prompt erweitert mit Info zu Zeiterfassung-Zahnrad (Stundensatz, Tagessatz, Name, Firma) und Firmenlogo-Upload
 - [x] Bug-Fix: Kontakt-Hinzufügen hat jetzt Felder für Name, E-Mail, Telefon und Rolle mit Labels und Platzhaltern
 - [x] Feature: Dark/Light-Mode Toggle entfernt – App ist jetzt immer im dunklen Theme, ThemeProvider default auf "dark" gesetzt
+- [x] Feature: Kontakte aus Telefonbuch importieren – dynamischer Import von expo-contacts, Alert-basierte Kontaktauswahl (Top 10), speichert Name/E-Mail/Telefon
+- [x] Feature: Kontakt bearbeiten (Name, E-Mail, Telefon, Rolle) – Edit-Button + Modal in Einstellungen und Protokoll-Detail
+- [x] Feature: Kontakt-Schnellauswahl beim PDF-Versand – Empfänger-Picker Modal mit gespeicherten Kontakten vor E-Mail-Versand
