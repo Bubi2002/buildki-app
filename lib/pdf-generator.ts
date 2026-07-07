@@ -745,8 +745,8 @@ function generatePdfHtml(
       ${protocol.signatures.map(sig => `
         <div style="border: 2px solid #000000; padding: 12px; background: #ffffff; width: 45%; box-sizing: border-box;">
           <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 8px;">${sig.role}</div>
-          <div style="display: flex; align-items: center; justify-content: center; height: 80px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="200" height="70" viewBox="0 0 340 200" style="max-width: 100%;">
+          <div style="display: flex; align-items: center; justify-content: center; min-height: 100px; overflow: visible;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; overflow: visible;">
               ${sig.paths.map(d => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join('\n              ')}
             </svg>
           </div>
@@ -758,9 +758,9 @@ function generatePdfHtml(
   ` : protocol.signaturePaths && protocol.signaturePaths.length > 0 && layoutShowSignatures ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">
     <h3 style="font-size: 14px; color: #333; margin-bottom: 16px;">Unterschrift</h3>
-    <div style="border: 2px solid #000000; padding: 12px; background: #ffffff; display: inline-block;">
-      <div style="display: flex; align-items: center; justify-content: center; height: 100px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="280" height="90" viewBox="0 0 340 200" style="max-width: 100%;">
+    <div style="border: 2px solid #000000; padding: 12px; background: #ffffff; display: inline-block; min-width: 300px;">
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100px; overflow: visible;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; overflow: visible;">
           ${protocol.signaturePaths.map(d => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join('\n          ')}
         </svg>
       </div>
