@@ -184,6 +184,7 @@ export default function ProtocolDetailScreen() {
   const [editTodoTask, setEditTodoTask] = useState("");
   const [editTodoPriority, setEditTodoPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
   const [editTodoDueDate, setEditTodoDueDate] = useState("");
+  const [editTodoAssignee, setEditTodoAssignee] = useState("");
   const [editingSpeakerLabel, setEditingSpeakerLabel] = useState<string | null>(null);
   const [speakerNameInput, setSpeakerNameInput] = useState("");
   const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({});  const [emailRecipient, setEmailRecipient] = useState("");
@@ -302,6 +303,7 @@ export default function ProtocolDetailScreen() {
     setEditTodoTask(todo.task);
     setEditTodoPriority(todo.priority);
     setEditTodoDueDate(todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
+    setEditTodoAssignee(todo.assignee && todo.assignee !== "Nicht zugewiesen" ? todo.assignee : "");
   };
 
   const saveEditTodo = async () => {
@@ -320,6 +322,7 @@ export default function ProtocolDetailScreen() {
       task: editTodoTask.trim(),
       priority: editTodoPriority,
       dueDate,
+      assignee: editTodoAssignee.trim() || "Nicht zugewiesen",
     };
     setTodos(updated);
     setEditingTodoIndex(null);
@@ -1953,63 +1956,64 @@ export default function ProtocolDetailScreen() {
               )}
             </View>
             {todos.map((todo, index) => (
-              <Pressable
+              <View
                 key={index}
-                onPress={() => toggleTodo(index)}
-                onLongPress={() => startEditTodo(index)}
-                style={({ pressed }) => [
-                  styles.todoItem,
-                  { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-                ]}
+                style={[styles.todoItem, { borderColor: colors.border, flexDirection: "row", alignItems: "flex-start" }]}
               >
-                <View style={[styles.todoCheckbox, { borderColor: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "#22C55E" : (todo.status === "in_arbeit" ? "#F59E0B" : "#EF4444"), backgroundColor: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "#22C55E" : (todo.status === "in_arbeit" ? "#F59E0B" : "transparent") }]}>
-                  {(todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
-                  {todo.status === "in_arbeit" && <MaterialIcons name="autorenew" size={14} color="#FFFFFF" />}
-                </View>
-                <View style={styles.todoContent}>
-                  <Text style={[styles.todoTask, { color: colors.foreground, textDecorationLine: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "line-through" : "none", fontStyle: todo.status === "in_arbeit" ? "italic" : "normal", opacity: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? 0.6 : 1 }]}>
-                    {todo.task}
-                  </Text>
-                  {todo.status && todo.status !== "offen" && (
-                    <Text style={{ fontSize: 10, color: todo.status === "in_arbeit" ? "#F59E0B" : "#22C55E", fontWeight: "500", marginTop: 2 }}>
-                      {todo.status === "in_arbeit" ? "\u25b6 In Arbeit" : "\u2713 Erledigt"}
+                <Pressable
+                  onPress={() => toggleTodo(index)}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "flex-start", flex: 1, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <View style={[styles.todoCheckbox, { borderColor: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "#22C55E" : (todo.status === "in_arbeit" ? "#F59E0B" : "#EF4444"), backgroundColor: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "#22C55E" : (todo.status === "in_arbeit" ? "#F59E0B" : "transparent") }]}>
+                    {(todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
+                    {todo.status === "in_arbeit" && <MaterialIcons name="autorenew" size={14} color="#FFFFFF" />}
+                  </View>
+                  <View style={[styles.todoContent, { flex: 1 }]}>
+                    <Text style={[styles.todoTask, { color: colors.foreground, textDecorationLine: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? "line-through" : "none", fontStyle: todo.status === "in_arbeit" ? "italic" : "normal", opacity: (todo.status || (todo.done ? "erledigt" : "offen")) === "erledigt" ? 0.6 : 1 }]}>
+                      {todo.task}
                     </Text>
-                  )}
-                  <View style={styles.todoMeta}>
-                    {todo.assignee !== "Nicht zugewiesen" && (
-                      <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
-                        <MaterialIcons name="person" size={12} color={colors.muted} />
-                        <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.assignee}</Text>
-                      </View>
-                    )}
-                    <View style={[styles.todoBadge, { backgroundColor: todo.priority === "hoch" ? "#E5393520" : todo.priority === "mittel" ? "#FF980020" : colors.surface }]}>
-                      <Text style={[styles.todoBadgeText, { color: todo.priority === "hoch" ? "#E53935" : todo.priority === "mittel" ? "#FF9800" : colors.muted }]}>
-                        {todo.priority === "hoch" ? "\u26a0\ufe0f Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
+                    {todo.status && todo.status !== "offen" && (
+                      <Text style={{ fontSize: 10, color: todo.status === "in_arbeit" ? "#F59E0B" : "#22C55E", fontWeight: "500", marginTop: 2 }}>
+                        {todo.status === "in_arbeit" ? "\u25b6 In Arbeit" : "\u2713 Erledigt"}
                       </Text>
-                    </View>
-                    <Pressable onPress={() => startEditTodo(index)} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}>
-                      <Text style={{ fontSize: 10, color: colors.primary, fontWeight: "500" }}>\u270f\ufe0f Bearbeiten</Text>
-                    </Pressable>
-                    <Pressable onPress={() => { setDelegatingTask({ task: todo.task, assignee: todo.assignee, priority: todo.priority, deadline: todo.deadline }); setShowDelegateModal(true); }} style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: "#22C55E15", opacity: pressed ? 0.7 : 1 }]}>
-                      <Text style={{ fontSize: 10, color: "#22C55E", fontWeight: "500" }}>\ud83d\udce4 Delegieren</Text>
-                    </Pressable>
-                    {todo.deadline !== "Offen" && (
-                      <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
-                        <MaterialIcons name="schedule" size={12} color={colors.muted} />
-                        <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.deadline}</Text>
-                      </View>
                     )}
-                    {todo.dueDate && (
-                      <View style={[styles.todoBadge, { backgroundColor: new Date(todo.dueDate) < new Date() && !todo.done ? "#E5393520" : colors.surface }]}>
-                        <MaterialIcons name="event" size={12} color={new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted} />
-                        <Text style={[styles.todoBadgeText, { color: new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted }]}>
-                          {new Date(todo.dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                    <View style={styles.todoMeta}>
+                      {todo.assignee !== "Nicht zugewiesen" && (
+                        <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
+                          <MaterialIcons name="person" size={12} color={colors.muted} />
+                          <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.assignee}</Text>
+                        </View>
+                      )}
+                      <View style={[styles.todoBadge, { backgroundColor: todo.priority === "hoch" ? "#E5393520" : todo.priority === "mittel" ? "#FF980020" : colors.surface }]}>
+                        <Text style={[styles.todoBadgeText, { color: todo.priority === "hoch" ? "#E53935" : todo.priority === "mittel" ? "#FF9800" : colors.muted }]}>
+                          {todo.priority === "hoch" ? "\u26a0\ufe0f Hoch" : todo.priority === "mittel" ? "Mittel" : "Niedrig"}
                         </Text>
                       </View>
-                    )}
+                      {todo.deadline !== "Offen" && (
+                        <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
+                          <MaterialIcons name="schedule" size={12} color={colors.muted} />
+                          <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.deadline}</Text>
+                        </View>
+                      )}
+                      {todo.dueDate && (
+                        <View style={[styles.todoBadge, { backgroundColor: new Date(todo.dueDate) < new Date() && !todo.done ? "#E5393520" : colors.surface }]}>
+                          <MaterialIcons name="event" size={12} color={new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted} />
+                          <Text style={[styles.todoBadgeText, { color: new Date(todo.dueDate) < new Date() && !todo.done ? "#E53935" : colors.muted }]}>
+                            {new Date(todo.dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              </Pressable>
+                </Pressable>
+                {/* Edit pencil icon on the right */}
+                <Pressable
+                  onPress={() => startEditTodo(index)}
+                  style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}
+                >
+                  <MaterialIcons name="edit" size={18} color={colors.muted} />
+                </Pressable>
+              </View>
             ))}
           </View>
         )}
@@ -3102,7 +3106,7 @@ export default function ProtocolDetailScreen() {
                 multiline
                 style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12, minHeight: 60 }}
               />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Priorit\u00e4t</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>{"Priorit\u00e4t"}</Text>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
                 {(["hoch", "mittel", "niedrig"] as const).map(p => (
                   <Pressable
@@ -3116,13 +3120,21 @@ export default function ProtocolDetailScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>F\u00e4lligkeitsdatum (TT.MM.JJJJ)</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>{"F\u00e4lligkeitsdatum (TT.MM.JJJJ)"}</Text>
               <TextInput
                 value={editTodoDueDate}
                 onChangeText={setEditTodoDueDate}
                 placeholder="z.B. 15.07.2026"
                 placeholderTextColor={colors.muted}
                 keyboardType="numbers-and-punctuation"
+                style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12 }}
+              />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Person</Text>
+              <TextInput
+                value={editTodoAssignee}
+                onChangeText={setEditTodoAssignee}
+                placeholder="z.B. Max Mustermann"
+                placeholderTextColor={colors.muted}
                 style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 16 }}
               />
               <View style={{ flexDirection: "row", gap: 8 }}>

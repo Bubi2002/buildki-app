@@ -463,3 +463,6 @@
 - [x] Bug-Fix: Fotos im PDF – Fallback-Logik verbessert: wenn inline-platzierte Fotos nicht gerendert werden konnten, erscheinen sie jetzt immer in der Fotodokumentation am Ende
 - [x] Bug-Fix: Performance/Crashes – Foto-Kompression für PDF auf 800px/50% reduziert (statt 1200px/60%), weniger RAM-Verbrauch bei PDF-Export
 - [x] Bug-Fix: Audio-Aufnahme UI überarbeitet – 3 separate Buttons während Aufnahme: Pause (links), Stop/Abschließen (Mitte, rot), Kapitel (rechts). Pause-Button zeigt "Fortsetzen" wenn pausiert. Klare Labels unter jedem Button. Start-Button nur vor Aufnahme sichtbar.
+- [x] UX-Fix: Stift-Icon rechts an jeder Aufgabe zum direkten Bearbeiten (statt nur Long-Press)
+- [x] Bug-Fix: Unicode-Escape-Zeichen im Aufgaben-Bearbeiten-Modal korrigiert (Priorität, Fälligkeitsdatum statt \u00e4t)
+- [x] Feature: Personen-Feld im Aufgaben-Bearbeiten-Modal hinzugefügt (Zuständige Person zuweisen)
