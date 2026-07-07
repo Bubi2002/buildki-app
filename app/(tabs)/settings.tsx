@@ -23,7 +23,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { useRouter } from "expo-router";
 import { setLanguage } from "@/lib/i18n";
-import { useThemeContext, type ThemeMode } from "@/lib/theme-provider";
+import { useThemeContext } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
 import { startOAuthLogin } from "@/constants/oauth";
@@ -646,7 +646,9 @@ function BackupSection({ colors }: { colors: any }) {
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { themeMode, setThemeMode } = useThemeContext();
+  const { setThemeMode } = useThemeContext();
+  // Force dark mode always
+  useEffect(() => { setThemeMode("dark"); }, []);
   const { user, isAuthenticated, logout } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
@@ -842,6 +844,7 @@ export default function SettingsScreen() {
   const [showAddTeamContact, setShowAddTeamContact] = useState(false);
   const [tcName, setTcName] = useState("");
   const [tcEmail, setTcEmail] = useState("");
+  const [tcPhone, setTcPhone] = useState("");
   const [tcRole, setTcRole] = useState("");
   const [speakerProfiles, setSpeakerProfiles] = useState<SpeakerProfile[]>([]);
   const [voiceProfiles, setVoiceProfiles] = useState<VoiceProfile[]>([]);
@@ -881,9 +884,9 @@ export default function SettingsScreen() {
 
 
   const handleAddTeamContact = async () => {
-    if (!tcName.trim() || !tcEmail.trim()) return;
-    await saveTeamContact({ name: tcName.trim(), email: tcEmail.trim(), role: tcRole.trim() || undefined, lastUsed: Date.now() });
-    setTcName(""); setTcEmail(""); setTcRole("");
+    if (!tcName.trim()) return;
+    await saveTeamContact({ name: tcName.trim(), email: tcEmail.trim() || "", phone: tcPhone.trim() || undefined, role: tcRole.trim() || undefined, lastUsed: Date.now() });
+    setTcName(""); setTcEmail(""); setTcPhone(""); setTcRole("");
     setShowAddTeamContact(false);
     loadTeamContacts();
   };
@@ -1830,89 +1833,47 @@ return (
           </Pressable>
         </View>
 
-        {/* Darstellung / Dark Mode */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Darstellung
-          </Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Wähle das Erscheinungsbild der App
-          </Text>
 
-          <View style={styles.themeOptions}>
-            {(["system", "light", "dark"] as ThemeMode[]).map((mode) => {
-              const labels = { system: "Automatisch", light: "Hell", dark: "Dunkel" };
-              const icons = { system: "brightness-auto", light: "light-mode", dark: "dark-mode" };
-              const isActive = themeMode === mode;
-              return (
-                <Pressable
-                  key={mode}
-                  onPress={() => setThemeMode(mode)}
-                  style={({ pressed }) => [
-                    styles.themeOption,
-                    {
-                      backgroundColor: isActive ? colors.primary + "15" : colors.surface,
-                      borderColor: isActive ? colors.primary : colors.border,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name={icons[mode] as any}
-                    size={24}
-                    color={isActive ? colors.primary : colors.muted}
-                  />
-                  <Text
-                    style={[
-                      styles.themeOptionText,
-                      { color: isActive ? colors.primary : colors.foreground },
-                    ]}
-                  >
-                    {labels[mode]}
-                  </Text>
-                  {isActive && (
-                    <MaterialIcons name="check-circle" size={16} color={colors.primary} />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
 
 
         {/* Team-Kontaktbuch */}
-        <View style={{ marginTop: 24, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Team-Kontaktbuch</Text>
-          <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Gespeicherte Kontakte für schnellen E-Mail-Versand von Aufgaben.</Text>
+        <View style={{ marginTop: 24, backgroundColor: colors.surface, borderRadius: 0, padding: 16 }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Team-Kontaktbuch</Text>
+          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>Gespeicherte Kontakte für schnellen E-Mail-Versand von Aufgaben.</Text>
           {teamContacts.map(contact => (
-            <View key={contact.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
-              <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: "#0a7ea420", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a7ea4" }}>{contact.name.charAt(0)}</Text>
+            <View key={contact.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{contact.name.charAt(0)}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "500" }}>{contact.name}</Text>
-                <Text style={{ fontSize: 11, color: "#687076" }}>{contact.email}{contact.role ? ` • ${contact.role}` : ""}</Text>
+                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>{contact.name}{contact.role ? ` • ${contact.role}` : ""}</Text>
+                <Text style={{ fontSize: 11, color: colors.muted }}>{contact.email}{contact.phone ? ` • ${contact.phone}` : ""}</Text>
               </View>
               <Pressable onPress={() => handleDeleteContact(contact.id)} style={{ padding: 6 }}>
-                <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
+                <Text style={{ fontSize: 16, color: colors.error }}>×</Text>
               </Pressable>
             </View>
           ))}
           {!showAddTeamContact ? (
-            <Pressable onPress={() => setShowAddTeamContact(true)} style={{ marginTop: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 0, borderStyle: "dashed" }}>
-              <Text style={{ fontSize: 13, color: "#0a7ea4" }}>+ Kontakt hinzufügen</Text>
+            <Pressable onPress={() => setShowAddTeamContact(true)} style={{ marginTop: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
+              <Text style={{ fontSize: 13, color: colors.primary }}>+ Kontakt hinzufügen</Text>
             </Pressable>
           ) : (
-            <View style={{ marginTop: 10, padding: 12, backgroundColor: "#f9f9f9", borderRadius: 0 }}>
-              <TextInput placeholder="Name" value={tcName} onChangeText={setTcName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 6 }} />
-              <TextInput placeholder="E-Mail" value={tcEmail} onChangeText={setTcEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 6 }} />
-              <TextInput placeholder="Rolle (optional)" value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 6, marginBottom: 10 }} />
+            <View style={{ marginTop: 10, padding: 12, backgroundColor: colors.background, borderRadius: 0, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Name *</Text>
+              <TextInput placeholder="Max Mustermann" placeholderTextColor={colors.muted + "80"} value={tcName} onChangeText={setTcName} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>E-Mail</Text>
+              <TextInput placeholder="max@firma.de" placeholderTextColor={colors.muted + "80"} value={tcEmail} onChangeText={setTcEmail} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Telefon</Text>
+              <TextInput placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} value={tcPhone} onChangeText={setTcPhone} keyboardType="phone-pad" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Rolle (optional)</Text>
+              <TextInput placeholder="z.B. Bauleiter, Architekt" placeholderTextColor={colors.muted + "80"} value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 12 }} />
               <View style={{ flexDirection: "row", gap: 8 }}>
-                <Pressable onPress={handleAddTeamContact} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 10, borderRadius: 6, alignItems: "center" }}>
-                  <Text style={{ color: "white", fontSize: 13, fontWeight: "600" }}>Speichern</Text>
+                <Pressable onPress={handleAddTeamContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
+                  <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>Speichern</Text>
                 </Pressable>
-                <Pressable onPress={() => setShowAddTeamContact(false)} style={{ flex: 1, backgroundColor: "#E5E7EB", paddingVertical: 10, borderRadius: 6, alignItems: "center" }}>
-                  <Text style={{ fontSize: 13, color: "#687076" }}>Abbrechen</Text>
+                <Pressable onPress={() => { setShowAddTeamContact(false); setTcName(""); setTcEmail(""); setTcPhone(""); setTcRole(""); }} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 13, color: colors.muted }}>Abbrechen</Text>
                 </Pressable>
               </View>
             </View>

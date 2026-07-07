@@ -10,6 +10,7 @@ export type TeamContact = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role?: string;
   lastUsed?: number;
 };

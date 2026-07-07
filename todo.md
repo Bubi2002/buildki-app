@@ -451,3 +451,5 @@
 - [x] Bug-Fix: PDF-Deckblatt zeigt keine Transkriptions-Sätze mehr – Subtitle-Zeile (protocol.title = erste 50 Zeichen der Transkription) entfernt, Fallback auf Projektname/Templatename/"Protokoll"
 - [x] Bug-Fix: Audio-Aufnahme kann nicht abgeschlossen werden – stopRecording pausiert jetzt ohne isPaused zu setzen (Stop-Button bleibt sichtbar), confirmStopRecording stoppt direkt ohne Resume-Versuch, cancelStopRecording nimmt korrekt wieder auf
 - [x] Bug-Fix: Support-Chat KI weiß jetzt über Stundensatz-Einstellung Bescheid – System-Prompt erweitert mit Info zu Zeiterfassung-Zahnrad (Stundensatz, Tagessatz, Name, Firma) und Firmenlogo-Upload
+- [x] Bug-Fix: Kontakt-Hinzufügen hat jetzt Felder für Name, E-Mail, Telefon und Rolle mit Labels und Platzhaltern
+- [x] Feature: Dark/Light-Mode Toggle entfernt – App ist jetzt immer im dunklen Theme, ThemeProvider default auf "dark" gesetzt
