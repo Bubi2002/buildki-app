@@ -999,18 +999,31 @@ export default function RecordScreen() {
     setPhotoTimestamps([]);
     setPhotoVoiceNotes([]);
     setMarkers([]);
-    setIsRecording(true);
-    setIsPaused(false);
-    startTimer();
 
     try {
+      // Set audio mode first
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      await audioRecorder.prepareToRecordAsync();
+
+      // Prepare with timeout - getUserMedia/native setup can hang
+      const preparePromise = audioRecorder.prepareToRecordAsync();
+      const prepareTimeout = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("prepareToRecordAsync timed out")), 8000)
+      );
+      await Promise.race([preparePromise, prepareTimeout]);
+
+      // Start recording
       audioRecorder.record();
-    } catch (error) {
-      stopTimer();
+
+      // Only update UI state AFTER recording successfully started
+      setIsRecording(true);
+      setIsPaused(false);
+      startTimer();
+    } catch (error: any) {
+      console.error("Audio recording error:", error?.message || error);
       setIsRecording(false);
-      console.error("Audio recording error:", error);
+      setIsPaused(false);
+      stopTimer();
+      alert("Aufnahme konnte nicht gestartet werden. Bitte versuche es erneut.");
     }
   };
 
@@ -1023,7 +1036,6 @@ export default function RecordScreen() {
     isStoppingRef.current = true;
 
     // IMMEDIATELY update UI state so the app is responsive
-    // regardless of whether stop() succeeds or hangs
     stopTimer();
     setIsRecording(false);
     setIsPaused(false);
@@ -1031,39 +1043,37 @@ export default function RecordScreen() {
     let uri: string | null = null;
 
     try {
-      // Resume the recorder briefly before stopping.
-      // On some platforms, stopping from paused state can hang because
-      // the dataavailable event may not fire on a paused MediaRecorder.
-      try {
-        audioRecorder.record();
-        // Give it a tiny moment to transition to recording state
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      } catch (resumeErr) {
-        // If resume fails, the recorder might already be in a state where stop works
-        console.warn("Pre-stop resume failed (ok):", resumeErr);
+      // On web, stopping from paused state can hang because the
+      // 'dataavailable' event may not fire. Resume briefly first.
+      if (Platform.OS === "web") {
+        try {
+          audioRecorder.record();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        } catch (resumeErr) {
+          console.warn("Pre-stop resume failed (ok):", resumeErr);
+        }
       }
 
-      // Stop with a timeout - if stop() hangs for more than 5 seconds, force-continue
+      // Stop with a timeout
       const stopPromise = audioRecorder.stop();
       const timeoutPromise = new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error("stop() timed out after 5s")), 5000)
+        setTimeout(() => reject(new Error("stop() timed out")), 4000)
       );
 
       try {
         await Promise.race([stopPromise, timeoutPromise]);
       } catch (raceErr: any) {
         console.warn("audioRecorder.stop() race:", raceErr?.message || raceErr);
-        // Even if stop timed out, try to get the URI - it might still be available
       }
 
-      uri = audioRecorder.uri;
+      // Get the URI
+      try { uri = audioRecorder.uri; } catch {}
     } catch (error) {
       console.error("Audio stop error:", error);
-      // Try to get URI even after error - recording file may still exist
       try { uri = audioRecorder.uri; } catch {}
     }
 
-    // Reset audio mode (non-blocking)
+    // Reset audio mode
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
     } catch (e) {
@@ -1121,7 +1131,6 @@ export default function RecordScreen() {
     if (!isPaused) {
       try { audioRecorder.pause(); } catch (e) { console.warn("Stop-pause failed:", e); }
       pauseTimer();
-      setIsPaused(true);
     }
     setShowStopConfirm(true);
   };
