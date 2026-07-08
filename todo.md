@@ -483,3 +483,4 @@
 - [x] Bug-Fix: Timer hängt bei 00:02 während Audio-Aufnahme (useAudioRecorderState entfernt – verursachte Re-Renders die Timer-Interval löschten)
 - [x] Bug-Fix: Pause-Button kann nicht fortsetzen (try/catch um audioRecorder.record() – Fehler wurde still verschluckt)
 - [x] Bug-Fix: Kapitel-Button reagiert nicht während Aufnahme (try/catch um alle audioRecorder-Aufrufe)
+- [x] Bug-Fix: Audio-Aufnahme hängt sich auf und Stop-Button funktioniert nicht – komplette Aufnahme-Logik robuster gemacht: UI-State wird sofort aktualisiert (vor await stop()), Resume-before-Stop für Web-Kompatibilität, 5s Timeout-Fallback, Double-Stop-Prevention mit isStoppingRef

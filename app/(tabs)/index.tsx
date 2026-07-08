@@ -161,6 +161,7 @@ export default function RecordScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   // Note: removed useAudioRecorderState to prevent unnecessary re-renders every 500ms
   // which was causing the timer interval to get cleared on re-render
+  const isStoppingRef = useRef(false); // Prevent double-stop calls
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
@@ -1014,21 +1015,70 @@ export default function RecordScreen() {
   };
 
   const stopAudioRecording = async () => {
-    try {
-      await audioRecorder.stop();
-      stopTimer();
-      setIsRecording(false);
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+    // Prevent double-stop calls
+    if (isStoppingRef.current) {
+      console.warn("stopAudioRecording: already stopping, ignoring duplicate call");
+      return;
+    }
+    isStoppingRef.current = true;
 
-      const uri = audioRecorder.uri;
-      if (uri) {
-        setProcessingSource("audio");
-        await processRecording(uri, "audio/m4a");
+    // IMMEDIATELY update UI state so the app is responsive
+    // regardless of whether stop() succeeds or hangs
+    stopTimer();
+    setIsRecording(false);
+    setIsPaused(false);
+
+    let uri: string | null = null;
+
+    try {
+      // Resume the recorder briefly before stopping.
+      // On some platforms, stopping from paused state can hang because
+      // the dataavailable event may not fire on a paused MediaRecorder.
+      try {
+        audioRecorder.record();
+        // Give it a tiny moment to transition to recording state
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (resumeErr) {
+        // If resume fails, the recorder might already be in a state where stop works
+        console.warn("Pre-stop resume failed (ok):", resumeErr);
       }
+
+      // Stop with a timeout - if stop() hangs for more than 5 seconds, force-continue
+      const stopPromise = audioRecorder.stop();
+      const timeoutPromise = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("stop() timed out after 5s")), 5000)
+      );
+
+      try {
+        await Promise.race([stopPromise, timeoutPromise]);
+      } catch (raceErr: any) {
+        console.warn("audioRecorder.stop() race:", raceErr?.message || raceErr);
+        // Even if stop timed out, try to get the URI - it might still be available
+      }
+
+      uri = audioRecorder.uri;
     } catch (error) {
-      stopTimer();
-      setIsRecording(false);
       console.error("Audio stop error:", error);
+      // Try to get URI even after error - recording file may still exist
+      try { uri = audioRecorder.uri; } catch {}
+    }
+
+    // Reset audio mode (non-blocking)
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+    } catch (e) {
+      console.warn("setAudioModeAsync reset failed:", e);
+    }
+
+    isStoppingRef.current = false;
+
+    // Process the recording if we have a URI
+    if (uri) {
+      setProcessingSource("audio");
+      await processRecording(uri, "audio/m4a");
+    } else {
+      console.error("No recording URI available after stop");
+      alert("Die Aufnahme konnte nicht gespeichert werden. Bitte versuche es erneut.");
     }
   };
 
@@ -1063,12 +1113,15 @@ export default function RecordScreen() {
   };
 
   const stopRecording = () => {
+    // Prevent triggering stop if already stopping
+    if (isStoppingRef.current) return;
     // Show confirmation dialog instead of immediately stopping
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Pause the recording so nothing is lost while user decides
     if (!isPaused) {
       try { audioRecorder.pause(); } catch (e) { console.warn("Stop-pause failed:", e); }
       pauseTimer();
+      setIsPaused(true);
     }
     setShowStopConfirm(true);
   };
@@ -1077,8 +1130,7 @@ export default function RecordScreen() {
     setShowStopConfirm(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     stopListening();
-    setIsPaused(false);
-    // Stop the recorder directly - expo-audio supports stopping from paused state
+    // stopAudioRecording handles all state updates internally
     await stopAudioRecording();
   };
 
@@ -1087,6 +1139,7 @@ export default function RecordScreen() {
     // Resume recording - it was paused by the stop action
     try { audioRecorder.record(); } catch (e) { console.warn("Cancel-resume failed:", e); }
     resumeTimer();
+    setIsPaused(false);
   };
 
   const processRecording = async (fileUri: string, mimeType: string) => {
