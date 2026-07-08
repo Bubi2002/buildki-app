@@ -480,3 +480,6 @@
 - [x] UI-Fix: Unverzüglich/Frist-Badge und Datum-Badge bei Aufgaben entfernen (Priorität und Datum stehen schon da)
 - [x] UI-Fix: Timeline, Mindmap und Statistik Buttons aus Protokoll-Detail entfernen
 - [x] Bug-Fix: PDF-Export rendert Markdown-Tabellen jetzt als echte HTML-Tabellen statt rohe Pipe-Zeichen
+- [x] Bug-Fix: Timer hängt bei 00:02 während Audio-Aufnahme (useAudioRecorderState entfernt – verursachte Re-Renders die Timer-Interval löschten)
+- [x] Bug-Fix: Pause-Button kann nicht fortsetzen (try/catch um audioRecorder.record() – Fehler wurde still verschluckt)
+- [x] Bug-Fix: Kapitel-Button reagiert nicht während Aufnahme (try/catch um alle audioRecorder-Aufrufe)

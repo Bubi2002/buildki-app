@@ -18,7 +18,6 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   useAudioRecorder,
-  useAudioRecorderState,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -160,7 +159,8 @@ export default function RecordScreen() {
 
   // Audio recorder
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(audioRecorder);
+  // Note: removed useAudioRecorderState to prevent unnecessary re-renders every 500ms
+  // which was causing the timer interval to get cleared on re-render
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
@@ -889,7 +889,7 @@ export default function RecordScreen() {
     }
     // Pause main recording while chapter modal is open
     if (isRecording && !isPaused) {
-      audioRecorder.pause();
+      try { audioRecorder.pause(); } catch (e) { console.warn("Chapter-pause failed:", e); }
       pauseTimer();
     }
   };
@@ -936,10 +936,12 @@ export default function RecordScreen() {
       
       // Resume main recording
       if (isRecording) {
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-        audioRecorder.record();
-        resumeTimer();
-        setIsPaused(false);
+        try {
+          await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+          audioRecorder.record();
+          resumeTimer();
+          setIsPaused(false);
+        } catch (e) { console.warn("Chapter resume failed:", e); }
       }
       
       if (!uri) return;
@@ -1033,14 +1035,14 @@ export default function RecordScreen() {
   // --- PAUSE/RESUME ---
   const pauseRecording = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    audioRecorder.pause();
+    try { audioRecorder.pause(); } catch (e) { console.warn("Pause failed:", e); }
     pauseTimer();
     setIsPaused(true);
   };
 
   const resumeRecording = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    audioRecorder.record();
+    try { audioRecorder.record(); } catch (e) { console.warn("Resume failed:", e); }
     resumeTimer();
     setIsPaused(false);
   };
@@ -1065,10 +1067,8 @@ export default function RecordScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Pause the recording so nothing is lost while user decides
     if (!isPaused) {
-      audioRecorder.pause();
+      try { audioRecorder.pause(); } catch (e) { console.warn("Stop-pause failed:", e); }
       pauseTimer();
-      // Note: Don't set isPaused here to keep the stop button visible
-      // The modal will handle the final state
     }
     setShowStopConfirm(true);
   };
@@ -1085,8 +1085,7 @@ export default function RecordScreen() {
   const cancelStopRecording = () => {
     setShowStopConfirm(false);
     // Resume recording - it was paused by the stop action
-    // (we paused without setting isPaused to keep the stop button visible)
-    audioRecorder.record();
+    try { audioRecorder.record(); } catch (e) { console.warn("Cancel-resume failed:", e); }
     resumeTimer();
   };
 
