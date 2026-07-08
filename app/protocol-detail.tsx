@@ -56,7 +56,7 @@ const LANGUAGES = [
   { code: "ru", name: "Russisch" },
   { code: "ar", name: "Arabisch" },
 ];
-const PHOTO_SIZE = (SCREEN_WIDTH - 48 - 8) / 3;
+const PHOTO_SIZE = Math.min(100, (SCREEN_WIDTH - 48 - 8) / 3);
 
 type TodoItem = {
   task: string;
@@ -3453,7 +3453,8 @@ const styles = StyleSheet.create({
   },
   photoHint: {
     fontSize: 12,
-    marginTop: 8,
+    marginTop: 16,
+    marginBottom: 12,
     textAlign: "center",
   },
   protocolText: {

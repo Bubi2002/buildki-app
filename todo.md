@@ -485,3 +485,8 @@
 - [x] Bug-Fix: Kapitel-Button reagiert nicht während Aufnahme (try/catch um alle audioRecorder-Aufrufe)
 - [x] Bug-Fix: Audio-Aufnahme hängt sich auf und Stop-Button funktioniert nicht – v2: UI-State nur nach erfolgreichem Start gesetzt, 8s Timeout auf prepareToRecordAsync, 4s Timeout auf stop(), Resume-before-Stop nur auf Web, isPaused nicht in stopRecording gesetzt
 - [x] Entfernung: "Nur Audio"-Modus komplett entfernen – nur noch "Audio+Foto" als einziger Aufnahme-Modus
+- [x] Fix: Annotations-Vorlagen Sektion aus Einstellungen entfernen
+- [x] Fix: Aufgaben-Erinnerungen – Uhrzeit frei wählbar machen (nicht nur vorgegebene Buttons)
+- [x] Fix: Protokoll-Detail – Zu wenig Platz zwischen Foto-Kasten und Schrift
+- [x] Fix: Benachrichtigungen-Screen – Uhrzeit-Picker flackert und man kann nichts auswählen
+- [x] Fix: Eigene Vorlage erstellen wird nicht gespeichert

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-
 // delegations removed from settings
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "@/lib/language-provider";
 import { useThemeContext } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -390,6 +390,9 @@ const wmStyles = StyleSheet.create({
 function TaskReminderSection({ colors }: { colors: any }) {
   const [enabled, setEnabled] = useState(false);
   const [reminderHour, setReminderHour] = useState(9);
+  const [reminderMinute, setReminderMinute] = useState(0);
+  const [hourText, setHourText] = useState("09");
+  const [minuteText, setMinuteText] = useState("00");
   const [permissionGranted, setPermissionGranted] = useState(false);
 
   useEffect(() => {
@@ -403,6 +406,9 @@ function TaskReminderSection({ colors }: { colors: any }) {
         const s = JSON.parse(data);
         setEnabled(s.enabled ?? false);
         setReminderHour(s.reminderHour ?? 9);
+        setReminderMinute(s.reminderMinute ?? 0);
+        setHourText(String(s.reminderHour ?? 9).padStart(2, '0'));
+        setMinuteText(String(s.reminderMinute ?? 0).padStart(2, '0'));
       }
       // Check permission status
       if (Platform.OS !== "web") {
@@ -433,9 +439,10 @@ function TaskReminderSection({ colors }: { colors: any }) {
     }
   };
 
-  const changeHour = async (hour: number) => {
+  const changeTime = async (hour: number, minute: number) => {
     setReminderHour(hour);
-    const settings = { enabled, reminderHour: hour, reminderMinute: 0, daysBeforeDue: 1 };
+    setReminderMinute(minute);
+    const settings = { enabled, reminderHour: hour, reminderMinute: minute, daysBeforeDue: 1 };
     await AsyncStorage.setItem("task-reminder-settings", JSON.stringify(settings));
     if (enabled && Platform.OS !== "web") {
       const { scheduleTaskReminders } = require("@/lib/task-reminders");
@@ -469,21 +476,33 @@ function TaskReminderSection({ colors }: { colors: any }) {
       {enabled && (
         <View style={{ marginTop: 12 }}>
           <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Erinnerungszeit:</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {[7, 8, 9, 10, 12, 14, 17].map((h) => (
-              <Pressable
-                key={h}
-                onPress={() => changeHour(h)}
-                style={({ pressed }) => [{
-                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0,
-                  backgroundColor: reminderHour === h ? colors.primary : colors.surface,
-                  borderWidth: 1, borderColor: reminderHour === h ? colors.primary : colors.border,
-                  opacity: pressed ? 0.7 : 1,
-                }]}
-              >
-                <Text style={{ fontSize: 13, color: reminderHour === h ? "#fff" : colors.foreground }}>{h}:00</Text>
-              </Pressable>
-            ))}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TextInput
+              value={hourText}
+              onChangeText={(t) => setHourText(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              onBlur={() => {
+                const h = Math.min(23, Math.max(0, parseInt(hourText) || 0));
+                setHourText(String(h).padStart(2, '0'));
+                changeTime(h, reminderMinute);
+              }}
+              keyboardType="number-pad"
+              maxLength={2}
+              style={{ width: 50, textAlign: 'center', fontSize: 18, fontWeight: '600', color: colors.foreground, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 10 }}
+            />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground }}>:</Text>
+            <TextInput
+              value={minuteText}
+              onChangeText={(t) => setMinuteText(t.replace(/[^0-9]/g, '').slice(0, 2))}
+              onBlur={() => {
+                const m = Math.min(59, Math.max(0, parseInt(minuteText) || 0));
+                setMinuteText(String(m).padStart(2, '0'));
+                changeTime(reminderHour, m);
+              }}
+              keyboardType="number-pad"
+              maxLength={2}
+              style={{ width: 50, textAlign: 'center', fontSize: 18, fontWeight: '600', color: colors.foreground, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 10 }}
+            />
+            <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>Uhr</Text>
           </View>
           {Platform.OS !== "web" && !permissionGranted && (
             <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>⚠️ Benachrichtigungs-Berechtigung noch nicht erteilt</Text>
@@ -713,6 +732,13 @@ export default function SettingsScreen() {
     loadCompanySettings();
     loadCustomTemplates();
   }, []);
+
+  // Reload custom templates when screen is focused (e.g. returning from template editor)
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomTemplates();
+    }, [])
+  );
 
   const loadCustomTemplates = async () => {
     try {
@@ -1842,7 +1868,6 @@ return (
         <BiometricLockSection colors={colors} />
 
         {/* Text-Vorlagen für Annotation */}
-        <AnnotationTemplatesSection colors={colors} />
 
         {/* Aufgaben-Erinnerungen */}
         <TaskReminderSection colors={colors} />

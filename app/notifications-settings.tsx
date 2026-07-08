@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { View, Text, ScrollView, Pressable, Switch, Alert, Platform, FlatList, Dimensions } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, ScrollView, Pressable, Switch, Alert, Platform, TextInput } from "react-native";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
@@ -12,13 +12,6 @@ import {
   type NotificationPreferences,
 } from "@/lib/notification-service";
 
-const ITEM_HEIGHT = 44;
-const VISIBLE_ITEMS = 5;
-const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
-
-// Generate arrays for hours (0-23) and minutes (0-55 in 5-min steps)
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 
 // Weekday names
 const WEEKDAYS = [
@@ -31,95 +24,75 @@ const WEEKDAYS = [
   { key: 0, short: "So", label: "Sonntag" },
 ];
 
-function WheelPicker({ data, selectedValue, onValueChange, colors, formatValue }: {
-  data: number[];
-  selectedValue: number;
+function NumberInput({ value, min, max, onValueChange, colors, formatValue }: {
+  value: number;
+  min: number;
+  max: number;
   onValueChange: (val: number) => void;
   colors: any;
   formatValue: (val: number) => string;
 }) {
-  const flatListRef = useRef<FlatList>(null);
-  const [isScrolling, setIsScrolling] = useState(false);
-
-  const selectedIndex = data.indexOf(selectedValue);
+  const [text, setText] = useState(formatValue(value));
 
   useEffect(() => {
-    if (!isScrolling && flatListRef.current && selectedIndex >= 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToOffset({
-          offset: selectedIndex * ITEM_HEIGHT,
-          animated: false,
-        });
-      }, 100);
-    }
-  }, [selectedIndex]);
+    setText(formatValue(value));
+  }, [value]);
 
-  const handleScrollEnd = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    const index = Math.round(offsetY / ITEM_HEIGHT);
-    const clampedIndex = Math.max(0, Math.min(index, data.length - 1));
-    if (data[clampedIndex] !== selectedValue) {
-      onValueChange(data[clampedIndex]);
-    }
-    setIsScrolling(false);
+  const increment = () => {
+    const next = value >= max ? min : value + (max === 59 ? 5 : 1);
+    const clamped = Math.min(next, max);
+    onValueChange(clamped);
   };
 
-  const renderItem = ({ item, index }: { item: number; index: number }) => {
-    const isSelected = item === selectedValue;
-    return (
-      <View style={{ height: ITEM_HEIGHT, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{
-          fontSize: isSelected ? 22 : 16,
-          fontWeight: isSelected ? "700" : "400",
-          color: isSelected ? colors.foreground : colors.muted + "60",
-        }}>
-          {formatValue(item)}
-        </Text>
-      </View>
-    );
+  const decrement = () => {
+    const next = value <= min ? max : value - (max === 59 ? 5 : 1);
+    const clamped = Math.max(next, min);
+    onValueChange(clamped);
   };
 
-  // Padding to center the first/last items
-  const paddingVertical = (PICKER_HEIGHT - ITEM_HEIGHT) / 2;
+  const handleBlur = () => {
+    const parsed = parseInt(text) || 0;
+    const clamped = Math.min(max, Math.max(min, parsed));
+    setText(formatValue(clamped));
+    onValueChange(clamped);
+  };
 
   return (
-    <View style={{ height: PICKER_HEIGHT, overflow: "hidden", width: 80 }}>
-      {/* Selection indicator */}
-      <View style={{
-        position: "absolute",
-        top: paddingVertical,
-        left: 4,
-        right: 4,
-        height: ITEM_HEIGHT,
-        backgroundColor: colors.primary + "15",
-        borderRadius: 0,
-        borderWidth: 1,
-        borderColor: colors.primary + "30",
-        zIndex: 0,
-      }} />
-      <FlatList
-        ref={flatListRef}
-        data={data}
-        keyExtractor={(item) => String(item)}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        snapToInterval={ITEM_HEIGHT}
-        decelerationRate="fast"
-        contentContainerStyle={{ paddingVertical }}
-        onScrollBeginDrag={() => setIsScrolling(true)}
-        onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={(e) => {
-          // For when user lifts finger without momentum
-          if (e.nativeEvent.velocity?.y === 0) {
-            handleScrollEnd(e);
-          }
+    <View style={{ alignItems: "center", gap: 8 }}>
+      <Pressable
+        onPress={increment}
+        style={({ pressed }) => [{
+          width: 44, height: 44, alignItems: "center", justifyContent: "center",
+          backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+          opacity: pressed ? 0.6 : 1,
+        }]}
+      >
+        <MaterialIcons name="keyboard-arrow-up" size={24} color={colors.foreground} />
+      </Pressable>
+      <TextInput
+        value={text}
+        onChangeText={(t) => setText(t.replace(/[^0-9]/g, '').slice(0, 2))}
+        onBlur={handleBlur}
+        keyboardType="number-pad"
+        maxLength={2}
+        style={{
+          width: 60, height: 50, textAlign: 'center',
+          fontSize: 24, fontWeight: '700',
+          color: colors.foreground,
+          backgroundColor: colors.primary + '10',
+          borderWidth: 1, borderColor: colors.primary + '40',
         }}
-        getItemLayout={(_, index) => ({
-          length: ITEM_HEIGHT,
-          offset: ITEM_HEIGHT * index,
-          index,
-        })}
       />
+      <Pressable
+        onPress={decrement}
+        style={({ pressed }) => [{
+          width: 44, height: 44, alignItems: "center", justifyContent: "center",
+          backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+          opacity: pressed ? 0.6 : 1,
+        }]}
+      >
+        <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.foreground} />
+      </Pressable>
     </View>
   );
 }
@@ -320,32 +293,34 @@ export default function NotificationsSettingsScreen() {
             Erinnerung um {String(prefs.reminderHour).padStart(2, "0")}:{String(prefs.reminderMinute).padStart(2, "0")} Uhr
           </Text>
           
-          {/* Scroll Wheel Picker */}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+          {/* Time Input */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 }}>
             {/* Hours */}
             <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>Stunde</Text>
-              <WheelPicker
-                data={HOURS}
-                selectedValue={prefs.reminderHour}
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>Stunde</Text>
+              <NumberInput
+                value={prefs.reminderHour}
+                min={0}
+                max={23}
                 onValueChange={updateHour}
                 colors={colors}
-                formatValue={(v) => String(v).padStart(2, "0")}
+                formatValue={(v: number) => String(v).padStart(2, "0")}
               />
             </View>
 
             {/* Separator */}
-            <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginHorizontal: 8, marginTop: 20 }}>:</Text>
+            <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginTop: 20 }}>:</Text>
 
             {/* Minutes */}
             <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>Minute</Text>
-              <WheelPicker
-                data={MINUTES}
-                selectedValue={prefs.reminderMinute}
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>Minute</Text>
+              <NumberInput
+                value={prefs.reminderMinute}
+                min={0}
+                max={55}
                 onValueChange={updateMinute}
                 colors={colors}
-                formatValue={(v) => String(v).padStart(2, "0")}
+                formatValue={(v: number) => String(v).padStart(2, "0")}
               />
             </View>
           </View>
