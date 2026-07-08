@@ -23,6 +23,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
+import { useTranslation } from "@/lib/language-provider";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -74,6 +75,7 @@ type DrawElement = {
 };
 
 export default function PhotoAnnotateScreen() {
+  const { t } = useTranslation();
   const { photoUri, protocolId, photoIndex } = useLocalSearchParams<{
     photoUri: string;
     protocolId: string;
@@ -320,9 +322,9 @@ export default function PhotoAnnotateScreen() {
   };
 
   const clearAll = () => {
-    Alert.alert("Alles löschen", "Alle Markierungen entfernen?", [
-      { text: "Abbrechen", style: "cancel" },
-      { text: "Löschen", onPress: () => setElements([]) },
+    Alert.alert(t('alert_alles_loeschen'), t('msg_alle_markierungen_entfernen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
+      { text: t('btn_loeschen'), onPress: () => setElements([]) },
     ]);
   };
 
@@ -385,12 +387,12 @@ export default function PhotoAnnotateScreen() {
         }
       }
 
-      Alert.alert("Gespeichert", "Die Annotation wurde gespeichert.", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert(t('alert_gespeichert'), t('msg_die_annotation_wurde_gespeichert'), [
+        { text: t('ok'), onPress: () => router.back() },
       ]);
     } catch (error) {
       console.error("Save annotation error:", error);
-      Alert.alert("Fehler", "Annotation konnte nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_annotation_konnte_nicht_gespeichert_werden'));
     } finally {
       setIsSaving(false);
     }
@@ -554,7 +556,7 @@ export default function PhotoAnnotateScreen() {
             ]}
           >
             <MaterialIcons name="edit" size={20} color={selectedTool === "pen" ? colors.primary : colors.muted} />
-            <Text style={[styles.toolTabText, { color: selectedTool === "pen" ? colors.primary : colors.muted }]}>Stift</Text>
+            <Text style={[styles.toolTabText, { color: selectedTool === "pen" ? colors.primary : colors.muted }]}>{t('stift')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setSelectedTool("arrow")}
@@ -564,7 +566,7 @@ export default function PhotoAnnotateScreen() {
             ]}
           >
             <MaterialIcons name="north-east" size={20} color={selectedTool === "arrow" ? colors.primary : colors.muted} />
-            <Text style={[styles.toolTabText, { color: selectedTool === "arrow" ? colors.primary : colors.muted }]}>Pfeil</Text>
+            <Text style={[styles.toolTabText, { color: selectedTool === "arrow" ? colors.primary : colors.muted }]}>{t('pfeil')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setSelectedTool("text")}
@@ -574,7 +576,7 @@ export default function PhotoAnnotateScreen() {
             ]}
           >
             <MaterialIcons name="text-fields" size={20} color={selectedTool === "text" ? colors.primary : colors.muted} />
-            <Text style={[styles.toolTabText, { color: selectedTool === "text" ? colors.primary : colors.muted }]}>Text</Text>
+            <Text style={[styles.toolTabText, { color: selectedTool === "text" ? colors.primary : colors.muted }]}>{t('text')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setSelectedTool("move")}
@@ -584,7 +586,7 @@ export default function PhotoAnnotateScreen() {
             ]}
           >
             <MaterialIcons name="open-with" size={20} color={selectedTool === "move" ? colors.primary : colors.muted} />
-            <Text style={[styles.toolTabText, { color: selectedTool === "move" ? colors.primary : colors.muted }]}>Bewegen</Text>
+            <Text style={[styles.toolTabText, { color: selectedTool === "move" ? colors.primary : colors.muted }]}>{t('bewegen')}</Text>
           </Pressable>
           <Pressable
             onPress={() => setSelectedTool("zoom")}
@@ -594,7 +596,7 @@ export default function PhotoAnnotateScreen() {
             ]}
           >
             <MaterialIcons name="zoom-in" size={20} color={selectedTool === "zoom" ? colors.primary : colors.muted} />
-            <Text style={[styles.toolTabText, { color: selectedTool === "zoom" ? colors.primary : colors.muted }]}>Zoom</Text>
+            <Text style={[styles.toolTabText, { color: selectedTool === "zoom" ? colors.primary : colors.muted }]}>{t('zoom')}</Text>
           </Pressable>
         </View>
         {/* Zoom reset indicator */}
@@ -684,7 +686,7 @@ export default function PhotoAnnotateScreen() {
         {/* Color picker panel */}
         {showColorPicker && (
           <View style={[styles.pickerPanel, { backgroundColor: colors.surface, bottom: 120 }]}>
-            <Text style={[styles.pickerLabel, { color: colors.foreground }]}>Farbe</Text>
+            <Text style={[styles.pickerLabel, { color: colors.foreground }]}>{t('project_color')}</Text>
             <View style={styles.pickerRow}>
               {COLORS.map((color) => (
                 <Pressable
@@ -708,7 +710,7 @@ export default function PhotoAnnotateScreen() {
         {/* Size picker panel */}
         {showSizePicker && (
           <View style={[styles.pickerPanel, { backgroundColor: colors.surface, bottom: 120 }]}>
-            <Text style={[styles.pickerLabel, { color: colors.foreground }]}>Stiftstärke</Text>
+            <Text style={[styles.pickerLabel, { color: colors.foreground }]}>{t('stiftstaerke')}</Text>
             <View style={styles.pickerRow}>
               {PEN_SIZES.map((size) => (
                 <Pressable
@@ -743,7 +745,7 @@ export default function PhotoAnnotateScreen() {
               <TextInput
                 value={textInputValue}
                 onChangeText={setTextInputValue}
-                placeholder="Text eingeben..."
+                placeholder={t('text_eingeben')}
                 placeholderTextColor={colors.muted}
                 style={[styles.textInputField, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                 autoFocus
@@ -756,13 +758,13 @@ export default function PhotoAnnotateScreen() {
                   onPress={() => { setShowTextInput(false); setTextInputValue(""); }}
                   style={[styles.textInputBtn, { backgroundColor: colors.surface }]}
                 >
-                  <Text style={[styles.textInputBtnText, { color: colors.foreground }]}>Abbrechen</Text>
+                  <Text style={[styles.textInputBtnText, { color: colors.foreground }]}>{t('cancel')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={addTextElement}
                   style={[styles.textInputBtn, { backgroundColor: colors.primary }]}
                 >
-                  <Text style={[styles.textInputBtnText, { color: "#FFFFFF" }]}>Hinzufügen</Text>
+                  <Text style={[styles.textInputBtnText, { color: "#FFFFFF" }]}>{t('hinzufuegen')}</Text>
                 </Pressable>
               </View>
             </View>

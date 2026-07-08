@@ -21,6 +21,7 @@ import {
   type TimeTrackingSettings,
 } from "@/lib/time-tracking-store";
 import { exportTaqlohnzettelPdf, exportWeeklyPdf, shareTaqlohnzettel } from "@/lib/taglohnzettel-export";
+import { useTranslation } from "@/lib/language-provider";
 
 const CATEGORIES: { id: TimeEntry["category"]; label: string; icon: string; color: string }[] = [
   { id: "arbeit", label: "Arbeit", icon: "engineering", color: "#0a7ea4" },
@@ -30,6 +31,7 @@ const CATEGORIES: { id: TimeEntry["category"]; label: string; icon: string; colo
 ];
 
 export default function TimeTrackingScreen() {
+  const { t } = useTranslation();
   const { projectId, projectName } = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
   const colors = useColors();
   const [activeTimer, setActiveTimer] = useState<ActiveTimer>(null);
@@ -82,7 +84,7 @@ export default function TimeTrackingScreen() {
   const handleSaveSettings = async () => {
     await saveTimeTrackingSettings(settings);
     setShowSettings(false);
-    Alert.alert("Gespeichert", "Einstellungen wurden gespeichert.");
+    Alert.alert(t('alert_gespeichert'), t('msg_einstellungen_wurden_gespeichert'));
   };
 
   const loadData = async () => {
@@ -100,7 +102,7 @@ export default function TimeTrackingScreen() {
 
   const handleStart = async () => {
     if (!projectId || !projectName) {
-      Alert.alert("Fehler", "Bitte wähle zuerst ein Projekt aus.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_waehle_zuerst_ein_projekt'));
       return;
     }
     await startTimer(projectId, projectName, selectedCategory, note.trim());
@@ -112,16 +114,16 @@ export default function TimeTrackingScreen() {
   const handleStop = async () => {
     const entry = await stopTimer();
     if (entry) {
-      Alert.alert("Gestoppt", `${formatDuration(entry.duration)} erfasst für "${entry.projectName}".`);
+      Alert.alert(t('alert_gestoppt'), `${formatDuration(entry.duration)} erfasst für "${entry.projectName}".`);
     }
     loadData();
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert("Löschen", "Zeiteintrag wirklich löschen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_loeschen'), t('msg_zeiteintrag_wirklich_loeschen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           await deleteTimeEntry(id);
@@ -150,7 +152,7 @@ export default function TimeTrackingScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Zeiterfassung</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('zeiterfassung')}</Text>
         <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
           <MaterialIcons name="settings" size={24} color={colors.foreground} />
         </Pressable>
@@ -185,7 +187,7 @@ export default function TimeTrackingScreen() {
                   style={({ pressed }) => [styles.stopButton, { backgroundColor: colors.error, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="stop" size={24} color="#FFF" />
-                  <Text style={styles.buttonText}>Stoppen</Text>
+                  <Text style={styles.buttonText}>{t('stoppen')}</Text>
                 </Pressable>
               ) : showStartForm ? (
                 <View style={{ width: "100%" }}>
@@ -218,7 +220,7 @@ export default function TimeTrackingScreen() {
                   <TextInput
                     value={note}
                     onChangeText={setNote}
-                    placeholder="Notiz (optional)"
+                    placeholder={t('notiz_optional')}
                     placeholderTextColor={colors.muted}
                     style={{ padding: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, fontSize: 14, marginBottom: 12 }}
                   />
@@ -228,14 +230,14 @@ export default function TimeTrackingScreen() {
                       onPress={() => setShowStartForm(false)}
                       style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                     >
-                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Abbrechen</Text>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('cancel')}</Text>
                     </Pressable>
                     <Pressable
                       onPress={handleStart}
                       style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                     >
                       <MaterialIcons name="play-arrow" size={20} color="#FFF" />
-                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>Starten</Text>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>{t('starten')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -245,7 +247,7 @@ export default function TimeTrackingScreen() {
                   style={({ pressed }) => [styles.startButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="play-arrow" size={24} color="#FFF" />
-                  <Text style={styles.buttonText}>Timer starten</Text>
+                  <Text style={styles.buttonText}>{t('timer_starten')}</Text>
                 </Pressable>
               )}
             </View>
@@ -254,17 +256,17 @@ export default function TimeTrackingScreen() {
             <View style={{ flexDirection: "row", gap: 12, marginTop: 16, marginBottom: 20 }}>
               <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <MaterialIcons name="today" size={18} color={colors.primary} />
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Heute</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{t('heute')}</Text>
                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{formatDurationShort(todayTotal)}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <MaterialIcons name="date-range" size={18} color={colors.primary} />
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Diese Woche</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{t('diese_woche')}</Text>
                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{formatDurationShort(weekTotal)}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <MaterialIcons name="format-list-numbered" size={18} color={colors.primary} />
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Einträge</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{t('eintraege')}</Text>
                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{entries.length}</Text>
               </View>
             </View>
@@ -274,20 +276,20 @@ export default function TimeTrackingScreen() {
               <Pressable
                 onPress={async () => {
                   if (!projectId || !projectName) {
-                    Alert.alert("Fehler", "Bitte zuerst ein Projekt auswählen.");
+                    Alert.alert(t('alert_fehler'), t('msg_bitte_zuerst_ein_projekt_auswaehlen'));
                     return;
                   }
                   try {
                     const uri = await exportTaqlohnzettelPdf(projectName, projectId, new Date());
                     await shareTaqlohnzettel(uri);
                   } catch (e: any) {
-                    Alert.alert("Fehler", e.message || "Export fehlgeschlagen");
+                    Alert.alert(t('alert_fehler'), e.message || "Export fehlgeschlagen");
                   }
                 }}
                 style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 0, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary + "40", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="receipt-long" size={16} color={colors.primary} />
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Taglohnzettel</Text>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t('taglohnzettel')}</Text>
               </Pressable>
               <Pressable
                 onPress={async () => {
@@ -295,24 +297,24 @@ export default function TimeTrackingScreen() {
                     const uri = await exportWeeklyPdf(projectId, projectName);
                     await shareTaqlohnzettel(uri);
                   } catch (e: any) {
-                    Alert.alert("Fehler", e.message || "Export fehlgeschlagen");
+                    Alert.alert(t('alert_fehler'), e.message || "Export fehlgeschlagen");
                   }
                 }}
                 style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="summarize" size={16} color={colors.foreground} />
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>Wochenbericht</Text>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>{t('wochenbericht')}</Text>
               </Pressable>
             </View>
 
             {/* History Header */}
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Verlauf</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>{t('verlauf')}</Text>
           </View>
         }
         ListEmptyComponent={
           <View style={{ alignItems: "center", paddingTop: 40 }}>
             <MaterialIcons name="timer" size={48} color={colors.muted} />
-            <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>Noch keine Zeiteinträge</Text>
+            <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>{t('noch_keine_zeiteintraege')}</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -349,7 +351,7 @@ export default function TimeTrackingScreen() {
             <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
               {/* Modal Header */}
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Zeiterfassung-Einstellungen</Text>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('zeiterfassungeinstellungen')}</Text>
                 <Pressable onPress={() => setShowSettings(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
                   <MaterialIcons name="close" size={22} color={colors.muted} />
                 </Pressable>
@@ -358,7 +360,7 @@ export default function TimeTrackingScreen() {
               <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
                 {/* Person / Name */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Person / Name</Text>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('person_name')}</Text>
                   <TextInput
                     value={settings.workerName}
                     onChangeText={(v) => setSettings({ ...settings, workerName: v })}
@@ -370,7 +372,7 @@ export default function TimeTrackingScreen() {
 
                 {/* Firma */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Firma</Text>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('firma')}</Text>
                   <TextInput
                     value={settings.companyName}
                     onChangeText={(v) => setSettings({ ...settings, companyName: v })}
@@ -382,7 +384,7 @@ export default function TimeTrackingScreen() {
 
                 {/* Stundensatz */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Stundensatz (€/h)</Text>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('stundensatz_h')}</Text>
                   <TextInput
                     value={settings.hourlyRate}
                     onChangeText={(v) => setSettings({ ...settings, hourlyRate: v })}
@@ -395,7 +397,7 @@ export default function TimeTrackingScreen() {
 
                 {/* Tagessatz */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={[styles.inputLabel, { color: colors.muted }]}>Tagessatz (€/Tag)</Text>
+                  <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('tagessatz_tag')}</Text>
                   <TextInput
                     value={settings.dailyRate}
                     onChangeText={(v) => setSettings({ ...settings, dailyRate: v })}
@@ -421,13 +423,13 @@ export default function TimeTrackingScreen() {
                   onPress={() => setShowSettings(false)}
                   style={({ pressed }) => [{ flex: 1, paddingVertical: 13, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Abbrechen</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('cancel')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleSaveSettings}
                   style={({ pressed }) => [{ flex: 1, paddingVertical: 13, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Speichern</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('save')}</Text>
                 </Pressable>
               </View>
             </View>

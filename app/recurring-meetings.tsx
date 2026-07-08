@@ -15,6 +15,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "@/lib/language-provider";
 import {
   getRecurringMeetings,
   saveRecurringMeeting,
@@ -29,6 +30,7 @@ import {
 const DAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
 export default function RecurringMeetingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [meetings, setMeetings] = useState<RecurringMeeting[]>([]);
@@ -92,7 +94,7 @@ export default function RecurringMeetingsScreen() {
 
   const saveMeeting = async () => {
     if (!title.trim()) {
-      Alert.alert("Fehler", "Bitte geben Sie einen Titel ein.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_geben_sie_einen_titel'));
       return;
     }
     
@@ -122,9 +124,9 @@ export default function RecurringMeetingsScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert("Löschen", "Wiederkehrendes Meeting wirklich löschen?", [
-      { text: "Abbrechen", style: "cancel" },
-      { text: "Löschen", style: "destructive", onPress: async () => {
+    Alert.alert(t('alert_loeschen'), t('msg_wiederkehrendes_meeting_wirklich_loeschen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
+      { text: t('btn_loeschen'), style: "destructive", onPress: async () => {
         await deleteRecurringMeeting(id);
         loadMeetings();
       }},
@@ -146,8 +148,8 @@ export default function RecurringMeetingsScreen() {
               <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
             </Pressable>
             <View>
-              <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground }}>Wiederkehrende Meetings</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Automatisch Protokolle vorbereiten</Text>
+              <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground }}>{t('wiederkehrende_meetings')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('automatisch_protokolle_vorbereiten')}</Text>
             </View>
           </View>
           <Pressable onPress={() => openEditor()} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, backgroundColor: colors.primary, borderRadius: 0, width: 36, height: 36, alignItems: "center", justifyContent: "center" })}>
@@ -159,7 +161,7 @@ export default function RecurringMeetingsScreen() {
         {meetings.length === 0 ? (
           <View style={{ alignItems: "center", paddingTop: 60 }}>
             <MaterialIcons name="event-repeat" size={48} color={colors.muted} />
-            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>Keine wiederkehrenden Meetings</Text>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('keine_wiederkehrenden_meetings')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>Erstellen Sie ein wiederkehrendes Meeting, um automatisch Protokolle vorzubereiten.</Text>
           </View>
         ) : (
@@ -215,18 +217,18 @@ export default function RecurringMeetingsScreen() {
             {/* Modal Header */}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <Pressable onPress={() => { setShowEditor(false); resetEditor(); }}>
-                <Text style={{ fontSize: 15, color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 15, color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               <Text style={{ fontSize: 17, fontWeight: "600", color: colors.foreground }}>
                 {editingMeeting ? "Bearbeiten" : "Neues Meeting"}
               </Text>
               <Pressable onPress={saveMeeting}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Speichern</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>{t('save')}</Text>
               </Pressable>
             </View>
 
             {/* Title */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Titel *</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('titel_2')}</Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
@@ -236,18 +238,18 @@ export default function RecurringMeetingsScreen() {
             />
 
             {/* Description */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Beschreibung</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('project_description')}</Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="Optionale Beschreibung"
+              placeholder={t('optionale_beschreibung')}
               placeholderTextColor={colors.muted}
               multiline
               style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16, minHeight: 60 }}
             />
 
             {/* Recurrence */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Wiederholung</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('wiederholung')}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
               {(["daily", "weekly", "biweekly", "monthly"] as RecurrencePattern[]).map((r) => (
                 <Pressable
@@ -265,7 +267,7 @@ export default function RecurringMeetingsScreen() {
             {/* Day of Week (for weekly/biweekly) */}
             {(recurrence === "weekly" || recurrence === "biweekly") && (
               <View style={{ marginBottom: 16 }}>
-                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Wochentag</Text>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('wochentag')}</Text>
                 <View style={{ flexDirection: "row", gap: 6 }}>
                   {DAYS.map((day, idx) => (
                     <Pressable
@@ -283,7 +285,7 @@ export default function RecurringMeetingsScreen() {
             {/* Day of Month (for monthly) */}
             {recurrence === "monthly" && (
               <View style={{ marginBottom: 16 }}>
-                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Tag im Monat</Text>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('tag_im_monat')}</Text>
                 <TextInput
                   value={dayOfMonth.toString()}
                   onChangeText={(v) => setDayOfMonth(Math.min(31, Math.max(1, parseInt(v) || 1)))}
@@ -294,7 +296,7 @@ export default function RecurringMeetingsScreen() {
             )}
 
             {/* Time */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Uhrzeit</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('uhrzeit')}</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
               <TextInput
                 value={timeHour.toString().padStart(2, "0")}
@@ -311,11 +313,11 @@ export default function RecurringMeetingsScreen() {
                 maxLength={2}
                 style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, width: 60, textAlign: "center" }}
               />
-              <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>Uhr</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>{t('uhr')}</Text>
             </View>
 
             {/* Duration */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Dauer (Minuten)</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('dauer_minuten')}</Text>
             <TextInput
               value={duration.toString()}
               onChangeText={(v) => setDuration(parseInt(v) || 30)}
@@ -324,17 +326,17 @@ export default function RecurringMeetingsScreen() {
             />
 
             {/* Template */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Protokoll-Vorlage</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('protokollvorlage')}</Text>
             <TextInput
               value={templateName}
               onChangeText={setTemplateName}
-              placeholder="Vorlage wählen"
+              placeholder={t('vorlage_waehlen')}
               placeholderTextColor={colors.muted}
               style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
             />
 
             {/* Participants */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Teilnehmer (kommagetrennt)</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('teilnehmer_kommagetrennt')}</Text>
             <TextInput
               value={participants}
               onChangeText={setParticipants}
@@ -344,11 +346,11 @@ export default function RecurringMeetingsScreen() {
             />
 
             {/* Notes */}
-            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>Notizen</Text>
+            <Text style={{ fontSize: 13, fontWeight: "500", color: colors.muted, marginBottom: 6 }}>{t('notizen')}</Text>
             <TextInput
               value={notes}
               onChangeText={setNotes}
-              placeholder="Agenda-Punkte, Hinweise..."
+              placeholder={t('agendapunkte_hinweise')}
               placeholderTextColor={colors.muted}
               multiline
               style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, minHeight: 80 }}

@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { mergeAndShare, type MergeOptions } from "@/lib/protocol-merge";
+import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
   id: string;
@@ -19,6 +20,7 @@ type Protocol = {
 };
 
 export default function ProtocolMergeScreen() {
+  const { t } = useTranslation();
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const colors = useColors();
   const [project, setProject] = useState<any>(null);
@@ -67,7 +69,7 @@ export default function ProtocolMergeScreen() {
 
   const handleMerge = async () => {
     if (selectedProtocols.size < 2) {
-      Alert.alert("Mindestens 2 Protokolle", "Bitte wähle mindestens 2 Protokolle zum Zusammenführen aus.");
+      Alert.alert(t('alert_mindestens_2'), t('msg_bitte_waehle_mindestens_2_protokolle'));
       return;
     }
 
@@ -83,10 +85,10 @@ export default function ProtocolMergeScreen() {
 
       const success = await mergeAndShare(options);
       if (!success) {
-        Alert.alert("Fehler", "Gesamtbericht konnte nicht erstellt werden.");
+        Alert.alert(t('alert_fehler'), t('msg_gesamtbericht_konnte_nicht_erstellt_werden'));
       }
     } catch (e: any) {
-      Alert.alert("Fehler", e.message || "Unbekannter Fehler");
+      Alert.alert(t('alert_fehler'), e.message || "Unbekannter Fehler");
     } finally {
       setIsExporting(false);
     }
@@ -123,24 +125,24 @@ export default function ProtocolMergeScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Gesamtbericht erstellen</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('gesamtbericht_erstellen')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted }}>{project.name}</Text>
           </View>
         </View>
 
         {/* Options */}
         <View style={{ marginBottom: 16, backgroundColor: colors.surface, borderRadius: 0, padding: 12 }}>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Optionen</Text>
+          <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('optionen')}</Text>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <Text style={{ fontSize: 13, color: colors.foreground }}>Fotos referenzieren</Text>
+            <Text style={{ fontSize: 13, color: colors.foreground }}>{t('fotos_referenzieren')}</Text>
             <Switch value={includePhotos} onValueChange={setIncludePhotos} trackColor={{ true: colors.primary }} />
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <Text style={{ fontSize: 13, color: colors.foreground }}>Aufgaben zusammenfassen</Text>
+            <Text style={{ fontSize: 13, color: colors.foreground }}>{t('aufgaben_zusammenfassen')}</Text>
             <Switch value={includeTodos} onValueChange={setIncludeTodos} trackColor={{ true: colors.primary }} />
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ fontSize: 13, color: colors.foreground }}>Wetterdaten einbeziehen</Text>
+            <Text style={{ fontSize: 13, color: colors.foreground }}>{t('wetterdaten_einbeziehen')}</Text>
             <Switch value={includeWeather} onValueChange={setIncludeWeather} trackColor={{ true: colors.primary }} />
           </View>
         </View>
@@ -151,14 +153,14 @@ export default function ProtocolMergeScreen() {
             {selectedProtocols.size}/{protocols.length} ausgewählt
           </Text>
           <Pressable onPress={selectToday} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1, marginRight: 8 }]}>
-            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.primary }}>Heute</Text>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.primary }}>{t('heute')}</Text>
           </Pressable>
           <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Alle</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t('all')}</Text>
           </Pressable>
           <Text style={{ color: colors.border, marginHorizontal: 4 }}>|</Text>
           <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>Keine</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>{t('none')}</Text>
           </Pressable>
         </View>
 
@@ -203,7 +205,7 @@ export default function ProtocolMergeScreen() {
           {protocols.length === 0 && (
             <View style={{ alignItems: "center", paddingTop: 40 }}>
               <MaterialIcons name="merge-type" size={48} color={colors.border} />
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>Keine Protokolle</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('protocol_no_protocols')}</Text>
               <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>
                 Dieses Projekt hat noch keine fertigen Protokolle zum Zusammenführen.
               </Text>

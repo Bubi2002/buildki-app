@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
+import { useTranslation } from "@/lib/language-provider";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -35,6 +36,7 @@ type ComparisonPair = {
 const STORAGE_KEY = "photo-comparisons";
 
 export default function PhotoCompareScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -95,7 +97,7 @@ export default function PhotoCompareScreen() {
       await saveComparisons(updated);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert("Fehler", "Foto konnte nicht geladen werden.");
+      Alert.alert(t('alert_fehler'), t('msg_foto_konnte_nicht_geladen_werden'));
     }
   };
 
@@ -117,15 +119,15 @@ export default function PhotoCompareScreen() {
       }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert("Fehler", "Foto konnte nicht geladen werden.");
+      Alert.alert(t('alert_fehler'), t('msg_foto_konnte_nicht_geladen_werden'));
     }
   };
 
   const deletePair = (pair: ComparisonPair) => {
-    Alert.alert("Löschen", `"${pair.label}" wirklich löschen?`, [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_loeschen'), `"${pair.label}" wirklich löschen?`, [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           const updated = comparisons.filter(c => c.id !== pair.id);
@@ -143,7 +145,7 @@ export default function PhotoCompareScreen() {
       const uri = await captureRef(compareRef.current, { format: "png", quality: 0.9 });
       await Sharing.shareAsync(uri, { mimeType: "image/png" });
     } catch (e) {
-      Alert.alert("Fehler", "Vergleich konnte nicht geteilt werden.");
+      Alert.alert(t('alert_fehler'), t('msg_vergleich_konnte_nicht_geteilt_werden'));
     }
   };
 
@@ -178,12 +180,12 @@ export default function PhotoCompareScreen() {
             <View ref={compareRef} style={{ backgroundColor: colors.background }}>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.error, marginBottom: 4, textAlign: "center" }}>VORHER</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.error, marginBottom: 4, textAlign: "center" }}>{t('vorher')}</Text>
                   <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 0 }} contentFit="cover" />
                   <Text style={{ fontSize: 10, color: colors.muted, textAlign: "center", marginTop: 4 }}>{formatDate(selectedPair.beforeDate)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.success, marginBottom: 4, textAlign: "center" }}>NACHHER</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.success, marginBottom: 4, textAlign: "center" }}>{t('nachher')}</Text>
                   {selectedPair.afterUri ? (
                     <>
                       <Image source={{ uri: selectedPair.afterUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 0 }} contentFit="cover" />
@@ -205,7 +207,7 @@ export default function PhotoCompareScreen() {
                       }]}
                     >
                       <MaterialIcons name="add-a-photo" size={32} color={colors.muted} />
-                      <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>Nachher-Foto</Text>
+                      <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{t('nachherfoto')}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -213,7 +215,7 @@ export default function PhotoCompareScreen() {
             </View>
 
             {/* Full-size images */}
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>Vollansicht</Text>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>{t('vollansicht')}</Text>
             <View style={{ gap: 12 }}>
               <View>
                 <Text style={{ fontSize: 11, fontWeight: "600", color: colors.error, marginBottom: 4 }}>Vorher – {formatDate(selectedPair.beforeDate)}</Text>
@@ -242,19 +244,19 @@ export default function PhotoCompareScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Vorher/Nachher</Text>
-            <Text style={{ fontSize: 12, color: colors.muted }}>Fortschrittsdokumentation</Text>
+            <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('vorhernachher')}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted }}>{t('fortschrittsdokumentation')}</Text>
           </View>
           <Pressable onPress={createNewComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }]}>
             <MaterialIcons name="add" size={18} color="#FFF" />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFF" }}>Neu</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFF" }}>{t('neu')}</Text>
           </Pressable>
         </View>
 
         {comparisons.length === 0 ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
             <MaterialIcons name="compare" size={64} color={colors.muted} />
-            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>Keine Vergleiche</Text>
+            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>{t('keine_vergleiche')}</Text>
             <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginTop: 8 }}>
               Erstelle einen Vorher/Nachher-Vergleich um den Baufortschritt zu dokumentieren.
             </Text>
@@ -262,7 +264,7 @@ export default function PhotoCompareScreen() {
               onPress={createNewComparison}
               style={({ pressed }) => [{ marginTop: 20, backgroundColor: colors.primary, borderRadius: 0, paddingHorizontal: 20, paddingVertical: 10, opacity: pressed ? 0.8 : 1 }]}
             >
-              <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Ersten Vergleich erstellen</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>{t('ersten_vergleich_erstellen')}</Text>
             </Pressable>
           </View>
         ) : (

@@ -12,6 +12,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -37,6 +38,7 @@ type StatCard = {
 };
 
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [protocols, setProtocols] = useState<Protocol[]>([]);
@@ -177,7 +179,7 @@ export default function DashboardScreen() {
           <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Dashboard</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('nav_dashboard')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -195,21 +197,21 @@ export default function DashboardScreen() {
 
           {/* Aufgaben-Übersicht */}
           <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Aufgaben</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('team_tasks')}</Text>
             <View style={styles.todoRow}>
               <View style={styles.todoStat}>
                 <Text style={[styles.todoNumber, { color: "#F44336" }]}>{stats.openTodos}</Text>
-                <Text style={[styles.todoLabel, { color: colors.muted }]}>Offen</Text>
+                <Text style={[styles.todoLabel, { color: colors.muted }]}>{t('checklist_incomplete')}</Text>
               </View>
               <View style={[styles.todoDivider, { backgroundColor: colors.border }]} />
               <View style={styles.todoStat}>
                 <Text style={[styles.todoNumber, { color: "#4CAF50" }]}>{stats.doneTodos}</Text>
-                <Text style={[styles.todoLabel, { color: colors.muted }]}>Erledigt</Text>
+                <Text style={[styles.todoLabel, { color: colors.muted }]}>{t('defect_resolved')}</Text>
               </View>
               <View style={[styles.todoDivider, { backgroundColor: colors.border }]} />
               <View style={styles.todoStat}>
                 <Text style={[styles.todoNumber, { color: colors.primary }]}>{stats.totalTodos}</Text>
-                <Text style={[styles.todoLabel, { color: colors.muted }]}>Gesamt</Text>
+                <Text style={[styles.todoLabel, { color: colors.muted }]}>{t('gesamt')}</Text>
               </View>
             </View>
             {stats.totalTodos > 0 && (
@@ -226,7 +228,7 @@ export default function DashboardScreen() {
 
           {/* Wöchentliche Aktivität */}
           <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Wöchentliche Aktivität</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('woechentliche_aktivitaet')}</Text>
             <View style={styles.chartContainer}>
               {weeklyData.map((week, i) => (
                 <View key={i} style={styles.chartBar}>
@@ -249,22 +251,22 @@ export default function DashboardScreen() {
 
           {/* Aufnahme-Modus */}
           <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Aufnahme-Modus</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('aufnahmemodus')}</Text>
             <View style={styles.modeRow}>
               <View style={styles.modeItem}>
                 <MaterialIcons name="photo-camera" size={24} color="#4CAF50" />
                 <Text style={[styles.modeValue, { color: colors.foreground }]}>{stats.audioPhotoCount}</Text>
-                <Text style={[styles.modeLabel, { color: colors.muted }]}>Audio+Foto</Text>
+                <Text style={[styles.modeLabel, { color: colors.muted }]}>{t('audiofoto')}</Text>
               </View>
               <View style={styles.modeItem}>
                 <MaterialIcons name="mic" size={24} color="#2196F3" />
                 <Text style={[styles.modeValue, { color: colors.foreground }]}>{stats.audioCount}</Text>
-                <Text style={[styles.modeLabel, { color: colors.muted }]}>Audio</Text>
+                <Text style={[styles.modeLabel, { color: colors.muted }]}>{t('audio')}</Text>
               </View>
               <View style={styles.modeItem}>
                 <MaterialIcons name="timer" size={24} color="#FF9800" />
                 <Text style={[styles.modeValue, { color: colors.foreground }]}>{formatDuration(stats.totalDuration)}</Text>
-                <Text style={[styles.modeLabel, { color: colors.muted }]}>Gesamtzeit</Text>
+                <Text style={[styles.modeLabel, { color: colors.muted }]}>{t('gesamtzeit')}</Text>
               </View>
             </View>
           </View>
@@ -272,7 +274,7 @@ export default function DashboardScreen() {
           {/* Vorlagen-Nutzung */}
           {templateStats.length > 0 && (
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Vorlagen-Nutzung</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('vorlagennutzung')}</Text>
               {templateStats.map((t, i) => (
                 <View key={i} style={styles.templateRow}>
                   <View style={{ flex: 1 }}>

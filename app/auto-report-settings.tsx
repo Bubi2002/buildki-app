@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 import {
   AutoReportSettings,
   ReportFrequency,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/auto-report";
 
 export default function AutoReportSettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [settings, setSettings] = useState<AutoReportSettings | null>(null);
@@ -50,12 +52,12 @@ export default function AutoReportSettingsScreen() {
     try {
       await saveAutoReportSettings(settings);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Gespeichert", settings.enabled
+      Alert.alert(t('alert_gespeichert'), settings.enabled
         ? `Automatischer ${settings.frequency === "daily" ? "Tages" : "Wochen"}bericht aktiviert um ${String(settings.time.hour).padStart(2, "0")}:${String(settings.time.minute).padStart(2, "0")} Uhr.`
         : "Automatischer Bericht deaktiviert."
       );
     } catch {
-      Alert.alert("Fehler", "Einstellungen konnten nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_einstellungen_konnten_nicht_gespeichert_werden'));
     }
     setSaving(false);
   };
@@ -73,9 +75,9 @@ export default function AutoReportSettingsScreen() {
           <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={[styles.title, { color: colors.foreground }]}>Auto-Bericht</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t('autobericht')}</Text>
           <Pressable onPress={handleSave} style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}>
-            <Text style={styles.saveBtnText}>{saving ? "..." : "Speichern"}</Text>
+            <Text style={styles.saveBtnText}>{saving ? '...' : t('btn_speichern')}</Text>
           </Pressable>
         </View>
 
@@ -83,7 +85,7 @@ export default function AutoReportSettingsScreen() {
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Automatischer Gesamtbericht</Text>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t('automatischer_gesamtbericht')}</Text>
               <Text style={[styles.cardDesc, { color: colors.muted }]}>
                 Generiert automatisch einen PDF-Bericht aller Protokolle eines Zeitraums
               </Text>
@@ -100,7 +102,7 @@ export default function AutoReportSettingsScreen() {
           <>
             {/* Frequency */}
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.muted }]}>Häufigkeit</Text>
+              <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('haeufigkeit')}</Text>
               <View style={styles.optionRow}>
                 {frequencies.map((f) => (
                   <Pressable
@@ -122,7 +124,7 @@ export default function AutoReportSettingsScreen() {
 
             {/* Time */}
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.muted }]}>Uhrzeit</Text>
+              <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('uhrzeit')}</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <TextInput
                   style={[styles.timeInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
@@ -145,14 +147,14 @@ export default function AutoReportSettingsScreen() {
                   keyboardType="number-pad"
                   maxLength={2}
                 />
-                <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 8 }}>Uhr</Text>
+                <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 8 }}>{t('uhr')}</Text>
               </View>
             </View>
 
             {/* Weekday (for weekly) */}
             {settings.frequency === "weekly" && (
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Wochentag</Text>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('wochentag')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: "row", gap: 6 }}>
                     {weekdays.map((d) => (
@@ -177,10 +179,10 @@ export default function AutoReportSettingsScreen() {
 
             {/* Content Options */}
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.muted }]}>Inhalt</Text>
+              <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('inhalt')}</Text>
               
               <View style={styles.toggleRow}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Fotos einbetten</Text>
+                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('fotos_einbetten')}</Text>
                 <Switch
                   value={settings.includePhotos}
                   onValueChange={(v) => setSettings({ ...settings, includePhotos: v })}
@@ -189,7 +191,7 @@ export default function AutoReportSettingsScreen() {
               </View>
 
               <View style={styles.toggleRow}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Mängel-Übersicht</Text>
+                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('maengeluebersicht')}</Text>
                 <Switch
                   value={settings.includeDefects}
                   onValueChange={(v) => setSettings({ ...settings, includeDefects: v })}
@@ -198,7 +200,7 @@ export default function AutoReportSettingsScreen() {
               </View>
 
               <View style={styles.toggleRow}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Offene Aufgaben</Text>
+                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('offene_aufgaben')}</Text>
                 <Switch
                   value={settings.includeTodos}
                   onValueChange={(v) => setSettings({ ...settings, includeTodos: v })}
@@ -209,10 +211,10 @@ export default function AutoReportSettingsScreen() {
 
             {/* Auto-Send Options */}
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.muted }]}>Automatischer Versand</Text>
+              <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('automatischer_versand')}</Text>
               
               <View style={styles.toggleRow}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Per E-Mail senden</Text>
+                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('per_email_senden')}</Text>
                 <Switch
                   value={settings.autoSendEmail}
                   onValueChange={(v) => setSettings({ ...settings, autoSendEmail: v })}
@@ -223,7 +225,7 @@ export default function AutoReportSettingsScreen() {
               {settings.autoSendEmail && (
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-                  placeholder="E-Mail-Adresse"
+                  placeholder={t('emailadresse')}
                   placeholderTextColor={colors.muted}
                   value={settings.emailRecipient}
                   onChangeText={(t) => setSettings({ ...settings, emailRecipient: t })}
@@ -233,7 +235,7 @@ export default function AutoReportSettingsScreen() {
               )}
 
               <View style={[styles.toggleRow, { marginTop: 8 }]}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>In Dropbox hochladen</Text>
+                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('in_dropbox_hochladen')}</Text>
                 <Switch
                   value={settings.autoUploadDropbox}
                   onValueChange={(v) => setSettings({ ...settings, autoUploadDropbox: v })}

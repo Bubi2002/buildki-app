@@ -14,6 +14,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 type Project = {
   id: string;
@@ -39,6 +40,7 @@ const PROJECT_COLORS = [
 ];
 
 export default function ProjectsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -71,7 +73,7 @@ export default function ProjectsScreen() {
 
   const saveProject = async () => {
     if (!newName.trim()) {
-      Alert.alert("Fehler", "Bitte gib einen Projektnamen ein.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein'));
       return;
     }
 
@@ -108,7 +110,7 @@ export default function ProjectsScreen() {
       setSelectedColor(PROJECT_COLORS[0]);
       setEditingProject(null);
     } catch (e) {
-      Alert.alert("Fehler", "Projekt konnte nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_gespeichert_werden'));
     }
   };
 
@@ -117,9 +119,9 @@ export default function ProjectsScreen() {
       "Projekt löschen",
       `Möchtest du "${project.name}" wirklich löschen? Die zugehörigen Protokolle bleiben erhalten.`,
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('btn_loeschen'),
           style: "destructive",
           onPress: async () => {
             const updated = projects.filter((p) => p.id !== project.id);
@@ -198,7 +200,7 @@ export default function ProjectsScreen() {
           <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Projekte</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('nav_projects')}</Text>
           <Pressable
             onPress={() => { setEditingProject(null); setNewName(""); setNewDescription(""); setNewPrefix(""); setSelectedColor(PROJECT_COLORS[0]); setShowCreateModal(true); }}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
@@ -226,7 +228,7 @@ export default function ProjectsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <MaterialIcons name="folder-open" size={64} color={colors.border} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Keine Projekte</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('project_no_projects')}</Text>
               <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
                 Erstelle ein Projekt, um deine Protokolle zu organisieren.
               </Text>
@@ -250,7 +252,7 @@ export default function ProjectsScreen() {
               <TextInput
                 value={newName}
                 onChangeText={setNewName}
-                placeholder="Projektname (z.B. Baustelle Mühlenstraße)"
+                placeholder={t('projektname_zb_baustelle_muehlenstrasse')}
                 placeholderTextColor={colors.muted}
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               />
@@ -258,7 +260,7 @@ export default function ProjectsScreen() {
               <TextInput
                 value={newDescription}
                 onChangeText={setNewDescription}
-                placeholder="Beschreibung (optional)"
+                placeholder={t('beschreibung_optional')}
                 placeholderTextColor={colors.muted}
                 multiline
                 numberOfLines={2}
@@ -268,7 +270,7 @@ export default function ProjectsScreen() {
               <TextInput
                 value={newPrefix}
                 onChangeText={(v) => setNewPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
-                placeholder="Protokoll-Präfix (z.B. BST, MNG)"
+                placeholder={t('protokollpraefix_zb_bst_mng')}
                 placeholderTextColor={colors.muted}
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                 autoCapitalize="characters"
@@ -278,7 +280,7 @@ export default function ProjectsScreen() {
                 {newPrefix ? `Nummerierung: ${newPrefix}-001, ${newPrefix}-002, ...` : 'Optional: Automatische Nummerierung (z.B. BST-001)'}
               </Text>
 
-              <Text style={[styles.colorLabel, { color: colors.muted }]}>Farbe wählen</Text>
+              <Text style={[styles.colorLabel, { color: colors.muted }]}>{t('farbe_waehlen')}</Text>
               <View style={styles.colorGrid}>
                 {PROJECT_COLORS.map((color) => (
                   <Pressable

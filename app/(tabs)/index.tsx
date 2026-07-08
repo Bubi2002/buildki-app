@@ -45,10 +45,12 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "@/lib/language-provider";
 
 type RecordingMode = "audio-photo";
 
 export default function RecordScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { quickAction } = useLocalSearchParams<{ quickAction?: string }>();
@@ -325,7 +327,7 @@ export default function RecordScreen() {
 
   const saveCustomTemplate = async () => {
     if (!newTemplateName.trim() || !newTemplatePrompt.trim()) {
-      Alert.alert("Fehler", "Name und Prompt sind erforderlich.");
+      Alert.alert(t('alert_fehler'), t('msg_name_und_prompt_sind_erforderlich'));
       return;
     }
     const newTemplate: ProtocolTemplate = {
@@ -359,7 +361,7 @@ export default function RecordScreen() {
 
   const exportCustomTemplates = async () => {
     if (customTemplates.length === 0) {
-      Alert.alert("Keine Vorlagen", "Es gibt noch keine eigenen Vorlagen zum Exportieren.");
+      Alert.alert(t('alert_keine_vorlagen'), t('msg_es_gibt_noch_keine_eigenen'));
       return;
     }
     try {
@@ -369,10 +371,10 @@ export default function RecordScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, { mimeType: "application/json", dialogTitle: "Vorlagen exportieren" });
       } else {
-        Alert.alert("Export", "Teilen ist auf diesem Gerät nicht verfügbar.");
+        Alert.alert(t('export'), t('msg_teilen_ist_auf_diesem_geraet'));
       }
     } catch (e) {
-      Alert.alert("Fehler", "Export fehlgeschlagen.");
+      Alert.alert(t('alert_fehler'), t('msg_export_fehlgeschlagen'));
     }
   };
 
@@ -384,7 +386,7 @@ export default function RecordScreen() {
       const content = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: FileSystem.EncodingType.UTF8 });
       const imported = JSON.parse(content);
       if (!Array.isArray(imported)) {
-        Alert.alert("Fehler", "Ungültiges Dateiformat.");
+        Alert.alert(t('alert_fehler'), t('msg_ungueltiges_dateiformat'));
         return;
       }
       // Validate and add IDs
@@ -396,16 +398,16 @@ export default function RecordScreen() {
         description: t.description || "Importierte Vorlage",
       }));
       if (validTemplates.length === 0) {
-        Alert.alert("Fehler", "Keine gültigen Vorlagen in der Datei gefunden.");
+        Alert.alert(t('alert_fehler'), t('msg_keine_gueltigen_vorlagen_in_der'));
         return;
       }
       const merged = [...customTemplates, ...validTemplates];
       setCustomTemplates(merged);
       await AsyncStorage.setItem("custom-templates", JSON.stringify(merged));
-      Alert.alert("Importiert", `${validTemplates.length} Vorlage(n) erfolgreich importiert.`);
+      Alert.alert(t('alert_importiert'), `${validTemplates.length} Vorlage(n) erfolgreich importiert.`);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert("Fehler", "Import fehlgeschlagen. Bitte eine gültige JSON-Datei wählen.");
+      Alert.alert(t('alert_fehler'), t('msg_import_fehlgeschlagen_bitte_eine_gueltige'));
     }
   };
 
@@ -420,7 +422,7 @@ export default function RecordScreen() {
     await AsyncStorage.removeItem("last-selected-project-id");
   };
   const createAndSelectProject = async () => {
-    if (!newProjectName.trim()) { Alert.alert("Fehler", "Bitte gib einen Projektnamen ein."); return; }
+    if (!newProjectName.trim()) { Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein')); return; }
     try {
       const existing = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
       const np: ProjectItem = { id: Date.now().toString(), name: newProjectName.trim(), description: newProjectDesc.trim(), color: newProjectColor, createdAt: new Date().toISOString(), protocolPrefix: newProjectPrefix.trim().toUpperCase() || undefined, protocolCounter: 0 };
@@ -428,7 +430,7 @@ export default function RecordScreen() {
       await AsyncStorage.setItem("projects", JSON.stringify(updated));
       setProjects(updated); setShowCreateProject(false); setNewProjectName(""); setNewProjectDesc(""); setNewProjectPrefix(""); setNewProjectColor("#E53935");
       await selectProject(np);
-    } catch { Alert.alert("Fehler", "Projekt konnte nicht erstellt werden."); }
+    } catch { Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_erstellt_werden')); }
   };
   const changeProject = () => {
     setShowProjectPicker(true);
@@ -436,10 +438,10 @@ export default function RecordScreen() {
   };
 
   const archiveProject = async (projectId: string) => {
-    Alert.alert("Projekt archivieren", "Dieses Projekt wird ausgeblendet, aber nicht gelöscht.", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_projekt_archivieren'), t('msg_dieses_projekt_wird_ausgeblendet_aber'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Archivieren",
+        text: t('btn_archivieren'),
         onPress: async () => {
           try {
             const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
@@ -465,10 +467,10 @@ export default function RecordScreen() {
   };
 
   const deleteProject = async (projectId: string) => {
-    Alert.alert("Projekt löschen", "Dieses Projekt und alle zugeordneten Protokolle werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_projekt_loeschen'), t('msg_dieses_projekt_und_alle_zugeordneten'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Endgültig löschen",
+        text: t('btn_endgueltig_loeschen'),
         style: "destructive",
         onPress: async () => {
           try {
@@ -504,7 +506,7 @@ export default function RecordScreen() {
   };
 
   const saveEditProject = async () => {
-    if (!editProjectName.trim()) { Alert.alert("Fehler", "Bitte gib einen Projektnamen ein."); return; }
+    if (!editProjectName.trim()) { Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein')); return; }
     try {
       const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
       const updated = data.map((p: any) => p.id === editProjectId ? { ...p, name: editProjectName.trim(), description: editProjectDesc.trim(), color: editProjectColor, protocolPrefix: editProjectPrefix.trim().toUpperCase() || undefined } : p);
@@ -515,7 +517,7 @@ export default function RecordScreen() {
       }
       setShowEditProject(false);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch { Alert.alert("Fehler", "Projekt konnte nicht gespeichert werden."); }
+    } catch { Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_gespeichert_werden')); }
   };
 
   const duplicateProject = async (sourceProject: any) => {
@@ -535,8 +537,8 @@ export default function RecordScreen() {
       await AsyncStorage.setItem("projects", JSON.stringify(data));
       setProjects(data);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Dupliziert", `Projekt \"${duplicated.name}\" wurde erstellt.`);
-    } catch { Alert.alert("Fehler", "Projekt konnte nicht dupliziert werden."); }
+      Alert.alert(t('alert_dupliziert'), `Projekt \"${duplicated.name}\" wurde erstellt.`);
+    } catch { Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_dupliziert_werden')); }
   };
 
   // Filtered and sorted projects
@@ -1367,13 +1369,13 @@ export default function RecordScreen() {
                 <MaterialIcons name="business" size={20} color={colors.primary} />
               </View>
               <View>
-                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.foreground }}>Projekt wählen</Text>
+                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.foreground }}>{t('projekt_waehlen')}</Text>
               {isListening && liveText ? (
                 <Text style={{ fontSize: 12, color: "#22C55E", marginTop: 6, textAlign: "center", maxWidth: 280 }} numberOfLines={2}>{liveText}</Text>
               ) : null}
               </View>
             </View>
-            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>Wähle ein Projekt oder starte ohne Zuordnung</Text>
+            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>{t('waehle_ein_projekt_oder')}</Text>
           </View>
 
           {/* Summary Stats */}
@@ -1381,19 +1383,19 @@ export default function RecordScreen() {
             <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.primary }}>{projects.filter((p: any) => !p.isArchived).length}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Aktiv</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{t('project_active')}</Text>
               </View>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.success }}>{projects.reduce((sum, p: any) => sum + (p._protocolCount || 0), 0)}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{t('project_protocols')}</Text>
               </View>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: "#FDD835" }}>{projects.filter((p: any) => p.isFavorite && !p.isArchived).length}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Favoriten</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{t('project_favorites')}</Text>
               </View>
               <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 12, borderWidth: 1, borderColor: colors.border }}>
                 <Text style={{ fontSize: 20, fontWeight: "700", color: colors.muted }}>{projects.filter((p: any) => p.isArchived).length}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Archiv</Text>
+                <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{t('project_archived')}</Text>
               </View>
             </View>
           )}
@@ -1404,7 +1406,7 @@ export default function RecordScreen() {
             <TextInput
               value={projectSearch}
               onChangeText={setProjectSearch}
-              placeholder="Projekt suchen..."
+              placeholder={t('projekt_suchen')}
               placeholderTextColor={colors.muted}
               style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, color: colors.foreground }}
               returnKeyType="done"
@@ -1422,19 +1424,19 @@ export default function RecordScreen() {
               onPress={() => setProjectSort("activity")}
               style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: projectSort === "activity" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "activity" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "activity" ? colors.primary : colors.muted }}>Aktivität</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "activity" ? colors.primary : colors.muted }}>{t('stats_activity')}</Text>
             </Pressable>
             <Pressable
               onPress={() => setProjectSort("name")}
               style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: projectSort === "name" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "name" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "name" ? colors.primary : colors.muted }}>Name</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "name" ? colors.primary : colors.muted }}>{t('project_sort_name')}</Text>
             </Pressable>
             <Pressable
               onPress={() => setProjectSort("created")}
               style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: projectSort === "created" ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: projectSort === "created" ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "created" ? colors.primary : colors.muted }}>Erstellt</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: projectSort === "created" ? colors.primary : colors.muted }}>{t('project_sort_created')}</Text>
             </Pressable>
             <View style={{ flex: 1 }} />
             <Pressable
@@ -1442,7 +1444,7 @@ export default function RecordScreen() {
               style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: showArchived ? colors.warning + "15" : colors.surface, borderWidth: 1, borderColor: showArchived ? colors.warning : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name={showArchived ? "inventory" : "archive"} size={14} color={showArchived ? colors.warning : colors.muted} />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: showArchived ? colors.warning : colors.muted }}>{showArchived ? "Archiv" : "Archiv"}</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: showArchived ? colors.warning : colors.muted }}>{t('label_archiv')}</Text>
             </Pressable>
           </View>
 
@@ -1456,8 +1458,8 @@ export default function RecordScreen() {
                   <MaterialIcons name="add" size={26} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.primary }}>Neues Projekt anlegen</Text>
-                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Mit Nummerierung, Farbe und Beschreibung</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.primary }}>{t('neues_projekt_anlegen')}</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('mit_nummerierung_farbe_und')}</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
               </Pressable>
@@ -1559,7 +1561,7 @@ export default function RecordScreen() {
           {/* Bottom Buttons */}
           <View style={{ position: "absolute", bottom: 24, left: 20, right: 20, gap: 10 }}>
             <Pressable onPress={selectWithoutProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1, backgroundColor: colors.background }]}>
-              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.muted }}>Ohne Projekt fortfahren</Text>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.muted }}>{t('project_without')}</Text>
             </Pressable>
           </View>
         </View>
@@ -1569,14 +1571,14 @@ export default function RecordScreen() {
           <View style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 16 }}>
             <View style={{ borderRadius: 0, padding: 24, paddingBottom: 24, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Neues Projekt</Text>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('project_new')}</Text>
                 <Pressable onPress={() => setShowCreateProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
               </View>
-              <TextInput value={newProjectName} onChangeText={setNewProjectName} placeholder="Projektname (z.B. Baustelle Mühlenstraße)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
-              <TextInput value={newProjectDesc} onChangeText={setNewProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
-              <TextInput value={newProjectPrefix} onChangeText={(v) => setNewProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
+              <TextInput value={newProjectName} onChangeText={setNewProjectName} placeholder={t('projektname_zb_baustelle_muehlenstrasse')} placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
+              <TextInput value={newProjectDesc} onChangeText={setNewProjectDesc} placeholder={t('beschreibung_optional')} placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
+              <TextInput value={newProjectPrefix} onChangeText={(v) => setNewProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder={t('protokollpraefix_zb_bst_mng')} placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
               <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{newProjectPrefix ? `Nummerierung: ${newProjectPrefix}-001, ${newProjectPrefix}-002, ...` : "Optional: Automatische Nummerierung (z.B. BST-001)"}</Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Farbe wählen</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>{t('farbe_waehlen')}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
                 {PROJECT_COLORS.map((c) => (
                   <Pressable key={c} onPress={() => setNewProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 0, backgroundColor: c, alignItems: "center", justifyContent: "center" }, newProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
@@ -1585,7 +1587,7 @@ export default function RecordScreen() {
                 ))}
               </View>
               <Pressable onPress={createAndSelectProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Projekt erstellen & auswählen</Text>
+                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>{t('projekt_erstellen_auswaehlen')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1596,14 +1598,14 @@ export default function RecordScreen() {
           <View style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 16 }}>
             <View style={{ borderRadius: 0, padding: 24, paddingBottom: 24, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Projekt bearbeiten</Text>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('projekt_bearbeiten')}</Text>
                 <Pressable onPress={() => setShowEditProject(false)}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
               </View>
-              <TextInput value={editProjectName} onChangeText={setEditProjectName} placeholder="Projektname" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
-              <TextInput value={editProjectDesc} onChangeText={setEditProjectDesc} placeholder="Beschreibung (optional)" placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
-              <TextInput value={editProjectPrefix} onChangeText={(v) => setEditProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder="Protokoll-Präfix (z.B. BST, MNG)" placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
+              <TextInput value={editProjectName} onChangeText={setEditProjectName} placeholder={t('project_name')} placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
+              <TextInput value={editProjectDesc} onChangeText={setEditProjectDesc} placeholder={t('beschreibung_optional')} placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
+              <TextInput value={editProjectPrefix} onChangeText={(v) => setEditProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder={t('protokollpraefix_zb_bst_mng')} placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
               <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{editProjectPrefix ? `Präfix: ${editProjectPrefix}` : "Kein Präfix"}</Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Farbe wählen</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>{t('farbe_waehlen')}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
                 {PROJECT_COLORS.map((c) => (
                   <Pressable key={c} onPress={() => setEditProjectColor(c)} style={[{ width: 32, height: 32, borderRadius: 0, backgroundColor: c, alignItems: "center", justifyContent: "center" }, editProjectColor === c && { borderWidth: 3, borderColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 }]}>
@@ -1614,15 +1616,15 @@ export default function RecordScreen() {
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
                 <Pressable onPress={() => { setShowEditProject(false); const proj = projects.find((p: any) => p.id === editProjectId); if (proj) duplicateProject(proj); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
                   <MaterialIcons name="content-copy" size={16} color={colors.primary} />
-                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>Duplizieren</Text>
+                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}>{t('project_duplicate')}</Text>
                 </Pressable>
                 <Pressable onPress={() => { setShowEditProject(false); deleteProject(editProjectId!); }} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.error + "15", borderWidth: 1, borderColor: colors.error, opacity: pressed ? 0.8 : 1 }]}>
                   <MaterialIcons name="delete" size={16} color={colors.error} />
-                  <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>Löschen</Text>
+                  <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>{t('delete')}</Text>
                 </Pressable>
               </View>
               <Pressable onPress={saveEditProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}>
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Speichern</Text>
+                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>{t('save')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1661,7 +1663,7 @@ export default function RecordScreen() {
               { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
             ]}
           >
-            <Text style={styles.permissionButtonText}>Berechtigungen erteilen</Text>
+            <Text style={styles.permissionButtonText}>{t('berechtigungen_erteilen')}</Text>
           </Pressable>
         ) : (
           <>
@@ -1678,7 +1680,7 @@ export default function RecordScreen() {
                 { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
               ]}
             >
-              <Text style={styles.permissionButtonText}>Einstellungen öffnen</Text>
+              <Text style={styles.permissionButtonText}>{t('einstellungen_oeffnen')}</Text>
             </Pressable>
             <Text className="text-sm text-muted text-center mt-4">
               Berechtigungen wurden verweigert. Bitte aktiviere Kamera und Mikrofon in den Geräteeinstellungen.
@@ -1806,8 +1808,8 @@ export default function RecordScreen() {
       <ScreenContainer className="p-4">
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Protokoll-Vorschau</Text>
-            <Text style={{ fontSize: 13, color: colors.muted }}>Prüfe das generierte Protokoll vor dem Speichern</Text>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('protokollvorschau')}</Text>
+            <Text style={{ fontSize: 13, color: colors.muted }}>{t('pruefe_das_generierte_protokoll')}</Text>
           </View>
 
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
@@ -1839,13 +1841,13 @@ export default function RecordScreen() {
             onPress={() => { setShowPreview(false); setPreviewProtocol(null); setCapturedPhotos([]); setPhotoTimestamps([]); }}
             style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Verwerfen</Text>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('verwerfen')}</Text>
           </Pressable>
           <Pressable
             onPress={confirmSaveProtocol}
             style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Speichern</Text>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>{t('save')}</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -1936,7 +1938,7 @@ export default function RecordScreen() {
         {!selectedProject && (
           <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 0, gap: 6, backgroundColor: "rgba(255,152,0,0.8)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
             <MaterialIcons name="warning" size={14} color="#FFFFFF" />
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Kein Projekt</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>{t('kein_projekt')}</Text>
           </Pressable>
         )}
 
@@ -2148,7 +2150,7 @@ export default function RecordScreen() {
                 <MaterialIcons name="search" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.templateSearchInput, { color: colors.foreground }]}
-                  placeholder="Vorlage suchen..."
+                  placeholder={t('vorlage_suchen')}
                   placeholderTextColor={colors.muted}
                   value={templateSearch}
                   onChangeText={setTemplateSearch}
@@ -2239,7 +2241,7 @@ export default function RecordScreen() {
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 0, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Eigene Vorlage erstellen</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>{t('eigene_vorlage_erstellen')}</Text>
                 </Pressable>
               </ScrollView>
             </View>
@@ -2274,7 +2276,7 @@ export default function RecordScreen() {
                 ]}
               >
                 <MaterialIcons name="photo-camera" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>Foto</Text>
+                <Text style={styles.actionButtonLabel}>{t('foto')}</Text>
                 {capturedPhotos.length > 0 && (
                   <View style={styles.photoBadge}>
                     <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
@@ -2290,7 +2292,7 @@ export default function RecordScreen() {
                 ]}
               >
                 <MaterialIcons name="photo-library" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>Galerie</Text>
+                <Text style={styles.actionButtonLabel}>{t('galerie')}</Text>
                 {capturedPhotos.length > 0 && (
                   <View style={styles.photoBadge}>
                     <Text style={styles.photoBadgeText}>{capturedPhotos.length}</Text>
@@ -2331,7 +2333,7 @@ export default function RecordScreen() {
                 ]}
               >
                 <MaterialIcons name="bookmark-add" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>Kapitel</Text>
+                <Text style={styles.actionButtonLabel}>{t('kapitel')}</Text>
                 {markers.length > 0 && (
                   <View style={[styles.photoBadge, { backgroundColor: "#E53935" }]}>
                     <Text style={styles.photoBadgeText}>{markers.length}</Text>
@@ -2362,7 +2364,7 @@ export default function RecordScreen() {
                 }]}
               >
                 <MaterialIcons name="photo-library" size={18} color="#FFFFFF" />
-                <Text style={{ fontSize: 12, color: "#FFFFFF", fontWeight: "600" }}>Galerie</Text>
+                <Text style={{ fontSize: 12, color: "#FFFFFF", fontWeight: "600" }}>{t('galerie')}</Text>
                 {capturedPhotos.length > 0 && (
                   <View style={{ backgroundColor: "#2196F3", borderRadius: 0, minWidth: 18, height: 18, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length}</Text>
@@ -2401,7 +2403,7 @@ export default function RecordScreen() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12 }}>
             <View>
               <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""}</Text>
-              <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>Lang drücken zum Löschen</Text>
+              <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{t('lang_druecken_zum_loeschen')}</Text>
             </View>
             <Pressable onPress={() => setShowPhotoGallery(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.7 : 1 }]}>
               <MaterialIcons name="close" size={28} color="#FFFFFF" />
@@ -2417,12 +2419,12 @@ export default function RecordScreen() {
                 onLongPress={() => {
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                   Alert.alert(
-                    "Foto löschen",
-                    `Foto #${index + 1} wirklich löschen?`,
+                    t('alert_foto_loeschen'),
+                    t('msg_foto_wirklich_loeschen_nr').replace('{nr}', String(index + 1)),
                     [
-                      { text: "Abbrechen", style: "cancel" },
+                      { text: t('btn_abbrechen'), style: "cancel" },
                       {
-                        text: "Löschen",
+                        text: t('btn_loeschen'),
                         style: "destructive",
                         onPress: () => {
                           setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
@@ -2535,7 +2537,7 @@ export default function RecordScreen() {
       <Modal visible={showAnnotation} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", padding: 24 }}>
           <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 20 }}>
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Foto-Notiz</Text>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('fotonotiz')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Beschreibung oder Anmerkung zu Foto #{annotatingPhotoIndex !== null ? annotatingPhotoIndex + 1 : ""}</Text>
             <TextInput
               value={annotationText}
@@ -2556,7 +2558,7 @@ export default function RecordScreen() {
                 }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.surface, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -2570,7 +2572,7 @@ export default function RecordScreen() {
                 }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Speichern</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>{t('save')}</Text>
               </Pressable>
             </View>
           </View>
@@ -2583,13 +2585,13 @@ export default function RecordScreen() {
           <Pressable style={styles.templateModalDismiss} onPress={() => setShowCreateTemplate(false)} />
           <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
             <View style={styles.templateSheetHeader}>
-              <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>Eigene Vorlage</Text>
+              <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>{t('eigene_vorlage')}</Text>
               <Pressable onPress={() => setShowCreateTemplate(false)}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
               </Pressable>
             </View>
             <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, marginTop: 8 }}>Name *</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, marginTop: 8 }}>{t('name')}</Text>
               <TextInput
                 style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
                 placeholder="z.B. Abnahmeprotokoll"
@@ -2598,16 +2600,16 @@ export default function RecordScreen() {
                 onChangeText={setNewTemplateName}
                 returnKeyType="next"
               />
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>Beschreibung</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>{t('project_description')}</Text>
               <TextInput
                 style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
-                placeholder="Kurze Beschreibung der Vorlage"
+                placeholder={t('kurze_beschreibung_der_vorlage')}
                 placeholderTextColor={colors.muted}
                 value={newTemplateDesc}
                 onChangeText={setNewTemplateDesc}
                 returnKeyType="next"
               />
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>Kategorie</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>{t('kategorie')}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 {TEMPLATE_CATEGORIES.map((cat) => (
                   <Pressable
@@ -2619,10 +2621,10 @@ export default function RecordScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>KI-Anweisung (Prompt) *</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 }}>{t('kianweisung_prompt')}</Text>
               <TextInput
                 style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 16, minHeight: 120, textAlignVertical: "top" }}
-                placeholder="Beschreibe, wie die KI das Transkript verarbeiten soll. Z.B.: Erstelle ein strukturiertes Abnahmeprotokoll mit Mängelliste, Teilnehmern und Ergebnis."
+                placeholder={t('beschreibe_wie_die_ki')}
                 placeholderTextColor={colors.muted}
                 value={newTemplatePrompt}
                 onChangeText={setNewTemplatePrompt}
@@ -2633,7 +2635,7 @@ export default function RecordScreen() {
               <Pressable
                 onPress={async () => {
                   if (!newTemplatePrompt.trim()) {
-                    Alert.alert("Fehler", "Bitte zuerst einen Prompt eingeben.");
+                    Alert.alert(t('alert_fehler'), t('msg_bitte_zuerst_einen_prompt_eingeben'));
                     return;
                   }
                   setIsGeneratingPreview(true);
@@ -2644,7 +2646,7 @@ export default function RecordScreen() {
                     const previewText = `--- VORSCHAU (Beispiel-Output) ---\n\nPrompt: ${newTemplatePrompt.trim().substring(0, 100)}...\n\nBeispiel-Transkript:\n\"${sampleTranscript}\"\n\n--- Erwartetes Ergebnis ---\nDie KI wird dieses Transkript gemäß Ihrem Prompt verarbeiten und ein strukturiertes Dokument erstellen.\n\nTipp: Testen Sie die Vorlage nach dem Speichern mit einer echten Aufnahme.`;
                     setTemplatePreview(previewText);
                   } catch (e) {
-                    Alert.alert("Fehler", "Vorschau konnte nicht generiert werden.");
+                    Alert.alert(t('alert_fehler'), t('msg_vorschau_konnte_nicht_generiert_werden'));
                   } finally {
                     setIsGeneratingPreview(false);
                   }
@@ -2656,14 +2658,14 @@ export default function RecordScreen() {
                 ) : (
                   <MaterialIcons name="visibility" size={18} color={colors.primary} />
                 )}
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Vorschau testen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('vorschau_testen')}</Text>
               </Pressable>
 
               {/* Preview result */}
               {templatePreview && (
                 <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>Vorschau</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>{t('vorschau')}</Text>
                     <Pressable onPress={() => setTemplatePreview(null)}>
                       <MaterialIcons name="close" size={16} color={colors.muted} />
                     </Pressable>
@@ -2676,18 +2678,18 @@ export default function RecordScreen() {
                 onPress={saveCustomTemplate}
                 style={({ pressed }) => [{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 0, alignItems: "center", opacity: pressed ? 0.8 : 1, marginBottom: 20 }]}
               >
-                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Vorlage speichern</Text>
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>{t('vorlage_speichern')}</Text>
               </Pressable>
 
               {/* List existing custom templates with delete */}
               {customTemplates.length > 0 && (
                 <View style={{ marginTop: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>Meine Vorlagen</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>{t('meine_vorlagen')}</Text>
                   {customTemplates.map((ct) => (
                     <View key={ct.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                       <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
                       <Text style={{ flex: 1, marginLeft: 10, fontSize: 14, color: colors.foreground }}>{ct.name}</Text>
-                      <Pressable onPress={() => { Alert.alert("Löschen?", `Vorlage "${ct.name}" wirklich löschen?`, [{ text: "Abbrechen" }, { text: "Löschen", style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
+                      <Pressable onPress={() => { Alert.alert(t('alert_loeschen_frage'), `Vorlage "${ct.name}" wirklich löschen?`, [{ text: t('btn_abbrechen') }, { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
                         <MaterialIcons name="delete-outline" size={20} color={colors.error} />
                       </Pressable>
                     </View>
@@ -2702,7 +2704,7 @@ export default function RecordScreen() {
                   style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="file-download" size={18} color={colors.foreground} />
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Importieren</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{t('importieren')}</Text>
                 </Pressable>
                 {customTemplates.length > 0 && (
                   <Pressable
@@ -2710,7 +2712,7 @@ export default function RecordScreen() {
                     style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="file-upload" size={18} color={colors.foreground} />
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Exportieren</Text>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{t('export_title')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -2763,7 +2765,7 @@ export default function RecordScreen() {
                     setCustomTemplates(updated);
                     await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
                     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert("Hinzugefügt", `"${libTemplate.name}" wurde zu deinen Vorlagen hinzugefügt.`);
+                    Alert.alert(t('hinzugefuegt'), t('msg_template_zu_vorlagen_hinzugefuegt').replace('{name}', libTemplate.name));
                   }}
                   style={({ pressed }) => [{
                     flexDirection: "row",
@@ -2799,7 +2801,7 @@ export default function RecordScreen() {
             <View style={{ width: 56, height: 56, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
               <MaterialIcons name="stop-circle" size={32} color={colors.primary} />
             </View>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8, textAlign: "center" }}>Aufnahme beenden?</Text>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8, textAlign: "center" }}>{t('aufnahme_beenden')}</Text>
             <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 20, lineHeight: 20 }}>
               Möchtest du die Aufnahme abschließen und das Protokoll erstellen, oder möchtest du weiter aufnehmen?
             </Text>
@@ -2809,14 +2811,14 @@ export default function RecordScreen() {
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="play-arrow" size={20} color={colors.foreground} style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Fortsetzen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('record_resume')}</Text>
               </Pressable>
               <Pressable
                 onPress={confirmStopRecording}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="check-circle" size={20} color="#FFF" style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Abschließen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('abschliessen')}</Text>
               </Pressable>
             </View>
           </View>
@@ -2827,7 +2829,7 @@ export default function RecordScreen() {
       <Modal visible={chapterPromptVisible} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 20 }}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Neues Kapitel</Text>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('neues_kapitel')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
               {chapterListening ? "Höre zu... Sprich den Kapitelnamen" : "Sprich den Kapitelnamen oder tippe ihn ein"}
             </Text>
@@ -2838,7 +2840,7 @@ export default function RecordScreen() {
                 <View style={{ width: 64, height: 64, borderRadius: 0, backgroundColor: "#FF9800" + "20", alignItems: "center", justifyContent: "center" }}>
                   <MaterialIcons name="mic" size={32} color="#FF9800" />
                 </View>
-                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>Aufnahme läuft...</Text>
+                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>{t('aufnahme_laeuft')}</Text>
               </View>
             )}
 
@@ -2847,7 +2849,7 @@ export default function RecordScreen() {
               <TextInput
                 value={chapterInput}
                 onChangeText={setChapterInput}
-                placeholder="Kapitelname..."
+                placeholder={t('kapitelname')}
                 placeholderTextColor={colors.muted}
                 autoFocus={false}
                 returnKeyType="done"
@@ -2863,7 +2865,7 @@ export default function RecordScreen() {
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 0, backgroundColor: "#FF9800" + "15", borderWidth: 1, borderColor: "#FF9800" + "40", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="mic" size={20} color="#FF9800" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#FF9800" }}>Erneut einsprechen</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#FF9800" }}>{t('erneut_einsprechen')}</Text>
               </Pressable>
             )}
 
@@ -2873,7 +2875,7 @@ export default function RecordScreen() {
                 onPress={stopChapterSpeech}
                 style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 0, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Fertig - Kapitel setzen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('fertig_kapitel_setzen')}</Text>
               </Pressable>
             )}
 
@@ -2882,14 +2884,14 @@ export default function RecordScreen() {
                 onPress={async () => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderRef.current) { try { await chapterRecorderRef.current.stopAndUnloadAsync(); } catch {} chapterRecorderRef.current = null; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               {!chapterListening && (
                 <Pressable
                   onPress={() => confirmChapter(chapterInput || `Kapitel ${markers.filter(m => m.label.startsWith("KAPITEL:")).length + 1}`)}
                   style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: chapterInput.trim() ? "#FF9800" : "#FF980080", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>Kapitel setzen</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('kapitel_setzen')}</Text>
                 </Pressable>
               )}
             </View>

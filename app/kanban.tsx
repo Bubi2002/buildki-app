@@ -18,6 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 
 type KanbanStatus = "offen" | "in_arbeit" | "erledigt";
 
@@ -42,6 +43,7 @@ const COLUMNS: { key: KanbanStatus; title: string; icon: string; color: string }
 ];
 
 export default function KanbanScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
@@ -187,7 +189,7 @@ export default function KanbanScreen() {
         <ScrollView style={styles.columnContent} showsVerticalScrollIndicator={false}>
           {columnTasks.map(renderTaskCard)}
           {columnTasks.length === 0 && (
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Keine Aufgaben</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>{t('keine_aufgaben')}</Text>
           )}
         </ScrollView>
       </View>
@@ -222,7 +224,7 @@ export default function KanbanScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <MaterialIcons name="inbox" size={48} color={colors.muted} />
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Keine Aufgaben in dieser Spalte</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>{t('keine_aufgaben_in_dieser')}</Text>
           </View>
         }
       />
@@ -235,7 +237,7 @@ export default function KanbanScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Kanban Board</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('kanban_board')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -264,7 +266,7 @@ export default function KanbanScreen() {
             {selectedTask && (
               <>
                 <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>Aufgabe</Text>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('aufgabe')}</Text>
                   <Pressable onPress={() => setShowDetail(false)}>
                     <MaterialIcons name="close" size={24} color={colors.foreground} />
                   </Pressable>
@@ -275,29 +277,29 @@ export default function KanbanScreen() {
                   
                   <View style={styles.detailRow}>
                     <MaterialIcons name="person" size={18} color={colors.muted} />
-                    <Text style={[styles.detailLabel, { color: colors.muted }]}>Zuständig:</Text>
+                    <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('zustaendig')}</Text>
                     <Text style={[styles.detailValue, { color: colors.foreground }]}>{selectedTask.assignee || "Nicht zugewiesen"}</Text>
                   </View>
                   
                   <View style={styles.detailRow}>
                     <MaterialIcons name="flag" size={18} color={getPriorityColor(selectedTask.priority)} />
-                    <Text style={[styles.detailLabel, { color: colors.muted }]}>Priorität:</Text>
+                    <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('prioritaet_2')}</Text>
                     <Text style={[styles.detailValue, { color: getPriorityColor(selectedTask.priority) }]}>{selectedTask.priority}</Text>
                   </View>
                   
                   <View style={styles.detailRow}>
                     <MaterialIcons name="event" size={18} color={colors.muted} />
-                    <Text style={[styles.detailLabel, { color: colors.muted }]}>Frist:</Text>
+                    <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('frist')}</Text>
                     <Text style={[styles.detailValue, { color: colors.foreground }]}>{selectedTask.deadline || "Keine Frist"}</Text>
                   </View>
                   
                   <View style={styles.detailRow}>
                     <MaterialIcons name="description" size={18} color={colors.muted} />
-                    <Text style={[styles.detailLabel, { color: colors.muted }]}>Quelle:</Text>
+                    <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('quelle')}</Text>
                     <Text style={[styles.detailValue, { color: colors.foreground }]}>{selectedTask.protocolTitle}</Text>
                   </View>
                   
-                  <Text style={[styles.moveTitle, { color: colors.foreground }]}>Status ändern:</Text>
+                  <Text style={[styles.moveTitle, { color: colors.foreground }]}>{t('status_aendern')}</Text>
                   <View style={styles.moveButtons}>
                     {COLUMNS.map(col => (
                       <Pressable
@@ -326,7 +328,7 @@ export default function KanbanScreen() {
                   style={[styles.goToProtocol, { backgroundColor: colors.primary }]}
                 >
                   <MaterialIcons name="open-in-new" size={16} color="#fff" />
-                  <Text style={styles.goToProtocolText}>Zum Protokoll</Text>
+                  <Text style={styles.goToProtocolText}>{t('zum_protokoll')}</Text>
                 </Pressable>
               </>
             )}

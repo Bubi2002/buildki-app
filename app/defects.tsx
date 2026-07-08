@@ -40,8 +40,10 @@ import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function DefectsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -127,10 +129,10 @@ export default function DefectsScreen() {
   };
 
   const removeDefect = (defectId: string) => {
-    Alert.alert("Mangel löschen", "Diesen Mangel wirklich entfernen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_mangel_loeschen'), t('msg_diesen_mangel_wirklich_entfernen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           await deleteDefect(defectId);
@@ -201,7 +203,7 @@ export default function DefectsScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Mängel</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('maengel')}</Text>
         <Pressable
           onPress={async () => {
             try {
@@ -211,7 +213,7 @@ export default function DefectsScreen() {
                 await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
               }
             } catch (e: any) {
-              Alert.alert("Fehler", e?.message || "PDF-Export fehlgeschlagen");
+              Alert.alert(t('alert_fehler'), e?.message || "PDF-Export fehlgeschlagen");
             }
           }}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
@@ -227,15 +229,15 @@ export default function DefectsScreen() {
       <View style={styles.statsRow}>
         <View style={[styles.statBadge, { backgroundColor: colors.error + "20" }]}>
           <Text style={[styles.statNum, { color: colors.error }]}>{stats.offen}</Text>
-          <Text style={[styles.statLabel, { color: colors.error }]}>Offen</Text>
+          <Text style={[styles.statLabel, { color: colors.error }]}>{t('checklist_incomplete')}</Text>
         </View>
         <View style={[styles.statBadge, { backgroundColor: colors.warning + "20" }]}>
           <Text style={[styles.statNum, { color: colors.warning }]}>{stats.inBearbeitung}</Text>
-          <Text style={[styles.statLabel, { color: colors.warning }]}>In Arbeit</Text>
+          <Text style={[styles.statLabel, { color: colors.warning }]}>{t('in_arbeit')}</Text>
         </View>
         <View style={[styles.statBadge, { backgroundColor: colors.success + "20" }]}>
           <Text style={[styles.statNum, { color: colors.success }]}>{stats.erledigt}</Text>
-          <Text style={[styles.statLabel, { color: colors.success }]}>Erledigt</Text>
+          <Text style={[styles.statLabel, { color: colors.success }]}>{t('defect_resolved')}</Text>
         </View>
       </View>
 
@@ -268,7 +270,7 @@ export default function DefectsScreen() {
             gewerkFilter === "alle" && { backgroundColor: colors.primary + "15" },
           ]}
         >
-          <Text style={[styles.filterText, { color: gewerkFilter === "alle" ? colors.primary : colors.muted }]}>Alle Gewerke</Text>
+          <Text style={[styles.filterText, { color: gewerkFilter === "alle" ? colors.primary : colors.muted }]}>{t('alle_gewerke')}</Text>
         </Pressable>
         {GEWERKE.map((g) => (
           <Pressable
@@ -374,10 +376,10 @@ export default function DefectsScreen() {
                         <Pressable
                           key={idx}
                           onLongPress={() => {
-                            Alert.alert("Foto entfernen", "Dieses Foto vom Mangel entfernen?", [
-                              { text: "Abbrechen", style: "cancel" },
+                            Alert.alert(t('alert_foto_entfernen'), t('msg_dieses_foto_vom_mangel_entfernen'), [
+                              { text: t('btn_abbrechen'), style: "cancel" },
                               {
-                                text: "Entfernen",
+                                text: t('btn_entfernen'),
                                 style: "destructive",
                                 onPress: async () => {
                                   const updatedPhotos = selectedDefect.photos.filter((_, i) => i !== idx);
@@ -405,7 +407,7 @@ export default function DefectsScreen() {
                       onPress={async () => {
                         const { status } = await ImagePicker.requestCameraPermissionsAsync();
                         if (status !== "granted") {
-                          Alert.alert("Berechtigung", "Kamera-Zugriff wird ben\u00f6tigt.");
+                          Alert.alert(t('alert_berechtigung'), t('msg_kamerazugriff_wird_benu00f6tigt'));
                           return;
                         }
                         const result = await ImagePicker.launchCameraAsync({
@@ -432,7 +434,7 @@ export default function DefectsScreen() {
                       }]}
                     >
                       <MaterialIcons name="camera-alt" size={18} color={colors.primary} />
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Kamera</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('kamera')}</Text>
                     </Pressable>
 
                     <Pressable
@@ -464,14 +466,14 @@ export default function DefectsScreen() {
                       }]}
                     >
                       <MaterialIcons name="photo-library" size={18} color={colors.muted} />
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted }}>Galerie</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted }}>{t('galerie')}</Text>
                     </Pressable>
                   </View>
                 </View>
 
                 {/* Quick Status Change */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Status \u00e4ndern</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('status_u00e4ndern')}</Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {(["offen", "in_bearbeitung", "erledigt"] as DefectStatus[]).map((s) => (
                       <Pressable
@@ -503,9 +505,9 @@ export default function DefectsScreen() {
 
                 {/* History Timeline */}
                 <View style={{ marginBottom: 20 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Verlauf</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('verlauf')}</Text>
                   {defectHistoryEntries.length === 0 ? (
-                    <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }}>Noch keine \u00c4nderungen erfasst</Text>
+                    <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }}>{t('noch_keine_u00c4nderungen_erfasst')}</Text>
                   ) : (
                     defectHistoryEntries.map((entry, idx) => (
                       <View key={entry.id} style={{ flexDirection: "row", marginBottom: 10 }}>
@@ -539,11 +541,11 @@ export default function DefectsScreen() {
       <Modal visible={showCreateModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Neuen Mangel erfassen</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neuen_mangel_erfassen')}</Text>
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Bezeichnung *"
+              placeholder={t('bezeichnung')}
               placeholderTextColor={colors.muted}
               value={newTitle}
               onChangeText={setNewTitle}
@@ -551,7 +553,7 @@ export default function DefectsScreen() {
 
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Beschreibung"
+              placeholder={t('project_description')}
               placeholderTextColor={colors.muted}
               value={newDescription}
               onChangeText={setNewDescription}
@@ -561,14 +563,14 @@ export default function DefectsScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Ort/Raum (z.B. EG Flur, Bad OG)"
+              placeholder={t('ortraum_zb_eg_flur')}
               placeholderTextColor={colors.muted}
               value={newLocation}
               onChangeText={setNewLocation}
             />
 
             {/* Priority */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Priorität</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('prioritaet')}</Text>
             <View style={styles.priorityRow}>
               {(["niedrig", "mittel", "hoch"] as DefectPriority[]).map((p) => (
                 <Pressable
@@ -588,7 +590,7 @@ export default function DefectsScreen() {
             </View>
 
             {/* Gewerk */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Gewerk</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('gewerk')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {GEWERKE.map((g) => (
                 <Pressable
@@ -608,7 +610,7 @@ export default function DefectsScreen() {
             </ScrollView>
 
             {/* Category */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Kategorie</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('kategorie')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {DEFECT_CATEGORIES.map((cat) => (
                 <Pressable
@@ -628,7 +630,7 @@ export default function DefectsScreen() {
             </ScrollView>
 
             {/* Deadline */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Frist (optional)</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('frist_optional')}</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
               {[7, 14, 30, 60].map((days) => {
                 const d = new Date();
@@ -660,7 +662,7 @@ export default function DefectsScreen() {
             {/* Verantwortlicher */}
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Verantwortlicher (optional)"
+              placeholder={t('verantwortlicher_optional')}
               placeholderTextColor={colors.muted}
               value={newAssignee}
               onChangeText={setNewAssignee}
@@ -671,13 +673,13 @@ export default function DefectsScreen() {
                 onPress={() => { setShowCreateModal(false); setNewTitle(""); setNewDescription(""); setNewLocation(""); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
+                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={createDefect}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
               >
-                <Text style={styles.saveBtnText}>Erstellen</Text>
+                <Text style={styles.saveBtnText}>{t('erstellen')}</Text>
               </Pressable>
             </View>
           </View>

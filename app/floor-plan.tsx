@@ -34,6 +34,7 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
+import { useTranslation } from "@/lib/language-provider";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -54,6 +55,7 @@ const PIN_ICONS: Record<PlanPin["type"], string> = {
 };
 
 export default function FloorPlanScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -98,9 +100,9 @@ export default function FloorPlanScreen() {
 
   const addPlan = async () => {
     // Show options: Galerie or Cloud
-    Alert.alert("Plan hinzufügen", "Woher möchtest du den Plan laden?", [
+    Alert.alert(t('alert_plan_hinzufuegen'), t('msg_woher_moechtest_du_den_plan'), [
       {
-        text: "Fotogalerie",
+        text: t('btn_fotogalerie'),
         onPress: async () => {
           const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -128,7 +130,7 @@ export default function FloorPlanScreen() {
           }
         },
       },
-      { text: "Abbrechen", style: "cancel" },
+      { text: t('btn_abbrechen'), style: "cancel" },
     ]);
   };
 
@@ -177,7 +179,7 @@ export default function FloorPlanScreen() {
 
   const savePin = async () => {
     if (!pendingPin || !selectedPlan || !pinLabel.trim()) {
-      Alert.alert("Hinweis", "Bitte gib eine Bezeichnung ein.");
+      Alert.alert(t('hinweis'), t('msg_bitte_gib_eine_bezeichnung_ein'));
       return;
     }
 
@@ -204,10 +206,10 @@ export default function FloorPlanScreen() {
   };
 
   const removePin = async (pinId: string) => {
-    Alert.alert("Markierung löschen", "Diese Markierung wirklich entfernen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_markierung_loeschen'), t('msg_diese_markierung_wirklich_entfernen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           await deletePlanPin(pinId);
@@ -220,10 +222,10 @@ export default function FloorPlanScreen() {
   };
 
   const removePlan = async (planId: string) => {
-    Alert.alert("Plan löschen", "Diesen Grundriss und alle zugehörigen Markierungen löschen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_plan_loeschen'), t('msg_diesen_grundriss_und_alle_zugehoerigen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           await deleteFloorPlan(planId);
@@ -277,7 +279,7 @@ export default function FloorPlanScreen() {
   const viewPinPhotos = (pin: PlanPin) => {
     const photos = pin.photos || (pin.photoUri ? [pin.photoUri] : []);
     if (photos.length === 0) {
-      Alert.alert("Keine Fotos", "Diesem Marker sind noch keine Fotos zugeordnet. Tippe auf 'Fotos hinzuf\u00fcgen' um Bilder zu verlinken.");
+      Alert.alert(t('gallery_no_photos'), t('msg_marker_keine_fotos'));
       return;
     }
     setGalleryPhotos(photos);
@@ -293,7 +295,7 @@ export default function FloorPlanScreen() {
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Grundrisse</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t('grundrisse')}</Text>
           {selectedPlan && (
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{selectedPlan.name}</Text>
           )}
@@ -470,7 +472,7 @@ export default function FloorPlanScreen() {
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 40 }}>
                 <MaterialIcons name="pin-drop" size={40} color={colors.muted} />
-                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>Keine Markierungen</Text>
+                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>{t('keine_markierungen')}</Text>
               </View>
             }
             renderItem={({ item: pin }) => (
@@ -507,7 +509,7 @@ export default function FloorPlanScreen() {
           <View style={[styles.emptyIcon, { backgroundColor: colors.primary + "10" }]}>
             <MaterialIcons name="map" size={48} color={colors.primary} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Grundrisse & Pläne</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('grundrisse_plaene')}</Text>
           <Text style={[styles.emptySubtext, { color: colors.muted }]}>
             Lade Grundrisse, Lagepläne oder technische Zeichnungen hoch und markiere Stellen direkt auf dem Plan.
           </Text>
@@ -516,7 +518,7 @@ export default function FloorPlanScreen() {
             style={({ pressed }) => [styles.uploadBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.85 }]}
           >
             <MaterialIcons name="cloud-upload" size={20} color="#FFF" />
-            <Text style={styles.uploadBtnText}>Plan hochladen</Text>
+            <Text style={styles.uploadBtnText}>{t('plan_hochladen')}</Text>
           </Pressable>
           <Text style={{ fontSize: 11, color: colors.muted, marginTop: 12 }}>
             Unterstützt: JPG, PNG, PDF-Scans
@@ -532,7 +534,7 @@ export default function FloorPlanScreen() {
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Neue Markierung</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neue_markierung')}</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
               Wähle einen Typ und gib eine Bezeichnung ein
             </Text>
@@ -564,7 +566,7 @@ export default function FloorPlanScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              placeholder="Bezeichnung *"
+              placeholder={t('bezeichnung')}
               placeholderTextColor={colors.muted}
               value={pinLabel}
               onChangeText={setPinLabel}
@@ -575,7 +577,7 @@ export default function FloorPlanScreen() {
 
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              placeholder="Beschreibung (optional)"
+              placeholder={t('beschreibung_optional')}
               placeholderTextColor={colors.muted}
               value={pinDescription}
               onChangeText={setPinDescription}
@@ -591,14 +593,14 @@ export default function FloorPlanScreen() {
                 onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => { Keyboard.dismiss(); savePin(); }}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: PIN_COLORS[pinType] }, pressed && { opacity: 0.85 }]}
               >
                 <MaterialIcons name="check" size={18} color="#FFF" />
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF", marginLeft: 6 }}>Speichern</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF", marginLeft: 6 }}>{t('save')}</Text>
               </Pressable>
             </View>
               </View>
@@ -612,7 +614,7 @@ export default function FloorPlanScreen() {
       <Modal visible={showPlanNameModal} transparent animationType="fade">
         <View style={[styles.modalOverlay, { justifyContent: "center" }]}>
           <View style={[styles.nameModalContent, { backgroundColor: colors.background }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Plan benennen</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('plan_benennen')}</Text>
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               placeholder="z.B. EG Grundriss, OG1 Elektro..."
@@ -628,13 +630,13 @@ export default function FloorPlanScreen() {
                 onPress={() => { setShowPlanNameModal(false); setPendingPlanAsset(null); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={savePlanWithName}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.85 }]}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Speichern</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>{t('save')}</Text>
               </Pressable>
             </View>
           </View>
@@ -700,7 +702,7 @@ export default function FloorPlanScreen() {
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Fotos hinzuf\u00fcgen</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('fotos_hinzufu00fcgen')}</Text>
                 </Pressable>
 
                 <View style={[styles.detailCoords, { backgroundColor: colors.surface }]}>
@@ -714,7 +716,7 @@ export default function FloorPlanScreen() {
                   style={({ pressed }) => [styles.deleteBtn, { borderColor: colors.error }, pressed && { opacity: 0.7 }]}
                 >
                   <MaterialIcons name="delete-outline" size={18} color={colors.error} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>Markierung l\u00f6schen</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>{t('markierung_lu00f6schen')}</Text>
                 </Pressable>
               </>
             )}
@@ -746,7 +748,7 @@ export default function FloorPlanScreen() {
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 80 }}>
                 <MaterialIcons name="photo-library" size={48} color="#666" />
-                <Text style={{ fontSize: 14, color: "#888", marginTop: 12 }}>Keine Fotos vorhanden</Text>
+                <Text style={{ fontSize: 14, color: "#888", marginTop: 12 }}>{t('keine_fotos_vorhanden')}</Text>
               </View>
             }
           />

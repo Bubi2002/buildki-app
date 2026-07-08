@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   getNotificationPreferences,
   saveNotificationPreferences,
@@ -98,6 +99,7 @@ function NumberInput({ value, min, max, onValueChange, colors, formatValue }: {
 }
 
 export default function NotificationsSettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const [prefs, setPrefs] = useState<NotificationPreferences>({
     enabled: true,
@@ -179,7 +181,7 @@ export default function NotificationsSettingsScreen() {
 
   const enableNotifications = async () => {
     if (Platform.OS === "web") {
-      Alert.alert("Nicht verfügbar", "Push-Benachrichtigungen sind nur auf dem Gerät verfügbar.");
+      Alert.alert(t('alert_nicht_verfuegbar'), t('msg_pushbenachrichtigungen_sind_nur_auf_dem'));
       return;
     }
     const granted = await requestPermissions();
@@ -187,9 +189,9 @@ export default function NotificationsSettingsScreen() {
     if (granted) {
       await updatePref("enabled", true);
       await scheduleNotifications();
-      Alert.alert("Aktiviert", "Benachrichtigungen wurden aktiviert.");
+      Alert.alert(t('alert_aktiviert'), t('msg_benachrichtigungen_wurden_aktiviert'));
     } else {
-      Alert.alert("Berechtigung verweigert", "Bitte aktiviere Benachrichtigungen in den Geräte-Einstellungen.");
+      Alert.alert(t('alert_berechtigung_verweigert'), t('msg_bitte_aktiviere_benachrichtigungen_in_den'));
     }
   };
 
@@ -202,8 +204,8 @@ export default function NotificationsSettingsScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Benachrichtigungen</Text>
-            <Text style={{ fontSize: 13, color: colors.muted }}>Erinnerungen konfigurieren</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('settings_notifications')}</Text>
+            <Text style={{ fontSize: 13, color: colors.muted }}>{t('erinnerungen_konfigurieren')}</Text>
           </View>
         </View>
 
@@ -215,8 +217,8 @@ export default function NotificationsSettingsScreen() {
           >
             <MaterialIcons name="notifications-off" size={24} color={colors.warning} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Benachrichtigungen deaktiviert</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tippe hier um sie zu aktivieren</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('benachrichtigungen_deaktiviert')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('tippe_hier_um_sie')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -228,8 +230,8 @@ export default function NotificationsSettingsScreen() {
             <MaterialIcons name="notifications-active" size={22} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>Benachrichtigungen</Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Alle Erinnerungen ein/ausschalten</Text>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>{t('settings_notifications')}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('alle_erinnerungen_einausschalten')}</Text>
           </View>
           <Switch
             value={prefs.enabled}
@@ -240,13 +242,13 @@ export default function NotificationsSettingsScreen() {
         </View>
 
         {/* Reminder Types */}
-        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Erinnerungen</Text>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('erinnerungen')}</Text>
         <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20, overflow: "hidden" }}>
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <MaterialIcons name="warning" size={20} color={colors.warning} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Offene Mängel</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Tägliche Erinnerung bei offenen Mängeln</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('offene_maengel')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('taegliche_erinnerung_bei_offenen')}</Text>
             </View>
             <Switch
               value={prefs.openDefectsReminder}
@@ -259,8 +261,8 @@ export default function NotificationsSettingsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <MaterialIcons name="checklist" size={20} color={"#8E24AA"} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Checklisten</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Erinnerung bei offenen Prüfpunkten</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('checklist_title')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('erinnerung_bei_offenen_pruefpunkten')}</Text>
             </View>
             <Switch
               value={prefs.checklistReminder}
@@ -273,8 +275,8 @@ export default function NotificationsSettingsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", padding: 14 }}>
             <MaterialIcons name="today" size={20} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Tägliche Zusammenfassung</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Morgens an offene Aufgaben erinnern</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('taegliche_zusammenfassung')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('morgens_an_offene_aufgaben')}</Text>
             </View>
             <Switch
               value={prefs.dailyDigest}
@@ -287,7 +289,7 @@ export default function NotificationsSettingsScreen() {
         </View>
 
         {/* Time Picker - Apple Clock Style */}
-        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Uhrzeit</Text>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('uhrzeit')}</Text>
         <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 20, marginBottom: 20, alignItems: "center" }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 16 }}>
             Erinnerung um {String(prefs.reminderHour).padStart(2, "0")}:{String(prefs.reminderMinute).padStart(2, "0")} Uhr
@@ -297,7 +299,7 @@ export default function NotificationsSettingsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 }}>
             {/* Hours */}
             <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>Stunde</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>{t('stunde')}</Text>
               <NumberInput
                 value={prefs.reminderHour}
                 min={0}
@@ -313,7 +315,7 @@ export default function NotificationsSettingsScreen() {
 
             {/* Minutes */}
             <View style={{ alignItems: "center" }}>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>Minute</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>{t('minute')}</Text>
               <NumberInput
                 value={prefs.reminderMinute}
                 min={0}
@@ -327,7 +329,7 @@ export default function NotificationsSettingsScreen() {
         </View>
 
         {/* Weekday Selection */}
-        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>Wochentage</Text>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('wochentage')}</Text>
         <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 20 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
             {WEEKDAYS.map(day => {
@@ -363,7 +365,7 @@ export default function NotificationsSettingsScreen() {
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.primary }}>Mo – Fr</Text>
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.primary }}>{t('mo_fr')}</Text>
             </Pressable>
             <Pressable
               onPress={selectAllDays}
@@ -373,7 +375,7 @@ export default function NotificationsSettingsScreen() {
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.primary }}>Jeden Tag</Text>
+              <Text style={{ fontSize: 12, fontWeight: "500", color: colors.primary }}>{t('jeden_tag')}</Text>
             </Pressable>
           </View>
         </View>

@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
   id: string;
@@ -24,6 +25,7 @@ type Defect = {
 };
 
 export default function ProjectStatsScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const [project, setProject] = useState<any>(null);
@@ -136,7 +138,7 @@ export default function ProjectStatsScreen() {
   if (!project) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
-        <Text style={{ color: colors.muted }}>Projekt nicht gefunden</Text>
+        <Text style={{ color: colors.muted }}>{t('projekt_nicht_gefunden')}</Text>
       </ScreenContainer>
     );
   }
@@ -153,7 +155,7 @@ export default function ProjectStatsScreen() {
             <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: project.color }} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Statistik</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('statistik')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted }}>{project.name}</Text>
           </View>
         </View>
@@ -177,24 +179,24 @@ export default function ProjectStatsScreen() {
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
           <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 14, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 28, fontWeight: "800", color: colors.primary }}>{stats.totalProtocols}</Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Protokolle</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('project_protocols')}</Text>
             <Text style={{ fontSize: 11, color: colors.primary, marginTop: 4 }}>{stats.avgProtocolsPerWeek}/Woche</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 14, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 28, fontWeight: "800", color: stats.defectOpen > 0 ? colors.error : colors.success }}>{stats.totalDefects}</Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Mängel</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('maengel')}</Text>
             <Text style={{ fontSize: 11, color: stats.defectOpen > 0 ? colors.error : colors.success, marginTop: 4 }}>{stats.defectOpen} offen</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 0, padding: 14, borderWidth: 1, borderColor: colors.border }}>
             <Text style={{ fontSize: 28, fontWeight: "800", color: colors.foreground }}>{stats.todosTotal > 0 ? Math.round((stats.todosDone / stats.todosTotal) * 100) : 0}%</Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Aufgaben</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('team_tasks')}</Text>
             <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{stats.todosDone}/{stats.todosTotal}</Text>
           </View>
         </View>
 
         {/* Protocols Bar Chart */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Protokolle (letzte 7 Tage)</Text>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>{t('protokolle_letzte_7_tage')}</Text>
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 6, height: 100 }}>
             {stats.protocolsByDay.map((day, i) => (
               <View key={i} style={{ flex: 1, alignItems: "center" }}>
@@ -209,21 +211,21 @@ export default function ProjectStatsScreen() {
         {/* Defect Status */}
         {stats.totalDefects > 0 && (
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Mängel-Status</Text>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>{t('stats_defects_status')}</Text>
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.error }} />
-                <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>Offen</Text>
+                <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>{t('checklist_incomplete')}</Text>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: colors.error }}>{stats.defectOpen}</Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.warning }} />
-                <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>In Bearbeitung</Text>
+                <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>{t('defect_in_progress')}</Text>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: colors.warning }}>{stats.defectInProgress}</Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success }} />
-                <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>Erledigt</Text>
+                <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>{t('defect_resolved')}</Text>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: colors.success }}>{stats.defectResolved}</Text>
               </View>
             </View>
@@ -239,23 +241,23 @@ export default function ProjectStatsScreen() {
         {/* Priority Breakdown */}
         {stats.totalDefects > 0 && (
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Mängel nach Priorität</Text>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>{t('maengel_nach_prioritaet')}</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.error + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.error }}>{stats.defectCritical}</Text>
-                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Kritisch</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{t('defect_priority_critical')}</Text>
               </View>
               <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.warning + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.warning }}>{stats.defectHigh}</Text>
-                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Hoch</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{t('defect_priority_high')}</Text>
               </View>
               <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.primary + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.primary }}>{stats.defectMedium}</Text>
-                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Mittel</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{t('defect_priority_medium')}</Text>
               </View>
               <View style={{ flex: 1, alignItems: "center", padding: 10, borderRadius: 0, backgroundColor: colors.muted + "15" }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.muted }}>{stats.defectLow}</Text>
-                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>Niedrig</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{t('defect_priority_low')}</Text>
               </View>
             </View>
           </View>
@@ -263,7 +265,7 @@ export default function ProjectStatsScreen() {
 
         {/* Activity Heatmap */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Aktivität (30 Tage)</Text>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>{t('aktivitaet_30_tage')}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
             {stats.activityHeatmap.map((day, i) => (
               <View
@@ -275,35 +277,35 @@ export default function ProjectStatsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: colors.primary }} />
-              <Text style={{ fontSize: 11, color: colors.muted }}>Aktiv</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{t('project_active')}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: colors.border + "40" }} />
-              <Text style={{ fontSize: 11, color: colors.muted }}>Keine Aktivität</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{t('keine_aktivitaet')}</Text>
             </View>
           </View>
         </View>
 
         {/* Project Info */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, borderWidth: 1, borderColor: colors.border }}>
-          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>Projektinfo</Text>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 14 }}>{t('projektinfo')}</Text>
           <View style={{ gap: 8 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 13, color: colors.muted }}>Erstellt am</Text>
+              <Text style={{ fontSize: 13, color: colors.muted }}>{t('erstellt_am')}</Text>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{new Date(project.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}</Text>
             </View>
             {project.protocolPrefix && (
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 13, color: colors.muted }}>Präfix</Text>
+                <Text style={{ fontSize: 13, color: colors.muted }}>{t('project_prefix')}</Text>
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{project.protocolPrefix}</Text>
               </View>
             )}
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 13, color: colors.muted }}>Protokoll-Nr.</Text>
+              <Text style={{ fontSize: 13, color: colors.muted }}>{t('protokollnr')}</Text>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{project.protocolCounter || 0}</Text>
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 13, color: colors.muted }}>Laufzeit</Text>
+              <Text style={{ fontSize: 13, color: colors.muted }}>{t('laufzeit')}</Text>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{Math.ceil((new Date().getTime() - new Date(project.createdAt).getTime()) / (24 * 60 * 60 * 1000))} Tage</Text>
             </View>
           </View>

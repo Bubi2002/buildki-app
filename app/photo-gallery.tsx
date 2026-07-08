@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 type PhotoItem = {
   uri: string;
@@ -21,6 +22,7 @@ const COLUMNS = 3;
 const PHOTO_SIZE = (SCREEN_WIDTH - 40 - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
 
 export default function PhotoGalleryScreen() {
+  const { t } = useTranslation();
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const colors = useColors();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -115,7 +117,7 @@ export default function PhotoGalleryScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Foto-Galerie</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('gallery_title')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted }}>{project?.name || "Projekt"} · {photos.length} Fotos</Text>
           </View>
         </View>
@@ -127,7 +129,7 @@ export default function PhotoGalleryScreen() {
               onPress={() => setFilterMonth(null)}
               style={({ pressed }) => [{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 0, backgroundColor: !filterMonth ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: !filterMonth ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: !filterMonth ? colors.primary : colors.muted }}>Alle</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: !filterMonth ? colors.primary : colors.muted }}>{t('all')}</Text>
             </Pressable>
             {availableMonths.map((month) => {
               const [year, m] = month.split("-");
@@ -151,7 +153,7 @@ export default function PhotoGalleryScreen() {
           {groupedPhotos.length === 0 && (
             <View style={{ alignItems: "center", paddingTop: 80 }}>
               <MaterialIcons name="photo-library" size={64} color={colors.border} />
-              <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginTop: 16 }}>Keine Fotos</Text>
+              <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginTop: 16 }}>{t('gallery_no_photos')}</Text>
               <Text style={{ fontSize: 14, color: colors.muted, marginTop: 6, textAlign: "center" }}>
                 {filterMonth ? "Keine Fotos in diesem Monat." : "Dieses Projekt hat noch keine Fotos.\nFotos werden bei der Protokoll-Aufnahme erstellt."}
               </Text>

@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "@/lib/language-provider";
 import {
   TeamMember,
   TEAM_ROLES,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/team-store";
 
 export default function TeamScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
 
@@ -53,7 +55,7 @@ export default function TeamScreen() {
 
   const createMember = async () => {
     if (!newName.trim()) {
-      Alert.alert("Fehler", "Bitte einen Namen eingeben.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_einen_namen_eingeben'));
       return;
     }
 
@@ -104,14 +106,14 @@ export default function TeamScreen() {
     setNewColor(MEMBER_COLORS[Math.floor(Math.random() * MEMBER_COLORS.length)]);
     setSendInvite(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Hinzugefügt", `${member.name} wurde zum Team hinzugefügt.`);
+    Alert.alert(t('hinzugefuegt'), t('msg_mitglied_zum_team_hinzugefuegt').replace('{name}', member.name));
   };
 
   const removeMember = (memberId: string, name: string) => {
-    Alert.alert("Teammitglied entfernen", `${name} wirklich aus dem Team entfernen?`, [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_teammitglied_entfernen'), `${name} wirklich aus dem Team entfernen?`, [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Entfernen",
+        text: t('btn_entfernen'),
         style: "destructive",
         onPress: async () => {
           await deleteTeamMember(memberId);
@@ -150,11 +152,11 @@ export default function TeamScreen() {
     }
 
     options.push({
-      text: "Entfernen",
+      text: t('btn_entfernen'),
       onPress: () => removeMember(member.id, member.name),
     });
 
-    options.push({ text: "Abbrechen" });
+    options.push({ text: t('btn_abbrechen') });
 
     Alert.alert(member.name, getRoleLabel(member.role), options);
   };
@@ -192,7 +194,7 @@ export default function TeamScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Team</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('team_title')}</Text>
         <Pressable onPress={() => setShowCreateModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="person-add" size={24} color={colors.primary} />
         </Pressable>
@@ -221,7 +223,7 @@ export default function TeamScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <MaterialIcons name="group-add" size={48} color={colors.muted} />
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Noch keine Teammitglieder</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>{t('noch_keine_teammitglieder')}</Text>
             <Text style={[styles.emptySubtext, { color: colors.muted }]}>
               Tippe auf das + Symbol oben rechts um Teammitglieder hinzuzufügen
             </Text>
@@ -230,7 +232,7 @@ export default function TeamScreen() {
               style={({ pressed }) => [styles.emptyAddBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="person-add" size={20} color="#FFF" />
-              <Text style={styles.emptyAddBtnText}>Person hinzufügen</Text>
+              <Text style={styles.emptyAddBtnText}>{t('person_hinzufuegen')}</Text>
             </Pressable>
           </View>
         }
@@ -243,7 +245,7 @@ export default function TeamScreen() {
             <View style={[styles.modalContent, { backgroundColor: colors.background, borderColor: colors.border }]}>
               {/* Modal Header */}
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Person einladen</Text>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('person_einladen')}</Text>
                 <Pressable onPress={() => setShowCreateModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
                   <MaterialIcons name="close" size={22} color={colors.muted} />
                 </Pressable>
@@ -251,10 +253,10 @@ export default function TeamScreen() {
 
               <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
                 {/* Name */}
-                <Text style={[styles.inputLabel, { color: colors.muted }]}>Name *</Text>
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('name')}</Text>
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  placeholder="Vor- und Nachname"
+                  placeholder={t('vor_und_nachname')}
                   placeholderTextColor={colors.muted + "80"}
                   value={newName}
                   onChangeText={setNewName}
@@ -262,7 +264,7 @@ export default function TeamScreen() {
                 />
 
                 {/* Email */}
-                <Text style={[styles.inputLabel, { color: colors.muted }]}>E-Mail</Text>
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('email')}</Text>
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                   placeholder="name@firma.de"
@@ -275,7 +277,7 @@ export default function TeamScreen() {
                 />
 
                 {/* Phone */}
-                <Text style={[styles.inputLabel, { color: colors.muted }]}>Telefon / Handynummer</Text>
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('telefon_handynummer')}</Text>
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                   placeholder="+49 170 1234567"
@@ -286,7 +288,7 @@ export default function TeamScreen() {
                 />
 
                 {/* Role Selection */}
-                <Text style={[styles.inputLabel, { color: colors.muted }]}>Rolle</Text>
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('rolle')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.roleScroll}>
                   {TEAM_ROLES.map((role) => (
                     <Pressable
@@ -307,7 +309,7 @@ export default function TeamScreen() {
                 </ScrollView>
 
                 {/* Color Selection */}
-                <Text style={[styles.inputLabel, { color: colors.muted }]}>Farbe</Text>
+                <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('project_color')}</Text>
                 <View style={styles.colorRow}>
                   {MEMBER_COLORS.map((color) => (
                     <Pressable
@@ -332,7 +334,7 @@ export default function TeamScreen() {
                     size={22}
                     color={sendInvite ? colors.primary : colors.muted}
                   />
-                  <Text style={{ fontSize: 14, color: colors.foreground }}>Einladung per E-Mail/SMS senden</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{t('einladung_per_emailsms_senden')}</Text>
                 </Pressable>
 
                 {/* Info */}
@@ -350,14 +352,14 @@ export default function TeamScreen() {
                   onPress={() => { setShowCreateModal(false); setNewName(""); setNewEmail(""); setNewPhone(""); }}
                   style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
                 >
-                  <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>Abbrechen</Text>
+                  <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>{t('cancel')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={createMember}
                   style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
                 >
                   <MaterialIcons name="person-add" size={18} color="#FFF" />
-                  <Text style={styles.saveBtnText}>Hinzufügen</Text>
+                  <Text style={styles.saveBtnText}>{t('hinzufuegen')}</Text>
                 </Pressable>
               </View>
             </View>

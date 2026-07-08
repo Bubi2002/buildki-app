@@ -8,6 +8,7 @@ import { LANGUAGE_OPTIONS, type Language } from "@/lib/i18n";
 import { useTranslation } from "@/lib/language-provider";
 
 export default function LanguageSettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const { language: currentLang, setLanguage } = useTranslation();
 
@@ -20,7 +21,7 @@ export default function LanguageSettingsScreen() {
         : lang === "en"
         ? "The app language has been changed to English. All texts will now be displayed in English."
         : "La langue de l'application a été changée en français. Tous les textes seront affichés en français.",
-      [{ text: "OK" }]
+      [{ text: t('ok') }]
     );
   };
 
@@ -33,8 +34,8 @@ export default function LanguageSettingsScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Sprache / Language</Text>
-            <Text style={{ fontSize: 13, color: colors.muted }}>App-Sprache auswählen</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('sprache_language')}</Text>
+            <Text style={{ fontSize: 13, color: colors.muted }}>{t('appsprache_auswaehlen')}</Text>
           </View>
         </View>
 
@@ -78,7 +79,7 @@ export default function LanguageSettingsScreen() {
 
         {/* Protocol Language Note */}
         <View style={{ marginTop: 20, padding: 16, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>Protokoll-Sprache</Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>{t('protokollsprache')}</Text>
           <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20 }}>
             Die Sprache der generierten Protokolle kann unabhängig von der App-Sprache eingestellt werden. Gehe dazu in Einstellungen → Allgemein → Protokoll-Sprache.
           </Text>
@@ -87,7 +88,7 @@ export default function LanguageSettingsScreen() {
             style={({ pressed }) => [{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 6, opacity: pressed ? 0.6 : 1 }]}
           >
             <MaterialIcons name="settings" size={16} color={colors.primary} />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Zu den Einstellungen</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('zu_den_einstellungen')}</Text>
           </Pressable>
         </View>
       </ScrollView>

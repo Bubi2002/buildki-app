@@ -490,3 +490,8 @@
 - [x] Fix: Protokoll-Detail – Zu wenig Platz zwischen Foto-Kasten und Schrift
 - [x] Fix: Benachrichtigungen-Screen – Uhrzeit-Picker flackert und man kann nichts auswählen
 - [x] Fix: Eigene Vorlage erstellen wird nicht gespeichert
+- [x] Bug-Fix: i18n – Alle Alert.alert Titel/Nachrichten auf t() umgestellt (5 Dateien)
+- [x] Bug-Fix: i18n – Alle Button-Texte in Action Sheets auf t() umgestellt (protocols, projects, settings, floor-plan, dropbox)
+- [x] Bug-Fix: i18n – msg_ Schlüssel in EN/FR korrekt übersetzt (waren vorher nur auf Deutsch kopiert)
+- [x] Bug-Fix: i18n – Neue Schlüssel für Statuslabels, Sortierung, Fallback-Texte (unbekannt, protokoll_erstellt, fehler_label)
+- [ ] i18n: Verbleibende sekundäre Strings übersetzen (Kalender-Tage/Monate, Sync-Status, Verarbeitungs-Schritte, Platzhalter)

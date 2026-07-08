@@ -6,8 +6,10 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { getExportHistory, clearExportHistory, type PdfExportEntry } from "@/lib/pdf-export-history";
 import { useFocusEffect } from "expo-router";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function ExportHistoryScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const [history, setHistory] = useState<PdfExportEntry[]>([]);
 
@@ -27,9 +29,9 @@ export default function ExportHistoryScreen() {
       "Verlauf löschen",
       "Möchten Sie den gesamten Export-Verlauf löschen?",
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('btn_loeschen'),
           style: "destructive",
           onPress: async () => {
             await clearExportHistory();
@@ -106,7 +108,7 @@ export default function ExportHistoryScreen() {
 
       {item.ccRecipients.length > 0 && (
         <View style={styles.recipientRow}>
-          <Text style={[styles.ccLabel, { color: colors.muted }]}>CC:</Text>
+          <Text style={[styles.ccLabel, { color: colors.muted }]}>{t('cc')}</Text>
           <Text style={[styles.recipientText, { color: colors.muted }]} numberOfLines={1}>
             {item.ccRecipients.join(", ")}
           </Text>
@@ -121,7 +123,7 @@ export default function ExportHistoryScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 8 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Export-Verlauf</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('exportverlauf')}</Text>
         {history.length > 0 ? (
           <Pressable onPress={handleClear} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 8 }]}>
             <MaterialIcons name="delete-outline" size={22} color={colors.error} />
@@ -134,7 +136,7 @@ export default function ExportHistoryScreen() {
       {history.length === 0 ? (
         <View style={styles.emptyContainer}>
           <MaterialIcons name="history" size={64} color={colors.muted} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Kein Export-Verlauf</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('kein_exportverlauf')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Hier werden alle PDF-Exporte protokolliert.
           </Text>

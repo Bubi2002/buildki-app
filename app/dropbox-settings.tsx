@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   getDropboxSettings,
   saveDropboxSettings,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/dropbox-integration";
 
 export default function DropboxSettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const params = useLocalSearchParams();
   const [settings, setSettings] = useState<DropboxSettings | null>(null);
@@ -35,11 +37,11 @@ export default function DropboxSettingsScreen() {
       handleDropboxCallback(params as Record<string, string>).then((success) => {
         if (success) {
           loadData();
-          Alert.alert("Verbunden", "Dropbox wurde erfolgreich verbunden!");
+          Alert.alert(t('alert_verbunden'), t('msg_dropbox_wurde_erfolgreich_verbunden'));
         }
       });
     } else if (params.error) {
-      Alert.alert("Fehler", `Dropbox-Verbindung fehlgeschlagen: ${params.error}`);
+      Alert.alert(t('alert_fehler'), `Dropbox-Verbindung fehlgeschlagen: ${params.error}`);
     }
   }, [params.dropbox_connected, params.error]);
 
@@ -63,9 +65,9 @@ export default function DropboxSettingsScreen() {
 
     if (result.success) {
       await loadData();
-      Alert.alert("Verbunden", "Dropbox wurde erfolgreich verbunden!");
+      Alert.alert(t('alert_verbunden'), t('msg_dropbox_wurde_erfolgreich_verbunden'));
     } else if (result.error) {
-      Alert.alert("Fehler", result.error);
+      Alert.alert(t('alert_fehler'), result.error);
     }
   };
 
@@ -74,9 +76,9 @@ export default function DropboxSettingsScreen() {
       "Dropbox trennen",
       "Möchtest du die Verbindung zu Dropbox wirklich trennen? Bereits hochgeladene Dateien bleiben in Dropbox erhalten.",
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Trennen",
+          text: t('btn_trennen'),
           style: "destructive",
           onPress: async () => {
             await disconnectDropbox();
@@ -92,9 +94,9 @@ export default function DropboxSettingsScreen() {
       "Verlauf löschen",
       "Möchtest du den gesamten Upload-Verlauf löschen?",
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('btn_loeschen'),
           style: "destructive",
           onPress: async () => {
             await clearUploadHistory();
@@ -116,7 +118,7 @@ export default function DropboxSettingsScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Dropbox-Integration</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('dropboxintegration')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted }}>
               {settings.isConnected ? "Verbunden – Automatischer Upload" : "Nicht verbunden"}
             </Text>
@@ -160,7 +162,7 @@ export default function DropboxSettingsScreen() {
                 }]}
               >
                 <MaterialIcons name="link-off" size={16} color={colors.error} />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.error }}>Verbindung trennen</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.error }}>{t('verbindung_trennen')}</Text>
               </Pressable>
             ) : (
               <Pressable
@@ -177,7 +179,7 @@ export default function DropboxSettingsScreen() {
                 ) : (
                   <>
                     <MaterialIcons name="link" size={18} color="#FFFFFF" />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Mit Dropbox verbinden</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>{t('mit_dropbox_verbinden')}</Text>
                   </>
                 )}
               </Pressable>
@@ -195,8 +197,8 @@ export default function DropboxSettingsScreen() {
               </Text>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: colors.foreground }}>PDF-Protokolle</Text>
-                  <Text style={{ fontSize: 11, color: colors.muted }}>Nach jeder Protokoll-Erstellung</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{t('pdfprotokolle')}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('nach_jeder_protokollerstellung')}</Text>
                 </View>
                 <Switch
                   value={settings.autoUploadPdf}
@@ -207,8 +209,8 @@ export default function DropboxSettingsScreen() {
               <View style={{ height: 0.5, backgroundColor: colors.border, marginVertical: 4 }} />
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: colors.foreground }}>Fotos</Text>
-                  <Text style={{ fontSize: 11, color: colors.muted }}>Protokoll-Fotos in Dropbox speichern</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{t('gallery_photos')}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('protokollfotos_in_dropbox_speichern')}</Text>
                 </View>
                 <Switch
                   value={settings.autoUploadPhotos}
@@ -223,7 +225,7 @@ export default function DropboxSettingsScreen() {
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
                 Ordner-Einstellungen
               </Text>
-              <Text style={{ fontSize: 13, color: colors.foreground, marginBottom: 6 }}>Basis-Ordner in Dropbox</Text>
+              <Text style={{ fontSize: 13, color: colors.foreground, marginBottom: 6 }}>{t('basisordner_in_dropbox')}</Text>
               <TextInput
                 value={settings.baseFolderPath}
                 onChangeText={(text) => updateSetting("baseFolderPath", text)}
@@ -242,8 +244,8 @@ export default function DropboxSettingsScreen() {
               />
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, color: colors.foreground }}>Projekt-Unterordner</Text>
-                  <Text style={{ fontSize: 11, color: colors.muted }}>Erstellt z.B. /ProtoKI/Projektname/</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{t('projektunterordner')}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('erstellt_zb_protokiprojektname')}</Text>
                 </View>
                 <Switch
                   value={settings.useProjectSubfolders}
@@ -323,7 +325,7 @@ export default function DropboxSettingsScreen() {
             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
               <MaterialIcons name="info-outline" size={18} color="#0061FF" style={{ marginRight: 8, marginTop: 1 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: "#0061FF", fontWeight: "600", marginBottom: 4 }}>So funktioniert's</Text>
+                <Text style={{ fontSize: 12, color: "#0061FF", fontWeight: "600", marginBottom: 4 }}>{t('so_funktionierts')}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, lineHeight: 16 }}>
                   Verbinde dein Dropbox-Konto, um PDFs und Fotos automatisch in deinen Projektordner hochzuladen. Die Dateien werden direkt über die Dropbox-API übertragen – kein manuelles Teilen nötig.{"\n\n"}
                   Alternativ kannst du auch ohne Verbindung den "In Dropbox speichern" Button in der PDF-Vorschau nutzen (über das System-Teilen-Menü).
@@ -337,9 +339,9 @@ export default function DropboxSettingsScreen() {
         {history.length > 0 && (
           <View style={{ marginBottom: 20 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>Upload-Verlauf</Text>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>{t('uploadverlauf')}</Text>
               <Pressable onPress={handleClearHistory} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
-                <Text style={{ fontSize: 12, color: colors.error }}>Löschen</Text>
+                <Text style={{ fontSize: 12, color: colors.error }}>{t('delete')}</Text>
               </Pressable>
             </View>
             {history.slice(0, 10).map((entry) => (

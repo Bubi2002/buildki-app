@@ -16,6 +16,7 @@ import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 import {
   getMarketplaceTemplates,
   importTemplate,
@@ -35,6 +36,7 @@ const CATEGORIES: { key: CategoryFilter; label: string; icon: string }[] = [
 ];
 
 export default function TemplateMarketplaceScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [templates, setTemplates] = useState<MarketplaceTemplate[]>([]);
@@ -64,7 +66,7 @@ export default function TemplateMarketplaceScreen() {
   const handleImport = async (template: MarketplaceTemplate) => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await importTemplate(template);
-    Alert.alert("Importiert!", `"${template.name}" wurde zu deinen Vorlagen hinzugefügt.`);
+    Alert.alert(t('alert_importiert_ex'), `"${template.name}" wurde zu deinen Vorlagen hinzugefügt.`);
     loadTemplates();
   };
 
@@ -125,7 +127,7 @@ export default function TemplateMarketplaceScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Vorlagen-Marktplatz</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('vorlagenmarktplatz')}</Text>
         <Pressable onPress={() => router.push("/template-editor")} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="add" size={24} color={colors.primary} />
         </Pressable>
@@ -137,7 +139,7 @@ export default function TemplateMarketplaceScreen() {
         <TextInput
           value={search}
           onChangeText={setSearch}
-          placeholder="Vorlagen suchen..."
+          placeholder={t('vorlagen_suchen')}
           placeholderTextColor={colors.muted}
           style={[styles.searchInput, { color: colors.foreground }]}
         />
@@ -177,7 +179,7 @@ export default function TemplateMarketplaceScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <MaterialIcons name="search-off" size={48} color={colors.muted} />
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Keine Vorlagen gefunden</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>{t('keine_vorlagen_gefunden')}</Text>
           </View>
         }
       />
@@ -209,7 +211,7 @@ export default function TemplateMarketplaceScreen() {
                     </View>
                   </View>
                   <Text style={[styles.modalDesc, { color: colors.foreground }]}>{selectedTemplate.description}</Text>
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Struktur:</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('struktur')}</Text>
                   <Text style={[styles.promptPreview, { color: colors.muted, backgroundColor: colors.surface }]}>
                     {selectedTemplate.systemPrompt}
                   </Text>
@@ -227,7 +229,7 @@ export default function TemplateMarketplaceScreen() {
                     style={[styles.importButton, { backgroundColor: colors.primary }]}
                   >
                     <MaterialIcons name="download" size={18} color="#fff" />
-                    <Text style={styles.importButtonText}>Importieren</Text>
+                    <Text style={styles.importButtonText}>{t('importieren')}</Text>
                   </Pressable>
                 </View>
               </>

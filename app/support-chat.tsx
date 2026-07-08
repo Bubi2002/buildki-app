@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/use-colors";
 import { MaterialIcons } from "@expo/vector-icons";
 import { trpc } from "@/lib/trpc";
+import { useTranslation } from "@/lib/language-provider";
 
 interface ChatMessage {
   id: string;
@@ -67,6 +68,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function SupportChatScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -182,13 +184,13 @@ export default function SupportChatScreen() {
         <View style={[styles.supportIconContainer, { backgroundColor: colors.primary + "15" }]}>
           <MaterialIcons name="support-agent" size={40} color={colors.primary} />
         </View>
-        <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>ProtoKI Support</Text>
+        <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>{t('protoki_support')}</Text>
         <Text style={[styles.welcomeSubtitle, { color: colors.muted }]}>
           Wie kann ich dir helfen? Stelle eine Frage oder wähle ein Thema aus.
         </Text>
       </View>
 
-      <Text style={[styles.faqTitle, { color: colors.foreground }]}>Häufige Fragen</Text>
+      <Text style={[styles.faqTitle, { color: colors.foreground }]}>{t('haeufige_fragen')}</Text>
       {FAQ_ITEMS.map((item, index) => (
         <Pressable
           key={index}
@@ -214,10 +216,10 @@ export default function SupportChatScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>KI-Support</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('kisupport')}</Text>
           <View style={styles.onlineIndicator}>
             <View style={[styles.onlineDot, { backgroundColor: colors.success }]} />
-            <Text style={[styles.onlineText, { color: colors.success }]}>Online</Text>
+            <Text style={[styles.onlineText, { color: colors.success }]}>{t('online')}</Text>
           </View>
         </View>
         <Pressable
@@ -257,7 +259,7 @@ export default function SupportChatScreen() {
               messages.length > 0 ? (
                 <Pressable onPress={() => setShowFAQ(true)} style={styles.showFAQButton}>
                   <MaterialIcons name="help" size={16} color={colors.primary} />
-                  <Text style={[styles.showFAQText, { color: colors.primary }]}>FAQ anzeigen</Text>
+                  <Text style={[styles.showFAQText, { color: colors.primary }]}>{t('faq_anzeigen')}</Text>
                 </Pressable>
               ) : null
             }
@@ -271,7 +273,7 @@ export default function SupportChatScreen() {
               <MaterialIcons name="support-agent" size={14} color={colors.primary} />
             </View>
             <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.typingText, { color: colors.muted }]}>Schreibt...</Text>
+            <Text style={[styles.typingText, { color: colors.muted }]}>{t('schreibt')}</Text>
           </View>
         )}
 
@@ -280,7 +282,7 @@ export default function SupportChatScreen() {
           <TextInput
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Stelle eine Frage..."
+            placeholder={t('stelle_eine_frage')}
             placeholderTextColor={colors.muted}
             style={[styles.textInput, { color: colors.foreground, backgroundColor: "#1A2A3F", borderColor: "#1E3A5F" }]}
             multiline

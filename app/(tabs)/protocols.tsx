@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { onJobUpdate } from "@/lib/background-processor";
+import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
   id: string;
@@ -57,6 +58,7 @@ type SortOption = "date_desc" | "date_asc" | "name_asc" | "name_desc" | "duratio
 type FilterOption = "all" | "favorites" | "archived";
 
 export default function ProtocolsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [protocols, setProtocols] = useState<Protocol[]>([]);
@@ -209,17 +211,17 @@ export default function ProtocolsScreen() {
     };
     const updated = [duplicate, ...protocols];
     await saveProtocols(updated);
-    Alert.alert("Dupliziert", "Protokoll wurde als Kopie erstellt.");
+    Alert.alert(t('alert_dupliziert'), t('msg_protokoll_wurde_als_kopie_erstellt'));
   };
 
   const deleteProtocol = (id: string) => {
     Alert.alert(
-      "Protokoll löschen",
+      t('alert_protokoll_loeschen'),
       "Möchtest du dieses Protokoll wirklich löschen?",
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('btn_loeschen'),
           style: "destructive",
           onPress: async () => {
             const updated = protocols.filter((p) => p.id !== id);
@@ -249,9 +251,9 @@ export default function ProtocolsScreen() {
       `${selectedIds.size} Protokolle löschen`,
       "Möchtest du die ausgewählten Protokolle wirklich löschen?",
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('btn_loeschen'),
           style: "destructive",
           onPress: async () => {
             const updated = protocols.filter((p) => !selectedIds.has(p.id));
@@ -335,7 +337,7 @@ export default function ProtocolsScreen() {
               },
             },
             {
-              text: "Gesamtdokument",
+              text: t('btn_gesamtdokument'),
               onPress: async () => {
                 const combinedContent = selected.map((item, idx) => {
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
@@ -373,14 +375,14 @@ export default function ProtocolsScreen() {
                 }
               },
             },
-            { text: "Abbrechen", style: "cancel" },
+            { text: t('btn_abbrechen'), style: "cancel" },
           ]
         );
       }
       setBatchMode(false);
       setSelectedIds(new Set());
     } catch (e) {
-      Alert.alert("Fehler", "Export fehlgeschlagen: " + (e instanceof Error ? e.message : "Unbekannter Fehler"));
+      Alert.alert(t('alert_fehler'), t('msg_export_fehlgeschlagen_2') + (e instanceof Error ? e.message : "Unbekannter Fehler"));
     }
   };
 
@@ -413,9 +415,9 @@ export default function ProtocolsScreen() {
 
   const getStatusLabel = (status: Protocol["status"]) => {
     switch (status) {
-      case "ready": return "Fertig";
-      case "processing": return "Verarbeitung";
-      case "sent": return "Gesendet";
+      case "ready": return t('status_fertig');
+      case "processing": return t('status_verarbeitung');
+      case "sent": return t('status_gesendet');
       default: return status;
     }
   };
@@ -481,13 +483,13 @@ export default function ProtocolsScreen() {
 
   const showContextMenu = (item: Protocol) => {
     const actions: any[] = [
-      { text: item.isFavorite ? "Favorit entfernen" : "Als Favorit", onPress: () => toggleFavorite(item.id) },
-      { text: item.isArchived ? "Wiederherstellen" : "Archivieren", onPress: () => archiveProtocol(item.id) },
-      { text: "Duplizieren", onPress: () => duplicateProtocol(item) },
-      { text: "Löschen", style: "destructive", onPress: () => deleteProtocol(item.id) },
-      { text: "Abbrechen", style: "cancel" },
+      { text: item.isFavorite ? t('btn_favorit_entfernen') : t('btn_als_favorit'), onPress: () => toggleFavorite(item.id) },
+      { text: item.isArchived ? t('btn_wiederherstellen') : t('btn_archivieren'), onPress: () => archiveProtocol(item.id) },
+      { text: t('btn_duplizieren'), onPress: () => duplicateProtocol(item) },
+      { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteProtocol(item.id) },
+      { text: t('btn_abbrechen'), style: "cancel" },
     ];
-    Alert.alert(item.title, "Aktion wählen:", actions);
+    Alert.alert(item.title, t('msg_aktion_waehlen'), actions);
   };
 
   const shareProtocol = async (item: Protocol) => {
@@ -510,7 +512,7 @@ export default function ProtocolsScreen() {
         await Sharing.shareAsync(pdfUri);
       }
     } catch (e) {
-      Alert.alert("Fehler", "PDF konnte nicht erstellt werden.");
+      Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden'));
     }
   };
 
@@ -525,7 +527,7 @@ export default function ProtocolsScreen() {
           onPress={() => deleteProtocol(item.id)}
         >
           <MaterialIcons name="delete" size={22} color="#FFF" />
-          <Text style={{ fontSize: 11, color: "#FFF", marginTop: 2 }}>Löschen</Text>
+          <Text style={{ fontSize: 11, color: "#FFF", marginTop: 2 }}>{t('delete')}</Text>
         </RectButton>
       </View>
     );
@@ -542,7 +544,7 @@ export default function ProtocolsScreen() {
           onPress={() => shareProtocol(item)}
         >
           <MaterialIcons name="share" size={22} color="#FFF" />
-          <Text style={{ fontSize: 11, color: "#FFF", marginTop: 2 }}>Teilen</Text>
+          <Text style={{ fontSize: 11, color: "#FFF", marginTop: 2 }}>{t('protocol_share')}</Text>
         </RectButton>
       </View>
     );
@@ -676,7 +678,7 @@ export default function ProtocolsScreen() {
       {searchQuery.trim() ? (
         <>
           <MaterialIcons name="search-off" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Keine Ergebnisse</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('keine_ergebnisse')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Für "{searchQuery}" wurden keine Protokolle gefunden.
           </Text>
@@ -684,7 +686,7 @@ export default function ProtocolsScreen() {
       ) : filterBy === "favorites" ? (
         <>
           <MaterialIcons name="star-outline" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Keine Favoriten</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('keine_favoriten')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Halte ein Protokoll gedrückt, um es als Favorit zu markieren.
           </Text>
@@ -692,7 +694,7 @@ export default function ProtocolsScreen() {
       ) : filterBy === "archived" ? (
         <>
           <MaterialIcons name="archive" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Archiv leer</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('archiv_leer')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Archivierte Protokolle erscheinen hier.
           </Text>
@@ -700,7 +702,7 @@ export default function ProtocolsScreen() {
       ) : (
         <>
           <MaterialIcons name="mic-none" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Noch keine Protokolle</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('noch_keine_protokolle')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Starte eine Aufnahme, um dein erstes Protokoll zu erstellen.
           </Text>
@@ -845,7 +847,7 @@ export default function ProtocolsScreen() {
               ]}
             >
               <MaterialIcons name="folder-open" size={14} color={!activeProjectId || showAllProjects ? colors.primary : colors.muted} />
-              <Text style={[styles.projectChipText, { color: !activeProjectId || showAllProjects ? colors.primary : colors.muted }]}>Alle</Text>
+              <Text style={[styles.projectChipText, { color: !activeProjectId || showAllProjects ? colors.primary : colors.muted }]}>{t('all')}</Text>
               <View style={[styles.projectChipCount, { backgroundColor: !activeProjectId || showAllProjects ? colors.primary + "20" : colors.border + "60" }]}>
                 <Text style={[styles.projectChipCountText, { color: !activeProjectId || showAllProjects ? colors.primary : colors.muted }]}>
                   {protocols.filter((p) => !p.isArchived).length}
@@ -918,7 +920,7 @@ export default function ProtocolsScreen() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Protokolle, Tags, Vorlagen durchsuchen..."
+              placeholder={t('protokolle_tags_vorlagen_durchsuchen')}
               placeholderTextColor={colors.muted}
               style={[styles.searchInput, { color: colors.foreground }]}
               autoFocus
@@ -937,23 +939,23 @@ export default function ProtocolsScreen() {
           <View style={[styles.batchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable onPress={selectAll} style={styles.batchBtn}>
               <MaterialIcons name="select-all" size={18} color={colors.primary} />
-              <Text style={[styles.batchBtnText, { color: colors.primary }]}>Alle</Text>
+              <Text style={[styles.batchBtnText, { color: colors.primary }]}>{t('all')}</Text>
             </Pressable>
             <Pressable onPress={batchFavorite} style={styles.batchBtn}>
               <MaterialIcons name="star" size={18} color="#FFC107" />
-              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>Favorit</Text>
+              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>{t('favorit')}</Text>
             </Pressable>
             <Pressable onPress={batchArchive} style={styles.batchBtn}>
               <MaterialIcons name="archive" size={18} color="#FF9800" />
-              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>Archiv</Text>
+              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>{t('project_archived')}</Text>
             </Pressable>
             <Pressable onPress={batchExport} style={styles.batchBtn}>
               <MaterialIcons name="picture-as-pdf" size={18} color="#E91E63" />
-              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>Export</Text>
+              <Text style={[styles.batchBtnText, { color: colors.foreground }]}>{t('export')}</Text>
             </Pressable>
             <Pressable onPress={batchDelete} style={styles.batchBtn}>
               <MaterialIcons name="delete" size={18} color={colors.error} />
-              <Text style={[styles.batchBtnText, { color: colors.error }]}>Löschen</Text>
+              <Text style={[styles.batchBtnText, { color: colors.error }]}>{t('delete')}</Text>
             </Pressable>
             <Text style={[styles.batchCount, { color: colors.muted }]}>{selectedIds.size} gewählt</Text>
           </View>

@@ -12,6 +12,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
   id: string;
@@ -40,6 +41,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 }
 
 export default function CalendarViewScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [protocols, setProtocols] = useState<Protocol[]>([]);
@@ -139,11 +141,11 @@ export default function CalendarViewScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Kalender</Text>
-            <Text style={{ fontSize: 12, color: colors.muted }}>Protokoll-Timeline</Text>
+            <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('kalender')}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted }}>{t('protokolltimeline')}</Text>
           </View>
           <Pressable onPress={goToToday} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary + "15", borderRadius: 0, paddingHorizontal: 10, paddingVertical: 4 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Heute</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t('heute')}</Text>
           </Pressable>
         </View>
 
@@ -263,13 +265,13 @@ export default function CalendarViewScreen() {
               />
             ) : (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 14, color: colors.muted }}>Keine Protokolle an diesem Tag</Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>{t('keine_protokolle_an_diesem')}</Text>
               </View>
             )
           ) : (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <MaterialIcons name="touch-app" size={32} color={colors.muted} />
-              <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>Tag auswählen</Text>
+              <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>{t('tag_auswaehlen')}</Text>
             </View>
           )}
         </View>

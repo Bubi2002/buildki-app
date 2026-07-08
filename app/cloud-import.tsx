@@ -27,6 +27,7 @@ import {
 } from "@/lib/cloud-import-service";
 import { saveFloorPlan, FloorPlan } from "@/lib/floor-plan-store";
 import { Image as RNImage } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 
 type ImportAction = {
   id: string;
@@ -78,6 +79,7 @@ const IMPORT_ACTIONS: ImportAction[] = [
 ];
 
 export default function CloudImportScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; mode?: string }>();
@@ -121,11 +123,11 @@ export default function CloudImportScreen() {
         Alert.alert(
           "Import erfolgreich",
           `${files.length} ${files.length === 1 ? "Datei" : "Dateien"} importiert.`,
-          [{ text: "OK" }]
+          [{ text: t('ok') }]
         );
       }
     } catch (error) {
-      Alert.alert("Fehler", "Beim Import ist ein Fehler aufgetreten.");
+      Alert.alert(t('alert_fehler'), t('msg_beim_import_ist_ein_fehler'));
     } finally {
       setImporting(false);
       setSelectedAction(null);
@@ -176,8 +178,8 @@ export default function CloudImportScreen() {
           <MaterialIcons name="arrow-back-ios" size={20} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Cloud Import</Text>
-          <Text style={{ fontSize: 12, color: colors.muted }}>Dropbox, Google Drive, iCloud, OneDrive</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t('cloud_import')}</Text>
+          <Text style={{ fontSize: 12, color: colors.muted }}>{t('dropbox_google_drive_icloud')}</Text>
         </View>
       </View>
 
@@ -279,7 +281,7 @@ export default function CloudImportScreen() {
             <View style={[styles.tipsCard, { backgroundColor: colors.primary + "08", borderColor: colors.primary + "20" }]}>
               <MaterialIcons name="lightbulb-outline" size={18} color={colors.primary} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>Tipp</Text>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>{t('tipp')}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2, lineHeight: 16 }}>
                   Stelle sicher, dass die Cloud-Apps (Dropbox, Google Drive, OneDrive) auf deinem Gerät installiert sind. 
                   Sie erscheinen dann automatisch als Speicherort im Datei-Picker.

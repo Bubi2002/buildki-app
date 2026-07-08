@@ -12,6 +12,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
   id: string;
@@ -53,6 +54,7 @@ function computeDiff(textA: string, textB: string): DiffLine[] {
 }
 
 export default function ProtocolCompareScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [protocols, setProtocols] = useState<Protocol[]>([]);
@@ -140,7 +142,7 @@ export default function ProtocolCompareScreen() {
                   <Text style={{ fontSize: 12, color: colors.muted }}>{formatDate(item.createdAt)}</Text>
                 </View>
                 {isSelected && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
-                {isOther && <Text style={{ fontSize: 11, color: colors.muted }}>Bereits gewählt</Text>}
+                {isOther && <Text style={{ fontSize: 11, color: colors.muted }}>{t('bereits_gewaehlt')}</Text>}
               </Pressable>
             );
           }}
@@ -161,7 +163,7 @@ export default function ProtocolCompareScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Protokoll-Vergleich</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('protokollvergleich')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -203,19 +205,19 @@ export default function ProtocolCompareScreen() {
         <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.statItem}>
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.success }}>{stats.same}</Text>
-            <Text style={{ fontSize: 10, color: colors.muted }}>Gleich</Text>
+            <Text style={{ fontSize: 10, color: colors.muted }}>{t('gleich')}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.warning }}>{stats.changed}</Text>
-            <Text style={{ fontSize: 10, color: colors.muted }}>Geändert</Text>
+            <Text style={{ fontSize: 10, color: colors.muted }}>{t('geaendert')}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={{ fontSize: 16, fontWeight: "700", color: "#22C55E" }}>{stats.added}</Text>
-            <Text style={{ fontSize: 10, color: colors.muted }}>Hinzugefügt</Text>
+            <Text style={{ fontSize: 10, color: colors.muted }}>{t('hinzugefuegt')}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.error }}>{stats.removed}</Text>
-            <Text style={{ fontSize: 10, color: colors.muted }}>Entfernt</Text>
+            <Text style={{ fontSize: 10, color: colors.muted }}>{t('entfernt')}</Text>
           </View>
         </View>
       )}

@@ -18,6 +18,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 import * as Sharing from "expo-sharing";
+import { useTranslation } from "@/lib/language-provider";
 import {
   generateAgendaSuggestions,
   saveAgenda,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/agenda-preparation";
 
 export default function AgendaPreparationScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [suggestions, setSuggestions] = useState<AgendaItem[]>([]);
@@ -90,11 +92,11 @@ export default function AgendaPreparationScreen() {
 
   const handleSaveAgenda = async () => {
     if (!meetingTitle.trim()) {
-      Alert.alert("Titel fehlt", "Bitte gib einen Meeting-Titel ein.");
+      Alert.alert(t('alert_titel_fehlt'), t('msg_bitte_gib_einen_meetingtitel_ein'));
       return;
     }
     if (selectedItems.length === 0) {
-      Alert.alert("Keine Punkte", "Bitte wähle mindestens einen Agenda-Punkt aus.");
+      Alert.alert(t('alert_keine_punkte'), t('msg_bitte_waehle_mindestens_einen_agendapunkt'));
       return;
     }
     
@@ -108,7 +110,7 @@ export default function AgendaPreparationScreen() {
     
     await saveAgenda(agenda);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Gespeichert!", "Agenda wurde erfolgreich erstellt.");
+    Alert.alert(t('alert_gespeichert_ex'), t('msg_agenda_wurde_erfolgreich_erstellt'));
     setSelectedItems([]);
     setMeetingTitle("");
     loadData();
@@ -122,7 +124,7 @@ export default function AgendaPreparationScreen() {
       await FileSystem.writeAsStringAsync(path, text);
       await Sharing.shareAsync(path, { mimeType: "text/plain" });
     } else {
-      Alert.alert("Agenda", text);
+      Alert.alert(t('alert_agenda'), text);
     }
   };
 
@@ -189,7 +191,7 @@ export default function AgendaPreparationScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Agenda-Vorbereitung</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('agendavorbereitung')}</Text>
         <Pressable onPress={() => setShowSaved(true)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="folder" size={24} color={colors.primary} />
         </Pressable>
@@ -198,18 +200,18 @@ export default function AgendaPreparationScreen() {
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Meeting Info */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Meeting-Details</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('meetingdetails')}</Text>
           <TextInput
             value={meetingTitle}
             onChangeText={setMeetingTitle}
-            placeholder="Meeting-Titel..."
+            placeholder={t('meetingtitel')}
             placeholderTextColor={colors.muted}
             style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
           />
           <TextInput
             value={meetingDate}
             onChangeText={setMeetingDate}
-            placeholder="Datum..."
+            placeholder={t('datum')}
             placeholderTextColor={colors.muted}
             style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
           />
@@ -240,10 +242,10 @@ export default function AgendaPreparationScreen() {
 
         {/* KI Suggestions */}
         <View style={styles.suggestionsHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>KI-Vorschläge</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('kivorschlaege')}</Text>
           <Pressable onPress={() => setShowAddManual(true)} style={[styles.addButton, { backgroundColor: colors.primary }]}>
             <MaterialIcons name="add" size={16} color="#fff" />
-            <Text style={styles.addButtonText}>Manuell</Text>
+            <Text style={styles.addButtonText}>{t('manuell')}</Text>
           </Pressable>
         </View>
 
@@ -270,7 +272,7 @@ export default function AgendaPreparationScreen() {
         <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
           <Pressable onPress={handleSaveAgenda} style={[styles.saveButton, { backgroundColor: colors.primary }]}>
             <MaterialIcons name="save" size={18} color="#fff" />
-            <Text style={styles.saveButtonText}>Agenda speichern</Text>
+            <Text style={styles.saveButtonText}>{t('agenda_speichern')}</Text>
           </Pressable>
         </View>
       )}
@@ -279,21 +281,21 @@ export default function AgendaPreparationScreen() {
       <Modal visible={showAddManual} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.addModal, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Agenda-Punkt hinzufügen</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('agendapunkt_hinzufuegen')}</Text>
             <TextInput
               value={manualItem}
               onChangeText={setManualItem}
-              placeholder="Agenda-Punkt..."
+              placeholder={t('agendapunkt')}
               placeholderTextColor={colors.muted}
               style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
               autoFocus
             />
             <View style={styles.modalButtons}>
               <Pressable onPress={() => setShowAddManual(false)} style={[styles.cancelBtn, { borderColor: colors.border }]}>
-                <Text style={{ color: colors.foreground }}>Abbrechen</Text>
+                <Text style={{ color: colors.foreground }}>{t('cancel')}</Text>
               </Pressable>
               <Pressable onPress={addManualItem} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}>
-                <Text style={{ color: "#fff", fontWeight: "600" }}>Hinzufügen</Text>
+                <Text style={{ color: "#fff", fontWeight: "600" }}>{t('hinzufuegen')}</Text>
               </Pressable>
             </View>
           </View>
@@ -305,7 +307,7 @@ export default function AgendaPreparationScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.savedModal, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.savedHeader}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Gespeicherte Agenden</Text>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('gespeicherte_agenden')}</Text>
               <Pressable onPress={() => setShowSaved(false)}>
                 <MaterialIcons name="close" size={24} color={colors.foreground} />
               </Pressable>
@@ -328,7 +330,7 @@ export default function AgendaPreparationScreen() {
                 </View>
               )}
               ListEmptyComponent={
-                <Text style={[styles.emptyText, { color: colors.muted, textAlign: "center", marginTop: 40 }]}>Keine gespeicherten Agenden</Text>
+                <Text style={[styles.emptyText, { color: colors.muted, textAlign: "center", marginTop: 40 }]}>{t('keine_gespeicherten_agenden')}</Text>
               }
             />
           </View>

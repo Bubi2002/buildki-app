@@ -13,6 +13,7 @@ import {
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 
 const DEADLINE_DAYS_OPTIONS = [1, 2, 3, 5, 7];
 
@@ -28,6 +29,7 @@ const WEEKDAY_LABELS: { id: number; short: string; long: string }[] = [
 ];
 
 export default function DailySummarySettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [settings, setSettings] = useState<DailySummarySettings>(DEFAULT_SUMMARY_SETTINGS);
@@ -48,7 +50,7 @@ export default function DailySummarySettingsScreen() {
     const { status } = await Notifications.requestPermissionsAsync();
     setPermissionGranted(status === "granted");
     if (status !== "granted") {
-      Alert.alert("Berechtigung verweigert", "Bitte erlaube Push-Benachrichtigungen in den Einstellungen deines Geräts.");
+      Alert.alert(t('alert_berechtigung_verweigert'), t('msg_bitte_erlaube_pushbenachrichtigungen_in_den'));
     }
   };
 
@@ -90,7 +92,7 @@ export default function DailySummarySettingsScreen() {
     await saveDailySummarySettings(settings);
     setHasChanges(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Gespeichert", "Erinnerungen wurden aktualisiert und geplant.");
+    Alert.alert(t('alert_gespeichert'), t('msg_erinnerungen_wurden_aktualisiert_und_geplant'));
   };
 
   const formatTime = (h: number, m: number) => {
@@ -103,10 +105,10 @@ export default function DailySummarySettingsScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Tages-Zusammenfassung</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('tageszusammenfassung')}</Text>
         {hasChanges && (
           <Pressable onPress={saveSettings} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.7 : 1 }]}>
-            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>Speichern</Text>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>{t('save')}</Text>
           </Pressable>
         )}
       </View>
@@ -118,8 +120,8 @@ export default function DailySummarySettingsScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <MaterialIcons name="notifications-off" size={20} color="#E53935" />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#E53935" }}>Push-Berechtigung fehlt</Text>
-                <Text style={{ fontSize: 11, color: "#E53935", marginTop: 2 }}>Tippe hier, um Benachrichtigungen zu erlauben</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#E53935" }}>{t('pushberechtigung_fehlt')}</Text>
+                <Text style={{ fontSize: 11, color: "#E53935", marginTop: 2 }}>{t('tippe_hier_um_benachrichtigungen')}</Text>
               </View>
               <MaterialIcons name="chevron-right" size={20} color="#E53935" />
             </View>
@@ -130,8 +132,8 @@ export default function DailySummarySettingsScreen() {
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rowTitle, { color: colors.foreground }]}>Tages-Zusammenfassung</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>Push-Benachrichtigung mit Tagesübersicht</Text>
+              <Text style={[styles.rowTitle, { color: colors.foreground }]}>{t('tageszusammenfassung')}</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>{t('pushbenachrichtigung_mit_tagesuebersicht')}</Text>
             </View>
             <Switch
               value={settings.enabled}
@@ -145,8 +147,8 @@ export default function DailySummarySettingsScreen() {
           <>
             {/* Time Picker */}
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Uhrzeit</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>Wann soll die Erinnerung kommen?</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('uhrzeit')}</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>{t('wann_soll_die_erinnerung')}</Text>
               
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {/* Hour picker */}
@@ -162,7 +164,7 @@ export default function DailySummarySettingsScreen() {
                   <Pressable onPress={() => adjustHour(-1)} style={({ pressed }) => [styles.arrowBtn, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
                     <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.foreground} />
                   </Pressable>
-                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Stunde</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{t('stunde')}</Text>
                 </View>
 
                 <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginBottom: 20 }}>:</Text>
@@ -180,7 +182,7 @@ export default function DailySummarySettingsScreen() {
                   <Pressable onPress={() => adjustMinute(-5)} style={({ pressed }) => [styles.arrowBtn, { borderColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
                     <MaterialIcons name="keyboard-arrow-down" size={24} color={colors.foreground} />
                   </Pressable>
-                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Minute</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{t('minute')}</Text>
                 </View>
               </View>
 
@@ -191,8 +193,8 @@ export default function DailySummarySettingsScreen() {
 
             {/* Weekday Selection */}
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Wochentage</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>An welchen Tagen erinnern?</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('wochentage')}</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>{t('an_welchen_tagen_erinnern')}</Text>
               
               <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
                 {WEEKDAY_LABELS.map((day) => {
@@ -221,23 +223,23 @@ export default function DailySummarySettingsScreen() {
                   onPress={() => updateSetting("weekdays", [2, 3, 4, 5, 6])}
                   style={({ pressed }) => [styles.quickBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={{ fontSize: 11, color: colors.muted }}>Mo-Fr</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('mofr')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => updateSetting("weekdays", [1, 2, 3, 4, 5, 6, 7])}
                   style={({ pressed }) => [styles.quickBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={{ fontSize: 11, color: colors.muted }}>Jeden Tag</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('jeden_tag')}</Text>
                 </Pressable>
               </View>
             </View>
 
             {/* Content Options */}
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Inhalt</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('inhalt')}</Text>
               <View style={{ gap: 12, marginTop: 8 }}>
                 <View style={styles.row}>
-                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>Protokolle</Text>
+                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>{t('project_protocols')}</Text>
                   <Switch
                     value={settings.includeProtocols}
                     onValueChange={(v) => updateSetting("includeProtocols", v)}
@@ -245,7 +247,7 @@ export default function DailySummarySettingsScreen() {
                   />
                 </View>
                 <View style={styles.row}>
-                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>Mängel-Status</Text>
+                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>{t('stats_defects_status')}</Text>
                   <Switch
                     value={settings.includeDefects}
                     onValueChange={(v) => updateSetting("includeDefects", v)}
@@ -253,7 +255,7 @@ export default function DailySummarySettingsScreen() {
                   />
                 </View>
                 <View style={styles.row}>
-                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>Aufgaben</Text>
+                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>{t('team_tasks')}</Text>
                   <Switch
                     value={settings.includeTasks}
                     onValueChange={(v) => updateSetting("includeTasks", v)}
@@ -267,8 +269,8 @@ export default function DailySummarySettingsScreen() {
             <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>Mängel-Frist-Erinnerung</Text>
-                  <Text style={[styles.rowSubtitle, { color: colors.muted }]}>Push bei ablaufender Frist</Text>
+                  <Text style={[styles.rowTitle, { color: colors.foreground }]}>{t('maengelfristerinnerung')}</Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.muted }]}>{t('push_bei_ablaufender_frist')}</Text>
                 </View>
                 <Switch
                   value={settings.defectDeadlineReminder}
@@ -279,7 +281,7 @@ export default function DailySummarySettingsScreen() {
 
               {settings.defectDeadlineReminder && (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 8 }]}>Tage vor Frist erinnern:</Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 8 }]}>{t('tage_vor_frist_erinnern')}</Text>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {DEADLINE_DAYS_OPTIONS.map((d) => (
                       <Pressable
@@ -307,7 +309,7 @@ export default function DailySummarySettingsScreen() {
         <View style={{ marginTop: 16, padding: 16, backgroundColor: colors.primary + "08", borderRadius: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <MaterialIcons name="info-outline" size={18} color={colors.primary} />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Hinweis</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('hinweis')}</Text>
           </View>
           <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
             Die Erinnerung wird als echte Push-Benachrichtigung an den gewählten Tagen zur eingestellten Uhrzeit gesendet – auch wenn die App geschlossen ist. 

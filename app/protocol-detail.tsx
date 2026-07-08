@@ -41,6 +41,7 @@ import { getSpeakerName, updateSpeakerName, SpeakerProfile } from "@/lib/speaker
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
 import { sendActionItemsEmail } from "@/lib/email-actions";
 import { queueChange, getSyncStatus } from "@/lib/offline-sync";
+import { useTranslation } from "@/lib/language-provider";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const LANGUAGES = [
@@ -110,6 +111,7 @@ type GeneratedVersion = {
 };
 
 export default function ProtocolDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const router = useRouter();
@@ -348,7 +350,7 @@ export default function ProtocolDetailScreen() {
           protocol?.title || "Protokoll",
           protocolDate,
         );
-        Alert.alert("Benachrichtigung gesendet", `E-Mail an ${assigneeName} (${assigneeEmail}) wurde geöffnet.`);
+        Alert.alert(t('alert_benachrichtigung_gesendet'), `E-Mail an ${assigneeName} (${assigneeEmail}) wurde geöffnet.`);
       } catch (emailErr) {
         console.warn("Email notification failed:", emailErr);
       }
@@ -408,13 +410,13 @@ export default function ProtocolDetailScreen() {
       };
       await AsyncStorage.setItem("protocols", JSON.stringify([duplicate, ...protocols]));
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Dupliziert", `Protokoll wurde als Kopie erstellt.${newNumber ? ` Neue Nr: ${newNumber}` : ""}`, [
-        { text: "Öffnen", onPress: () => router.replace({ pathname: "/protocol-detail", params: { id: duplicate.id } }) },
-        { text: "OK" },
+      Alert.alert(t('alert_dupliziert'), `Protokoll wurde als Kopie erstellt.${newNumber ? ` Neue Nr: ${newNumber}` : ""}`, [
+        { text: t('btn_oeffnen'), onPress: () => router.replace({ pathname: "/protocol-detail", params: { id: duplicate.id } }) },
+        { text: t('ok') },
       ]);
     } catch (e) {
       console.error("Error duplicating protocol:", e);
-      Alert.alert("Fehler", "Protokoll konnte nicht dupliziert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_protokoll_konnte_nicht_dupliziert_werden'));
     }
   };
 
@@ -468,7 +470,7 @@ export default function ProtocolDetailScreen() {
       setSuggestedDocType({ type: result.suggestedType, confidence: result.confidence, reason: result.reason });
     } catch (error) {
       console.error("Document type detection error:", error);
-      Alert.alert("Fehler", "Dokumenttyp konnte nicht erkannt werden.");
+      Alert.alert(t('alert_fehler'), t('msg_dokumenttyp_konnte_nicht_erkannt_werden'));
     } finally {
       setIsDetectingType(false);
     }
@@ -510,9 +512,9 @@ export default function ProtocolDetailScreen() {
       if (match) {
         // Auto-assign the matched name
         setSpeakerNameMap(prev => ({ ...prev, [speakerLabel]: match.name }));
-        Alert.alert("Sprecher erkannt", `"${speakerLabel}" wurde automatisch als "${match.name}" identifiziert (Konfidenz: ${Math.round(match.confidence * 100)}%).`);
+        Alert.alert(t('alert_sprecher_erkannt'), `"${speakerLabel}" wurde automatisch als "${match.name}" identifiziert (Konfidenz: ${Math.round(match.confidence * 100)}%).`);
       } else {
-        Alert.alert("Neues Stimmprofil", `Kein bekanntes Profil gefunden. Benennen Sie den Sprecher, um ein neues Profil zu erstellen.`);
+        Alert.alert(t('alert_neues_stimmprofil'), `Kein bekanntes Profil gefunden. Benennen Sie den Sprecher, um ein neues Profil zu erstellen.`);
       }
     } catch (e) {
       console.error("Voice profile analysis error:", e);
@@ -546,14 +548,14 @@ export default function ProtocolDetailScreen() {
           body: JSON.stringify({ json: { title: notification.title, content: notification.content } }),
         });
         if (response.ok) {
-          Alert.alert("Aufgabe delegiert", `"${task}" wurde an ${assignee} gesendet.`);
+          Alert.alert(t('alert_aufgabe_delegiert'), t('msg_aufgabe_delegiert_gespeichert').replace('{task}', task).replace('{assignee}', assignee));
         }
       } catch (notifError) {
         // Notification sending failed but delegation was saved - show success anyway
-        Alert.alert("Aufgabe delegiert \u2713", `"${task}" wurde an ${assignee} delegiert und gespeichert.`);
+        Alert.alert(t('alert_aufgabe_delegiert_ok'), t('msg_aufgabe_delegiert_gespeichert').replace('{task}', task).replace('{assignee}', assignee));
       }
     } catch (e) {
-      Alert.alert("Fehler", "Aufgabe konnte nicht delegiert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_aufgabe_konnte_nicht_delegiert_werden'));
     } finally {
       setIsDelegating(false);
       setShowDelegateModal(false);
@@ -600,13 +602,13 @@ export default function ProtocolDetailScreen() {
   const importFromPhoneContacts = async () => {
     try {
       if (Platform.OS === "web") {
-        Alert.alert("Nicht verfügbar", "Kontakt-Import ist nur auf dem Gerät verfügbar.");
+        Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
         return;
       }
       const ContactsModule = await import("expo-contacts");
       const { status } = await ContactsModule.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert. Bitte erlaube den Zugriff in den Einstellungen.");
+        Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
         return;
       }
       const { data } = await ContactsModule.getContactsAsync({
@@ -614,21 +616,21 @@ export default function ProtocolDetailScreen() {
         sort: ContactsModule.SortTypes?.FirstName || undefined,
       });
       if (!data || data.length === 0) {
-        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Gerät gefunden.");
+        Alert.alert(t('alert_keine_kontakte'), t('msg_es_wurden_keine_kontakte_auf'));
         return;
       }
       const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 10);
       Alert.alert(
-        "Kontakt importieren",
+        t('alert_kontakt_importieren'),
         "Wähle einen Kontakt:",
         [
           ...sorted.map(c => ({
-            text: c.name || "Unbekannt",
+            text: c.name || t('unbekannt'),
             onPress: async () => {
               const email = c.emails?.[0]?.email || "";
               const phone = c.phoneNumbers?.[0]?.number || "";
               const newC = await saveTeamContact({
-                name: c.name || "Unbekannt",
+                name: c.name || t('unbekannt'),
                 email,
                 phone: phone || undefined,
                 lastUsed: Date.now(),
@@ -636,12 +638,12 @@ export default function ProtocolDetailScreen() {
               setTeamContacts(prev => [newC, ...prev]);
             },
           })),
-          { text: "Abbrechen", style: "cancel" },
+          { text: t('btn_abbrechen'), style: "cancel" },
         ]
       );
     } catch (e: any) {
       console.error("Import contacts error:", e);
-      Alert.alert("Fehler", `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
+      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
     }
   };
 
@@ -714,7 +716,7 @@ export default function ProtocolDetailScreen() {
       const mailtoUrl = `mailto:${recipients.join(",")}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
       await Linking.openURL(mailtoUrl);
     } catch (e) {
-      Alert.alert("Fehler", "E-Mail konnte nicht ge\u00f6ffnet werden.");
+      Alert.alert(t('alert_fehler'), t('msg_email_konnte_nicht_geu00f6ffnet_werden'));
     }
   };
 
@@ -810,7 +812,7 @@ export default function ProtocolDetailScreen() {
       }
     } catch (error) {
       console.error("Error regenerating:", error);
-      Alert.alert("Fehler", "Protokoll konnte nicht neu generiert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_protokoll_konnte_nicht_neu_generiert'));
     } finally {
       setIsRegenerating(false);
     }
@@ -910,7 +912,7 @@ export default function ProtocolDetailScreen() {
       });
       setShowMindmap(true);
     } catch (e) {
-      Alert.alert("Fehler", "Mindmap konnte nicht generiert werden");
+      Alert.alert(t('alert_fehler'), t('msg_mindmap_konnte_nicht_generiert_werden'));
     } finally {
       setIsGeneratingMindmap(false);
     }
@@ -938,7 +940,7 @@ export default function ProtocolDetailScreen() {
         <div class="version">
           <h2>${v.name}</h2>
           <div style="white-space: pre-wrap;">${v.text}</div>
-          ${v.todos.length > 0 ? `<h3>Aufgaben</h3>${v.todos.map((t: any) => `<div class="todo ${t.done ? 'todo-done' : ''}">${t.done ? '☑' : '☐'} ${t.text}${t.assignee ? ' → ' + t.assignee : ''}</div>`).join('')}` : ''}
+          ${v.todos.length > 0 ? `<h3>{t('team_tasks')}</h3>${v.todos.map((t: any) => `<div class="todo ${t.done ? 'todo-done' : ''}">${t.done ? '☑' : '☐'} ${t.text}${t.assignee ? ' → ' + t.assignee : ''}</div>`).join('')}` : ''}
         </div>
       `).join('')}
     </body></html>`;
@@ -949,7 +951,7 @@ export default function ProtocolDetailScreen() {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Alle Versionen exportieren" });
       }
     } catch (e) {
-      Alert.alert("Fehler", "PDF-Export fehlgeschlagen");
+      Alert.alert(t('alert_fehler'), t('msg_pdfexport_fehlgeschlagen'));
     }
   };
 
@@ -1098,7 +1100,7 @@ export default function ProtocolDetailScreen() {
       setShowPdfPreview(true);
     } catch (error) {
       console.error("PDF export error:", error);
-      Alert.alert("Fehler", "PDF konnte nicht erstellt werden. Bitte versuche es erneut.");
+      Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden_2'));
     } finally {
       setIsExporting(false);
     }
@@ -1107,7 +1109,7 @@ export default function ProtocolDetailScreen() {
   const sharePdfFromPreview = async () => {
     if (!previewPdfUri || !protocol) return;
     if (Platform.OS === "web") {
-      Alert.alert("PDF erstellt", "PDF-Export ist nur auf dem Handy verf\u00fcgbar.");
+      Alert.alert(t('alert_pdf_erstellt'), t('msg_pdfexport_ist_nur_auf_dem'));
       return;
     }
     const isAvailable = await Sharing.isAvailableAsync();
@@ -1131,14 +1133,14 @@ export default function ProtocolDetailScreen() {
         });
       } catch {}
     } else {
-      Alert.alert("Fehler", "Teilen ist auf diesem Ger\u00e4t nicht verf\u00fcgbar.");
+      Alert.alert(t('alert_fehler'), t('msg_teilen_ist_auf_diesem_geru00e4t'));
     }
   };
 
   const sendPdfViaEmail = async () => {
     if (!previewPdfUri || !protocol) return;
     if (Platform.OS === "web") {
-      Alert.alert("Hinweis", "E-Mail-Versand ist nur auf dem Handy verf\u00fcgbar.");
+      Alert.alert(t('hinweis'), t('msg_emailversand_ist_nur_auf_dem'));
       return;
     }
     try {
@@ -1214,7 +1216,7 @@ export default function ProtocolDetailScreen() {
           }
         }, 1000);
       } else {
-        Alert.alert("Hinweis", "Kein E-Mail-Programm gefunden. PDF wird zum Teilen angeboten.");
+        Alert.alert(t('hinweis'), t('msg_kein_emailprogramm_gefunden_pdf_wird'));
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(previewPdfUri, {
@@ -1226,7 +1228,7 @@ export default function ProtocolDetailScreen() {
       }
     } catch (e) {
       console.error("[Email] Error:", e);
-      Alert.alert("Fehler", "E-Mail konnte nicht ge\u00f6ffnet werden.");
+      Alert.alert(t('alert_fehler'), t('msg_email_konnte_nicht_geu00f6ffnet_werden'));
     }
   };
 
@@ -1257,7 +1259,7 @@ export default function ProtocolDetailScreen() {
       });
       // Use native share sheet with PDF - user can pick WhatsApp
       if (Platform.OS === "web") {
-        Alert.alert("Hinweis", "PDF-Versand per WhatsApp ist nur auf dem Handy verfügbar.");
+        Alert.alert(t('hinweis'), t('msg_pdfversand_per_whatsapp_ist_nur'));
         return;
       }
 
@@ -1291,7 +1293,7 @@ export default function ProtocolDetailScreen() {
       }
     } catch (error) {
       console.error("WhatsApp PDF share error:", error);
-      Alert.alert("Fehler", "PDF konnte nicht erstellt werden. Bitte versuche es erneut.");
+      Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden_2'));
     } finally {
       setIsSendingWhatsApp(false);
     }
@@ -1316,7 +1318,7 @@ export default function ProtocolDetailScreen() {
   const copyToClipboard = async () => {
     if (!protocol) return;
     await Clipboard.setStringAsync(protocol.protocol);
-    Alert.alert("Kopiert", "Protokoll in die Zwischenablage kopiert!");
+    Alert.alert(t('alert_kopiert'), t('msg_protokoll_in_die_zwischenablage_kopiert'));
   };
 
   const shareGeneric = async () => {
@@ -1379,11 +1381,11 @@ export default function ProtocolDetailScreen() {
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        Alert.alert("Fotos aktualisiert", "Die Foto-Referenzen wurden auf das neue Format aktualisiert. Beim nächsten PDF-Export werden die Fotos inline eingebettet.");
+        Alert.alert(t('alert_fotos_aktualisiert'), t('msg_die_fotoreferenzen_wurden_auf_das'));
       }
     } catch (error) {
       console.error("Error re-embedding photos:", error);
-      Alert.alert("Fehler", "Fotos konnten nicht aktualisiert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_fotos_konnten_nicht_aktualisiert_werden'));
     }
   };
 
@@ -1481,7 +1483,7 @@ export default function ProtocolDetailScreen() {
   if (!protocol) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
-        <Text className="text-xl text-foreground">Protokoll nicht gefunden</Text>
+        <Text className="text-xl text-foreground">{t('protokoll_nicht_gefunden')}</Text>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [
@@ -1489,7 +1491,7 @@ export default function ProtocolDetailScreen() {
             { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <Text style={styles.backButtonText}>Zurück</Text>
+          <Text style={styles.backButtonText}>{t('back')}</Text>
         </Pressable>
       </ScreenContainer>
     );
@@ -1579,7 +1581,7 @@ export default function ProtocolDetailScreen() {
         {/* Tags */}
         {showTagEditor && (
           <View style={[styles.metaCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
-            <Text style={[{ fontSize: 14, fontWeight: "600", marginBottom: 8, color: colors.foreground }]}>Tags</Text>
+            <Text style={[{ fontSize: 14, fontWeight: "600", marginBottom: 8, color: colors.foreground }]}>{t('tags')}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
               {tags.map((tag) => (
                 <Pressable key={tag} onPress={() => updateTags(tags.filter(t => t !== tag))} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 }}>
@@ -1589,12 +1591,12 @@ export default function ProtocolDetailScreen() {
               ))}
               <Pressable
                 onPress={() => {
-                  Alert.prompt ? Alert.prompt("Tag hinzufügen", "Name des Tags:", (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert("Tag hinzufügen", "Nutze die Protokoll-Liste (langes Drücken) um Tags zu verwalten.");
+                  Alert.prompt ? Alert.prompt("Tag hinzufügen", "Name des Tags:", (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert(t('alert_tag_hinzufuegen'), t('msg_nutze_die_protokollliste_langes_druecken'));
                 }}
                 style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.border + "50", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 }}
               >
                 <MaterialIcons name="add" size={14} color={colors.muted} />
-                <Text style={{ fontSize: 12, color: colors.muted }}>Tag</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>{t('tag')}</Text>
               </Pressable>
             </View>
           </View>
@@ -1625,7 +1627,7 @@ export default function ProtocolDetailScreen() {
                   {protocol.processingStep === "transcribing" && "Spracherkennung läuft..."}
                   {protocol.processingStep === "generating" && "Protokoll wird erstellt..."}
                   {protocol.processingStep === "extracting-todos" && "Aufgaben werden extrahiert..."}
-                  {protocol.processingStep === "failed" && `Fehler: ${protocol.processingError || "Unbekannt"}`}
+                  {protocol.processingStep === "failed" && `Fehler: ${protocol.processingError || t('unbekannt')}`}
                   {!protocol.processingStep && "Verarbeitung läuft..."}
                 </Text>
                 {protocol.processingStep === "failed" && (
@@ -1639,7 +1641,7 @@ export default function ProtocolDetailScreen() {
                       onPress={() => router.push("/(tabs)" as any)}
                       style={({ pressed }) => [{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#FF9800", borderRadius: 0, alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>Neue Aufnahme starten</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>{t('neue_aufnahme_starten')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -1737,7 +1739,7 @@ export default function ProtocolDetailScreen() {
                 Fotos ({photos.length})
               </Text>
               {photos.length > 1 && (
-                <Text style={{ fontSize: 11, color: colors.muted }}>Reihenfolge ändern ↑↓</Text>
+                <Text style={{ fontSize: 11, color: colors.muted }}>{t('reihenfolge_aendern')}</Text>
               )}
             </View>
             {photos.map((photoUri, index) => {
@@ -1907,7 +1909,7 @@ export default function ProtocolDetailScreen() {
               }]}
             >
               <MaterialIcons name="add-photo-alternate" size={20} color={colors.primary} />
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Fotos hinzufügen</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('fotos_hinzufuegen')}</Text>
             </Pressable>
             {/* Show re-embed button if protocol text has old-format photo references */}
             {protocol.protocol && /\[Foto\s*\d+\s*[\u2013\-–]\s*siehe/i.test(protocol.protocol) && (
@@ -1929,7 +1931,7 @@ export default function ProtocolDetailScreen() {
                 }]}
               >
                 <MaterialIcons name="refresh" size={18} color="#F59E0B" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#F59E0B" }}>Fotos neu einbetten</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#F59E0B" }}>{t('fotos_neu_einbetten')}</Text>
               </Pressable>
             )}
           </View>
@@ -1938,7 +1940,7 @@ export default function ProtocolDetailScreen() {
         {/* Add photos button when no photos exist */}
         {photos.length === 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 12 }]}>Fotos</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 12 }]}>{t('gallery_photos')}</Text>
             <Pressable
               onPress={addPhotoFromGallery}
               style={({ pressed }) => [{
@@ -1957,7 +1959,7 @@ export default function ProtocolDetailScreen() {
               }]}
             >
               <MaterialIcons name="add-photo-alternate" size={24} color={colors.muted} />
-              <Text style={{ fontSize: 14, color: colors.muted }}>Fotos aus Galerie hinzufügen</Text>
+              <Text style={{ fontSize: 14, color: colors.muted }}>{t('fotos_aus_galerie_hinzufuegen')}</Text>
             </Pressable>
           </View>
         )}
@@ -2031,7 +2033,7 @@ export default function ProtocolDetailScreen() {
         <View style={styles.section}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
             <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>KI-Werkzeuge</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('kiwerkzeuge')}</Text>
           </View>
           <View style={{ gap: 8 }}>
             {/* Zusammenfassung */}
@@ -2048,8 +2050,8 @@ export default function ProtocolDetailScreen() {
                 {isGeneratingSummary ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="summarize" size={20} color={colors.primary} />}
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Zusammenfassung</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Kernpunkte auf einen Blick</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('zusammenfassung')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('kernpunkte_auf_einen_blick')}</Text>
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
@@ -2066,8 +2068,8 @@ export default function ProtocolDetailScreen() {
                 <MaterialIcons name="refresh" size={20} color="#8B5CF6" />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Neu generieren</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Anderes Template oder Format wählen</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('neu_generieren')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('anderes_template_oder_format')}</Text>
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
@@ -2085,8 +2087,8 @@ export default function ProtocolDetailScreen() {
                 {isIdentifyingSpeakers ? <ActivityIndicator size="small" color="#059669" /> : <MaterialIcons name="record-voice-over" size={20} color="#059669" />}
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Sprecher erkennen</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>Personen im Gespräch identifizieren</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('sprecher_erkennen')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('personen_im_gespraech_identifizieren')}</Text>
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
@@ -2102,14 +2104,14 @@ export default function ProtocolDetailScreen() {
         {/* Protocol content with multi-output versions */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Protokoll</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('protokoll')}</Text>
             <View style={{ flexDirection: "row", gap: 6 }}>
               <Pressable
                 onPress={() => router.push(`/protocol-versions?protocolId=${protocol.id}&protocolTitle=${encodeURIComponent(protocol.title || "Protokoll")}` as any)}
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="history" size={15} color={colors.muted} />
-                <Text style={{ fontSize: 12, fontWeight: "500", color: colors.muted }}>Versionen</Text>
+                <Text style={{ fontSize: 12, fontWeight: "500", color: colors.muted }}>{t('versionen')}</Text>
               </Pressable>
               <Pressable
                 onPress={isEditing ? saveEdit : startEditing}
@@ -2157,7 +2159,7 @@ export default function ProtocolDetailScreen() {
           {isRegenerating && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, backgroundColor: colors.primary + "08", borderRadius: 0, marginBottom: 12 }}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={{ fontSize: 13, color: colors.primary }}>Wird neu generiert...</Text>
+              <Text style={{ fontSize: 13, color: colors.primary }}>{t('wird_neu_generiert')}</Text>
             </View>
           )}
 
@@ -2244,7 +2246,7 @@ export default function ProtocolDetailScreen() {
         {(featureFlags.signature || featureFlags.multiSignature) && <View style={[styles.section, { marginTop: 0 }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 }}>
             <MaterialIcons name="draw" size={18} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Unterschriften</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('unterschriften')}</Text>
           </View>
 
           {/* Existing signatures */}
@@ -2313,7 +2315,7 @@ export default function ProtocolDetailScreen() {
           ) : (
             <View>
               {/* Role selection chips */}
-              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>Rolle wählen und unterschreiben:</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>{t('rolle_waehlen_und_unterschreiben')}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {SIGNATURE_ROLES.filter(role => !signatures.find(s => s.role === role)).map((role) => (
                   <Pressable
@@ -2344,7 +2346,7 @@ export default function ProtocolDetailScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <MaterialIcons name="translate" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Übersetzung</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('uebersetzung')}</Text>
             </View>
             <Pressable
               onPress={() => setShowLangPicker(!showLangPicker)}
@@ -2385,7 +2387,7 @@ export default function ProtocolDetailScreen() {
                 setTranslatedText(result.translated);
                 setShowTranslation(true);
               } catch (e) {
-                Alert.alert("Fehler", "Übersetzung fehlgeschlagen. Bitte versuche es erneut.");
+                Alert.alert(t('alert_fehler'), t('msg_uebersetzung_fehlgeschlagen_bitte_versuche_es'));
               } finally {
                 setIsTranslating(false);
               }
@@ -2476,7 +2478,7 @@ export default function ProtocolDetailScreen() {
           ]}
         >
           <MaterialIcons name="email" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>E-Mail</Text>
+          <Text style={styles.actionButtonText}>{t('email')}</Text>
         </Pressable>
 
         <Pressable
@@ -2487,7 +2489,7 @@ export default function ProtocolDetailScreen() {
           ]}
         >
           <MaterialIcons name="content-copy" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>Kopieren</Text>
+          <Text style={styles.actionButtonText}>{t('kopieren')}</Text>
         </Pressable>
 
         <Pressable
@@ -2498,7 +2500,7 @@ export default function ProtocolDetailScreen() {
           ]}
         >
           <MaterialIcons name="share" size={20} color={colors.background} />
-          <Text style={[styles.actionButtonText, { color: colors.background }]}>Teilen</Text>
+          <Text style={[styles.actionButtonText, { color: colors.background }]}>{t('protocol_share')}</Text>
         </Pressable>
           </>
         )}
@@ -2528,7 +2530,7 @@ export default function ProtocolDetailScreen() {
             <TextInput
               value={captionEditText}
               onChangeText={setCaptionEditText}
-              placeholder="Beschreibung eingeben..."
+              placeholder={t('beschreibung_eingeben')}
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={5}
@@ -2561,7 +2563,7 @@ export default function ProtocolDetailScreen() {
                   opacity: pressed ? 0.7 : 1,
                 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error }}>Löschen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error }}>{t('delete')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowCaptionEdit(false)}
@@ -2574,7 +2576,7 @@ export default function ProtocolDetailScreen() {
                   opacity: pressed ? 0.7 : 1,
                 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Abbrechen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -2590,7 +2592,7 @@ export default function ProtocolDetailScreen() {
                   opacity: pressed ? 0.7 : 1,
                 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>Speichern</Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>{t('save')}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -2673,7 +2675,7 @@ export default function ProtocolDetailScreen() {
               style={({ pressed }) => [styles.modalShareButton, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="share" size={24} color="#FFFFFF" />
-              <Text style={styles.modalShareText}>Teilen</Text>
+              <Text style={styles.modalShareText}>{t('protocol_share')}</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -2683,7 +2685,7 @@ export default function ProtocolDetailScreen() {
               style={({ pressed }) => [styles.modalShareButton, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="edit" size={24} color="#FFFFFF" />
-              <Text style={styles.modalShareText}>Annotieren</Text>
+              <Text style={styles.modalShareText}>{t('annotieren')}</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -2693,7 +2695,7 @@ export default function ProtocolDetailScreen() {
               style={({ pressed }) => [styles.modalShareButton, { backgroundColor: "#0EA5E9", opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="cloud-upload" size={24} color="#FFFFFF" />
-              <Text style={styles.modalShareText}>Cloud</Text>
+              <Text style={styles.modalShareText}>{t('cloud')}</Text>
             </Pressable>
           </View>
         </View>
@@ -2709,19 +2711,19 @@ export default function ProtocolDetailScreen() {
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Pressable onPress={() => setShowPdfPreview(false)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-              <Text style={{ fontSize: 16, color: colors.primary }}>Schließen</Text>
+              <Text style={{ fontSize: 16, color: colors.primary }}>{t('close')}</Text>
             </Pressable>
-            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>PDF-Vorschau</Text>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>{t('pdfvorschau')}</Text>
             <Pressable onPress={sharePdfFromPreview} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
               <MaterialIcons name="share" size={20} color={colors.primary} />
-              <Text style={{ fontSize: 16, color: colors.primary }}>Teilen</Text>
+              <Text style={{ fontSize: 16, color: colors.primary }}>{t('protocol_share')}</Text>
             </Pressable>
           </View>
           {Platform.OS === "web" && previewHtml ? (
             <View style={{ flex: 1 }}>
               <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
                 <View style={{ backgroundColor: "#fff", borderRadius: 0, padding: 16, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}>
-                  <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textAlign: "center" }}>PDF-Vorschau (Druckansicht)</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12, textAlign: "center" }}>{t('pdfvorschau_druckansicht')}</Text>
                   {/* Render HTML preview as text summary on web */}
                   <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 4, padding: 12 }}>
                     <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 20 }}>
@@ -2741,13 +2743,13 @@ export default function ProtocolDetailScreen() {
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="share" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen / herunterladen</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('pdf_teilen_herunterladen')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zurück</Text>
+                  <Text style={{ fontSize: 16, color: colors.foreground }}>{t('back')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -2765,7 +2767,7 @@ export default function ProtocolDetailScreen() {
                   renderLoading={() => (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#f8f8f8" }}>
                       <ActivityIndicator size="large" color={colors.primary} />
-                      <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>PDF wird geladen...</Text>
+                      <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>{t('pdf_wird_geladen')}</Text>
                     </View>
                   )}
                 />
@@ -2776,20 +2778,20 @@ export default function ProtocolDetailScreen() {
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="share" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>PDF teilen</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('pdf_teilen')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Text style={{ fontSize: 16, color: colors.foreground }}>Zurück</Text>
+                  <Text style={{ fontSize: 16, color: colors.foreground }}>{t('back')}</Text>
                 </Pressable>
               </View>
             </View>
           ) : (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
               <MaterialIcons name="picture-as-pdf" size={64} color={colors.primary} />
-              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>PDF wird erstellt...</Text>
+              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>{t('pdf_wird_erstellt')}</Text>
               <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} />
             </View>
           )}
@@ -2800,7 +2802,7 @@ export default function ProtocolDetailScreen() {
         <Modal visible={showMindmap} animationType="slide" onRequestClose={() => setShowMindmap(false)}>
           <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Mindmap</Text>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('mindmap')}</Text>
               <Pressable onPress={() => setShowMindmap(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
                 <MaterialIcons name="close" size={24} color={colors.foreground} />
               </Pressable>
@@ -2833,7 +2835,7 @@ export default function ProtocolDetailScreen() {
         <Modal visible={showStats} animationType="slide" onRequestClose={() => setShowStats(false)}>
           <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Sprachstatistik</Text>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('sprachstatistik')}</Text>
               <Pressable onPress={() => setShowStats(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
                 <MaterialIcons name="close" size={24} color={colors.foreground} />
               </Pressable>
@@ -2854,7 +2856,7 @@ export default function ProtocolDetailScreen() {
                     </View>
                   ))}
                 </View>
-                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>Häufigste Wörter</Text>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>{t('haeufigste_woerter')}</Text>
                 {speechStats.topWords.map((w, idx) => (
                   <View key={idx} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                     <View style={{ flex: 1, height: 24, backgroundColor: colors.surface, borderRadius: 0, overflow: "hidden" }}>
@@ -2872,7 +2874,7 @@ export default function ProtocolDetailScreen() {
         <Modal visible={showChapters} animationType="slide" onRequestClose={() => setShowChapters(false)}>
           <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Kapitel</Text>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('kapitel')}</Text>
               <Pressable onPress={() => setShowChapters(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
                 <MaterialIcons name="close" size={24} color={colors.foreground} />
               </Pressable>
@@ -2893,12 +2895,12 @@ export default function ProtocolDetailScreen() {
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
             <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: "80%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.foreground }}>KI-Ausgabeformat wählen</Text>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.foreground }}>{t('kiausgabeformat_waehlen')}</Text>
                 <Pressable onPress={() => setShowRegenerateModal(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
                   <MaterialIcons name="close" size={24} color={colors.foreground} />
                 </Pressable>
               </View>
-              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Generiere eine neue Version aus der Original-Aufnahme:</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{t('generiere_eine_neue_version')}</Text>
               <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Auto-Detect Button */}
                 <Pressable
@@ -2919,7 +2921,7 @@ export default function ProtocolDetailScreen() {
                   </View>
                 )}
                 {/* KI-Zusammenfassungen */}
-                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>KI-Zusammenfassungen</Text>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{t('kizusammenfassungen')}</Text>
                 {availableTemplates.filter(t => t.id.includes("-ki")).map((t) => (
                   <Pressable
                     key={t.id}
@@ -2937,7 +2939,7 @@ export default function ProtocolDetailScreen() {
                   </Pressable>
                 ))}
                 {/* Fach-Templates */}
-                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 10 }}>Fach-Vorlagen</Text>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 10 }}>{t('fachvorlagen')}</Text>
                 {availableTemplates.filter(t => !t.id.includes("-ki")).map((t) => (
                   <Pressable
                     key={t.id}
@@ -2965,7 +2967,7 @@ export default function ProtocolDetailScreen() {
           <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "60%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Aufgaben per E-Mail senden</Text>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('aufgaben_per_email_senden')}</Text>
                 <Pressable onPress={() => setShowEmailModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
                   <MaterialIcons name="close" size={24} color={colors.muted} />
                 </Pressable>
@@ -2976,7 +2978,7 @@ export default function ProtocolDetailScreen() {
               <TextInput
                 value={emailRecipient}
                 onChangeText={setEmailRecipient}
-                placeholder="E-Mail-Adresse eingeben"
+                placeholder={t('emailadresse_eingeben')}
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -2994,7 +2996,7 @@ export default function ProtocolDetailScreen() {
               {/* Team Contacts */}
               {teamContacts.length > 0 && (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontSize: 12, color: "#9BA1A6", marginBottom: 6 }}>Kontakte:</Text>
+                  <Text style={{ fontSize: 12, color: "#9BA1A6", marginBottom: 6 }}>{t('kontakte')}</Text>
                   {teamContacts.slice(0, 5).map(contact => (
                     <Pressable
                       key={contact.id}
@@ -3020,15 +3022,15 @@ export default function ProtocolDetailScreen() {
                 </Pressable>
               ) : (
                 <View style={{ marginTop: 8, padding: 10, backgroundColor: "#f5f5f5", borderRadius: 0 }}>
-                  <TextInput placeholder="Name" value={newContactName} onChangeText={setNewContactName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
-                  <TextInput placeholder="E-Mail" value={newContactEmail} onChangeText={setNewContactEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
-                  <TextInput placeholder="Rolle (optional)" value={newContactRole} onChangeText={setNewContactRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 8 }} />
+                  <TextInput placeholder={t('project_sort_name')} value={newContactName} onChangeText={setNewContactName} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
+                  <TextInput placeholder={t('email')} value={newContactEmail} onChangeText={setNewContactEmail} keyboardType="email-address" style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 6 }} />
+                  <TextInput placeholder={t('rolle_optional')} value={newContactRole} onChangeText={setNewContactRole} style={{ fontSize: 13, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", paddingVertical: 4, marginBottom: 8 }} />
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <Pressable onPress={addNewTeamContact} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 8, borderRadius: 0, alignItems: "center" }}>
-                      <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>Speichern</Text>
+                      <Text style={{ color: "white", fontSize: 12, fontWeight: "600" }}>{t('save')}</Text>
                     </Pressable>
                     <Pressable onPress={() => setShowAddContact(false)} style={{ flex: 1, backgroundColor: "#E5E7EB", paddingVertical: 8, borderRadius: 0, alignItems: "center" }}>
-                      <Text style={{ fontSize: 12, color: "#687076" }}>Abbrechen</Text>
+                      <Text style={{ fontSize: 12, color: "#687076" }}>{t('cancel')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -3069,12 +3071,12 @@ export default function ProtocolDetailScreen() {
         <Modal visible={editingTodoIndex !== null} transparent animationType="fade" onRequestClose={() => setEditingTodoIndex(null)}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "90%", maxWidth: 380, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>Aufgabe bearbeiten</Text>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Titel</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>{t('aufgabe_bearbeiten')}</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>{t('titel')}</Text>
               <TextInput
                 value={editTodoTask}
                 onChangeText={setEditTodoTask}
-                placeholder="Aufgabe beschreiben..."
+                placeholder={t('aufgabe_beschreiben')}
                 placeholderTextColor={colors.muted}
                 multiline
                 style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12, minHeight: 60 }}
@@ -3102,7 +3104,7 @@ export default function ProtocolDetailScreen() {
                 keyboardType="numbers-and-punctuation"
                 style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12 }}
               />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>Person</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>{t('person')}</Text>
               <TextInput
                 value={editTodoAssignee}
                 onChangeText={setEditTodoAssignee}
@@ -3110,7 +3112,7 @@ export default function ProtocolDetailScreen() {
                 placeholderTextColor={colors.muted}
                 style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 12 }}
               />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>E-Mail (für Benachrichtigung)</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 4 }}>{t('email_fuer_benachrichtigung')}</Text>
               <TextInput
                 value={editTodoEmail}
                 onChangeText={setEditTodoEmail}
@@ -3122,10 +3124,10 @@ export default function ProtocolDetailScreen() {
               />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <Pressable onPress={saveEditTodo} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 0, alignItems: "center" }}>
-                  <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Speichern</Text>
+                  <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>{t('save')}</Text>
                 </Pressable>
                 <Pressable onPress={() => setEditingTodoIndex(null)} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 12, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ fontSize: 14, color: colors.muted }}>Abbrechen</Text>
+                  <Text style={{ fontSize: 14, color: colors.muted }}>{t('cancel')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -3137,7 +3139,7 @@ export default function ProtocolDetailScreen() {
           <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "70%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Empf\u00e4nger w\u00e4hlen</Text>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('empfu00e4nger_wu00e4hlen')}</Text>
                 <Pressable onPress={() => setShowPdfRecipientPicker(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
                   <MaterialIcons name="close" size={24} color={colors.muted} />
                 </Pressable>
@@ -3145,7 +3147,7 @@ export default function ProtocolDetailScreen() {
               <TextInput
                 value={pdfRecipientEmail}
                 onChangeText={setPdfRecipientEmail}
-                placeholder="E-Mail-Adresse eingeben"
+                placeholder={t('emailadresse_eingeben')}
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -3153,7 +3155,7 @@ export default function ProtocolDetailScreen() {
               />
               {teamContacts.length > 0 && (
                 <ScrollView style={{ maxHeight: 200, marginBottom: 12 }}>
-                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>Gespeicherte Kontakte:</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>{t('gespeicherte_kontakte')}</Text>
                   {teamContacts.map(contact => (
                     <Pressable
                       key={contact.id}
@@ -3180,13 +3182,13 @@ export default function ProtocolDetailScreen() {
                 disabled={!pdfRecipientEmail.trim()}
                 style={({ pressed }) => [{ backgroundColor: pdfRecipientEmail.trim() ? "#059669" : colors.border, borderRadius: 0, padding: 14, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
               >
-                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>E-Mail senden</Text>
+                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>{t('email_senden')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => { setShowPdfRecipientPicker(false); sendPdfViaEmail(); }}
                 style={({ pressed }) => [{ marginTop: 8, borderRadius: 0, padding: 12, alignItems: "center", borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
               >
-                <Text style={{ color: colors.muted, fontSize: 13 }}>Standard-Empf\u00e4nger verwenden</Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>{t('standardempfu00e4nger_verwenden')}</Text>
               </Pressable>
             </View>
           </View>
@@ -3196,21 +3198,21 @@ export default function ProtocolDetailScreen() {
         <Modal visible={!!editingContact} transparent animationType="fade" onRequestClose={() => setEditingContact(null)}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "85%", maxWidth: 360, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>Kontakt bearbeiten</Text>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Name</Text>
-              <TextInput value={editName} onChangeText={setEditName} placeholder="Name" placeholderTextColor={colors.muted} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>E-Mail</Text>
-              <TextInput value={editEmail} onChangeText={setEditEmail} placeholder="E-Mail" placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Telefon</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>{t('kontakt_bearbeiten')}</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('project_sort_name')}</Text>
+              <TextInput value={editName} onChangeText={setEditName} placeholder={t('project_sort_name')} placeholderTextColor={colors.muted} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('email')}</Text>
+              <TextInput value={editEmail} onChangeText={setEditEmail} placeholder={t('email')} placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
               <TextInput value={editPhone} onChangeText={setEditPhone} placeholder="+49 123 456789" placeholderTextColor={colors.muted} keyboardType="phone-pad" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Rolle</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle')}</Text>
               <TextInput value={editRole} onChangeText={setEditRole} placeholder="z.B. Bauleiter" placeholderTextColor={colors.muted} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 16 }} />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <Pressable onPress={saveEditContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
-                  <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Speichern</Text>
+                  <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>{t('save')}</Text>
                 </Pressable>
                 <Pressable onPress={() => setEditingContact(null)} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ fontSize: 14, color: colors.muted }}>Abbrechen</Text>
+                  <Text style={{ fontSize: 14, color: colors.muted }}>{t('cancel')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -3221,21 +3223,21 @@ export default function ProtocolDetailScreen() {
         <Modal visible={!!editingSpeakerLabel} transparent animationType="fade" onRequestClose={() => setEditingSpeakerLabel(null)}>
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: "white", borderRadius: 0, padding: 24, width: "80%", maxWidth: 320 }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Sprecher benennen</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>{t('sprecher_benennen')}</Text>
               <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Name für "{editingSpeakerLabel}" eingeben. Wird für zukünftige Protokolle gespeichert.</Text>
               <TextInput
                 value={speakerNameInput}
                 onChangeText={setSpeakerNameInput}
-                placeholder="Name eingeben..."
+                placeholder={t('name_eingeben')}
                 style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 16 }}
                 autoFocus
               />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <Pressable onPress={() => { if (editingSpeakerLabel && speakerNameInput.trim()) saveSpeakerName(editingSpeakerLabel, speakerNameInput.trim()); }} style={{ flex: 1, backgroundColor: "#0a7ea4", paddingVertical: 12, borderRadius: 0, alignItems: "center" }}>
-                  <Text style={{ color: "white", fontWeight: "600" }}>Speichern</Text>
+                  <Text style={{ color: "white", fontWeight: "600" }}>{t('save')}</Text>
                 </Pressable>
                 <Pressable onPress={() => setEditingSpeakerLabel(null)} style={{ flex: 1, backgroundColor: "#f5f5f5", paddingVertical: 12, borderRadius: 0, alignItems: "center" }}>
-                  <Text style={{ color: "#687076" }}>Abbrechen</Text>
+                  <Text style={{ color: "#687076" }}>{t('cancel')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -3246,7 +3248,7 @@ export default function ProtocolDetailScreen() {
         <Modal visible={showTimeline} animationType="slide" onRequestClose={() => setShowTimeline(false)}>
           <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>Protokoll-Timeline</Text>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('protokolltimeline')}</Text>
               <Pressable onPress={() => setShowTimeline(false)} style={{ padding: 8 }}>
                 <MaterialIcons name="close" size={24} color={colors.foreground} />
               </Pressable>
@@ -3277,7 +3279,7 @@ export default function ProtocolDetailScreen() {
               {timelineEntries.length === 0 && (
                 <View style={{ alignItems: "center", paddingTop: 40 }}>
                   <MaterialIcons name="timeline" size={48} color={colors.muted} />
-                  <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>Keine Timeline-Einträge verfügbar</Text>
+                  <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>{t('keine_timelineeintraege_verfuegbar')}</Text>
                 </View>
               )}
             </ScrollView>
@@ -3289,7 +3291,7 @@ export default function ProtocolDetailScreen() {
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "90%", maxWidth: 400, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>Aufgabe delegieren</Text>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('aufgabe_delegieren')}</Text>
                 <Pressable onPress={() => { setShowDelegateModal(false); setDelegatingTask(null); }}>
                   <MaterialIcons name="close" size={22} color={colors.muted} />
                 </Pressable>
@@ -3306,16 +3308,16 @@ export default function ProtocolDetailScreen() {
                   </View>
 
                   {/* Option A: Manual input */}
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Person eingeben:</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>{t('person_eingeben')}</Text>
                   <TextInput
-                    placeholder="Name"
+                    placeholder={t('project_sort_name')}
                     placeholderTextColor={colors.muted}
                     value={delegatingTask.assignee !== "Nicht zugewiesen" ? delegatingTask.assignee : ""}
                     onChangeText={(text) => setDelegatingTask(prev => prev ? {...prev, assignee: text} : null)}
                     style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.foreground, marginBottom: 8 }}
                   />
                   <TextInput
-                    placeholder="E-Mail oder Telefon (optional)"
+                    placeholder={t('email_oder_telefon_optional')}
                     placeholderTextColor={colors.muted}
                     keyboardType="email-address"
                     style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.foreground, marginBottom: 16 }}
@@ -3324,7 +3326,7 @@ export default function ProtocolDetailScreen() {
                   {/* Option B: Team contacts list */}
                   {teamContacts.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Oder Teammitglied wählen:</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>{t('oder_teammitglied_waehlen')}</Text>
                       {teamContacts.slice(0, 5).map(contact => (
                         <Pressable key={contact.id} onPress={() => delegateTask(delegatingTask.task, contact.name, delegatingTask.priority, delegatingTask.deadline)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 10, borderRadius: 0, backgroundColor: pressed ? colors.surface : "transparent", marginBottom: 2, borderWidth: 1, borderColor: pressed ? colors.primary : "transparent" }]}>
                           <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>

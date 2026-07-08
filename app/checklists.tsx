@@ -18,6 +18,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 import {
   Checklist,
   ChecklistItem,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/checklist-store";
 
 export default function ChecklistsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -79,7 +81,7 @@ export default function ChecklistsScreen() {
         checked: false,
       })),
       createdAt: new Date().toISOString(),
-      inspector: inspectorName || "Prüfer",
+      inspector: inspectorName || t('label_pruefer'),
     };
     setActiveResult(result);
     setSelectedChecklist(checklist);
@@ -135,10 +137,10 @@ export default function ChecklistsScreen() {
 
   const deleteItemFromChecklist = async (itemId: string) => {
     if (!selectedChecklist) return;
-    Alert.alert("Pr\u00fcfpunkt l\u00f6schen", "Diesen Pr\u00fcfpunkt wirklich entfernen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_pruefpunkt_loeschen'), t('msg_pruefpunkt_wirklich_entfernen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "L\u00f6schen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           const updatedItems = selectedChecklist.items.filter((i) => i.id !== itemId);
@@ -194,10 +196,10 @@ export default function ChecklistsScreen() {
   };
 
   const removeResult = (resultId: string) => {
-    Alert.alert("Ergebnis löschen", "Dieses Prüfergebnis wirklich entfernen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_ergebnis_loeschen'), t('msg_dieses_pruefergebnis_wirklich_entfernen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           await deleteChecklistResult(resultId);
@@ -281,7 +283,7 @@ export default function ChecklistsScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Checklisten</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('checklist_title')}</Text>
         <Pressable onPress={() => setShowTemplateModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="add" size={24} color={colors.primary} />
         </Pressable>
@@ -290,7 +292,7 @@ export default function ChecklistsScreen() {
       {/* Results Section */}
       {results.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Letzte Prüfungen</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('letzte_pruefungen')}</Text>
           <FlatList
             data={results.slice(0, 5)}
             keyExtractor={(item) => item.id}
@@ -301,7 +303,7 @@ export default function ChecklistsScreen() {
       )}
 
       {/* Checklists Section */}
-      <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>Verfügbare Checklisten</Text>
+      <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>{t('verfuegbare_checklisten')}</Text>
       <FlatList
         data={checklists}
         keyExtractor={(item) => item.id}
@@ -310,7 +312,7 @@ export default function ChecklistsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <MaterialIcons name="checklist" size={48} color={colors.muted} />
-            <Text style={[styles.emptyText, { color: colors.muted }]}>Keine Checklisten</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>{t('keine_checklisten')}</Text>
           </View>
         }
       />
@@ -360,7 +362,7 @@ export default function ChecklistsScreen() {
                               {item.text}
                             </Text>
                             {item.required && (
-                              <Text style={[styles.requiredBadge, { color: colors.error }]}>Pflicht</Text>
+                              <Text style={[styles.requiredBadge, { color: colors.error }]}>{t('pflicht')}</Text>
                             )}
                           </View>
                         </Pressable>
@@ -380,7 +382,7 @@ export default function ChecklistsScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <TextInput
                       style={{ flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, color: colors.foreground, backgroundColor: colors.background }}
-                      placeholder="Neuen Prüfpunkt eingeben..."
+                      placeholder={t('neuen_pruefpunkt_eingeben')}
                       placeholderTextColor={colors.muted}
                       value={newItemText}
                       onChangeText={setNewItemText}
@@ -401,7 +403,7 @@ export default function ChecklistsScreen() {
                     style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="add-circle-outline" size={20} color={colors.primary} />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{"Prüfpunkt hinzufügen"}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('label_pruefpunkt_hinzufuegen')}</Text>
                   </Pressable>
                 )}
                 <View style={styles.modalButtons}>
@@ -409,13 +411,13 @@ export default function ChecklistsScreen() {
                     onPress={() => { setActiveResult(null); setSelectedChecklist(null); Keyboard.dismiss(); }}
                     style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
                   >
-                    <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
+                    <Text style={[styles.cancelBtnText, { color: colors.muted }]}>{t('cancel')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={saveCurrentResult}
                     style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
                   >
-                    <Text style={styles.saveBtnText}>Speichern</Text>
+                    <Text style={styles.saveBtnText}>{t('save')}</Text>
                   </Pressable>
                 </View>
               </>
@@ -429,18 +431,18 @@ export default function ChecklistsScreen() {
       <Modal visible={showTemplateModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Checkliste starten</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('checkliste_starten')}</Text>
 
-            <Text style={[styles.formLabel, { color: colors.muted }]}>Prüfer-Name</Text>
+            <Text style={[styles.formLabel, { color: colors.muted }]}>{t('pruefername')}</Text>
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Ihr Name"
+              placeholder={t('ihr_name')}
               placeholderTextColor={colors.muted}
               value={inspectorName}
               onChangeText={setInspectorName}
             />
 
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Vorlage wählen</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('vorlage_waehlen')}</Text>
             <ScrollView style={styles.templateList}>
               {checklists.map((checklist) => (
                 <Pressable
@@ -473,14 +475,14 @@ export default function ChecklistsScreen() {
               ]}
             >
               <MaterialIcons name="edit" size={18} color={colors.primary} />
-              <Text style={[styles.customBtnText, { color: colors.primary }]}>Eigene Checkliste erstellen</Text>
+              <Text style={[styles.customBtnText, { color: colors.primary }]}>{t('eigene_checkliste_erstellen')}</Text>
             </Pressable>
 
             <Pressable
               onPress={() => setShowTemplateModal(false)}
               style={({ pressed }) => [styles.cancelFullBtn, pressed && { opacity: 0.7 }]}
             >
-              <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
+              <Text style={[styles.cancelBtnText, { color: colors.muted }]}>{t('cancel')}</Text>
             </Pressable>
           </View>
         </View>
@@ -490,11 +492,11 @@ export default function ChecklistsScreen() {
       <Modal visible={showCreateModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <ScrollView style={[styles.modalContent, { backgroundColor: colors.surface }]} contentContainerStyle={{ paddingBottom: 40 }}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Eigene Checkliste</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('eigene_checkliste')}</Text>
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Name der Checkliste *"
+              placeholder={t('name_der_checkliste')}
               placeholderTextColor={colors.muted}
               value={newName}
               onChangeText={setNewName}
@@ -502,7 +504,7 @@ export default function ChecklistsScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Beschreibung"
+              placeholder={t('project_description')}
               placeholderTextColor={colors.muted}
               value={newDescription}
               onChangeText={setNewDescription}
@@ -510,13 +512,13 @@ export default function ChecklistsScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Kategorie (z.B. Abnahme, Sicherheit)"
+              placeholder={t('kategorie_zb_abnahme_sicherheit')}
               placeholderTextColor={colors.muted}
               value={newCategory}
               onChangeText={setNewCategory}
             />
 
-            <Text style={[styles.formLabel, { color: colors.muted }]}>Prüfpunkte (einer pro Zeile)</Text>
+            <Text style={[styles.formLabel, { color: colors.muted }]}>{t('pruefpunkte_einer_pro_zeile')}</Text>
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
               placeholder={"Punkt 1\nPunkt 2\nPunkt 3"}
@@ -532,13 +534,13 @@ export default function ChecklistsScreen() {
                 onPress={() => { setShowCreateModal(false); setNewName(""); setNewDescription(""); setNewCategory(""); setNewItems(""); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>Abbrechen</Text>
+                <Text style={[styles.cancelBtnText, { color: colors.muted }]}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={createCustomChecklist}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
               >
-                <Text style={styles.saveBtnText}>Erstellen</Text>
+                <Text style={styles.saveBtnText}>{t('erstellen')}</Text>
               </Pressable>
             </View>
           </ScrollView>

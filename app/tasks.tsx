@@ -15,6 +15,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 import { exportTasksAsCSV } from "@/lib/csv-export";
+import { useTranslation } from "@/lib/language-provider";
 
 type TodoItem = {
   task: string;
@@ -34,6 +35,7 @@ type ProtocolTodo = TodoItem & {
 type FilterType = "all" | "open" | "done";
 
 export default function TasksScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [allTodos, setAllTodos] = useState<ProtocolTodo[]>([]);
@@ -260,7 +262,7 @@ export default function TasksScreen() {
           <Text style={[styles.statNumber, { color: colors.primary }]}>
             {openCount}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>Offen</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t('checklist_incomplete')}</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
           <Text style={[styles.statNumber, { color: colors.success }]}>
@@ -274,7 +276,7 @@ export default function TasksScreen() {
           <Text style={[styles.statNumber, { color: colors.foreground }]}>
             {allTodos.length}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>Gesamt</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t('gesamt')}</Text>
         </View>
       </View>
 

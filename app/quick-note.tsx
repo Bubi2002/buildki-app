@@ -15,8 +15,10 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function QuickNoteScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -40,7 +42,7 @@ export default function QuickNoteScreen() {
 
   const saveNote = async () => {
     if (!content.trim()) {
-      Alert.alert("Hinweis", "Bitte gib einen Text ein.");
+      Alert.alert(t('hinweis'), t('msg_bitte_gib_einen_text_ein'));
       return;
     }
 
@@ -71,11 +73,11 @@ export default function QuickNoteScreen() {
       protocols.unshift(note);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
-      Alert.alert("Gespeichert", "Notiz wurde erfolgreich gespeichert.", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert(t('alert_gespeichert'), t('msg_notiz_wurde_erfolgreich_gespeichert'), [
+        { text: t('ok'), onPress: () => router.back() },
       ]);
     } catch (e) {
-      Alert.alert("Fehler", "Notiz konnte nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_notiz_konnte_nicht_gespeichert_werden'));
     } finally {
       setSaving(false);
     }
@@ -93,7 +95,7 @@ export default function QuickNoteScreen() {
             <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
               <MaterialIcons name="close" size={24} color={colors.foreground} />
             </Pressable>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Schnellnotiz</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('schnellnotiz')}</Text>
             <Pressable
               onPress={saveNote}
               disabled={saving}
@@ -103,7 +105,7 @@ export default function QuickNoteScreen() {
               ]}
             >
               <MaterialIcons name="check" size={20} color="#FFF" />
-              <Text style={styles.saveBtnText}>Speichern</Text>
+              <Text style={styles.saveBtnText}>{t('save')}</Text>
             </Pressable>
           </View>
 
@@ -111,7 +113,7 @@ export default function QuickNoteScreen() {
             {/* Title */}
             <TextInput
               style={[styles.titleInput, { color: colors.foreground, borderColor: colors.border }]}
-              placeholder="Titel (optional)"
+              placeholder={t('titel_optional')}
               placeholderTextColor={colors.muted}
               value={title}
               onChangeText={setTitle}
@@ -123,7 +125,7 @@ export default function QuickNoteScreen() {
             <TextInput
               ref={contentRef}
               style={[styles.contentInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
-              placeholder="Deine Notiz hier eingeben..."
+              placeholder={t('deine_notiz_hier_eingeben')}
               placeholderTextColor={colors.muted}
               value={content}
               onChangeText={setContent}
@@ -133,11 +135,11 @@ export default function QuickNoteScreen() {
 
             {/* Tags */}
             <View style={styles.tagSection}>
-              <Text style={[styles.tagLabel, { color: colors.muted }]}>Tags</Text>
+              <Text style={[styles.tagLabel, { color: colors.muted }]}>{t('tags')}</Text>
               <View style={styles.tagInputRow}>
                 <TextInput
                   style={[styles.tagInput, { color: colors.foreground, borderColor: colors.border }]}
-                  placeholder="Tag hinzufügen..."
+                  placeholder={t('tag_hinzufuegen')}
                   placeholderTextColor={colors.muted}
                   value={tagInput}
                   onChangeText={setTagInput}

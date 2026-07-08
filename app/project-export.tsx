@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
   id: string;
@@ -18,6 +19,7 @@ type Protocol = {
 };
 
 export default function ProjectExportScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const [project, setProject] = useState<any>(null);
@@ -68,7 +70,7 @@ export default function ProjectExportScreen() {
 
   const exportProject = async () => {
     if (selectedProtocols.size === 0) {
-      Alert.alert("Keine Auswahl", "Bitte wähle mindestens ein Protokoll zum Exportieren.");
+      Alert.alert(t('alert_keine_auswahl'), t('msg_bitte_waehle_mindestens_ein_protokoll'));
       return;
     }
 
@@ -122,7 +124,7 @@ export default function ProjectExportScreen() {
         // On web, copy to clipboard
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(exportText);
-          Alert.alert("Exportiert", "Der Export wurde in die Zwischenablage kopiert.");
+          Alert.alert(t('alert_exportiert'), t('msg_der_export_wurde_in_die'));
         }
       } else {
         await Share.share({
@@ -131,7 +133,7 @@ export default function ProjectExportScreen() {
         });
       }
     } catch (error) {
-      Alert.alert("Fehler", "Export konnte nicht erstellt werden.");
+      Alert.alert(t('alert_fehler'), t('msg_export_konnte_nicht_erstellt_werden'));
     } finally {
       setIsExporting(false);
     }
@@ -140,7 +142,7 @@ export default function ProjectExportScreen() {
   if (!project) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
-        <Text style={{ color: colors.muted }}>Projekt nicht gefunden</Text>
+        <Text style={{ color: colors.muted }}>{t('projekt_nicht_gefunden')}</Text>
       </ScreenContainer>
     );
   }
@@ -154,14 +156,14 @@ export default function ProjectExportScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>Projekt exportieren</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('projekt_exportieren')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted }}>{project.name}</Text>
           </View>
         </View>
 
         {/* Export Format */}
         <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>Export-Format</Text>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>{t('exportformat')}</Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {([
               { key: "full", label: "Vollständig", icon: "article" },
@@ -186,11 +188,11 @@ export default function ProjectExportScreen() {
             {selectedProtocols.size}/{protocols.length} Protokolle ausgewählt
           </Text>
           <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Alle</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t('all')}</Text>
           </Pressable>
           <Text style={{ color: colors.border, marginHorizontal: 4 }}>|</Text>
           <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>Keine</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>{t('none')}</Text>
           </Pressable>
         </View>
 
@@ -218,8 +220,8 @@ export default function ProjectExportScreen() {
           {protocols.length === 0 && (
             <View style={{ alignItems: "center", paddingTop: 40 }}>
               <MaterialIcons name="description" size={48} color={colors.border} />
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>Keine Protokolle</Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>Dieses Projekt hat noch keine Protokolle.</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('protocol_no_protocols')}</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{t('dieses_projekt_hat_noch')}</Text>
             </View>
           )}
         </ScrollView>

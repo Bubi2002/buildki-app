@@ -13,8 +13,10 @@ import {
 } from "@/lib/protocol-versions";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function ProtocolVersionsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ protocolId?: string; protocolTitle?: string }>();
@@ -43,7 +45,7 @@ export default function ProtocolVersionsScreen() {
     // Get the latest version to compare
     const latest = versions[0];
     if (!latest || latest.id === version.id) {
-      Alert.alert("Hinweis", "Dies ist bereits die aktuelle Version.");
+      Alert.alert(t('hinweis'), t('msg_dies_ist_bereits_die_aktuelle'));
       return;
     }
     const diff = generateSimpleDiff(version.content, latest.content);
@@ -57,9 +59,9 @@ export default function ProtocolVersionsScreen() {
       "Version wiederherstellen",
       `Möchten Sie Version ${version.version} vom ${formatVersionDate(version.createdAt)} wiederherstellen?`,
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Wiederherstellen",
+          text: t('btn_wiederherstellen'),
           onPress: async () => {
             try {
               // Load protocols and update the content
@@ -77,11 +79,11 @@ export default function ProtocolVersionsScreen() {
                 }
                 await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
                 if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("Wiederhergestellt", "Die Version wurde erfolgreich wiederhergestellt.");
+                Alert.alert(t('alert_wiederhergestellt'), t('msg_die_version_wurde_erfolgreich_wiederhergestellt'));
                 router.back();
               }
             } catch (e: any) {
-              Alert.alert("Fehler", e?.message || "Wiederherstellung fehlgeschlagen.");
+              Alert.alert(t('alert_fehler'), e?.message || "Wiederherstellung fehlgeschlagen.");
             }
           },
         },
@@ -96,7 +98,7 @@ export default function ProtocolVersionsScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Versionen</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t('versionen')}</Text>
           <Text style={{ fontSize: 12, color: colors.muted }} numberOfLines={1}>{protocolTitle}</Text>
         </View>
       </View>
@@ -104,7 +106,7 @@ export default function ProtocolVersionsScreen() {
       {versions.length === 0 ? (
         <View style={{ alignItems: "center", paddingTop: 60 }}>
           <MaterialIcons name="history" size={48} color={colors.muted} />
-          <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>Keine Versionen</Text>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('keine_versionen')}</Text>
           <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>
             Versionen werden automatisch beim Bearbeiten und Generieren erstellt.
           </Text>
@@ -139,7 +141,7 @@ export default function ProtocolVersionsScreen() {
                 </View>
                 {idx === 0 && (
                   <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0, backgroundColor: colors.primary + "15" }}>
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.primary }}>Aktuell</Text>
+                    <Text style={{ fontSize: 10, fontWeight: "600", color: colors.primary }}>{t('aktuell')}</Text>
                   </View>
                 )}
               </View>
@@ -153,14 +155,14 @@ export default function ProtocolVersionsScreen() {
                       style={({ pressed }) => [styles.actionBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                     >
                       <MaterialIcons name="compare-arrows" size={14} color={colors.muted} />
-                      <Text style={{ fontSize: 11, color: colors.muted }}>Vergleichen</Text>
+                      <Text style={{ fontSize: 11, color: colors.muted }}>{t('vergleichen')}</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => restoreVersion(v)}
                       style={({ pressed }) => [styles.actionBtn, { borderColor: colors.primary + "40", opacity: pressed ? 0.7 : 1 }]}
                     >
                       <MaterialIcons name="restore" size={14} color={colors.primary} />
-                      <Text style={{ fontSize: 11, color: colors.primary }}>Wiederherstellen</Text>
+                      <Text style={{ fontSize: 11, color: colors.primary }}>{t('project_unarchive')}</Text>
                     </Pressable>
                   </>
                 )}
@@ -213,15 +215,15 @@ export default function ProtocolVersionsScreen() {
                 <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
                   <View style={{ flex: 1, padding: 10, borderRadius: 0, backgroundColor: "#22C55E10" }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: "#22C55E" }}>+{diffData.added.length}</Text>
-                    <Text style={{ fontSize: 11, color: "#22C55E" }}>Hinzugefügt</Text>
+                    <Text style={{ fontSize: 11, color: "#22C55E" }}>{t('hinzugefuegt')}</Text>
                   </View>
                   <View style={{ flex: 1, padding: 10, borderRadius: 0, backgroundColor: "#EF444410" }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: "#EF4444" }}>-{diffData.removed.length}</Text>
-                    <Text style={{ fontSize: 11, color: "#EF4444" }}>Entfernt</Text>
+                    <Text style={{ fontSize: 11, color: "#EF4444" }}>{t('entfernt')}</Text>
                   </View>
                   <View style={{ flex: 1, padding: 10, borderRadius: 0, backgroundColor: colors.border + "20" }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: colors.muted }}>{diffData.unchanged}</Text>
-                    <Text style={{ fontSize: 11, color: colors.muted }}>Unverändert</Text>
+                    <Text style={{ fontSize: 11, color: colors.muted }}>{t('unveraendert')}</Text>
                   </View>
                 </View>
 

@@ -20,6 +20,7 @@ import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
 import { exportAndShareTasks, exportAndShareDefects } from "@/lib/excel-export";
+import { useTranslation } from "@/lib/language-provider";
 
 type Project = {
   id: string;
@@ -46,6 +47,7 @@ type Protocol = {
 };
 
 export default function ProjectDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const router = useRouter();
@@ -109,15 +111,15 @@ export default function ProjectDetailScreen() {
       setProtocols(updated.filter((p) => p.projectId === id));
       setShowAssignModal(false);
     } catch (e) {
-      Alert.alert("Fehler", "Zuordnung fehlgeschlagen.");
+      Alert.alert(t('alert_fehler'), t('msg_zuordnung_fehlgeschlagen'));
     }
   };
 
   const removeFromProject = async (protocolId: string) => {
-    Alert.alert("Entfernen", "Protokoll aus diesem Projekt entfernen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_entfernen'), t('msg_protokoll_aus_diesem_projekt_entfernen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Entfernen",
+        text: t('btn_entfernen'),
         onPress: async () => {
           const updated = allProtocols.map((p) =>
             p.id === protocolId ? { ...p, projectId: undefined } : p
@@ -136,7 +138,7 @@ export default function ProjectDetailScreen() {
     if (!project) return;
     const success = await exportAndShareTasks(project.id);
     if (!success) {
-      Alert.alert("Hinweis", "Keine Aufgaben zum Exportieren vorhanden.");
+      Alert.alert(t('hinweis'), t('msg_keine_aufgaben_zum_exportieren_vorhanden'));
     }
   };
 
@@ -144,13 +146,13 @@ export default function ProjectDetailScreen() {
     if (!project) return;
     const success = await exportAndShareDefects(project.id);
     if (!success) {
-      Alert.alert("Hinweis", "Keine Mängel zum Exportieren vorhanden.");
+      Alert.alert(t('hinweis'), t('msg_keine_maengel_zum_exportieren_vorhanden'));
     }
   };
 
   const exportAllAsPdf = async () => {
     if (protocols.length === 0) {
-      Alert.alert("Hinweis", "Keine Protokolle zum Exportieren vorhanden.");
+      Alert.alert(t('hinweis'), t('msg_keine_protokolle_zum_exportieren_vorhanden'));
       return;
     }
 
@@ -209,7 +211,7 @@ export default function ProjectDetailScreen() {
         </div>
         <div class="page-break"></div>
         <div class="toc">
-          <h2>Inhaltsverzeichnis</h2>
+          <h2>{t('inhaltsverzeichnis')}</h2>
           ${protocols.map((p, i) => `
             <div class="toc-item">
               ${p.protocolNumber ? `<span class="toc-number">${p.protocolNumber}</span>` : `<span class="toc-number">#${i + 1}</span>`}
@@ -250,7 +252,7 @@ export default function ProjectDetailScreen() {
       combinedHtml += '</body></html>';
 
       if (Platform.OS === 'web') {
-        Alert.alert('Hinweis', 'PDF-Export ist nur auf dem Handy verfügbar.');
+        Alert.alert(t('hinweis'), t('msg_pdfexport_ist_nur_auf_dem_2'));
         return;
       }
 
@@ -269,7 +271,7 @@ export default function ProjectDetailScreen() {
       }
     } catch (error) {
       console.error('Export error:', error);
-      Alert.alert('Fehler', 'PDF konnte nicht erstellt werden.');
+      Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden'));
     } finally {
       setIsExporting(false);
     }
@@ -277,14 +279,14 @@ export default function ProjectDetailScreen() {
 
   const exportAllAsZip = async () => {
     if (protocols.length === 0) {
-      Alert.alert("Hinweis", "Keine Protokolle zum Exportieren vorhanden.");
+      Alert.alert(t('hinweis'), t('msg_keine_protokolle_zum_exportieren_vorhanden'));
       return;
     }
 
     setIsExportingZip(true);
     try {
       if (Platform.OS === 'web') {
-        Alert.alert('Hinweis', 'ZIP-Export ist nur auf dem Handy verf\u00fcgbar.');
+        Alert.alert(t('hinweis'), t('msg_zipexport_ist_nur_auf_dem'));
         return;
       }
 
@@ -337,7 +339,7 @@ export default function ProjectDetailScreen() {
       }
 
       if (pdfPaths.length === 0) {
-        Alert.alert('Fehler', 'Keine PDFs konnten erstellt werden.');
+        Alert.alert(t('alert_fehler'), t('msg_keine_pdfs_konnten_erstellt_werden'));
         return;
       }
 
@@ -382,13 +384,13 @@ export default function ProjectDetailScreen() {
                 });
               },
             },
-            { text: 'Abbrechen', style: 'cancel' },
+            { text: t('btn_abbrechen'), style: 'cancel' },
           ]
         );
       }
     } catch (error) {
       console.error('ZIP export error:', error);
-      Alert.alert('Fehler', 'Export konnte nicht erstellt werden.');
+      Alert.alert(t('alert_fehler'), t('msg_export_konnte_nicht_erstellt_werden'));
     } finally {
       setIsExportingZip(false);
     }
@@ -397,7 +399,7 @@ export default function ProjectDetailScreen() {
   if (!project) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
-        <Text style={{ color: colors.muted }}>Projekt nicht gefunden</Text>
+        <Text style={{ color: colors.muted }}>{t('projekt_nicht_gefunden')}</Text>
       </ScreenContainer>
     );
   }
@@ -432,7 +434,7 @@ export default function ProjectDetailScreen() {
         {(defectCount.total > 0 || protocols.length > 0) && (
           <View style={{ marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>Projektfortschritt</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{t('projektfortschritt')}</Text>
               <Text style={{ fontSize: 13, fontWeight: "700", color: defectCount.total > 0 ? (defectCount.open === 0 ? colors.success : colors.primary) : colors.muted }}>
                 {defectCount.total > 0 ? Math.round(((defectCount.total - defectCount.open) / defectCount.total) * 100) : 0}%
               </Text>
@@ -497,7 +499,7 @@ export default function ProjectDetailScreen() {
 
                 {/* Tools Grid - Professional 3-column layout */}
         <View style={styles.toolsSection}>
-          <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>Werkzeuge</Text>
+          <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>{t('werkzeuge')}</Text>
           <View style={styles.toolsGrid}>
             <Pressable
               onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
@@ -506,7 +508,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: colors.primary + '15' }]}>
                 <MaterialIcons name="map" size={22} color={colors.primary} />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Grundriss</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('grundriss')}</Text>
               {planCount > 0 && <Text style={[styles.toolCardBadge, { color: colors.muted }]}>{planCount}</Text>}
             </Pressable>
             <Pressable
@@ -516,7 +518,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#FF6D0015' }]}>
                 <MaterialIcons name="warning" size={22} color="#FF6D00" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Mängel</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengel')}</Text>
               {defectCount.open > 0 && (
                 <View style={[styles.toolBadge, { backgroundColor: colors.error }]}>
                   <Text style={styles.toolBadgeText}>{defectCount.open}</Text>
@@ -530,7 +532,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#43A04715' }]}>
                 <MaterialIcons name="menu-book" size={22} color="#43A047" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Tagebuch</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('tagebuch')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
@@ -539,7 +541,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#8E24AA15' }]}>
                 <MaterialIcons name="checklist" size={22} color="#8E24AA" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Checklisten</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('checklist_title')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/team` as any)}
@@ -548,7 +550,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#1E88E515' }]}>
                 <MaterialIcons name="groups" size={22} color="#1E88E5" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Team</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('team_title')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
@@ -557,7 +559,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#00ACC115' }]}>
                 <MaterialIcons name="bar-chart" size={22} color="#00ACC1" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Statistik</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('statistik')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
@@ -566,7 +568,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#E91E6315' }]}>
                 <MaterialIcons name="photo-library" size={22} color="#E91E63" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Fotos</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('gallery_photos')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/qr-scanner?projectId=${project.id}` as any)}
@@ -575,7 +577,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#00BCD415' }]}>
                 <MaterialIcons name="qr-code-scanner" size={22} color="#00BCD4" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>QR-Scan</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('qrscan')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/time-tracking?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)}
@@ -584,7 +586,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#FF572215' }]}>
                 <MaterialIcons name="timer" size={22} color="#FF5722" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Zeit</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('zeit')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/cloud-import?projectId=${project.id}` as any)}
@@ -593,7 +595,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#607D8B15' }]}>
                 <MaterialIcons name="cloud-download" size={22} color="#607D8B" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Cloud</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('cloud')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/project-export?id=${project.id}` as any)}
@@ -602,7 +604,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#43A04715' }]}>
                 <MaterialIcons name="ios-share" size={22} color="#43A047" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Export</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('export')}</Text>
             </Pressable>
             <Pressable
               onPress={handleExcelExport}
@@ -611,7 +613,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#2E7D3215' }]}>
                 <MaterialIcons name="table-chart" size={22} color="#2E7D32" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Excel</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('excel')}</Text>
             </Pressable>
             <Pressable
               onPress={handleDefectsExport}
@@ -620,7 +622,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#FF6D0015' }]}>
                 <MaterialIcons name="photo-library" size={22} color="#FF6D00" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Mängel-XLS</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengelxls')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)}
@@ -629,7 +631,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#7C3AED15' }]}>
                 <MaterialIcons name="merge-type" size={22} color="#7C3AED" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Bericht</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('bericht')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/photo-compare?projectId=${project.id}` as any)}
@@ -638,7 +640,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
                 <MaterialIcons name="compare" size={22} color="#5C6BC0" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Vergleich</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('vergleich')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push("/calendar-view" as any)}
@@ -647,7 +649,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#EF6C0015' }]}>
                 <MaterialIcons name="calendar-today" size={22} color="#EF6C00" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Kalender</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('kalender')}</Text>
             </Pressable>
           </View>
         </View>
@@ -655,14 +657,14 @@ export default function ProjectDetailScreen() {
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
           <View style={styles.stat}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>{protocols.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Protokolle</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('project_protocols')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>
               {new Date(project.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
             </Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Erstellt</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('project_sort_created')}</Text>
           </View>
         </View>
 
@@ -707,7 +709,7 @@ export default function ProjectDetailScreen() {
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowAssignModal(false)} />
             <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>Protokoll zuordnen</Text>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('protokoll_zuordnen')}</Text>
                 <Pressable onPress={() => setShowAssignModal(false)}>
                   <MaterialIcons name="close" size={24} color={colors.muted} />
                 </Pressable>

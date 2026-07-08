@@ -14,6 +14,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "@/lib/language-provider";
 import {
   CLOUD_PROVIDERS,
   CloudExportProvider,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/cloud-photo-export";
 
 export default function CloudPhotoExportScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -71,7 +73,7 @@ export default function CloudPhotoExportScreen() {
 
   const handleExport = async (provider: CloudExportProvider) => {
     if (selectedPhotos.length === 0) {
-      Alert.alert("Keine Fotos ausgewählt", "Bitte wähle mindestens ein Foto zum Exportieren aus.");
+      Alert.alert(t('alert_keine_fotos_ausgewaehlt'), t('msg_bitte_waehle_mindestens_ein_foto'));
       return;
     }
 
@@ -92,10 +94,10 @@ export default function CloudPhotoExportScreen() {
       Alert.alert(
         "Export erfolgreich",
         `${result.exportedCount} Foto${result.exportedCount !== 1 ? "s" : ""} exportiert.`,
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ text: t('ok'), onPress: () => router.back() }]
       );
     } else if (result.error) {
-      Alert.alert("Export fehlgeschlagen", result.error);
+      Alert.alert(t('alert_export_fehlgeschlagen'), result.error);
     }
   };
 
@@ -121,7 +123,7 @@ export default function CloudPhotoExportScreen() {
       </View>
       {preferredProvider === item.provider && (
         <View style={[styles.preferredBadge, { backgroundColor: item.color + "20" }]}>
-          <Text style={{ fontSize: 9, color: item.color, fontWeight: "600" }}>Bevorzugt</Text>
+          <Text style={{ fontSize: 9, color: item.color, fontWeight: "600" }}>{t('bevorzugt')}</Text>
         </View>
       )}
       <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
@@ -157,14 +159,14 @@ export default function CloudPhotoExportScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
           <MaterialIcons name="close" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Fotos exportieren</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('fotos_exportieren')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       {isExporting ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.muted }]}>Exportiere Fotos...</Text>
+          <Text style={[styles.loadingText, { color: colors.muted }]}>{t('exportiere_fotos')}</Text>
         </View>
       ) : (
         <FlatList
@@ -199,10 +201,10 @@ export default function CloudPhotoExportScreen() {
                     </Text>
                     <View style={{ flexDirection: "row", gap: 12 }}>
                       <Pressable onPress={selectAll}>
-                        <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "600" }}>Alle</Text>
+                        <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "600" }}>{t('all')}</Text>
                       </Pressable>
                       <Pressable onPress={deselectAll}>
-                        <Text style={{ fontSize: 13, color: colors.muted }}>Keine</Text>
+                        <Text style={{ fontSize: 13, color: colors.muted }}>{t('none')}</Text>
                       </Pressable>
                     </View>
                   </View>

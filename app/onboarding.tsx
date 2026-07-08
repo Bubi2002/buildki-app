@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -48,6 +49,7 @@ const STEPS: OnboardingStep[] = [
 ];
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -72,7 +74,7 @@ export default function OnboardingScreen() {
         {/* Skip button */}
         <View style={styles.topBar}>
           <Pressable onPress={completeOnboarding} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={styles.skipText}>Überspringen</Text>
+            <Text style={styles.skipText}>{t('ueberspringen')}</Text>
           </Pressable>
         </View>
 

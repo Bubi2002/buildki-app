@@ -14,6 +14,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 const CUSTOM_TEMPLATES_KEY = "custom-templates";
 
@@ -46,6 +47,7 @@ type CustomTemplate = {
 };
 
 export default function TemplateEditorScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ editId?: string }>();
@@ -129,13 +131,13 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
 
   const saveTemplate = async () => {
     if (!name.trim()) {
-      Alert.alert("Fehler", "Bitte gib einen Namen für die Vorlage ein.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_namen_fuer'));
       return;
     }
 
     const validSections = sections.filter((s) => s.name.trim() !== "");
     if (validSections.length === 0) {
-      Alert.alert("Fehler", "Bitte füge mindestens eine Sektion hinzu.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_fuege_mindestens_eine_sektion'));
       return;
     }
 
@@ -165,11 +167,11 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
       }
 
       await AsyncStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
-      Alert.alert("Gespeichert", "Deine Vorlage wurde erfolgreich gespeichert.", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert(t('alert_gespeichert'), t('msg_deine_vorlage_wurde_erfolgreich_gespeichert'), [
+        { text: t('ok'), onPress: () => router.back() },
       ]);
     } catch (error) {
-      Alert.alert("Fehler", "Vorlage konnte nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_vorlage_konnte_nicht_gespeichert_werden'));
     }
   };
 
@@ -194,7 +196,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
           ]}
         >
           <MaterialIcons name="check" size={18} color="#FFFFFF" />
-          <Text style={styles.saveHeaderText}>Speichern</Text>
+          <Text style={styles.saveHeaderText}>{t('save')}</Text>
         </Pressable>
       </View>
 
@@ -226,7 +228,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
             style={[styles.input, styles.multilineInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Kurze Beschreibung der Vorlage"
+            placeholder={t('kurze_beschreibung_der_vorlage')}
             placeholderTextColor={colors.muted}
             multiline
             numberOfLines={2}

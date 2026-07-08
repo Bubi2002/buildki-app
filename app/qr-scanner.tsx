@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 const QR_SCANS_KEY = "qr-scans";
 
@@ -29,6 +30,7 @@ const CATEGORIES: { id: QRScan["category"]; label: string; icon: string }[] = [
 ];
 
 export default function QRScannerScreen() {
+  const { t } = useTranslation();
   const { projectId } = useLocalSearchParams<{ projectId?: string }>();
   const colors = useColors();
   const [permission, requestPermission] = useCameraPermissions();
@@ -67,7 +69,7 @@ export default function QRScannerScreen() {
   const saveScan = async () => {
     if (!scanResult) return;
     if (!label.trim()) {
-      Alert.alert("Fehler", "Bitte gib eine Bezeichnung ein.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_gib_eine_bezeichnung_ein'));
       return;
     }
 
@@ -87,11 +89,11 @@ export default function QRScannerScreen() {
       const all: QRScan[] = stored ? JSON.parse(stored) : [];
       all.push(scan);
       await AsyncStorage.setItem(QR_SCANS_KEY, JSON.stringify(all));
-      Alert.alert("Gespeichert", `"${label}" wurde dem Protokoll zugeordnet.`);
+      Alert.alert(t('alert_gespeichert'), `"${label}" wurde dem Protokoll zugeordnet.`);
       resetScan();
       loadHistory();
     } catch {
-      Alert.alert("Fehler", "Scan konnte nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_scan_konnte_nicht_gespeichert_werden'));
     }
   };
 
@@ -105,10 +107,10 @@ export default function QRScannerScreen() {
   };
 
   const deleteScan = async (id: string) => {
-    Alert.alert("Löschen", "Scan-Eintrag wirklich löschen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_loeschen'), t('msg_scaneintrag_wirklich_loeschen'), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           const stored = await AsyncStorage.getItem(QR_SCANS_KEY);
@@ -125,7 +127,7 @@ export default function QRScannerScreen() {
   if (!permission) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
-        <Text style={{ color: colors.muted }}>Kamera wird geladen...</Text>
+        <Text style={{ color: colors.muted }}>{t('kamera_wird_geladen')}</Text>
       </ScreenContainer>
     );
   }
@@ -145,10 +147,10 @@ export default function QRScannerScreen() {
             onPress={requestPermission}
             style={({ pressed }) => [{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 0, marginTop: 24, opacity: pressed ? 0.8 : 1 }]}
           >
-            <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>Kamera erlauben</Text>
+            <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "600" }}>{t('kamera_erlauben')}</Text>
           </Pressable>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [{ marginTop: 16, opacity: pressed ? 0.5 : 1 }]}>
-            <Text style={{ color: colors.muted, fontSize: 14 }}>Zurück</Text>
+            <Text style={{ color: colors.muted, fontSize: 14 }}>{t('back')}</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -162,7 +164,7 @@ export default function QRScannerScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>QR-Code Scanner</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('qrcode_scanner')}</Text>
         <Pressable onPress={() => setShowHistory(!showHistory)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
           <MaterialIcons name={showHistory ? "qr-code-scanner" : "history"} size={24} color={colors.primary} />
         </Pressable>
@@ -183,7 +185,7 @@ export default function QRScannerScreen() {
             ListEmptyComponent={
               <View style={{ alignItems: "center", paddingTop: 60 }}>
                 <MaterialIcons name="qr-code" size={48} color={colors.muted} />
-                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>Noch keine Scans</Text>
+                <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12 }}>{t('noch_keine_scans')}</Text>
               </View>
             }
             renderItem={({ item }) => {
@@ -225,7 +227,7 @@ export default function QRScannerScreen() {
                 </Text>
                 {/* Manual input for web testing */}
                 <TextInput
-                  placeholder="QR-Code Daten manuell eingeben"
+                  placeholder={t('qrcode_daten_manuell_eingeben')}
                   placeholderTextColor={colors.muted}
                   style={{ marginTop: 20, padding: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, width: "80%", fontSize: 14 }}
                   onSubmitEditing={(e) => {
@@ -250,7 +252,7 @@ export default function QRScannerScreen() {
                     <View style={[styles.corner, styles.cornerBL]} />
                     <View style={[styles.corner, styles.cornerBR]} />
                   </View>
-                  <Text style={styles.scanHint}>QR-Code oder Barcode in den Rahmen halten</Text>
+                  <Text style={styles.scanHint}>{t('qrcode_oder_barcode_in')}</Text>
                 </View>
               </CameraView>
             )}
@@ -270,7 +272,7 @@ export default function QRScannerScreen() {
           <View style={[styles.resultCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <MaterialIcons name="qr-code" size={24} color={colors.success} />
-              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>Scan erfolgreich</Text>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{t('scan_erfolgreich')}</Text>
             </View>
             <Text style={{ fontSize: 12, color: colors.muted, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", backgroundColor: colors.background, padding: 10, borderRadius: 0 }}>
               {scanResult?.data}
@@ -281,7 +283,7 @@ export default function QRScannerScreen() {
           </View>
 
           {/* Category Selection */}
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 10 }}>Kategorie</Text>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 10 }}>{t('kategorie')}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {CATEGORIES.map((cat) => (
               <Pressable
@@ -307,7 +309,7 @@ export default function QRScannerScreen() {
           </View>
 
           {/* Label */}
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>Bezeichnung *</Text>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>{t('bezeichnung')}</Text>
           <TextInput
             value={label}
             onChangeText={setLabel}
@@ -317,11 +319,11 @@ export default function QRScannerScreen() {
           />
 
           {/* Note */}
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 16, marginBottom: 8 }}>Notiz (optional)</Text>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 16, marginBottom: 8 }}>{t('notiz_optional')}</Text>
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="Zusätzliche Informationen..."
+            placeholder={t('zusaetzliche_informationen')}
             placeholderTextColor={colors.muted}
             multiline
             numberOfLines={3}
@@ -335,13 +337,13 @@ export default function QRScannerScreen() {
               onPress={resetScan}
               style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Erneut scannen</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('erneut_scannen')}</Text>
             </Pressable>
             <Pressable
               onPress={saveScan}
               style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
             >
-              <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Speichern</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>{t('save')}</Text>
             </Pressable>
           </View>
         </ScrollView>

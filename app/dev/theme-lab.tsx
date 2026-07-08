@@ -7,6 +7,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
 import { useColors } from "@/hooks/use-colors";
 import { useThemeContext } from "@/lib/theme-provider";
+import { useTranslation } from "@/lib/language-provider";
 
 type PaletteName = keyof typeof SchemeColors.light;
 
@@ -25,6 +26,7 @@ function ColorSwatch({ name, value }: { name: PaletteName; value: string }) {
 }
 
 export default function ThemeLabScreen() {
+  const { t } = useTranslation();
   const [pressCount, setPressCount] = useState(0);
   const [lastAction, setLastAction] = useState<string>("None yet");
   const { colorScheme, setColorScheme } = useThemeContext();
@@ -127,7 +129,7 @@ export default function ThemeLabScreen() {
                   setLastAction("Pressed Primary token");
                 }}
               >
-                <Text className="text-sm font-semibold text-background">Primary</Text>
+                <Text className="text-sm font-semibold text-background">{t('primary')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 className="rounded-full px-4 py-2 border border-border"

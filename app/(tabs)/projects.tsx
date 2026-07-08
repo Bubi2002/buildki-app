@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { PROJECT_TEMPLATES, type ProjectTemplate } from "@/lib/project-templates";
+import { useTranslation } from "@/lib/language-provider";
 
 type ProjectItem = {
   id: string;
@@ -38,6 +39,7 @@ type ProjectItem = {
 const PROJECT_COLORS = ["#F87171", "#FBBF24", "#4ADE80", "#38BDF8", "#A78BFA", "#F472B6", "#2DD4BF", "#818CF8"];
 
 export default function ProjectsTab() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -87,7 +89,7 @@ export default function ProjectsTab() {
 
   const createProject = async () => {
     if (!newName.trim()) {
-      Alert.alert("Fehler", "Bitte gib einen Projektnamen ein.");
+      Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein'));
       return;
     }
     const prefix = newPrefix.trim() || newName.trim().substring(0, 3).toUpperCase();
@@ -123,14 +125,14 @@ export default function ProjectsTab() {
   const archiveProject = async (id: string) => {
     const project = projects.find((p) => p.id === id);
     Alert.alert(
-      project?.archived ? "Wiederherstellen" : "Archivieren",
+      project?.archived ? t('btn_wiederherstellen') : t('btn_archivieren'),
       project?.archived
         ? `"${project.name}" wiederherstellen?`
         : `"${project?.name}" archivieren? Es bleibt erhalten, wird aber ausgeblendet.`,
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: project?.archived ? "Wiederherstellen" : "Archivieren",
+          text: project?.archived ? t('btn_wiederherstellen') : t('btn_archivieren'),
           onPress: async () => {
             const updated = projects.map((p) => (p.id === id ? { ...p, archived: !p.archived } : p));
             setProjects(updated);
@@ -143,10 +145,10 @@ export default function ProjectsTab() {
 
   const deleteProject = async (id: string) => {
     const project = projects.find((p) => p.id === id);
-    Alert.alert("Projekt löschen", `"${project?.name}" endgültig löschen? Alle Protokolle bleiben erhalten.`, [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('alert_projekt_loeschen'), `"${project?.name}" endgültig löschen? Alle Protokolle bleiben erhalten.`, [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           const updated = projects.filter((p) => p.id !== id);
@@ -171,7 +173,7 @@ export default function ProjectsTab() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Projekte</Text>
+          <Text style={styles.headerTitle}>{t('nav_projects')}</Text>
           <Text style={styles.headerSub}>
             {activeCount} aktiv{archivedCount > 0 ? ` \u2022 ${archivedCount} archiviert` : ""}
           </Text>
@@ -181,7 +183,7 @@ export default function ProjectsTab() {
           style={({ pressed }) => [styles.newBtn, { opacity: pressed ? 0.8 : 1 }]}
         >
           <MaterialIcons name="add" size={18} color="#FFF" />
-          <Text style={styles.newBtnText}>Neu</Text>
+          <Text style={styles.newBtnText}>{t('neu')}</Text>
         </Pressable>
       </View>
 
@@ -192,7 +194,7 @@ export default function ProjectsTab() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder="Projekt suchen..."
+            placeholder={t('projekt_suchen')}
             placeholderTextColor="#8FA3B8"
             style={styles.searchInput}
           />
@@ -221,7 +223,7 @@ export default function ProjectsTab() {
                 }]}
               >
                 <Text style={{ fontSize: 11, fontWeight: "600", color: sortBy === s ? "#5DADE2" : "#8FA3B8" }}>
-                  {s === "activity" ? "Aktivität" : s === "name" ? "Name" : "Erstellt"}
+                  {s === "activity" ? t('sort_aktivitaet') : s === "name" ? t('sort_name') : t('sort_erstellt')}
                 </Text>
               </Pressable>
             ))}
@@ -264,7 +266,7 @@ export default function ProjectsTab() {
                 onPress={() => setShowCreate(true)}
                 style={({ pressed }) => [{ marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 0, backgroundColor: "#5DADE2", opacity: pressed ? 0.8 : 1 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>Erstes Projekt anlegen</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>{t('erstes_projekt_anlegen')}</Text>
               </Pressable>
             )}
           </View>
@@ -310,12 +312,12 @@ export default function ProjectsTab() {
                   } else {
                     Alert.alert(
                       item.name,
-                      "Was möchtest du tun?",
+                      t('msg_was_moechtest_du_mit_projekt_tun'),
                       [
-                        { text: "Archivieren", onPress: () => archiveProject(item.id) },
-                        { text: "Teilen", onPress: () => Share.share({ message: `Projekt: ${item.name}${item.description ? '\n' + item.description : ''}` }) },
-                        { text: "Löschen", style: "destructive", onPress: () => deleteProject(item.id) },
-                        { text: "Abbrechen", style: "cancel" },
+                        { text: t('btn_archivieren'), onPress: () => archiveProject(item.id) },
+                        { text: t('btn_teilen'), onPress: () => Share.share({ message: `Projekt: ${item.name}${item.description ? '\n' + item.description : ''}` }) },
+                        { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteProject(item.id) },
+                        { text: t('btn_abbrechen'), style: "cancel" },
                       ]
                     );
                   }
@@ -341,7 +343,7 @@ export default function ProjectsTab() {
               <View style={styles.modalCard}>
                 {/* Modal Header */}
                 <View style={styles.modalCardHeader}>
-                  <Text style={{ fontSize: 18, fontWeight: "700", color: "#F0F4F8" }}>Neues Projekt</Text>
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: "#F0F4F8" }}>{t('project_new')}</Text>
                   <Pressable onPress={() => { setShowCreate(false); Keyboard.dismiss(); }} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
                     <MaterialIcons name="close" size={22} color="#8FA3B8" />
                   </Pressable>
@@ -352,7 +354,7 @@ export default function ProjectsTab() {
                   <View style={{ padding: 20, gap: 16 }}>
                     {/* Template Selection */}
                     <View>
-                      <Text style={styles.fieldLabel}>Vorlage (optional)</Text>
+                      <Text style={styles.fieldLabel}>{t('vorlage_optional')}</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                         {PROJECT_TEMPLATES.map((t) => (
                           <Pressable
@@ -382,7 +384,7 @@ export default function ProjectsTab() {
                     </View>
 
                     <View>
-                      <Text style={styles.fieldLabel}>Projektname *</Text>
+                      <Text style={styles.fieldLabel}>{t('projektname')}</Text>
                       <TextInput
                         value={newName}
                         onChangeText={setNewName}
@@ -395,11 +397,11 @@ export default function ProjectsTab() {
                     </View>
 
                     <View>
-                      <Text style={styles.fieldLabel}>Beschreibung (optional)</Text>
+                      <Text style={styles.fieldLabel}>{t('beschreibung_optional')}</Text>
                       <TextInput
                         value={newDesc}
                         onChangeText={setNewDesc}
-                        placeholder="Kurze Projektbeschreibung"
+                        placeholder={t('kurze_projektbeschreibung')}
                         placeholderTextColor="#8FA3B8"
                         returnKeyType="done"
                         blurOnSubmit={true}
@@ -409,7 +411,7 @@ export default function ProjectsTab() {
                     </View>
 
                     <View>
-                      <Text style={styles.fieldLabel}>Protokoll-Präfix</Text>
+                      <Text style={styles.fieldLabel}>{t('protokollpraefix')}</Text>
                       <TextInput
                         value={newPrefix}
                         onChangeText={(t) => setNewPrefix(t.toUpperCase())}
@@ -428,7 +430,7 @@ export default function ProjectsTab() {
                     </View>
 
                     <View>
-                      <Text style={styles.fieldLabel}>Farbe wählen</Text>
+                      <Text style={styles.fieldLabel}>{t('farbe_waehlen')}</Text>
                       <View style={{ flexDirection: "row", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
                         {PROJECT_COLORS.map((c) => (
                           <Pressable
@@ -459,13 +461,13 @@ export default function ProjectsTab() {
                     onPress={() => { setShowCreate(false); Keyboard.dismiss(); }}
                     style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#8FA3B8" }}>Abbrechen</Text>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#8FA3B8" }}>{t('cancel')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={createProject}
                     style={({ pressed }) => [styles.createBtn, { opacity: pressed ? 0.8 : 1 }]}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>Erstellen</Text>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>{t('erstellen')}</Text>
                   </Pressable>
                 </View>
               </View>

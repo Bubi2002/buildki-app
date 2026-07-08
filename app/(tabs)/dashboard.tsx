@@ -12,6 +12,7 @@ import { getDefects, getDefectStats } from "@/lib/defect-store";
 import { getOverdueDefects } from "@/lib/defect-pdf-export";
 import { useRouter } from "expo-router";
 import { Platform } from "react-native";
+import { useTranslation } from "@/lib/language-provider";
 
 type DashboardStats = {
   totalProtocols: number;
@@ -25,6 +26,7 @@ type DashboardStats = {
 };
 
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -96,7 +98,7 @@ export default function DashboardScreen() {
       recentProtocols.forEach((p: any) => {
         const date = new Date(p.createdAt);
         const timeStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-        activity.push({ text: p.title || "Protokoll erstellt", time: timeStr, icon: "description" });
+        activity.push({ text: p.title || t('protokoll_erstellt'), time: timeStr, icon: "description" });
       });
 
       dels.slice(0, 3).forEach(d => {
@@ -154,15 +156,15 @@ export default function DashboardScreen() {
       >
         {/* Header */}
         <View style={{ marginBottom: 24 }}>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: "#F0F4F8", letterSpacing: -0.5 }}>Dashboard</Text>
-          <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4 }}>Team-Übersicht und Aktivitäten</Text>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: "#F0F4F8", letterSpacing: -0.5 }}>{t('nav_dashboard')}</Text>
+          <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4 }}>{t('teamuebersicht_und_aktivitaeten')}</Text>
         </View>
 
         {/* Sync Status Banner */}
         <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: syncStatus.isOnline ? "#4ADE8010" : "#FBBF2410", borderRadius: 0, borderWidth: 1, borderColor: syncStatus.isOnline ? "#4ADE8030" : "#FBBF2430", padding: 12, marginBottom: 16, gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncStatus.isOnline ? "#4ADE80" : "#FBBF24" }} />
           <Text style={{ fontSize: 12, color: syncStatus.isOnline ? "#4ADE80" : "#FBBF24", fontWeight: "500", flex: 1 }}>
-            {syncStatus.isOnline ? "Online" : "Offline"} • {syncStatus.pendingChanges} ausstehende Änderungen
+            {syncStatus.isOnline ? t('sync_online') : t('sync_offline')} • {syncStatus.pendingChanges} {t('sync_ausstehende_aenderungen')}
             {syncStatus.conflicts > 0 ? ` • ${syncStatus.conflicts} Konflikte` : ""}
           </Text>
           {syncStatus.lastSyncAt && (
@@ -174,48 +176,48 @@ export default function DashboardScreen() {
 
         {/* Quick Actions */}
         <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: "#F0F4F8", marginBottom: 10, letterSpacing: 0.3 }}>Schnellaktionen</Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#F0F4F8", marginBottom: 10, letterSpacing: 0.3 }}>{t('schnellaktionen')}</Text>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <Pressable
               onPress={() => router.push("/(tabs)" as any)}
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#5DADE215", borderWidth: 1, borderColor: "#5DADE230", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="mic" size={20} color="#5DADE2" />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#5DADE2" }}>Aufnahme</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#5DADE2" }}>{t('nav_home')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push("/(tabs)/projects" as any)}
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#A78BFA15", borderWidth: 1, borderColor: "#A78BFA30", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="folder" size={20} color="#A78BFA" />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#A78BFA" }}>Projekte</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#A78BFA" }}>{t('nav_projects')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push("/(tabs)/protocols" as any)}
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#4ADE8015", borderWidth: 1, borderColor: "#4ADE8030", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="list-alt" size={20} color="#4ADE80" />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#4ADE80" }}>Protokolle</Text>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#4ADE80" }}>{t('project_protocols')}</Text>
             </Pressable>
           </View>
         </View>
 
         {/* Stats Grid */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
-          <StatCard icon="description" label="Protokolle gesamt" value={stats.totalProtocols} color="#5DADE2" />
-          <StatCard icon="trending-up" label="Diese Woche" value={stats.thisWeekProtocols} color="#A78BFA" />
-          <StatCard icon="check-circle" label="Offene Aufgaben" value={stats.openTasks} color="#FBBF24" />
-          <StatCard icon="done-all" label="Erledigt" value={stats.completedTasks} color="#4ADE80" />
-          <StatCard icon="warning" label="Offene Mängel" value={stats.openDefects} color="#F87171" />
-          <StatCard icon="schedule" label="Überfällig" value={stats.overdueDefects} color="#FB7185" />
-          <StatCard icon="send" label="Delegiert" value={stats.delegatedTasks} color="#F472B6" />
-          <StatCard icon="event" label="Meetings (7 Tage)" value={upcomingEvents.length} color="#38BDF8" />
+          <StatCard icon="description" label={t('protokolle_gesamt')} value={stats.totalProtocols} color="#5DADE2" />
+          <StatCard icon="trending-up" label={t('diese_woche')} value={stats.thisWeekProtocols} color="#A78BFA" />
+          <StatCard icon="check-circle" label={t('offene_aufgaben')} value={stats.openTasks} color="#FBBF24" />
+          <StatCard icon="done-all" label={t('defect_resolved')} value={stats.completedTasks} color="#4ADE80" />
+          <StatCard icon="warning" label={t('offene_maengel')} value={stats.openDefects} color="#F87171" />
+          <StatCard icon="schedule" label={t('ueberfaellig')} value={stats.overdueDefects} color="#FB7185" />
+          <StatCard icon="send" label={t('delegiert')} value={stats.delegatedTasks} color="#F472B6" />
+          <StatCard icon="event" label={t('meetings_7_tage')} value={upcomingEvents.length} color="#38BDF8" />
         </View>
 
         {/* Upcoming Events */}
         {upcomingEvents.length > 0 && (
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>Kommende Termine</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('kommende_termine')}</Text>
             {upcomingEvents.map((event) => (
               <View key={event.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1E3A5F" }}>
                 <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#38BDF810", borderWidth: 1, borderColor: "#38BDF830", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
@@ -235,7 +237,7 @@ export default function DashboardScreen() {
         {/* Delegated Tasks */}
         {delegations.length > 0 && (
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>Delegierte Aufgaben</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('delegierte_aufgaben')}</Text>
             {delegations.slice(0, 5).map((del) => (
               <View key={del.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1E3A5F" }}>
                 <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: del.status === "completed" ? "#4ADE8010" : del.status === "sent" ? "#5DADE210" : "#FBBF2410", borderWidth: 1, borderColor: del.status === "completed" ? "#4ADE8030" : del.status === "sent" ? "#5DADE230" : "#FBBF2430", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
@@ -256,7 +258,7 @@ export default function DashboardScreen() {
         {/* Team Contacts */}
         {contacts.length > 0 && (
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>Team</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('team_title')}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               {contacts.map((contact) => (
                 <View key={contact.id} style={{ alignItems: "center", width: 70 }}>
@@ -274,7 +276,7 @@ export default function DashboardScreen() {
         {/* Recent Activity */}
         {recentActivity.length > 0 && (
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>Letzte Aktivitäten</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('letzte_aktivitaeten')}</Text>
             {recentActivity.map((activity, idx) => (
               <View key={idx} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8 }}>
                 <MaterialIcons name={activity.icon as any} size={16} color="#8FA3B8" style={{ marginRight: 10 }} />
@@ -289,8 +291,8 @@ export default function DashboardScreen() {
         {stats.totalProtocols === 0 && delegations.length === 0 && (
           <View style={{ alignItems: "center", paddingTop: 40 }}>
             <MaterialIcons name="dashboard" size={48} color="#8FA3B8" />
-            <Text style={{ fontSize: 16, fontWeight: "600", color: "#F0F4F8", marginTop: 12 }}>Willkommen im Dashboard</Text>
-            <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4, textAlign: "center" }}>Erstellen Sie Ihr erstes Protokoll, um hier Statistiken und Aktivitäten zu sehen.</Text>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#F0F4F8", marginTop: 12 }}>{t('willkommen_im_dashboard')}</Text>
+            <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4, textAlign: "center" }}>{t('erstellen_sie_ihr_erstes')}</Text>
           </View>
         )}
       </ScrollView>

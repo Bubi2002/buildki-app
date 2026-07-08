@@ -86,6 +86,7 @@ const DEFAULT_COMPANY: CompanySettings = {
 };
 
 function BiometricLockSection({ colors }: { colors: any }) {
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState<BiometricStatus | null>(null);
 
@@ -119,8 +120,8 @@ function BiometricLockSection({ colors }: { colors: any }) {
           <View style={[biometricStyles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <MaterialIcons name="fingerprint" size={24} color={colors.muted} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[biometricStyles.label, { color: colors.foreground }]}>App-Sperre</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Nur auf Geräten mit Biometrie verfügbar</Text>
+              <Text style={[biometricStyles.label, { color: colors.foreground }]}>{t('appsperre')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('nur_auf_geraeten_mit')}</Text>
             </View>
             <View style={[biometricStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
               <View style={[biometricStyles.toggleThumb, { transform: [{ translateX: enabled ? 18 : 2 }] }]} />
@@ -204,6 +205,7 @@ const biometricStyles = StyleSheet.create({
 const ANNOTATION_STORAGE_KEY = 'annotation-custom-templates';
 
 function AnnotationTemplatesSection({ colors }: { colors: any }) {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<string[]>([]);
   const [newTemplate, setNewTemplate] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -266,7 +268,7 @@ function AnnotationTemplatesSection({ colors }: { colors: any }) {
         <TextInput
           value={newTemplate}
           onChangeText={setNewTemplate}
-          placeholder="Neue Vorlage..."
+          placeholder={t('neue_vorlage')}
           placeholderTextColor={colors.muted}
           style={[annotStyles.addInput, { color: colors.foreground, backgroundColor: colors.surface }]}
           returnKeyType="done"
@@ -313,6 +315,7 @@ const annotStyles = StyleSheet.create({
 const WATERMARK_STORAGE_KEY = 'watermark-settings';
 
 function WatermarkSection({ colors }: { colors: any }) {
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [text, setText] = useState('');
 
@@ -347,8 +350,8 @@ function WatermarkSection({ colors }: { colors: any }) {
       <View style={[wmStyles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <MaterialIcons name="branding-watermark" size={22} color={enabled ? colors.primary : colors.muted} />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={[wmStyles.label, { color: colors.foreground }]}>Wasserzeichen aktiv</Text>
-          <Text style={{ fontSize: 12, color: colors.muted }}>Wird diagonal über jede PDF-Seite gelegt</Text>
+          <Text style={[wmStyles.label, { color: colors.foreground }]}>{t('wasserzeichen_aktiv')}</Text>
+          <Text style={{ fontSize: 12, color: colors.muted }}>{t('wird_diagonal_ueber_jede')}</Text>
         </View>
         <Pressable onPress={() => save(!enabled, text)} style={{ padding: 4 }}>
           <View style={[wmStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
@@ -388,6 +391,7 @@ const wmStyles = StyleSheet.create({
 });
 
 function TaskReminderSection({ colors }: { colors: any }) {
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [reminderHour, setReminderHour] = useState(9);
   const [reminderMinute, setReminderMinute] = useState(0);
@@ -426,7 +430,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
       const { status } = await Notif.requestPermissionsAsync();
       setPermissionGranted(status === "granted");
       if (status !== "granted") {
-        Alert.alert("Berechtigung verweigert", "Bitte erlaube Benachrichtigungen in den Systemeinstellungen.");
+        Alert.alert(t('alert_berechtigung_verweigert'), t('msg_bitte_erlaube_benachrichtigungen_in_den'));
         setEnabled(false);
         return;
       }
@@ -452,8 +456,8 @@ function TaskReminderSection({ colors }: { colors: any }) {
 
   return (
     <View style={{ marginBottom: 28 }}>
-      <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Aufgaben-Erinnerungen</Text>
-      <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Benachrichtigungen bei fälligen Aufgaben</Text>
+      <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{t('aufgabenerinnerungen')}</Text>
+      <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>{t('benachrichtigungen_bei_faelligen_aufgabe')}</Text>
 
       <Pressable
         onPress={() => toggleEnabled(!enabled)}
@@ -466,7 +470,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <MaterialIcons name="notifications" size={20} color={enabled ? colors.primary : colors.muted} />
-          <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>Erinnerungen aktiv</Text>
+          <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>{t('erinnerungen_aktiv')}</Text>
         </View>
         <View style={[{ width: 44, height: 26, borderRadius: 13, justifyContent: "center" }, { backgroundColor: enabled ? colors.primary : colors.border }]}>
           <View style={[{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#FFFFFF" }, { marginLeft: enabled ? 20 : 2 }]} />
@@ -475,7 +479,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
 
       {enabled && (
         <View style={{ marginTop: 12 }}>
-          <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>Erinnerungszeit:</Text>
+          <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>{t('erinnerungszeit')}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TextInput
               value={hourText}
@@ -502,7 +506,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
               maxLength={2}
               style={{ width: 50, textAlign: 'center', fontSize: 18, fontWeight: '600', color: colors.foreground, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 10 }}
             />
-            <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>Uhr</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>{t('uhr')}</Text>
           </View>
           {Platform.OS !== "web" && !permissionGranted && (
             <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>⚠️ Benachrichtigungs-Berechtigung noch nicht erteilt</Text>
@@ -514,6 +518,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
 }
 
 function FeatureTogglesSection({ colors }: { colors: any }) {
+  const { t } = useTranslation();
   const [toggles, setToggles] = useState<any[]>([]);
   const [expanded, setExpanded] = useState(false);
 
@@ -549,7 +554,7 @@ function FeatureTogglesSection({ colors }: { colors: any }) {
         style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", opacity: pressed ? 0.7 : 1 }]}
       >
         <View>
-          <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Features verwalten</Text>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{t('features_verwalten')}</Text>
           <Text style={{ fontSize: 13, color: colors.muted }}>{enabledCount} von {toggles.length} aktiv</Text>
         </View>
         <MaterialIcons name={expanded ? "expand-less" : "expand-more"} size={24} color={colors.muted} />
@@ -582,7 +587,7 @@ function FeatureTogglesSection({ colors }: { colors: any }) {
               ))}
             </View>
           ))}
-          <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 4 }}>Deaktivierte Features werden in der App ausgeblendet</Text>
+          <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 4 }}>{t('deaktivierte_features_werden_in')}</Text>
         </View>
       )}
     </View>
@@ -590,6 +595,7 @@ function FeatureTogglesSection({ colors }: { colors: any }) {
 }
 
 function BackupSection({ colors }: { colors: any }) {
+  const { t } = useTranslation();
   const [stats, setStats] = useState({ protocolCount: 0, projectCount: 0, totalSize: "0 KB" });
   const [loading, setLoading] = useState(false);
 
@@ -626,7 +632,7 @@ function BackupSection({ colors }: { colors: any }) {
 
   return (
     <View style={{ marginBottom: 28 }}>
-      <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>Datensicherung</Text>
+      <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{t('datensicherung')}</Text>
       <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
         {stats.protocolCount} Protokolle, {stats.projectCount} Projekte ({stats.totalSize})
       </Text>
@@ -642,7 +648,7 @@ function BackupSection({ colors }: { colors: any }) {
           }]}
         >
           <MaterialIcons name="backup" size={18} color="#fff" />
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>Backup</Text>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff" }}>{t('backup')}</Text>
         </Pressable>
 
         <Pressable
@@ -656,7 +662,7 @@ function BackupSection({ colors }: { colors: any }) {
           }]}
         >
           <MaterialIcons name="restore" size={18} color={colors.foreground} />
-          <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>Wiederherstellen</Text>
+          <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>{t('project_unarchive')}</Text>
         </Pressable>
       </View>
     </View>
@@ -664,6 +670,7 @@ function BackupSection({ colors }: { colors: any }) {
 }
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const { setLanguage: globalSetLanguage } = useTranslation();
@@ -694,7 +701,7 @@ export default function SettingsScreen() {
 
   const syncNow = async () => {
     if (!isAuthenticated) {
-      Alert.alert("Login erforderlich", "Bitte melde dich an, um Cloud-Sync zu nutzen.");
+      Alert.alert(t('alert_login_erforderlich'), t('msg_bitte_melde_dich_an_um'));
       return;
     }
     setSyncing(true);
@@ -719,9 +726,9 @@ export default function SettingsScreen() {
         });
         await markProtocolSynced(p.id);
       }
-      Alert.alert("Sync abgeschlossen", `${unsynced.length} Protokoll(e) synchronisiert.`);
+      Alert.alert(t('alert_sync_abgeschlossen'), `${unsynced.length} Protokoll(e) synchronisiert.`);
     } catch (error) {
-      Alert.alert("Sync-Fehler", "Die Synchronisation konnte nicht abgeschlossen werden.");
+      Alert.alert(t('alert_sync_fehler'), t('msg_die_synchronisation_konnte_nicht_abgeschlossen'));
     } finally {
       setSyncing(false);
     }
@@ -804,7 +811,7 @@ export default function SettingsScreen() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      Alert.alert("Fehler", "Einstellungen konnten nicht gespeichert werden.");
+      Alert.alert(t('alert_fehler'), t('msg_einstellungen_konnten_nicht_gespeichert_werden'));
     }
   };
 
@@ -857,7 +864,7 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       console.error("Logo picker error:", error);
-      Alert.alert("Fehler", "Logo konnte nicht geladen werden.");
+      Alert.alert(t('alert_fehler'), t('msg_logo_konnte_nicht_geladen_werden'));
     }
   };
 
@@ -949,13 +956,13 @@ export default function SettingsScreen() {
   const importFromPhoneContacts = async () => {
     try {
       if (Platform.OS === "web") {
-        Alert.alert("Nicht verfügbar", "Kontakt-Import ist nur auf dem Gerät verfügbar.");
+        Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
         return;
       }
       const ContactsModule = await import("expo-contacts");
       const { status } = await ContactsModule.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung", "Zugriff auf Kontakte wurde verweigert. Bitte erlaube den Zugriff in den Einstellungen.");
+        Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
         return;
       }
       const { data } = await ContactsModule.getContactsAsync({
@@ -963,21 +970,21 @@ export default function SettingsScreen() {
         sort: ContactsModule.SortTypes?.FirstName || undefined,
       });
       if (!data || data.length === 0) {
-        Alert.alert("Keine Kontakte", "Es wurden keine Kontakte auf dem Gerät gefunden.");
+        Alert.alert(t('alert_keine_kontakte'), t('msg_es_wurden_keine_kontakte_auf'));
         return;
       }
       const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 10);
       Alert.alert(
-        "Kontakt importieren",
-        "Wähle einen Kontakt:",
+        t('alert_kontakt_importieren'),
+        t('msg_waehle_einen_kontakt'),
         [
           ...sorted.map(c => ({
-            text: c.name || "Unbekannt",
+            text: c.name || t('unbekannt'),
             onPress: async () => {
               const email = c.emails?.[0]?.email || "";
               const phone = c.phoneNumbers?.[0]?.number || "";
               await saveTeamContact({
-                name: c.name || "Unbekannt",
+                name: c.name || t('unbekannt'),
                 email,
                 phone: phone || undefined,
                 lastUsed: Date.now(),
@@ -985,12 +992,12 @@ export default function SettingsScreen() {
               loadTeamContacts();
             },
           })),
-          { text: "Abbrechen", style: "cancel" as const },
+          { text: t('btn_abbrechen'), style: "cancel" as const },
         ]
       );
     } catch (e: any) {
       console.error("Import contacts error:", e);
-      Alert.alert("Fehler", `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
+      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
     }
   };
 
@@ -1039,7 +1046,7 @@ return (
                     ]}
                   >
                     <MaterialIcons name="edit" size={16} color={colors.primary} />
-                    <Text style={[styles.logoActionText, { color: colors.primary }]}>Ändern</Text>
+                    <Text style={[styles.logoActionText, { color: colors.primary }]}>{t('aendern')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={removeLogo}
@@ -1049,7 +1056,7 @@ return (
                     ]}
                   >
                     <MaterialIcons name="delete" size={16} color={colors.error} />
-                    <Text style={[styles.logoActionText, { color: colors.error }]}>Entfernen</Text>
+                    <Text style={[styles.logoActionText, { color: colors.error }]}>{t('entfernen')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -1084,7 +1091,7 @@ return (
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               value={company.companyName}
               onChangeText={(v) => updateCompany("companyName", v)}
-              placeholder="Meine Firma GmbH"
+              placeholder={t('meine_firma_gmbh')}
               placeholderTextColor={colors.muted}
             />
           </View>
@@ -1101,7 +1108,7 @@ return (
               style={[styles.input, styles.multilineInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               value={company.companyAddress}
               onChangeText={(v) => updateCompany("companyAddress", v)}
-              placeholder="Musterstraße 1&#10;12345 Musterstadt"
+              placeholder={t('musterstrasse_11012345_musterstadt')}
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={2}
@@ -1142,7 +1149,7 @@ return (
           {/* Custom Templates */}
           {customTemplates.length > 0 && (
             <View style={[styles.customTemplateSection, { marginBottom: 12 }]}>
-              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>Eigene Vorlagen</Text>
+              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>{t('eigene_vorlagen')}</Text>
               {customTemplates.map((template) => (
                 <View key={template.id} style={[styles.customTemplateRow, { borderColor: settings.templateId === template.id ? colors.primary : colors.border, backgroundColor: settings.templateId === template.id ? colors.primary + "15" : colors.surface }]}>
                   <Pressable
@@ -1165,8 +1172,8 @@ return (
           >
             <MaterialIcons name="store" size={22} color={colors.primary} />
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Vorlagen-Marktplatz</Text>
-              <Text style={[styles.settingDesc, { color: colors.muted }]}>Vorlagen entdecken und teilen</Text>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>{t('vorlagenmarktplatz')}</Text>
+              <Text style={[styles.settingDesc, { color: colors.muted }]}>{t('vorlagen_entdecken_und_teilen')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1177,8 +1184,8 @@ return (
           >
             <MaterialIcons name="event-note" size={22} color={colors.primary} />
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Agenda-Vorbereitung</Text>
-              <Text style={[styles.settingDesc, { color: colors.muted }]}>KI-gestützte Meeting-Agenden erstellen</Text>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>{t('agendavorbereitung')}</Text>
+              <Text style={[styles.settingDesc, { color: colors.muted }]}>{t('kigestuetzte_meetingagenden_erstellen')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1189,8 +1196,8 @@ return (
           >
             <MaterialIcons name="view-kanban" size={22} color={colors.primary} />
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Kanban Board</Text>
-              <Text style={[styles.settingDesc, { color: colors.muted }]}>Aufgaben visuell verwalten</Text>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>{t('kanban_board')}</Text>
+              <Text style={[styles.settingDesc, { color: colors.muted }]}>{t('aufgaben_visuell_verwalten')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1204,8 +1211,8 @@ return (
             >
               <MaterialIcons name="event-repeat" size={22} color={colors.primary} style={{ marginRight: 12 }} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>Wiederkehrende Meetings</Text>
-                <Text style={{ fontSize: 12, color: colors.muted }}>Automatisch Protokolle vorbereiten</Text>
+                <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>{t('wiederkehrende_meetings')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>{t('automatisch_protokolle_vorbereiten')}</Text>
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
@@ -1232,7 +1239,7 @@ return (
             </Text>
           </Pressable>
 
-          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16, marginBottom: 8 }]}>Standard-Vorlagen</Text>
+          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16, marginBottom: 8 }]}>{t('standardvorlagen')}</Text>
 
           <View style={styles.templateGrid}>
             {PROTOCOL_TEMPLATES.map((template) => (
@@ -1390,7 +1397,7 @@ return (
           {/* Target selection */}
           {settings.autoSend && (
             <View style={styles.autoSendTargets}>
-              <Text style={[styles.optionLabel, { color: colors.muted }]}>Senden an:</Text>
+              <Text style={[styles.optionLabel, { color: colors.muted }]}>{t('senden_an')}</Text>
               <View style={styles.optionRow}>
                 <Pressable
                   onPress={() => updateSetting("autoSendTarget", "whatsapp")}
@@ -1477,19 +1484,19 @@ return (
               onPress={() => updateSetting("audioQuality", "standard")}
               style={[styles.optionButton, { backgroundColor: settings.audioQuality === "standard" ? colors.primary : colors.surface, borderColor: settings.audioQuality === "standard" ? colors.primary : colors.border }]}
             >
-              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "standard" ? "#FFFFFF" : colors.foreground }]}>Standard</Text>
+              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "standard" ? "#FFFFFF" : colors.foreground }]}>{t('standard')}</Text>
             </Pressable>
             <Pressable
               onPress={() => updateSetting("audioQuality", "high")}
               style={[styles.optionButton, { backgroundColor: settings.audioQuality === "high" ? colors.primary : colors.surface, borderColor: settings.audioQuality === "high" ? colors.primary : colors.border }]}
             >
-              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "high" ? "#FFFFFF" : colors.foreground }]}>Hoch</Text>
+              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "high" ? "#FFFFFF" : colors.foreground }]}>{t('defect_priority_high')}</Text>
             </Pressable>
             <Pressable
               onPress={() => updateSetting("audioQuality", "maximum")}
               style={[styles.optionButton, { backgroundColor: settings.audioQuality === "maximum" ? colors.primary : colors.surface, borderColor: settings.audioQuality === "maximum" ? colors.primary : colors.border }]}
             >
-              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "maximum" ? "#FFFFFF" : colors.foreground }]}>Maximum</Text>
+              <Text style={[styles.optionButtonText, { color: settings.audioQuality === "maximum" ? "#FFFFFF" : colors.foreground }]}>{t('maximum')}</Text>
             </Pressable>
           </View>
           <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
@@ -1503,7 +1510,7 @@ return (
             Protokoll-Stil
           </Text>
 
-          <Text style={[styles.optionLabel, { color: colors.muted }]}>Schreibstil</Text>
+          <Text style={[styles.optionLabel, { color: colors.muted }]}>{t('schreibstil')}</Text>
           <View style={styles.optionRow}>
             <Pressable
               onPress={() => updateSetting("style", "formal")}
@@ -1545,7 +1552,7 @@ return (
             </Pressable>
           </View>
 
-          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16 }]}>Format</Text>
+          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16 }]}>{t('export_format')}</Text>
           <View style={styles.optionRow}>
             <Pressable
               onPress={() => updateSetting("format", "bullets")}
@@ -1649,7 +1656,7 @@ return (
             <MaterialIcons name={isAuthenticated ? "account-circle" : "person-outline"} size={24} color={isAuthenticated ? colors.primary : colors.muted} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[styles.syncLabel, { color: colors.foreground }]}>
-                {isAuthenticated ? (user?.name || "Angemeldet") : "Nicht angemeldet"}
+                {isAuthenticated ? (user?.name || t('sync_angemeldet')) : t('sync_nicht_angemeldet')}
               </Text>
               <Text style={[styles.syncHint, { color: colors.muted }]}>
                 {isAuthenticated ? "Cloud-Sync verfügbar" : "Anmelden für Cloud-Sync"}
@@ -1657,7 +1664,7 @@ return (
             </View>
             {isAuthenticated ? (
               <Pressable onPress={() => { logout(); setSyncEnabledState(false); setSyncEnabled(false); }} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={{ color: colors.error, fontWeight: "600", fontSize: 14 }}>Abmelden</Text>
+                <Text style={{ color: colors.error, fontWeight: "600", fontSize: 14 }}>{t('abmelden')}</Text>
               </Pressable>
             ) : (
               <Pressable onPress={async () => {
@@ -1688,7 +1695,7 @@ return (
                   }
                 }
               }} style={({ pressed }) => [styles.loginButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
-                <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>Anmelden</Text>
+                <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>{t('anmelden')}</Text>
               </Pressable>
             )}
           </View>
@@ -1702,8 +1709,8 @@ return (
               >
                 <MaterialIcons name="cloud-sync" size={24} color={syncEnabled ? colors.primary : colors.muted} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.syncLabel, { color: colors.foreground }]}>Auto-Sync</Text>
-                  <Text style={[styles.syncHint, { color: colors.muted }]}>Neue Protokolle automatisch hochladen</Text>
+                  <Text style={[styles.syncLabel, { color: colors.foreground }]}>{t('autosync')}</Text>
+                  <Text style={[styles.syncHint, { color: colors.muted }]}>{t('neue_protokolle_automatisch_hochladen')}</Text>
                 </View>
                 <View style={[styles.toggleTrack, { backgroundColor: syncEnabled ? colors.primary : colors.border }]}>
                   <View style={[styles.toggleThumb, { transform: [{ translateX: syncEnabled ? 18 : 2 }] }]} />
@@ -1716,7 +1723,7 @@ return (
                 style={({ pressed }) => [styles.syncButton, { backgroundColor: colors.primary, opacity: pressed || syncing ? 0.7 : 1 }]}
               >
                 <MaterialIcons name={syncing ? "hourglass-top" : "sync"} size={20} color="#FFFFFF" />
-                <Text style={styles.syncButtonText}>{syncing ? "Synchronisiere..." : "Jetzt synchronisieren"}</Text>
+                <Text style={styles.syncButtonText}>{syncing ? t('sync_synchronisiere') : t('sync_jetzt_synchronisieren')}</Text>
               </Pressable>
             </>
           )}
@@ -1733,8 +1740,8 @@ return (
 
           <View style={[styles.autoSendRow, { borderColor: colors.border }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.autoSendLabel, { color: colors.foreground }]}>Erinnerungen aktiv</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Push-Benachrichtigungen vor Fristablauf</Text>
+              <Text style={[styles.autoSendLabel, { color: colors.foreground }]}>{t('erinnerungen_aktiv')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('pushbenachrichtigungen_vor_fristablauf')}</Text>
             </View>
             <Pressable
               onPress={() => setSettings({ ...settings, remindersEnabled: !settings.remindersEnabled })}
@@ -1746,7 +1753,7 @@ return (
 
           {settings.remindersEnabled && (
             <View style={{ marginTop: 12 }}>
-              <Text style={[styles.label, { color: colors.muted }]}>Vorlaufzeit (Stunden vor Frist)</Text>
+              <Text style={[styles.label, { color: colors.muted }]}>{t('vorlaufzeit_stunden_vor_frist')}</Text>
               <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
                 {[6, 12, 24, 48].map((hours) => (
                   <Pressable
@@ -1771,16 +1778,16 @@ return (
 
         {/* Push-Benachrichtigungen */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Benachrichtigungen</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>Erinnerungen für Mängel und Checklisten</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_notifications')}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('erinnerungen_fuer_maengel_und')}</Text>
           <Pressable
             onPress={() => router.push("/notifications-settings" as any)}
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="notifications" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Push-Benachrichtigungen</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tägliche Erinnerungen konfigurieren</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pushbenachrichtigungen')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('taegliche_erinnerungen_konfigurieren')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1790,8 +1797,8 @@ return (
           >
             <MaterialIcons name="summarize" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Tages-Zusammenfassung</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Abendliche Push mit Tagesübersicht</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('tageszusammenfassung')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('abendliche_push_mit_tagesuebersicht')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1799,16 +1806,16 @@ return (
 
         {/* Sprache */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Sprache</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>App-Sprache für internationale Baustellen</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_language')}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('appsprache_fuer_internationale_baustelle')}</Text>
           <Pressable
             onPress={() => router.push("/language-settings" as any)}
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="translate" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Sprache / Language</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Deutsch, English, Français</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('sprache_language')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('deutsch_english_franais')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1816,16 +1823,16 @@ return (
 
         {/* PDF-Branding */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>PDF-Branding</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>Firmenlogo und Kopf-/Fußzeile für exportierte PDFs</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdfbranding')}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('firmenlogo_und_kopffusszeile_fuer')}</Text>
           <Pressable
             onPress={() => router.push("/pdf-branding" as any)}
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>PDF-Layout anpassen</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Logo, Firmendaten, Farben</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pdflayout_anpassen')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('logo_firmendaten_farben')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1835,8 +1842,8 @@ return (
           >
             <MaterialIcons name="history" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Export-Verlauf</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Alle gesendeten PDFs anzeigen</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('exportverlauf')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('alle_gesendeten_pdfs_anzeigen')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1846,8 +1853,8 @@ return (
           >
             <MaterialIcons name="calendar-today" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Kalender-Ansicht</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Protokolle in Timeline anzeigen</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('kalenderansicht')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('protokolle_in_timeline_anzeigen')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1857,8 +1864,8 @@ return (
           >
             <MaterialIcons name="compare" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Vorher/Nachher</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Foto-Vergleiche f\u00fcr Fortschrittsdoku</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('vorhernachher')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('fotovergleiche_fu00fcr_fortschrittsdoku')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1896,8 +1903,8 @@ return (
               <MaterialIcons name="cloud-upload" size={20} color="#0061FF" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Dropbox-Einstellungen</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Ordner, Dateinamen & Auto-Upload</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('dropboxeinstellungen')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('ordner_dateinamen_autoupload')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1923,8 +1930,8 @@ return (
               <MaterialIcons name="schedule" size={20} color={colors.success} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Auto-Bericht Einstellungen</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Häufigkeit, Uhrzeit & Versand konfigurieren</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('autobericht_einstellungen')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('haeufigkeit_uhrzeit_versand_konfiguriere')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1935,8 +1942,8 @@ return (
 
         {/* Team-Kontaktbuch */}
         <View style={{ marginTop: 24, backgroundColor: colors.surface, borderRadius: 0, padding: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Team-Kontaktbuch</Text>
-          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>Gespeicherte Kontakte für schnellen E-Mail-Versand von Aufgaben.</Text>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>{t('teamkontaktbuch')}</Text>
+          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>{t('gespeicherte_kontakte_fuer_schnellen')}</Text>
           {teamContacts.map(contact => (
             <View key={contact.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
@@ -1960,25 +1967,25 @@ return (
                 <Text style={{ fontSize: 13, color: colors.primary }}>+ Manuell hinzufügen</Text>
               </Pressable>
               <Pressable onPress={importFromPhoneContacts} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
-                <Text style={{ fontSize: 13, color: colors.primary }}>Aus Kontakten</Text>
+                <Text style={{ fontSize: 13, color: colors.primary }}>{t('aus_kontakten')}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={{ marginTop: 10, padding: 12, backgroundColor: colors.background, borderRadius: 0, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Name *</Text>
-              <TextInput placeholder="Max Mustermann" placeholderTextColor={colors.muted + "80"} value={tcName} onChangeText={setTcName} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>E-Mail</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('name')}</Text>
+              <TextInput placeholder={t('max_mustermann')} placeholderTextColor={colors.muted + "80"} value={tcName} onChangeText={setTcName} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('email')}</Text>
               <TextInput placeholder="max@firma.de" placeholderTextColor={colors.muted + "80"} value={tcEmail} onChangeText={setTcEmail} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Telefon</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
               <TextInput placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} value={tcPhone} onChangeText={setTcPhone} keyboardType="phone-pad" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Rolle (optional)</Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle_optional')}</Text>
               <TextInput placeholder="z.B. Bauleiter, Architekt" placeholderTextColor={colors.muted + "80"} value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 12 }} />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <Pressable onPress={handleAddTeamContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
-                  <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>Speichern</Text>
+                  <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>{t('save')}</Text>
                 </Pressable>
                 <Pressable onPress={() => { setShowAddTeamContact(false); setTcName(""); setTcEmail(""); setTcPhone(""); setTcRole(""); }} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ fontSize: 13, color: colors.muted }}>Abbrechen</Text>
+                  <Text style={{ fontSize: 13, color: colors.muted }}>{t('cancel')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1988,8 +1995,8 @@ return (
         {/* Gespeicherte Sprecher */}
         {speakerProfiles.length > 0 && (
           <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Gespeicherte Sprecher</Text>
-            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Automatisch erkannte Sprecher mit zugewiesenen Namen.</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>{t('gespeicherte_sprecher')}</Text>
+            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>{t('automatisch_erkannte_sprecher_mit')}</Text>
             {speakerProfiles.map(profile => (
               <View key={profile.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
                 <View style={{ flex: 1 }}>
@@ -2008,8 +2015,8 @@ return (
         {/* Stimmprofile */}
         {voiceProfiles.length > 0 && (
           <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>Stimmprofile</Text>
-            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Automatisch erkannte Stimmcharakteristiken für Sprecher-Zuweisung.</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>{t('stimmprofile')}</Text>
+            <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>{t('automatisch_erkannte_stimmcharakteristik')}</Text>
             {voiceProfiles.map(profile => (
               <View key={profile.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
                 <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: "#8B5CF620", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
@@ -2047,8 +2054,8 @@ return (
               <MaterialIcons name="support-agent" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>KI-Support Chat</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Fragen zur App, Hilfe bei Problemen, FAQ</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('kisupport_chat')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('fragen_zur_app_hilfe')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -2073,7 +2080,7 @@ return (
             color="#FFFFFF"
           />
           <Text style={styles.saveButtonText}>
-            {saved ? "Gespeichert!" : "Einstellungen speichern"}
+            {saved ? t('btn_gespeichert') : t('btn_einstellungen_speichern')}
           </Text>
         </Pressable>
 
@@ -2084,21 +2091,21 @@ return (
       <Modal visible={!!editingContact} transparent animationType="fade" onRequestClose={() => setEditingContact(null)}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
           <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "85%", maxWidth: 360, borderWidth: 1, borderColor: colors.border }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>Kontakt bearbeiten</Text>
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Name</Text>
-            <TextInput value={editName} onChangeText={setEditName} placeholder="Name" placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>E-Mail</Text>
-            <TextInput value={editEmail} onChangeText={setEditEmail} placeholder="E-Mail" placeholderTextColor={colors.muted + "80"} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Telefon</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>{t('kontakt_bearbeiten')}</Text>
+            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('project_sort_name')}</Text>
+            <TextInput value={editName} onChangeText={setEditName} placeholder={t('project_sort_name')} placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('email')}</Text>
+            <TextInput value={editEmail} onChangeText={setEditEmail} placeholder={t('email')} placeholderTextColor={colors.muted + "80"} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
+            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
             <TextInput value={editPhone} onChangeText={setEditPhone} placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} keyboardType="phone-pad" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>Rolle</Text>
+            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle')}</Text>
             <TextInput value={editRole} onChangeText={setEditRole} placeholder="z.B. Bauleiter" placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 16 }} />
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Pressable onPress={saveEditContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
-                <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Speichern</Text>
+                <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>{t('save')}</Text>
               </Pressable>
               <Pressable onPress={() => setEditingContact(null)} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
-                <Text style={{ fontSize: 14, color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
             </View>
           </View>
