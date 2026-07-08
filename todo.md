@@ -479,3 +479,4 @@
 - [x] UI-Fix: Mehr Abstand zwischen Fotos-Kasten und Schrift in Protokoll-Detail
 - [x] UI-Fix: Unverzüglich/Frist-Badge und Datum-Badge bei Aufgaben entfernen (Priorität und Datum stehen schon da)
 - [x] UI-Fix: Timeline, Mindmap und Statistik Buttons aus Protokoll-Detail entfernen
+- [x] Bug-Fix: PDF-Export rendert Markdown-Tabellen jetzt als echte HTML-Tabellen statt rohe Pipe-Zeichen

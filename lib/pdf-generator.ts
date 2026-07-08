@@ -243,10 +243,69 @@ function generatePdfHtml(
     return "";
   };
 
-  // Convert protocol text to HTML (handle line breaks, bullet points, and inline photo placeholders)
-  const protocolHtml = protocol.protocol
-    .split("\n")
+  // Convert protocol text to HTML (handle line breaks, bullet points, inline photo placeholders, and markdown tables)
+  // First, pre-process the protocol text to group table rows into proper HTML tables
+  const lines = protocol.protocol.split("\n");
+  const processedLines: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    // Detect start of a markdown table (line starts and ends with |)
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      // Collect all consecutive table lines
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      // Parse the table: first row is header, second is separator (skip), rest are data
+      if (tableLines.length >= 2) {
+        const headerCells = tableLines[0].split('|').filter(c => c.trim() !== '');
+        // Find separator row index (usually row 1)
+        let separatorIdx = 1;
+        for (let s = 1; s < tableLines.length; s++) {
+          const cells = tableLines[s].split('|').filter(c => c.trim() !== '');
+          if (cells.every(c => /^[-:]+$/.test(c.trim()))) {
+            separatorIdx = s;
+            break;
+          }
+        }
+        // Build HTML table
+        let tableHtml = '<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10px;">';
+        // Header
+        tableHtml += '<thead><tr style="background-color: #f0f0f0;">';
+        for (const cell of headerCells) {
+          tableHtml += `<th style="padding: 6px 8px; border: 1px solid #ddd; font-weight: 600; text-align: left; font-size: 10px;">${cell.trim().replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</th>`;
+        }
+        tableHtml += '</tr></thead><tbody>';
+        // Data rows (skip header and separator)
+        for (let r = 0; r < tableLines.length; r++) {
+          if (r === 0 || r === separatorIdx) continue; // skip header and separator
+          const cells = tableLines[r].split('|').filter(c => c.trim() !== '');
+          if (cells.every(c => /^[-:]+$/.test(c.trim()))) continue; // skip any additional separator
+          tableHtml += '<tr>';
+          for (let c = 0; c < headerCells.length; c++) {
+            const cellText = (cells[c] || '').trim().replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            tableHtml += `<td style="padding: 5px 8px; border: 1px solid #ddd; font-size: 10px; word-wrap: break-word;">${cellText}</td>`;
+          }
+          tableHtml += '</tr>';
+        }
+        tableHtml += '</tbody></table>';
+        processedLines.push(tableHtml);
+      } else {
+        // Single pipe line, just add as-is
+        processedLines.push(tableLines[0]);
+      }
+      continue;
+    }
+    processedLines.push(lines[i]);
+    i++;
+  }
+
+  const protocolHtml = processedLines
     .map((line) => {
+      // If line is already a full HTML table, pass through
+      if (line.trim().startsWith('<table')) return line;
       const trimmed = line.trim();
       // Check for inline photo placeholder [FOTO X] or [Foto X – siehe Fotodokumentation]
       const photoMatch = trimmed.match(/^\*?\s*\[Foto\s*(\d+)(?:\s*[\u2013\-–]\s*[^\]]*)?\]\s*$/i);
@@ -340,11 +399,11 @@ function generatePdfHtml(
       if (trimmed === "") return "<br/>";
       // Handle **bold** inline
       let processed = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      // Handle | table rows for gutachten
-      if (isGutachten && processed.startsWith('|') && processed.endsWith('|')) {
+      // Handle | table rows (fallback for any remaining pipe rows not caught by pre-processing)
+      if (processed.startsWith('|') && processed.endsWith('|')) {
         const cells = processed.split('|').filter(c => c.trim() !== '');
         if (cells.every(c => /^[-:]+$/.test(c.trim()))) return ''; // separator row
-        return `<tr>${cells.map(c => `<td style="padding: 6px 10px; border: 1px solid #e0e0e0; font-size: 11px;">${c.trim()}</td>`).join('')}</tr>`;
+        return `<tr>${cells.map(c => `<td style="padding: 5px 8px; border: 1px solid #ddd; font-size: 10px;">${c.trim()}</td>`).join('')}</tr>`;
       }
       // If the entire line is bold (starts and ends with **), render as a section sub-heading with divider
       if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.includes('**', 2)) {
