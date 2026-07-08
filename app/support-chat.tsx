@@ -30,15 +30,15 @@ const FAQ_ITEMS = [
   },
   {
     question: "Wie starte ich eine Aufnahme?",
-    answer: "Wechsle zum Tab 'Aufnahme'. Wähle zuerst ein Projekt aus (oder 'Ohne Projekt fortfahren'). Dann wähle den Modus (Audio+Foto oder Nur Audio) und tippe auf den roten Aufnahme-Button.",
+    answer: "Wechsle zum Tab 'Aufnahme'. Wähle zuerst ein Projekt aus (oder 'Ohne Projekt fortfahren') und tippe auf den roten Aufnahme-Button. Während der Aufnahme kannst du jederzeit Fotos machen.",
   },
   {
     question: "Wie exportiere ich ein PDF?",
     answer: "Öffne ein Protokoll in der Detailansicht und tippe auf das PDF-Icon oben rechts. Das PDF wird mit deinem Firmenlogo, allen Fotos und To-Dos generiert und kann direkt geteilt werden.",
   },
   {
-    question: "Was ist der Unterschied zwischen Audio+Foto und Nur Audio?",
-    answer: "Im Modus 'Audio+Foto' kannst du während der Aufnahme Fotos machen, die dem Protokoll zugeordnet werden. Im Modus 'Nur Audio' wird nur die Sprache aufgenommen – ideal für Besprechungen.",
+    question: "Kann ich während der Aufnahme Fotos machen?",
+    answer: "Ja! Während der Audio-Aufnahme kannst du jederzeit Fotos machen, die automatisch dem Protokoll zugeordnet werden. Tippe einfach auf den Kamera-Button.",
   },
   {
     question: "Wie funktioniert die Offline-Synchronisation?",

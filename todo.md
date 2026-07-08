@@ -484,3 +484,4 @@
 - [x] Bug-Fix: Pause-Button kann nicht fortsetzen (try/catch um audioRecorder.record() – Fehler wurde still verschluckt)
 - [x] Bug-Fix: Kapitel-Button reagiert nicht während Aufnahme (try/catch um alle audioRecorder-Aufrufe)
 - [x] Bug-Fix: Audio-Aufnahme hängt sich auf und Stop-Button funktioniert nicht – v2: UI-State nur nach erfolgreichem Start gesetzt, 8s Timeout auf prepareToRecordAsync, 4s Timeout auf stop(), Resume-before-Stop nur auf Web, isPaused nicht in stopRecording gesetzt
+- [x] Entfernung: "Nur Audio"-Modus komplett entfernen – nur noch "Audio+Foto" als einziger Aufnahme-Modus
