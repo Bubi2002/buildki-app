@@ -117,7 +117,7 @@ export default function ProjectsScreen() {
   const deleteProject = (project: Project) => {
     Alert.alert(
       t('projekt_loeschen'),
-      `Möchtest du "${project.name}" wirklich löschen? Die zugehörigen Protokolle bleiben erhalten.`,
+      t('projekt_loeschen_bestaetigung').replace('{name}', project.name),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {

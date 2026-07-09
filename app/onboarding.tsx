@@ -15,11 +15,11 @@ type OnboardingStep = {
   color: string;
 };
 
-const STEPS: OnboardingStep[] = [
+function getSteps(t: (key: any) => string): OnboardingStep[] { return [
   {
     icon: "mic",
     title: "Aufnehmen & Fotografieren",
-    description: "Sprich dein Protokoll einfach ein und fotografiere gleichzeitig Schäden, Mängel oder Details. Audio + Foto – alles in einer Aufnahme.",
+    description: t('onboarding_desc_1'),
     color: "#5DADE2",
   },
   {
@@ -31,22 +31,22 @@ const STEPS: OnboardingStep[] = [
   {
     icon: "share",
     title: "Teilen per WhatsApp & PDF",
-    description: "Versende das fertige Protokoll als professionelles PDF direkt per WhatsApp, E-Mail oder über den Teilen-Dialog – mit Logo und Fotos.",
+    description: t('onboarding_desc_2'),
     color: "#4ADE80",
   },
   {
     icon: "folder",
     title: "Projekte & Vorlagen",
-    description: "Organisiere Protokolle in Projekten, wähle aus 6+ Vorlagen (Baustellenbericht, Mängelliste...) oder erstelle eigene. Alles offline verfügbar.",
+    description: t('onboarding_desc_3'),
     color: "#5DADE2",
   },
   {
     icon: "translate",
     title: "Mehrsprachig & Smart",
-    description: "Automatische Standort-Erkennung, Kalender-Verknüpfung, Übersetzung in 8 Sprachen, Push-Erinnerungen für Aufgaben und Cloud-Sync.",
+    description: t('onboarding_desc_4'),
     color: "#FBBF24",
   },
-];
+]; }
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
@@ -59,14 +59,14 @@ export default function OnboardingScreen() {
   };
 
   const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
+    if (currentStep < getSteps(t).length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       completeOnboarding();
     }
   };
 
-  const step = STEPS[currentStep];
+  const step = getSteps(t)[currentStep];
 
   return (
     <ScreenContainer edges={["top", "bottom", "left", "right"]} className="flex-1">
@@ -89,7 +89,7 @@ export default function OnboardingScreen() {
 
         {/* Progress dots */}
         <View style={styles.dotsContainer}>
-          {STEPS.map((_, i) => (
+          {getSteps(t).map((_, i) => (
             <View
               key={i}
               style={[
@@ -113,10 +113,10 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.nextButtonText}>
-              {currentStep === STEPS.length - 1 ? t('los_gehts') : t('weiter')}
+              {currentStep === getSteps(t).length - 1 ? t('los_gehts') : t('weiter')}
             </Text>
             <MaterialIcons
-              name={currentStep === STEPS.length - 1 ? "rocket-launch" : "arrow-forward"}
+              name={currentStep === getSteps(t).length - 1 ? "rocket-launch" : "arrow-forward"}
               size={20}
               color="#FFF"
             />

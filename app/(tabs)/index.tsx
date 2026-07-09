@@ -1553,7 +1553,7 @@ export default function RecordScreen() {
                   <MaterialIcons name={showArchived ? "inventory" : "folder-open"} size={40} color={colors.border} />
                 </View>
                 <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>{showArchived ? "Kein archiviertes Projekt" : (projectSearch ? "Keine Treffer" : "Noch keine Projekte")}</Text>
-                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center", paddingHorizontal: 20 }}>{showArchived ? "Archivierte Projekte erscheinen hier." : (projectSearch ? "Versuche einen anderen Suchbegriff." : "Erstelle dein erstes Projekt, um Protokolle übersichtlich zu organisieren.")}</Text>
+                <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center", paddingHorizontal: 20 }}>{showArchived ? t('archivierte_projekte_hier') : (projectSearch ? t('anderer_suchbegriff') : t('erstes_projekt_erstellen'))}</Text>
               </View>
             }
           />
@@ -1604,7 +1604,7 @@ export default function RecordScreen() {
               <TextInput value={editProjectName} onChangeText={setEditProjectName} placeholder={t('project_name')} placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoFocus />
               <TextInput value={editProjectDesc} onChangeText={setEditProjectDesc} placeholder={t('beschreibung_optional')} placeholderTextColor={colors.muted} multiline numberOfLines={2} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} />
               <TextInput value={editProjectPrefix} onChangeText={(v) => setEditProjectPrefix(v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))} placeholder={t('protokollpraefix_zb_bst_mng')} placeholderTextColor={colors.muted} style={{ borderWidth: 1, borderRadius: 0, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 6, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }} autoCapitalize="characters" maxLength={5} />
-              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{editProjectPrefix ? `Präfix: ${editProjectPrefix}` : "Kein Präfix"}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 14 }}>{editProjectPrefix ? t('praefix_label').replace('{prefix}', editProjectPrefix) : t('kein_praefix')}</Text>
               <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>{t('farbe_waehlen')}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
                 {PROJECT_COLORS.map((c) => (
@@ -2642,8 +2642,8 @@ export default function RecordScreen() {
                   setTemplatePreview(null);
                   try {
                     // Generate a sample output using the prompt with example text
-                    const sampleTranscript = "Heute haben wir die Baustelle in der Mühlenstraße 35 besichtigt. Der Rohbau ist fertiggestellt. Im Erdgeschoss fehlt noch die Elektroinstallation. Die Fenster im zweiten OG sind beschädigt und müssen ausgetauscht werden. Der Bauleiter Herr Müller war anwesend. Nächster Termin ist am Freitag um 10 Uhr.";
-                    const previewText = `--- VORSCHAU (Beispiel-Output) ---\n\nPrompt: ${newTemplatePrompt.trim().substring(0, 100)}...\n\nBeispiel-Transkript:\n\"${sampleTranscript}\"\n\n--- Erwartetes Ergebnis ---\nDie KI wird dieses Transkript gemäß Ihrem Prompt verarbeiten und ein strukturiertes Dokument erstellen.\n\nTipp: Testen Sie die Vorlage nach dem Speichern mit einer echten Aufnahme.`;
+                    const sampleTranscript = t('beispiel_transkript');
+                    const previewText = `${t('vorschau_beispiel_output')}\n\n${t('prompt_vorschau').replace('{prompt}', newTemplatePrompt.trim().substring(0, 100))}\n\n${t('beispiel_transkript_label')}\n\"${sampleTranscript}\"\n\n${t('erwartetes_ergebnis')}\n${t('ki_verarbeitung_hinweis')}\n\n${t('tipp_vorlage_testen')}`;
                     setTemplatePreview(previewText);
                   } catch (e) {
                     Alert.alert(t('alert_fehler'), t('msg_vorschau_konnte_nicht_generiert_werden'));
@@ -2689,7 +2689,7 @@ export default function RecordScreen() {
                     <View key={ct.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                       <MaterialIcons name="auto-awesome" size={18} color={colors.primary} />
                       <Text style={{ flex: 1, marginLeft: 10, fontSize: 14, color: colors.foreground }}>{ct.name}</Text>
-                      <Pressable onPress={() => { Alert.alert(t('alert_loeschen_frage'), `Vorlage "${ct.name}" wirklich löschen?`, [{ text: t('btn_abbrechen') }, { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
+                      <Pressable onPress={() => { Alert.alert(t('alert_loeschen_frage'), t('vorlage_loeschen_frage').replace('{name}', ct.name), [{ text: t('btn_abbrechen') }, { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteCustomTemplate(ct.id) }]); }}>
                         <MaterialIcons name="delete-outline" size={20} color={colors.error} />
                       </Pressable>
                     </View>
@@ -2739,16 +2739,16 @@ export default function RecordScreen() {
             </Text>
             <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
               {[
-                { name: t('tpl_abnahmeprotokoll'), desc: t('tpl_abnahmeprotokoll_desc'), category: "bau" as TemplateCategory, icon: "assignment-turned-in", prompt: "Erstelle ein formelles Abnahmeprotokoll mit: 1. Objekt/Bauvorhaben, 2. Datum und Teilnehmer, 3. Gegenstand der Abnahme, 4. Festgestellte Mängel (nummeriert mit Frist), 5. Vereinbarungen, 6. Ergebnis (abgenommen/nicht abgenommen/unter Vorbehalt), 7. Unterschriftsfeld." },
-                { name: t('tpl_wartungsprotokoll'), desc: t('tpl_wartungsprotokoll_desc'), category: "bau" as TemplateCategory, icon: "build", prompt: "Erstelle ein Wartungsprotokoll mit: 1. Anlage/Gerät, 2. Standort, 3. Datum und Techniker, 4. Durchgeführte Arbeiten (Checkliste), 5. Festgestellte Mängel, 6. Empfohlene Maßnahmen, 7. Nächster Wartungstermin." },
-                { name: t('tpl_brandschutzbegehung'), desc: t('tpl_brandschutzbegehung_desc'), category: "bau" as TemplateCategory, icon: "local-fire-department", prompt: "Erstelle ein Brandschutzbegehungsprotokoll mit: 1. Objekt und Datum, 2. Teilnehmer, 3. Geprüfte Bereiche, 4. Checkliste (Fluchtweg frei, Feuerlöscher vorhanden, Brandschutztüren funktionsfähig, etc.), 5. Festgestellte Mängel mit Priorität, 6. Maßnahmen und Fristen." },
-                { name: t('tpl_projektstatusbericht'), desc: t('tpl_projektstatusbericht_desc'), category: "meeting" as TemplateCategory, icon: "trending-up", prompt: "Erstelle einen Projektstatusbericht mit: 1. Projekttitel und Berichtszeitraum, 2. Gesamtstatus (Ampel), 3. Erledigte Aufgaben, 4. Laufende Aufgaben, 5. Risiken und Probleme, 6. Nächste Schritte, 7. Entscheidungsbedarf." },
-                { name: t('tpl_kundengespraech'), desc: t('tpl_kundengespraech_desc'), category: "meeting" as TemplateCategory, icon: "people", prompt: "Erstelle eine strukturierte Zusammenfassung des Kundengesprächs mit: 1. Kunde und Ansprechpartner, 2. Datum und Dauer, 3. Besprochene Themen, 4. Kundenwünsche/-anforderungen, 5. Vereinbarte nächste Schritte, 6. Offene Punkte, 7. Follow-up Termin." },
-                { name: t('tpl_schulungsprotokoll'), desc: t('tpl_schulungsprotokoll_desc'), category: "meeting" as TemplateCategory, icon: "school", prompt: "Erstelle ein Schulungsprotokoll mit: 1. Thema der Schulung, 2. Datum, Ort und Dauer, 3. Referent/Trainer, 4. Teilnehmerliste, 5. Behandelte Inhalte (Stichpunkte), 6. Praktische Übungen, 7. Offene Fragen, 8. Teilnahmebestätigung." },
-                { name: t('tpl_schadensgutachten'), desc: t('tpl_schadensgutachten_desc'), category: "gutachten" as TemplateCategory, icon: "report-problem", prompt: "Erstelle ein Schadensgutachten mit: 1. Objekt und Standort, 2. Auftraggeber, 3. Datum der Besichtigung, 4. Schadensbeschreibung (detailliert), 5. Schadensursache (soweit erkennbar), 6. Schadensumfang und Bewertung, 7. Empfohlene Sanierungsmaßnahmen, 8. Geschätzte Kosten." },
-                { name: "Energieausweis-Begehung", desc: "Datenaufnahme für energetische Bewertung", category: "gutachten" as TemplateCategory, icon: "bolt", prompt: "Erstelle ein Begehungsprotokoll für die energetische Bewertung mit: 1. Gebäudedaten (Baujahr, Fläche, Geschosse), 2. Außenhülle (Wände, Dach, Fenster, Kellerdecke), 3. Heizungsanlage, 4. Warmwasserbereitung, 5. Lüftung, 6. Festgestellte energetische Schwachstellen, 7. Modernisierungsempfehlungen." },
-                { name: t('tpl_telefonnotiz'), desc: t('tpl_telefonnotiz_desc'), category: "allgemein" as TemplateCategory, icon: "phone", prompt: "Erstelle eine Telefonnotiz mit: 1. Datum und Uhrzeit, 2. Gesprächspartner, 3. Betreff, 4. Gesprächsinhalt (Zusammenfassung), 5. Vereinbarungen/Aktionspunkte, 6. Wiedervorlage/Frist." },
-                { name: t('tpl_tagesrapport'), desc: t('tpl_tagesrapport_desc'), category: "bau" as TemplateCategory, icon: "schedule", prompt: "Erstelle einen Tagesrapport mit: 1. Datum und Baustelle, 2. Wetter, 3. Arbeitskräfte (Name, Stunden, Tätigkeit), 4. Eingesetzte Geräte, 5. Verbrauchtes Material, 6. Ausgeführte Arbeiten, 7. Besondere Vorkommnisse, 8. Arbeitsstand." },
+                { name: t('tpl_abnahmeprotokoll'), desc: t('tpl_abnahmeprotokoll_desc'), category: "bau" as TemplateCategory, icon: "assignment-turned-in", prompt: t('prompt_abnahmeprotokoll') },
+                { name: t('tpl_wartungsprotokoll'), desc: t('tpl_wartungsprotokoll_desc'), category: "bau" as TemplateCategory, icon: "build", prompt: t('prompt_wartungsprotokoll') },
+                { name: t('tpl_brandschutzbegehung'), desc: t('tpl_brandschutzbegehung_desc'), category: "bau" as TemplateCategory, icon: "local-fire-department", prompt: t('prompt_brandschutzbegehung') },
+                { name: t('tpl_projektstatusbericht'), desc: t('tpl_projektstatusbericht_desc'), category: "meeting" as TemplateCategory, icon: "trending-up", prompt: t('prompt_projektstatusbericht') },
+                { name: t('tpl_kundengespraech'), desc: t('tpl_kundengespraech_desc'), category: "meeting" as TemplateCategory, icon: "people", prompt: t('prompt_kundengespraech') },
+                { name: t('tpl_schulungsprotokoll'), desc: t('tpl_schulungsprotokoll_desc'), category: "meeting" as TemplateCategory, icon: "school", prompt: t('prompt_schulungsprotokoll') },
+                { name: t('tpl_schadensgutachten'), desc: t('tpl_schadensgutachten_desc'), category: "gutachten" as TemplateCategory, icon: "report-problem", prompt: t('prompt_schadensgutachten') },
+                { name: t('tpl_energieausweis'), desc: t('tpl_energieausweis_desc'), category: "gutachten" as TemplateCategory, icon: "bolt", prompt: t('prompt_energieausweis') },
+                { name: t('tpl_telefonnotiz'), desc: t('tpl_telefonnotiz_desc'), category: "allgemein" as TemplateCategory, icon: "phone", prompt: t('prompt_telefonnotiz') },
+                { name: t('tpl_tagesrapport'), desc: t('tpl_tagesrapport_desc'), category: "bau" as TemplateCategory, icon: "schedule", prompt: t('prompt_tagesrapport') },
               ].map((libTemplate, idx) => (
                 <Pressable
                   key={idx}
@@ -2831,7 +2831,7 @@ export default function RecordScreen() {
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('neues_kapitel')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-              {chapterListening ? "Höre zu... Sprich den Kapitelnamen" : "Sprich den Kapitelnamen oder tippe ihn ein"}
+              {chapterListening ? t('hoere_zu_kapitelname') : t('sprich_kapitelname')}
             </Text>
 
             {/* Speech indicator */}

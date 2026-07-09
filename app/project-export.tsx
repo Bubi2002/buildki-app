@@ -86,7 +86,7 @@ export default function ProjectExportScreen() {
       exportText += `Exportiert am: ${new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}\n`;
       exportText += `Projekt: ${project.name}\n`;
       if (project.description) exportText += `Beschreibung: ${project.description}\n`;
-      if (project.protocolPrefix) exportText += `Präfix: ${project.protocolPrefix}\n`;
+      if (project.protocolPrefix) exportText += `${t('praefix_export').replace('\{prefix\}', project.protocolPrefix)}\n`;
       exportText += `Anzahl Protokolle: ${selected.length}\n`;
       exportText += `\n───────────────────────────────────────\n\n`;
 
@@ -166,7 +166,7 @@ export default function ProjectExportScreen() {
           <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>{t('exportformat')}</Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {([
-              { key: "full", label: "Vollständig", icon: "article" },
+              { key: "full", label: t('export_vollstaendig'), icon: "article" },
               { key: "summary", label: "Zusammenfassung", icon: "summarize" },
               { key: "text", label: "Nur Titel", icon: "title" },
             ] as const).map((fmt) => (

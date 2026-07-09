@@ -313,7 +313,7 @@ export default function QRScannerScreen() {
           <TextInput
             value={label}
             onChangeText={setLabel}
-            placeholder="z.B. Stahlträger HEB 200"
+            placeholder={t('placeholder_zb_stahltraeger')}
             placeholderTextColor={colors.muted}
             style={{ padding: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.foreground, fontSize: 15 }}
           />

@@ -297,7 +297,7 @@ export default function DefectsScreen() {
           <View style={styles.emptyState}>
             <MaterialIcons name="check-circle" size={48} color={colors.muted} />
             <Text style={[styles.emptyText, { color: colors.muted }]}>
-              {filter === "alle" ? "Keine Mängel erfasst" : `Keine ${statusLabels[filter as DefectStatus] || ""} Mängel`}
+              {filter === "alle" ? t('keine_maengel_erfasst') : t('keine_status_maengel').replace('{status}', statusLabels[filter as DefectStatus] || '')}
             </Text>
           </View>
         }

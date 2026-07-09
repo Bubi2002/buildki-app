@@ -236,8 +236,8 @@ export default function ProtocolMergeScreen() {
                 <MaterialIcons name="merge-type" size={20} color="#FFF" />
                 <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>
                   {selectedProtocols.size < 2
-                    ? "Min. 2 Protokolle wählen"
-                    : `${selectedProtocols.size} Protokolle zusammenführen`}
+                    ? t('min_2_protokolle')
+                    : t('n_protokolle_zusammenfuehren').replace('{count}', String(selectedProtocols.size))}
                 </Text>
               </>
             )}

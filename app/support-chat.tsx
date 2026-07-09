@@ -24,48 +24,48 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const FAQ_ITEMS = [
+function getFaqItems(t: (key: any) => string) { return [
   {
-    question: "Wie erstelle ich ein neues Projekt?",
-    answer: "Gehe zum Tab 'Projekte' und tippe auf '+ Neu'. Gib einen Namen, eine Beschreibung und ein Präfix für die automatische Nummerierung ein. Wähle eine Farbe zur visuellen Unterscheidung.",
+    question: t('faq_q_projekt_erstellen'),
+    answer: t('faq_a_projekt_erstellen'),
   },
   {
-    question: "Wie starte ich eine Aufnahme?",
-    answer: "Wechsle zum Tab 'Aufnahme'. Wähle zuerst ein Projekt aus (oder 'Ohne Projekt fortfahren') und tippe auf den roten Aufnahme-Button. Während der Aufnahme kannst du jederzeit Fotos machen.",
+    question: t('faq_q_aufnahme_starten'),
+    answer: t('faq_a_aufnahme_starten'),
   },
   {
     question: "Wie exportiere ich ein PDF?",
-    answer: "Öffne ein Protokoll in der Detailansicht und tippe auf das PDF-Icon oben rechts. Das PDF wird mit deinem Firmenlogo, allen Fotos und To-Dos generiert und kann direkt geteilt werden.",
+    answer: t('faq_a_pdf_export'),
   },
   {
-    question: "Kann ich während der Aufnahme Fotos machen?",
-    answer: "Ja! Während der Audio-Aufnahme kannst du jederzeit Fotos machen, die automatisch dem Protokoll zugeordnet werden. Tippe einfach auf den Kamera-Button.",
+    question: t('faq_q_fotos_aufnahme'),
+    answer: t('faq_a_fotos_aufnahme'),
   },
   {
     question: "Wie funktioniert die Offline-Synchronisation?",
     answer: "Aufnahmen werden lokal gespeichert, wenn keine Internetverbindung besteht. Sobald du wieder online bist, werden sie automatisch verarbeitet. Der Status wird in der Protokoll-Liste angezeigt.",
   },
   {
-    question: "Wie setze ich Markierungen während der Aufnahme?",
-    answer: "Während einer laufenden Aufnahme kannst du den 'Markierung'-Button tippen oder das Wort 'Markierung' sagen. Das Protokoll wird dann in Abschnitte unterteilt.",
+    question: t('faq_q_markierungen'),
+    answer: t('faq_a_markierungen'),
   },
   {
-    question: "Wie ändere ich mein Firmenlogo im PDF?",
-    answer: "Gehe zu Einstellungen → PDF-Branding. Dort kannst du dein Logo hochladen, Kopf- und Fußzeilen anpassen und die Farben des PDFs konfigurieren.",
+    question: t('faq_q_firmenlogo'),
+    answer: t('faq_a_firmenlogo'),
   },
   {
-    question: "Kann ich Protokolle nachträglich bearbeiten?",
-    answer: "Ja! Öffne das Protokoll und tippe auf 'Bearbeiten'. Du kannst den Text frei anpassen, To-Dos hinzufügen oder entfernen und Fotos ergänzen.",
+    question: t('faq_q_bearbeiten'),
+    answer: t('faq_a_bearbeiten'),
   },
   {
-    question: "Wie funktioniert die Zeiterfassung?",
-    answer: "Gehe zu einem Projekt und öffne die Zeiterfassung. Starte den Timer bei Arbeitsbeginn und stoppe ihn bei Feierabend. Die Zeiten werden pro Projekt und Tag gespeichert.",
+    question: t('faq_q_zeiterfassung'),
+    answer: t('faq_a_zeiterfassung'),
   },
   {
-    question: "Meine Aufnahme wurde nicht gespeichert – was tun?",
-    answer: "Prüfe unter Protokolle, ob die Aufnahme in der Offline-Queue steht (oranges Symbol). Falls nicht, überprüfe den Speicherplatz deines Geräts. Bei weiteren Problemen starte die App neu.",
+    question: t('faq_q_offline'),
+    answer: t('faq_a_offline'),
   },
-];
+]; }
 
 export default function SupportChatScreen() {
   const { t } = useTranslation();
@@ -125,7 +125,7 @@ export default function SupportChatScreen() {
     }
   }, [messages, isLoading, supportMutation]);
 
-  const handleFAQPress = useCallback((item: typeof FAQ_ITEMS[0]) => {
+  const handleFAQPress = useCallback((item: { question: string; answer: string }) => {
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
@@ -191,7 +191,7 @@ export default function SupportChatScreen() {
       </View>
 
       <Text style={[styles.faqTitle, { color: colors.foreground }]}>{t('haeufige_fragen')}</Text>
-      {FAQ_ITEMS.map((item, index) => (
+      {getFaqItems(t).map((item, index) => (
         <Pressable
           key={index}
           onPress={() => handleFAQPress(item)}

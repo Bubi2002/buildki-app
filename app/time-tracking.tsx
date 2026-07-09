@@ -114,7 +114,7 @@ export default function TimeTrackingScreen() {
   const handleStop = async () => {
     const entry = await stopTimer();
     if (entry) {
-      Alert.alert(t('alert_gestoppt'), `${formatDuration(entry.duration)} erfasst für "${entry.projectName}".`);
+      Alert.alert(t('alert_gestoppt'), t('zeit_erfasst').replace('{duration}', formatDuration(entry.duration)).replace('{project}', entry.projectName));
     }
     loadData();
   };

@@ -124,7 +124,7 @@ export default function PhotoCompareScreen() {
   };
 
   const deletePair = (pair: ComparisonPair) => {
-    Alert.alert(t('alert_loeschen'), `"${pair.label}" wirklich löschen?`, [
+    Alert.alert(t('alert_loeschen'), t('wirklich_loeschen_mit_name').replace('{name}', pair.label), [
       { text: t('btn_abbrechen'), style: "cancel" },
       {
         text: t('btn_loeschen'),

@@ -26,8 +26,8 @@ export default function ExportHistoryScreen() {
 
   const handleClear = () => {
     Alert.alert(
-      "Verlauf löschen",
-      "Möchten Sie den gesamten Export-Verlauf löschen?",
+      t('verlauf_loeschen'),
+      t('export_verlauf_loeschen_msg'),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {

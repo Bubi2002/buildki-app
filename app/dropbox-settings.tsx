@@ -74,7 +74,7 @@ export default function DropboxSettingsScreen() {
   const handleDisconnect = () => {
     Alert.alert(
       t('dropbox_trennen'),
-      "Möchtest du die Verbindung zu Dropbox wirklich trennen? Bereits hochgeladene Dateien bleiben in Dropbox erhalten.",
+      t('dropbox_trennen_frage'),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {
@@ -92,7 +92,7 @@ export default function DropboxSettingsScreen() {
   const handleClearHistory = () => {
     Alert.alert(
       t('verlauf_loeschen'),
-      "Möchtest du den gesamten Upload-Verlauf löschen?",
+      t('upload_verlauf_loeschen_frage'),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {

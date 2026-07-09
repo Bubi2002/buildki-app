@@ -145,7 +145,7 @@ export default function ProjectsTab() {
 
   const deleteProject = async (id: string) => {
     const project = projects.find((p) => p.id === id);
-    Alert.alert(t('alert_projekt_loeschen'), `"${project?.name}" endgültig löschen? Alle Protokolle bleiben erhalten.`, [
+    Alert.alert(t('alert_projekt_loeschen'), t('projekt_endgueltig_loeschen').replace('{name}', project?.name || ''), [
       { text: t('btn_abbrechen'), style: "cancel" },
       {
         text: t('btn_loeschen'),
@@ -388,7 +388,7 @@ export default function ProjectsTab() {
                       <TextInput
                         value={newName}
                         onChangeText={setNewName}
-                        placeholder="z.B. Neubau Musterstraße 5"
+                        placeholder={t('placeholder_zb_neubau')}
                         placeholderTextColor="#8FA3B8"
                         returnKeyType="next"
                         style={styles.input}

@@ -186,7 +186,7 @@ export default function DiaryScreen() {
         <View style={styles.summaryText}>
           <Text style={[styles.summaryTitle, { color: colors.foreground }]}>{entries.length} Einträge</Text>
           <Text style={[styles.summarySubtitle, { color: colors.muted }]}>
-            {entries.length > 0 ? `Letzter Eintrag: ${formatDate(entries[0]?.date)}` : "Noch keine Einträge"}
+            {entries.length > 0 ? t('letzter_eintrag').replace('{date}', formatDate(entries[0]?.date)) : t('noch_keine_eintraege')}
           </Text>
         </View>
       </View>

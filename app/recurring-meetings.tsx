@@ -232,7 +232,7 @@ export default function RecurringMeetingsScreen() {
             <TextInput
               value={title}
               onChangeText={setTitle}
-              placeholder="z.B. Wöchentliches Team-Meeting"
+              placeholder={t('placeholder_zb_meeting')}
               placeholderTextColor={colors.muted}
               style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
             />
@@ -340,7 +340,7 @@ export default function RecurringMeetingsScreen() {
             <TextInput
               value={participants}
               onChangeText={setParticipants}
-              placeholder="z.B. Max Müller, Anna Schmidt"
+              placeholder={t('placeholder_zb_teilnehmer')}
               placeholderTextColor={colors.muted}
               style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 14, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}
             />

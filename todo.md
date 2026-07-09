@@ -499,3 +499,10 @@
 - [x] i18n: Alle Screens vollständig übersetzt (144 neue Schlüssel, 25+ Dateien angepasst)
 - [x] i18n: Template-Namen/Beschreibungen, Kalender-Tage/Monate, Kategorien, Status-Labels, Prioritäten übersetzt
 - [x] i18n: Module-Level-Konstanten zu Funktionen konvertiert (CATEGORIES, WEEKDAYS, LANGUAGES, DEFAULT_TEXT_TEMPLATES)
+- [x] i18n: FAQ-Texte (support-chat.tsx) vollständig in EN/FR übersetzt
+- [x] i18n: Onboarding-Beschreibungen in EN/FR übersetzt
+- [x] i18n: AI-Prompts (Template-Prompts) in EN/FR übersetzt
+- [x] i18n: Alle Platzhalter-Texte (z.B. Neubau, Team-Meeting) übersetzt
+- [x] i18n: Alle Template-Literals mit deutschen Strings auf t() umgestellt
+- [x] i18n: Einladungsnachrichten, Lösch-Bestätigungen, Export-Texte übersetzt
+- [x] i18n: 0 verbleibende deutsche Strings mit Umlauten in App-Dateien

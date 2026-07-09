@@ -74,7 +74,7 @@ export default function TeamScreen() {
 
     // Send invite if requested
     if (sendInvite && (newEmail.trim() || newPhone.trim())) {
-      const inviteMessage = `Hallo ${newName.trim()},\n\nDu wurdest als ${getRoleLabel(newRole)} zum Team in ProtoKI eingeladen.\n\nLade dir die App herunter um gemeinsam an Projekten zu arbeiten.\n\nViele Grüße`;
+      const inviteMessage = t('einladung_nachricht').replace('{name}', newName.trim()).replace('{role}', getRoleLabel(newRole));
 
       if (newEmail.trim()) {
         const subject = encodeURIComponent("Einladung zum ProtoKI-Team");

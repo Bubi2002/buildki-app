@@ -141,7 +141,7 @@ export default function ProtocolDetailScreen() {
   type SignatureEntry = { role: string; paths: string[]; signedAt: string };
   const [signatures, setSignatures] = useState<SignatureEntry[]>([]);
   const [activeSignRole, setActiveSignRole] = useState<string>("");
-  const SIGNATURE_ROLES = ["Auftraggeber", "Auftragnehmer", "Zeuge", "Prüfer"];
+  const SIGNATURE_ROLES = [t('rolle_auftraggeber'), t('rolle_auftragnehmer'), t('rolle_zeuge'), t('rolle_pruefer')];
   const translateMutation = trpc.translate.translateProtocol.useMutation();
   const [featureFlags, setFeatureFlags] = useState({ photoAnnotation: true, signature: true, multiSignature: false, tags: true });
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -350,7 +350,7 @@ export default function ProtocolDetailScreen() {
           protocol?.title || t('protokoll'),
           protocolDate,
         );
-        Alert.alert(t('alert_benachrichtigung_gesendet'), `E-Mail an ${assigneeName} (${assigneeEmail}) wurde geöffnet.`);
+        Alert.alert(t('alert_benachrichtigung_gesendet'), t('email_geoeffnet').replace('{name}', assigneeName).replace('{email}', assigneeEmail));
       } catch (emailErr) {
         console.warn("Email notification failed:", emailErr);
       }
@@ -448,7 +448,7 @@ export default function ProtocolDetailScreen() {
     setIsGeneratingSummary(true);
     try {
       const result = await translateMutation.mutateAsync({
-        text: "Fasse folgendes Protokoll in 2-3 prägnanten Sätzen zusammen: " + protocol.protocol,
+        text: t('ki_zusammenfassung_prompt') + protocol.protocol,
         targetLanguage: "de",
       });
       setSummary(result.translated);
@@ -622,7 +622,7 @@ export default function ProtocolDetailScreen() {
       const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 10);
       Alert.alert(
         t('alert_kontakt_importieren'),
-        "Wähle einen Kontakt:",
+        t('waehle_kontakt'),
         [
           ...sorted.map(c => ({
             text: c.name || t('unbekannt'),
@@ -883,7 +883,7 @@ export default function ProtocolDetailScreen() {
       const colors = ["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336", "#00BCD4"];
       
       // Simple keyword extraction for branches
-      const keywords = ["Termin", "Aufgabe", "Problem", "Lösung", "Material", "Kosten", "Zuständig", "Mangel", "Nächste Schritte", "Ergebnis"];
+      const keywords = [t('keyword_termin'), t('keyword_aufgabe'), t('keyword_problem'), t('keyword_loesung'), t('keyword_material'), t('keyword_kosten'), t('keyword_zustaendig'), t('keyword_mangel'), t('keyword_naechste_schritte'), t('keyword_ergebnis')];
       keywords.forEach(kw => {
         const matching = sentences.filter(s => s.toLowerCase().includes(kw.toLowerCase()));
         if (matching.length > 0) {
@@ -1591,7 +1591,7 @@ export default function ProtocolDetailScreen() {
               ))}
               <Pressable
                 onPress={() => {
-                  Alert.prompt ? Alert.prompt("Tag hinzufügen", "Name des Tags:", (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert(t('alert_tag_hinzufuegen'), t('msg_nutze_die_protokollliste_langes_druecken'));
+                  Alert.prompt ? Alert.prompt(t('tag_hinzufuegen_title'), t('tag_name_prompt'), (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert(t('alert_tag_hinzufuegen'), t('msg_nutze_die_protokollliste_langes_druecken'));
                 }}
                 style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.border + "50", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 }}
               >
@@ -1624,17 +1624,17 @@ export default function ProtocolDetailScreen() {
                 </Text>
                 <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 2 }}>
                   {protocol.processingStep === "uploading" && "Audio wird hochgeladen..."}
-                  {protocol.processingStep === "transcribing" && "Spracherkennung läuft..."}
+                  {protocol.processingStep === "transcribing" && t('spracherkennung_laeuft')}
                   {protocol.processingStep === "generating" && "Protokoll wird erstellt..."}
                   {protocol.processingStep === "extracting-todos" && "Aufgaben werden extrahiert..."}
                   {protocol.processingStep === "failed" && `Fehler: ${protocol.processingError || t('unbekannt')}`}
-                  {!protocol.processingStep && "Verarbeitung läuft..."}
+                  {!protocol.processingStep && t('verarbeitung_laeuft')}
                 </Text>
                 {protocol.processingStep === "failed" && (
                   <View style={{ marginTop: 4 }}>
                     <Text style={{ fontSize: 11, color: "#E65100" }}>
                       {(protocol.processingError || "").includes("Network") || (protocol.processingError || "").includes("network")
-                        ? "Tipp: Prüfe deine Internetverbindung und versuche es erneut."
+                        ? t('tipp_internetverbindung')
                         : "Tipp: Versuche es erneut mit dem Audio-Modus."}
                     </Text>
                     <Pressable
@@ -2401,7 +2401,7 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name={showTranslation ? "visibility-off" : "translate"} size={18} color={colors.primary} />
             )}
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>
-              {isTranslating ? t('uebersetze') : showTranslation ? t('uebersetzung_ausblenden') : `In ${getLanguages(t).find(l => l.code === targetLang)?.name || targetLang} übersetzen`}
+              {isTranslating ? t('uebersetze') : showTranslation ? t('uebersetzung_ausblenden') : t('in_sprache_uebersetzen').replace('{lang}', getLanguages(t).find(l => l.code === targetLang)?.name || targetLang)}
             </Text>
           </Pressable>
 
@@ -2847,8 +2847,8 @@ export default function ProtocolDetailScreen() {
                     { label: t('woerter'), value: speechStats.words.toString() },
                     { label: t('saetze'), value: speechStats.sentences.toString() },
                     { label: t('absaetze'), value: speechStats.paragraphs.toString() },
-                    { label: "Wörter/Min", value: speechStats.wordsPerMinute.toString() },
-                    { label: "Ø Satzlänge", value: speechStats.avgSentenceLength + " Wörter" },
+                    { label: t('woerter_pro_min'), value: speechStats.wordsPerMinute.toString() },
+                    { label: t('avg_satzlaenge'), value: speechStats.avgSentenceLength + ' ' + t('woerter_einheit') },
                   ].map((stat, idx) => (
                     <View key={idx} style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 0, minWidth: "45%", flex: 1 }}>
                       <Text style={{ fontSize: 22, fontWeight: "700", color: colors.primary }}>{stat.value}</Text>
@@ -3224,7 +3224,7 @@ export default function ProtocolDetailScreen() {
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
             <View style={{ backgroundColor: "white", borderRadius: 0, padding: 24, width: "80%", maxWidth: 320 }}>
               <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>{t('sprecher_benennen')}</Text>
-              <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>Name für "{editingSpeakerLabel}" eingeben. Wird für zukünftige Protokolle gespeichert.</Text>
+              <Text style={{ fontSize: 12, color: "#687076", marginBottom: 12 }}>{t('speaker_name_eingeben').replace('{label}', editingSpeakerLabel || '')}</Text>
               <TextInput
                 value={speakerNameInput}
                 onChangeText={setSpeakerNameInput}

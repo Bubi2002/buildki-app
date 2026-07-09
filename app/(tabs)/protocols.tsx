@@ -217,7 +217,7 @@ export default function ProtocolsScreen() {
   const deleteProtocol = (id: string) => {
     Alert.alert(
       t('alert_protokoll_loeschen'),
-      "Möchtest du dieses Protokoll wirklich löschen?",
+      t('protokoll_wirklich_loeschen'),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {
@@ -248,8 +248,8 @@ export default function ProtocolsScreen() {
   const batchDelete = () => {
     if (selectedIds.size === 0) return;
     Alert.alert(
-      `${selectedIds.size} Protokolle löschen`,
-      "Möchtest du die ausgewählten Protokolle wirklich löschen?",
+      t('n_protokolle_loeschen').replace('{count}', String(selectedIds.size)),
+      t('ausgewaehlte_loeschen_frage'),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {
@@ -310,7 +310,7 @@ export default function ProtocolsScreen() {
         // Multiple protocols - generate individual PDFs and share all
         Alert.alert(
           `${selected.length} Protokolle exportieren`,
-          "Wie möchtest du exportieren?",
+          t('wie_exportieren'),
           [
             {
               text: "Einzelne PDFs",

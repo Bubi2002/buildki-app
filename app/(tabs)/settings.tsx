@@ -1500,7 +1500,7 @@ return (
             </Pressable>
           </View>
           <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
-            {settings.audioQuality === "standard" ? "44.1 kHz, 64 kbps – Kompakt, für Sprachnotizen" : settings.audioQuality === "high" ? "44.1 kHz, 128 kbps – Empfohlen für Protokolle" : "48 kHz, 256 kbps – Studioqualität, große Dateien"}
+            {settings.audioQuality === "standard" ? t('audio_standard_desc') : settings.audioQuality === "high" ? t('audio_high_desc') : t('audio_ultra_desc')}
           </Text>
         </View>
 
@@ -1659,7 +1659,7 @@ return (
                 {isAuthenticated ? (user?.name || t('sync_angemeldet')) : t('sync_nicht_angemeldet')}
               </Text>
               <Text style={[styles.syncHint, { color: colors.muted }]}>
-                {isAuthenticated ? "Cloud-Sync verfügbar" : "Anmelden für Cloud-Sync"}
+                {isAuthenticated ? t('cloud_sync_verfuegbar') : t('anmelden_cloud_sync')}
               </Text>
             </View>
             {isAuthenticated ? (
