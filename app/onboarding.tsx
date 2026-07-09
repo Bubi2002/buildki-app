@@ -18,31 +18,31 @@ type OnboardingStep = {
 function getSteps(t: (key: any) => string): OnboardingStep[] { return [
   {
     icon: "mic",
-    title: "Aufnehmen & Fotografieren",
+    title: t('onboarding_title_1'),
     description: t('onboarding_desc_1'),
     color: "#5DADE2",
   },
   {
     icon: "auto-awesome",
-    title: "KI erstellt dein Protokoll",
-    description: "Die KI transkribiert deine Sprache, erstellt ein strukturiertes Protokoll und extrahiert automatisch Aufgaben mit Fristen und Verantwortlichen.",
+    title: t('onboarding_title_2'),
+    description: t('ki_beschreibung'),
     color: "#A78BFA",
   },
   {
     icon: "share",
-    title: "Teilen per WhatsApp & PDF",
+    title: t('onboarding_title_3'),
     description: t('onboarding_desc_2'),
     color: "#4ADE80",
   },
   {
     icon: "folder",
-    title: "Projekte & Vorlagen",
+    title: t('onboarding_title_4'),
     description: t('onboarding_desc_3'),
     color: "#5DADE2",
   },
   {
     icon: "translate",
-    title: "Mehrsprachig & Smart",
+    title: t('onboarding_title_5'),
     description: t('onboarding_desc_4'),
     color: "#FBBF24",
   },

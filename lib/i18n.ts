@@ -1109,6 +1109,13 @@ export const translations = {
     version_wiederherstellen_frage: 'Möchten Sie Version {version} vom {date} wiederherstellen?',
     einladung_nachricht: 'Hallo {name}, du wurdest als {role} zum Team in ProtoKI eingeladen. Lade dir die App herunter um gemeinsam an Projekten zu arbeiten. Viele Gruesse',
     zeit_erfasst: '{duration} erfasst für "{project}".',
+    onboarding_title_1: 'Aufnehmen & Fotografieren',
+    onboarding_title_2: 'KI erstellt dein Protokoll',
+    onboarding_title_3: 'Teilen per WhatsApp & PDF',
+    onboarding_title_4: 'Projekte & Vorlagen',
+    onboarding_title_5: 'Mehrsprachig & Smart',
+    ki_beschreibung: 'Die KI transkribiert deine Sprache, erstellt ein strukturiertes Protokoll und extrahiert automatisch Aufgaben mit Fristen und Verantwortlichen.',
+
   },
   en: {
     abendliche_push_mit_tagesuebersicht: 'Evening push with daily overview',
@@ -2214,6 +2221,13 @@ export const translations = {
     version_wiederherstellen_frage: 'Do you want to restore version {version} from {date}?',
     einladung_nachricht: 'Hello {name}, you have been invited as {role} to the team in ProtoKI. Download the app to collaborate on projects together. Best regards',
     zeit_erfasst: '{duration} recorded for "{project}".',
+    onboarding_title_1: 'Record & Photograph',
+    onboarding_title_2: 'AI Creates Your Protocol',
+    onboarding_title_3: 'Share via WhatsApp & PDF',
+    onboarding_title_4: 'Projects & Templates',
+    onboarding_title_5: 'Multilingual & Smart',
+    ki_beschreibung: 'The AI transcribes your speech, creates a structured protocol, and automatically extracts tasks with deadlines and responsible persons.',
+
   },
   fr: {
     abendliche_push_mit_tagesuebersicht: 'Push du soir avec résumé quotidien',
@@ -3319,6 +3333,13 @@ export const translations = {
     version_wiederherstellen_frage: 'Voulez-vous restaurer la version {version} du {date} ?',
     einladung_nachricht: 'Bonjour {name}, vous avez ete invite(e) en tant que {role} dans l equipe ProtoKI. Telechargez l application pour collaborer. Cordialement',
     zeit_erfasst: '{duration} enregistré pour "{project}".',
+    onboarding_title_1: 'Enregistrer & Photographier',
+    onboarding_title_2: 'L\'IA cree votre protocole',
+    onboarding_title_3: 'Partager via WhatsApp & PDF',
+    onboarding_title_4: 'Projets & Modeles',
+    onboarding_title_5: 'Multilingue & Intelligent',
+    ki_beschreibung: 'L\'IA transcrit votre voix, cree un protocole structure et extrait automatiquement les taches avec delais et responsables.',
+
   },
 } as const;
 export function t(key: TranslationKey, lang: Language = "de"): string {
