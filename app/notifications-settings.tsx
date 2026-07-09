@@ -15,15 +15,15 @@ import {
 
 
 // Weekday names
-const WEEKDAYS = [
-  { key: 1, short: "Mo", label: "Montag" },
-  { key: 2, short: "Di", label: "Dienstag" },
-  { key: 3, short: "Mi", label: "Mittwoch" },
-  { key: 4, short: "Do", label: "Donnerstag" },
-  { key: 5, short: "Fr", label: "Freitag" },
-  { key: 6, short: "Sa", label: "Samstag" },
-  { key: 0, short: "So", label: "Sonntag" },
-];
+function getWeekdays(t: (key: any) => string) { return [
+  { key: 1, short: t('cal_mo'), label: t('cal_montag') },
+  { key: 2, short: t('cal_di'), label: t('cal_dienstag') },
+  { key: 3, short: t('cal_mi'), label: t('cal_mittwoch') },
+  { key: 4, short: t('cal_do'), label: t('cal_donnerstag') },
+  { key: 5, short: t('cal_fr'), label: t('cal_freitag') },
+  { key: 6, short: t('cal_sa'), label: t('cal_samstag') },
+  { key: 0, short: t('cal_so'), label: t('cal_sonntag') },
+]; }
 
 function NumberInput({ value, min, max, onValueChange, colors, formatValue }: {
   value: number;
@@ -332,7 +332,7 @@ export default function NotificationsSettingsScreen() {
         <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('wochentage')}</Text>
         <View style={{ borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 20 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
-            {WEEKDAYS.map(day => {
+            {getWeekdays(t).map(day => {
               const isActive = selectedDays.includes(day.key);
               return (
                 <Pressable

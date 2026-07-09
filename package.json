@@ -54,6 +54,7 @@
     "expo-keep-awake": "~15.0.8",
     "expo-linking": "~8.0.10",
     "expo-local-authentication": "~17.0.8",
+    "expo-localization": "~17.0.9",
     "expo-location": "~19.0.8",
     "expo-mail-composer": "^56.0.4",
     "expo-network": "~8.0.8",

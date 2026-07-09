@@ -25,11 +25,8 @@ type Protocol = {
   isArchived?: boolean;
 };
 
-const DAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const MONTHS_DE = [
-  "Januar", "Februar", "März", "April", "Mai", "Juni",
-  "Juli", "August", "September", "Oktober", "November", "Dezember"
-];
+function getDays(t: (key: any) => string) { return [t('cal_mo'), t('cal_di'), t('cal_mi'), t('cal_do'), t('cal_fr'), t('cal_sa'), t('cal_so')]; }
+function getMonths(t: (key: any) => string) { return [t('cal_januar'), t('cal_februar'), t('cal_maerz'), t('cal_april'), t('cal_mai'), t('cal_juni'), t('cal_juli'), t('cal_august'), t('cal_september'), t('cal_oktober'), t('cal_november'), t('cal_dezember')]; }
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -155,7 +152,7 @@ export default function CalendarViewScreen() {
             <MaterialIcons name="chevron-left" size={28} color={colors.foreground} />
           </Pressable>
           <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>
-            {MONTHS_DE[currentMonth]} {currentYear}
+            {getMonths(t)[currentMonth]} {currentYear}
           </Text>
           <Pressable onPress={goToNextMonth} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 4 }]}>
             <MaterialIcons name="chevron-right" size={28} color={colors.foreground} />
@@ -164,7 +161,7 @@ export default function CalendarViewScreen() {
 
         {/* Day headers */}
         <View style={{ flexDirection: "row", paddingHorizontal: 8 }}>
-          {DAYS_DE.map(day => (
+          {getDays(t).map(day => (
             <View key={day} style={{ flex: 1, alignItems: "center", paddingVertical: 4 }}>
               <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>{day}</Text>
             </View>

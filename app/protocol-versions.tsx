@@ -56,7 +56,7 @@ export default function ProtocolVersionsScreen() {
 
   const restoreVersion = (version: ProtocolVersion) => {
     Alert.alert(
-      "Version wiederherstellen",
+      t('version_wiederherstellen'),
       `Möchten Sie Version ${version.version} vom ${formatVersionDate(version.createdAt)} wiederherstellen?`,
       [
         { text: t('btn_abbrechen'), style: "cancel" },

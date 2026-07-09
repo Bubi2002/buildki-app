@@ -41,16 +41,16 @@ const COLORS = [
 
 const PEN_SIZES = [3, 5, 8, 12];
 
-const DEFAULT_TEXT_TEMPLATES = [
-  { label: "Mangel", icon: "warning" as const },
-  { label: "Nacharbeit", icon: "build" as const },
+function getDefaultTextTemplates(t: (key: any) => string) { return [
+  { label: t('anno_mangel'), icon: "warning" as const },
+  { label: t('anno_nacharbeit'), icon: "build" as const },
   { label: "OK", icon: "check-circle" as const },
-  { label: "Achtung", icon: "error" as const },
-  { label: "Prüfen", icon: "search" as const },
-  { label: "Foto", icon: "photo-camera" as const },
-  { label: "Maß", icon: "straighten" as const },
-  { label: "Hinweis", icon: "info" as const },
-];
+  { label: t('anno_achtung'), icon: "error" as const },
+  { label: t('anno_pruefen'), icon: "search" as const },
+  { label: t('anno_foto'), icon: "photo-camera" as const },
+  { label: t('anno_mass'), icon: "straighten" as const },
+  { label: t('anno_hinweis'), icon: "info" as const },
+]; }
 
 const ANNOTATION_STORAGE_KEY = 'annotation-custom-templates';
 
@@ -110,7 +110,7 @@ export default function PhotoAnnotateScreen() {
   }, []);
 
   const allTemplates = [
-    ...DEFAULT_TEXT_TEMPLATES,
+    ...getDefaultTextTemplates(t),
     ...customTemplates.map(label => ({ label, icon: "label" as const })),
   ];
   const [scale, setScale] = useState(1);
@@ -491,7 +491,7 @@ export default function PhotoAnnotateScreen() {
           >
             <MaterialIcons name="check" size={20} color="#FFFFFF" />
             <Text style={styles.saveBtnText}>
-              {isSaving ? "..." : "Speichern"}
+              {isSaving ? '...' : t('btn_speichern')}
             </Text>
           </Pressable>
         </View>

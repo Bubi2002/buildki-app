@@ -137,7 +137,7 @@ export default function ProtocolCompareScreen() {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.protocolTitle, { color: colors.foreground }]} numberOfLines={1}>
-                    {item.protocolNumber ? `${item.protocolNumber} – ` : ""}{item.templateName || "Protokoll"}
+                    {item.protocolNumber ? `${item.protocolNumber} – ` : ""}{item.templateName || t('protokoll')}
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.muted }}>{formatDate(item.createdAt)}</Text>
                 </View>
@@ -178,7 +178,7 @@ export default function ProtocolCompareScreen() {
         >
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>A</Text>
           <Text style={{ fontSize: 12, color: colors.foreground, flex: 1 }} numberOfLines={1}>
-            {selectedA ? (selectedA.protocolNumber || selectedA.templateName || "Protokoll") : "Auswählen..."}
+            {selectedA ? (selectedA.protocolNumber || selectedA.templateName || "Protokoll") : t('auswaehlen')}
           </Text>
           <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
         </Pressable>
@@ -194,7 +194,7 @@ export default function ProtocolCompareScreen() {
         >
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>B</Text>
           <Text style={{ fontSize: 12, color: colors.foreground, flex: 1 }} numberOfLines={1}>
-            {selectedB ? (selectedB.protocolNumber || selectedB.templateName || "Protokoll") : "Auswählen..."}
+            {selectedB ? (selectedB.protocolNumber || selectedB.templateName || t('protokoll')) : t('auswaehlen')}
           </Text>
           <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
         </Pressable>

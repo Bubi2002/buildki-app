@@ -179,7 +179,7 @@ export default function ChecklistsScreen() {
       id: `custom-${Date.now()}`,
       name: newName.trim(),
       description: newDescription.trim() || "Benutzerdefinierte Checkliste",
-      category: newCategory.trim() || "Benutzerdefiniert",
+      category: newCategory.trim() || t('benutzerdefiniert'),
       items,
       isBuiltIn: false,
       createdAt: new Date().toISOString(),

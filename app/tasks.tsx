@@ -66,7 +66,7 @@ export default function TasksScreen() {
             todos.push({
               ...todo,
               protocolId: protocol.id,
-              protocolTitle: protocol.templateName || "Protokoll",
+              protocolTitle: protocol.templateName || t('protokoll'),
               protocolDate: protocol.createdAt,
               todoIndex: index,
             });
@@ -172,7 +172,7 @@ export default function TasksScreen() {
             {item.task}
           </Text>
           <View style={styles.todoMeta}>
-            {item.assignee !== "Nicht zugewiesen" && (
+            {item.assignee !== t('nicht_zugewiesen') && (
               <View style={[styles.badge, { backgroundColor: colors.surface }]}>
                 <MaterialIcons name="person" size={11} color={colors.muted} />
                 <Text style={[styles.badgeText, { color: colors.muted }]}>
@@ -209,8 +209,8 @@ export default function TasksScreen() {
                 {item.priority === "hoch"
                   ? "\u26a0\ufe0f Hoch"
                   : item.priority === "mittel"
-                  ? "Mittel"
-                  : "Niedrig"}
+                  ? t('prioritaet_mittel')
+                  : t('prioritaet_niedrig')}
               </Text>
             </View>
             <View style={[styles.badge, { backgroundColor: colors.surface }]}>
@@ -219,7 +219,7 @@ export default function TasksScreen() {
                 {item.protocolTitle} ({date})
               </Text>
             </View>
-            {item.deadline !== "Offen" && (
+            {item.deadline !== t('frist_offen') && (
               <View style={[styles.badge, { backgroundColor: colors.surface }]}>
                 <MaterialIcons name="schedule" size={11} color={colors.muted} />
                 <Text style={[styles.badgeText, { color: colors.muted }]}>
@@ -297,7 +297,7 @@ export default function TasksScreen() {
                 { color: filter === f ? colors.primary : colors.muted },
               ]}
             >
-              {f === "open" ? "Offen" : f === "done" ? "Erledigt" : "Alle"}
+              {f === "open" ? t('status_offen') : f === "done" ? t('status_erledigt') : t('filter_alle')}
             </Text>
           </Pressable>
         ))}

@@ -186,7 +186,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {params.editId ? "Vorlage bearbeiten" : "Neue Vorlage"}
+          {params.editId ? t('vorlage_bearbeiten') : t('neue_vorlage')}
         </Text>
         <Pressable
           onPress={saveTemplate}
@@ -307,7 +307,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
                 style={[styles.sectionInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                 value={typeof section === "string" ? section : section.name}
                 onChangeText={(v) => updateSection(index, v)}
-                placeholder={`Sektion ${index + 1} (z.B. "Zusammenfassung")`}
+                placeholder={`${t('sektion')} ${index + 1}`}
                 placeholderTextColor={colors.muted}
               />
               {sections.length > 1 && (

@@ -73,7 +73,7 @@ export default function DropboxSettingsScreen() {
 
   const handleDisconnect = () => {
     Alert.alert(
-      "Dropbox trennen",
+      t('dropbox_trennen'),
       "Möchtest du die Verbindung zu Dropbox wirklich trennen? Bereits hochgeladene Dateien bleiben in Dropbox erhalten.",
       [
         { text: t('btn_abbrechen'), style: "cancel" },
@@ -91,7 +91,7 @@ export default function DropboxSettingsScreen() {
 
   const handleClearHistory = () => {
     Alert.alert(
-      "Verlauf löschen",
+      t('verlauf_loeschen'),
       "Möchtest du den gesamten Upload-Verlauf löschen?",
       [
         { text: t('btn_abbrechen'), style: "cancel" },
@@ -120,7 +120,7 @@ export default function DropboxSettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('dropboxintegration')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted }}>
-              {settings.isConnected ? "Verbunden – Automatischer Upload" : "Nicht verbunden"}
+              {settings.isConnected ? `${t('verbunden')} \u2013 ${t('automatischer_upload')}` : t('nicht_verbunden')}
             </Text>
           </View>
           <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: settings.isConnected ? "#0061FF15" : colors.border + "30", alignItems: "center", justifyContent: "center" }}>
@@ -136,7 +136,7 @@ export default function DropboxSettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>
-                {settings.isConnected ? "Dropbox verbunden" : "Nicht verbunden"}
+                {settings.isConnected ? t('dropbox_verbunden') : t('nicht_verbunden')}
               </Text>
               {settings.isConnected && settings.accountName ? (
                 <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
@@ -263,7 +263,7 @@ export default function DropboxSettingsScreen() {
               {([
                 { key: "project_date" as const, label: "Projekt + Datum", example: "Hausbau_2026-06-20_Begehung.pdf" },
                 { key: "number_title" as const, label: "Nummer + Titel", example: "P-001_Baubegehung_EG.pdf" },
-                { key: "custom" as const, label: "Benutzerdefiniert", example: "Eigenes Muster mit Platzhaltern" },
+                { key: "custom" as const, label: t('benutzerdefiniert'), example: t('eigenes_muster') },
               ]).map((option) => (
                 <Pressable
                   key={option.key}

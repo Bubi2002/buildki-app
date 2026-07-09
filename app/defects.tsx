@@ -149,9 +149,9 @@ export default function DefectsScreen() {
   };
 
   const statusLabels: Record<DefectStatus, string> = {
-    offen: "Offen",
+    offen: t('status_offen'),
     in_bearbeitung: "In Arbeit",
-    erledigt: "Erledigt",
+    erledigt: t('status_erledigt'),
   };
 
   const priorityIcons: Record<DefectPriority, string> = {
@@ -254,7 +254,7 @@ export default function DefectsScreen() {
             ]}
           >
             <Text style={[styles.filterText, { color: filter === f ? colors.primary : colors.muted }]}>
-              {f === "alle" ? "Alle" : f === "in_bearbeitung" ? "In Arbeit" : f === "offen" ? "Offen" : "Erledigt"}
+              {f === "alle" ? t('filter_alle') : f === "in_bearbeitung" ? t('filter_in_arbeit') : f === "offen" ? t('status_offen') : t('status_erledigt')}
             </Text>
           </Pressable>
         ))}

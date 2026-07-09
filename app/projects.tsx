@@ -116,7 +116,7 @@ export default function ProjectsScreen() {
 
   const deleteProject = (project: Project) => {
     Alert.alert(
-      "Projekt löschen",
+      t('projekt_loeschen'),
       `Möchtest du "${project.name}" wirklich löschen? Die zugehörigen Protokolle bleiben erhalten.`,
       [
         { text: t('btn_abbrechen'), style: "cancel" },
@@ -242,7 +242,7 @@ export default function ProjectsScreen() {
             <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                  {editingProject ? "Projekt bearbeiten" : "Neues Projekt"}
+                  {editingProject ? t('projekt_bearbeiten') : t('neues_projekt')}
                 </Text>
                 <Pressable onPress={() => { setShowCreateModal(false); setEditingProject(null); }}>
                   <MaterialIcons name="close" size={24} color={colors.muted} />
@@ -307,7 +307,7 @@ export default function ProjectsScreen() {
                 ]}
               >
                 <Text style={styles.saveButtonText}>
-                  {editingProject ? "Speichern" : "Projekt erstellen"}
+                  {editingProject ? t('btn_speichern') : t('projekt_erstellen_btn')}
                 </Text>
               </Pressable>
             </View>

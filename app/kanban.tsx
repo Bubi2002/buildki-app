@@ -86,7 +86,7 @@ export default function KanbanScreen() {
               deadline: todo.deadline || "",
               status,
               protocolId: protocol.id,
-              protocolTitle: protocol.templateName || "Protokoll",
+              protocolTitle: protocol.templateName || t('protokoll'),
               protocolDate: protocol.createdAt,
               todoIndex: index,
               movedAt: savedStatus ? new Date().toISOString() : undefined,

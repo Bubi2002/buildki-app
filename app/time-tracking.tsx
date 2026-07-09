@@ -331,7 +331,7 @@ export default function TimeTrackingScreen() {
                     <Text style={{ fontSize: 11, color: cat?.color || colors.muted, fontWeight: "500" }}>{cat?.label}</Text>
                   </View>
                   <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
-                    {formatDate(item.startTime)} • {formatTime(item.startTime)} – {item.endTime ? formatTime(item.endTime) : "läuft"}
+                    {formatDate(item.startTime)} • {formatTime(item.startTime)} – {item.endTime ? formatTime(item.endTime) : t('laeuft')}
                   </Text>
                   {item.note ? <Text style={{ fontSize: 12, color: colors.muted, marginTop: 3 }}>{item.note}</Text> : null}
                 </View>

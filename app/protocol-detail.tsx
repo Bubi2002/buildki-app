@@ -44,19 +44,19 @@ import { queueChange, getSyncStatus } from "@/lib/offline-sync";
 import { useTranslation } from "@/lib/language-provider";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const LANGUAGES = [
-  { code: "de", name: "Deutsch" },
-  { code: "en", name: "Englisch" },
-  { code: "fr", name: "Französisch" },
-  { code: "es", name: "Spanisch" },
-  { code: "it", name: "Italienisch" },
-  { code: "nl", name: "Niederländisch" },
-  { code: "pl", name: "Polnisch" },
-  { code: "tr", name: "Türkisch" },
-  { code: "pt", name: "Portugiesisch" },
-  { code: "ru", name: "Russisch" },
-  { code: "ar", name: "Arabisch" },
-];
+function getLanguages(t: (key: any) => string) { return [
+  { code: "de", name: t('lang_deutsch') },
+  { code: "en", name: t('lang_englisch') },
+  { code: "fr", name: t('lang_franzoesisch') },
+  { code: "es", name: t('lang_spanisch') },
+  { code: "it", name: t('lang_italienisch') },
+  { code: "nl", name: t('lang_niederlaendisch') },
+  { code: "pl", name: t('lang_polnisch') },
+  { code: "tr", name: t('lang_tuerkisch') },
+  { code: "pt", name: t('lang_portugiesisch') },
+  { code: "ru", name: t('lang_russisch') },
+  { code: "ar", name: t('lang_arabisch') },
+]; }
 const PHOTO_SIZE = Math.min(100, (SCREEN_WIDTH - 48 - 8) / 3);
 
 type TodoItem = {
@@ -306,7 +306,7 @@ export default function ProtocolDetailScreen() {
     setEditTodoTask(todo.task);
     setEditTodoPriority(todo.priority);
     setEditTodoDueDate(todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "");
-    setEditTodoAssignee(todo.assignee && todo.assignee !== "Nicht zugewiesen" ? todo.assignee : "");
+    setEditTodoAssignee(todo.assignee && todo.assignee !== t('nicht_zugewiesen') ? todo.assignee : "");
     setEditTodoEmail((todo as any).assigneeEmail || "");
   };
 
@@ -340,14 +340,14 @@ export default function ProtocolDetailScreen() {
       if (idx !== -1) { protocols[idx].todos = updated; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
     } catch { /* ignore */ }
     // Send email notification if person was assigned/changed and email is provided
-    if (assigneeEmail && assigneeName !== "Nicht zugewiesen" && assigneeName !== previousAssignee) {
+    if (assigneeEmail && assigneeName !== t('nicht_zugewiesen') && assigneeName !== previousAssignee) {
       try {
         const { sendActionItemsEmail } = await import("@/lib/email-actions");
         const protocolDate = protocol?.createdAt ? new Date(protocol.createdAt).toLocaleDateString("de-DE") : new Date().toLocaleDateString("de-DE");
         await sendActionItemsEmail(
-          [{ task: editTodoTask.trim(), assignee: assigneeName, priority: editTodoPriority, deadline: editTodoDueDate || "Offen" }],
+          [{ task: editTodoTask.trim(), assignee: assigneeName, priority: editTodoPriority, deadline: editTodoDueDate || t('status_offen') }],
           assigneeEmail,
-          protocol?.title || "Protokoll",
+          protocol?.title || t('protokoll'),
           protocolDate,
         );
         Alert.alert(t('alert_benachrichtigung_gesendet'), `E-Mail an ${assigneeName} (${assigneeEmail}) wurde geöffnet.`);
@@ -534,7 +534,7 @@ export default function ProtocolDetailScreen() {
         priority: priority as "hoch" | "mittel" | "niedrig",
         deadline,
         protocolId: protocol?.id || "",
-        protocolTitle: protocol?.title || "Protokoll",
+        protocolTitle: protocol?.title || t('protokoll'),
         status: "sent",
         sentAt: Date.now(),
       });
@@ -686,17 +686,17 @@ export default function ProtocolDetailScreen() {
       const datumStr = new Date(protocol.createdAt).toLocaleDateString("de-DE");
       const replacePlaceholders = (template: string) => {
         return template
-          .replace(/\{vorlage\}/g, protocol.templateName || "Protokoll")
-          .replace(/\{titel\}/g, protocol.title || protocol.templateName || "Protokoll")
+          .replace(/\{vorlage\}/g, protocol.templateName || t('protokoll'))
+          .replace(/\{titel\}/g, protocol.title || protocol.templateName || t('protokoll'))
           .replace(/\{datum\}/g, datumStr)
           .replace(/\{projekt\}/g, protocol.projectName || "");
       };
       const subjectText = branding.emailSubjectTemplate
         ? replacePlaceholders(branding.emailSubjectTemplate)
-        : `${protocol.templateName || "Protokoll"} - ${protocol.title || datumStr}`;
+        : `${protocol.templateName || t('protokoll')} - ${protocol.title || datumStr}`;
       const bodyText = branding.emailBodyTemplate
         ? replacePlaceholders(branding.emailBodyTemplate)
-        : `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
+        : `Anbei das Protokoll "${protocol.title || protocol.templateName || t('protokoll')}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
       try {
         const MailComposer = await import("expo-mail-composer");
         const isAvailable = await MailComposer.isAvailableAsync();
@@ -750,7 +750,7 @@ export default function ProtocolDetailScreen() {
     setIsSendingEmail(true);
     try {
       const protocolDate = new Date(protocol?.createdAt || "").toLocaleDateString("de-DE");
-      const protocolTitle = protocol?.title || "Protokoll";
+      const protocolTitle = protocol?.title || t('protokoll');
       await sendActionItemsEmail(
         displayedTodos.map(t => ({ task: t.task, assignee: t.assignee, priority: t.priority, deadline: t.deadline })),
         emailRecipient,
@@ -907,7 +907,7 @@ export default function ProtocolDetailScreen() {
       }));
 
       setMindmapData({
-        topic: protocol.title || "Protokoll",
+        topic: protocol.title || t('protokoll'),
         branches,
       });
       setShowMindmap(true);
@@ -922,7 +922,7 @@ export default function ProtocolDetailScreen() {
   const exportAllVersionsPdf = async () => {
     if (!protocol) return;
     const allVersions = [
-      { name: "Original (" + (protocol.templateName || "Freitext") + ")", text: protocol.protocol, todos },
+      { name: "Original (" + (protocol.templateName || t('freitext')) + ")", text: protocol.protocol, todos },
       ...versions.map(v => ({ name: v.templateName, text: v.text, todos: v.todos || [] })),
     ];
     
@@ -1116,7 +1116,7 @@ export default function ProtocolDetailScreen() {
     if (isAvailable) {
       await Sharing.shareAsync(previewPdfUri, {
         mimeType: "application/pdf",
-        dialogTitle: `${protocol.templateName || "Protokoll"} als PDF teilen`,
+        dialogTitle: `${protocol.templateName || t('protokoll')} als PDF teilen`,
         UTI: "com.adobe.pdf",
       });
       // Log to export history
@@ -1125,7 +1125,7 @@ export default function ProtocolDetailScreen() {
         await addExportEntry({
           filename: previewPdfUri.split("/").pop() || "protokoll.pdf",
           protocolTitle: protocol.title || "",
-          templateName: protocol.templateName || "Protokoll",
+          templateName: protocol.templateName || t('protokoll'),
           projectName: protocol.projectName || "",
           recipients: [],
           ccRecipients: [],
@@ -1155,17 +1155,17 @@ export default function ProtocolDetailScreen() {
       const datumStr = new Date(protocol.createdAt).toLocaleDateString("de-DE");
       const replacePlaceholders = (template: string) => {
         return template
-          .replace(/\{vorlage\}/g, protocol.templateName || "Protokoll")
-          .replace(/\{titel\}/g, protocol.title || protocol.templateName || "Protokoll")
+          .replace(/\{vorlage\}/g, protocol.templateName || t('protokoll'))
+          .replace(/\{titel\}/g, protocol.title || protocol.templateName || t('protokoll'))
           .replace(/\{datum\}/g, datumStr)
           .replace(/\{projekt\}/g, protocol.projectName || "");
       };
       const subjectText = branding.emailSubjectTemplate
         ? replacePlaceholders(branding.emailSubjectTemplate)
-        : `${protocol.templateName || "Protokoll"} - ${protocol.title || datumStr}`;
+        : `${protocol.templateName || t('protokoll')} - ${protocol.title || datumStr}`;
       const bodyText = branding.emailBodyTemplate
         ? replacePlaceholders(branding.emailBodyTemplate)
-        : `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
+        : `Anbei das Protokoll "${protocol.title || protocol.templateName || t('protokoll')}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
 
       // Use expo-mail-composer if available, otherwise fallback to sharing
       try {
@@ -1186,7 +1186,7 @@ export default function ProtocolDetailScreen() {
             await addExportEntry({
               filename: previewPdfUri.split("/").pop() || "protokoll.pdf",
               protocolTitle: protocol.title || "",
-              templateName: protocol.templateName || "Protokoll",
+              templateName: protocol.templateName || t('protokoll'),
               projectName: protocol.projectName || "",
               recipients,
               ccRecipients,
@@ -1221,7 +1221,7 @@ export default function ProtocolDetailScreen() {
         if (isAvailable) {
           await Sharing.shareAsync(previewPdfUri, {
             mimeType: "application/pdf",
-            dialogTitle: `${protocol.templateName || "Protokoll"} per E-Mail senden`,
+            dialogTitle: `${protocol.templateName || t('protokoll')} per E-Mail senden`,
             UTI: "com.adobe.pdf",
           });
         }
@@ -1288,7 +1288,7 @@ export default function ProtocolDetailScreen() {
         }
         await Share.share({
           message: protocol.protocol,
-          title: "Protokoll teilen",
+          title: t('protokoll_teilen'),
         });
       }
     } catch (error) {
@@ -1307,7 +1307,7 @@ export default function ProtocolDetailScreen() {
     );
     const emailTo = settings.defaultEmail || "";
     const subject = encodeURIComponent(
-      `${protocol.templateName || "Protokoll"} vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}`
+      `${protocol.templateName || t('protokoll')} vom ${new Date(protocol.createdAt).toLocaleDateString("de-DE")}`
     );
     const body = encodeURIComponent(protocol.protocol);
 
@@ -1325,7 +1325,7 @@ export default function ProtocolDetailScreen() {
     if (!protocol) return;
     await Share.share({
       message: protocol.protocol,
-      title: protocol.templateName || "Protokoll teilen",
+      title: protocol.templateName || t('protokoll_teilen'),
     });
   };
 
@@ -1529,7 +1529,7 @@ export default function ProtocolDetailScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
-          {protocol.templateName || "Protokoll"}
+          {protocol.templateName || t('protokoll')}
         </Text>
         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
           {/* Favorite toggle */}
@@ -1878,7 +1878,7 @@ export default function ProtocolDetailScreen() {
                             color={playingVoiceNote === index ? "#4CAF50" : colors.muted}
                           />
                           <Text style={{ fontSize: 10, color: playingVoiceNote === index ? "#4CAF50" : colors.muted }}>
-                            {playingVoiceNote === index ? "Wiedergabe..." : "Sprachnotiz"}
+                            {playingVoiceNote === index ? t('wiedergabe') : t('sprachnotiz')}
                           </Text>
                         </Pressable>
                       )}
@@ -2002,7 +2002,7 @@ export default function ProtocolDetailScreen() {
                       </Text>
                     )}
                     <View style={styles.todoMeta}>
-                      {todo.assignee !== "Nicht zugewiesen" && (
+                      {todo.assignee !== t('nicht_zugewiesen') && (
                         <View style={[styles.todoBadge, { backgroundColor: colors.surface }]}>
                           <MaterialIcons name="person" size={12} color={colors.muted} />
                           <Text style={[styles.todoBadgeText, { color: colors.muted }]}>{todo.assignee}</Text>
@@ -2107,7 +2107,7 @@ export default function ProtocolDetailScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('protokoll')}</Text>
             <View style={{ flexDirection: "row", gap: 6 }}>
               <Pressable
-                onPress={() => router.push(`/protocol-versions?protocolId=${protocol.id}&protocolTitle=${encodeURIComponent(protocol.title || "Protokoll")}` as any)}
+                onPress={() => router.push(`/protocol-versions?protocolId=${protocol.id}&protocolTitle=${encodeURIComponent(protocol.title || t('protokoll'))}` as any)}
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="history" size={15} color={colors.muted} />
@@ -2131,7 +2131,7 @@ export default function ProtocolDetailScreen() {
                 style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 0, backgroundColor: !activeVersionId ? colors.primary : colors.surface, borderWidth: 1, borderColor: !activeVersionId ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 12, fontWeight: "500", color: !activeVersionId ? "#FFFFFF" : colors.muted }}>
-                  Original ({protocol.templateName || "Freitext"})
+                  Original ({protocol.templateName || t('freitext')})
                 </Text>
               </Pressable>
               {versions.map((v) => (
@@ -2352,14 +2352,14 @@ export default function ProtocolDetailScreen() {
               onPress={() => setShowLangPicker(!showLangPicker)}
               style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={{ fontSize: 13, color: colors.foreground }}>{LANGUAGES.find(l => l.code === targetLang)?.name || targetLang}</Text>
+              <Text style={{ fontSize: 13, color: colors.foreground }}>{getLanguages(t).find(l => l.code === targetLang)?.name || targetLang}</Text>
               <MaterialIcons name="expand-more" size={16} color={colors.muted} />
             </Pressable>
           </View>
 
           {showLangPicker && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-              {LANGUAGES.filter(l => l.code !== "de").map(lang => (
+              {getLanguages(t).filter(l => l.code !== "de").map(lang => (
                 <Pressable
                   key={lang.code}
                   onPress={() => { setTargetLang(lang.code); setShowLangPicker(false); setTranslatedText(null); }}
@@ -2401,7 +2401,7 @@ export default function ProtocolDetailScreen() {
               <MaterialIcons name={showTranslation ? "visibility-off" : "translate"} size={18} color={colors.primary} />
             )}
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>
-              {isTranslating ? "Übersetze..." : showTranslation ? "Übersetzung ausblenden" : `In ${LANGUAGES.find(l => l.code === targetLang)?.name || targetLang} übersetzen`}
+              {isTranslating ? t('uebersetze') : showTranslation ? t('uebersetzung_ausblenden') : `In ${getLanguages(t).find(l => l.code === targetLang)?.name || targetLang} übersetzen`}
             </Text>
           </Pressable>
 
@@ -2426,7 +2426,7 @@ export default function ProtocolDetailScreen() {
             color={colors.muted}
           />
           <Text style={[styles.toggleText, { color: colors.muted }]}>
-            {showTranscription ? "Transkription ausblenden" : "Originaltranskription anzeigen"}
+            {showTranscription ? t('transkription_ausblenden') : t('transkription_anzeigen')}
           </Text>
         </Pressable>
 
@@ -2690,7 +2690,7 @@ export default function ProtocolDetailScreen() {
             <Pressable
               onPress={() => {
                 setShowGallery(false);
-                router.push({ pathname: "/cloud-photo-export", params: { photos: JSON.stringify(photos), projectName: protocol?.title || "Protokoll" } } as any);
+                router.push({ pathname: "/cloud-photo-export", params: { photos: JSON.stringify(photos), projectName: protocol?.title || t('protokoll') } } as any);
               }}
               style={({ pressed }) => [styles.modalShareButton, { backgroundColor: "#0EA5E9", opacity: pressed ? 0.7 : 1 }]}
             >
@@ -2844,9 +2844,9 @@ export default function ProtocolDetailScreen() {
               <ScrollView contentContainerStyle={{ padding: 20 }}>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
                   {[
-                    { label: "Wörter", value: speechStats.words.toString() },
-                    { label: "Sätze", value: speechStats.sentences.toString() },
-                    { label: "Absätze", value: speechStats.paragraphs.toString() },
+                    { label: t('woerter'), value: speechStats.words.toString() },
+                    { label: t('saetze'), value: speechStats.sentences.toString() },
+                    { label: t('absaetze'), value: speechStats.paragraphs.toString() },
                     { label: "Wörter/Min", value: speechStats.wordsPerMinute.toString() },
                     { label: "Ø Satzlänge", value: speechStats.avgSentenceLength + " Wörter" },
                   ].map((stat, idx) => (
@@ -3312,7 +3312,7 @@ export default function ProtocolDetailScreen() {
                   <TextInput
                     placeholder={t('project_sort_name')}
                     placeholderTextColor={colors.muted}
-                    value={delegatingTask.assignee !== "Nicht zugewiesen" ? delegatingTask.assignee : ""}
+                    value={delegatingTask.assignee !== t('nicht_zugewiesen') ? delegatingTask.assignee : ""}
                     onChangeText={(text) => setDelegatingTask(prev => prev ? {...prev, assignee: text} : null)}
                     style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.foreground, marginBottom: 8 }}
                   />

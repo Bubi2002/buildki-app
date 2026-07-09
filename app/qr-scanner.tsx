@@ -21,13 +21,13 @@ type QRScan = {
   note: string;
 };
 
-const CATEGORIES: { id: QRScan["category"]; label: string; icon: string }[] = [
-  { id: "material", label: "Material", icon: "inventory" },
-  { id: "bauteil", label: "Bauteil", icon: "build" },
-  { id: "werkzeug", label: "Werkzeug", icon: "handyman" },
-  { id: "dokument", label: "Dokument", icon: "description" },
-  { id: "sonstiges", label: "Sonstiges", icon: "more-horiz" },
-];
+function getCategories(t: (key: any) => string) { return [
+  { id: "material" as const, label: t('material'), icon: "inventory" },
+  { id: "bauteil" as const, label: t('bauteil'), icon: "build" },
+  { id: "werkzeug" as const, label: t('werkzeug'), icon: "handyman" },
+  { id: "dokument" as const, label: t('dokument'), icon: "description" },
+  { id: "sonstiges" as const, label: t('sonstiges'), icon: "more-horiz" },
+]; }
 
 export default function QRScannerScreen() {
   const { t } = useTranslation();
@@ -189,7 +189,7 @@ export default function QRScannerScreen() {
               </View>
             }
             renderItem={({ item }) => {
-              const cat = CATEGORIES.find((c) => c.id === item.category);
+              const cat = getCategories(t).find((c) => c.id === item.category);
               return (
                 <View style={[styles.historyItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -285,7 +285,7 @@ export default function QRScannerScreen() {
           {/* Category Selection */}
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 10 }}>{t('kategorie')}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {CATEGORIES.map((cat) => (
+            {getCategories(t).map((cat) => (
               <Pressable
                 key={cat.id}
                 onPress={() => setCategory(cat.id)}

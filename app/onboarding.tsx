@@ -113,7 +113,7 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.nextButtonText}>
-              {currentStep === STEPS.length - 1 ? "Los geht's!" : "Weiter"}
+              {currentStep === STEPS.length - 1 ? t('los_gehts') : t('weiter')}
             </Text>
             <MaterialIcons
               name={currentStep === STEPS.length - 1 ? "rocket-launch" : "arrow-forward"}

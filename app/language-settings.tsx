@@ -15,7 +15,7 @@ export default function LanguageSettingsScreen() {
   const selectLanguage = async (lang: Language) => {
     await setLanguage(lang);
     Alert.alert(
-      lang === "de" ? "Sprache geändert" : lang === "en" ? "Language Changed" : "Langue modifiée",
+      t('sprache_geaendert'),
       lang === "de"
         ? "Die App-Sprache wurde auf Deutsch umgestellt. Alle Texte werden jetzt auf Deutsch angezeigt."
         : lang === "en"

@@ -494,4 +494,8 @@
 - [x] Bug-Fix: i18n – Alle Button-Texte in Action Sheets auf t() umgestellt (protocols, projects, settings, floor-plan, dropbox)
 - [x] Bug-Fix: i18n – msg_ Schlüssel in EN/FR korrekt übersetzt (waren vorher nur auf Deutsch kopiert)
 - [x] Bug-Fix: i18n – Neue Schlüssel für Statuslabels, Sortierung, Fallback-Texte (unbekannt, protokoll_erstellt, fehler_label)
-- [ ] i18n: Verbleibende sekundäre Strings übersetzen (Kalender-Tage/Monate, Sync-Status, Verarbeitungs-Schritte, Platzhalter)
+- [x] i18n: Verbleibende sekundäre Strings übersetzen (Kalender-Tage/Monate, Sync-Status, Verarbeitungs-Schritte, Platzhalter)
+- [x] i18n: Automatische Spracherkennung vom Gerät (expo-localization) – App startet in Gerätesprache
+- [x] i18n: Alle Screens vollständig übersetzt (144 neue Schlüssel, 25+ Dateien angepasst)
+- [x] i18n: Template-Namen/Beschreibungen, Kalender-Tage/Monate, Kategorien, Status-Labels, Prioritäten übersetzt
+- [x] i18n: Module-Level-Konstanten zu Funktionen konvertiert (CATEGORIES, WEEKDAYS, LANGUAGES, DEFAULT_TEXT_TEMPLATES)

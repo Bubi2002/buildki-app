@@ -56,7 +56,7 @@ export default function QuickNoteScreen() {
         title: title.trim() || `Notiz vom ${new Date().toLocaleDateString("de-DE")}`,
         transcription: content.trim(),
         protocol: content.trim(),
-        templateName: "Schnellnotiz",
+        templateName: t('schnellnotiz'),
         templateId: "quick_note",
         photos: [],
         todos: [],

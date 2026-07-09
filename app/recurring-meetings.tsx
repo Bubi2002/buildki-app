@@ -67,7 +67,7 @@ export default function RecurringMeetingsScreen() {
     setTimeMinute(0);
     setDuration(30);
     setParticipants("");
-    setTemplateName("Besprechungsprotokoll");
+    setTemplateName(t('besprechungsprotokoll'));
     setNotes("");
     setEditingMeeting(null);
   };
@@ -220,7 +220,7 @@ export default function RecurringMeetingsScreen() {
                 <Text style={{ fontSize: 15, color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               <Text style={{ fontSize: 17, fontWeight: "600", color: colors.foreground }}>
-                {editingMeeting ? "Bearbeiten" : "Neues Meeting"}
+                {editingMeeting ? t('label_bearbeiten') : t('neues_meeting')}
               </Text>
               <Pressable onPress={saveMeeting}>
                 <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>{t('save')}</Text>
@@ -258,7 +258,7 @@ export default function RecurringMeetingsScreen() {
                   style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, backgroundColor: recurrence === r ? colors.primary : colors.surface, borderWidth: 1, borderColor: recurrence === r ? colors.primary : colors.border }}
                 >
                   <Text style={{ fontSize: 13, color: recurrence === r ? "#fff" : colors.foreground }}>
-                    {r === "daily" ? "Täglich" : r === "weekly" ? "Wöchentlich" : r === "biweekly" ? "Alle 2 Wochen" : "Monatlich"}
+                    {r === "daily" ? t('taeglich') : r === "weekly" ? t('woechentlich') : r === "biweekly" ? t('alle_2_wochen') : t('monatlich')}
                   </Text>
                 </Pressable>
               ))}

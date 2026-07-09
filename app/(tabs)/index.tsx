@@ -1312,9 +1312,9 @@ export default function RecordScreen() {
           const companySettings = companyStr ? JSON.parse(companyStr) : {};
 
           const pdfHtml = await generateProtocolPdf({
-            title: newProtocol.templateName || "Protokoll",
+            title: newProtocol.templateName || t('protokoll'),
             protocol: newProtocol.protocol,
-            templateName: newProtocol.templateName || "Protokoll",
+            templateName: newProtocol.templateName || t('protokoll'),
             photos: newProtocol.photos || [],
             todos: newProtocol.todos || [],
             duration: newProtocol.duration,
@@ -1332,7 +1332,7 @@ export default function RecordScreen() {
           if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(pdfUri, {
               mimeType: "application/pdf",
-              dialogTitle: "Protokoll senden",
+              dialogTitle: t('protokoll_senden'),
               UTI: "com.adobe.pdf",
             });
           }
@@ -1699,10 +1699,10 @@ export default function RecordScreen() {
 
     const steps = [
 
-      { key: "upload", label: "Datei hochladen", icon: "cloud-upload" as const },
-      { key: "transcription", label: "Sprache erkennen", icon: "mic" as const },
-      { key: "protocol", label: "Protokoll erstellen", icon: "description" as const },
-      { key: "saving", label: "Speichern", icon: "check-circle" as const },
+      { key: "upload", label: t('datei_hochladen'), icon: "cloud-upload" as const },
+      { key: "transcription", label: t('sprache_erkennen'), icon: "mic" as const },
+      { key: "protocol", label: t('protokoll_erstellen_step'), icon: "description" as const },
+      { key: "saving", label: t('speichern_step'), icon: "check-circle" as const },
     ];
     const currentStepIndex = steps.findIndex(s => s.key === processingStep);
 
@@ -1813,7 +1813,7 @@ export default function RecordScreen() {
           </View>
 
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
-            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{newProtocol.templateName || "Protokoll"}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{newProtocol.templateName || t('protokoll')}</Text>
             {newProtocol.protocolNumber && <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 8 }}>{newProtocol.protocolNumber}</Text>}
             <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 22 }} numberOfLines={30}>{newProtocol.protocol}</Text>
           </View>
@@ -2109,7 +2109,7 @@ export default function RecordScreen() {
                 >
                   <MaterialIcons name={voiceNoteRecording ? "stop" : "mic"} size={14} color="#FFFFFF" />
                   <Text style={styles.photoCountText}>
-                    {voiceNoteRecording ? `${30 - voiceNoteElapsed}s` : "Notiz"}
+                    {voiceNoteRecording ? `${30 - voiceNoteElapsed}s` : t('notiz')}
                   </Text>
                 </Pressable>
                 {/* Countdown progress bar */}
@@ -2320,7 +2320,7 @@ export default function RecordScreen() {
                   ]}
                 />
               </Pressable>
-              <Text style={styles.recordButtonLabel}>{isRecording ? "Stopp" : "Start"}</Text>
+              <Text style={styles.recordButtonLabel}>{isRecording ? t('stopp') : t('start')}</Text>
             </View>
 
             {/* Marker button - larger, orange color */}
@@ -2739,16 +2739,16 @@ export default function RecordScreen() {
             </Text>
             <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
               {[
-                { name: "Abnahmeprotokoll", desc: "Formelle Abnahme mit Mängelliste, Teilnehmern und Unterschriftsfeld", category: "bau" as TemplateCategory, icon: "assignment-turned-in", prompt: "Erstelle ein formelles Abnahmeprotokoll mit: 1. Objekt/Bauvorhaben, 2. Datum und Teilnehmer, 3. Gegenstand der Abnahme, 4. Festgestellte Mängel (nummeriert mit Frist), 5. Vereinbarungen, 6. Ergebnis (abgenommen/nicht abgenommen/unter Vorbehalt), 7. Unterschriftsfeld." },
-                { name: "Wartungsprotokoll", desc: "Dokumentation von Wartungsarbeiten an technischen Anlagen", category: "bau" as TemplateCategory, icon: "build", prompt: "Erstelle ein Wartungsprotokoll mit: 1. Anlage/Gerät, 2. Standort, 3. Datum und Techniker, 4. Durchgeführte Arbeiten (Checkliste), 5. Festgestellte Mängel, 6. Empfohlene Maßnahmen, 7. Nächster Wartungstermin." },
-                { name: "Brandschutzbegehung", desc: "Protokoll einer Brandschutzbegehung mit Checkliste", category: "bau" as TemplateCategory, icon: "local-fire-department", prompt: "Erstelle ein Brandschutzbegehungsprotokoll mit: 1. Objekt und Datum, 2. Teilnehmer, 3. Geprüfte Bereiche, 4. Checkliste (Fluchtweg frei, Feuerlöscher vorhanden, Brandschutztüren funktionsfähig, etc.), 5. Festgestellte Mängel mit Priorität, 6. Maßnahmen und Fristen." },
-                { name: "Projektstatusbericht", desc: "Wöchentlicher Statusbericht für Projektleitung", category: "meeting" as TemplateCategory, icon: "trending-up", prompt: "Erstelle einen Projektstatusbericht mit: 1. Projekttitel und Berichtszeitraum, 2. Gesamtstatus (Ampel), 3. Erledigte Aufgaben, 4. Laufende Aufgaben, 5. Risiken und Probleme, 6. Nächste Schritte, 7. Entscheidungsbedarf." },
-                { name: "Kundengespräch", desc: "Strukturierte Zusammenfassung eines Kundengesprächs", category: "meeting" as TemplateCategory, icon: "people", prompt: "Erstelle eine strukturierte Zusammenfassung des Kundengesprächs mit: 1. Kunde und Ansprechpartner, 2. Datum und Dauer, 3. Besprochene Themen, 4. Kundenwünsche/-anforderungen, 5. Vereinbarte nächste Schritte, 6. Offene Punkte, 7. Follow-up Termin." },
-                { name: "Schulungsprotokoll", desc: "Dokumentation einer Schulung oder Unterweisung", category: "meeting" as TemplateCategory, icon: "school", prompt: "Erstelle ein Schulungsprotokoll mit: 1. Thema der Schulung, 2. Datum, Ort und Dauer, 3. Referent/Trainer, 4. Teilnehmerliste, 5. Behandelte Inhalte (Stichpunkte), 6. Praktische Übungen, 7. Offene Fragen, 8. Teilnahmebestätigung." },
-                { name: "Schadensgutachten", desc: "Gutachterliche Bewertung eines Schadens", category: "gutachten" as TemplateCategory, icon: "report-problem", prompt: "Erstelle ein Schadensgutachten mit: 1. Objekt und Standort, 2. Auftraggeber, 3. Datum der Besichtigung, 4. Schadensbeschreibung (detailliert), 5. Schadensursache (soweit erkennbar), 6. Schadensumfang und Bewertung, 7. Empfohlene Sanierungsmaßnahmen, 8. Geschätzte Kosten." },
+                { name: t('tpl_abnahmeprotokoll'), desc: t('tpl_abnahmeprotokoll_desc'), category: "bau" as TemplateCategory, icon: "assignment-turned-in", prompt: "Erstelle ein formelles Abnahmeprotokoll mit: 1. Objekt/Bauvorhaben, 2. Datum und Teilnehmer, 3. Gegenstand der Abnahme, 4. Festgestellte Mängel (nummeriert mit Frist), 5. Vereinbarungen, 6. Ergebnis (abgenommen/nicht abgenommen/unter Vorbehalt), 7. Unterschriftsfeld." },
+                { name: t('tpl_wartungsprotokoll'), desc: t('tpl_wartungsprotokoll_desc'), category: "bau" as TemplateCategory, icon: "build", prompt: "Erstelle ein Wartungsprotokoll mit: 1. Anlage/Gerät, 2. Standort, 3. Datum und Techniker, 4. Durchgeführte Arbeiten (Checkliste), 5. Festgestellte Mängel, 6. Empfohlene Maßnahmen, 7. Nächster Wartungstermin." },
+                { name: t('tpl_brandschutzbegehung'), desc: t('tpl_brandschutzbegehung_desc'), category: "bau" as TemplateCategory, icon: "local-fire-department", prompt: "Erstelle ein Brandschutzbegehungsprotokoll mit: 1. Objekt und Datum, 2. Teilnehmer, 3. Geprüfte Bereiche, 4. Checkliste (Fluchtweg frei, Feuerlöscher vorhanden, Brandschutztüren funktionsfähig, etc.), 5. Festgestellte Mängel mit Priorität, 6. Maßnahmen und Fristen." },
+                { name: t('tpl_projektstatusbericht'), desc: t('tpl_projektstatusbericht_desc'), category: "meeting" as TemplateCategory, icon: "trending-up", prompt: "Erstelle einen Projektstatusbericht mit: 1. Projekttitel und Berichtszeitraum, 2. Gesamtstatus (Ampel), 3. Erledigte Aufgaben, 4. Laufende Aufgaben, 5. Risiken und Probleme, 6. Nächste Schritte, 7. Entscheidungsbedarf." },
+                { name: t('tpl_kundengespraech'), desc: t('tpl_kundengespraech_desc'), category: "meeting" as TemplateCategory, icon: "people", prompt: "Erstelle eine strukturierte Zusammenfassung des Kundengesprächs mit: 1. Kunde und Ansprechpartner, 2. Datum und Dauer, 3. Besprochene Themen, 4. Kundenwünsche/-anforderungen, 5. Vereinbarte nächste Schritte, 6. Offene Punkte, 7. Follow-up Termin." },
+                { name: t('tpl_schulungsprotokoll'), desc: t('tpl_schulungsprotokoll_desc'), category: "meeting" as TemplateCategory, icon: "school", prompt: "Erstelle ein Schulungsprotokoll mit: 1. Thema der Schulung, 2. Datum, Ort und Dauer, 3. Referent/Trainer, 4. Teilnehmerliste, 5. Behandelte Inhalte (Stichpunkte), 6. Praktische Übungen, 7. Offene Fragen, 8. Teilnahmebestätigung." },
+                { name: t('tpl_schadensgutachten'), desc: t('tpl_schadensgutachten_desc'), category: "gutachten" as TemplateCategory, icon: "report-problem", prompt: "Erstelle ein Schadensgutachten mit: 1. Objekt und Standort, 2. Auftraggeber, 3. Datum der Besichtigung, 4. Schadensbeschreibung (detailliert), 5. Schadensursache (soweit erkennbar), 6. Schadensumfang und Bewertung, 7. Empfohlene Sanierungsmaßnahmen, 8. Geschätzte Kosten." },
                 { name: "Energieausweis-Begehung", desc: "Datenaufnahme für energetische Bewertung", category: "gutachten" as TemplateCategory, icon: "bolt", prompt: "Erstelle ein Begehungsprotokoll für die energetische Bewertung mit: 1. Gebäudedaten (Baujahr, Fläche, Geschosse), 2. Außenhülle (Wände, Dach, Fenster, Kellerdecke), 3. Heizungsanlage, 4. Warmwasserbereitung, 5. Lüftung, 6. Festgestellte energetische Schwachstellen, 7. Modernisierungsempfehlungen." },
-                { name: "Telefonnotiz", desc: "Schnelle Notiz eines Telefonats mit Aktionspunkten", category: "allgemein" as TemplateCategory, icon: "phone", prompt: "Erstelle eine Telefonnotiz mit: 1. Datum und Uhrzeit, 2. Gesprächspartner, 3. Betreff, 4. Gesprächsinhalt (Zusammenfassung), 5. Vereinbarungen/Aktionspunkte, 6. Wiedervorlage/Frist." },
-                { name: "Tagesrapport", desc: "Täglicher Arbeitsrapport mit Stunden und Material", category: "bau" as TemplateCategory, icon: "schedule", prompt: "Erstelle einen Tagesrapport mit: 1. Datum und Baustelle, 2. Wetter, 3. Arbeitskräfte (Name, Stunden, Tätigkeit), 4. Eingesetzte Geräte, 5. Verbrauchtes Material, 6. Ausgeführte Arbeiten, 7. Besondere Vorkommnisse, 8. Arbeitsstand." },
+                { name: t('tpl_telefonnotiz'), desc: t('tpl_telefonnotiz_desc'), category: "allgemein" as TemplateCategory, icon: "phone", prompt: "Erstelle eine Telefonnotiz mit: 1. Datum und Uhrzeit, 2. Gesprächspartner, 3. Betreff, 4. Gesprächsinhalt (Zusammenfassung), 5. Vereinbarungen/Aktionspunkte, 6. Wiedervorlage/Frist." },
+                { name: t('tpl_tagesrapport'), desc: t('tpl_tagesrapport_desc'), category: "bau" as TemplateCategory, icon: "schedule", prompt: "Erstelle einen Tagesrapport mit: 1. Datum und Baustelle, 2. Wetter, 3. Arbeitskräfte (Name, Stunden, Tätigkeit), 4. Eingesetzte Geräte, 5. Verbrauchtes Material, 6. Ausgeführte Arbeiten, 7. Besondere Vorkommnisse, 8. Arbeitsstand." },
               ].map((libTemplate, idx) => (
                 <Pressable
                   key={idx}

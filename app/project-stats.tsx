@@ -169,7 +169,7 @@ export default function ProjectStatsScreen() {
               style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 0, alignItems: "center", backgroundColor: timeRange === range ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: timeRange === range ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={{ fontSize: 13, fontWeight: "600", color: timeRange === range ? colors.primary : colors.muted }}>
-                {range === "week" ? "7 Tage" : range === "month" ? "30 Tage" : "Gesamt"}
+                {range === "week" ? t('sieben_tage') : range === "month" ? t('dreissig_tage') : t('gesamt')}
               </Text>
             </Pressable>
           ))}

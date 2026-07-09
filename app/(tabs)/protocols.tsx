@@ -712,11 +712,11 @@ export default function ProtocolsScreen() {
   );
 
   const sortOptions: { key: SortOption; label: string; icon: string }[] = [
-    { key: "date_desc", label: "Neueste zuerst", icon: "arrow-downward" },
-    { key: "date_asc", label: "Älteste zuerst", icon: "arrow-upward" },
+    { key: "date_desc", label: t('neueste_zuerst'), icon: "arrow-downward" },
+    { key: "date_asc", label: t('aelteste_zuerst'), icon: "arrow-upward" },
     { key: "name_asc", label: "Name A-Z", icon: "sort-by-alpha" },
     { key: "name_desc", label: "Name Z-A", icon: "sort-by-alpha" },
-    { key: "duration_desc", label: "Längste zuerst", icon: "timer" },
+    { key: "duration_desc", label: t('laengste_zuerst'), icon: "timer" },
   ];
 
   return (
@@ -787,9 +787,9 @@ export default function ProtocolsScreen() {
         {/* Filter Tabs */}
         <View style={styles.filterRow}>
           {([
-            { key: "all" as FilterOption, label: "Alle", icon: "list" },
-            { key: "favorites" as FilterOption, label: "Favoriten", icon: "star" },
-            { key: "archived" as FilterOption, label: "Archiv", icon: "archive" },
+            { key: "all" as FilterOption, label: t('filter_alle'), icon: "list" },
+            { key: "favorites" as FilterOption, label: t('favoriten'), icon: "star" },
+            { key: "archived" as FilterOption, label: t('label_archiv'), icon: "archive" },
           ]).map((f) => (
             <Pressable
               key={f.key}

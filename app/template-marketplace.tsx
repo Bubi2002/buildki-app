@@ -26,14 +26,14 @@ import {
 
 type CategoryFilter = "alle" | "baustelle" | "buero" | "allgemein" | "technik" | "recht";
 
-const CATEGORIES: { key: CategoryFilter; label: string; icon: string }[] = [
-  { key: "alle", label: "Alle", icon: "apps" },
-  { key: "baustelle", label: "Baustelle", icon: "construction" },
-  { key: "buero", label: "Büro", icon: "business" },
-  { key: "technik", label: "Technik", icon: "engineering" },
-  { key: "recht", label: "Recht", icon: "gavel" },
-  { key: "allgemein", label: "Allgemein", icon: "category" },
-];
+function getCategories(t: (key: any) => string) { return [
+  { key: "alle", label: t('cat_alle'), icon: "apps" },
+  { key: "baustelle", label: t('cat_baustelle'), icon: "construction" },
+  { key: "buero", label: t('cat_buero'), icon: "business" },
+  { key: "technik", label: t('cat_technik'), icon: "engineering" },
+  { key: "recht", label: t('cat_recht'), icon: "gavel" },
+  { key: "allgemein", label: t('cat_allgemein'), icon: "category" },
+]; }
 
 export default function TemplateMarketplaceScreen() {
   const { t } = useTranslation();
@@ -152,10 +152,10 @@ export default function TemplateMarketplaceScreen() {
 
       {/* Categories */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.categoryContent}>
-        {CATEGORIES.map(cat => (
+        {getCategories(t).map(cat => (
           <Pressable
             key={cat.key}
-            onPress={() => setCategory(cat.key)}
+            onPress={() => setCategory(cat.key as CategoryFilter)}
             style={[
               styles.categoryChip,
               { 

@@ -508,9 +508,9 @@ export default function PdfBrandingScreen() {
           <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('waehle_das_layout_fuer')}</Text>
 
           {([
-            { key: "standard" as PdfTemplate, label: "Standard", desc: "Vollständiges Protokoll mit Fotos und Metadaten", icon: "description" as const },
-            { key: "compact" as PdfTemplate, label: "Kompakt", desc: "Nur Protokolltext und Aufgaben, kleine Fotos", icon: "compress" as const },
-            { key: "detailed" as PdfTemplate, label: "Detailliert", desc: "Alle Infos inkl. Transkription, große Fotos, Planverortung", icon: "article" as const },
+            { key: "standard" as PdfTemplate, label: t('pdf_standard'), desc: t('pdf_standard_desc'), icon: "description" as const },
+            { key: "compact" as PdfTemplate, label: t('pdf_kompakt'), desc: t('pdf_kompakt_desc'), icon: "compress" as const },
+            { key: "detailed" as PdfTemplate, label: t('pdf_detailliert'), desc: t('pdf_detailliert_desc'), icon: "article" as const },
             { key: "no_photos" as PdfTemplate, label: "Ohne Fotos", desc: "Nur Text, Aufgaben und Metadaten – kein Bildmaterial", icon: "text-snippet" as const },
           ]).map((template) => (
             <Pressable

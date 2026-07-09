@@ -18,15 +18,15 @@ import { useTranslation } from "@/lib/language-provider";
 const DEADLINE_DAYS_OPTIONS = [1, 2, 3, 5, 7];
 
 // Weekdays in expo-notifications convention: 1=Sunday, 2=Monday, ..., 7=Saturday
-const WEEKDAY_LABELS: { id: number; short: string; long: string }[] = [
-  { id: 2, short: "Mo", long: "Montag" },
-  { id: 3, short: "Di", long: "Dienstag" },
-  { id: 4, short: "Mi", long: "Mittwoch" },
-  { id: 5, short: "Do", long: "Donnerstag" },
-  { id: 6, short: "Fr", long: "Freitag" },
-  { id: 7, short: "Sa", long: "Samstag" },
-  { id: 1, short: "So", long: "Sonntag" },
-];
+function getWeekdayLabels(t: (key: any) => string) { return [
+  { id: 2, short: t('cal_mo'), long: t('cal_montag') },
+  { id: 3, short: t('cal_di'), long: t('cal_dienstag') },
+  { id: 4, short: t('cal_mi'), long: t('cal_mittwoch') },
+  { id: 5, short: t('cal_do'), long: t('cal_donnerstag') },
+  { id: 6, short: t('cal_fr'), long: t('cal_freitag') },
+  { id: 7, short: t('cal_sa'), long: t('cal_samstag') },
+  { id: 1, short: t('cal_so'), long: t('cal_sonntag') },
+]; }
 
 export default function DailySummarySettingsScreen() {
   const { t } = useTranslation();
@@ -187,7 +187,7 @@ export default function DailySummarySettingsScreen() {
               </View>
 
               <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 12 }}>
-                Erinnerung um {formatTime(settings.hour, settings.minute)} Uhr
+                {t('erinnerung_um')} {formatTime(settings.hour, settings.minute)} {t('uhr')}
               </Text>
             </View>
 
@@ -197,7 +197,7 @@ export default function DailySummarySettingsScreen() {
               <Text style={[styles.rowSubtitle, { color: colors.muted, marginBottom: 12 }]}>{t('an_welchen_tagen_erinnern')}</Text>
               
               <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-                {WEEKDAY_LABELS.map((day) => {
+                {getWeekdayLabels(t).map((day) => {
                   const isSelected = (settings.weekdays || []).includes(day.id);
                   return (
                     <Pressable
@@ -294,7 +294,7 @@ export default function DailySummarySettingsScreen() {
                         ]}
                       >
                         <Text style={{ fontSize: 13, fontWeight: "600", color: settings.defectDeadlineDays === d ? colors.primary : colors.muted }}>
-                          {d} {d === 1 ? "Tag" : "Tage"}
+                          {d} {d === 1 ? t('tag') : t('tage')}
                         </Text>
                       </Pressable>
                     ))}

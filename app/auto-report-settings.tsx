@@ -53,7 +53,7 @@ export default function AutoReportSettingsScreen() {
       await saveAutoReportSettings(settings);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(t('alert_gespeichert'), settings.enabled
-        ? `Automatischer ${settings.frequency === "daily" ? "Tages" : "Wochen"}bericht aktiviert um ${String(settings.time.hour).padStart(2, "0")}:${String(settings.time.minute).padStart(2, "0")} Uhr.`
+        ? `${t('automatischer')} ${settings.frequency === "daily" ? t('tagesbericht') : t('wochenbericht')} ${t('aktiviert_um')} ${String(settings.time.hour).padStart(2, "0")}:${String(settings.time.minute).padStart(2, "0")} ${t('uhr')}.`
         : "Automatischer Bericht deaktiviert."
       );
     } catch {
