@@ -139,12 +139,15 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
-  const StatCard = ({ icon, label, value, color }: { icon: string; label: string; value: number; color: string }) => (
-    <View style={{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 0, padding: 14, minWidth: "45%" }}>
+  const StatCard = ({ icon, label, value, color, onPress }: { icon: string; label: string; value: number; color: string; onPress?: () => void }) => (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 0, padding: 14, minWidth: "45%", opacity: pressed && onPress ? 0.7 : 1 }]}
+    >
       <MaterialIcons name={icon as any} size={20} color={color} />
       <Text style={{ fontSize: 22, fontWeight: "700", color: "#F0F4F8", marginTop: 6 }}>{value}</Text>
       <Text style={{ fontSize: 11, color: "#8FA3B8", marginTop: 2 }}>{label}</Text>
-    </View>
+    </Pressable>
   );
 
   return (
@@ -183,34 +186,34 @@ export default function DashboardScreen() {
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#5DADE215", borderWidth: 1, borderColor: "#5DADE230", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="mic" size={20} color="#5DADE2" />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#5DADE2" }}>{t('nav_home')}</Text>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#5DADE2" }} numberOfLines={1}>{t('nav_home')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push("/(tabs)/projects" as any)}
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#A78BFA15", borderWidth: 1, borderColor: "#A78BFA30", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="folder" size={20} color="#A78BFA" />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#A78BFA" }}>{t('nav_projects')}</Text>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#A78BFA" }} numberOfLines={1}>{t('nav_projects')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push("/(tabs)/protocols" as any)}
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#4ADE8015", borderWidth: 1, borderColor: "#4ADE8030", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="list-alt" size={20} color="#4ADE80" />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#4ADE80" }}>{t('project_protocols')}</Text>
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#4ADE80" }} numberOfLines={1}>{t('project_protocols')}</Text>
             </Pressable>
           </View>
         </View>
 
         {/* Stats Grid */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
-          <StatCard icon="description" label={t('protokolle_gesamt')} value={stats.totalProtocols} color="#5DADE2" />
-          <StatCard icon="trending-up" label={t('diese_woche')} value={stats.thisWeekProtocols} color="#A78BFA" />
-          <StatCard icon="check-circle" label={t('offene_aufgaben')} value={stats.openTasks} color="#FBBF24" />
-          <StatCard icon="done-all" label={t('defect_resolved')} value={stats.completedTasks} color="#4ADE80" />
-          <StatCard icon="warning" label={t('offene_maengel')} value={stats.openDefects} color="#F87171" />
-          <StatCard icon="schedule" label={t('ueberfaellig')} value={stats.overdueDefects} color="#FB7185" />
-          <StatCard icon="send" label={t('delegiert')} value={stats.delegatedTasks} color="#F472B6" />
+          <StatCard icon="description" label={t('protokolle_gesamt')} value={stats.totalProtocols} color="#5DADE2" onPress={() => router.push("/(tabs)/protocols" as any)} />
+          <StatCard icon="trending-up" label={t('diese_woche')} value={stats.thisWeekProtocols} color="#A78BFA" onPress={() => router.push("/(tabs)/protocols" as any)} />
+          <StatCard icon="check-circle" label={t('offene_aufgaben')} value={stats.openTasks} color="#FBBF24" onPress={() => router.push("/(tabs)/protocols" as any)} />
+          <StatCard icon="done-all" label={t('defect_resolved')} value={stats.completedTasks} color="#4ADE80" onPress={() => router.push("/(tabs)/protocols" as any)} />
+          <StatCard icon="warning" label={t('offene_maengel')} value={stats.openDefects} color="#F87171" onPress={() => router.push("/defects" as any)} />
+          <StatCard icon="schedule" label={t('ueberfaellig')} value={stats.overdueDefects} color="#FB7185" onPress={() => router.push("/defects" as any)} />
+          <StatCard icon="send" label={t('delegiert')} value={stats.delegatedTasks} color="#F472B6" onPress={() => router.push("/(tabs)/protocols" as any)} />
           <StatCard icon="event" label={t('meetings_7_tage')} value={upcomingEvents.length} color="#38BDF8" />
         </View>
 

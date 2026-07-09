@@ -506,3 +506,5 @@
 - [x] i18n: Alle Template-Literals mit deutschen Strings auf t() umgestellt
 - [x] i18n: Einladungsnachrichten, Lösch-Bestätigungen, Export-Texte übersetzt
 - [x] i18n: 0 verbleibende deutsche Strings mit Umlauten in App-Dateien
+- [x] Fix: Dashboard Schnellaktionen – Text überläuft die Box (Text-Overflow, numberOfLines={1} + fontSize 11)
+- [x] Feature: Dashboard Statistik-Kästen anklickbar – Navigation zur jeweiligen Liste (Protokolle, Aufgaben, Mängel)
