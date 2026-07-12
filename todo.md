@@ -509,3 +509,6 @@
 - [x] Fix: Dashboard Schnellaktionen – Text überläuft die Box (Text-Overflow, numberOfLines={1} + fontSize 11)
 - [x] Feature: Dashboard Statistik-Kästen anklickbar – Navigation zur jeweiligen Liste (Protokolle, Aufgaben, Mängel)
 - [x] Bug-Fix: PDF-Export zeigt Bilder doppelt an (Fallback-Logik entfernt die Fotos duplizierte)
+- [x] Feature: Dashboard-Tab durch Tools-Tab ersetzen (großer Aufnahme-Button + Tool-Grid)
+- [x] UI: Tab-Icon und -Name von "Dashboard" zu "Tools" ändern
+- [x] Statistik-Screen als eigene Route /dashboard-stats verfügbar

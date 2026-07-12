@@ -1,304 +1,215 @@
-import { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { getDelegations, TaskDelegation } from "@/lib/task-delegation";
-import { getTeamContacts, TeamContact } from "@/lib/team-contacts";
-import { getSyncStatus, SyncStatus } from "@/lib/offline-sync";
-import { getUpcomingEvents, CalendarEvent } from "@/lib/calendar-integration";
-import { getDefects, getDefectStats } from "@/lib/defect-store";
-import { getOverdueDefects } from "@/lib/defect-pdf-export";
-import { useRouter } from "expo-router";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 
-type DashboardStats = {
-  totalProtocols: number;
-  thisWeekProtocols: number;
-  openTasks: number;
-  completedTasks: number;
-  delegatedTasks: number;
-  upcomingMeetings: number;
-  openDefects: number;
-  overdueDefects: number;
-};
+interface ToolItem {
+  key: string;
+  icon: string;
+  color: string;
+  route: string;
+}
 
-export default function DashboardScreen() {
-  const { t } = useTranslation();
+export default function ToolsScreen() {
   const colors = useColors();
   const router = useRouter();
-  const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalProtocols: 0,
-    thisWeekProtocols: 0,
-    openTasks: 0,
-    completedTasks: 0,
-    delegatedTasks: 0,
-    upcomingMeetings: 0,
-    openDefects: 0,
-    overdueDefects: 0,
-  });
-  const [delegations, setDelegations] = useState<TaskDelegation[]>([]);
-  const [contacts, setContacts] = useState<TeamContact[]>([]);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isOnline: true, pendingChanges: 0, lastSyncAt: null, conflicts: 0 });
-  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
-  const [recentActivity, setRecentActivity] = useState<{text: string; time: string; icon: string}[]>([]);
+  const { t } = useTranslation();
 
-  const loadDashboard = useCallback(async () => {
-    try {
-      const protocolsData = await AsyncStorage.getItem("protocols");
-      const protocols = protocolsData ? JSON.parse(protocolsData) : [];
-      
-      const now = new Date();
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const thisWeek = protocols.filter((p: any) => new Date(p.createdAt) > weekAgo);
-      
-      let openTasks = 0;
-      let completedTasks = 0;
-      protocols.forEach((p: any) => {
-        if (p.todos) {
-          const todos = Array.isArray(p.todos) ? p.todos : [];
-          openTasks += todos.filter((t: any) => !t.done).length;
-          completedTasks += todos.filter((t: any) => t.done).length;
-        }
-      });
+  const projectTools: ToolItem[] = [
+    { key: 'grundriss', icon: 'map', color: '#4FC3F7', route: '/floor-plan' },
+    { key: 'maengel', icon: 'warning', color: '#FF9800', route: '/defects' },
+    { key: 'tagebuch', icon: 'menu-book', color: '#66BB6A', route: '/diary' },
+    { key: 'checklist_title', icon: 'checklist', color: '#AB47BC', route: '/checklists' },
+    { key: 'team_title', icon: 'groups', color: '#5C6BC0', route: '/team' },
+    { key: 'statistik', icon: 'bar-chart', color: '#26A69A', route: '/dashboard-stats' },
+  ];
 
-      const dels = await getDelegations();
-      setDelegations(dels);
+  const exportTools: ToolItem[] = [
+    { key: 'gallery_photos', icon: 'photo-library', color: '#EC407A', route: '/photo-gallery' },
+    { key: 'qrscan', icon: 'qr-code-scanner', color: '#00BCD4', route: '/qr-scanner' },
+    { key: 'zeiterfassung', icon: 'timer', color: '#FF5722', route: '/time-tracking' },
+    { key: 'cloud', icon: 'cloud-download', color: '#607D8B', route: '/cloud-import' },
+    { key: 'export', icon: 'ios-share', color: '#43A047', route: '/project-export' },
+    { key: 'excel', icon: 'table-chart', color: '#2E7D32', route: '/project-export' },
+  ];
 
-      const teamContacts = await getTeamContacts();
-      setContacts(teamContacts);
+  const moreTools: ToolItem[] = [
+    { key: 'maengelxls', icon: 'assignment-late', color: '#FF6D00', route: '/defects' },
+    { key: 'bericht', icon: 'merge-type', color: '#7C3AED', route: '/protocol-merge' },
+    { key: 'vergleich', icon: 'compare', color: '#5C6BC0', route: '/photo-compare' },
+    { key: 'kalender', icon: 'calendar-today', color: '#EF6C00', route: '/calendar-view' },
+  ];
 
-      const status = await getSyncStatus();
-      setSyncStatus(status);
-
-      if (Platform.OS !== "web") {
-        try {
-          const events = await getUpcomingEvents(7);
-          const seen = new Set<string>();
-          const uniqueEvents = events.filter((e) => {
-            const key = `${e.title}_${e.startDate.getTime()}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
-          setUpcomingEvents(uniqueEvents.slice(0, 5));
-        } catch {
-          setUpcomingEvents([]);
-        }
-      }
-
-      const activity: {text: string; time: string; icon: string}[] = [];
-      const recentProtocols = [...protocols].sort((a: any, b: any) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ).slice(0, 5);
-      
-      recentProtocols.forEach((p: any) => {
-        const date = new Date(p.createdAt);
-        const timeStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-        activity.push({ text: p.title || t('protokoll_erstellt'), time: timeStr, icon: "description" });
-      });
-
-      dels.slice(0, 3).forEach(d => {
-        const date = new Date(d.createdAt);
-        const timeStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + " " + date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-        activity.push({ text: `Aufgabe an ${d.assignee} delegiert`, time: timeStr, icon: "send" });
-      });
-
-      activity.sort((a, b) => b.time.localeCompare(a.time));
-      setRecentActivity(activity.slice(0, 8));
-
-      const allDefects = await getDefects();
-      const defectStats = getDefectStats(allDefects);
-      const overdueDefects = getOverdueDefects(allDefects);
-
-      setStats({
-        totalProtocols: protocols.length,
-        thisWeekProtocols: thisWeek.length,
-        openTasks,
-        completedTasks,
-        delegatedTasks: dels.filter(d => d.status === "sent" || d.status === "pending").length,
-        upcomingMeetings: upcomingEvents.length,
-        openDefects: defectStats.offen + defectStats.inBearbeitung,
-        overdueDefects: overdueDefects.length,
-      });
-    } catch (e) {
-      console.error("Dashboard load error:", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadDashboard();
-    setRefreshing(false);
-  };
-
-  const StatCard = ({ icon, label, value, color, onPress }: { icon: string; label: string; value: number; color: string; onPress?: () => void }) => (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 0, padding: 14, minWidth: "45%", opacity: pressed && onPress ? 0.7 : 1 }]}
-    >
-      <MaterialIcons name={icon as any} size={20} color={color} />
-      <Text style={{ fontSize: 22, fontWeight: "700", color: "#F0F4F8", marginTop: 6 }}>{value}</Text>
-      <Text style={{ fontSize: 11, color: "#8FA3B8", marginTop: 2 }}>{label}</Text>
-    </Pressable>
+  const renderToolGrid = (tools: ToolItem[]) => (
+    <View style={styles.toolGrid}>
+      {tools.map((tool) => (
+        <Pressable
+          key={tool.key}
+          onPress={() => router.push(tool.route as any)}
+          style={({ pressed }) => [
+            styles.toolCard,
+            { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <View style={[styles.toolIconBg, { backgroundColor: tool.color + '15' }]}>
+            <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
+          </View>
+          <Text style={[styles.toolLabel, { color: colors.foreground }]} numberOfLines={1}>
+            {t(tool.key as any)}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
   );
 
   return (
     <ScreenContainer className="p-0">
       <ScrollView
         style={{ flex: 1, backgroundColor: "#0B1622" }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5DADE2" />}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* Header */}
-        <View style={{ marginBottom: 24 }}>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: "#F0F4F8", letterSpacing: -0.5 }}>{t('nav_dashboard')}</Text>
-          <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4 }}>{t('teamuebersicht_und_aktivitaeten')}</Text>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: "#F0F4F8" }]}>{t('werkzeuge')}</Text>
+          <Text style={[styles.subtitle, { color: "#8FA3B8" }]}>{t('tools_subtitle')}</Text>
         </View>
 
-        {/* Sync Status Banner */}
-        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: syncStatus.isOnline ? "#4ADE8010" : "#FBBF2410", borderRadius: 0, borderWidth: 1, borderColor: syncStatus.isOnline ? "#4ADE8030" : "#FBBF2430", padding: 12, marginBottom: 16, gap: 8 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncStatus.isOnline ? "#4ADE80" : "#FBBF24" }} />
-          <Text style={{ fontSize: 12, color: syncStatus.isOnline ? "#4ADE80" : "#FBBF24", fontWeight: "500", flex: 1 }}>
-            {syncStatus.isOnline ? t('sync_online') : t('sync_offline')} • {syncStatus.pendingChanges} {t('sync_ausstehende_aenderungen')}
-            {syncStatus.conflicts > 0 ? ` • ${syncStatus.conflicts} Konflikte` : ""}
-          </Text>
-          {syncStatus.lastSyncAt && (
-            <Text style={{ fontSize: 10, color: "#8FA3B8" }}>
-              Zuletzt: {new Date(syncStatus.lastSyncAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-            </Text>
-          )}
-        </View>
-
-        {/* Quick Actions */}
-        <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: "#F0F4F8", marginBottom: 10, letterSpacing: 0.3 }}>{t('schnellaktionen')}</Text>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Pressable
-              onPress={() => router.push("/(tabs)" as any)}
-              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#5DADE215", borderWidth: 1, borderColor: "#5DADE230", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="mic" size={20} color="#5DADE2" />
-              <Text style={{ fontSize: 11, fontWeight: "600", color: "#5DADE2" }} numberOfLines={1}>{t('nav_home')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/(tabs)/projects" as any)}
-              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#A78BFA15", borderWidth: 1, borderColor: "#A78BFA30", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="folder" size={20} color="#A78BFA" />
-              <Text style={{ fontSize: 11, fontWeight: "600", color: "#A78BFA" }} numberOfLines={1}>{t('nav_projects')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/(tabs)/protocols" as any)}
-              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#4ADE8015", borderWidth: 1, borderColor: "#4ADE8030", borderRadius: 0, padding: 12, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="list-alt" size={20} color="#4ADE80" />
-              <Text style={{ fontSize: 11, fontWeight: "600", color: "#4ADE80" }} numberOfLines={1}>{t('project_protocols')}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Stats Grid */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
-          <StatCard icon="description" label={t('protokolle_gesamt')} value={stats.totalProtocols} color="#5DADE2" onPress={() => router.push("/(tabs)/protocols" as any)} />
-          <StatCard icon="trending-up" label={t('diese_woche')} value={stats.thisWeekProtocols} color="#A78BFA" onPress={() => router.push("/(tabs)/protocols" as any)} />
-          <StatCard icon="check-circle" label={t('offene_aufgaben')} value={stats.openTasks} color="#FBBF24" onPress={() => router.push("/(tabs)/protocols" as any)} />
-          <StatCard icon="done-all" label={t('defect_resolved')} value={stats.completedTasks} color="#4ADE80" onPress={() => router.push("/(tabs)/protocols" as any)} />
-          <StatCard icon="warning" label={t('offene_maengel')} value={stats.openDefects} color="#F87171" onPress={() => router.push("/defects" as any)} />
-          <StatCard icon="schedule" label={t('ueberfaellig')} value={stats.overdueDefects} color="#FB7185" onPress={() => router.push("/defects" as any)} />
-          <StatCard icon="send" label={t('delegiert')} value={stats.delegatedTasks} color="#F472B6" onPress={() => router.push("/(tabs)/protocols" as any)} />
-          <StatCard icon="event" label={t('meetings_7_tage')} value={upcomingEvents.length} color="#38BDF8" />
-        </View>
-
-        {/* Upcoming Events */}
-        {upcomingEvents.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('kommende_termine')}</Text>
-            {upcomingEvents.map((event) => (
-              <View key={event.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1E3A5F" }}>
-                <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#38BDF810", borderWidth: 1, borderColor: "#38BDF830", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  <MaterialIcons name="event" size={18} color="#38BDF8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "500", color: "#F0F4F8" }}>{event.title}</Text>
-                  <Text style={{ fontSize: 11, color: "#8FA3B8" }}>
-                    {event.startDate.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })} • {event.startDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Delegated Tasks */}
-        {delegations.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('delegierte_aufgaben')}</Text>
-            {delegations.slice(0, 5).map((del) => (
-              <View key={del.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1E3A5F" }}>
-                <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: del.status === "completed" ? "#4ADE8010" : del.status === "sent" ? "#5DADE210" : "#FBBF2410", borderWidth: 1, borderColor: del.status === "completed" ? "#4ADE8030" : del.status === "sent" ? "#5DADE230" : "#FBBF2430", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  <MaterialIcons name={del.status === "completed" ? "check" : del.status === "sent" ? "send" : "schedule"} size={16} color={del.status === "completed" ? "#4ADE80" : del.status === "sent" ? "#5DADE2" : "#FBBF24"} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "500", color: "#F0F4F8" }} numberOfLines={1}>{del.taskText}</Text>
-                  <View style={{ flexDirection: "row", gap: 8, marginTop: 2 }}>
-                    <Text style={{ fontSize: 11, color: "#8FA3B8" }}>{del.assignee}</Text>
-                    <Text style={{ fontSize: 11, color: del.priority === "hoch" ? "#F87171" : del.priority === "mittel" ? "#FBBF24" : "#4ADE80" }}>● {del.priority}</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Team Contacts */}
-        {contacts.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('team_title')}</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {contacts.map((contact) => (
-                <View key={contact.id} style={{ alignItems: "center", width: 70 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: "#5DADE215", borderWidth: 1, borderColor: "#5DADE230", alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ fontSize: 16, fontWeight: "600", color: "#5DADE2" }}>{contact.name.charAt(0).toUpperCase()}</Text>
-                  </View>
-                  <Text style={{ fontSize: 10, color: "#F0F4F8", marginTop: 4, textAlign: "center" }} numberOfLines={1}>{contact.name}</Text>
-                  {contact.role ? <Text style={{ fontSize: 9, color: "#8FA3B8" }} numberOfLines={1}>{contact.role}</Text> : null}
-                </View>
-              ))}
+        {/* Big Recording Button */}
+        <Pressable
+          onPress={() => router.push('/(tabs)/' as any)}
+          style={({ pressed }) => [
+            styles.recordButton,
+            { opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <View style={styles.recordButtonContent}>
+            <View style={styles.recordIconCircle}>
+              <MaterialIcons name="mic" size={32} color="#fff" />
             </View>
+            <View style={styles.recordTextContainer}>
+              <Text style={styles.recordTitle}>{t('neue_aufnahme_starten')}</Text>
+              <Text style={styles.recordDesc}>{t('tools_record_desc')}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={28} color="rgba(255,255,255,0.7)" />
           </View>
-        )}
+        </Pressable>
 
-        {/* Recent Activity */}
-        {recentActivity.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0F4F8", marginBottom: 12, letterSpacing: 0.3 }}>{t('letzte_aktivitaeten')}</Text>
-            {recentActivity.map((activity, idx) => (
-              <View key={idx} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8 }}>
-                <MaterialIcons name={activity.icon as any} size={16} color="#8FA3B8" style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 12, color: "#F0F4F8", flex: 1 }} numberOfLines={1}>{activity.text}</Text>
-                <Text style={{ fontSize: 10, color: "#8FA3B8" }}>{activity.time}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {/* Project Tools Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: "#8FA3B8" }]}>{t('tools_section_project')}</Text>
+          {renderToolGrid(projectTools)}
+        </View>
 
-        {/* Empty State */}
-        {stats.totalProtocols === 0 && delegations.length === 0 && (
-          <View style={{ alignItems: "center", paddingTop: 40 }}>
-            <MaterialIcons name="dashboard" size={48} color="#8FA3B8" />
-            <Text style={{ fontSize: 16, fontWeight: "600", color: "#F0F4F8", marginTop: 12 }}>{t('willkommen_im_dashboard')}</Text>
-            <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4, textAlign: "center" }}>{t('erstellen_sie_ihr_erstes')}</Text>
-          </View>
-        )}
+        {/* Export & Data Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: "#8FA3B8" }]}>{t('tools_section_export')}</Text>
+          {renderToolGrid(exportTools)}
+        </View>
+
+        {/* More Tools Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: "#8FA3B8" }]}>{t('tools_section_more')}</Text>
+          {renderToolGrid(moreTools)}
+        </View>
       </ScrollView>
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  recordButton: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: '#E53935',
+    shadowColor: '#E53935',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  recordButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  recordIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordTextContainer: {
+    flex: 1,
+  },
+  recordTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  recordDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  toolGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  toolCard: {
+    width: '31%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(30, 58, 95, 0.5)',
+  },
+  toolIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  toolLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});

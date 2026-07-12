@@ -21,6 +21,7 @@ const MAPPING = {
   "gearshape.fill": "settings",
   "folder.fill": "folder",
   "chart.bar.fill": "dashboard",
+  "square.grid.2x2.fill": "apps",
   "person.3.fill": "groups",
 } as IconMapping;
 
