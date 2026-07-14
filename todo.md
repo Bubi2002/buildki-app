@@ -514,3 +514,5 @@
 - [x] Statistik-Screen als eigene Route /dashboard-stats verfügbar
 - [x] UI: Tools-Tab Redesign – Projekt-Selektor oben + kompaktere Tool-Kästchen (wie project-detail)
 - [x] UI: Tools navigieren mit projectId zum gewählten Projekt
+- [x] UI: Tab-Reihenfolge ändern – Tools links (Pos 2), Übersicht rechts
+- [x] UI: Projekte-Tab zu Übersicht-Tab umbauen (Favoriten, letzte Protokolle, offene Aufgaben, Stats)

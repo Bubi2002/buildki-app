@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
-  FlatList,
   Pressable,
   TextInput,
   Modal,
@@ -13,7 +12,6 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
-  Share,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +19,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { PROJECT_TEMPLATES, type ProjectTemplate } from "@/lib/project-templates";
+import { PROJECT_TEMPLATES } from "@/lib/project-templates";
 import { useTranslation } from "@/lib/language-provider";
 
 type ProjectItem = {
@@ -36,16 +34,29 @@ type ProjectItem = {
   favorite?: boolean;
 };
 
+type ProtocolItem = {
+  id: string;
+  title: string;
+  createdAt: string;
+  projectId?: string;
+  projectName?: string;
+};
+
+type DefectItem = {
+  id: string;
+  title: string;
+  status: string;
+};
+
 const PROJECT_COLORS = ["#F87171", "#FBBF24", "#4ADE80", "#38BDF8", "#A78BFA", "#F472B6", "#2DD4BF", "#818CF8"];
 
-export default function ProjectsTab() {
+export default function OverviewTab() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"activity" | "name" | "created">("activity");
-  const [showArchived, setShowArchived] = useState(false);
+  const [protocols, setProtocols] = useState<ProtocolItem[]>([]);
+  const [defects, setDefects] = useState<DefectItem[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -55,37 +66,34 @@ export default function ProjectsTab() {
 
   useFocusEffect(
     useCallback(() => {
-      loadProjects();
+      loadData();
     }, [])
   );
 
-  const loadProjects = async () => {
+  const loadData = async () => {
     try {
-      const stored = await AsyncStorage.getItem("projects");
-      setProjects(stored ? JSON.parse(stored) : []);
+      const [projData, protoData, defData] = await Promise.all([
+        AsyncStorage.getItem("projects"),
+        AsyncStorage.getItem("protocols"),
+        AsyncStorage.getItem("defects"),
+      ]);
+      setProjects(projData ? JSON.parse(projData) : []);
+      setProtocols(protoData ? JSON.parse(protoData) : []);
+      setDefects(defData ? JSON.parse(defData) : []);
     } catch {}
   };
 
-  const filteredProjects = useMemo(() => {
-    let list = projects.filter((p) => (showArchived ? p.archived : !p.archived));
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          (p.protocolPrefix || "").toLowerCase().includes(q)
-      );
-    }
-    const favs = list.filter((p) => p.favorite);
-    const rest = list.filter((p) => !p.favorite);
-    const sortFn = (a: ProjectItem, b: ProjectItem) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "created") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    };
-    return [...favs.sort(sortFn), ...rest.sort(sortFn)];
-  }, [projects, search, sortBy, showArchived]);
+  const favorites = useMemo(() => projects.filter(p => p.favorite && !p.archived), [projects]);
+  const activeProjects = useMemo(() => projects.filter(p => !p.archived), [projects]);
+  const recentProtocols = useMemo(() =>
+    [...protocols].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    [protocols]
+  );
+  const openDefects = useMemo(() => defects.filter(d => d.status !== 'erledigt' && d.status !== 'done'), [defects]);
+  const weekProtocols = useMemo(() => {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return protocols.filter(p => new Date(p.createdAt) >= weekAgo);
+  }, [protocols]);
 
   const createProject = async () => {
     if (!newName.trim()) {
@@ -110,6 +118,7 @@ export default function ProjectsTab() {
     setNewDesc("");
     setNewPrefix("");
     setNewColor(PROJECT_COLORS[0]);
+    setSelectedTemplate(null);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await AsyncStorage.setItem("last-selected-project-id", np.id);
     router.push(`/project-detail?id=${np.id}` as any);
@@ -122,215 +131,183 @@ export default function ProjectsTab() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const archiveProject = async (id: string) => {
-    const project = projects.find((p) => p.id === id);
-    Alert.alert(
-      project?.archived ? t('btn_wiederherstellen') : t('btn_archivieren'),
-      project?.archived
-        ? `"${project.name}" wiederherstellen?`
-        : `"${project?.name}" archivieren? Es bleibt erhalten, wird aber ausgeblendet.`,
-      [
-        { text: t('btn_abbrechen'), style: "cancel" },
-        {
-          text: project?.archived ? t('btn_wiederherstellen') : t('btn_archivieren'),
-          onPress: async () => {
-            const updated = projects.map((p) => (p.id === id ? { ...p, archived: !p.archived } : p));
-            setProjects(updated);
-            await AsyncStorage.setItem("projects", JSON.stringify(updated));
-          },
-        },
-      ]
-    );
-  };
-
-  const deleteProject = async (id: string) => {
-    const project = projects.find((p) => p.id === id);
-    Alert.alert(t('alert_projekt_loeschen'), t('projekt_endgueltig_loeschen').replace('{name}', project?.name || ''), [
-      { text: t('btn_abbrechen'), style: "cancel" },
-      {
-        text: t('btn_loeschen'),
-        style: "destructive",
-        onPress: async () => {
-          const updated = projects.filter((p) => p.id !== id);
-          setProjects(updated);
-          await AsyncStorage.setItem("projects", JSON.stringify(updated));
-        },
-      },
-    ]);
-  };
-
   const selectProject = async (project: ProjectItem) => {
     await AsyncStorage.setItem("last-selected-project-id", project.id);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/project-detail?id=${project.id}` as any);
   };
 
-  const activeCount = projects.filter((p) => !p.archived).length;
-  const archivedCount = projects.filter((p) => p.archived).length;
-
   return (
     <ScreenContainer className="flex-1">
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>{t('nav_projects')}</Text>
-          <Text style={styles.headerSub}>
-            {activeCount} aktiv{archivedCount > 0 ? ` \u2022 ${archivedCount} archiviert` : ""}
-          </Text>
-        </View>
-        <Pressable
-          onPress={() => setShowCreate(true)}
-          style={({ pressed }) => [styles.newBtn, { opacity: pressed ? 0.8 : 1 }]}
-        >
-          <MaterialIcons name="add" size={18} color="#FFF" />
-          <Text style={styles.newBtnText}>{t('neu')}</Text>
-        </Pressable>
-      </View>
-
-      {/* Search & Filter */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-        <View style={styles.searchBox}>
-          <MaterialIcons name="search" size={18} color="#8FA3B8" />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder={t('projekt_suchen')}
-            placeholderTextColor="#8FA3B8"
-            style={styles.searchInput}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <MaterialIcons name="close" size={16} color="#8FA3B8" />
-            </Pressable>
-          )}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('uebersicht')}</Text>
+          <Pressable
+            onPress={() => setShowCreate(true)}
+            style={({ pressed }) => [styles.newBtn, { opacity: pressed ? 0.8 : 1 }]}
+          >
+            <MaterialIcons name="add" size={18} color="#FFF" />
+            <Text style={styles.newBtnText}>{t('neu')}</Text>
+          </Pressable>
         </View>
 
-        {/* Sort & Archive Toggle */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            {(["activity", "name", "created"] as const).map((s) => (
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/protocols" as any)}
+            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={styles.statNumber}>{protocols.length}</Text>
+            <Text style={styles.statLabel}>{t('nav_protocols')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/(tabs)/protocols" as any)}
+            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.statNumber, { color: '#5DADE2' }]}>{weekProtocols.length}</Text>
+            <Text style={styles.statLabel}>{t('diese_woche')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/defects" as any)}
+            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.statNumber, { color: '#FF9800' }]}>{openDefects.length}</Text>
+            <Text style={styles.statLabel}>{t('offene_maengel')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/dashboard-stats" as any)}
+            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.statNumber, { color: '#4ADE80' }]}>{activeProjects.length}</Text>
+            <Text style={styles.statLabel}>{t('nav_projects')}</Text>
+          </Pressable>
+        </View>
+
+        {/* Favorites Section */}
+        {favorites.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('favoriten')}</Text>
+            {favorites.map((project) => (
               <Pressable
-                key={s}
-                onPress={() => setSortBy(s)}
-                style={({ pressed }) => [{
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 0,
-                  borderWidth: 1,
-                  borderColor: sortBy === s ? "#5DADE2" : "#1E3A5F",
-                  backgroundColor: sortBy === s ? "#5DADE215" : "transparent",
-                  opacity: pressed ? 0.7 : 1,
-                }]}
+                key={project.id}
+                onPress={() => selectProject(project)}
+                style={({ pressed }) => [styles.projectCard, { opacity: pressed ? 0.8 : 1 }]}
               >
-                <Text style={{ fontSize: 11, fontWeight: "600", color: sortBy === s ? "#5DADE2" : "#8FA3B8" }}>
-                  {s === "activity" ? t('sort_aktivitaet') : s === "name" ? t('sort_name') : t('sort_erstellt')}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={{ width: 4, height: 28, backgroundColor: project.color }} />
+                  <MaterialIcons name="star" size={16} color="#FBBF24" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.projectName} numberOfLines={1}>{project.name}</Text>
+                    {project.description ? (
+                      <Text style={styles.projectDesc} numberOfLines={1}>{project.description}</Text>
+                    ) : null}
+                  </View>
+                  <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
+                </View>
               </Pressable>
             ))}
           </View>
-          <Pressable
-            onPress={() => setShowArchived(!showArchived)}
-            style={({ pressed }) => [{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 0,
-              borderWidth: 1,
-              borderColor: showArchived ? "#FBBF24" : "#1E3A5F",
-              backgroundColor: showArchived ? "#FBBF2415" : "transparent",
-              opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            <Text style={{ fontSize: 11, fontWeight: "600", color: showArchived ? "#FBBF24" : "#8FA3B8" }}>
-              Archiv
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+        )}
 
-      {/* Project List */}
-      <FlatList
-        data={filteredProjects}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        ListEmptyComponent={
-          <View style={{ alignItems: "center", paddingTop: 60 }}>
-            <MaterialIcons name={showArchived ? "archive" : "folder-open"} size={48} color="#8FA3B8" />
-            <Text style={{ fontSize: 16, fontWeight: "600", color: "#F0F4F8", marginTop: 12 }}>
-              {showArchived ? "Kein archiviertes Projekt" : "Noch keine Projekte"}
-            </Text>
-            <Text style={{ fontSize: 13, color: "#8FA3B8", marginTop: 4, textAlign: "center" }}>
-              {showArchived ? "Archivierte Projekte erscheinen hier." : "Erstelle dein erstes Projekt, um loszulegen."}
-            </Text>
-            {!showArchived && (
-              <Pressable
-                onPress={() => setShowCreate(true)}
-                style={({ pressed }) => [{ marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 0, backgroundColor: "#5DADE2", opacity: pressed ? 0.8 : 1 }]}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFF" }}>{t('erstes_projekt_anlegen')}</Text>
-              </Pressable>
-            )}
+        {/* Recent Protocols */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t('letzte_protokolle')}</Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/protocols" as any)}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 12, color: '#5DADE2', fontWeight: '600' }}>{t('alle_anzeigen')}</Text>
+            </Pressable>
           </View>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => selectProject(item)}
-            onLongPress={() => archiveProject(item.id)}
-            style={({ pressed }) => [styles.projectCard, { opacity: pressed ? 0.8 : 1 }]}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Pressable onPress={() => toggleFavorite(item.id)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
-                <MaterialIcons
-                  name={item.favorite ? "star" : "star-outline"}
-                  size={20}
-                  color={item.favorite ? "#FBBF24" : "#8FA3B8"}
-                />
-              </Pressable>
-
-              <View style={{ width: 4, height: 32, backgroundColor: item.color, borderRadius: 0 }} />
-
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#F0F4F8" }}>{item.name}</Text>
-                {item.description ? (
-                  <Text style={{ fontSize: 12, color: "#8FA3B8", marginTop: 2 }} numberOfLines={1}>{item.description}</Text>
-                ) : null}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-                  {item.protocolPrefix && (
-                    <Text style={{ fontSize: 10, fontWeight: "600", color: "#5DADE2", backgroundColor: "#5DADE215", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 0 }}>
-                      {item.protocolPrefix}-{String((item.protocolCounter || 0) + 1).padStart(3, "0")}
-                    </Text>
-                  )}
-                  <Text style={{ fontSize: 10, color: "#8FA3B8" }}>
-                    {new Date(item.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+          {recentProtocols.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <MaterialIcons name="description" size={24} color="#8FA3B8" />
+              <Text style={styles.emptyText}>{t('keine_protokolle_vorhanden')}</Text>
+            </View>
+          ) : (
+            recentProtocols.map((proto) => (
+              <Pressable
+                key={proto.id}
+                onPress={() => router.push(`/protocol-detail?id=${proto.id}` as any)}
+                style={({ pressed }) => [styles.listItem, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="description" size={18} color="#5DADE2" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listItemTitle} numberOfLines={1}>{proto.title || t('kein_titel')}</Text>
+                  <Text style={styles.listItemSub}>
+                    {new Date(proto.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
+                    {proto.projectName ? ` \u2022 ${proto.projectName}` : ''}
                   </Text>
                 </View>
-              </View>
-
-              <Pressable
-                onPress={() => {
-                  if (item.archived) {
-                    archiveProject(item.id);
-                  } else {
-                    Alert.alert(
-                      item.name,
-                      t('msg_was_moechtest_du_mit_projekt_tun'),
-                      [
-                        { text: t('btn_archivieren'), onPress: () => archiveProject(item.id) },
-                        { text: t('btn_teilen'), onPress: () => Share.share({ message: `Projekt: ${item.name}${item.description ? '\n' + item.description : ''}` }) },
-                        { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteProject(item.id) },
-                        { text: t('btn_abbrechen'), style: "cancel" },
-                      ]
-                    );
-                  }
-                }}
-                style={({ pressed }) => [{ padding: 6, opacity: pressed ? 0.5 : 1 }]}
-              >
-                <MaterialIcons name={item.archived ? "unarchive" : "more-vert"} size={20} color="#8FA3B8" />
+                <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
               </Pressable>
-              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+            ))
+          )}
+        </View>
+
+        {/* All Projects */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t('nav_projects')}</Text>
+            <Pressable
+              onPress={() => setShowCreate(true)}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="add-circle-outline" size={20} color="#5DADE2" />
+            </Pressable>
+          </View>
+          {activeProjects.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <MaterialIcons name="folder-open" size={24} color="#8FA3B8" />
+              <Text style={styles.emptyText}>{t('keine_projekte' as any)}</Text>
+              <Pressable
+                onPress={() => setShowCreate(true)}
+                style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFF' }}>{t('erstes_projekt_anlegen')}</Text>
+              </Pressable>
             </View>
-          </Pressable>
-        )}
-      />
+          ) : (
+            activeProjects.map((project) => (
+              <Pressable
+                key={project.id}
+                onPress={() => selectProject(project)}
+                style={({ pressed }) => [styles.projectCard, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Pressable onPress={() => toggleFavorite(project.id)} style={({ pressed: p }) => [{ opacity: p ? 0.5 : 1 }]}>
+                    <MaterialIcons
+                      name={project.favorite ? "star" : "star-outline"}
+                      size={18}
+                      color={project.favorite ? "#FBBF24" : "#8FA3B8"}
+                    />
+                  </Pressable>
+                  <View style={{ width: 4, height: 28, backgroundColor: project.color }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.projectName} numberOfLines={1}>{project.name}</Text>
+                    {project.description ? (
+                      <Text style={styles.projectDesc} numberOfLines={1}>{project.description}</Text>
+                    ) : null}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 3 }}>
+                      {project.protocolPrefix && (
+                        <Text style={styles.prefixBadge}>
+                          {project.protocolPrefix}-{String((project.protocolCounter || 0) + 1).padStart(3, "0")}
+                        </Text>
+                      )}
+                      <Text style={{ fontSize: 10, color: "#8FA3B8" }}>
+                        {new Date(project.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
+                      </Text>
+                    </View>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
+                </View>
+              </Pressable>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
       {/* Create Project Modal */}
       <Modal visible={showCreate} animationType="fade" transparent={true}>
@@ -341,121 +318,104 @@ export default function ProjectsTab() {
               style={styles.modalKeyboardView}
             >
               <View style={styles.modalCard}>
-                {/* Modal Header */}
                 <View style={styles.modalCardHeader}>
                   <Text style={{ fontSize: 18, fontWeight: "700", color: "#F0F4F8" }}>{t('project_new')}</Text>
                   <Pressable onPress={() => { setShowCreate(false); Keyboard.dismiss(); }} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
                     <MaterialIcons name="close" size={22} color="#8FA3B8" />
                   </Pressable>
                 </View>
-
-                {/* Modal Content */}
-                <ScrollView style={{ maxHeight: 400 }} keyboardShouldPersistTaps="handled">
-                  <View style={{ padding: 20, gap: 16 }}>
-                    {/* Template Selection */}
-                    <View>
-                      <Text style={styles.fieldLabel}>{t('vorlage_optional')}</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                        {PROJECT_TEMPLATES.map((t) => (
-                          <Pressable
-                            key={t.id}
-                            onPress={() => {
-                              if (selectedTemplate === t.id) {
-                                setSelectedTemplate(null);
-                              } else {
-                                setSelectedTemplate(t.id);
-                                setNewColor(t.color);
-                                setNewPrefix(t.defaultPrefix);
-                              }
-                            }}
-                            style={({ pressed }) => [{
-                              paddingHorizontal: 14, paddingVertical: 10, borderRadius: 0, marginRight: 8,
-                              borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6,
-                              borderColor: selectedTemplate === t.id ? t.color : "#1E3A5F",
-                              backgroundColor: selectedTemplate === t.id ? t.color + "15" : "transparent",
-                              opacity: pressed ? 0.7 : 1,
-                            }]}
-                          >
-                            <MaterialIcons name={t.icon as any} size={18} color={selectedTemplate === t.id ? t.color : "#8FA3B8"} />
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: selectedTemplate === t.id ? t.color : "#8FA3B8" }}>{t.name}</Text>
-                          </Pressable>
-                        ))}
-                      </ScrollView>
-                    </View>
-
-                    <View>
-                      <Text style={styles.fieldLabel}>{t('projektname')}</Text>
-                      <TextInput
-                        value={newName}
-                        onChangeText={setNewName}
-                        placeholder={t('placeholder_zb_neubau')}
-                        placeholderTextColor="#8FA3B8"
-                        returnKeyType="next"
-                        style={styles.input}
-                        autoFocus
-                      />
-                    </View>
-
-                    <View>
-                      <Text style={styles.fieldLabel}>{t('beschreibung_optional')}</Text>
-                      <TextInput
-                        value={newDesc}
-                        onChangeText={setNewDesc}
-                        placeholder={t('kurze_projektbeschreibung')}
-                        placeholderTextColor="#8FA3B8"
-                        returnKeyType="done"
-                        blurOnSubmit={true}
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                        style={[styles.input, { minHeight: 50, textAlignVertical: "top" }]}
-                      />
-                    </View>
-
-                    <View>
-                      <Text style={styles.fieldLabel}>{t('protokollpraefix')}</Text>
-                      <TextInput
-                        value={newPrefix}
-                        onChangeText={(t) => setNewPrefix(t.toUpperCase())}
-                        placeholder="z.B. BST, MNG (auto: erste 3 Buchstaben)"
-                        placeholderTextColor="#8FA3B8"
-                        maxLength={5}
-                        autoCapitalize="characters"
-                        returnKeyType="done"
-                        blurOnSubmit={true}
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                        style={styles.input}
-                      />
-                      <Text style={{ fontSize: 11, color: "#8FA3B8", marginTop: 4 }}>
-                        Optional: Automatische Nummerierung (z.B. BST-001)
-                      </Text>
-                    </View>
-
-                    <View>
-                      <Text style={styles.fieldLabel}>{t('farbe_waehlen')}</Text>
-                      <View style={{ flexDirection: "row", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                        {PROJECT_COLORS.map((c) => (
-                          <Pressable
-                            key={c}
-                            onPress={() => setNewColor(c)}
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 0,
-                              backgroundColor: c,
-                              borderWidth: newColor === c ? 3 : 0,
-                              borderColor: "#FFF",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            {newColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
-                          </Pressable>
-                        ))}
-                      </View>
+                <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ padding: 20, gap: 16 }}>
+                  <View>
+                    <Text style={styles.fieldLabel}>{t('vorlage_optional')}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                      {PROJECT_TEMPLATES.map((tmpl) => (
+                        <Pressable
+                          key={tmpl.id}
+                          onPress={() => {
+                            if (selectedTemplate === tmpl.id) {
+                              setSelectedTemplate(null);
+                            } else {
+                              setSelectedTemplate(tmpl.id);
+                              setNewColor(tmpl.color);
+                              setNewPrefix(tmpl.defaultPrefix);
+                            }
+                          }}
+                          style={({ pressed }) => [{
+                            paddingHorizontal: 14, paddingVertical: 10, marginRight: 8,
+                            borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6,
+                            borderColor: selectedTemplate === tmpl.id ? tmpl.color : "#1E3A5F",
+                            backgroundColor: selectedTemplate === tmpl.id ? tmpl.color + "15" : "transparent",
+                            opacity: pressed ? 0.7 : 1,
+                          }]}
+                        >
+                          <MaterialIcons name={tmpl.icon as any} size={18} color={selectedTemplate === tmpl.id ? tmpl.color : "#8FA3B8"} />
+                          <Text style={{ fontSize: 13, fontWeight: "600", color: selectedTemplate === tmpl.id ? tmpl.color : "#8FA3B8" }}>{tmpl.name}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                  <View>
+                    <Text style={styles.fieldLabel}>{t('projektname')}</Text>
+                    <TextInput
+                      value={newName}
+                      onChangeText={setNewName}
+                      placeholder={t('placeholder_zb_neubau')}
+                      placeholderTextColor="#8FA3B8"
+                      returnKeyType="next"
+                      style={styles.input}
+                      autoFocus
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.fieldLabel}>{t('beschreibung_optional')}</Text>
+                    <TextInput
+                      value={newDesc}
+                      onChangeText={setNewDesc}
+                      placeholder={t('kurze_projektbeschreibung')}
+                      placeholderTextColor="#8FA3B8"
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                      style={[styles.input, { minHeight: 50, textAlignVertical: "top" }]}
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.fieldLabel}>{t('protokollpraefix')}</Text>
+                    <TextInput
+                      value={newPrefix}
+                      onChangeText={(val) => setNewPrefix(val.toUpperCase())}
+                      placeholder="z.B. BST, MNG"
+                      placeholderTextColor="#8FA3B8"
+                      maxLength={5}
+                      autoCapitalize="characters"
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                      style={styles.input}
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.fieldLabel}>{t('farbe_waehlen')}</Text>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+                      {PROJECT_COLORS.map((c) => (
+                        <Pressable
+                          key={c}
+                          onPress={() => setNewColor(c)}
+                          style={{
+                            width: 32, height: 32,
+                            backgroundColor: c,
+                            borderWidth: newColor === c ? 3 : 0,
+                            borderColor: "#FFF",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {newColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
+                        </Pressable>
+                      ))}
                     </View>
                   </View>
                 </ScrollView>
-
-                {/* Modal Footer */}
                 <View style={styles.modalCardFooter}>
                   <Pressable
                     onPress={() => { setShowCreate(false); Keyboard.dismiss(); }}
@@ -495,18 +455,12 @@ const styles = StyleSheet.create({
     color: "#F0F4F8",
     letterSpacing: -0.3,
   },
-  headerSub: {
-    fontSize: 12,
-    color: "#8FA3B8",
-    marginTop: 2,
-  },
   newBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 0,
     backgroundColor: "#5DADE2",
   },
   newBtnText: {
@@ -514,29 +468,113 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFF",
   },
-  searchBox: {
+  statsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    gap: 6,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#0F1E30",
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: "center",
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#F0F4F8",
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: "500",
+    color: "#8FA3B8",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  section: {
+    paddingHorizontal: 16,
+    marginTop: 20,
+  },
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 0,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0F1E30",
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#F0F4F8",
-    marginLeft: 8,
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8FA3B8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 10,
   },
   projectCard: {
-    padding: 14,
-    borderRadius: 0,
+    padding: 12,
     borderWidth: 1,
     borderColor: "#1E3A5F",
     backgroundColor: "#0F1E30",
-    marginBottom: 10,
+    marginBottom: 8,
+  },
+  projectName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#F0F4F8",
+  },
+  projectDesc: {
+    fontSize: 11,
+    color: "#8FA3B8",
+    marginTop: 1,
+  },
+  prefixBadge: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#5DADE2",
+    backgroundColor: "#5DADE215",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  listItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#0F1E30",
+    marginBottom: 6,
+  },
+  listItemTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#F0F4F8",
+  },
+  listItemSub: {
+    fontSize: 11,
+    color: "#8FA3B8",
+    marginTop: 1,
+  },
+  emptyCard: {
+    alignItems: "center",
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#0F1E30",
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#8FA3B8",
+  },
+  emptyBtn: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#5DADE2",
   },
   modalOverlay: {
     flex: 1,
@@ -553,7 +591,6 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 440,
-    borderRadius: 0,
     borderWidth: 1,
     borderColor: "#1E3A5F",
     backgroundColor: "#0F1E30",
@@ -584,7 +621,6 @@ const styles = StyleSheet.create({
   },
   input: {
     padding: 12,
-    borderRadius: 0,
     borderWidth: 1,
     fontSize: 15,
     borderColor: "#1E3A5F",
@@ -594,7 +630,6 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 0,
     alignItems: "center",
     backgroundColor: "#0B1622",
     borderWidth: 1,
@@ -603,7 +638,6 @@ const styles = StyleSheet.create({
   createBtn: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 0,
     alignItems: "center",
     backgroundColor: "#5DADE2",
   },
