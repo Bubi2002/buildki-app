@@ -516,3 +516,4 @@
 - [x] UI: Tools navigieren mit projectId zum gewählten Projekt
 - [x] UI: Tab-Reihenfolge ändern – Tools links (Pos 2), Übersicht rechts
 - [x] UI: Projekte-Tab zu Übersicht-Tab umbauen (Favoriten, letzte Protokolle, offene Aufgaben, Stats)
+- [x] Bug-Fix: Fotos werden nicht mehr im PDF angezeigt (nach Aufnahme mit Fotos)

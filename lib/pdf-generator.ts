@@ -424,30 +424,13 @@ function generatePdfHtml(
   while ((inlineMatch = inlineRegex.exec(protocol.protocol)) !== null) {
     inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
   }
-  // Only show remaining (non-inline) photos in the Fotodokumentation section
-  // Also filter out empty entries (photos that couldn't be read)
-  let remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => !inlinePlacedPhotos.has(i) && photoDataUris[i]);
-  
-  // If there are inline-placed photos whose data URI was empty (failed to load),
-  // add them back so they still appear in Fotodokumentation as a fallback.
-  // But do NOT re-add photos that were successfully rendered inline.
+  // Always show ALL valid photos in the Fotodokumentation section.
+  // Even if [Foto X] markers exist in the text and photos are rendered inline,
+  // we still include them in Fotodokumentation to guarantee they appear in the PDF.
+  // This prevents the scenario where base64 conversion partially fails or
+  // the inline rendering regex doesn't match the exact line format.
   const validPhotoCount = photoDataUris.filter(u => u).length;
-  if (validPhotoCount > 0 && inlinePlacedPhotos.size > 0) {
-    // Check if any inline-placed photo actually had a valid data URI (= was rendered inline)
-    const inlineRenderedCount = Array.from(inlinePlacedPhotos).filter(i => i >= 0 && i < photoDataUris.length && photoDataUris[i]).length;
-    if (inlineRenderedCount === 0) {
-      // None of the inline-referenced photos could be rendered (all had empty URIs),
-      // so show ALL valid photos in Fotodokumentation as fallback
-      remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
-    }
-    // If inlineRenderedCount > 0, those photos were successfully shown inline – do NOT duplicate them
-  }
-  
-  // Safety: if no photos were placed inline at all (no [Foto X] markers in text)
-  // and remainingPhotoIndices is empty but we have valid photos, show them all
-  if (remainingPhotoIndices.length === 0 && validPhotoCount > 0 && inlinePlacedPhotos.size === 0) {
-    remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
-  }
+  let remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
 
   const photosHtml =
     remainingPhotoIndices.length > 0

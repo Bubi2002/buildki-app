@@ -34,7 +34,6 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, TEMPLATE_CATEGORIES, type ProtocolTemplate, type TemplateCategory } from "@/shared/templates";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import * as Print from "expo-print";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
 import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
 import { getCurrentEvent, addNotesToEvent, suggestMeetingTime, scheduleFollowUp, type CalendarEvent } from "@/lib/calendar-integration";
@@ -1311,21 +1310,18 @@ export default function RecordScreen() {
           const companyStr = await AsyncStorage.getItem("company-settings");
           const companySettings = companyStr ? JSON.parse(companyStr) : {};
 
-          const pdfHtml = await generateProtocolPdf({
+          // generateProtocolPdf returns a file URI directly (not HTML)
+          const pdfUri = await generateProtocolPdf({
             title: newProtocol.templateName || t('protokoll'),
             protocol: newProtocol.protocol,
             templateName: newProtocol.templateName || t('protokoll'),
             photos: newProtocol.photos || [],
+            photoTimestamps: newProtocol.photoTimestamps || undefined,
             todos: newProtocol.todos || [],
             duration: newProtocol.duration,
             createdAt: newProtocol.createdAt,
             protocolNumber: newProtocol.protocolNumber,
             projectName: selectedProject?.name || undefined,
-          });
-
-          const { uri: pdfUri } = await Print.printToFileAsync({
-            html: pdfHtml,
-            base64: false,
           });
 
           // Share via system share sheet (opens WhatsApp/Email picker)
