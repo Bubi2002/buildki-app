@@ -512,3 +512,5 @@
 - [x] Feature: Dashboard-Tab durch Tools-Tab ersetzen (großer Aufnahme-Button + Tool-Grid)
 - [x] UI: Tab-Icon und -Name von "Dashboard" zu "Tools" ändern
 - [x] Statistik-Screen als eigene Route /dashboard-stats verfügbar
+- [x] UI: Tools-Tab Redesign – Projekt-Selektor oben + kompaktere Tool-Kästchen (wie project-detail)
+- [x] UI: Tools navigieren mit projectId zum gewählten Projekt
