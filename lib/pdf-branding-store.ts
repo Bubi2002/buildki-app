@@ -209,7 +209,7 @@ export function generateCoverPage(
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
   return `
-  <div style="page-break-after: always; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; text-align: center;">
+  <div style="page-break-after: always; padding: 60px 40px; text-align: center;">
     <!-- Logo -->
     ${logoBase64 ? `<div style="margin-bottom: 32px; text-align: center;"><img src="${logoBase64}" style="height: 80px; width: auto; max-width: 200px; object-fit: contain; display: inline-block;" /></div>` : ""}
     ${!logoBase64 && branding.companyName ? `<div style="font-size: 28px; font-weight: 800; color: ${accentColor}; margin-bottom: 32px; letter-spacing: -0.5px;">${branding.companyName}</div>` : ""}
@@ -231,10 +231,10 @@ export function generateCoverPage(
     ${protocol.protocolNumber ? `<div style="font-size: 14px; color: #333; margin-top: 8px; font-weight: 500;">Nr. ${protocol.protocolNumber}</div>` : ""}
     
     <!-- Spacer -->
-    <div style="flex: 1; min-height: 60px;"></div>
+    <div style="height: 80px;"></div>
     
     <!-- Meta info -->
-    <div style="width: 100%; max-width: 400px; border-top: 2px solid #333; padding-top: 20px;">
+    <div style="width: 100%; max-width: 400px; margin: 0 auto; border-top: 2px solid #333; padding-top: 20px; text-align: left;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
         <span style="font-size: 12px; color: #555; font-weight: 500;">Datum:</span>
         <span style="font-size: 12px; color: #111; font-weight: 600;">${dateStr}</span>

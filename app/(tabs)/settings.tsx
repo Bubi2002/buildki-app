@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -835,8 +836,23 @@ export default function SettingsScreen() {
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].uri;
 
+        // Normalize orientation using ImageManipulator (fixes rotated/skewed logos from iOS)
+        let normalizedUri = uri;
+        try {
+          if (Platform.OS !== "web") {
+            const manipResult = await ImageManipulator.manipulateAsync(
+              uri,
+              [], // no transforms needed - manipulateAsync auto-applies EXIF orientation
+              { compress: 0.9, format: ImageManipulator.SaveFormat.PNG }
+            );
+            normalizedUri = manipResult.uri;
+          }
+        } catch (e) {
+          console.warn("Logo orientation normalization failed, using original:", e);
+        }
+
         // Convert to base64 for PDF embedding
-        const base64 = await FileSystem.readAsStringAsync(uri, {
+        const base64 = await FileSystem.readAsStringAsync(normalizedUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
 
@@ -847,17 +863,10 @@ export default function SettingsScreen() {
           await FileSystem.makeDirectoryAsync(logoDir, { intermediates: true });
         }
         const logoPath = `${logoDir}logo.png`;
-        await FileSystem.copyAsync({ from: uri, to: logoPath });
+        await FileSystem.copyAsync({ from: normalizedUri, to: logoPath });
 
-        const ext = uri.split(".").pop()?.toLowerCase() || "png";
-        const mimeMap: Record<string, string> = {
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          png: "image/png",
-          gif: "image/gif",
-          webp: "image/webp",
-        };
-        const mime = mimeMap[ext] || "image/png";
+        // Always use PNG mime since we normalized to PNG format
+        const mime = "image/png";
 
         updateCompany("logoBase64", `data:${mime};base64,${base64}`);
         updateCompany("logoUri", logoPath);

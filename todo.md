@@ -517,6 +517,6 @@
 - [x] UI: Tab-Reihenfolge ändern – Tools links (Pos 2), Übersicht rechts
 - [x] UI: Projekte-Tab zu Übersicht-Tab umbauen (Favoriten, letzte Protokolle, offene Aufgaben, Stats)
 - [x] Bug-Fix: Fotos werden nicht mehr im PDF angezeigt (nach Aufnahme mit Fotos)
-- [x] UI: Tab-Reihenfolge tauschen – Tools auf Position 1, Recording auf Position 2
-- [x] Bug-Fix: Projekt-Dropdown zeigt nur ein Projekt an statt alle
-- [x] UI: Projekt-Selektor größer/übersichtlicher mit deutlicher Überschrift
+- [x] Bug-Fix: PDF Fotos doppelt (inline + Fotodokumentation am Ende)
+- [x] Bug-Fix: PDF erste Seite leer
+- [x] Bug-Fix: PDF Logo schräg/rotiert dargestellt

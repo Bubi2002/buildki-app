@@ -424,13 +424,14 @@ function generatePdfHtml(
   while ((inlineMatch = inlineRegex.exec(protocol.protocol)) !== null) {
     inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
   }
-  // Always show ALL valid photos in the Fotodokumentation section.
-  // Even if [Foto X] markers exist in the text and photos are rendered inline,
-  // we still include them in Fotodokumentation to guarantee they appear in the PDF.
-  // This prevents the scenario where base64 conversion partially fails or
-  // the inline rendering regex doesn't match the exact line format.
+  // Only show photos in Fotodokumentation that were NOT already placed inline.
+  // Photos that have a [Foto X] marker in the text AND have a valid base64 data URI
+  // are considered "inline rendered" and excluded from the appendix.
   const validPhotoCount = photoDataUris.filter(u => u).length;
-  let remainingPhotoIndices = photoDataUris.map((_, i) => i).filter(i => photoDataUris[i]);
+  let remainingPhotoIndices = photoDataUris
+    .map((_, i) => i)
+    .filter(i => photoDataUris[i]) // must have valid data URI
+    .filter(i => !inlinePlacedPhotos.has(i)); // exclude those already inline
 
   const photosHtml =
     remainingPhotoIndices.length > 0
