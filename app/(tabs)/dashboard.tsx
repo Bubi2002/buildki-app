@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { useState, useCallback } from "react";
+import { ScrollView, Text, View, Pressable, StyleSheet, FlatList } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
@@ -11,6 +11,12 @@ type Project = {
   name: string;
   color: string;
   description?: string;
+  isArchived?: boolean;
+  isFavorite?: boolean;
+  protocolPrefix?: string;
+  protocolCounter?: number;
+  _protocolCount?: number;
+  _lastDate?: string | null;
 };
 
 export default function ToolsScreen() {
@@ -22,24 +28,41 @@ export default function ToolsScreen() {
 
   const loadProjects = useCallback(async () => {
     try {
-      const data = await AsyncStorage.getItem("projects");
-      const parsed: Project[] = data ? JSON.parse(data) : [];
-      setProjects(parsed);
-      const lastId = await AsyncStorage.getItem("lastActiveProjectId");
+      const [data, lastId, protocolsData] = await Promise.all([
+        AsyncStorage.getItem("projects"),
+        AsyncStorage.getItem("last-selected-project-id"),
+        AsyncStorage.getItem("protocols"),
+      ]);
+      const allProjects: Project[] = data ? JSON.parse(data) : [];
+      const allProtocols: any[] = protocolsData ? JSON.parse(protocolsData) : [];
+      // Enrich with protocol count and last date
+      const enriched = allProjects.map((p) => {
+        const projectProtocols = allProtocols.filter((pr: any) => pr.projectId === p.id);
+        const lastProtocol = projectProtocols.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        return { ...p, _protocolCount: projectProtocols.length, _lastDate: lastProtocol?.createdAt || null };
+      });
+      setProjects(enriched);
       if (lastId) {
-        const found = parsed.find(p => p.id === lastId);
+        const found = enriched.find(p => p.id === lastId);
         if (found) { setSelectedProject(found); return; }
       }
-      if (parsed.length > 0) setSelectedProject(parsed[0]);
+      // Select first non-archived project
+      const active = enriched.filter(p => !p.isArchived);
+      if (active.length > 0) setSelectedProject(active[0]);
     } catch {}
   }, []);
 
-  useEffect(() => { loadProjects(); }, [loadProjects]);
+  // Reload projects every time the tab gains focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProjects();
+    }, [loadProjects])
+  );
 
   const selectProject = async (project: Project) => {
     setSelectedProject(project);
     setShowProjectPicker(false);
-    await AsyncStorage.setItem("lastActiveProjectId", project.id);
+    await AsyncStorage.setItem("last-selected-project-id", project.id);
   };
 
   const navigateTool = (route: string) => {
@@ -49,6 +72,15 @@ export default function ToolsScreen() {
       router.push(route as any);
     }
   };
+
+  // Only show active (non-archived) projects, favorites first
+  const activeProjects = projects
+    .filter(p => !p.isArchived)
+    .sort((a, b) => {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return 0;
+    });
 
   const tools = [
     { key: 'grundriss', icon: 'map', color: '#4FC3F7', route: '/floor-plan' },
@@ -77,30 +109,36 @@ export default function ToolsScreen() {
           <Text style={styles.title}>{t('werkzeuge')}</Text>
         </View>
 
-        {/* Project Selector */}
+        {/* Project Selector - Prominent Card */}
         <Pressable
           onPress={() => setShowProjectPicker(!showProjectPicker)}
-          style={({ pressed }) => [styles.projectSelector, { opacity: pressed ? 0.8 : 1 }]}
+          style={({ pressed }) => [styles.projectSelector, { opacity: pressed ? 0.85 : 1 }]}
         >
-          <View style={styles.projectSelectorLeft}>
-            <View style={[styles.projectDot, { backgroundColor: selectedProject?.color || '#5DADE2' }]} />
+          <View style={styles.projectSelectorInner}>
+            <View style={[styles.projectIcon, { backgroundColor: selectedProject?.color || '#5DADE2' }]}>
+              <MaterialIcons name="business" size={18} color="#fff" />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
+              <Text style={styles.projectSelectorHeading}>{t('projekt_waehlen')}</Text>
               <Text style={styles.projectSelectorName} numberOfLines={1}>
                 {selectedProject?.name || t('kein_projekt')}
               </Text>
             </View>
+            <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={28} color="#8FA3B8" />
           </View>
-          <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={24} color="#8FA3B8" />
         </Pressable>
 
-        {/* Project Picker Dropdown */}
+        {/* Project Picker Dropdown - Shows ALL active projects */}
         {showProjectPicker && (
           <View style={styles.projectDropdown}>
-            {projects.length === 0 ? (
-              <Text style={styles.noProjects}>{t('keine_projekte' as any)}</Text>
+            {activeProjects.length === 0 ? (
+              <View style={styles.emptyProjects}>
+                <MaterialIcons name="folder-open" size={32} color="#4A5568" />
+                <Text style={styles.emptyProjectsText}>{t('keine_projekte' as any)}</Text>
+                <Text style={styles.emptyProjectsHint}>{t('erstes_projekt_erstellen' as any)}</Text>
+              </View>
             ) : (
-              projects.slice(0, 8).map((project) => (
+              activeProjects.map((project) => (
                 <Pressable
                   key={project.id}
                   onPress={() => selectProject(project)}
@@ -111,26 +149,41 @@ export default function ToolsScreen() {
                   ]}
                 >
                   <View style={[styles.projectItemDot, { backgroundColor: project.color }]} />
-                  <Text style={[
-                    styles.projectItemText,
-                    selectedProject?.id === project.id && styles.projectItemTextActive,
-                  ]} numberOfLines={1}>{project.name}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[
+                      styles.projectItemText,
+                      selectedProject?.id === project.id && styles.projectItemTextActive,
+                    ]} numberOfLines={1}>{project.name}</Text>
+                    {project._protocolCount != null && (
+                      <Text style={styles.projectItemMeta}>
+                        {project._protocolCount} {t('nav_protocols')}
+                        {project._lastDate ? ` · ${new Date(project._lastDate).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}` : ''}
+                      </Text>
+                    )}
+                  </View>
+                  {project.isFavorite && (
+                    <MaterialIcons name="star" size={16} color="#FDD835" style={{ marginRight: 4 }} />
+                  )}
+                  {selectedProject?.id === project.id && (
+                    <MaterialIcons name="check-circle" size={18} color="#5DADE2" />
+                  )}
                 </Pressable>
               ))
             )}
+            {/* New Project Button */}
             <Pressable
-              onPress={() => { setShowProjectPicker(false); router.push("/(tabs)/projects" as any); }}
-              style={({ pressed }) => [styles.projectItem, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => { setShowProjectPicker(false); router.push("/projects" as any); }}
+              style={({ pressed }) => [styles.newProjectButton, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <MaterialIcons name="add" size={16} color="#5DADE2" />
-              <Text style={[styles.projectItemText, { color: '#5DADE2' }]}>{t('neues_projekt')}</Text>
+              <MaterialIcons name="add-circle-outline" size={20} color="#5DADE2" />
+              <Text style={styles.newProjectButtonText}>{t('neues_projekt_anlegen' as any)}</Text>
             </Pressable>
           </View>
         )}
 
         {/* Recording Button */}
         <Pressable
-          onPress={() => router.push('/(tabs)/' as any)}
+          onPress={() => router.push('/(tabs)/index' as any)}
           style={({ pressed }) => [styles.recordButton, { opacity: pressed ? 0.85 : 1 }]}
         >
           <MaterialIcons name="mic" size={20} color="#fff" />
@@ -174,76 +227,105 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   projectSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 14,
     backgroundColor: '#0F1E30',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#1E3A5F',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 16,
   },
-  projectSelectorLeft: {
+  projectSelectorInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
+    gap: 12,
   },
-  projectDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  projectIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  projectSelectorLabel: {
-    fontSize: 10,
+  projectSelectorHeading: {
+    fontSize: 12,
+    fontWeight: '700',
     color: '#8FA3B8',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
   projectSelectorName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#F0F4F8',
-    marginTop: 1,
   },
   projectDropdown: {
     marginHorizontal: 16,
-    marginTop: 4,
+    marginTop: 6,
     backgroundColor: '#0F1E30',
     borderWidth: 1,
     borderColor: '#1E3A5F',
-    borderRadius: 12,
-    padding: 6,
+    borderRadius: 14,
+    padding: 8,
+    maxHeight: 320,
   },
-  noProjects: {
-    fontSize: 13,
+  emptyProjects: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyProjectsText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F0F4F8',
+  },
+  emptyProjectsHint: {
+    fontSize: 12,
     color: '#8FA3B8',
     textAlign: 'center',
-    padding: 12,
   },
   projectItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 2,
   },
   projectItemActive: {
     backgroundColor: '#1E3A5F40',
   },
   projectItemDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   projectItemText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
     color: '#F0F4F8',
-    flex: 1,
   },
   projectItemTextActive: {
+    fontWeight: '700',
+    color: '#5DADE2',
+  },
+  projectItemMeta: {
+    fontSize: 11,
+    color: '#8FA3B8',
+    marginTop: 2,
+  },
+  newProjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1E3A5F',
+    marginTop: 4,
+  },
+  newProjectButtonText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#5DADE2',
   },
