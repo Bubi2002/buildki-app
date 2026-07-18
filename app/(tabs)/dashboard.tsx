@@ -67,6 +67,7 @@ export default function ToolsScreen() {
     { key: 'bericht', icon: 'merge-type', color: '#7C3AED', route: '/protocol-merge' },
     { key: 'vergleich', icon: 'compare', color: '#5C6BC0', route: '/photo-compare' },
     { key: 'kalender', icon: 'calendar-today', color: '#EF6C00', route: '/calendar-view' },
+    { key: 'matterport', icon: 'view-in-ar', color: '#00B0FF', route: '/matterport' },
   ];
 
   return (

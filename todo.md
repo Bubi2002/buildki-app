@@ -520,3 +520,13 @@
 - [x] Bug-Fix: PDF Fotos doppelt (inline + Fotodokumentation am Ende)
 - [x] Bug-Fix: PDF erste Seite leer
 - [x] Bug-Fix: PDF Logo schräg/rotiert dargestellt
+- [x] Backend: Matterport-Service mit sicherer Token-Speicherung
+- [x] Backend: API-Endpunkt – Matterport-Konto verbinden
+- [x] Backend: API-Endpunkt – Modelle auflisten
+- [x] Backend: API-Endpunkt – Modell anhand Model-ID laden
+- [x] Backend: API-Endpunkt – Modelldetails abrufen
+- [x] App: Neuer Bereich "Matterport" im Tools-Tab
+- [x] App: Matterport Konto verbinden UI
+- [x] App: Modelle anzeigen (Liste)
+- [x] App: Modell auswählen und Details anzeigen
+- [x] App: Synchronisieren-Button

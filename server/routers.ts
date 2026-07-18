@@ -8,6 +8,7 @@ import { getTemplateById } from "../shared/templates";
 import { getDb } from "./db";
 import { protocols } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import * as matterport from "./matterport";
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: "ok" })),
@@ -754,6 +755,113 @@ Regeln:
         const content = (response.choices?.[0]?.message?.content as string) || "Entschuldigung, ich konnte keine Antwort generieren. Bitte versuche es erneut.";
 
         return { response: content };
+      }),
+  }),
+
+  matterport: router({
+    // Verify credentials and connect account
+    connect: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const valid = await matterport.verifyCredentials(credentials);
+        if (!valid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Ungültige Matterport API-Zugangsdaten" });
+        }
+        return { success: true, message: "Matterport-Konto erfolgreich verbunden" };
+      }),
+
+    // List all models
+    listModels: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        pageSize: z.number().optional(),
+        offset: z.string().optional(),
+        query: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.listModels(credentials, {
+          pageSize: input.pageSize,
+          offset: input.offset,
+          query: input.query,
+        });
+      }),
+
+    // Get model details by ID
+    getModel: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        modelId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.getModelDetails(credentials, input.modelId);
+      }),
+
+    // Get model basic info
+    getModelBasic: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        modelId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.getModelBasic(credentials, input.modelId);
+      }),
+
+    // Get floors for a model
+    getFloors: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        modelId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.getModelFloors(credentials, input.modelId);
+      }),
+
+    // Get rooms for a model
+    getRooms: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        modelId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.getModelRooms(credentials, input.modelId);
+      }),
+
+    // Get sweeps (scan points) for a model
+    getSweeps: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        modelId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.getModelSweeps(credentials, input.modelId);
+      }),
+
+    // Get MatterTags for a model
+    getMatterTags: publicProcedure
+      .input(z.object({
+        tokenId: z.string().min(1),
+        tokenSecret: z.string().min(1),
+        modelId: z.string().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        return matterport.getModelMatterTags(credentials, input.modelId);
       }),
   }),
 
