@@ -30,6 +30,8 @@ import { trpc } from "@/lib/trpc";
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
 import { getSourceLabel, getSourceColor } from "@/shared/ai-types";
 import type { BatchAnalysisResult, BatchGroupStrategy } from "@/shared/ai-types";
+import { saveDefect, deleteDefect, type Defect } from "@/lib/defect-store";
+import { UndoToast } from "@/components/UndoToast";
 
 // Reusable analysis components
 import { DefectCard, type DefectData } from "@/components/analysis/DefectCard";
@@ -53,6 +55,15 @@ export default function BatchAnalysisScreen() {
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
   const [roomAssignments, setRoomAssignments] = useState<Record<string, string>>({});
   const [showRoomInput, setShowRoomInput] = useState<string | null>(null);
+  // Review state
+  const [adoptedDefects, setAdoptedDefects] = useState<Set<string>>(new Set());
+  const [dismissedDefects, setDismissedDefects] = useState<Set<string>>(new Set());
+  const [adoptedTasks, setAdoptedTasks] = useState<Set<string>>(new Set());
+  const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
+  const [undoToast, setUndoToast] = useState<{ visible: boolean; message: string; itemId: string; itemType: "defect" | "task" }>({
+    visible: false, message: "", itemId: "", itemType: "defect",
+  });
+  const [reviewStep, setReviewStep] = useState<"results" | "review">("results");
 
   // tRPC mutations
   const uploadPhotoMutation = trpc.analysis.uploadPhoto.useMutation();
@@ -180,6 +191,7 @@ export default function BatchAnalysisScreen() {
       });
 
       setBatchResult(result);
+      setReviewStep("review");
     } catch (error: any) {
       Alert.alert(
         "Batch-Analyse fehlgeschlagen",
@@ -189,6 +201,105 @@ export default function BatchAnalysisScreen() {
       setIsAnalyzing(false);
     }
   };
+
+  // ─── Adoption Handlers ──────────────────────────────────────────────────────
+
+  async function handleAdoptDefect(defect: DefectData) {
+    if (!activeProject) return;
+    const newDefect: Defect = {
+      id: `defect_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      projectId: activeProject.id,
+      title: defect.title,
+      description: `${defect.description}\n\nMaßnahme: ${defect.suggestedAction}`,
+      status: "offen",
+      priority: defect.severity === "critical" ? "hoch" : defect.severity === "major" ? "mittel" : "niedrig",
+      category: defect.trade || "Sonstiges",
+      photos: [],
+      location: defect.location,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      source: "ki_analysis" as const,
+      confidence: defect.confidence,
+      analysisId: batchResult?.batchId,
+    };
+    try {
+      await saveDefect(newDefect);
+      setAdoptedDefects(prev => new Set([...prev, defect.id]));
+      setUndoToast({ visible: true, message: "Mangel \u00fcbernommen", itemId: newDefect.id, itemType: "defect" });
+      if (Platform.OS !== "web") {
+        const Haptics = require("expo-haptics");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch {}
+  }
+
+  async function handleAdoptTask(task: TaskData) {
+    if (!activeProject) return;
+    const newTask = {
+      id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      projectId: activeProject.id,
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      trade: task.trade,
+      estimatedDuration: task.estimatedDuration,
+      deadline: task.deadline,
+      status: "offen",
+      createdAt: new Date().toISOString(),
+      source: "ki-batch",
+    };
+    try {
+      const tasksJson = await AsyncStorage.getItem("project-tasks") || "[]";
+      const tasks = JSON.parse(tasksJson);
+      tasks.push(newTask);
+      await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
+      setAdoptedTasks(prev => new Set([...prev, task.id]));
+      setUndoToast({ visible: true, message: "Aufgabe \u00fcbernommen", itemId: newTask.id, itemType: "task" });
+      if (Platform.OS !== "web") {
+        const Haptics = require("expo-haptics");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch {}
+  }
+
+  async function handleUndo() {
+    try {
+      if (undoToast.itemType === "defect") {
+        await deleteDefect(undoToast.itemId);
+      } else {
+        const tasksJson = await AsyncStorage.getItem("project-tasks") || "[]";
+        const tasks = JSON.parse(tasksJson);
+        const filtered = tasks.filter((t: any) => t.id !== undoToast.itemId);
+        await AsyncStorage.setItem("project-tasks", JSON.stringify(filtered));
+      }
+    } catch {}
+  }
+
+  async function handleAdoptAllInGroup(group: BatchAnalysisResult["groups"][number]) {
+    for (const defect of group.result.defects) {
+      if (!adoptedDefects.has(defect.id) && !dismissedDefects.has(defect.id)) {
+        await handleAdoptDefect(defect as unknown as DefectData);
+      }
+    }
+    for (const task of group.result.tasks) {
+      if (!adoptedTasks.has(task.id) && !dismissedTasks.has(task.id)) {
+        await handleAdoptTask(task as unknown as TaskData);
+      }
+    }
+  }
+
+  function handleDismissAllInGroup(group: BatchAnalysisResult["groups"][number]) {
+    const newDismissedD = new Set(dismissedDefects);
+    for (const defect of group.result.defects) {
+      if (!adoptedDefects.has(defect.id)) newDismissedD.add(defect.id);
+    }
+    setDismissedDefects(newDismissedD);
+    const newDismissedT = new Set(dismissedTasks);
+    for (const task of group.result.tasks) {
+      if (!adoptedTasks.has(task.id)) newDismissedT.add(task.id);
+    }
+    setDismissedTasks(newDismissedT);
+  }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -365,6 +476,22 @@ export default function BatchAnalysisScreen() {
         {/* Results */}
         {batchResult && (
           <View style={styles.results}>
+            {/* Review Step Toggle */}
+            <View style={styles.reviewToggle}>
+              <Pressable
+                onPress={() => setReviewStep("results")}
+                style={[styles.reviewTab, reviewStep === "results" && { backgroundColor: colors.primary + "20" }]}
+              >
+                <Text style={[styles.reviewTabText, { color: reviewStep === "results" ? colors.primary : colors.muted }]}>Übersicht</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setReviewStep("review")}
+                style={[styles.reviewTab, reviewStep === "review" && { backgroundColor: colors.primary + "20" }]}
+              >
+                <Text style={[styles.reviewTabText, { color: reviewStep === "review" ? colors.primary : colors.muted }]}>Review</Text>
+              </Pressable>
+            </View>
+
             {/* Summary */}
             <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.summaryHeader}>
@@ -411,7 +538,11 @@ export default function BatchAnalysisScreen() {
                   <DefectCard
                     key={defect.id}
                     defect={defect as DefectData}
-                    showActions={false}
+                    showActions={reviewStep === "review"}
+                    isAdopted={adoptedDefects.has(defect.id)}
+                    isDismissed={dismissedDefects.has(defect.id)}
+                    onAdopt={() => handleAdoptDefect(defect as unknown as DefectData)}
+                    onDismiss={() => setDismissedDefects(prev => new Set([...prev, defect.id]))}
                   />
                 ))}
 
@@ -420,14 +551,45 @@ export default function BatchAnalysisScreen() {
                   <TaskCard
                     key={task.id}
                     task={task as TaskData}
-                    showActions={false}
+                    showActions={reviewStep === "review"}
+                    isAdopted={adoptedTasks.has(task.id)}
+                    isDismissed={dismissedTasks.has(task.id)}
+                    onAdopt={() => handleAdoptTask(task as unknown as TaskData)}
+                    onDismiss={() => setDismissedTasks(prev => new Set([...prev, task.id]))}
                   />
                 ))}
+
+                {/* Bulk actions per group */}
+                {reviewStep === "review" && (
+                  <View style={styles.bulkActions}>
+                    <Pressable
+                      onPress={() => handleAdoptAllInGroup(group)}
+                      style={({ pressed }) => [styles.bulkBtn, { backgroundColor: colors.success + "20", opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <MaterialIcons name="check-circle" size={14} color={colors.success} />
+                      <Text style={[styles.bulkBtnText, { color: colors.success }]}>Alle übernehmen</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleDismissAllInGroup(group)}
+                      style={({ pressed }) => [styles.bulkBtn, { backgroundColor: colors.error + "20", opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <MaterialIcons name="cancel" size={14} color={colors.error} />
+                      <Text style={[styles.bulkBtnText, { color: colors.error }]}>Alle verwerfen</Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             ))}
           </View>
         )}
       </ScrollView>
+
+      <UndoToast
+        visible={undoToast.visible}
+        message={undoToast.message}
+        onUndo={handleUndo}
+        onDismiss={() => setUndoToast(prev => ({ ...prev, visible: false }))}
+      />
     </ScreenContainer>
   );
 }
@@ -685,5 +847,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 10,
+  },
+  reviewToggle: {
+    flexDirection: "row",
+    backgroundColor: "#0F1E30",
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  reviewTab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  reviewTabText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  bulkActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 0.5,
+    borderTopColor: "#1E3A5F40",
+  },
+  bulkBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bulkBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

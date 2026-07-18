@@ -277,6 +277,36 @@ class ProjectKnowledgeLayer {
   }
 
   /**
+   * Query knowledge layer for AI Site Assistant.
+   * Returns a formatted context string optimized for assistant responses.
+   */
+  async queryForAssistant(projectId: string, query: string): Promise<string> {
+    // Get general context
+    const generalContext = await this.getContextForAI(projectId, 1500);
+
+    // Also search specifically for the query
+    const searchResults = await this.searchKnowledge(projectId, query);
+    
+    let specificContext = "";
+    if (searchResults.length > 0) {
+      specificContext = "\n### Relevante Einträge zur Frage:\n";
+      for (const entry of searchResults.slice(0, 5)) {
+        specificContext += `- [${entry.type}] ${entry.content} (${new Date(entry.timestamp).toLocaleDateString("de-DE")})\n`;
+      }
+    }
+
+    // Get summary stats
+    const summary = await this.getProjectSummary(projectId);
+    const statsContext = `\n### Projekt-Statistik:\n- Gesamt-Einträge: ${summary.totalEntries}\n- Mängel: ${summary.defectCount}\n- Aufgaben: ${summary.taskCount}\n- Beobachtungen: ${summary.observationCount}\n`;
+    if (summary.latestProgress) {
+      const p = summary.latestProgress;
+      return `${statsContext}- Fortschritt: ${p.overallPercent}% (Phase: ${p.phase})\n${generalContext}${specificContext}`;
+    }
+
+    return `${statsContext}${generalContext}${specificContext}`;
+  }
+
+  /**
    * Clear all knowledge for a project.
    */
   async clearProject(projectId: string): Promise<void> {

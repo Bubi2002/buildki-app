@@ -13,7 +13,43 @@ type Project = {
   description?: string;
 };
 
-export default function ToolsScreen() {
+// ─── AI Workbench Module Definition ──────────────────────────────────────────
+
+interface WorkbenchModule {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  route: string;
+  description: string;
+}
+
+const AI_MODULES: WorkbenchModule[] = [
+  { key: "neue_analyse", label: "Neue Analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis", description: "Fotos analysieren" },
+  { key: "analyse_historie", label: "Analyse-Historie", icon: "history", color: "#5C6BC0", route: "/analysis-history", description: "Vergangene Analysen" },
+  { key: "batch_analyse", label: "Batch-Analyse", icon: "burst-mode", color: "#00BFA5", route: "/batch-analysis", description: "Mehrere Fotos gleichzeitig" },
+  { key: "ai_assistant", label: "AI Site Assistant", icon: "smart-toy", color: "#0EA5E9", route: "/ai-assistant", description: "Fragen zum Projekt" },
+  { key: "baufortschritt", label: "Baufortschritt", icon: "trending-up", color: "#66BB6A", route: "/dashboard-stats", description: "Fortschrittsübersicht" },
+  { key: "berichte", label: "Berichte", icon: "summarize", color: "#FF7043", route: "/protocol-merge", description: "Berichte erstellen" },
+  { key: "ki_einstellungen", label: "KI-Einstellungen", icon: "tune", color: "#78909C", route: "/(tabs)/settings", description: "KI konfigurieren" },
+];
+
+const TOOL_MODULES: WorkbenchModule[] = [
+  { key: "maengel", label: "Mängel", icon: "warning", color: "#FF9800", route: "/defects", description: "Mängelverwaltung" },
+  { key: "grundriss", label: "Grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan", description: "Grundriss-Ansicht" },
+  { key: "tagebuch", label: "Tagebuch", icon: "menu-book", color: "#66BB6A", route: "/diary", description: "Bautagebuch" },
+  { key: "checklisten", label: "Checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists", description: "Prüflisten" },
+  { key: "team", label: "Team", icon: "groups", color: "#5C6BC0", route: "/team", description: "Teamverwaltung" },
+  { key: "fotos", label: "Fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery", description: "Fotogalerie" },
+  { key: "qr_scan", label: "QR-Scan", icon: "qr-code-scanner", color: "#00BCD4", route: "/qr-scanner", description: "QR-Codes scannen" },
+  { key: "zeiterfassung", label: "Zeiten", icon: "timer", color: "#FF5722", route: "/time-tracking", description: "Zeiterfassung" },
+  { key: "export", label: "Export", icon: "ios-share", color: "#43A047", route: "/export-center", description: "Daten exportieren" },
+  { key: "kalender", label: "Kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view", description: "Termine" },
+  { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport", description: "3D-Scans" },
+  { key: "cloud", label: "Cloud", icon: "cloud-download", color: "#607D8B", route: "/cloud-import", description: "Cloud-Import" },
+];
+
+export default function AIWorkbenchScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -42,7 +78,7 @@ export default function ToolsScreen() {
     await AsyncStorage.setItem("last-selected-project-id", project.id);
   };
 
-  const navigateTool = (route: string) => {
+  const navigateModule = (route: string) => {
     if (selectedProject) {
       router.push(`${route}?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}` as any);
     } else {
@@ -50,33 +86,13 @@ export default function ToolsScreen() {
     }
   };
 
-  const tools = [
-    { key: 'ki_analyse', icon: 'auto-awesome', color: '#7C4DFF', route: '/photo-analysis' },
-    { key: 'grundriss', icon: 'map', color: '#4FC3F7', route: '/floor-plan' },
-    { key: 'maengel', icon: 'warning', color: '#FF9800', route: '/defects' },
-    { key: 'tagebuch', icon: 'menu-book', color: '#66BB6A', route: '/diary' },
-    { key: 'checklist_title', icon: 'checklist', color: '#AB47BC', route: '/checklists' },
-    { key: 'team_title', icon: 'groups', color: '#5C6BC0', route: '/team' },
-    { key: 'statistik', icon: 'bar-chart', color: '#26A69A', route: '/dashboard-stats' },
-    { key: 'gallery_photos', icon: 'photo-library', color: '#EC407A', route: '/photo-gallery' },
-    { key: 'qrscan', icon: 'qr-code-scanner', color: '#00BCD4', route: '/qr-scanner' },
-    { key: 'zeiterfassung', icon: 'timer', color: '#FF5722', route: '/time-tracking' },
-    { key: 'cloud', icon: 'cloud-download', color: '#607D8B', route: '/cloud-import' },
-    { key: 'export', icon: 'ios-share', color: '#43A047', route: '/project-export' },
-    { key: 'excel', icon: 'table-chart', color: '#2E7D32', route: '/project-export' },
-    { key: 'maengelxls', icon: 'assignment-late', color: '#FF6D00', route: '/defects' },
-    { key: 'bericht', icon: 'merge-type', color: '#7C3AED', route: '/protocol-merge' },
-    { key: 'vergleich', icon: 'compare', color: '#5C6BC0', route: '/photo-compare' },
-    { key: 'kalender', icon: 'calendar-today', color: '#EF6C00', route: '/calendar-view' },
-    { key: 'matterport', icon: 'view-in-ar', color: '#00B0FF', route: '/matterport' },
-  ];
-
   return (
     <ScreenContainer className="p-0">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('werkzeuge')}</Text>
+          <Text style={styles.title}>AI Workbench</Text>
+          <Text style={styles.subtitle}>Zentrale KI-Plattform</Text>
         </View>
 
         {/* Project Selector */}
@@ -130,7 +146,7 @@ export default function ToolsScreen() {
           </View>
         )}
 
-        {/* Recording Button */}
+        {/* Quick Action: Recording */}
         <Pressable
           onPress={() => router.push('/(tabs)/' as any)}
           style={({ pressed }) => [styles.recordButton, { opacity: pressed ? 0.85 : 1 }]}
@@ -140,21 +156,43 @@ export default function ToolsScreen() {
           <MaterialIcons name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
         </Pressable>
 
-        {/* Tools Label */}
-        <Text style={styles.toolsLabel}>TOOLS</Text>
+        {/* AI MODULES Section */}
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="auto-awesome" size={16} color="#7C4DFF" />
+          <Text style={styles.sectionTitle}>KI-MODULE</Text>
+        </View>
 
-        {/* Compact Tool Grid */}
+        <View style={styles.aiGrid}>
+          {AI_MODULES.map((mod) => (
+            <Pressable
+              key={mod.key}
+              onPress={() => navigateModule(mod.route)}
+              style={({ pressed }) => [styles.aiCard, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.aiIconWrap, { backgroundColor: mod.color + "20" }]}>
+                <MaterialIcons name={mod.icon as any} size={22} color={mod.color} />
+              </View>
+              <View style={styles.aiCardContent}>
+                <Text style={styles.aiCardLabel}>{mod.label}</Text>
+                <Text style={styles.aiCardDesc}>{mod.description}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={18} color="#4A5568" />
+            </Pressable>
+          ))}
+        </View>
+
+        {/* TOOLS Section */}
+        <Text style={styles.toolsSectionTitle}>WERKZEUGE</Text>
+
         <View style={styles.toolGrid}>
-          {tools.map((tool) => (
+          {TOOL_MODULES.map((tool) => (
             <Pressable
               key={tool.key}
-              onPress={() => navigateTool(tool.route)}
+              onPress={() => navigateModule(tool.route)}
               style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
-              <Text style={styles.toolLabel} numberOfLines={1}>
-                {t(tool.key as any)}
-              </Text>
+              <MaterialIcons name={tool.icon as any} size={22} color={tool.color} />
+              <Text style={styles.toolLabel} numberOfLines={1}>{tool.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -174,6 +212,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#F0F4F8',
     letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#8FA3B8',
+    marginTop: 2,
   },
   projectSelector: {
     flexDirection: 'row',
@@ -266,12 +309,62 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
   },
-  toolsLabel: {
+  // AI Section
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 22,
+    marginBottom: 10,
+    paddingLeft: 20,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7C4DFF',
+    letterSpacing: 1,
+  },
+  aiGrid: {
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  aiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 10,
+    padding: 12,
+    gap: 12,
+  },
+  aiIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiCardContent: {
+    flex: 1,
+  },
+  aiCardLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F0F4F8',
+  },
+  aiCardDesc: {
+    fontSize: 11,
+    color: '#8FA3B8',
+    marginTop: 1,
+  },
+  // Tools Section
+  toolsSectionTitle: {
     fontSize: 11,
     fontWeight: '700',
     color: '#8FA3B8',
     letterSpacing: 1,
-    marginTop: 18,
+    marginTop: 22,
     marginBottom: 8,
     paddingLeft: 20,
   },

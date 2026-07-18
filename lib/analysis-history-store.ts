@@ -16,6 +16,16 @@ export type AnalysisHistoryEntry = {
   adoptedDefects: number;
   adoptedTasks: number;
   photoCount: number;
+  // Sprint 3: Extended filter fields
+  roomName?: string;
+  trade?: string;
+  status?: "pending" | "reviewed" | "adopted" | "dismissed";
+  avgConfidence?: number;
+  imageUrls?: string[];
+  defects?: Array<{ id: string; title: string; severity: string; trade: string; confidence: number }>;
+  tasks?: Array<{ id: string; title: string; priority: string; trade: string }>;
+  observations?: string[];
+  progress?: { overallPercent: number; phase: string };
 };
 
 export async function getAnalysisHistory(): Promise<AnalysisHistoryEntry[]> {

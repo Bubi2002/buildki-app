@@ -1,461 +1,445 @@
-/**
- * protoKI – Analyse-Historie Screen
- * 
- * Zeigt alle vergangenen KI-Analysen mit:
- * - Volltextsuche
- * - Filter nach Quelle (photo, speech, matterport, document, manual)
- * - Filter nach Projekt
- * - Detailansicht per Tap
- */
-
-import { useState, useCallback, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  TextInput,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import { ScrollView, Text, View, Pressable, StyleSheet, TextInput, Modal, FlatList } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import {
-  getAnalysisHistory,
-  clearAnalysisHistory,
-  type AnalysisHistoryEntry,
-} from "@/lib/analysis-history-store";
-import { getSourceIcon, getSourceLabel, getSourceColor } from "@/shared/ai-types";
-import type { AnalysisSource } from "@/shared/ai-types";
+import { getAnalysisHistory, type AnalysisHistoryEntry } from "@/lib/analysis-history-store";
+import { getSourceIcon, getSourceLabel, getSourceColor, type AnalysisSource } from "@/shared/ai-types";
 
-// ─── Filter Types ────────────────────────────────────────────────────────────
+type FilterState = {
+  search: string;
+  source: AnalysisSource | "all";
+  status: "all" | "pending" | "reviewed" | "adopted" | "dismissed";
+  project: string;
+  room: string;
+  trade: string;
+  minConfidence: number;
+  dateFrom: string;
+  dateTo: string;
+};
 
-type SourceFilter = AnalysisSource | "all";
+const DEFAULT_FILTERS: FilterState = {
+  search: "",
+  source: "all",
+  status: "all",
+  project: "",
+  room: "",
+  trade: "",
+  minConfidence: 0,
+  dateFrom: "",
+  dateTo: "",
+};
 
 export default function AnalysisHistoryScreen() {
-  const colors = useColors();
   const router = useRouter();
-
-  // State
+  const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
+  const colors = useColors();
   const [entries, setEntries] = useState<AnalysisHistoryEntry[]>([]);
-  const [filteredEntries, setFilteredEntries] = useState<AnalysisHistoryEntry[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
-  const [projectFilter, setProjectFilter] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState<FilterState>({
+    ...DEFAULT_FILTERS,
+    project: params.projectId || "",
+  });
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<AnalysisHistoryEntry | null>(null);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load data on focus
-  useFocusEffect(
-    useCallback(() => {
-      loadHistory();
-      loadProjects();
-    }, [])
-  );
+  const loadHistory = useCallback(async () => {
+    setLoading(true);
+    const history = await getAnalysisHistory();
+    setEntries(history);
+    setLoading(false);
+  }, []);
 
-  const loadHistory = async () => {
-    setIsLoading(true);
-    try {
-      const history = await getAnalysisHistory();
-      setEntries(history);
-      applyFilters(history, searchQuery, sourceFilter, projectFilter);
-    } catch (err) {
-      console.warn("[AnalysisHistory] Load failed:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadProjects = async () => {
-    try {
-      const projectsJson = await AsyncStorage.getItem("projects");
-      if (projectsJson) {
-        const parsed = JSON.parse(projectsJson);
-        setProjects(parsed.map((p: any) => ({ id: p.id, name: p.name })));
-      }
-    } catch {}
-  };
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   // Apply filters
-  const applyFilters = (
-    data: AnalysisHistoryEntry[],
-    query: string,
-    source: SourceFilter,
-    project: string | null,
-  ) => {
-    let filtered = [...data];
-
-    // Source filter
-    if (source !== "all") {
-      filtered = filtered.filter(e => e.source === source);
+  const filteredEntries = entries.filter((entry) => {
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      const matches = entry.summary?.toLowerCase().includes(q)
+        || entry.projectName?.toLowerCase().includes(q)
+        || entry.roomName?.toLowerCase().includes(q)
+        || entry.trade?.toLowerCase().includes(q);
+      if (!matches) return false;
     }
-
-    // Project filter
-    if (project) {
-      filtered = filtered.filter(e => e.projectId === project);
+    if (filters.source !== "all" && entry.source !== filters.source) return false;
+    if (filters.status !== "all" && entry.status !== filters.status) return false;
+    if (filters.project && entry.projectId !== filters.project) return false;
+    if (filters.room && entry.roomName !== filters.room) return false;
+    if (filters.trade && entry.trade !== filters.trade) return false;
+    if (Number(filters.minConfidence) > 0 && (entry.avgConfidence || 0) < Number(filters.minConfidence)) return false;
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom).getTime();
+      if (new Date(entry.timestamp).getTime() < from) return false;
     }
-
-    // Search
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      filtered = filtered.filter(e =>
-        e.summary.toLowerCase().includes(q) ||
-        (e.projectName || "").toLowerCase().includes(q) ||
-        e.source.toLowerCase().includes(q)
-      );
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo).getTime() + 86400000;
+      if (new Date(entry.timestamp).getTime() > to) return false;
     }
+    return true;
+  });
 
-    setFilteredEntries(filtered);
-  };
+  const activeFilterCount = Object.entries(filters).filter(([key, val]) => {
+    if (key === "search") return false;
+    if (key === "minConfidence") return Number(val) > 0;
+    return val !== "" && val !== "all";
+  }).length;
 
-  // Update filters
-  useEffect(() => {
-    applyFilters(entries, searchQuery, sourceFilter, projectFilter);
-  }, [searchQuery, sourceFilter, projectFilter]);
-
-  // Clear history
-  const handleClearHistory = () => {
-    Alert.alert(
-      "Historie löschen",
-      "Alle Analyse-Einträge werden unwiderruflich gelöscht.",
-      [
-        { text: "Abbrechen", style: "cancel" },
-        {
-          text: "Löschen",
-          style: "destructive",
-          onPress: async () => {
-            await clearAnalysisHistory();
-            setEntries([]);
-            setFilteredEntries([]);
-          },
-        },
-      ]
-    );
-  };
-
-  // Format timestamp
   const formatDate = (ts: string) => {
-    try {
-      const d = new Date(ts);
-      return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-    } catch { return ts; }
+    const d = new Date(ts);
+    return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  const formatTime = (ts: string) => {
-    try {
-      const d = new Date(ts);
-      return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-    } catch { return ""; }
+  const getStatusLabel = (status?: string) => {
+    switch (status) {
+      case "adopted": return "Übernommen";
+      case "reviewed": return "Geprüft";
+      case "dismissed": return "Verworfen";
+      default: return "Ausstehend";
+    }
   };
 
-  // ─── Detail View ───────────────────────────────────────────────────────────
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case "adopted": return "#22C55E";
+      case "reviewed": return "#0EA5E9";
+      case "dismissed": return "#EF4444";
+      default: return "#F59E0B";
+    }
+  };
 
-  if (selectedEntry) {
-    return (
-      <ScreenContainer edges={["top", "left", "right"]}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Pressable onPress={() => setSelectedEntry(null)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Analyse-Detail</Text>
-          <View style={{ width: 24 }} />
+  const renderEntry = ({ item }: { item: AnalysisHistoryEntry }) => (
+    <Pressable
+      onPress={() => setSelectedEntry(item)}
+      style={({ pressed }) => [styles.entryCard, { opacity: pressed ? 0.8 : 1 }]}
+    >
+      <View style={styles.entryHeader}>
+        <View style={[styles.sourceTag, { backgroundColor: getSourceColor(item.source as AnalysisSource) + "20" }]}>
+          <MaterialIcons name={getSourceIcon(item.source as AnalysisSource) as any} size={12} color={getSourceColor(item.source as AnalysisSource)} />
+          <Text style={[styles.sourceTagText, { color: getSourceColor(item.source as AnalysisSource) }]}>
+            {getSourceLabel(item.source as AnalysisSource)}
+          </Text>
         </View>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + "20" }]}>
+          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+            {getStatusLabel(item.status)}
+          </Text>
+        </View>
+      </View>
 
-        <FlatList
-          data={[selectedEntry]}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16 }}
-          renderItem={({ item }) => (
-            <View style={{ gap: 16 }}>
-              {/* Source & Time */}
-              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={styles.detailRow}>
-                  <MaterialIcons name={getSourceIcon(item.source as AnalysisSource) as any} size={20} color={getSourceColor(item.source as AnalysisSource)} />
-                  <Text style={[styles.detailSource, { color: getSourceColor(item.source as AnalysisSource) }]}>
-                    {getSourceLabel(item.source as AnalysisSource)}
+      <Text style={styles.entrySummary} numberOfLines={2}>{item.summary || "Keine Zusammenfassung"}</Text>
+
+      <View style={styles.entryMeta}>
+        <Text style={styles.entryMetaText}>{formatDate(item.timestamp)}</Text>
+        {item.projectName && <Text style={styles.entryMetaText}>{item.projectName}</Text>}
+        {item.roomName && <Text style={styles.entryMetaText}>{item.roomName}</Text>}
+      </View>
+
+      <View style={styles.entryStats}>
+        <View style={styles.stat}>
+          <MaterialIcons name="warning" size={12} color="#FF9800" />
+          <Text style={styles.statText}>{item.defectCount} Mängel</Text>
+        </View>
+        <View style={styles.stat}>
+          <MaterialIcons name="assignment" size={12} color="#5C6BC0" />
+          <Text style={styles.statText}>{item.taskCount} Aufgaben</Text>
+        </View>
+        <View style={styles.stat}>
+          <MaterialIcons name="trending-up" size={12} color="#66BB6A" />
+          <Text style={styles.statText}>{item.progressPercent}%</Text>
+        </View>
+        {item.avgConfidence != null && (
+          <View style={styles.stat}>
+            <MaterialIcons name="psychology" size={12} color="#7C4DFF" />
+            <Text style={styles.statText}>{Math.round(item.avgConfidence * 100)}%</Text>
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
+
+  // Detail Modal
+  const renderDetailModal = () => {
+    if (!selectedEntry) return null;
+    return (
+      <Modal visible={!!selectedEntry} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.detailContainer}>
+          <View style={styles.detailHeader}>
+            <Pressable onPress={() => setSelectedEntry(null)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+              <MaterialIcons name="close" size={24} color="#F0F4F8" />
+            </Pressable>
+            <Text style={styles.detailTitle}>Analyse-Details</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* Source & Status */}
+            <View style={styles.detailSection}>
+              <View style={styles.detailRow}>
+                <View style={[styles.sourceTag, { backgroundColor: getSourceColor(selectedEntry.source as AnalysisSource) + "20" }]}>
+                  <MaterialIcons name={getSourceIcon(selectedEntry.source as AnalysisSource) as any} size={14} color={getSourceColor(selectedEntry.source as AnalysisSource)} />
+                  <Text style={[styles.sourceTagText, { color: getSourceColor(selectedEntry.source as AnalysisSource) }]}>
+                    {getSourceLabel(selectedEntry.source as AnalysisSource)}
                   </Text>
                 </View>
-                <Text style={[styles.detailTime, { color: colors.muted }]}>
-                  {formatDate(item.timestamp)} um {formatTime(item.timestamp)}
-                </Text>
-                {item.projectName && (
-                  <View style={[styles.detailProjectBadge, { backgroundColor: colors.primary + "15" }]}>
-                    <MaterialIcons name="business" size={14} color={colors.primary} />
-                    <Text style={[styles.detailProjectName, { color: colors.primary }]}>{item.projectName}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Summary */}
-              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.detailSectionTitle, { color: colors.foreground }]}>Zusammenfassung</Text>
-                <Text style={[styles.detailText, { color: colors.muted }]}>{item.summary}</Text>
-              </View>
-
-              {/* Stats */}
-              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.detailSectionTitle, { color: colors.foreground }]}>Ergebnisse</Text>
-                <View style={styles.detailStats}>
-                  <View style={styles.detailStatItem}>
-                    <MaterialIcons name="warning" size={18} color={colors.error} />
-                    <Text style={[styles.detailStatNumber, { color: colors.error }]}>{item.defectCount}</Text>
-                    <Text style={[styles.detailStatLabel, { color: colors.muted }]}>Mängel</Text>
-                  </View>
-                  <View style={styles.detailStatItem}>
-                    <MaterialIcons name="assignment" size={18} color={colors.primary} />
-                    <Text style={[styles.detailStatNumber, { color: colors.primary }]}>{item.taskCount}</Text>
-                    <Text style={[styles.detailStatLabel, { color: colors.muted }]}>Aufgaben</Text>
-                  </View>
-                  <View style={styles.detailStatItem}>
-                    <MaterialIcons name="trending-up" size={18} color={colors.success} />
-                    <Text style={[styles.detailStatNumber, { color: colors.success }]}>{item.progressPercent}%</Text>
-                    <Text style={[styles.detailStatLabel, { color: colors.muted }]}>Fortschritt</Text>
-                  </View>
-                  <View style={styles.detailStatItem}>
-                    <MaterialIcons name="photo" size={18} color={colors.muted} />
-                    <Text style={[styles.detailStatNumber, { color: colors.foreground }]}>{item.photoCount}</Text>
-                    <Text style={[styles.detailStatLabel, { color: colors.muted }]}>Fotos</Text>
-                  </View>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedEntry.status) + "20" }]}>
+                  <Text style={[styles.statusText, { color: getStatusColor(selectedEntry.status) }]}>
+                    {getStatusLabel(selectedEntry.status)}
+                  </Text>
                 </View>
               </View>
+              <Text style={styles.detailTimestamp}>{formatDate(selectedEntry.timestamp)}</Text>
+            </View>
 
-              {/* Adoption Stats */}
-              <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.detailSectionTitle, { color: colors.foreground }]}>Übernahme</Text>
-                <View style={styles.adoptionRow}>
-                  <View style={[styles.adoptionBadge, { backgroundColor: colors.success + "15" }]}>
-                    <MaterialIcons name="check-circle" size={14} color={colors.success} />
-                    <Text style={[styles.adoptionText, { color: colors.success }]}>
-                      {item.adoptedDefects} Mängel übernommen
-                    </Text>
+            {/* Images */}
+            {selectedEntry.imageUrls && selectedEntry.imageUrls.length > 0 && (
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>Originalbilder</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                  {selectedEntry.imageUrls.map((uri, idx) => (
+                    <Image key={idx} source={{ uri }} style={styles.detailImage} contentFit="cover" />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Summary */}
+            <View style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>KI-Ergebnis</Text>
+              <Text style={styles.detailText}>{selectedEntry.summary}</Text>
+            </View>
+
+            {/* Progress */}
+            {selectedEntry.progress && (
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>Fortschritt</Text>
+                <View style={styles.progressRow}>
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${selectedEntry.progress.overallPercent}%` }]} />
                   </View>
-                  <View style={[styles.adoptionBadge, { backgroundColor: colors.primary + "15" }]}>
-                    <MaterialIcons name="playlist-add-check" size={14} color={colors.primary} />
-                    <Text style={[styles.adoptionText, { color: colors.primary }]}>
-                      {item.adoptedTasks} Aufgaben übernommen
-                    </Text>
+                  <Text style={styles.progressText}>{selectedEntry.progress.overallPercent}%</Text>
+                </View>
+                <Text style={styles.detailSubtext}>Phase: {selectedEntry.progress.phase}</Text>
+              </View>
+            )}
+
+            {/* Defects */}
+            {selectedEntry.defects && selectedEntry.defects.length > 0 && (
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>Mängel ({selectedEntry.defects.length})</Text>
+                {selectedEntry.defects.map((defect) => (
+                  <View key={defect.id} style={styles.detailListItem}>
+                    <View style={[styles.severityDot, { backgroundColor: defect.severity === "critical" ? "#EF4444" : defect.severity === "major" ? "#FF9800" : "#F59E0B" }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.detailItemTitle}>{defect.title}</Text>
+                      <Text style={styles.detailItemMeta}>{defect.trade} | {Math.round(defect.confidence * 100)}% Konfidenz</Text>
+                    </View>
                   </View>
+                ))}
+              </View>
+            )}
+
+            {/* Tasks */}
+            {selectedEntry.tasks && selectedEntry.tasks.length > 0 && (
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>Aufgaben ({selectedEntry.tasks.length})</Text>
+                {selectedEntry.tasks.map((task) => (
+                  <View key={task.id} style={styles.detailListItem}>
+                    <MaterialIcons name="assignment" size={14} color="#5C6BC0" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.detailItemTitle}>{task.title}</Text>
+                      <Text style={styles.detailItemMeta}>{task.trade} | {task.priority}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Observations */}
+            {selectedEntry.observations && selectedEntry.observations.length > 0 && (
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>Beobachtungen</Text>
+                {selectedEntry.observations.map((obs, idx) => (
+                  <Text key={idx} style={styles.detailObservation}>• {obs}</Text>
+                ))}
+              </View>
+            )}
+
+            {/* Meta info */}
+            <View style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>Bericht</Text>
+              <View style={styles.metaGrid}>
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Projekt</Text>
+                  <Text style={styles.metaValue}>{selectedEntry.projectName || "—"}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Raum</Text>
+                  <Text style={styles.metaValue}>{selectedEntry.roomName || "—"}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Gewerk</Text>
+                  <Text style={styles.metaValue}>{selectedEntry.trade || "—"}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Fotos</Text>
+                  <Text style={styles.metaValue}>{selectedEntry.photoCount}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Text style={styles.metaLabel}>Übernommen</Text>
+                  <Text style={styles.metaValue}>{selectedEntry.adoptedDefects} Mängel / {selectedEntry.adoptedTasks} Aufgaben</Text>
                 </View>
               </View>
             </View>
-          )}
-        />
-      </ScreenContainer>
+          </ScrollView>
+        </View>
+      </Modal>
     );
-  }
-
-  // ─── List View ─────────────────────────────────────────────────────────────
+  };
 
   return (
-    <ScreenContainer edges={["top", "left", "right"]}>
+    <ScreenContainer className="p-0">
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+          <MaterialIcons name="arrow-back" size={24} color="#F0F4F8" />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Analyse-Historie</Text>
-        <Pressable onPress={handleClearHistory} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-          <MaterialIcons name="delete-outline" size={22} color={colors.muted} />
+        <Text style={styles.headerTitle}>Analyse-Historie</Text>
+        <Pressable onPress={() => setShowFilters(!showFilters)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+          <View style={{ position: "relative" }}>
+            <MaterialIcons name="filter-list" size={24} color={activeFilterCount > 0 ? "#7C4DFF" : "#F0F4F8"} />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </View>
         </Pressable>
       </View>
 
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <MaterialIcons name="search" size={18} color={colors.muted} />
+      {/* Search */}
+      <View style={styles.searchRow}>
+        <MaterialIcons name="search" size={18} color="#8FA3B8" />
         <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Analysen durchsuchen..."
-          placeholderTextColor={colors.muted}
-          style={[styles.searchInput, { color: colors.foreground }]}
-          returnKeyType="search"
+          style={styles.searchInput}
+          placeholder="Suche in Analysen..."
+          placeholderTextColor="#8FA3B8"
+          value={filters.search}
+          onChangeText={(text) => setFilters(f => ({ ...f, search: text }))}
         />
-        {searchQuery.length > 0 && (
-          <Pressable onPress={() => setSearchQuery("")}>
-            <MaterialIcons name="close" size={18} color={colors.muted} />
+        {filters.search.length > 0 && (
+          <Pressable onPress={() => setFilters(f => ({ ...f, search: "" }))}>
+            <MaterialIcons name="close" size={18} color="#8FA3B8" />
           </Pressable>
         )}
       </View>
 
-      {/* Source Filter Chips */}
-      <View style={styles.filterRow}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={[
-            { key: "all", label: "Alle", icon: "list" },
-            { key: "photo", label: "Foto", icon: "photo-camera" },
-            { key: "speech", label: "Sprache", icon: "mic" },
-            { key: "document", label: "Dokument", icon: "description" },
-            { key: "matterport", label: "Matterport", icon: "view-in-ar" },
-            { key: "manual", label: "Manuell", icon: "edit" },
-          ]}
-          keyExtractor={(item) => item.key}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => setSourceFilter(item.key as SourceFilter)}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor: sourceFilter === item.key ? colors.primary + "20" : colors.surface,
-                  borderColor: sourceFilter === item.key ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <MaterialIcons
-                name={item.icon as any}
-                size={14}
-                color={sourceFilter === item.key ? colors.primary : colors.muted}
-              />
-              <Text style={[
-                styles.filterLabel,
-                { color: sourceFilter === item.key ? colors.primary : colors.muted },
-              ]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          )}
-        />
-      </View>
+      {/* Filter Panel */}
+      {showFilters && (
+        <View style={styles.filterPanel}>
+          {/* Source Filter */}
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Quelle</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {(["all", "photo", "speech", "matterport", "document", "manual"] as const).map((src) => (
+                <Pressable
+                  key={src}
+                  onPress={() => setFilters(f => ({ ...f, source: src }))}
+                  style={[styles.filterChip, filters.source === src && styles.filterChipActive]}
+                >
+                  <Text style={[styles.filterChipText, filters.source === src && styles.filterChipTextActive]}>
+                    {src === "all" ? "Alle" : getSourceLabel(src)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
 
-      {/* Project Filter */}
-      {projects.length > 0 && (
-        <View style={styles.projectFilterRow}>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={[{ id: null, name: "Alle Projekte" }, ...projects]}
-            keyExtractor={(item) => item.id || "all"}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => setProjectFilter(item.id)}
-                style={[
-                  styles.projectChip,
-                  {
-                    backgroundColor: projectFilter === item.id ? colors.primary + "15" : "transparent",
-                    borderColor: projectFilter === item.id ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text style={[
-                  styles.projectChipText,
-                  { color: projectFilter === item.id ? colors.primary : colors.muted },
-                ]}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            )}
-          />
+          {/* Status Filter */}
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Status</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {(["all", "pending", "reviewed", "adopted", "dismissed"] as const).map((st) => (
+                <Pressable
+                  key={st}
+                  onPress={() => setFilters(f => ({ ...f, status: st }))}
+                  style={[styles.filterChip, filters.status === st && styles.filterChipActive]}
+                >
+                  <Text style={[styles.filterChipText, filters.status === st && styles.filterChipTextActive]}>
+                    {st === "all" ? "Alle" : getStatusLabel(st)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Room Filter */}
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Raum</Text>
+            <TextInput
+              style={styles.filterInput}
+              placeholder="z.B. Bad EG"
+              placeholderTextColor="#8FA3B8"
+              value={filters.room}
+              onChangeText={(text) => setFilters(f => ({ ...f, room: text }))}
+            />
+          </View>
+
+          {/* Trade Filter */}
+          <View style={styles.filterRow}>
+            <Text style={styles.filterLabel}>Gewerk</Text>
+            <TextInput
+              style={styles.filterInput}
+              placeholder="z.B. Trockenbau"
+              placeholderTextColor="#8FA3B8"
+              value={filters.trade}
+              onChangeText={(text) => setFilters(f => ({ ...f, trade: text }))}
+            />
+          </View>
+
+          {/* Reset */}
+          <Pressable
+            onPress={() => setFilters({ ...DEFAULT_FILTERS, project: params.projectId || "" })}
+            style={({ pressed }) => [styles.resetButton, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={styles.resetButtonText}>Filter zurücksetzen</Text>
+          </Pressable>
         </View>
       )}
 
       {/* Results Count */}
-      <View style={styles.countRow}>
-        <Text style={[styles.countText, { color: colors.muted }]}>
-          {filteredEntries.length} {filteredEntries.length === 1 ? "Analyse" : "Analysen"}
-        </Text>
+      <View style={styles.resultsBar}>
+        <Text style={styles.resultsText}>{filteredEntries.length} Analysen</Text>
       </View>
 
       {/* List */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+      {loading ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>Laden...</Text>
         </View>
       ) : filteredEntries.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <MaterialIcons name="analytics" size={48} color={colors.muted} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {entries.length === 0 ? "Keine Analysen vorhanden" : "Keine Treffer"}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+        <View style={styles.emptyState}>
+          <MaterialIcons name="history" size={48} color="#1E3A5F" />
+          <Text style={styles.emptyTitle}>Keine Analysen gefunden</Text>
+          <Text style={styles.emptyText}>
             {entries.length === 0
-              ? "Starte eine KI-Bildanalyse um Ergebnisse hier zu sehen"
-              : "Versuche andere Suchbegriffe oder Filter"}
+              ? "Starte eine KI-Analyse, um hier den Verlauf zu sehen."
+              : "Passe die Filter an, um Ergebnisse zu sehen."}
           </Text>
         </View>
       ) : (
         <FlatList
           data={filteredEntries}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => setSelectedEntry(item)}
-              style={({ pressed }) => [
-                styles.entryCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              <View style={styles.entryHeader}>
-                <View style={[styles.sourceIcon, { backgroundColor: getSourceColor(item.source as AnalysisSource) + "20" }]}>
-                  <MaterialIcons
-                    name={getSourceIcon(item.source as AnalysisSource) as any}
-                    size={16}
-                    color={getSourceColor(item.source as AnalysisSource)}
-                  />
-                </View>
-                <View style={styles.entryMeta}>
-                  <Text style={[styles.entrySource, { color: colors.foreground }]}>
-                    {getSourceLabel(item.source as AnalysisSource)}
-                  </Text>
-                  <Text style={[styles.entryDate, { color: colors.muted }]}>
-                    {formatDate(item.timestamp)} · {formatTime(item.timestamp)}
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-              </View>
-
-              <Text style={[styles.entrySummary, { color: colors.muted }]} numberOfLines={2}>
-                {item.summary}
-              </Text>
-
-              <View style={styles.entryStats}>
-                {item.defectCount > 0 && (
-                  <View style={[styles.entryStat, { backgroundColor: colors.error + "15" }]}>
-                    <Text style={[styles.entryStatText, { color: colors.error }]}>
-                      {item.defectCount} Mängel
-                    </Text>
-                  </View>
-                )}
-                {item.taskCount > 0 && (
-                  <View style={[styles.entryStat, { backgroundColor: colors.primary + "15" }]}>
-                    <Text style={[styles.entryStatText, { color: colors.primary }]}>
-                      {item.taskCount} Aufgaben
-                    </Text>
-                  </View>
-                )}
-                {item.progressPercent > 0 && (
-                  <View style={[styles.entryStat, { backgroundColor: colors.success + "15" }]}>
-                    <Text style={[styles.entryStatText, { color: colors.success }]}>
-                      {item.progressPercent}%
-                    </Text>
-                  </View>
-                )}
-                {item.projectName && (
-                  <View style={[styles.entryStat, { backgroundColor: colors.surface }]}>
-                    <Text style={[styles.entryStatText, { color: colors.muted }]} numberOfLines={1}>
-                      {item.projectName}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Pressable>
-          )}
+          renderItem={renderEntry}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
         />
       )}
+
+      {renderDetailModal()}
     </ScreenContainer>
   );
 }
@@ -466,207 +450,321 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 0.5,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
+    color: "#F0F4F8",
   },
-  searchContainer: {
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 16,
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: "#0F1E30",
     borderWidth: 1,
+    borderColor: "#1E3A5F",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     gap: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    padding: 0,
+    color: "#F0F4F8",
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#7C4DFF",
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  filterPanel: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    backgroundColor: "#0F1E30",
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
   },
   filterRow: {
-    marginTop: 12,
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
   },
   filterLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  projectFilterRow: {
-    marginTop: 8,
-  },
-  projectChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  projectChipText: {
     fontSize: 11,
     fontWeight: "600",
+    color: "#8FA3B8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  countRow: {
-    paddingHorizontal: 16,
+  filterChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: "#1E3A5F40",
+    marginRight: 6,
+  },
+  filterChipActive: {
+    backgroundColor: "#7C4DFF30",
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: "#8FA3B8",
+  },
+  filterChipTextActive: {
+    color: "#7C4DFF",
+    fontWeight: "600",
+  },
+  filterInput: {
+    backgroundColor: "#0A1220",
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: "#F0F4F8",
+  },
+  resetButton: {
+    alignSelf: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: "#1E3A5F40",
+  },
+  resetButtonText: {
+    fontSize: 12,
+    color: "#5DADE2",
+    fontWeight: "600",
+  },
+  resultsBar: {
+    paddingHorizontal: 20,
     paddingVertical: 8,
   },
-  countText: {
+  resultsText: {
     fontSize: 12,
-    fontWeight: "500",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    textAlign: "center",
+    color: "#8FA3B8",
   },
   entryCard: {
-    padding: 14,
-    borderRadius: 12,
+    backgroundColor: "#0F1E30",
     borderWidth: 1,
-    marginBottom: 10,
+    borderColor: "#1E3A5F",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
   },
   entryHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  sourceIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  sourceTag: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
-  entryMeta: {
-    flex: 1,
-  },
-  entrySource: {
-    fontSize: 14,
+  sourceTagText: {
+    fontSize: 10,
     fontWeight: "600",
   },
-  entryDate: {
-    fontSize: 11,
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
   entrySummary: {
-    fontSize: 12,
+    fontSize: 13,
+    color: "#F0F4F8",
     lineHeight: 18,
-    marginBottom: 8,
+  },
+  entryMeta: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  entryMetaText: {
+    fontSize: 11,
+    color: "#8FA3B8",
   },
   entryStats: {
     flexDirection: "row",
-    gap: 6,
-    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#1E3A5F40",
   },
-  entryStat: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+  stat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
   },
-  entryStatText: {
-    fontSize: 10,
-    fontWeight: "700",
+  statText: {
+    fontSize: 11,
+    color: "#8FA3B8",
   },
-  // Detail styles
-  detailCard: {
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 80,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#F0F4F8",
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#8FA3B8",
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
+  // Detail Modal
+  detailContainer: {
+    flex: 1,
+    backgroundColor: "#0A1220",
+  },
+  detailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1E3A5F",
+  },
+  detailTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#F0F4F8",
+  },
+  detailSection: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1E3A5F40",
   },
   detailRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
   },
-  detailSource: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  detailTime: {
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  detailProjectBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  detailProjectName: {
+  detailTimestamp: {
     fontSize: 12,
-    fontWeight: "600",
+    color: "#8FA3B8",
+    marginTop: 6,
   },
   detailSectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-    marginBottom: 8,
+    color: "#5DADE2",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 14,
+    color: "#F0F4F8",
     lineHeight: 20,
   },
-  detailStats: {
+  detailSubtext: {
+    fontSize: 12,
+    color: "#8FA3B8",
+    marginTop: 4,
+  },
+  detailImage: {
+    width: 120,
+    height: 90,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  progressRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  detailStatItem: {
     alignItems: "center",
-    gap: 4,
+    gap: 10,
   },
-  detailStatNumber: {
-    fontSize: 22,
-    fontWeight: "800",
+  progressBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: "#1E3A5F",
+    borderRadius: 3,
+    overflow: "hidden",
   },
-  detailStatLabel: {
-    fontSize: 10,
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#66BB6A",
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#66BB6A",
+  },
+  detailListItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1E3A5F20",
+  },
+  severityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  detailItemTitle: {
+    fontSize: 13,
+    color: "#F0F4F8",
     fontWeight: "500",
   },
-  adoptionRow: {
-    flexDirection: "row",
-    gap: 10,
-    flexWrap: "wrap",
+  detailItemMeta: {
+    fontSize: 11,
+    color: "#8FA3B8",
+    marginTop: 1,
   },
-  adoptionBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+  detailObservation: {
+    fontSize: 13,
+    color: "#F0F4F8",
+    lineHeight: 18,
+    marginBottom: 4,
   },
-  adoptionText: {
+  metaGrid: {
+    gap: 8,
+  },
+  metaItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  metaLabel: {
     fontSize: 12,
-    fontWeight: "600",
+    color: "#8FA3B8",
+  },
+  metaValue: {
+    fontSize: 12,
+    color: "#F0F4F8",
+    fontWeight: "500",
   },
 });

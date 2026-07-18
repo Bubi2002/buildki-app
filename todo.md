@@ -550,3 +550,9 @@
 - [x] Sprint 2: photo-analysis.tsx refactored auf AI Service
 - [x] Sprint 2: Batch-Analyse mit automatischer Gruppierung nach Raum/Aufnahmezeit
 - [x] Sprint 2: Analysis History Screen mit Suche, Filter und Detailansicht
+- [x] Sprint 3: AI Workbench – Tools-Tab als zentraler Hub mit allen KI-Modulen
+- [x] Sprint 3: Analysis History erweitert – Filter (Datum, Projekt, Raum, Gewerk, Status, Confidence, Quelle) + Detail mit Originalbildern
+- [x] Sprint 3: Batch-Analyse verbessert – Review/Übernahme-Workflow, eine Analyse je Raum
+- [x] Sprint 3: AI Site Assistant – Knowledge Layer basiert, Vorschläge, Conversation Memory
+- [x] Sprint 3: Multi-Format Export (PDF, CSV, Excel, JSON) für Analysen, Mängel, Aufgaben, Berichte
+- [x] Sprint 3: Modulare Architektur-Registry für zukünftige Module (Photo, Speech, Document, Matterport, BIM, etc.)
