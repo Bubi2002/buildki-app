@@ -43,6 +43,10 @@ import { saveDefect, deleteDefect, type Defect, type DefectPriority } from "@/li
 // Undo toast component
 import { UndoToast } from "@/components/UndoToast";
 
+// Central AI Service
+import { aiService, type AIServiceMutations } from "@/lib/ai-service";
+import { getSourceLabel, getSourceColor } from "@/shared/ai-types";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SelectedPhoto {
@@ -137,6 +141,12 @@ export default function PhotoAnalysisScreen() {
 
   const uploadPhotoMutation = trpc.analysis.uploadPhoto.useMutation();
   const analyzePhotoMutation = trpc.analysis.analyzePhoto.useMutation();
+
+  // AI Service mutations bridge (DI from React hooks)
+  const mutations: AIServiceMutations = {
+    uploadPhoto: (input) => uploadPhotoMutation.mutateAsync(input),
+    analyzePhoto: (input) => analyzePhotoMutation.mutateAsync(input),
+  };
 
   // Load active project
   const loadActiveProject = useCallback(async () => {
@@ -392,8 +402,8 @@ export default function PhotoAnalysisScreen() {
     resetAdoptionState();
 
     try {
-      // Step 1: Upload photos to storage
-      const uploadedUrls: string[] = [];
+      // Prepare photos with base64
+      const photosWithBase64: Array<{ base64: string; mimeType: string; filename: string }> = [];
       for (const photo of photos) {
         let base64Data = photo.base64;
         if (!base64Data) {
@@ -401,30 +411,25 @@ export default function PhotoAnalysisScreen() {
             encoding: FileSystem.EncodingType.Base64,
           });
         }
-        const uploadResult = await uploadPhotoMutation.mutateAsync({
+        photosWithBase64.push({
           base64: base64Data,
           mimeType: photo.mimeType,
           filename: photo.filename,
         });
-        uploadedUrls.push(uploadResult.url);
       }
 
-      // Step 2: Run analysis
-      const analysisResult = await analyzePhotoMutation.mutateAsync({
-        imageUrls: uploadedUrls,
+      // Use central AI Service (handles upload, analysis, history, knowledge layer)
+      const { result: analysisResult } = await aiService.analyzePhotos({
+        photos: photosWithBase64,
         projectId: activeProject.id,
         projectName: activeProject.name,
         roomName: roomName || undefined,
         additionalContext: additionalContext || undefined,
+        source: "photo",
+        mutations,
       });
 
       setResult(analysisResult as AnalysisResult);
-
-      // Step 3: Save result to AsyncStorage for history
-      const historyJson = await AsyncStorage.getItem("analysis-history") || "[]";
-      const history = JSON.parse(historyJson);
-      history.unshift(analysisResult);
-      await AsyncStorage.setItem("analysis-history", JSON.stringify(history.slice(0, 50)));
 
     } catch (error: any) {
       Alert.alert(

@@ -544,3 +544,9 @@
 - [x] Sprint 1: Analyse-Historie – analysis-history-store.ts mit getAnalysisHistory/saveAnalysisToHistory
 - [x] Sprint 1: Confidence-Anzeige – Konfidenz-Prozent in DefectCard Header angezeigt
 - [x] Sprint 1: Undo-Funktion – UndoToast-Komponente mit Rückgängig-Button (4s Auto-Dismiss)
+- [x] Sprint 2: Einheitliches Source-System (shared/ai-types.ts) mit AnalysisSource-Enum
+- [x] Sprint 2: Zentraler AI Service (lib/ai-service.ts) – UI ruft nur Service auf, keine eigene KI-Logik
+- [x] Sprint 2: Project Knowledge Layer (lib/knowledge-layer.ts) – gemeinsame Wissensbasis für alle KI-Features
+- [x] Sprint 2: photo-analysis.tsx refactored auf AI Service
+- [x] Sprint 2: Batch-Analyse mit automatischer Gruppierung nach Raum/Aufnahmezeit
+- [x] Sprint 2: Analysis History Screen mit Suche, Filter und Detailansicht
