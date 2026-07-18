@@ -865,6 +865,47 @@ Regeln:
       }),
   }),
 
+  // ─── KI-Analyse ──────────────────────────────────────────────────────────────
+  analysis: router({
+    uploadPhoto: publicProcedure
+      .input(
+        z.object({
+          base64: z.string(),
+          mimeType: z.string(),
+          filename: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { uploadAnalysisPhoto } = await import("./ai-analysis");
+        const url = await uploadAnalysisPhoto(input.base64, input.mimeType, input.filename);
+        return { url };
+      }),
+
+    analyzePhoto: publicProcedure
+      .input(
+        z.object({
+          imageUrls: z.array(z.string()).min(1).max(5),
+          projectId: z.string(),
+          projectName: z.string().optional(),
+          roomName: z.string().optional(),
+          additionalContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { analyzeConstructionPhoto } = await import("./ai-analysis");
+        const result = await analyzeConstructionPhoto({
+          imageUrls: input.imageUrls,
+          projectId: input.projectId,
+          projectName: input.projectName,
+          roomName: input.roomName,
+          additionalContext: input.additionalContext,
+        });
+        // Don't send rawResponse to client (save bandwidth)
+        const { rawResponse, ...clientResult } = result;
+        return clientResult;
+      }),
+  }),
+
 });
 
 export type AppRouter = typeof appRouter;

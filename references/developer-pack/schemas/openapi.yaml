@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: protoKI API
+  version: 1.0.0
+servers:
+  - url: https://api.protoki.example/api/v1
+paths:
+  /projects:
+    get:
+      summary: Projekte auflisten
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Projekt anlegen
+      responses:
+        '201':
+          description: Erstellt
+  /projects/{project_id}/analyses/photo:
+    post:
+      summary: Fotoanalyse starten
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [media_ids]
+              properties:
+                media_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                room_id:
+                  type: [string, 'null']
+                  format: uuid
+                note:
+                  type: [string, 'null']
+      responses:
+        '202':
+          description: Analyse gestartet
+  /analyses/{analysis_id}:
+    get:
+      summary: Analyse abrufen
+      parameters:
+        - in: path
+          name: analysis_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+  /integrations/matterport/status:
+    get:
+      summary: Matterport-Status
+      responses:
+        '200':
+          description: OK
+  /integrations/matterport/models:
+    get:
+      summary: Matterport-Modelle auflisten
+      responses:
+        '200':
+          description: OK

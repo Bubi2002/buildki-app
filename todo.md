@@ -530,3 +530,8 @@
 - [x] App: Modelle anzeigen (Liste)
 - [x] App: Modell auswählen und Details anzeigen
 - [x] App: Synchronisieren-Button
+- [x] UI: Settings-Screen Premium-Redesign (kompaktere Karten, bessere Typografie, elegante Auswahl, iOS-Premium-Look)
+- [x] Backend: KI-Bildanalyse tRPC-Endpunkt (Vision LLM + JSON-Schema)
+- [x] App: KI-Bildanalyse Screen (Foto wählen, analysieren, Ergebnis-Karten)
+- [x] Backend: Matterport Feature-Flag (MATTERPORT_PRODUCTION_ENABLED)
+- [x] ROADMAP.md erstellt mit Kanban-Status-Tracking

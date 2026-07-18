@@ -1,0 +1,42 @@
+{
+  "analysis_status": "needs_review",
+  "room": {
+    "label": "Badezimmer",
+    "confidence": 0.91
+  },
+  "construction_phase": {
+    "label": "Innenausbau",
+    "confidence": 0.88
+  },
+  "progress_percent": 72,
+  "observations": [
+    {
+      "text": "Wandfliesen sind in den sichtbaren Bereichen weitgehend verlegt.",
+      "confidence": 0.86,
+      "evidence_type": "visible"
+    }
+  ],
+  "missing_or_open": [
+    "Sanitärobjekte",
+    "Silikonfugen",
+    "Elektro-Endmontage"
+  ],
+  "potential_defects": [
+    {
+      "title": "Möglicherweise ungleichmäßige Fugenbreite",
+      "description": "In einem Teilbereich wirken die Fugenbreiten ungleichmäßig. Prüfung vor Ort erforderlich.",
+      "severity": "medium",
+      "confidence": 0.58,
+      "status": "possible"
+    }
+  ],
+  "next_steps": [
+    "Detailfoto des auffälligen Fugenbereichs aufnehmen",
+    "Sanitärobjekte montieren",
+    "Silikonfugen herstellen"
+  ],
+  "warnings": [
+    "Nicht sichtbare Bauteile wurden nicht bewertet."
+  ],
+  "overall_confidence": 0.76
+}

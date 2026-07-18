@@ -25,7 +25,7 @@ export default function ToolsScreen() {
       const data = await AsyncStorage.getItem("projects");
       const parsed: Project[] = data ? JSON.parse(data) : [];
       setProjects(parsed);
-      const lastId = await AsyncStorage.getItem("lastActiveProjectId");
+      const lastId = await AsyncStorage.getItem("last-selected-project-id");
       if (lastId) {
         const found = parsed.find(p => p.id === lastId);
         if (found) { setSelectedProject(found); return; }
@@ -39,7 +39,7 @@ export default function ToolsScreen() {
   const selectProject = async (project: Project) => {
     setSelectedProject(project);
     setShowProjectPicker(false);
-    await AsyncStorage.setItem("lastActiveProjectId", project.id);
+    await AsyncStorage.setItem("last-selected-project-id", project.id);
   };
 
   const navigateTool = (route: string) => {
@@ -51,6 +51,7 @@ export default function ToolsScreen() {
   };
 
   const tools = [
+    { key: 'ki_analyse', icon: 'auto-awesome', color: '#7C4DFF', route: '/photo-analysis' },
     { key: 'grundriss', icon: 'map', color: '#4FC3F7', route: '/floor-plan' },
     { key: 'maengel', icon: 'warning', color: '#FF9800', route: '/defects' },
     { key: 'tagebuch', icon: 'menu-book', color: '#66BB6A', route: '/diary' },
@@ -101,7 +102,7 @@ export default function ToolsScreen() {
             {projects.length === 0 ? (
               <Text style={styles.noProjects}>{t('keine_projekte' as any)}</Text>
             ) : (
-              projects.slice(0, 8).map((project) => (
+              projects.map((project) => (
                 <Pressable
                   key={project.id}
                   onPress={() => selectProject(project)}

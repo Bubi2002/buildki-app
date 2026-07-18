@@ -64,6 +64,9 @@ interface ModelDetails {
 
 type ViewMode = "connect" | "models" | "detail";
 
+// Feature gate: Matterport is in sandbox mode, pending production API approval
+const MATTERPORT_PRODUCTION_ENABLED = false;
+
 export default function MatterportScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -612,6 +615,16 @@ export default function MatterportScreen() {
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Matterport</Text>
         <View style={{ width: 24 }} />
       </View>
+
+      {/* Sandbox Mode Banner */}
+      {!MATTERPORT_PRODUCTION_ENABLED && (
+        <View style={{ backgroundColor: '#FF980020', paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <MaterialIcons name="science" size={18} color="#FF9800" />
+          <Text style={{ color: '#FF9800', fontSize: 12, fontWeight: '600', flex: 1 }}>
+            Sandbox-Modus – Produktions-API beantragt. Funktionalität eingeschränkt.
+          </Text>
+        </View>
+      )}
 
       {/* Tab Switcher (when connected) */}
       {isConnected && viewMode !== "detail" && (

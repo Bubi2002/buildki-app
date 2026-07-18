@@ -1251,49 +1251,48 @@ return (
           <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16, marginBottom: 8 }]}>{t('standardvorlagen')}</Text>
 
           <View style={styles.templateGrid}>
-            {PROTOCOL_TEMPLATES.map((template) => (
+            {PROTOCOL_TEMPLATES.map((template) => {
+              const isSelected = settings.templateId === template.id;
+              return (
               <Pressable
                 key={template.id}
                 onPress={() => updateSetting("templateId", template.id)}
                 style={({ pressed }) => [
                   styles.templateCard,
                   {
-                    backgroundColor:
-                      settings.templateId === template.id
-                        ? colors.primary + "15"
-                        : colors.surface,
-                    borderColor:
-                      settings.templateId === template.id
-                        ? colors.primary
-                        : colors.border,
-                    opacity: pressed ? 0.7 : 1,
+                    backgroundColor: isSelected
+                      ? colors.primary + "12"
+                      : colors.surface,
+                    borderColor: isSelected
+                      ? colors.primary
+                      : colors.border,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                    ...(isSelected ? {
+                      shadowColor: colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 8,
+                      elevation: 3,
+                    } : {}),
                   },
                 ]}
               >
                 <View style={styles.templateIconRow}>
                   <MaterialIcons
                     name={template.icon as any}
-                    size={24}
-                    color={
-                      settings.templateId === template.id
-                        ? colors.primary
-                        : colors.muted
-                    }
+                    size={26}
+                    color={isSelected ? colors.primary : colors.muted}
                   />
-                  {settings.templateId === template.id && (
-                    <MaterialIcons name="check-circle" size={18} color={colors.primary} />
+                  {isSelected && (
+                    <MaterialIcons name="check-circle" size={22} color={colors.primary} />
                   )}
                 </View>
                 <Text
                   style={[
                     styles.templateName,
-                    {
-                      color:
-                        settings.templateId === template.id
-                          ? colors.primary
-                          : colors.foreground,
-                    },
+                    { color: isSelected ? colors.primary : colors.foreground },
                   ]}
+                  numberOfLines={2}
                 >
                   {template.name}
                 </Text>
@@ -1304,7 +1303,8 @@ return (
                   {template.description}
                 </Text>
               </Pressable>
-            ))}
+              );
+            })}
           </View>
         </View>
 
@@ -2126,31 +2126,35 @@ return (
 
 const styles = StyleSheet.create({
   headerContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   screenTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "700",
+    letterSpacing: -0.5,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 36,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   sectionDescription: {
-    fontSize: 13,
-    marginBottom: 12,
+    fontSize: 14,
+    marginBottom: 16,
+    opacity: 0.6,
   },
   logoSection: {
     marginBottom: 16,
@@ -2162,7 +2166,7 @@ const styles = StyleSheet.create({
   logoPreview: {
     width: "100%",
     height: 80,
-    borderRadius: 0,
+    borderRadius: 14,
   },
   logoActions: {
     flexDirection: "row",
@@ -2172,9 +2176,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
   logoActionText: {
@@ -2184,11 +2188,11 @@ const styles = StyleSheet.create({
   logoUploadButton: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 24,
-    borderRadius: 0,
-    borderWidth: 2,
+    paddingVertical: 28,
+    borderRadius: 20,
+    borderWidth: 1.5,
     borderStyle: "dashed",
-    gap: 6,
+    gap: 8,
   },
   logoUploadText: {
     fontSize: 14,
@@ -2200,48 +2204,50 @@ const styles = StyleSheet.create({
   templateGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 12,
   },
   templateCard: {
-    width: "48%",
-    padding: 12,
-    borderRadius: 0,
-    borderWidth: 1.5,
-    minHeight: 100,
+    width: "47.5%",
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    minHeight: 88,
   },
   templateIconRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   templateName: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     marginBottom: 4,
+    letterSpacing: -0.2,
   },
   templateDescription: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
+    opacity: 0.6,
   },
   inputGroup: {
-    marginBottom: 14,
+    marginBottom: 16,
   },
   inputLabel: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
+    gap: 10,
+    marginBottom: 8,
   },
   labelText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 15,
+    fontWeight: "600",
   },
   input: {
     borderWidth: 1,
-    borderRadius: 0,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 15,
   },
   multilineInput: {
@@ -2259,8 +2265,8 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 0,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: "center",
   },
@@ -2274,20 +2280,20 @@ const styles = StyleSheet.create({
   customTemplateRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 0,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   createTemplateButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 0,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   createTemplateText: {
     fontSize: 14,
@@ -2301,10 +2307,10 @@ const styles = StyleSheet.create({
   themeOption: {
     flex: 1,
     alignItems: "center",
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: 0,
-    borderWidth: 1.5,
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   themeOptionText: {
     fontSize: 13,
@@ -2314,10 +2320,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 14,
-    borderRadius: 0,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   autoSendToggleContent: {
     flexDirection: "row",
@@ -2360,10 +2366,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 0,
+    paddingVertical: 16,
+    borderRadius: 16,
     gap: 8,
-    marginTop: 8,
+    marginTop: 12,
   },
   saveButtonText: {
     color: "#FFFFFF",
@@ -2373,10 +2379,10 @@ const styles = StyleSheet.create({
   syncRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 0,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   syncLabel: {
     fontSize: 15,
@@ -2390,10 +2396,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 14,
-    borderRadius: 0,
+    padding: 16,
+    borderRadius: 16,
     gap: 8,
-    marginTop: 4,
+    marginTop: 6,
   },
   syncButtonText: {
     color: "#FFFFFF",
@@ -2401,9 +2407,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   loginButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   toggleTrack: {
     width: 44,
