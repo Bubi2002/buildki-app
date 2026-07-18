@@ -6,7 +6,8 @@
  * Nutzbar für: Foto-Analyse, Matterport, IFC, AI Site Assistant
  */
 
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 
@@ -44,6 +45,23 @@ export function DefectCard({
   showActions = true,
 }: DefectCardProps) {
   const colors = useColors();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const prevAdopted = useRef(isAdopted);
+
+  // Erfolgsanimation when adopted state changes to true
+  useEffect(() => {
+    if (isAdopted && !prevAdopted.current) {
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.03, duration: 120, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        ]),
+        Animated.timing(checkOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]).start();
+    }
+    prevAdopted.current = isAdopted;
+  }, [isAdopted]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -68,12 +86,13 @@ export function DefectCard({
   const severityColor = getSeverityColor(defect.severity);
 
   return (
-    <View style={[
+    <Animated.View style={[
       styles.card,
       { 
         backgroundColor: colors.surface, 
         borderColor: isAdopted ? colors.success + "50" : isDismissed ? colors.muted + "30" : colors.border,
         opacity: isDismissed ? 0.5 : 1,
+        transform: [{ scale: scaleAnim }],
       },
     ]}>
       {/* Header: Severity + Confidence */}
@@ -87,10 +106,10 @@ export function DefectCard({
           {Math.round(defect.confidence * 100)}% Konfidenz
         </Text>
         {isAdopted && (
-          <View style={[styles.adoptedBadge, { backgroundColor: colors.success + "20" }]}>
+          <Animated.View style={[styles.adoptedBadge, { backgroundColor: colors.success + "20", opacity: checkOpacity }]}>
             <MaterialIcons name="check-circle" size={14} color={colors.success} />
             <Text style={[styles.adoptedText, { color: colors.success }]}>Übernommen</Text>
-          </View>
+          </Animated.View>
         )}
       </View>
 
@@ -142,7 +161,7 @@ export function DefectCard({
           </Pressable>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

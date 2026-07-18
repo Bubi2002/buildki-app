@@ -6,7 +6,8 @@
  * Nutzbar für: Foto-Analyse, Matterport, IFC, AI Site Assistant
  */
 
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useEffect, useRef } from "react";
+import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 
@@ -22,15 +23,10 @@ export interface TaskData {
 
 interface TaskCardProps {
   task: TaskData;
-  /** Callback wenn "Übernehmen" gedrückt wird */
   onAdopt?: (task: TaskData) => void;
-  /** Callback wenn "Ablehnen" gedrückt wird */
   onDismiss?: (task: TaskData) => void;
-  /** Ob die Aufgabe bereits übernommen wurde */
   isAdopted?: boolean;
-  /** Ob die Aufgabe abgelehnt wurde */
   isDismissed?: boolean;
-  /** Ob Aktions-Buttons angezeigt werden */
   showActions?: boolean;
 }
 
@@ -43,6 +39,22 @@ export function TaskCard({
   showActions = true,
 }: TaskCardProps) {
   const colors = useColors();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const prevAdopted = useRef(isAdopted);
+
+  useEffect(() => {
+    if (isAdopted && !prevAdopted.current) {
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.03, duration: 120, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        ]),
+        Animated.timing(checkOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]).start();
+    }
+    prevAdopted.current = isAdopted;
+  }, [isAdopted]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -65,29 +77,27 @@ export function TaskCard({
   const priorityColor = getPriorityColor(task.priority);
 
   return (
-    <View style={[
+    <Animated.View style={[
       styles.card,
       { 
         backgroundColor: colors.surface, 
         borderColor: isAdopted ? colors.success + "50" : isDismissed ? colors.muted + "30" : colors.border,
         opacity: isDismissed ? 0.5 : 1,
+        transform: [{ scale: scaleAnim }],
       },
     ]}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
         <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>{task.title}</Text>
         {isAdopted && (
-          <View style={[styles.adoptedBadge, { backgroundColor: colors.success + "20" }]}>
+          <Animated.View style={[styles.adoptedBadge, { backgroundColor: colors.success + "20", opacity: checkOpacity }]}>
             <MaterialIcons name="check-circle" size={14} color={colors.success} />
-          </View>
+          </Animated.View>
         )}
       </View>
 
-      {/* Description */}
       <Text style={[styles.description, { color: colors.muted }]}>{task.description}</Text>
 
-      {/* Meta */}
       <View style={styles.meta}>
         <View style={styles.metaItem}>
           <MaterialIcons name="build" size={12} color={colors.muted} />
@@ -104,7 +114,6 @@ export function TaskCard({
         </View>
       </View>
 
-      {/* Deadline */}
       {task.deadline && (
         <View style={styles.deadlineRow}>
           <MaterialIcons name="event" size={12} color={colors.warning} />
@@ -114,7 +123,6 @@ export function TaskCard({
         </View>
       )}
 
-      {/* Action Buttons */}
       {showActions && !isAdopted && !isDismissed && (
         <View style={styles.actions}>
           <Pressable
@@ -138,7 +146,7 @@ export function TaskCard({
           </Pressable>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

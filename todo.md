@@ -538,3 +538,9 @@
 - [x] Feature: Mängel-Übernahme aus KI-Analyse-Ergebnissen (Bestätigungs-Flow → Mängelliste)
 - [x] Feature: Matterport Produktions-Flag vorbereitet (aktivierbar nach Produktionsfreigabe)
 - [x] Wiederverwendbare Komponenten: AnalysisCard, DefectCard, TaskCard, ReviewCard, ProgressCard
+- [x] Sprint 1: Badge für KI-Mängel – Defect-Typ erweitert um source, confidence, analysisId
+- [x] Sprint 1: Autoanalyse – Auto-Analyse Toggle in Einstellungen + Trigger nach Aufnahme
+- [x] Sprint 1: Erfolgsanimation – Scale-Pulse + Checkmark-Fade bei Übernahme (DefectCard, TaskCard)
+- [x] Sprint 1: Analyse-Historie – analysis-history-store.ts mit getAnalysisHistory/saveAnalysisToHistory
+- [x] Sprint 1: Confidence-Anzeige – Konfidenz-Prozent in DefectCard Header angezeigt
+- [x] Sprint 1: Undo-Funktion – UndoToast-Komponente mit Rückgängig-Button (4s Auto-Dismiss)

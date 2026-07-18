@@ -1337,12 +1337,27 @@ export default function RecordScreen() {
         console.error("Auto-send error:", autoSendError);
       }
 
+      // Auto-analyse photos if enabled and photos exist
+      try {
+        const settingsStr3 = await AsyncStorage.getItem("protokoll-settings");
+        const appSettings3 = settingsStr3 ? JSON.parse(settingsStr3) : {};
+        if (appSettings3.autoAnalyzePhotos && newProtocol.photos && newProtocol.photos.length > 0) {
+          router.push(
+            `/photo-analysis?autoPhotos=${encodeURIComponent(JSON.stringify(newProtocol.photos.slice(0, 5)))}&projectId=${selectedProject?.id || ""}` as any
+          );
+          setIsProcessing(false);
+          setCapturedPhotos([]);
+          setPhotoTimestamps([]);
+          return;
+        }
+      } catch (autoAnalyzeError) {
+        console.error("Auto-analyse error:", autoAnalyzeError);
+      }
+
       setIsProcessing(false);
       setCapturedPhotos([]);
       setPhotoTimestamps([]);
-      
 
-      
       router.push(
         `/protocol-detail?id=${newProtocol.id}` as any
       );

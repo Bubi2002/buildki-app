@@ -52,6 +52,7 @@ type Settings = {
   remindersEnabled: boolean;
   reminderHoursBefore: number;
   audioQuality: "standard" | "high" | "maximum";
+  autoAnalyzePhotos: boolean;
 };
 
 type CompanySettings = {
@@ -76,6 +77,7 @@ const DEFAULT_SETTINGS: Settings = {
   remindersEnabled: true,
   reminderHoursBefore: 24,
   audioQuality: "high",
+  autoAnalyzePhotos: false,
 };
 
 const DEFAULT_COMPANY: CompanySettings = {
@@ -1478,6 +1480,59 @@ return (
               )}
             </View>
           )}
+        </View>
+
+        {/* Auto-Analyse Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            KI-Bildanalyse
+          </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Fotos nach Aufnahme automatisch analysieren
+          </Text>
+
+          <Pressable
+            onPress={() => updateSetting("autoAnalyzePhotos", !settings.autoAnalyzePhotos)}
+            style={({ pressed }) => [
+              styles.autoSendToggle,
+              {
+                backgroundColor: settings.autoAnalyzePhotos ? "#7C3AED15" : colors.surface,
+                borderColor: settings.autoAnalyzePhotos ? "#7C3AED" : colors.border,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <View style={styles.autoSendToggleContent}>
+              <MaterialIcons
+                name="auto-awesome"
+                size={22}
+                color={settings.autoAnalyzePhotos ? "#7C3AED" : colors.muted}
+              />
+              <View style={styles.autoSendToggleText}>
+                <Text style={[styles.autoSendTitle, { color: colors.foreground }]}>
+                  Auto-Analyse {settings.autoAnalyzePhotos ? "aktiv" : "inaktiv"}
+                </Text>
+                <Text style={[styles.autoSendSubtitle, { color: colors.muted }]}>
+                  {settings.autoAnalyzePhotos
+                    ? "Fotos werden nach Aufnahme automatisch per KI analysiert"
+                    : "Tippe zum Aktivieren"}
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[
+                styles.toggleSwitch,
+                { backgroundColor: settings.autoAnalyzePhotos ? "#7C3AED" : colors.border },
+              ]}
+            >
+              <View
+                style={[
+                  styles.toggleKnob,
+                  { transform: [{ translateX: settings.autoAnalyzePhotos ? 18 : 2 }] },
+                ]}
+              />
+            </View>
+          </Pressable>
         </View>
 
         {/* Audio Quality Section */}

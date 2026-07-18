@@ -27,6 +27,8 @@ export type DefectHistoryEntry = {
   note?: string;
 };
 
+export type DefectSource = "manual" | "ki_analysis" | "matterport" | "checklist";
+
 export type Defect = {
   id: string;
   projectId: string;
@@ -45,6 +47,12 @@ export type Defect = {
   updatedAt: string;
   resolvedAt?: string;
   protocolId?: string;
+  /** Source of the defect (manual entry, KI analysis, Matterport, checklist) */
+  source?: DefectSource;
+  /** Confidence score from KI analysis (0.0 - 1.0) */
+  confidence?: number;
+  /** Reference to the analysis that created this defect */
+  analysisId?: string;
 };
 
 export const DEFECT_CATEGORIES = [

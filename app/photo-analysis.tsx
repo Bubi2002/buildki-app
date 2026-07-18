@@ -8,7 +8,7 @@
  * 4. Mängel/Aufgaben per Tap in die Mängelliste/Aufgabenliste übernehmen
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -38,7 +38,10 @@ import { ReviewCard } from "@/components/analysis/ReviewCard";
 import { AnalysisCard, type AnalysisData } from "@/components/analysis/AnalysisCard";
 
 // Defect store for adoption
-import { saveDefect, type Defect, type DefectPriority } from "@/lib/defect-store";
+import { saveDefect, deleteDefect, type Defect, type DefectPriority } from "@/lib/defect-store";
+
+// Undo toast component
+import { UndoToast } from "@/components/UndoToast";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -102,6 +105,35 @@ export default function PhotoAnalysisScreen() {
   const [dismissedDefects, setDismissedDefects] = useState<Set<string>>(new Set());
   const [adoptedTasks, setAdoptedTasks] = useState<Set<string>>(new Set());
   const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
+
+  // Undo toast state
+  const [undoToast, setUndoToast] = useState<{ visible: boolean; message: string; itemId: string; itemType: "defect" | "task" }>({
+    visible: false, message: "", itemId: "", itemType: "defect",
+  });
+
+  const showUndoToast = (savedId: string, type: "defect" | "task", title: string) => {
+    const label = type === "defect" ? "Mangel" : "Aufgabe";
+    setUndoToast({ visible: true, message: `${label} \u00fcbernommen`, itemId: savedId, itemType: type });
+  };
+
+  const handleUndo = async () => {
+    try {
+      if (undoToast.itemType === "defect") {
+        await deleteDefect(undoToast.itemId);
+      } else {
+        const tasksJson = await AsyncStorage.getItem("project-tasks") || "[]";
+        const tasks = JSON.parse(tasksJson);
+        const filtered = tasks.filter((t: any) => t.id !== undoToast.itemId);
+        await AsyncStorage.setItem("project-tasks", JSON.stringify(filtered));
+      }
+      if (Platform.OS !== "web") {
+        const Haptics = require("expo-haptics");
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+    } catch (err) {
+      console.warn("[Undo] Failed:", err);
+    }
+  };
 
   const uploadPhotoMutation = trpc.analysis.uploadPhoto.useMutation();
   const analyzePhotoMutation = trpc.analysis.analyzePhoto.useMutation();
@@ -237,11 +269,15 @@ export default function PhotoAnalysisScreen() {
       location: defect.location,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      source: "ki_analysis" as const,
+      confidence: defect.confidence,
+      analysisId: result?.id,
     };
 
     try {
       await saveDefect(newDefect);
       setAdoptedDefects((prev) => new Set([...prev, defect.id]));
+      showUndoToast(newDefect.id, "defect", defect.title);
       if (Platform.OS !== "web") {
         const Haptics = require("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -280,6 +316,7 @@ export default function PhotoAnalysisScreen() {
       tasks.push(newTask);
       await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
       setAdoptedTasks((prev) => new Set([...prev, task.id]));
+      showUndoToast(newTask.id, "task", task.title);
       if (Platform.OS !== "web") {
         const Haptics = require("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -574,6 +611,14 @@ export default function PhotoAnalysisScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Undo Toast */}
+      <UndoToast
+        visible={undoToast.visible}
+        message={undoToast.message}
+        onUndo={handleUndo}
+        onDismiss={() => setUndoToast((prev) => ({ ...prev, visible: false }))}
+      />
     </ScreenContainer>
   );
 }
