@@ -535,3 +535,6 @@
 - [x] App: KI-Bildanalyse Screen (Foto wählen, analysieren, Ergebnis-Karten)
 - [x] Backend: Matterport Feature-Flag (MATTERPORT_PRODUCTION_ENABLED)
 - [x] ROADMAP.md erstellt mit Kanban-Status-Tracking
+- [x] Feature: Mängel-Übernahme aus KI-Analyse-Ergebnissen (Bestätigungs-Flow → Mängelliste)
+- [x] Feature: Matterport Produktions-Flag vorbereitet (aktivierbar nach Produktionsfreigabe)
+- [x] Wiederverwendbare Komponenten: AnalysisCard, DefectCard, TaskCard, ReviewCard, ProgressCard

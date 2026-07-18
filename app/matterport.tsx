@@ -64,7 +64,9 @@ interface ModelDetails {
 
 type ViewMode = "connect" | "models" | "detail";
 
-// Feature gate: Matterport is in sandbox mode, pending production API approval
+// Feature gate: Set to `true` once Matterport production API is approved.
+// Until then, a sandbox banner is shown. Functionality works but may be limited.
+// To activate: set env var MATTERPORT_PRODUCTION_ENABLED=true or change this constant.
 const MATTERPORT_PRODUCTION_ENABLED = false;
 
 export default function MatterportScreen() {
