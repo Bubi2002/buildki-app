@@ -12,6 +12,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 
 const SYNC_STATUS_KEY = "offline-sync-status";
 const MAX_QUEUE_RETRIES = 5;
+const BASE_RETRY_DELAY_MS = 2000; // 2s, 4s, 8s, 16s, 32s exponential backoff
 
 // Sync state
 export type SyncStatus = {
@@ -169,11 +170,19 @@ async function processQueue(): Promise<void> {
       } catch (error: any) {
         const errMsg = error?.message || String(error);
         console.error(`[SyncManager] Failed to process ${item.id}:`, errMsg);
+        const newRetryCount = item.retryCount + 1;
         await updateQueueItem(item.id, {
           status: "failed",
-          retryCount: item.retryCount + 1,
+          retryCount: newRetryCount,
         });
         updateStatus({ lastError: errMsg });
+        
+        // Exponential backoff: wait before next item
+        if (newRetryCount < MAX_QUEUE_RETRIES) {
+          const delay = BASE_RETRY_DELAY_MS * Math.pow(2, newRetryCount - 1);
+          console.log(`[SyncManager] Backoff ${delay}ms before next item`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
     }
 

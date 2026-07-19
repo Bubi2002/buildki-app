@@ -124,6 +124,19 @@ export default function RootLayout() {
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
+    // Run data migrations before any data access
+    (async () => {
+      try {
+        const { runMigrations, runIntegrityCheck } = require("@/lib/data-versioning");
+        const { ran, errors } = await runMigrations();
+        if (ran > 0) console.log(`[Startup] ${ran} migration(s) applied`);
+        if (errors > 0) console.warn(`[Startup] ${errors} migration error(s)`);
+        const { errors: integrityErrors } = await runIntegrityCheck();
+        if (integrityErrors.length > 0) console.warn("[Startup] Integrity issues:", integrityErrors);
+      } catch (e) {
+        console.warn("[Startup] Migration error:", e);
+      }
+    })();
     // Load feature toggles
     (async () => {
       const { isFeatureEnabled } = require("@/lib/feature-toggles");

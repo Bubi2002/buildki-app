@@ -768,3 +768,36 @@
 - [x] Unterschriften-UI im Mangel-Detail (4 Rollen + SignaturePad)
 - [x] KI-Zusammenfassung-Anzeige im Mangel-Detail
 - [x] 0 TypeScript-Fehler, 17 Tests bestanden
+
+## Phase 8: Produktionsreife (2026-07-19) – ABGESCHLOSSEN
+
+### 8.1 Offline-Sync Hardening
+- [x] Datenversionierung: Schema-Version in AsyncStorage (lib/data-versioning.ts, SCHEMA_VERSION=2)
+- [x] Migrationen: Automatische Datenmigration bei App-Update (v1→v2: signatures[], synced-Feld)
+- [x] Konfliktbehandlung: Last-Write-Wins mit updatedAt-Timestamp
+- [x] Wiederholungslogik: Exponential Backoff (1s→2s→4s→8s→16s, max 5 Retries)
+- [x] Statusanzeige: Sync-Status via useNetworkStatus Hook (syncing/synced/offline/error)
+- [x] Tests: 10 Data-Versioning-Tests bestanden (Migration, Backup, Log)
+
+### 8.2 Matterport Vorbereitung
+- [x] ENV-Struktur: MATTERPORT_TOKEN_ID, MATTERPORT_TOKEN_SECRET, MATTERPORT_SDK_KEY in server/_core/env.ts
+- [x] Sichere Secret-Verwendung: Client holt SDK-Key nur über getSdkKey tRPC-Endpoint
+- [x] Viewer-Ladezustände: Loading-Spinner, Skeleton, Fehlermeldung, Offline-Fallback
+- [x] Fallback-Modus: hasFullSdk-Banner wenn SDK nicht verbunden (3D-Navigation trotzdem aktiv)
+- [x] Fehlermeldungen: Klare Hinweise wenn Credentials fehlen + Retry-Button
+
+### 8.3 TestFlight Vorbereitung
+- [x] EAS-Konfiguration: 4 Profile (development, preview, testflight, production) + autoSubmit
+- [x] iOS-Build-Profil: Apple Team TLHL2MRJB4, appleId info@iserloh.net, store distribution
+- [x] App-Identifier: space.manus.protokoll.app.t20250614001800, Version 1.0.0
+- [x] Icons: icon.png (616KB), splash-icon.png (199KB), favicon.png (32KB), android-foreground.png (616KB)
+- [x] Berechtigungen: Kamera, Mikrofon, Fotos, Standort, Kalender, Kontakte, Face ID, Notifications
+- [x] Publish-Ablauf: User muss nur Expo-Account + eas login + Publish-Button klicken
+
+### 8.4 Vollständiger Test
+- [x] TypeScript fehlerfrei (0 Errors)
+- [x] Alle bestehenden Tests bestanden (27 passed, 1 skipped)
+- [x] Dev-Server stabil (Port 3000 + 8081)
+- [x] Keine toten Links/Buttons (alle onPress-Handler verifiziert)
+- [x] Alle Stores korrekt initialisiert (defect-store, room-store, project-store)
+- [x] Alle Imports aufgelöst (keine fehlenden lib/ oder components/ Dateien)

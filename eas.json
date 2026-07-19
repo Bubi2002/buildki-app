@@ -27,7 +27,8 @@
       "distribution": "store",
       "autoIncrement": true,
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "autoSubmit": true
       },
       "channel": "testflight",
       "env": {
@@ -47,6 +48,12 @@
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleId": "info@iserloh.net",
+        "appleTeamId": "TLHL2MRJB4"
+      }
+    },
+    "testflight": {
       "ios": {
         "appleId": "info@iserloh.net",
         "appleTeamId": "TLHL2MRJB4"

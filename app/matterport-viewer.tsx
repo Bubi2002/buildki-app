@@ -98,6 +98,7 @@ export default function MatterportViewerScreen() {
   const [modelRooms, setModelRooms] = useState<Array<{ id: string; label: string; floor?: { id: string; label: string } }>>([]);
   const [importStatus, setImportStatus] = useState("");
   const [sdkReady, setSdkReady] = useState(false);
+  const [hasFullSdk, setHasFullSdk] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [currentViewMode, setCurrentViewMode] = useState<ViewMode3D>("inside");
   const [placementMode, setPlacementMode] = useState(false);
@@ -605,6 +606,7 @@ export default function MatterportViewerScreen() {
       switch (data.type) {
         case "sdk_ready":
           setSdkReady(true);
+          setHasFullSdk(data.hasFullSdk === true);
           setIsLoading(false);
           break;
         case "position_captured":
@@ -677,6 +679,16 @@ export default function MatterportViewerScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* SDK Fallback Info Banner */}
+      {sdkReady && !hasFullSdk && (
+        <View style={{ backgroundColor: "rgba(245,158,11,0.12)", paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
+          <MaterialIcons name="info-outline" size={16} color="#F59E0B" />
+          <Text style={{ color: colors.foreground, fontSize: 12, flex: 1 }}>
+            Eingeschränkter Modus: 3D-Navigation aktiv, SDK-Steuerung (Pin-Platzierung) erfordert einen gültigen SDK-Key.
+          </Text>
+        </View>
+      )}
 
       {/* WebView 3D Viewer */}
       <View style={{ flex: 1 }}>
