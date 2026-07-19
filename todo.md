@@ -701,6 +701,9 @@
 - [x] Onboarding-Screen: Vorname + Nachname + Handynummer (Pflicht), Unternehmen (optional)
 - [x] Neue Preisseite: 12,99€/Monat oder 140€/Jahr, Monat/Jahr-Umschalter, Dark-Navy-Design
 - [x] Navigation: Registrierung → Onboarding → Dashboard Flow integrieren
+- [x] Stripe-Integration: Server-Endpunkte (Checkout, Webhook, Portal, Status)
+- [x] Stripe-Integration: App-seitige Anbindung (WebBrowser Checkout, Abo-Verwaltung)
+- [ ] Stripe-Setup: API-Keys eintragen (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, Price IDs)
 
 ## Phase 6: Dashboard Live-Daten + Nachprüfungs-Workflow (2026-07-19)
 - [x] Dashboard: Echte Projektzahlen aus project-store (Anzahl Projekte, aktives Projekt)

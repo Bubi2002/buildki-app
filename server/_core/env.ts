@@ -10,4 +10,9 @@ export const ENV = {
   matterportTokenId: process.env.MATTERPORT_TOKEN_ID ?? "",
   matterportTokenSecret: process.env.MATTERPORT_TOKEN_SECRET ?? "",
   matterportSdkKey: process.env.MATTERPORT_SDK_KEY ?? "",
+  // Stripe
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  stripeMonthlyPriceId: process.env.STRIPE_MONTHLY_PRICE_ID ?? "",
+  stripeYearlyPriceId: process.env.STRIPE_YEARLY_PRICE_ID ?? "",
 };

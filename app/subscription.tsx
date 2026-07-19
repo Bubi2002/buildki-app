@@ -12,12 +12,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { createCheckoutSession, createPortalSession, checkStripeStatus } from "@/lib/stripe-client";
 
 const TRIAL_STORAGE_KEY = "@protoki_trial_start";
 const SUB_STORAGE_KEY = "@protoki_subscription";
@@ -77,32 +80,78 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleSubscribe = async () => {
-    const priceText = billingCycle === "monthly"
-      ? "12,99 \u20AC netto/Monat zzgl. MwSt."
-      : "140,00 \u20AC netto/Jahr zzgl. MwSt.";
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [stripeConfigured, setStripeConfigured] = useState(false);
 
-    Alert.alert(
-      "Abonnement abschlie\u00DFen",
-      `${priceText}\n\nDie Zahlungsabwicklung wird \u00FCber den App Store durchgef\u00FChrt.`,
-      [
-        { text: "Abbrechen", style: "cancel" },
-        {
-          text: "Best\u00E4tigen",
-          onPress: async () => {
-            const newState: SubscriptionState = {
-              plan: billingCycle,
-              trialStartDate: subState.trialStartDate,
-              trialDaysLeft: 0,
-              subscribedAt: new Date().toISOString(),
-            };
-            await AsyncStorage.setItem(SUB_STORAGE_KEY, JSON.stringify(newState));
-            setSubState(newState);
-            Alert.alert("Erfolgreich", "Dein Abonnement ist jetzt aktiv. Vielen Dank!");
+  useEffect(() => {
+    checkStripeStatus().then((s) => setStripeConfigured(s.configured));
+  }, []);
+
+  const handleSubscribe = async () => {
+    // Get user email from registration data
+    const regData = await AsyncStorage.getItem("@protoki_registered");
+    const email = regData ? JSON.parse(regData).email : null;
+
+    if (!email) {
+      Alert.alert("Fehler", "Bitte registriere dich zuerst, um ein Abo abzuschlie\u00DFen.");
+      return;
+    }
+
+    if (!stripeConfigured) {
+      // Fallback: local-only subscription (demo mode)
+      Alert.alert(
+        "Demo-Modus",
+        "Stripe ist noch nicht konfiguriert. Im Demo-Modus wird das Abo lokal aktiviert.",
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Demo aktivieren",
+            onPress: async () => {
+              const newState: SubscriptionState = {
+                plan: billingCycle,
+                trialStartDate: subState.trialStartDate,
+                trialDaysLeft: 0,
+                subscribedAt: new Date().toISOString(),
+              };
+              await AsyncStorage.setItem(SUB_STORAGE_KEY, JSON.stringify(newState));
+              setSubState(newState);
+              Alert.alert("Erfolgreich", "Demo-Abo aktiviert.");
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+      return;
+    }
+
+    // Stripe Checkout
+    setCheckoutLoading(true);
+    try {
+      const { url } = await createCheckoutSession(email, billingCycle);
+      if (url) {
+        await WebBrowser.openBrowserAsync(url);
+        // After returning from browser, refresh subscription status
+        loadSubscriptionState();
+      }
+    } catch (error: any) {
+      Alert.alert("Fehler", error.message || "Checkout konnte nicht gestartet werden.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    const regData = await AsyncStorage.getItem("@protoki_registered");
+    const email = regData ? JSON.parse(regData).email : null;
+    if (!email) return;
+
+    try {
+      const { url } = await createPortalSession(email);
+      if (url) {
+        await WebBrowser.openBrowserAsync(url);
+      }
+    } catch (error: any) {
+      Alert.alert("Fehler", "Abo-Verwaltung konnte nicht ge\u00F6ffnet werden.");
+    }
   };
 
   const isActive = subState.plan === "trial" || subState.plan === "monthly" || subState.plan === "yearly";
@@ -242,12 +291,17 @@ export default function SubscriptionScreen() {
         {(subState.plan === "trial" || subState.plan === "expired") && (
           <TouchableOpacity
             onPress={handleSubscribe}
-            style={styles.subscribeBtn}
+            style={[styles.subscribeBtn, checkoutLoading && { opacity: 0.6 }]}
             activeOpacity={0.8}
+            disabled={checkoutLoading}
           >
-            <Text style={styles.subscribeBtnText}>
-              {billingCycle === "monthly" ? "Monatsabo abschlie\u00DFen" : "Jahresabo abschlie\u00DFen"}
-            </Text>
+            {checkoutLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.subscribeBtnText}>
+                {billingCycle === "monthly" ? "Monatsabo abschlie\u00DFen" : "Jahresabo abschlie\u00DFen"}
+              </Text>
+            )}
           </TouchableOpacity>
         )}
 
@@ -275,10 +329,29 @@ export default function SubscriptionScreen() {
           ))}
         </View>
 
+        {/* Manage Subscription Button (for active subscribers) */}
+        {(subState.plan === "monthly" || subState.plan === "yearly") && stripeConfigured && (
+          <TouchableOpacity
+            onPress={handleManageSubscription}
+            style={styles.manageBtn}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="settings" size={18} color="#5DADE2" />
+            <Text style={styles.manageBtnText}>Abo verwalten (Zahlungsmethode, K\u00FCndigung)</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Payment Methods Info */}
+        <View style={styles.paymentMethodsRow}>
+          <MaterialIcons name="credit-card" size={16} color="#5A6B7E" />
+          <Text style={styles.paymentMethodsText}>Kreditkarte, SEPA-Lastschrift, PayPal, Klarna</Text>
+        </View>
+
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Preise zzgl. 19% MwSt. K\u00FCndigung jederzeit zum Ende der Laufzeit m\u00F6glich.
+            {"\n"}Sichere Zahlungsabwicklung \u00FCber Stripe.
             {"\n"}Bei Fragen: info@iserloh.net
           </Text>
         </View>
@@ -468,6 +541,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   featureText: { fontSize: 13, color: "#F0F4F8", flex: 1 },
-  footer: { marginTop: 28, alignItems: "center" },
+  manageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#5DADE2",
+  },
+  manageBtnText: { fontSize: 14, color: "#5DADE2", fontWeight: "600" },
+  paymentMethodsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 8,
+  },
+  paymentMethodsText: { fontSize: 12, color: "#5A6B7E" },
+  footer: { marginTop: 16, alignItems: "center" },
   footerText: { fontSize: 12, textAlign: "center", lineHeight: 18, color: "#5A6B7E" },
 });
