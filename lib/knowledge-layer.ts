@@ -309,6 +309,28 @@ class ProjectKnowledgeLayer {
   /**
    * Clear all knowledge for a project.
    */
+  /**
+   * Ingest a single knowledge entry directly (used by Document AI, etc.).
+   */
+  async ingest(entry: {
+    projectId: string;
+    type: "defect" | "task" | "observation" | "progress" | "trade_status";
+    source: string;
+    content: string;
+    confidence?: number;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    await this.addEntries(entry.projectId, [{
+      projectId: entry.projectId,
+      source: entry.source as any,
+      sourceId: `direct_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      type: entry.type,
+      content: entry.content,
+      metadata: { ...entry.metadata, confidence: entry.confidence },
+    }]);
+  }
+
   async clearProject(projectId: string): Promise<void> {
     const key = `${KNOWLEDGE_KEY_PREFIX}${projectId}`;
     await AsyncStorage.removeItem(key);

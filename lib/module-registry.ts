@@ -299,59 +299,98 @@ class ModuleRegistry {
       dependencies: [],
     });
 
-    // Smart Timeline (Coming Soon)
+    // Smart Timeline
     this.register({
       id: "smart-timeline",
       name: "Smart Timeline",
-      description: "KI-gestützte Bauablaufplanung mit automatischer Terminierung",
+      description: "Intelligente Projektchronik – erkennt Zusammenhänge aus allen Quellen",
       category: "ai",
-      status: "coming_soon",
-      version: "0.1.0",
+      status: "active",
+      version: "1.0.0",
       icon: "timeline",
       color: "#14B8A6",
+      route: "/smart-timeline",
       capabilities: [
-        { id: "auto-schedule", label: "Auto-Terminierung", description: "Erstellt Zeitpläne automatisch" },
-        { id: "dependency-map", label: "Abhängigkeiten", description: "Erkennt Gewerk-Abhängigkeiten" },
-        { id: "delay-prediction", label: "Verzögerungsprognose", description: "Warnt vor Verzögerungen" },
+        { id: "event-tracking", label: "Event-Tracking", description: "Erfasst alle Projektereignisse" },
+        { id: "source-correlation", label: "Quellen-Korrelation", description: "Verknüpft Ereignisse aus verschiedenen Quellen" },
+        { id: "timeline-filter", label: "Filter & Suche", description: "Filtert nach Gewerk, Raum, Quelle" },
       ],
       dependencies: [{ moduleId: "knowledge-layer", required: true, reason: "Nutzt Projektdaten" }],
     });
 
-    // Matterport Integration (Coming Soon)
+    // Matterport Integration (Beta – Interfaces prepared)
     this.register({
       id: "matterport",
       name: "Matterport 3D",
-      description: "3D-Scan-Integration für räumliche Mängelerkennung",
+      description: "3D-Scan-Integration für räumliche Mängelerkennung (Schnittstellen vorbereitet)",
       category: "integration",
-      status: "coming_soon",
-      version: "0.1.0",
+      status: "beta",
+      version: "0.5.0",
       icon: "view-in-ar",
       color: "#7C3AED",
       capabilities: [
         { id: "scan-import", label: "Scan-Import", description: "Importiert Matterport-Scans" },
         { id: "spatial-defects", label: "Räumliche Mängel", description: "Verortet Mängel im 3D-Raum" },
         { id: "progress-compare", label: "Fortschrittsvergleich", description: "Vergleicht Zeitpunkte" },
+        { id: "tag-management", label: "Tag-Verwaltung", description: "Erstellt und verwaltet 3D-Tags" },
       ],
       dependencies: [{ moduleId: "knowledge-layer", required: true, reason: "Speichert 3D-Erkenntnisse" }],
     });
 
-    // Document AI (Coming Soon)
+    // Document AI
     this.register({
       id: "document-ai",
       name: "Document AI",
-      description: "Analysiert Pläne, Verträge und Dokumente mit KI",
+      description: "Analysiert PDF, DOCX, XLSX und Bilder – extrahiert Räume, Gewerke, Termine, Aufgaben",
       category: "ai",
-      status: "coming_soon",
-      version: "0.1.0",
+      status: "active",
+      version: "1.0.0",
       icon: "description",
       color: "#F97316",
+      route: "/document-ai",
       capabilities: [
-        { id: "plan-analysis", label: "Plananalyse", description: "Erkennt Elemente in Bauplänen" },
-        { id: "contract-extract", label: "Vertragsextraktion", description: "Extrahiert Vertragsdaten" },
-        { id: "compliance-check", label: "Compliance-Check", description: "Prüft Normenkonformität" },
+        { id: "entity-extraction", label: "Entitäten-Extraktion", description: "Räume, Gewerke, Personen, Firmen" },
+        { id: "task-extraction", label: "Aufgaben-Extraktion", description: "Erkennt Aufgaben in Dokumenten" },
+        { id: "appointment-extraction", label: "Termin-Extraktion", description: "Findet Termine und Fristen" },
+        { id: "knowledge-feed", label: "Knowledge Feed", description: "Speist Ergebnisse in Knowledge Layer" },
       ],
       dependencies: [{ moduleId: "knowledge-layer", required: true, reason: "Speichert Dokumentdaten" }],
       requiresServer: true,
+    });
+
+    // Timeline Engine (internal, no route)
+    this.register({
+      id: "timeline-engine",
+      name: "Timeline Engine",
+      description: "Zentraler Event-Bus – alle Module senden Ereignisse hierher",
+      category: "ai",
+      status: "active",
+      version: "1.0.0",
+      icon: "hub",
+      color: "#06B6D4",
+      capabilities: [
+        { id: "event-bus", label: "Event-Bus", description: "Empfängt Ereignisse von allen Modulen" },
+        { id: "query", label: "Abfrage", description: "Filtert und gruppiert Ereignisse" },
+        { id: "stats", label: "Statistiken", description: "Aggregiert Projektstatistiken" },
+      ],
+      dependencies: [],
+    });
+
+    // Entity System (internal, no route)
+    this.register({
+      id: "entity-system",
+      name: "Entity System",
+      description: "Einheitliches Datenmodell für alle Module (14 Entitätstypen)",
+      category: "ai",
+      status: "active",
+      version: "1.0.0",
+      icon: "account-tree",
+      color: "#64748B",
+      capabilities: [
+        { id: "entity-types", label: "14 Entitätstypen", description: "Projekt bis Firma" },
+        { id: "relations", label: "Relationen", description: "Verknüpfungen zwischen Entitäten" },
+      ],
+      dependencies: [],
     });
   }
 

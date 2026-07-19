@@ -556,3 +556,10 @@
 - [x] Sprint 3: AI Site Assistant – Knowledge Layer basiert, Vorschläge, Conversation Memory
 - [x] Sprint 3: Multi-Format Export (PDF, CSV, Excel, JSON) für Analysen, Mängel, Aufgaben, Berichte
 - [x] Sprint 3: Modulare Architektur-Registry für zukünftige Module (Photo, Speech, Document, Matterport, BIM, etc.)
+- [x] Sprint 4: Einheitliches Entity-System (shared/entities.ts) – Projekt, Gebäude, Geschoss, Raum, Gewerk, Foto, Analyse, Aufgabe, Mangel, Bericht, Dokument, Termin, Person, Firma
+- [x] Sprint 4: Timeline Engine (lib/timeline-engine.ts) – zentraler Event-Bus für alle Module
+- [x] Sprint 4: Smart Timeline UI Screen – Ereignis-Visualisierung mit Filter/Suche
+- [x] Sprint 4: Document AI Service (lib/document-ai.ts) – Extraktion aus PDF/DOCX/XLSX/Bildern
+- [x] Sprint 4: Document AI Upload Screen – Upload + automatische Extraktion
+- [x] Sprint 4: Matterport-Schnittstellen vorbereiten (Interfaces + Integration Points)
+- [x] Sprint 4: Module in Knowledge Layer und Registry verdrahten
