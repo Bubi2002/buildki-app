@@ -173,17 +173,19 @@ const config: ExpoConfig = {
         backgroundColor: "#0B1622",
       },
     ],
-    [
-      "expo-share-intent",
-      {
-        iosActivationRules: {
-          NSExtensionActivationSupportsMovieWithMaxCount: 10,
-          NSExtensionActivationSupportsFileWithMaxCount: 10,
-        },
-        androidIntentFilters: ["video/*", "audio/*"],
-        androidMultiIntentFilters: ["video/*", "audio/*"],
-      },
-    ],
+    // Share Extension temporarily disabled for TestFlight build (needs separate provisioning profile)
+    // Re-enable after first successful interactive build
+    // [
+    //   "expo-share-intent",
+    //   {
+    //     iosActivationRules: {
+    //       NSExtensionActivationSupportsMovieWithMaxCount: 10,
+    //       NSExtensionActivationSupportsFileWithMaxCount: 10,
+    //     },
+    //     androidIntentFilters: ["video/*", "audio/*"],
+    //     androidMultiIntentFilters: ["video/*", "audio/*"],
+    //   },
+    // ],
   ],
   experiments: {
     typedRoutes: true,

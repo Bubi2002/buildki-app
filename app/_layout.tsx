@@ -2,7 +2,7 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -30,7 +30,9 @@ import {
 import { NetworkBanner } from "@/components/network-banner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PrivacyConsentDialog } from "@/components/privacy-consent-dialog";
-import { ShareIntentProvider } from "expo-share-intent";
+// ShareIntentProvider temporarily disabled - share extension removed for TestFlight build
+// import { ShareIntentProvider } from "expo-share-intent";
+const ShareIntentProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 import * as QuickActions from "expo-quick-actions";
 import { useRouter as useQuickRouter } from "expo-router";
 

@@ -1,15 +1,13 @@
 /**
- * protoKI – Share Intent Handler
+ * protoKI – Share Intent Handler (TEMPORARILY DISABLED)
  * 
- * Empfängt Videos/Audio-Dateien die über "Teilen" aus anderen Apps
- * (WhatsApp, E-Mail, Telegram etc.) an protoKI gesendet werden.
- * Leitet automatisch zum Video-Upload-Screen weiter.
+ * Share Extension ist temporär deaktiviert für den TestFlight-Build.
+ * Wird nach dem ersten erfolgreichen Build wieder aktiviert.
  */
 
 import { useEffect } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { useShareIntentContext } from "expo-share-intent";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -17,22 +15,11 @@ import { useColors } from "@/hooks/use-colors";
 export default function ShareIntentScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
 
   useEffect(() => {
-    if (hasShareIntent && shareIntent) {
-      // Share intent received - redirect to video-upload with the shared file info
-      // Store the shared file info temporarily so video-upload can pick it up
-      if (shareIntent.files && shareIntent.files.length > 0) {
-        // Navigate to video-upload - the shared files will be handled there
-        router.replace("/video-upload" as any);
-      } else {
-        // No files in share intent, go to home
-        resetShareIntent();
-        router.replace("/(tabs)/" as any);
-      }
-    }
-  }, [hasShareIntent, shareIntent]);
+    // Share extension temporarily disabled - redirect to home
+    router.replace("/(tabs)/" as any);
+  }, []);
 
   return (
     <ScreenContainer className="p-6">
