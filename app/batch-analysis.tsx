@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 0,
     alignSelf: "flex-start",
     marginBottom: 16,
   },
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
   },
   strategyLabel: {
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   addButtonText: {
     color: "#FFF",
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 32,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderStyle: "dashed",
     gap: 8,
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
   photoItem: {
     width: 80,
     height: 80,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
     overflow: "hidden",
     position: "relative",
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
     right: 4,
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -747,13 +747,13 @@ const styles = StyleSheet.create({
   roomThumb: {
     width: 40,
     height: 40,
-    borderRadius: 6,
+    borderRadius: 0,
   },
   roomInput: {
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1,
   },
   startButton: {
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     marginBottom: 20,
   },
   startButtonText: {
@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
   loadingCard: {
     alignItems: "center",
     padding: 32,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     gap: 12,
     marginBottom: 20,
@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
   },
   summaryHeader: {
@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
   },
   groupCard: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
   },
   groupHeader: {
@@ -851,14 +851,14 @@ const styles = StyleSheet.create({
   reviewToggle: {
     flexDirection: "row",
     backgroundColor: "#0F1E30",
-    borderRadius: 10,
+    borderRadius: 0,
     padding: 4,
     gap: 4,
   },
   reviewTab: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
     alignItems: "center",
   },
   reviewTabText: {
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 4,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   bulkBtnText: {
     fontSize: 12,

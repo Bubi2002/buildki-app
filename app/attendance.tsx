@@ -9,6 +9,7 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -296,7 +297,7 @@ export default function AttendanceScreen() {
 
       {/* Add Worker Modal */}
       <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Person erfassen</Text>
 
@@ -373,7 +374,7 @@ export default function AttendanceScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenContainer>
   );

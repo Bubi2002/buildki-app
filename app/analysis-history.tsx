@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F1E30",
     borderWidth: 1,
     borderColor: "#1E3A5F",
-    borderRadius: 10,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 8,
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     top: -4,
     right: -4,
     backgroundColor: "#7C4DFF",
-    borderRadius: 8,
+    borderRadius: 0,
     width: 16,
     height: 16,
     alignItems: "center",
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F1E30",
     borderWidth: 1,
     borderColor: "#1E3A5F",
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 12,
     gap: 10,
   },
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 14,
+    borderRadius: 0,
     backgroundColor: "#1E3A5F40",
     marginRight: 6,
   },
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A1220",
     borderWidth: 1,
     borderColor: "#1E3A5F",
-    borderRadius: 8,
+    borderRadius: 0,
     paddingHorizontal: 10,
     paddingVertical: 6,
     fontSize: 13,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 0,
     backgroundColor: "#1E3A5F40",
   },
   resetButtonText: {
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F1E30",
     borderWidth: 1,
     borderColor: "#1E3A5F",
-    borderRadius: 10,
+    borderRadius: 0,
     padding: 12,
     marginBottom: 8,
   },
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 0,
   },
   sourceTagText: {
     fontSize: 10,
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: 0,
   },
   statusText: {
     fontSize: 10,
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
   detailImage: {
     width: 120,
     height: 90,
-    borderRadius: 8,
+    borderRadius: 0,
     marginRight: 8,
   },
   progressRow: {
@@ -708,13 +708,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     backgroundColor: "#1E3A5F",
-    borderRadius: 3,
+    borderRadius: 0,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
     backgroundColor: "#66BB6A",
-    borderRadius: 3,
+    borderRadius: 0,
   },
   progressText: {
     fontSize: 13,
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   severityDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: 0,
     marginTop: 4,
   },
   detailItemTitle: {

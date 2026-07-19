@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 0,
     alignSelf: "flex-start",
     marginBottom: 20,
   },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   optionCard: {
     width: "47%",
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
     alignItems: "center",
     gap: 6,
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 0,
     borderWidth: 1,
   },
   scopeLabel: {
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 0,
     marginBottom: 16,
   },
   exportButtonText: {
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     gap: 10,
   },
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 0,
     marginTop: 4,
   },
   shareButtonText: {

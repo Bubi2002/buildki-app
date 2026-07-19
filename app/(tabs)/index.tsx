@@ -3263,7 +3263,7 @@ const styles = StyleSheet.create({
   stopIcon: {
     width: 24,
     height: 24,
-    borderRadius: 4,
+    borderRadius: 0,
   },
   hintText: {
     color: "#FFFFFF",
@@ -3344,7 +3344,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginLeft: 8,

@@ -514,8 +514,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: colors.primary + '15' }]}>
-                <MaterialIcons name="map" size={22} color={colors.primary} />
+              <View style={[styles.toolIconBg, { backgroundColor: '#4FC3F715' }]}>
+                <MaterialIcons name="map" size={22} color="#4FC3F7" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('grundriss')}</Text>
               {planCount > 0 && <Text style={[styles.toolCardBadge, { color: colors.muted }]}>{planCount}</Text>}
@@ -524,8 +524,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#FF6D0015' }]}>
-                <MaterialIcons name="warning" size={22} color="#FF6D00" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#FF980015' }]}>
+                <MaterialIcons name="warning" size={22} color="#FF9800" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengel')}</Text>
               {defectCount.open > 0 && (
@@ -538,8 +538,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#43A04715' }]}>
-                <MaterialIcons name="menu-book" size={22} color="#43A047" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#66BB6A15' }]}>
+                <MaterialIcons name="menu-book" size={22} color="#66BB6A" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('tagebuch')}</Text>
             </Pressable>
@@ -547,8 +547,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#8E24AA15' }]}>
-                <MaterialIcons name="checklist" size={22} color="#8E24AA" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#AB47BC15' }]}>
+                <MaterialIcons name="checklist" size={22} color="#AB47BC" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('checklist_title')}</Text>
             </Pressable>
@@ -556,8 +556,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/team` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#1E88E515' }]}>
-                <MaterialIcons name="groups" size={22} color="#1E88E5" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
+                <MaterialIcons name="groups" size={22} color="#5C6BC0" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('team_title')}</Text>
             </Pressable>
@@ -574,8 +574,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#00ACC115' }]}>
-                <MaterialIcons name="bar-chart" size={22} color="#00ACC1" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#26A69A15' }]}>
+                <MaterialIcons name="bar-chart" size={22} color="#26A69A" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('statistik')}</Text>
             </Pressable>
@@ -583,8 +583,8 @@ export default function ProjectDetailScreen() {
               onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#E91E6315' }]}>
-                <MaterialIcons name="photo-library" size={22} color="#E91E63" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#EC407A15' }]}>
+                <MaterialIcons name="photo-library" size={22} color="#EC407A" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('gallery_photos')}</Text>
             </Pressable>
@@ -637,8 +637,8 @@ export default function ProjectDetailScreen() {
               onPress={handleDefectsExport}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#FF6D0015' }]}>
-                <MaterialIcons name="photo-library" size={22} color="#FF6D00" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#EF444415' }]}>
+                <MaterialIcons name="picture-as-pdf" size={22} color="#EF4444" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengelxls')}</Text>
             </Pressable>

@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1C1A00",
     borderWidth: 1,
     borderColor: "#F59E0B33",
-    borderRadius: 10,
+    borderRadius: 0,
     padding: 14,
     marginBottom: 16,
   },
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A2332",
     borderWidth: 1,
     borderColor: "#2A3A4E",
-    borderRadius: 10,
+    borderRadius: 0,
     padding: 14,
     alignItems: "center",
     gap: 8,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: "#1A2332",
-    borderRadius: 10,
+    borderRadius: 0,
     padding: 16,
     marginBottom: 16,
   },
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   },
   responseHeader: {
     backgroundColor: "#1A2332",
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 16,
     borderLeftWidth: 3,
     borderLeftColor: "#5DADE2",
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   },
   statBadge: {
     backgroundColor: "#1A2332",
-    borderRadius: 8,
+    borderRadius: 0,
     paddingVertical: 8,
     paddingHorizontal: 14,
     alignItems: "center",
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   // Details
   detailsSection: {
     backgroundColor: "#1A2332",
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 14,
   },
   detailsTitle: {
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A2332",
     borderWidth: 1,
     borderColor: "#5DADE233",
-    borderRadius: 16,
+    borderRadius: 0,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   },
   historyItem: {
     backgroundColor: "#1A2332",
-    borderRadius: 8,
+    borderRadius: 0,
     padding: 12,
     marginBottom: 8,
     flexDirection: "row",
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: "#1A2332",
-    borderRadius: 20,
+    borderRadius: 0,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 0,
     backgroundColor: "#1A2332",
     alignItems: "center",
     justifyContent: "center",

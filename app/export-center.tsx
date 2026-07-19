@@ -18,6 +18,8 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -154,6 +156,7 @@ export default function ExportCenterScreen() {
         </Pressable>
       </View>
 
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {/* Company Info Card */}
         {showCompanyEditor && (
@@ -262,6 +265,7 @@ export default function ExportCenterScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }
@@ -286,7 +290,7 @@ const styles = StyleSheet.create({
   },
   companyCard: {
     padding: 16,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 16,
   },
@@ -295,7 +299,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     padding: 12,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
   },
   companyBadgeText: {
@@ -305,7 +309,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -314,7 +318,7 @@ const styles = StyleSheet.create({
   saveBtn: {
     backgroundColor: "#00B0FF",
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 0,
     alignItems: "center",
     marginTop: 8,
   },
@@ -327,7 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 10,
     gap: 12,
@@ -335,7 +339,7 @@ const styles = StyleSheet.create({
   exportIcon: {
     width: 44,
     height: 44,
-    borderRadius: 4,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -352,7 +356,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     padding: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     marginTop: 16,
   },

@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
   },
   featureLabel: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#00B0FF",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 0,
     marginTop: 24,
   },
   createBtnText: {
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   },
   pairCard: {
     padding: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 10,
   },

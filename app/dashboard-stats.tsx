@@ -121,7 +121,7 @@ export default function DashboardStatsScreen() {
   const StatCard = ({ icon, label, value, color, onPress }: { icon: string; label: string; value: number; color: string; onPress?: () => void }) => (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 12, padding: 14, minWidth: "45%", opacity: pressed && onPress ? 0.7 : 1 }]}
+      style={({ pressed }) => [{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 0, padding: 14, minWidth: "45%", opacity: pressed && onPress ? 0.7 : 1 }]}
     >
       <MaterialIcons name={icon as any} size={20} color={color} />
       <Text style={{ fontSize: 22, fontWeight: "700", color: "#F0F4F8", marginTop: 6 }}>{value}</Text>
@@ -148,7 +148,7 @@ export default function DashboardStatsScreen() {
         </View>
 
         {/* Sync Status */}
-        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: syncStatus.isOnline ? "#4ADE8010" : "#FBBF2410", borderRadius: 12, borderWidth: 1, borderColor: syncStatus.isOnline ? "#4ADE8030" : "#FBBF2430", padding: 12, marginBottom: 16, gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: syncStatus.isOnline ? "#4ADE8010" : "#FBBF2410", borderRadius: 0, borderWidth: 1, borderColor: syncStatus.isOnline ? "#4ADE8030" : "#FBBF2430", padding: 12, marginBottom: 16, gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncStatus.isOnline ? "#4ADE80" : "#FBBF24" }} />
           <Text style={{ fontSize: 12, color: syncStatus.isOnline ? "#4ADE80" : "#FBBF24", fontWeight: "500", flex: 1 }}>
             {syncStatus.isOnline ? t('sync_online') : t('sync_offline')} • {syncStatus.pendingChanges} {t('sync_ausstehende_aenderungen')}

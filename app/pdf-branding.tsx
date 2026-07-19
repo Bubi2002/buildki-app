@@ -634,12 +634,12 @@ export default function PdfBrandingScreen() {
           {(branding.headerText || branding.showProjectName) && (
             <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText || "Projekt: Beispielprojekt"}</Text>
           )}
-          <View style={{ height: 2, backgroundColor: branding.accentColor, marginVertical: 8, borderRadius: 1 }} />
+          <View style={{ height: 2, backgroundColor: branding.accentColor, marginVertical: 8, borderRadius: 0 }} />
           {/* Content placeholder */}
           <View style={{ gap: 4, marginBottom: 12 }}>
-            <View style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: 3, width: "80%" }} />
-            <View style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: 3, width: "60%" }} />
-            <View style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: 3, width: "70%" }} />
+            <View style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: 0, width: "80%" }} />
+            <View style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: 0, width: "60%" }} />
+            <View style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: 0, width: "70%" }} />
           </View>
           {/* Footer Preview */}
           <View style={{ height: 1, backgroundColor: "#e5e7eb", marginBottom: 6 }} />

@@ -79,6 +79,7 @@ export default function MatterportViewerScreen() {
   const [modelRooms, setModelRooms] = useState<Array<{ id: string; label: string; floor?: { id: string; label: string } }>>([]);
   const [importStatus, setImportStatus] = useState("");
   const [viewerReady, setViewerReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // tRPC mutations
   const getFloorsMutation = trpc.matterport.getFloors.useMutation();
@@ -392,20 +393,39 @@ export default function MatterportViewerScreen() {
 
       {/* WebView 3D Viewer */}
       <View style={{ flex: 1 }}>
-        <WebView
-          ref={webViewRef}
-          source={{ html: getViewerHtml() }}
-          style={{ flex: 1, backgroundColor: "#0a0f1a" }}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          onMessage={handleWebViewMessage}
-          onLoadEnd={() => setIsLoading(false)}
-          originWhitelist={["*"]}
-          allowsFullscreenVideo
-          mixedContentMode="compatibility"
-        />
+        {loadError ? (
+          <View style={styles.emptyState}>
+            <MaterialIcons name="wifi-off" size={48} color={colors.muted} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Keine Verbindung</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+              Das 3D-Modell kann nicht geladen werden. Bitte prüfen Sie Ihre Internetverbindung.
+            </Text>
+            <Pressable
+              onPress={() => { setLoadError(false); setIsLoading(true); }}
+              style={({ pressed }) => [styles.actionButton, { backgroundColor: "#00B0FF", opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="refresh" size={18} color="#fff" />
+              <Text style={styles.actionButtonText}>Erneut versuchen</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <WebView
+            ref={webViewRef}
+            source={{ html: getViewerHtml() }}
+            style={{ flex: 1, backgroundColor: "#0a0f1a" }}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            onMessage={handleWebViewMessage}
+            onLoadEnd={() => setIsLoading(false)}
+            onError={() => { setLoadError(true); setIsLoading(false); }}
+            onHttpError={() => { setLoadError(true); setIsLoading(false); }}
+            originWhitelist={["*"]}
+            allowsFullscreenVideo
+            mixedContentMode="compatibility"
+          />
+        )}
 
         {isLoading && (
           <View style={styles.loadingOverlay}>
@@ -645,7 +665,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 0,
     marginTop: 12,
   },
   actionButtonText: {
@@ -711,7 +731,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     gap: 4,
   },
@@ -721,7 +741,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -737,7 +757,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 4,
+    borderRadius: 0,
   },
   saveBtnText: {
     color: "#fff",

@@ -668,7 +668,10 @@
 - [ ] E2E-Test: Offline-Sync prüfen (Flugmodus → Aufnahme → Reconnect)
 - [x] UI-Polish: Touch Targets vergrößert (Dashboard/project-detail toolCards minHeight:72, defects/protocols filter buttons vergrößert)
 - [x] UI-Polish: Texte auf Deutsch vereinheitlicht (Räume/Anwesenheit auf t() umgestellt, i18n-Keys DE/EN/FR ergänzt)
-- [ ] UI-Polish: Icons und Farben konsistent (fortlaufend)
-- [ ] UI-Polish: Abstände und Animationen (fortlaufend)
+- [x] UI-Polish: Icons und Farben konsistent (project-detail Farben mit Dashboard synchronisiert)
+- [x] UI-Polish: Eckige Kästen durchgängig (borderRadius:0 in Dashboard, Settings, Rooms, Progress, Matterport, Export, Comparison, Defect-Export, Attendance)
+- [x] UI-Polish: KeyboardAvoidingView in Attendance, Export-Center
+- [x] UI-Polish: Matterport-Viewer Offline-Fallback (Fehlermeldung + Erneut-versuchen)
+- [ ] UI-Polish: Animationen (fortlaufend, niedrige Priorität)
 - [ ] TestFlight: EAS Build erstellen (eas build --profile testflight)
 - [ ] TestFlight: App ohne Expo Go auf iPhone installierbar

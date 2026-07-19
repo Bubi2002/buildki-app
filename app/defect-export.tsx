@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     padding: 16,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     marginBottom: 20,
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
   },
   filterLabel: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: "#EF4444",
     paddingVertical: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     marginTop: 24,
   },
   exportBtnText: {

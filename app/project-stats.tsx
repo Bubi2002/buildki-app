@@ -230,7 +230,7 @@ export default function ProjectStatsScreen() {
               </View>
             </View>
             {/* Progress Bar */}
-            <View style={{ flexDirection: "row", height: 8, borderRadius: 4, overflow: "hidden", marginTop: 12, backgroundColor: colors.border }}>
+            <View style={{ flexDirection: "row", height: 8, borderRadius: 0, overflow: "hidden", marginTop: 12, backgroundColor: colors.border }}>
               {stats.defectResolved > 0 && <View style={{ flex: stats.defectResolved, backgroundColor: colors.success }} />}
               {stats.defectInProgress > 0 && <View style={{ flex: stats.defectInProgress, backgroundColor: colors.warning }} />}
               {stats.defectOpen > 0 && <View style={{ flex: stats.defectOpen, backgroundColor: colors.error }} />}

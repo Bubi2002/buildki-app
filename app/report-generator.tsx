@@ -408,14 +408,14 @@ const styles = StyleSheet.create({
   typeCard: {
     width: "48%",
     padding: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     borderWidth: 1,
     minHeight: 110,
   },
   typeIconBg: {
     width: 36,
     height: 36,
-    borderRadius: 4,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   },
   sectionsPreview: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     padding: 12,
   },
   sectionItem: {
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     marginTop: 20,
   },
   generateBtnText: {
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#00B0FF",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 0,
   },
   saveBtnText: {
     color: "#fff",
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   },
   reportEditor: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     padding: 16,
     fontSize: 14,
     lineHeight: 22,

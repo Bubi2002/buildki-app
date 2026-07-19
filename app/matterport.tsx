@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 14,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     marginBottom: 20,
   },
   statusRow: {
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   messageBox: {
     padding: 12,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     marginBottom: 16,
   },
   connectButton: {
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 4,
+    borderRadius: 0,
     marginBottom: 20,
   },
   connectButtonText: {
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 12,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     gap: 10,
   },
   infoText: {
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
   },
   modelCard: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     padding: 14,
     marginBottom: 10,
   },
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 0,
     padding: 16,
     marginBottom: 12,
   },
