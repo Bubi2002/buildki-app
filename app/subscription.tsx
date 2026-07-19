@@ -1,6 +1,8 @@
 /**
- * Abonnement / Preise – Abo-Verwaltung mit 14-Tage-Trial
- * Preismodell: 10€+MwSt/Monat oder 100€+MwSt/Jahr
+ * ProtoKI – Preise & Abonnement
+ * Neues Preismodell: 12,99 € netto/Monat oder 140,00 € netto/Jahr
+ * Mit Monat/Jahr-Umschalter (Toggle)
+ * Design: Dark-Navy #0B1622, eckige Kästen, helle Schrift, Akzent Blau
  */
 import { useState, useEffect } from "react";
 import {
@@ -37,7 +39,7 @@ export default function SubscriptionScreen() {
     trialDaysLeft: TRIAL_DAYS,
     subscribedAt: null,
   });
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly");
 
   useEffect(() => {
     loadSubscriptionState();
@@ -75,18 +77,21 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleSubscribe = async (plan: "monthly" | "yearly") => {
-    // In production: Apple In-App Purchase / Stripe integration
+  const handleSubscribe = async () => {
+    const priceText = billingCycle === "monthly"
+      ? "12,99 \u20AC netto/Monat zzgl. MwSt."
+      : "140,00 \u20AC netto/Jahr zzgl. MwSt.";
+
     Alert.alert(
-      "Abonnement abschließen",
-      `${plan === "monthly" ? "Monatsabo: 10,00 € + MwSt./Monat" : "Jahresabo: 100,00 € + MwSt./Jahr"}\n\nDie Zahlungsabwicklung wird über den App Store durchgeführt.`,
+      "Abonnement abschlie\u00DFen",
+      `${priceText}\n\nDie Zahlungsabwicklung wird \u00FCber den App Store durchgef\u00FChrt.`,
       [
         { text: "Abbrechen", style: "cancel" },
         {
-          text: "Bestätigen",
+          text: "Best\u00E4tigen",
           onPress: async () => {
             const newState: SubscriptionState = {
-              plan,
+              plan: billingCycle,
               trialStartDate: subState.trialStartDate,
               trialDaysLeft: 0,
               subscribedAt: new Date().toISOString(),
@@ -109,123 +114,172 @@ export default function SubscriptionScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Abonnement</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Preise</Text>
         <View style={{ width: 32 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Status Card */}
-        <View style={[styles.statusCard, { 
-          backgroundColor: isActive ? colors.primary + "10" : colors.error + "10",
-          borderColor: isActive ? colors.primary + "30" : colors.error + "30",
+        <View style={[styles.statusCard, {
+          backgroundColor: isActive ? "#5DADE2" + "10" : "#EF4444" + "10",
+          borderColor: isActive ? "#5DADE2" + "30" : "#EF4444" + "30",
         }]}>
           <MaterialIcons
             name={isActive ? "verified" : "error-outline"}
-            size={32}
-            color={isActive ? colors.primary : colors.error}
+            size={28}
+            color={isActive ? "#5DADE2" : "#EF4444"}
           />
-          <Text style={[styles.statusTitle, { color: colors.foreground }]}>
-            {subState.plan === "trial" && `Testphase – ${subState.trialDaysLeft} Tage verbleibend`}
+          <Text style={styles.statusTitle}>
+            {subState.plan === "trial" && `Testphase \u2013 ${subState.trialDaysLeft} Tage verbleibend`}
             {subState.plan === "monthly" && "Monatsabo aktiv"}
             {subState.plan === "yearly" && "Jahresabo aktiv"}
             {subState.plan === "expired" && "Testphase abgelaufen"}
           </Text>
-          <Text style={[styles.statusSubtext, { color: colors.muted }]}>
-            {subState.plan === "trial" && "Alle Funktionen uneingeschränkt verfügbar."}
-            {subState.plan === "monthly" && "Nächste Abrechnung: monatlich 10,00 € + MwSt."}
-            {subState.plan === "yearly" && "Nächste Abrechnung: jährlich 100,00 € + MwSt."}
-            {subState.plan === "expired" && "Bitte wähle ein Abo, um ProtoKI weiter zu nutzen."}
+          <Text style={styles.statusSubtext}>
+            {subState.plan === "trial" && "Alle Funktionen uneingeschr\u00E4nkt verf\u00FCgbar."}
+            {subState.plan === "monthly" && "N\u00E4chste Abrechnung: 12,99 \u20AC + MwSt./Monat"}
+            {subState.plan === "yearly" && "N\u00E4chste Abrechnung: 140,00 \u20AC + MwSt./Jahr"}
+            {subState.plan === "expired" && "Bitte w\u00E4hle ein Abo, um ProtoKI weiter zu nutzen."}
           </Text>
         </View>
 
-        {/* Pricing */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tarife</Text>
+        {/* Billing Cycle Toggle */}
+        <View style={styles.toggleSection}>
+          <Text style={styles.sectionTitle}>Tarif w\u00E4hlen</Text>
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[
+                styles.toggleBtn,
+                billingCycle === "monthly" && styles.toggleBtnActive,
+              ]}
+              onPress={() => setBillingCycle("monthly")}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.toggleBtnText,
+                billingCycle === "monthly" && styles.toggleBtnTextActive,
+              ]}>
+                Monatlich
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.toggleBtn,
+                billingCycle === "yearly" && styles.toggleBtnActive,
+              ]}
+              onPress={() => setBillingCycle("yearly")}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.toggleBtnText,
+                billingCycle === "yearly" && styles.toggleBtnTextActive,
+              ]}>
+                J\u00E4hrlich
+              </Text>
+              <View style={styles.saveBadge}>
+                <Text style={styles.saveBadgeText}>-10%</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        {/* Monthly */}
-        <TouchableOpacity
-          onPress={() => setSelectedPlan("monthly")}
-          style={[
-            styles.planCard,
-            { borderColor: selectedPlan === "monthly" ? colors.primary : colors.border },
-            selectedPlan === "monthly" && { borderWidth: 2 },
-          ]}
-        >
-          <View style={styles.planHeader}>
-            <View style={styles.planInfo}>
-              <Text style={[styles.planName, { color: colors.foreground }]}>Monatsabo</Text>
-              <Text style={[styles.planDesc, { color: colors.muted }]}>Flexibel, jederzeit kündbar</Text>
+        {/* Price Display */}
+        <View style={styles.priceCard}>
+          {billingCycle === "yearly" && (
+            <View style={styles.recommendedBadge}>
+              <MaterialIcons name="star" size={14} color="#FFF" />
+              <Text style={styles.recommendedText}>Empfohlen</Text>
             </View>
-            <View style={styles.planPrice}>
-              <Text style={[styles.priceAmount, { color: colors.foreground }]}>10,00 €</Text>
-              <Text style={[styles.priceUnit, { color: colors.muted }]}>+ MwSt./Monat</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+          )}
 
-        {/* Yearly */}
-        <TouchableOpacity
-          onPress={() => setSelectedPlan("yearly")}
-          style={[
-            styles.planCard,
-            { borderColor: selectedPlan === "yearly" ? colors.primary : colors.border },
-            selectedPlan === "yearly" && { borderWidth: 2 },
-          ]}
-        >
-          <View style={[styles.saveBadge, { backgroundColor: colors.success }]}>
-            <Text style={styles.saveBadgeText}>2 Monate gratis</Text>
-          </View>
-          <View style={styles.planHeader}>
-            <View style={styles.planInfo}>
-              <Text style={[styles.planName, { color: colors.foreground }]}>Jahresabo</Text>
-              <Text style={[styles.planDesc, { color: colors.muted }]}>Beste Preis-Leistung</Text>
-            </View>
-            <View style={styles.planPrice}>
-              <Text style={[styles.priceAmount, { color: colors.foreground }]}>100,00 €</Text>
-              <Text style={[styles.priceUnit, { color: colors.muted }]}>+ MwSt./Jahr</Text>
-            </View>
-          </View>
-          <Text style={[styles.yearlyCalc, { color: colors.muted }]}>
-            = 8,33 €/Monat statt 10,00 €/Monat
+          <Text style={styles.planName}>
+            {billingCycle === "monthly" ? "Monatsabo" : "Jahresabo"}
           </Text>
-        </TouchableOpacity>
+
+          <View style={styles.priceRow}>
+            <Text style={styles.priceAmount}>
+              {billingCycle === "monthly" ? "12,99" : "140,00"}
+            </Text>
+            <View style={styles.priceUnit}>
+              <Text style={styles.priceUnitCurrency}>\u20AC</Text>
+              <Text style={styles.priceUnitPeriod}>
+                netto / {billingCycle === "monthly" ? "Monat" : "Jahr"}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.priceVat}>zzgl. MwSt.</Text>
+
+          {billingCycle === "yearly" && (
+            <View style={styles.savingsRow}>
+              <MaterialIcons name="savings" size={16} color="#4ADE80" />
+              <Text style={styles.savingsText}>
+                = 11,66 \u20AC/Monat (ca. 10% Ersparnis gegen\u00FCber Monatsabo)
+              </Text>
+            </View>
+          )}
+
+          {billingCycle === "monthly" && (
+            <Text style={styles.flexNote}>Jederzeit k\u00FCndbar, keine Mindestlaufzeit</Text>
+          )}
+
+          {billingCycle === "yearly" && (
+            <Text style={styles.flexNote}>Jederzeit k\u00FCndbar zum Ende der Laufzeit</Text>
+          )}
+        </View>
+
+        {/* Trial Info */}
+        {(subState.plan === "trial" || subState.plan === "expired") && (
+          <View style={styles.trialInfoCard}>
+            <MaterialIcons name="timer" size={20} color="#5DADE2" />
+            <Text style={styles.trialInfoText}>
+              14 Tage kostenlos testen \u2013 keine Kreditkarte erforderlich
+            </Text>
+          </View>
+        )}
 
         {/* Subscribe Button */}
         {(subState.plan === "trial" || subState.plan === "expired") && (
           <TouchableOpacity
-            onPress={() => handleSubscribe(selectedPlan)}
-            style={[styles.subscribeBtn, { backgroundColor: colors.primary }]}
+            onPress={handleSubscribe}
+            style={styles.subscribeBtn}
+            activeOpacity={0.8}
           >
             <Text style={styles.subscribeBtnText}>
-              {selectedPlan === "monthly" ? "Monatsabo abschließen" : "Jahresabo abschließen"}
+              {billingCycle === "monthly" ? "Monatsabo abschlie\u00DFen" : "Jahresabo abschlie\u00DFen"}
             </Text>
           </TouchableOpacity>
         )}
 
         {/* Features */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 28 }]}>Alle Funktionen inklusive</Text>
-        {[
-          "Unbegrenzte Aufnahmen & Protokolle",
-          "KI-Transkription & Protokollgenerierung",
-          "Video-Import (WhatsApp, E-Mail, Galerie)",
-          "Foto-Analyse mit KI-Mängelerkennung",
-          "Matterport 3D-Integration",
-          "Professionelle PDF-Berichte",
-          "KI-Baustellenassistent",
-          "Mängelmanagement mit Erinnerungen",
-          "Cloud-Synchronisation & Offline-Modus",
-          "Unbegrenzte Projekte & Nutzer",
-        ].map((feature, i) => (
-          <View key={i} style={styles.featureRow}>
-            <MaterialIcons name="check" size={18} color={colors.success} />
-            <Text style={[styles.featureText, { color: colors.foreground }]}>{feature}</Text>
-          </View>
-        ))}
+        <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Alle Funktionen inklusive</Text>
+        <View style={styles.featuresGrid}>
+          {[
+            { icon: "mic", text: "Unbegrenzte Aufnahmen" },
+            { icon: "auto-awesome", text: "KI-Protokollgenerierung" },
+            { icon: "videocam", text: "Video-Import" },
+            { icon: "camera-alt", text: "KI-Foto-Analyse" },
+            { icon: "view-in-ar", text: "Matterport 3D" },
+            { icon: "picture-as-pdf", text: "PDF-Berichte" },
+            { icon: "psychology", text: "KI-Baustellenassistent" },
+            { icon: "warning", text: "M\u00E4ngelmanagement" },
+            { icon: "cloud-sync", text: "Cloud-Sync & Offline" },
+            { icon: "groups", text: "Unbegrenzte Projekte" },
+          ].map((feature, i) => (
+            <View key={i} style={styles.featureItem}>
+              <View style={styles.featureIconBox}>
+                <MaterialIcons name={feature.icon as any} size={18} color="#5DADE2" />
+              </View>
+              <Text style={styles.featureText}>{feature.text}</Text>
+            </View>
+          ))}
+        </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.muted }]}>
-            Preise zzgl. 19% MwSt. Kündigung jederzeit zum Ende der Laufzeit möglich.
-            Bei Fragen: info@iserloh.net
+          <Text style={styles.footerText}>
+            Preise zzgl. 19% MwSt. K\u00FCndigung jederzeit zum Ende der Laufzeit m\u00F6glich.
+            {"\n"}Bei Fragen: info@iserloh.net
           </Text>
         </View>
       </ScrollView>
@@ -250,51 +304,170 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     marginBottom: 24,
-    gap: 8,
+    gap: 6,
   },
-  statusTitle: { fontSize: 16, fontWeight: "700", textAlign: "center" },
-  statusSubtext: { fontSize: 13, textAlign: "center" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12 },
-  planCard: {
+  statusTitle: { fontSize: 16, fontWeight: "700", textAlign: "center", color: "#F0F4F8" },
+  statusSubtext: { fontSize: 13, textAlign: "center", color: "#7F8C9B" },
+  toggleSection: { marginBottom: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12, color: "#F0F4F8" },
+  toggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#132238",
     borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
+    borderColor: "#1E3A5F",
+    padding: 4,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  toggleBtnActive: {
+    backgroundColor: "#5DADE2",
+  },
+  toggleBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#7F8C9B",
+  },
+  toggleBtnTextActive: {
+    color: "#FFF",
+  },
+  saveBadge: {
+    backgroundColor: "#4ADE80",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  saveBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  priceCard: {
+    backgroundColor: "#132238",
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    padding: 24,
+    marginBottom: 16,
     position: "relative",
   },
-  planHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  planInfo: { flex: 1 },
-  planName: { fontSize: 16, fontWeight: "700" },
-  planDesc: { fontSize: 12, marginTop: 2 },
-  planPrice: { alignItems: "flex-end" },
-  priceAmount: { fontSize: 20, fontWeight: "800" },
-  priceUnit: { fontSize: 11 },
-  saveBadge: {
+  recommendedBadge: {
     position: "absolute",
-    top: -1,
-    right: -1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  saveBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  yearlyCalc: { fontSize: 12, marginTop: 8 },
-  subscribeBtn: {
+    top: 0,
+    right: 0,
+    backgroundColor: "#5DADE2",
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    marginTop: 8,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  recommendedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  planName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#7F8C9B",
+    textTransform: "uppercase",
+    letterSpacing: 1,
     marginBottom: 8,
   },
-  subscribeBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  featureRow: {
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 6,
+    marginBottom: 4,
+  },
+  priceAmount: {
+    fontSize: 42,
+    fontWeight: "800",
+    color: "#F0F4F8",
+    letterSpacing: -1,
+  },
+  priceUnit: {
+    paddingBottom: 8,
+  },
+  priceUnitCurrency: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#F0F4F8",
+  },
+  priceUnitPeriod: {
+    fontSize: 13,
+    color: "#7F8C9B",
+  },
+  priceVat: {
+    fontSize: 13,
+    color: "#5A6B7E",
+    marginBottom: 12,
+  },
+  savingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#4ADE80" + "15",
+    padding: 10,
+    marginTop: 4,
+  },
+  savingsText: {
+    fontSize: 13,
+    color: "#4ADE80",
+    flex: 1,
+  },
+  flexNote: {
+    fontSize: 13,
+    color: "#7F8C9B",
+    marginTop: 8,
+  },
+  trialInfoCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingVertical: 6,
+    backgroundColor: "#5DADE2" + "10",
+    borderWidth: 1,
+    borderColor: "#5DADE2" + "30",
+    padding: 14,
+    marginBottom: 16,
   },
-  featureText: { fontSize: 14 },
-  footer: { marginTop: 24, alignItems: "center" },
-  footerText: { fontSize: 12, textAlign: "center", lineHeight: 18 },
+  trialInfoText: {
+    fontSize: 14,
+    color: "#5DADE2",
+    flex: 1,
+    fontWeight: "500",
+  },
+  subscribeBtn: {
+    alignItems: "center",
+    paddingVertical: 16,
+    backgroundColor: "#5DADE2",
+    marginBottom: 8,
+  },
+  subscribeBtnText: { color: "#FFF", fontSize: 17, fontWeight: "700" },
+  featuresGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "48%",
+    paddingVertical: 8,
+  },
+  featureIconBox: {
+    width: 30,
+    height: 30,
+    backgroundColor: "#5DADE2" + "15",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featureText: { fontSize: 13, color: "#F0F4F8", flex: 1 },
+  footer: { marginTop: 28, alignItems: "center" },
+  footerText: { fontSize: 12, textAlign: "center", lineHeight: 18, color: "#5A6B7E" },
 });

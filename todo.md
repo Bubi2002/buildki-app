@@ -696,6 +696,12 @@
 - [ ] (ausstehend) Expo-Account erstellen + eas login + eas build ausführen
 - [ ] (niedrige Prio) UI-Animationen verfeinern
 
+## Registrierung, Onboarding & Preisseite (2026-07-20)
+- [x] Registrierungs-Screen: E-Mail + Passwort + AGB-Checkbox, Button "14 Tage kostenlos testen"
+- [x] Onboarding-Screen: Vorname + Nachname + Handynummer (Pflicht), Unternehmen (optional)
+- [x] Neue Preisseite: 12,99€/Monat oder 140€/Jahr, Monat/Jahr-Umschalter, Dark-Navy-Design
+- [x] Navigation: Registrierung → Onboarding → Dashboard Flow integrieren
+
 ## Phase 6: Dashboard Live-Daten + Nachprüfungs-Workflow (2026-07-19)
 - [x] Dashboard: Echte Projektzahlen aus project-store (Anzahl Projekte, aktives Projekt)
 - [x] Dashboard: Offene Mängel live aus defect-store (Anzahl pro Status: offen, in Arbeit, überfällig, erledigt)
