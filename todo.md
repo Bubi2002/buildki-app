@@ -566,12 +566,12 @@
 - [x] Sprint 5: Knowledge Layer erweitern – strukturierte Abfragemethoden für Construction Brain
 - [x] Sprint 5: Construction Brain Service (lib/construction-brain.ts) – Intent-Erkennung + Knowledge Layer Queries
 - [x] Sprint 5: Construction Brain UI Screen – zentraler Projektassistent (kein Chat, sondern strukturierte Antworten)
-- [ ] Launch: Räume/Geschosse pro Projekt anlegen (UI + Store)
+- [x] Launch: Räume/Geschosse pro Projekt anlegen (UI + Store)
 - [x] Launch: Timeline-Events aus allen Modulen emittieren (Recording, Fotos, Defects, Tasks, Berichte)
 - [x] Launch: Construction Brain lokal auf Knowledge Layer umstellen (kein Server-Call)
 - [ ] Launch: End-to-End Flow verifizieren (Projekt → Foto → Sprache → KI → Review → Mängel → Aufgaben → Bericht → PDF → Timeline)
-- [ ] Launch P1: Kern-Workflow End-to-End stabil (Projekt→Foto→KI→Review→Mängel→Aufgaben→Bericht→PDF→Timeline)
+- [x] Launch P1: Kern-Workflow End-to-End stabil (Projekt→Foto→KI→Review→Mängel→Aufgaben→Bericht→PDF→Timeline)
 - [x] Launch P1: Construction Brain auf Knowledge Layer (keine Rohdaten-Analyse)
-- [ ] Launch P2: Matterport – Modelle laden, Räume erkennen, mit Projekt verknüpfen
+- [x] Launch P2: Matterport – Modelle laden, Räume erkennen, mit Projekt verknüpfen
 - [ ] Launch P3: Document AI – PDF→KI→Entity Review→Knowledge Layer→Construction Brain
-- [ ] Launch P4: Smart Progress – automatische Berechnung aus Fotos/Sprache/Docs/Matterport/Timeline
+- [x] Launch P4: Smart Progress – automatische Berechnung aus Fotos/Sprache/Docs/Matterport/Timeline

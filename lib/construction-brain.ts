@@ -41,6 +41,8 @@ export type BrainIntent =
   | "document_query"
   | "project_summary"
   | "progress_status"
+  | "matterport_status"
+  | "scan_comparison"
   | "unknown";
 
 export interface BrainQuery {
@@ -220,6 +222,25 @@ const INTENT_PATTERNS: { intent: BrainIntent; patterns: RegExp[] }[] = [
       /[uü]berblick/i,
     ],
   },
+  {
+    intent: "matterport_status",
+    patterns: [
+      /matterport/i,
+      /3d.*scan/i,
+      /scan.*status/i,
+      /modell.*status/i,
+      /r[aä]um.*scan/i,
+    ],
+  },
+  {
+    intent: "scan_comparison",
+    patterns: [
+      /scan.*vergleich/i,
+      /vergleich.*scan/i,
+      /[aä]nderung.*scan/i,
+      /vorher.*nachher/i,
+    ],
+  },
 ];
 
 // ─── Room/Trade Extraction ──────────────────────────────────────────────────
@@ -322,6 +343,10 @@ class ConstructionBrain {
         return this.handleProgressStatus(projectId);
       case "project_summary":
         return this.handleProjectSummary(projectId);
+      case "matterport_status":
+        return this.handleMatterportStatus(projectId);
+      case "scan_comparison":
+        return this.handleScanComparison(projectId);
       default:
         return this.handleUnknown(projectId, query);
     }
@@ -810,6 +835,55 @@ class ConstructionBrain {
         "Offene Mängel?",
         "Was hat sich diese Woche geändert?",
       ],
+    };
+  }
+
+  private async handleMatterportStatus(projectId: string): Promise<BrainResponse> {
+    const entries = await knowledgeLayer.getBySource(projectId, "matterport");
+    const rooms = entries.filter(e => e.metadata.type === "room");
+    const tags = entries.filter(e => e.metadata.type === "tag");
+
+    return {
+      intent: "matterport_status",
+      title: "Matterport Status",
+      summary: entries.length === 0
+        ? "Noch kein Matterport-Modell verknüpft. Bitte im Werkzeuge-Tab verbinden."
+        : `${rooms.length} Räume und ${tags.length} Tags aus Matterport erfasst.`,
+      details: entries.slice(0, 10).map(e => ({
+        type: "info" as const,
+        content: e.content,
+        metadata: { date: e.timestamp },
+      })),
+      stats: { räume: rooms.length, tags: tags.length, gesamt: entries.length },
+      suggestions: ["Raumstatus?", "Baufortschritt?"],
+    };
+  }
+
+  private async handleScanComparison(projectId: string): Promise<BrainResponse> {
+    const entries = await knowledgeLayer.getBySource(projectId, "matterport");
+    const scans = entries.filter(e => e.metadata.type === "scan");
+
+    if (scans.length < 2) {
+      return {
+        intent: "scan_comparison",
+        title: "Scan-Vergleich",
+        summary: "Für einen Vergleich werden mindestens 2 Scans benötigt. Bitte weitere Scans im Matterport-Viewer synchronisieren.",
+        details: [],
+        suggestions: ["Matterport Status?", "Baufortschritt?"],
+      };
+    }
+
+    return {
+      intent: "scan_comparison",
+      title: "Scan-Vergleich",
+      summary: `${scans.length} Scans verfügbar. Vergleich zeigt Änderungen zwischen Zeitpunkten.`,
+      details: scans.slice(0, 5).map(s => ({
+        type: "progress" as const,
+        content: `Scan vom ${new Date(s.timestamp).toLocaleDateString("de-DE")}`,
+        metadata: { date: s.timestamp },
+      })),
+      stats: { scans: scans.length },
+      suggestions: ["Baufortschritt?", "Welche Räume sind fertig?"],
     };
   }
 }

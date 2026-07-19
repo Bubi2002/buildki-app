@@ -40,6 +40,9 @@ export type TimelineEventType =
   | "appointment_created"
   | "person_assigned"
   | "progress_updated"
+  | "scan_synced"
+  | "tag_created"
+  | "progress_compared"
   | "custom";
 
 export interface TimelineEvent {
@@ -349,6 +352,9 @@ export function getEventTypeLabel(type: TimelineEventType): string {
     appointment_created: "Termin erstellt",
     person_assigned: "Person zugewiesen",
     progress_updated: "Fortschritt aktualisiert",
+    scan_synced: "Scan synchronisiert",
+    tag_created: "Tag erstellt",
+    progress_compared: "Fortschritt verglichen",
     custom: "Ereignis",
   };
   return labels[type] || type;
@@ -378,6 +384,9 @@ export function getEventTypeIcon(type: TimelineEventType): string {
     appointment_created: "event",
     person_assigned: "person-add",
     progress_updated: "trending-up",
+    scan_synced: "sync",
+    tag_created: "label",
+    progress_compared: "compare-arrows",
     custom: "circle",
   };
   return icons[type] || "circle";
@@ -394,6 +403,7 @@ export function getEventTypeColor(type: TimelineEventType): string {
   if (type.startsWith("scan")) return "#7C3AED";
   if (type === "milestone_reached") return "#F59E0B";
   if (type === "appointment_created") return "#8B5CF6";
-  if (type === "progress_updated") return "#14B8A6";
+  if (type === "progress_updated" || type === "progress_compared") return "#14B8A6";
+  if (type === "scan_synced" || type === "tag_created") return "#7C3AED";
   return "#6B7280";
 }
