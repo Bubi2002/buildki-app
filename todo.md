@@ -935,3 +935,10 @@
 - [x] Button "Als PDF exportieren" am Ende der Ergebnisseite
 - [x] PDF enthält: alle Mängel (KI + manuell), Raum, Datum, Projekt, Aufgaben
 - [x] Professionelles Layout mit protoKI-Branding (generateAndSharePdf)
+
+## Phase 10c: Tab-Reihenfolge (2026-07-19)
+
+- [x] Tools (Werkzeuge) als ersten Tab ganz links positioniert
+- [x] Aufnahme als zweiten Tab positioniert
+- [x] App startet auf Tools-Tab (initialRouteName="index")
+- [x] dashboard.tsx → index.tsx umbenannt, index.tsx → record.tsx umbenannt
