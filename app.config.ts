@@ -89,6 +89,13 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-quick-actions",
     [
+      "expo-notifications",
+      {
+        icon: "./assets/images/icon.png",
+        color: "#E63946"
+      }
+    ],
+    [
       "expo-camera",
       {
         cameraPermission: "ProtoKI benötigt Zugriff auf die Kamera, um Videos aufzunehmen.",
