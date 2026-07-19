@@ -36,6 +36,18 @@ export type DefectComment = {
   createdAt: string;
 };
 
+export type DefectSignature = {
+  role: string;
+  paths: string[];
+  signedAt: string;
+};
+
+export type MatterportPosition = {
+  x: number;
+  y: number;
+  z: number;
+};
+
 export type Defect = {
   id: string;
   projectId: string;
@@ -68,6 +80,8 @@ export type Defect = {
   positionCode?: string;
   /** Date of follow-up inspection */
   followUpDate?: string;
+  /** Result of follow-up inspection */
+  followUpResult?: "behoben" | "nachbesserung" | null;
   protocolId?: string;
   /** Source of the defect (manual entry, KI analysis, Matterport, checklist) */
   source?: DefectSource;
@@ -75,6 +89,31 @@ export type Defect = {
   confidence?: number;
   /** Reference to the analysis that created this defect */
   analysisId?: string;
+  // ─── Matterport 3D Integration (Single Source of Truth) ─────────────────────
+  /** Matterport model ID this defect is pinned to */
+  matterportModelId?: string;
+  /** 3D position in Matterport space */
+  matterportPosition?: MatterportPosition;
+  /** Normal vector for pin orientation */
+  matterportNormal?: MatterportPosition;
+  /** Sweep ID for camera navigation */
+  matterportSweepId?: string;
+  /** Floor index in Matterport model */
+  matterportFloorIndex?: number;
+  /** Floor name in Matterport model */
+  matterportFloorName?: string;
+  /** Room ID in Matterport model */
+  matterportRoomId?: string;
+  /** Room name in Matterport model */
+  matterportRoomName?: string;
+  // ─── KI Integration ─────────────────────────────────────────────────────────
+  /** AI-generated summary of the defect */
+  aiSummary?: string;
+  /** Voice note URI (audio recording describing the defect) */
+  voiceNoteUri?: string;
+  // ─── Signatures (directly on defect for Abnahme/Übergabe) ──────────────────
+  /** Digital signatures attached to this defect (AG/AN/Zeuge/Prüfer) */
+  signatures?: DefectSignature[];
 };
 
 export const DEFECT_CATEGORIES = [
@@ -275,6 +314,156 @@ export async function recordPhotoAdded(defectId: string): Promise<void> {
  */
 export async function recordPhotoRemoved(defectId: string): Promise<void> {
   await addHistoryEntry(defectId, "photo_removed", undefined, undefined, "Foto entfernt");
+}
+
+// ============ Matterport Integration ============
+
+/**
+ * Attach Matterport 3D position data to a defect (Single Source of Truth).
+ * The Matterport viewer reads this data directly from the defect.
+ */
+export async function attachMatterportData(
+  defectId: string,
+  data: {
+    modelId: string;
+    position?: { x: number; y: number; z: number };
+    normal?: { x: number; y: number; z: number };
+    sweepId?: string;
+    floorIndex?: number;
+    floorName?: string;
+    roomId?: string;
+    roomName?: string;
+  }
+): Promise<Defect | null> {
+  const defects = await getDefects();
+  const defect = defects.find((d) => d.id === defectId);
+  if (!defect) return null;
+
+  const updated: Defect = {
+    ...defect,
+    matterportModelId: data.modelId,
+    matterportPosition: data.position,
+    matterportNormal: data.normal,
+    matterportSweepId: data.sweepId,
+    matterportFloorIndex: data.floorIndex,
+    matterportFloorName: data.floorName,
+    matterportRoomId: data.roomId,
+    matterportRoomName: data.roomName,
+    source: defect.source || "matterport",
+  };
+  await saveDefect(updated);
+  return updated;
+}
+
+/**
+ * Get all defects that have Matterport 3D positions (for rendering pins in viewer).
+ * This replaces the separate matterport_pins AsyncStorage key.
+ */
+export async function getMatterportDefects(modelId: string): Promise<Defect[]> {
+  const defects = await getDefects();
+  return defects.filter((d) => d.matterportModelId === modelId && d.matterportPosition);
+}
+
+// ============ KI Summary ============
+
+/**
+ * Set AI-generated summary on a defect
+ */
+export async function setAiSummary(defectId: string, summary: string): Promise<Defect | null> {
+  const defects = await getDefects();
+  const defect = defects.find((d) => d.id === defectId);
+  if (!defect) return null;
+
+  const updated: Defect = { ...defect, aiSummary: summary };
+  await saveDefect(updated);
+  return updated;
+}
+
+// ============ Voice Notes ============
+
+/**
+ * Attach a voice note URI to a defect
+ */
+export async function setVoiceNote(defectId: string, uri: string): Promise<Defect | null> {
+  const defects = await getDefects();
+  const defect = defects.find((d) => d.id === defectId);
+  if (!defect) return null;
+
+  const updated: Defect = { ...defect, voiceNoteUri: uri };
+  await saveDefect(updated);
+  return updated;
+}
+
+// ============ Defect-Level Signatures ============
+
+/**
+ * Add a signature to a defect (for Abnahme/Übergabe workflows).
+ * Roles: Auftraggeber, Auftragnehmer, Zeuge, Prüfer
+ */
+export async function addDefectSignature(
+  defectId: string,
+  signature: DefectSignature
+): Promise<Defect | null> {
+  const defects = await getDefects();
+  const defect = defects.find((d) => d.id === defectId);
+  if (!defect) return null;
+
+  const updated: Defect = {
+    ...defect,
+    signatures: [...(defect.signatures || []), signature],
+  };
+  await saveDefect(updated);
+  return updated;
+}
+
+/**
+ * Remove a signature from a defect by index
+ */
+export async function removeDefectSignature(defectId: string, index: number): Promise<Defect | null> {
+  const defects = await getDefects();
+  const defect = defects.find((d) => d.id === defectId);
+  if (!defect || !defect.signatures) return null;
+
+  const updated: Defect = {
+    ...defect,
+    signatures: defect.signatures.filter((_, i) => i !== index),
+  };
+  await saveDefect(updated);
+  return updated;
+}
+
+/**
+ * Get all defects with follow-up dates (for calendar/notifications)
+ */
+export async function getDefectsWithFollowUp(projectId?: string): Promise<Defect[]> {
+  const defects = await getDefects(projectId);
+  return defects.filter((d) => d.followUpDate && d.status !== "erledigt" && d.status !== "geschlossen");
+}
+
+/**
+ * Get defects grouped by Gewerk (for KI-Bericht)
+ */
+export function groupByGewerk(defects: Defect[]): Record<string, Defect[]> {
+  const groups: Record<string, Defect[]> = {};
+  for (const d of defects) {
+    const gewerk = d.gewerk || d.category || "Sonstiges";
+    if (!groups[gewerk]) groups[gewerk] = [];
+    groups[gewerk].push(d);
+  }
+  return groups;
+}
+
+/**
+ * Get defects grouped by Room (for KI-Bericht)
+ */
+export function groupByRoom(defects: Defect[]): Record<string, Defect[]> {
+  const groups: Record<string, Defect[]> = {};
+  for (const d of defects) {
+    const room = d.room || d.location || "Unbekannt";
+    if (!groups[room]) groups[room] = [];
+    groups[room].push(d);
+  }
+  return groups;
 }
 
 /**

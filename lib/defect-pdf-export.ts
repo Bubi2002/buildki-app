@@ -210,17 +210,32 @@ export async function generateDefectPdfHtml(
         <span class="badge" style="background: ${statusColors[d.status]};">${statusLabels[d.status]}</span>
       </div>`;
 
+      const followUpStr = d.followUpDate ? new Date(d.followUpDate).toLocaleDateString("de-DE") : null;
+      const followUpResultStr = d.followUpResult === "behoben" ? "✅ Behoben" : d.followUpResult === "nachbesserung" ? "⚠️ Nachbesserung" : null;
+
       html += `<div class="defect-meta">
         <div class="defect-meta-item"><strong>Priorität:</strong> <span style="color: ${priorityColors[d.priority]};">${priorityLabels[d.priority]}</span></div>
         <div class="defect-meta-item"><strong>Gewerk:</strong> ${gewerk}</div>
         ${d.location ? `<div class="defect-meta-item"><strong>Ort:</strong> ${d.location}</div>` : ""}
-        ${d.assignee ? `<div class="defect-meta-item"><strong>Zuständig:</strong> ${d.assignee}</div>` : ""}
+        ${d.room ? `<div class="defect-meta-item"><strong>Raum:</strong> ${d.room}</div>` : ""}
+        ${d.floor ? `<div class="defect-meta-item"><strong>Geschoss:</strong> ${d.floor}</div>` : ""}
+        ${d.assignee ? `<div class="defect-meta-item"><strong>Zuständig:</strong> ${d.assignee}${d.assigneeFirma ? ` (${d.assigneeFirma})` : ""}</div>` : ""}
         <div class="defect-meta-item"><strong>Erstellt:</strong> ${createdDate}</div>
         ${dueDate ? `<div class="defect-meta-item"><strong>Frist:</strong> ${dueDate}</div>` : ""}
+        ${followUpStr ? `<div class="defect-meta-item"><strong>Nachprüfung:</strong> ${followUpStr}${followUpResultStr ? " " + followUpResultStr : ""}</div>` : ""}
+        ${d.matterportModelId ? `<div class="defect-meta-item"><strong>3D-Modell:</strong> Verknüpft${d.matterportFloorName ? " ("+d.matterportFloorName+")" : ""}</div>` : ""}
+        ${d.source ? `<div class="defect-meta-item"><strong>Quelle:</strong> ${d.source === "matterport" ? "3D-Scan" : d.source === "ki_analysis" ? "KI-Analyse" : d.source === "checklist" ? "Checkliste" : "Manuell"}</div>` : ""}
       </div>`;
 
       if (d.description) {
         html += `<div class="defect-description">${d.description}</div>`;
+      }
+
+      // AI Summary (from defect-store, Single Source of Truth)
+      if (d.aiSummary) {
+        html += `<div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-left: 3px solid ${accentColor}; border-radius: 4px; font-size: 11px;">
+          <strong style="color: ${accentColor};">KI-Zusammenfassung:</strong> ${d.aiSummary}
+        </div>`;
       }
 
       // Photos
@@ -237,6 +252,37 @@ export async function generateDefectPdfHtml(
 
       html += `</div>`;
     }
+  }
+
+  // ─── Signatures Section (from defect-store, Single Source of Truth) ─────────
+  const allSignatures = defects.flatMap(d => (d.signatures || []).map(s => ({ ...s, defectTitle: d.title })));
+  if (allSignatures.length > 0) {
+    html += `<div class="page-break"></div>`;
+    html += `<h2 style="font-size: 16px; font-weight: 700; color: ${accentColor}; margin-bottom: 16px;">Unterschriften</h2>`;
+    html += `<p style="font-size: 11px; color: #666; margin-bottom: 16px;">Die folgenden digitalen Unterschriften bestätigen die Kenntnisnahme und/oder Anerkennung der dokumentierten Mängel.</p>`;
+    html += `<table class="summary-table"><thead><tr><th>Rolle</th><th>Datum</th><th>Unterschrift</th></tr></thead><tbody>`;
+
+    // Deduplicate by role+date
+    const uniqueSigs = new Map<string, typeof allSignatures[0]>();
+    for (const sig of allSignatures) {
+      const key = `${sig.role}_${sig.signedAt.slice(0, 10)}`;
+      if (!uniqueSigs.has(key)) uniqueSigs.set(key, sig);
+    }
+
+    for (const [, sig] of uniqueSigs) {
+      const sigDate = new Date(sig.signedAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      // Render signature paths as SVG
+      let sigSvg = "";
+      if (sig.paths && sig.paths.length > 0) {
+        sigSvg = `<svg width="150" height="50" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg" style="border-bottom: 1px solid #333;"><path d="${sig.paths.join(" ")}" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      } else {
+        sigSvg = `<em style="color: #666;">[Digital signiert]</em>`;
+      }
+      html += `<tr><td style="font-weight: 600;">${sig.role}</td><td>${sigDate}</td><td>${sigSvg}</td></tr>`;
+    }
+
+    html += `</tbody></table>`;
+    html += `<p style="font-size: 9px; color: #999; margin-top: 12px; font-style: italic;">Hinweis: Die digitalen Unterschriften wurden elektronisch erfasst und sind rechtlich bindend gemäß § 126a BGB (elektronische Form). Die Unterzeichner bestätigen die Richtigkeit und Vollständigkeit der dokumentierten Mängel zum Zeitpunkt der Unterschrift.</p>`;
   }
 
   // Footer

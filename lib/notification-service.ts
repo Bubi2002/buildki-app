@@ -97,10 +97,10 @@ export async function scheduleNotifications(): Promise<void> {
 
 async function scheduleDefectReminder(prefs: NotificationPreferences): Promise<void> {
   try {
-    const defectsData = await AsyncStorage.getItem("defects");
-    const defects = JSON.parse(defectsData || "[]");
-    // Fix: use correct German status values
-    const openDefects = defects.filter((d: any) =>
+    // Use getDefects from defect-store (Single Source of Truth)
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects();
+    const openDefects = defects.filter((d) =>
       d.status === "offen" || d.status === "zugewiesen" || d.status === "in_bearbeitung" || d.status === "nachbesserung"
     );
 
@@ -176,8 +176,9 @@ async function scheduleDailyDigest(prefs: NotificationPreferences): Promise<void
  */
 async function scheduleFollowUpReminders(): Promise<void> {
   try {
-    const defectsData = await AsyncStorage.getItem("defects");
-    const defects = JSON.parse(defectsData || "[]");
+    // Use getDefects from defect-store (Single Source of Truth)
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects();
     const prefs = await getNotificationPreferences();
 
     const now = new Date();
@@ -190,13 +191,13 @@ async function scheduleFollowUpReminders(): Promise<void> {
     );
 
     for (const defect of defectsWithFollowUp) {
-      const followUpDate = new Date(defect.followUpDate);
+      const followUpDate = new Date(defect.followUpDate!);
       const diffMs = followUpDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
       // Schedule for the day of the follow-up
       if (diffDays >= 0 && diffDays <= maxFutureDays) {
-        const triggerDate = new Date(defect.followUpDate);
+        const triggerDate = new Date(defect.followUpDate!);
         triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
 
         if (triggerDate.getTime() > now.getTime()) {
@@ -217,7 +218,7 @@ async function scheduleFollowUpReminders(): Promise<void> {
 
       // Schedule reminder one day before
       if (diffDays >= 1 && diffDays <= maxFutureDays) {
-        const dayBefore = new Date(defect.followUpDate);
+        const dayBefore = new Date(defect.followUpDate!);
         dayBefore.setDate(dayBefore.getDate() - 1);
         dayBefore.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
 
@@ -310,13 +311,14 @@ export async function sendImmediateNotification(title: string, body: string, dat
  */
 export async function getPendingFollowUps(): Promise<any[]> {
   try {
-    const defectsData = await AsyncStorage.getItem("defects");
-    const defects = JSON.parse(defectsData || "[]");
-    return defects.filter((d: any) =>
+    // Use getDefects from defect-store (Single Source of Truth)
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects();
+    return defects.filter((d) =>
       d.followUpDate &&
       d.status !== "erledigt" &&
       d.status !== "geschlossen"
-    ).sort((a: any, b: any) => new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime());
+    ).sort((a, b) => new Date(a.followUpDate!).getTime() - new Date(b.followUpDate!).getTime());
   } catch {
     return [];
   }

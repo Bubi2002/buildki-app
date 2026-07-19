@@ -117,15 +117,29 @@ export default function ReportGeneratorScreen() {
           if (defects.length > 0) {
             defectsJson = JSON.stringify(
               defects.map((d) => ({
+                id: d.id,
                 title: d.title,
                 status: d.status,
                 priority: d.priority,
                 location: d.location,
-                gewerk: (d as any).gewerk || d.category,
+                gewerk: d.gewerk || d.category,
                 description: d.description,
                 dueDate: d.dueDate,
                 assignee: d.assignee,
-                positionCode: (d as any).positionCode,
+                assigneeFirma: d.assigneeFirma,
+                positionCode: d.positionCode,
+                followUpDate: d.followUpDate,
+                followUpResult: d.followUpResult,
+                aiSummary: d.aiSummary,
+                room: d.room,
+                floor: d.floor,
+                source: d.source,
+                matterportModelId: d.matterportModelId,
+                matterportFloorName: d.matterportFloorName,
+                matterportRoomName: d.matterportRoomName,
+                hasSignatures: (d.signatures?.length || 0) > 0,
+                photoCount: d.photos?.length || 0,
+                createdAt: d.createdAt,
               }))
             );
           }
@@ -165,17 +179,19 @@ export default function ReportGeneratorScreen() {
       let photosJson: string | undefined;
       if (includePhotos && params.projectId) {
         try {
-          // Get photos from defects
+          // Get photos from defects (Single Source of Truth)
           const defects = await getDefects(params.projectId);
           const photoRefs: PhotoRef[] = [];
           for (const d of defects) {
             if (d.photos?.length > 0) {
-              photoRefs.push({
-                uri: d.photos[0],
-                description: `Mangel: ${d.title}`,
-                room: d.location,
-                trade: (d as any).gewerk || d.category,
-              });
+              for (const photo of d.photos.slice(0, 2)) {
+                photoRefs.push({
+                  uri: photo,
+                  description: `${d.positionCode ? `[${d.positionCode}] ` : ""}${d.title}`,
+                  room: d.room || d.location,
+                  trade: d.gewerk || d.category,
+                });
+              }
             }
           }
           if (photoRefs.length > 0) {

@@ -33,8 +33,12 @@ import {
   recordPhotoRemoved,
   getDefectHistory,
   formatHistoryEntry,
+  addDefectSignature,
   type DefectHistoryEntry,
+  type DefectSignature,
 } from "@/lib/defect-store";
+import { requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
+import { SignaturePad } from "@/components/signature-pad";
 import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getProjectStructure, getFloors, getAllRooms, type Floor, type Room } from "@/lib/room-store";
 import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
@@ -70,6 +74,8 @@ export default function DefectsScreen() {
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [signatureRole, setSignatureRole] = useState<string>("Auftraggeber");
 
   useFocusEffect(
     useCallback(() => {
@@ -553,6 +559,82 @@ export default function DefectsScreen() {
                   </View>
                 </View>
 
+                {/* Voice Note Section */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Sprachnotiz</Text>
+                  {selectedDefect.voiceNoteUri ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}>
+                      <MaterialIcons name="mic" size={18} color={colors.primary} />
+                      <Text style={{ fontSize: 13, color: colors.foreground, flex: 1 }}>Sprachnotiz vorhanden</Text>
+                      <Pressable
+                        onPress={async () => {
+                          const updated = { ...selectedDefect, voiceNoteUri: undefined, updatedAt: new Date().toISOString() };
+                          await saveDefect(updated);
+                          setSelectedDefect(updated);
+                          await loadDefects();
+                        }}
+                        style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}
+                      >
+                        <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={async () => {
+                        if (Platform.OS === "web") { Alert.alert("Nicht verf\u00fcgbar", "Sprachaufnahme nur auf dem Ger\u00e4t m\u00f6glich."); return; }
+                        const perm = await requestRecordingPermissionsAsync();
+                        if (!perm.granted) { Alert.alert("Berechtigung", "Mikrofonzugriff wird ben\u00f6tigt."); return; }
+                        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+                        Alert.alert("Sprachnotiz", "Mikrofon bereit. Nutze die Aufnahme-Funktion im Protokoll-Tab f\u00fcr vollst\u00e4ndige Aufnahmen.");
+                      }}
+                      style={({ pressed }) => [{
+                        flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                        paddingVertical: 10, borderWidth: 1, borderColor: colors.primary + "40",
+                        backgroundColor: colors.primary + "10", opacity: pressed ? 0.7 : 1,
+                      }]}
+                    >
+                      <MaterialIcons name="mic" size={18} color={colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Sprachnotiz aufnehmen</Text>
+                    </Pressable>
+                  )}
+                </View>
+                {/* Signatures Section */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Unterschriften ({selectedDefect.signatures?.length || 0})</Text>
+                  {selectedDefect.signatures && selectedDefect.signatures.length > 0 && (
+                    <View style={{ marginBottom: 8 }}>
+                      {selectedDefect.signatures.map((sig, idx) => (
+                        <View key={idx} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                          <MaterialIcons name="draw" size={16} color={colors.primary} />
+                          <Text style={{ fontSize: 13, color: colors.foreground, marginLeft: 8, flex: 1 }}>{sig.role}</Text>
+                          <Text style={{ fontSize: 11, color: colors.muted }}>{new Date(sig.signedAt).toLocaleDateString("de-DE")}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <View style={{ flexDirection: "row", gap: 6 }}>
+                    {["Auftraggeber", "Auftragnehmer", "Zeuge", "Pr\u00fcfer"].map((role) => (
+                      <Pressable
+                        key={role}
+                        onPress={() => { setSignatureRole(role); setShowSignaturePad(true); }}
+                        style={({ pressed }) => [{
+                          flex: 1, paddingVertical: 8, alignItems: "center",
+                          borderWidth: 1, borderColor: colors.border,
+                          backgroundColor: colors.background, opacity: pressed ? 0.7 : 1,
+                        }]}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: colors.muted }}>{role.substring(0, 2).toUpperCase()}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+                {/* KI-Zusammenfassung */}
+                {selectedDefect.aiSummary && (
+                  <View style={{ marginBottom: 16, padding: 10, backgroundColor: colors.primary + "08", borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginBottom: 4 }}>KI-Zusammenfassung</Text>
+                    <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 18 }}>{selectedDefect.aiSummary}</Text>
+                  </View>
+                )}
                 {/* 3D-Viewer Button (for Matterport defects) */}
                 {selectedDefect.pinId && (
                   <Pressable
@@ -623,6 +705,30 @@ export default function DefectsScreen() {
                 </Text>
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Signature Pad Modal */}
+      <Modal visible={showSignaturePad} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Unterschrift: {signatureRole}</Text>
+            <SignaturePad
+              onSave={async (paths) => {
+                if (selectedDefect && paths.length > 0) {
+                  const sig: DefectSignature = { role: signatureRole, paths, signedAt: new Date().toISOString() };
+                  const updated = await addDefectSignature(selectedDefect.id, sig);
+                  if (updated) {
+                    setSelectedDefect(updated);
+                    await loadDefects();
+                  }
+                }
+                setShowSignaturePad(false);
+                if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }}
+              onCancel={() => setShowSignaturePad(false)}
+            />
           </View>
         </View>
       </Modal>

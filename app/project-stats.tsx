@@ -39,10 +39,9 @@ export default function ProjectStatsScreen() {
 
   const loadData = async () => {
     try {
-      const [projectsData, protocolsData, defectsData] = await Promise.all([
+      const [projectsData, protocolsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
         AsyncStorage.getItem("protocols"),
-        AsyncStorage.getItem("defects"),
       ]);
       const allProjects = JSON.parse(projectsData || "[]");
       const proj = allProjects.find((p: any) => p.id === id);
@@ -51,8 +50,9 @@ export default function ProjectStatsScreen() {
       const allProtocols: Protocol[] = JSON.parse(protocolsData || "[]");
       setProtocols(allProtocols.filter((p) => p.projectId === id));
 
-      const allDefects: Defect[] = JSON.parse(defectsData || "[]");
-      setDefects(allDefects.filter((d) => d.projectId === id));
+      const { getDefects } = await import("@/lib/defect-store");
+      const allDefects = await getDefects(id);
+      setDefects(allDefects as any);
     } catch {}
   };
 

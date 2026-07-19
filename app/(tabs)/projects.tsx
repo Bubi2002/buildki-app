@@ -72,14 +72,15 @@ export default function OverviewTab() {
 
   const loadData = async () => {
     try {
-      const [projData, protoData, defData] = await Promise.all([
+      const [projData, protoData] = await Promise.all([
         AsyncStorage.getItem("projects"),
         AsyncStorage.getItem("protocols"),
-        AsyncStorage.getItem("defects"),
       ]);
+      const { getDefects } = await import("@/lib/defect-store");
+      const allDefects = await getDefects();
       setProjects(projData ? JSON.parse(projData) : []);
       setProtocols(protoData ? JSON.parse(protoData) : []);
-      setDefects(defData ? JSON.parse(defData) : []);
+      setDefects(allDefects as any);
     } catch {}
   };
 

@@ -745,3 +745,26 @@
 - [ ] Professionelles PDF-Layout (Kopfzeile, Fußzeile, Seitenzahlen)
 - [ ] Rechtssicherer Hinweistext unter Unterschriften
 - [ ] PDF-Metadaten (Autor, Erstelldatum, Projekt)
+
+## Phase 7b: Unified Architecture – Single Source of Truth (2026-07-19)
+- [x] Defect-Store: Erweitern um Matterport-Pin-Daten (sweepId, position3D, floorIndex)
+- [x] Defect-Store: KI-Zusammenfassung (aiSummary) Feld hinzugefügt
+- [x] Defect-Store: Spracheingabe-Referenz (voiceNoteUri) hinzugefügt
+- [x] Defect-Store: Unterschriften (signatures) direkt am Mangel speichern
+- [x] KI-Bericht: Daten direkt aus defect-store lesen (keine eigene Datenhaltung)
+- [x] KI-Bericht: Automatisch nach Gewerken gruppieren (server/report-engine.ts)
+- [x] KI-Bericht: Fotos inline an passenden Stellen einfügen
+- [x] KI-Bericht: Fristen + Verantwortliche + Nachprüfungen übernehmen
+- [x] PDF-Export: Nur KI-Bericht + defect-store + Unterschriften als Quelle
+- [x] PDF-Export: Professionelles Layout mit Rollen-Unterschriften (AG/AN/Zeuge/Prüfer)
+- [x] Matterport: Pins referenzieren direkt Defect-ID (getMatterportDefects)
+- [x] Matterport: Pin zeigt automatisch Fotos, Status, Verantwortlichen, Frist
+- [x] Dashboard: Liest ausschließlich aus defect-store (keine Extra-Tabellen)
+- [x] Nachprüfung/Kalender: followUpDate aus Defect → auto-sync Erinnerungen
+- [x] Änderung an Mangel propagiert automatisch zu allen Modulen
+- [x] projects.tsx + project-stats.tsx: Raw AsyncStorage → getDefects()
+- [x] notification-service.ts: Raw AsyncStorage → getDefects()
+- [x] Sprachnotiz-UI im Mangel-Detail (Aufnahme + Abspielen + Löschen)
+- [x] Unterschriften-UI im Mangel-Detail (4 Rollen + SignaturePad)
+- [x] KI-Zusammenfassung-Anzeige im Mangel-Detail
+- [x] 0 TypeScript-Fehler, 17 Tests bestanden

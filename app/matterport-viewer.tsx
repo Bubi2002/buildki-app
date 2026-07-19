@@ -36,7 +36,8 @@ import { trpc } from "@/lib/trpc";
 
 const MATTERPORT_CREDENTIALS_KEY = "matterport_credentials";
 const LINKED_MODELS_KEY = "matterport_linked_models";
-const PINS_KEY = "matterport_pins";
+// Legacy key kept only for non-defect pins (notes, tasks, photos)
+const LEGACY_PINS_KEY = "matterport_pins";
 
 interface LinkedModel {
   modelId: string;
@@ -153,14 +154,49 @@ export default function MatterportViewerScreen() {
 
   const loadPins = async () => {
     try {
-      const stored = await AsyncStorage.getItem(`${PINS_KEY}_${modelId}`);
-      if (stored) setPins(JSON.parse(stored));
-    } catch (e) {}
+      // Primary: Load defect pins from defect-store (Single Source of Truth)
+      const { getMatterportDefects } = await import("@/lib/defect-store");
+      const matterportDefects = await getMatterportDefects(modelId);
+      const defectPins: MatterportPin[] = matterportDefects.map(d => ({
+        id: d.pinId || `pin_${d.id}`,
+        modelId,
+        type: "defect" as const,
+        label: d.title,
+        description: d.description,
+        position: d.matterportPosition,
+        normal: d.matterportNormal,
+        sweepId: d.matterportSweepId,
+        floorIndex: d.matterportFloorIndex,
+        floorName: d.matterportFloorName,
+        roomId: d.matterportRoomId,
+        roomName: d.matterportRoomName,
+        gewerk: d.gewerk,
+        linkedEntityId: d.id,
+        status: d.status,
+        createdAt: d.createdAt,
+      }));
+      // Also load non-defect pins from legacy storage
+      const legacyStored = await AsyncStorage.getItem(`${LEGACY_PINS_KEY}_${modelId}`);
+      let legacyPins: MatterportPin[] = [];
+      if (legacyStored) {
+        const parsed = JSON.parse(legacyStored) as MatterportPin[];
+        legacyPins = parsed.filter(p => p.type !== "defect");
+      }
+      setPins([...defectPins, ...legacyPins]);
+    } catch (e) {
+      // Fallback: try legacy storage
+      try {
+        const stored = await AsyncStorage.getItem(`${LEGACY_PINS_KEY}_${modelId}`);
+        if (stored) setPins(JSON.parse(stored));
+      } catch {}
+    }
   };
 
   const savePins = async (newPins: MatterportPin[]) => {
     setPins(newPins);
-    await AsyncStorage.setItem(`${PINS_KEY}_${modelId}`, JSON.stringify(newPins));
+    // Only save non-defect pins to legacy storage (defect pins live in defect-store)
+    const nonDefectPins = newPins.filter(p => p.type !== "defect");
+    await AsyncStorage.setItem(`${LEGACY_PINS_KEY}_${modelId}`, JSON.stringify(nonDefectPins));
   };
 
   const linkModelToProject = async (mId: string, pId: string, name: string) => {
@@ -226,7 +262,7 @@ export default function MatterportViewerScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    // If pin type is defect, create a linked defect entry
+    // If pin type is defect, create a linked defect entry with Matterport 3D data (Single Source of Truth)
     if (newPinType === "defect" && projectId) {
       try {
         const { saveDefect, recordDefectCreated } = await import("@/lib/defect-store");
@@ -247,6 +283,15 @@ export default function MatterportViewerScreen() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           source: "matterport" as const,
+          // Matterport 3D data stored directly on defect (Single Source of Truth)
+          matterportModelId: modelId,
+          matterportPosition: pendingPosition?.position || undefined,
+          matterportNormal: pendingPosition?.normal || undefined,
+          matterportSweepId: pendingPosition?.sweepId || undefined,
+          matterportFloorIndex: pendingPosition?.floorIndex ?? (selectedFloor ? selectedFloor.sequence : undefined),
+          matterportFloorName: selectedFloor?.label || undefined,
+          matterportRoomId: newPinRoom || undefined,
+          matterportRoomName: selectedRoom?.label || undefined,
         };
         // Generate position code
         if (newPinGewerk && selectedFloor) {
