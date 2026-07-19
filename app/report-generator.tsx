@@ -28,13 +28,14 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { REPORT_TYPES, type ReportType, type ReportTypeConfig, buildReportPrompt, buildStructureRecognitionPrompt, type RecognizedStructure } from "@/lib/report-types";
 import { trpc } from "@/lib/trpc";
+import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 
 type Step = "select" | "configure" | "generating" | "edit" | "done";
 
 export default function ReportGeneratorScreen() {
   const router = useRouter();
   const colors = useColors();
-  const params = useLocalSearchParams<{ protocolId?: string; transcription?: string; projectId?: string }>();
+  const params = useLocalSearchParams<{ protocolId?: string; transcription?: string; projectId?: string; roomId?: string; roomName?: string; floorName?: string }>();
 
   const [step, setStep] = useState<Step>("select");
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
@@ -47,6 +48,22 @@ export default function ReportGeneratorScreen() {
   // Additional metadata
   const [reportDatum, setReportDatum] = useState(new Date().toLocaleDateString("de-DE"));
   const [reportProjekt, setReportProjekt] = useState("");
+  const [reportFloor, setReportFloor] = useState(params.floorName || "");
+  const [reportRoom, setReportRoom] = useState(params.roomName || "");
+  const [projectFloors, setProjectFloors] = useState<Floor[]>([]);
+  const [projectRooms, setProjectRooms] = useState<Room[]>([]);
+
+  // Load floors/rooms for the project
+  React.useEffect(() => {
+    if (!params.projectId) return;
+    (async () => {
+      try {
+        const structure = await getProjectStructure(params.projectId!);
+        setProjectFloors(structure.floors);
+        setProjectRooms(structure.rooms);
+      } catch {}
+    })();
+  }, [params.projectId]);
 
   const generateReport = async () => {
     if (!selectedType || !transcription.trim()) {
@@ -232,6 +249,44 @@ export default function ReportGeneratorScreen() {
             placeholder="Projektname..."
             placeholderTextColor={colors.muted}
           />
+
+          {projectFloors.length > 0 && (
+            <>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Geschoss</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {projectFloors.map((f) => (
+                    <Pressable
+                      key={f.id}
+                      onPress={() => setReportFloor(f.name)}
+                      style={[styles.chipBtn, { backgroundColor: reportFloor === f.name ? config.color + "20" : colors.surface, borderColor: reportFloor === f.name ? config.color : colors.border }]}
+                    >
+                      <Text style={{ color: reportFloor === f.name ? config.color : colors.foreground, fontSize: 13 }}>{f.name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            </>
+          )}
+
+          {projectRooms.length > 0 && (
+            <>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Raum</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {projectRooms.filter(r => !reportFloor || r.floorId === projectFloors.find(f => f.name === reportFloor)?.id).map((r) => (
+                    <Pressable
+                      key={r.id}
+                      onPress={() => setReportRoom(r.name)}
+                      style={[styles.chipBtn, { backgroundColor: reportRoom === r.name ? config.color + "20" : colors.surface, borderColor: reportRoom === r.name ? config.color : colors.border }]}
+                    >
+                      <Text style={{ color: reportRoom === r.name ? config.color : colors.foreground, fontSize: 13 }}>{r.name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            </>
+          )}
 
           {/* Transcription Input */}
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
@@ -552,5 +607,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     minHeight: 400,
+  },
+  chipBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 0,
+    minHeight: 36,
+    justifyContent: "center" as const,
   },
 });

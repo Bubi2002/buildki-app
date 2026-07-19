@@ -49,7 +49,10 @@ interface MatterportPin {
   description?: string;
   position?: { x: number; y: number; z: number };
   floorIndex?: number;
+  floorName?: string;
   roomId?: string;
+  roomName?: string;
+  gewerk?: string;
   linkedEntityId?: string;
   status?: string;
   createdAt: string;
@@ -75,6 +78,9 @@ export default function MatterportViewerScreen() {
   const [newPinLabel, setNewPinLabel] = useState("");
   const [newPinType, setNewPinType] = useState<MatterportPin["type"]>("note");
   const [newPinDescription, setNewPinDescription] = useState("");
+  const [newPinFloor, setNewPinFloor] = useState("");
+  const [newPinRoom, setNewPinRoom] = useState("");
+  const [newPinGewerk, setNewPinGewerk] = useState("");
   const [modelFloors, setModelFloors] = useState<Array<{ id: string; label: string; sequence: number }>>([]);
   const [modelRooms, setModelRooms] = useState<Array<{ id: string; label: string; floor?: { id: string; label: string } }>>([]);
   const [importStatus, setImportStatus] = useState("");
@@ -218,19 +224,55 @@ export default function MatterportViewerScreen() {
 
   const addPin = async () => {
     if (!newPinLabel.trim()) return;
-
+    const selectedFloor = modelFloors.find(f => f.id === newPinFloor);
+    const selectedRoom = modelRooms.find(r => r.id === newPinRoom);
     const pin: MatterportPin = {
       id: `pin_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       modelId,
       type: newPinType,
       label: newPinLabel.trim(),
       description: newPinDescription.trim() || undefined,
+      floorName: selectedFloor?.label || undefined,
+      roomId: newPinRoom || undefined,
+      roomName: selectedRoom?.label || undefined,
+      gewerk: newPinGewerk || undefined,
       createdAt: new Date().toISOString(),
     };
-
+    // If pin type is defect, also create a defect entry linked to this pin
+    if (newPinType === "defect" && projectId) {
+      try {
+        const { saveDefect, recordDefectCreated } = await import("@/lib/defect-store");
+        const defect = {
+          id: `defect-${Date.now()}`,
+          projectId,
+          pinId: pin.id,
+          title: newPinLabel.trim(),
+          description: newPinDescription.trim(),
+          status: "offen" as const,
+          priority: "mittel" as const,
+          category: "Sonstiges",
+          gewerk: newPinGewerk || undefined,
+          photos: [] as string[],
+          floor: selectedFloor?.label || undefined,
+          room: selectedRoom?.label || undefined,
+          location: `Matterport: ${selectedFloor?.label || ""} ${selectedRoom?.label || ""}`.trim(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          source: "matterport" as const,
+        };
+        await saveDefect(defect);
+        await recordDefectCreated(defect.id);
+        pin.linkedEntityId = defect.id;
+      } catch (e) {
+        // Non-critical - pin still created without linked defect
+      }
+    }
     await savePins([...pins, pin]);
     setNewPinLabel("");
     setNewPinDescription("");
+    setNewPinFloor("");
+    setNewPinRoom("");
+    setNewPinGewerk("");
     setShowPinModal(false);
   };
 
@@ -526,6 +568,60 @@ export default function MatterportViewerScreen() {
               numberOfLines={3}
             />
 
+            {/* Geschoss Picker */}
+            {modelFloors.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Geschoss</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {modelFloors.sort((a,b) => a.sequence - b.sequence).map((f) => (
+                    <Pressable
+                      key={f.id}
+                      onPress={() => { setNewPinFloor(newPinFloor === f.id ? "" : f.id); setNewPinRoom(""); }}
+                      style={[styles.chipBtn, { borderColor: newPinFloor === f.id ? "#00B0FF" : colors.border, backgroundColor: newPinFloor === f.id ? "#00B0FF15" : colors.surface }]}
+                    >
+                      <Text style={{ fontSize: 12, color: newPinFloor === f.id ? "#00B0FF" : colors.muted }}>{f.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Raum Picker */}
+            {newPinFloor && modelRooms.filter(r => r.floor?.id === newPinFloor).length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Raum</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {modelRooms.filter(r => r.floor?.id === newPinFloor).map((r) => (
+                    <Pressable
+                      key={r.id}
+                      onPress={() => setNewPinRoom(newPinRoom === r.id ? "" : r.id)}
+                      style={[styles.chipBtn, { borderColor: newPinRoom === r.id ? "#00B0FF" : colors.border, backgroundColor: newPinRoom === r.id ? "#00B0FF15" : colors.surface }]}
+                    >
+                      <Text style={{ fontSize: 12, color: newPinRoom === r.id ? "#00B0FF" : colors.muted }}>{r.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Gewerk Picker (for defect/task pins) */}
+            {(newPinType === "defect" || newPinType === "task") && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Gewerk</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {["Elektro", "Sanitär", "Heizung/Klima", "Rohbau", "Trockenbau", "Maler/Lackierer", "Bodenbelag", "Fliesen", "Fenster/Türen", "Sonstiges"].map((g) => (
+                    <Pressable
+                      key={g}
+                      onPress={() => setNewPinGewerk(newPinGewerk === g ? "" : g)}
+                      style={[styles.chipBtn, { borderColor: newPinGewerk === g ? "#00B0FF" : colors.border, backgroundColor: newPinGewerk === g ? "#00B0FF15" : colors.surface }]}
+                    >
+                      <Text style={{ fontSize: 12, color: newPinGewerk === g ? "#00B0FF" : colors.muted }}>{g}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
             <Pressable
               onPress={addPin}
               disabled={!newPinLabel.trim()}
@@ -790,5 +886,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     lineHeight: 20,
+  },
+  chipBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 0,
   },
 });

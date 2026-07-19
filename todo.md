@@ -675,3 +675,13 @@
 - [ ] UI-Polish: Animationen (fortlaufend, niedrige Priorität)
 - [ ] TestFlight: EAS Build erstellen (eas build --profile testflight)
 - [ ] TestFlight: App ohne Expo Go auf iPhone installierbar
+
+## Phase 4: Modul-Verknüpfung auf Raumebene (2025-07-19)
+- [x] Defects: Raum-Picker aus room-store (Geschoss → Raum Dropdown in Create-Modal)
+- [x] Defects: Gewerk-Auswahl (GEWERKE-Konstante mit 12 Gewerken)
+- [x] Matterport-Viewer: Bei Pin-Erstellung Geschoss/Raum/Gewerk-Picker im Modal
+- [x] Matterport-Viewer: Pin erstellt automatisch Defect mit Raum+Position (addDefect-Aufruf)
+- [x] Fotos: Raum-Zuordnung bei Foto-Aufnahme (roomName via useLocalSearchParams an photo-analysis)
+- [x] KI-Protokolle: Raum-Verknüpfung (roomId/floorId in report-generator + recording index.tsx)
+- [x] Fortschritt/Bauzeitenplan: Knowledge Layer getProjectRooms() liest room-store (Raumebene)
+- [x] E2E-Test: 7/7 Tests bestanden (vitest: Projekt→Räume→Mängel→Pins→Protokolle→Knowledge→Persistenz)

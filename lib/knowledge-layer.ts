@@ -473,6 +473,14 @@ class ProjectKnowledgeLayer {
       const loc = e.metadata.location as string;
       if (loc) rooms.add(loc);
     }
+    // Also include rooms from room-store for completeness
+    try {
+      const { getProjectStructure } = require("./room-store");
+      const structure = await getProjectStructure(projectId);
+      for (const r of structure.rooms) {
+        rooms.add(r.name);
+      }
+    } catch {}
     return Array.from(rooms).sort();
   }
 

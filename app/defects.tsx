@@ -36,6 +36,7 @@ import {
   type DefectHistoryEntry,
 } from "@/lib/defect-store";
 import { GEWERKE } from "@/lib/defect-pdf-export";
+import { getProjectStructure, getFloors, getAllRooms, type Floor, type Room } from "@/lib/room-store";
 import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
@@ -60,6 +61,10 @@ export default function DefectsScreen() {
   const [newGewerk, setNewGewerk] = useState<string>(GEWERKE[0]);
   const [newDueDate, setNewDueDate] = useState<string>("");
   const [newAssignee, setNewAssignee] = useState<string>("");
+  const [newFloorId, setNewFloorId] = useState<string>("");
+  const [newRoomId, setNewRoomId] = useState<string>("");
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [gewerkFilter, setGewerkFilter] = useState<string>("alle");
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
@@ -68,8 +73,20 @@ export default function DefectsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadDefects();
+      loadRoomStructure();
     }, [projectId])
   );
+
+  const loadRoomStructure = async () => {
+    if (!projectId) return;
+    try {
+      const structure = await getProjectStructure(projectId);
+      setFloors(structure.floors);
+      setRooms(structure.rooms);
+    } catch (e) {
+      // Rooms not initialized yet - that's fine
+    }
+  };
 
   const loadDefects = async () => {
     const loaded = await getDefects(projectId || undefined);
@@ -96,6 +113,8 @@ export default function DefectsScreen() {
       category: newCategory,
       photos: [],
       location: newLocation.trim() || undefined,
+      floor: newFloorId ? floors.find(f => f.id === newFloorId)?.name : undefined,
+      room: newRoomId ? rooms.find(r => r.id === newRoomId)?.name : undefined,
       gewerk: newGewerk,
       dueDate: newDueDate || undefined,
       assignee: newAssignee.trim() || undefined,
@@ -113,6 +132,8 @@ export default function DefectsScreen() {
     setNewLocation("");
     setNewDueDate("");
     setNewAssignee("");
+    setNewFloorId("");
+    setNewRoomId("");
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -575,9 +596,52 @@ export default function DefectsScreen() {
               numberOfLines={3}
             />
 
+            {/* Geschoss / Raum Picker */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Geschoss</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+              {floors.length > 0 ? floors.sort((a,b) => a.number - b.number).map((f) => (
+                <Pressable
+                  key={f.id}
+                  onPress={() => { setNewFloorId(newFloorId === f.id ? "" : f.id); setNewRoomId(""); }}
+                  style={[
+                    styles.categoryBtn,
+                    { borderColor: newFloorId === f.id ? colors.primary : colors.border },
+                    newFloorId === f.id && { backgroundColor: colors.primary + "15" },
+                  ]}
+                >
+                  <Text style={[styles.categoryText, { color: newFloorId === f.id ? colors.primary : colors.muted }]}>
+                    {f.name}
+                  </Text>
+                </Pressable>
+              )) : (
+                <Text style={{ fontSize: 12, color: colors.muted, paddingVertical: 8 }}>Keine Geschosse angelegt – Freitext nutzen:</Text>
+              )}
+            </ScrollView>
+            {newFloorId && rooms.filter(r => r.floorId === newFloorId).length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Raum</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                  {rooms.filter(r => r.floorId === newFloorId).map((r) => (
+                    <Pressable
+                      key={r.id}
+                      onPress={() => setNewRoomId(newRoomId === r.id ? "" : r.id)}
+                      style={[
+                        styles.categoryBtn,
+                        { borderColor: newRoomId === r.id ? colors.primary : colors.border },
+                        newRoomId === r.id && { backgroundColor: colors.primary + "15" },
+                      ]}
+                    >
+                      <Text style={[styles.categoryText, { color: newRoomId === r.id ? colors.primary : colors.muted }]}>
+                        {r.number ? `${r.number} – ${r.name}` : r.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </>
+            )}
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder={t('ortraum_zb_eg_flur')}
+              placeholder={floors.length > 0 ? "Zusätzliche Ortsbeschreibung (optional)" : t('ortraum_zb_eg_flur')}
               placeholderTextColor={colors.muted}
               value={newLocation}
               onChangeText={setNewLocation}

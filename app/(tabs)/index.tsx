@@ -40,6 +40,7 @@ import { getCurrentEvent, addNotesToEvent, suggestMeetingTime, scheduleFollowUp,
 import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
+import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
@@ -150,6 +151,11 @@ export default function RecordScreen() {
   const [projectSearch, setProjectSearch] = useState("");
   const [projectSort, setProjectSort] = useState<"activity" | "name" | "created">("activity");
   const [showArchived, setShowArchived] = useState(false);
+  // Room/Floor selection for protocol linking
+  const [selectedFloor, setSelectedFloor] = useState<Floor | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [projectFloors, setProjectFloors] = useState<Floor[]>([]);
+  const [projectRooms, setProjectRooms] = useState<Room[]>([]);
   const [showEditProject, setShowEditProject] = useState(false);
   const [editProjectId, setEditProjectId] = useState<string | null>(null);
   const [editProjectName, setEditProjectName] = useState("");
@@ -168,6 +174,24 @@ export default function RecordScreen() {
   const transcribeMutation = trpc.voice.transcribe.useMutation();
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
+
+  // Load floors/rooms when project is selected
+  useEffect(() => {
+    if (!selectedProject?.id) {
+      setProjectFloors([]);
+      setProjectRooms([]);
+      setSelectedFloor(null);
+      setSelectedRoom(null);
+      return;
+    }
+    (async () => {
+      try {
+        const structure = await getProjectStructure(selectedProject.id);
+        setProjectFloors(structure.floors);
+        setProjectRooms(structure.rooms);
+      } catch {}
+    })();
+  }, [selectedProject?.id]);
 
   // Load projects and pre-select last used (but ALWAYS show picker)
   useEffect(() => {
@@ -1222,6 +1246,10 @@ export default function RecordScreen() {
         projectId: activeProjectId || undefined,
         projectName: selectedProject?.name || undefined,
         protocolNumber: protocolNumber || undefined,
+        roomId: selectedRoom?.id || undefined,
+        roomName: selectedRoom?.name || undefined,
+        floorId: selectedFloor?.id || undefined,
+        floorName: selectedFloor?.name || undefined,
 
       };
 
@@ -1343,7 +1371,7 @@ export default function RecordScreen() {
         const appSettings3 = settingsStr3 ? JSON.parse(settingsStr3) : {};
         if (appSettings3.autoAnalyzePhotos && newProtocol.photos && newProtocol.photos.length > 0) {
           router.push(
-            `/photo-analysis?autoPhotos=${encodeURIComponent(JSON.stringify(newProtocol.photos.slice(0, 5)))}&projectId=${selectedProject?.id || ""}` as any
+            `/photo-analysis?autoPhotos=${encodeURIComponent(JSON.stringify(newProtocol.photos.slice(0, 5)))}&projectId=${selectedProject?.id || ""}&roomName=${selectedRoom?.name || ""}` as any
           );
           setIsProcessing(false);
           setCapturedPhotos([]);

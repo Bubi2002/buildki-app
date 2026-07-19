@@ -23,7 +23,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
@@ -99,12 +99,13 @@ interface AnalysisResult {
 export default function PhotoAnalysisScreen() {
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams<{ autoPhotos?: string; projectId?: string; roomName?: string }>();
 
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
-  const [roomName, setRoomName] = useState("");
+  const [roomName, setRoomName] = useState(params.roomName || "");
   const [additionalContext, setAdditionalContext] = useState("");
 
   // Track adopted/dismissed defects and tasks
