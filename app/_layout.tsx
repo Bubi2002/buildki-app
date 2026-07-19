@@ -29,6 +29,7 @@ import {
 } from "@/lib/biometric-lock";
 import { NetworkBanner } from "@/components/network-banner";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { PrivacyConsentDialog } from "@/components/privacy-consent-dialog";
 import * as QuickActions from "expo-quick-actions";
 import { useRouter as useQuickRouter } from "expo-router";
 
@@ -117,6 +118,7 @@ export default function RootLayout() {
   const [isLocked, setIsLocked] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState('Biometrie');
   const [offlineModeEnabled, setOfflineModeEnabled] = useState(true);
+  const [showConsent, setShowConsent] = useState(false);
   const backgroundTimeRef = useRef<number | null>(null);
 
   const quickRouter = useQuickRouter();
@@ -141,6 +143,12 @@ export default function RootLayout() {
     (async () => {
       const { isFeatureEnabled } = require("@/lib/feature-toggles");
       setOfflineModeEnabled(await isFeatureEnabled("offlineMode"));
+    })();
+    // Check privacy consent on first launch
+    (async () => {
+      const { hasConsent } = require("@/lib/privacy-consent");
+      const consentGiven = await hasConsent();
+      if (!consentGiven) setShowConsent(true);
     })();
     // Initialize offline sync manager
     if (Platform.OS !== "web") {
@@ -286,6 +294,7 @@ export default function RootLayout() {
             <Stack.Screen name="oauth/callback" />
           </Stack>
           {offlineModeEnabled && <NetworkBanner />}
+          <PrivacyConsentDialog visible={showConsent} onAccept={() => setShowConsent(false)} />
           <StatusBar style="auto" />
         </QueryClientProvider>
       </trpc.Provider>

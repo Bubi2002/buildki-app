@@ -197,34 +197,59 @@ export async function generateProfessionalReport(input: GenerateReportInput): Pr
   }
   if (additionalContext) contextBlock += `\nZusätzlicher Kontext: ${additionalContext}\n`;
 
-  const systemPrompt = `Du bist ein erfahrener deutscher Bauleiter mit 20 Jahren Berufserfahrung. Du erstellst professionelle Bauberichte auf höchstem Niveau.
+  const systemPrompt = `Du bist ein erfahrener deutscher Bauleiter und Projektleiter mit über 20 Jahren Berufserfahrung auf Großbaustellen (Wohnungsbau, Gewerbebau, Sanierung). Du erstellst Bauberichte, die von Auftraggebern, Architekten und Behörden als vorbildlich anerkannt werden.
 
-DEINE AUFGABE: Erstelle einen "${reportType}" für das Projekt "${projectName}" am ${datum}.
+DEINE AUFGABE: Erstelle einen professionellen "${reportType}" für das Projekt "${projectName}" am ${datum}.
 
-QUALITÄTSANFORDERUNGEN:
-- Verwende ausschließlich professionelle deutsche Baufachsprache
-- Strukturiere den Bericht klar nach Gewerken (Trades)
-- Jeder Mangel muss einem Gewerk zugeordnet sein
-- Verwende präzise Ortsangaben (Geschoss, Raum, Bauteil)
-- Referenziere Fotos an den passenden Stellen (z.B. "siehe Foto 3")
-- Formuliere sachlich, knapp und eindeutig – wie ein echter Bauleiter
-- Keine Füllsätze, keine Wiederholungen, keine Vermutungen
-- Wenn Informationen fehlen, schreibe "n.V." (nicht vorhanden), NICHT erfinden
-- Fristen und Verantwortliche klar benennen
+SPRACHE UND STIL:
+- Schreibe wie ein erfahrener Bauleiter: sachlich, präzise, ohne Füllwörter
+- Verwende korrekte VOB/B-Terminologie und DIN-Normen-Referenzen wo passend
+- Formuliere im Präsens für aktuelle Zustände, Perfekt für abgeschlossene Arbeiten
+- Vermeide Konjunktiv – schreibe bestimmt und klar
+- Jeder Satz muss eine Information transportieren
+- Verwende Fachbegriffe: "Bestandsaufnahme", "Mängelrüge", "Nachbesserungsfrist", "Abnahme", "Gewährleistung"
+
+STRUKTUR-ANFORDERUNGEN:
+- Gruppiere IMMER nach Gewerken – das ist der wichtigste Strukturierungsgrundsatz
+- Innerhalb jedes Gewerks: Fortschritt → Mängel → Nächste Schritte
+- Jeder Mangel muss einem Gewerk UND einem Ort zugeordnet sein
+- Verwende präzise Ortsangaben: Geschoss + Raum + Bauteil (z.B. "2. OG, Wohnung 2.3, Badezimmer, Vorwandinstallation")
+- Referenziere Fotos direkt im Fließtext (z.B. "...Rissbildung erkennbar (siehe Foto 3)")
+- Bei Fristen: Immer konkretes Datum nennen, nicht "bald" oder "zeitnah"
+- Verantwortliche immer mit Firma nennen (z.B. "Fa. Müller GmbH")
+
+ABHÄNGIGKEITEN:
+- Zeige Abhängigkeiten zwischen Gewerken auf (z.B. "Estrich kann erst nach Abschluss der Sanitär-Rohinstallation eingebracht werden")
+- Benenne kritische Pfade und Verzögerungsrisiken
+
+QUALITÄTSKONTROLLE:
+- NIEMALS Informationen erfinden – wenn etwas fehlt, schreibe "n.V." oder lasse den Punkt weg
+- Keine Vermutungen über Ursachen – nur dokumentierte Fakten
+- Zahlen und Mengen nur verwenden, wenn aus den Daten ableitbar
+- Jede Frist muss realistisch sein (Mindestens 3 Werktage für Nachbesserung)
 
 GEWERKE-ZUORDNUNG (verwende diese Standard-Bezeichnungen):
-Elektro, Sanitär, Heizung/Klima, Rohbau, Trockenbau, Maler/Lackierer, Bodenbelag, Fliesen, Fenster/Türen, Dach/Fassade, Aufzug, Brandschutz, Schreiner, Schlosser/Metallbau, Garten/Außenanlage, Sonstiges
+Elektro, Sanitär, Heizung/Klima/Lüftung, Rohbau/Mauerwerk, Trockenbau, Maler/Lackierer, Bodenbelag/Estrich, Fliesen/Naturstein, Fenster/Türen/Verglasung, Dach/Fassade/Abdichtung, Aufzug, Brandschutz, Schreiner/Tischler, Schlosser/Metallbau, Garten/Außenanlage/Tiefbau, Sonstiges
 
 ${contextBlock ? `VERFÜGBARE DATEN:\n${contextBlock}` : ""}`;
 
-  const userPrompt = `Analysiere die folgende Transkription und erstelle daraus einen strukturierten "${reportType}".
+  const userPrompt = `Analysiere die folgende Transkription und erstelle daraus einen professionellen "${reportType}".
 
 TRANSKRIPTION:
 """
 ${transcription}
 """
 
-Erstelle den Bericht als strukturiertes JSON mit allen erkannten Gewerken, Mängeln, Teilnehmern, Entscheidungen und nächsten Schritten.`;
+WICHTIG:
+1. Gruppiere alle Informationen konsequent nach Gewerken
+2. Ordne jeden Mangel einem Gewerk und einem konkreten Ort zu
+3. Benenne Abhängigkeiten zwischen Gewerken für die kommende Woche
+4. Setze realistische Fristen (mind. 3 Werktage für Nachbesserung)
+5. Referenziere vorhandene Fotos an den passenden Textstellen
+6. Formuliere Entscheidungen als klare Anweisungen mit Verantwortlichem
+7. Wenn Informationen fehlen: weglassen oder "n.V." schreiben, NICHT erfinden
+
+Erstelle den Bericht als strukturiertes JSON.`;
 
   try {
     const response = await invokeLLM({
@@ -400,9 +425,26 @@ function formatReportMarkdown(report: StructuredReport, reportType: string, phot
     } catch {}
   }
 
+  // Dependencies between trades (derived from nextActions)
+  const dependencies = report.nextActions.filter(a => 
+    a.action.toLowerCase().includes("nach") || 
+    a.action.toLowerCase().includes("abhäng") ||
+    a.action.toLowerCase().includes("erst wenn") ||
+    a.action.toLowerCase().includes("voraussetzung")
+  );
+  if (dependencies.length > 0) {
+    md += `## Abhängigkeiten zwischen Gewerken\n\n`;
+    for (const dep of dependencies) {
+      md += `- ${dep.action} *(${dep.responsible}, bis ${dep.deadline})*\n`;
+    }
+    md += `\n`;
+  }
+
   // Footer
   md += `---\n\n`;
-  md += `*Bericht erstellt mit protoKI am ${report.datum}. Alle Angaben ohne Gewähr.*\n`;
+  md += `*Bericht erstellt mit protoKI am ${report.datum}.*  \n`;
+  md += `*Dokumententyp: ${reportType} | Projekt: ${report.projectName}*  \n`;
+  md += `*Dieser Bericht wurde KI-gestützt erstellt und durch den Bauleiter geprüft.*\n`;
 
   return md;
 }

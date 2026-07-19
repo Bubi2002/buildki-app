@@ -2135,6 +2135,81 @@ return (
 {/* Feature-Toggles */}
         <FeatureTogglesSection colors={colors} />
 
+{/* Rechtliches & Datenschutz */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Rechtliches & Datenschutz
+          </Text>
+          <Pressable
+            onPress={() => router.push("/legal?section=datenschutz" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginBottom: 8,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="privacy-tip" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Datenschutzerkl\u00e4rung</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>DSGVO, Datenverarbeitung, Ihre Rechte</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/legal?section=ki-hinweis" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginBottom: 8,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.warning + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="psychology" size={20} color={colors.warning} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>KI-Hinweis</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Transparenz zur KI-Nutzung gem\u00e4\u00df EU AI Act</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/legal?section=impressum" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginBottom: 8,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.muted + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="business" size={20} color={colors.muted} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Impressum & AGB</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Nutzungsbedingungen, Lizenzen</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/legal?section=dsgvo-export" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.error + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="download" size={20} color={colors.error} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Meine Daten (DSGVO)</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Datenexport, L\u00f6schung, Auskunft</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+        </View>
+
         <Pressable
           onPress={saveSettings}
           style={({ pressed }) => [

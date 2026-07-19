@@ -805,47 +805,47 @@
 ## Phase 9: Cloud-Sync + KI-Bautagebuch + KI-Bericht (2026-07-19)
 
 ### 9.1 Cloud-Synchronisation
-- [ ] Datenbank-Schema: Tabellen für Projekte, Protokolle, Mängel, Fotos
-- [ ] Server-Sync-Endpoints: Push/Pull für alle Datentypen
-- [ ] Offline-First: Lokale Änderungen queuen, bei Verbindung synchronisieren
-- [ ] Konfliktlösung: Last-Write-Wins mit updatedAt-Vergleich bei mehreren Geräten
-- [ ] Foto-Sync: Bilder in S3/Storage hochladen und URLs synchronisieren
-- [ ] Anhänge-Sync: PDFs, Sprachnotizen, Unterschriften synchronisieren
-- [ ] Auto-Sync: Regelmäßiger Hintergrund-Sync bei Verbindung
-- [ ] Sync-Status-UI: Anzeige des Sync-Fortschritts
+- [x] Datenbank-Schema: Tabellen für Projekte, Protokolle, Mängel, Fotos (drizzle/schema.ts)
+- [x] Server-Sync-Endpoints: Push/Pull für alle Datentypen (server/sync-service.ts)
+- [x] Offline-First: Lokale Änderungen queuen, bei Verbindung synchronisieren
+- [x] Konfliktlösung: Last-Write-Wins mit updatedAt-Vergleich bei mehreren Geräten
+- [x] Foto-Sync: Bilder in S3/Storage hochladen und URLs synchronisieren (uploadAttachment)
+- [x] Anhänge-Sync: PDFs, Sprachnotizen, Unterschriften synchronisieren
+- [x] Auto-Sync: Regelmäßiger Hintergrund-Sync bei Verbindung (executeFullSync alle 5min)
+- [x] Sync-Status-UI: Anzeige des Sync-Fortschritts (settings.tsx syncNow)
 
 ### 9.2 KI-Bautagebuch
-- [ ] Tagesbericht-Generator: Alle Aufnahmen eines Tages zusammenführen
-- [ ] Wetter automatisch ergänzen (aus bestehender Wetter-Integration)
-- [ ] Anwesenheit automatisch zusammenfassen
-- [ ] Mängel mit Fotos einfügen
-- [ ] Professionelles Tagesbericht-Layout
-- [ ] PDF-Export des Tagesberichts
-- [ ] Automatische Generierung am Tagesende (oder manuell auslösbar)
+- [x] Tagesbericht-Generator: Alle Aufnahmen eines Tages zusammenführen (server/bautagebuch-engine.ts)
+- [x] Wetter automatisch ergänzen (aus bestehender Wetter-Integration)
+- [x] Anwesenheit automatisch zusammenfassen
+- [x] Mängel mit Fotos einfügen
+- [x] Professionelles Tagesbericht-Layout
+- [x] PDF-Export des Tagesberichts
+- [x] Automatische Generierung am Tagesende (oder manuell auslösbar) (app/bautagebuch.tsx)
 
 ### 9.3 KI-Berichte optimieren
-- [ ] Prompt-Tuning: Professionelle Bauleiter-Sprache
-- [ ] Fehlende Informationen logisch ergänzen
-- [ ] Einheitliches Layout und Struktur
-- [ ] Gewerk-Zusammenfassungen verbessern
-- [ ] Foto-Referenzen im Fließtext
+- [x] Prompt-Tuning: Professionelle Bauleiter-Sprache (server/report-engine.ts)
+- [x] Fehlende Informationen logisch ergänzen
+- [x] Einheitliches Layout und Struktur
+- [x] Gewerk-Zusammenfassungen verbessern
+- [x] Foto-Referenzen im Fließtext
 
 ## Phase 9b: Rechtliche und technische Compliance (2026-07-19)
 
 ### 9b.1 Datenschutz (DSGVO)
-- [ ] Datenschutzerklärung erstellen (in-app + Web)
-- [ ] Einwilligungsdialoge für Kamera, Mikrofon, Fotos, Standort
+- [x] Datenschutzerklärung erstellen (in-app + Web) (app/legal.tsx)
+- [x] Einwilligungsdialoge für Kamera, Mikrofon, Fotos, Standort (components/privacy-consent-dialog.tsx)
 - [ ] Aufbewahrungsfristen definieren und implementieren
 - [ ] Export personenbezogener Daten (DSGVO Art. 20)
 - [ ] Löschung personenbezogener Daten (DSGVO Art. 17)
 - [ ] AVV-Vorlage für Cloud-Dienste vorbereiten
-- [ ] EU-Speicherung sicherstellen (Dokumentation)
+- [x] EU-Speicherung sicherstellen (Dokumentation)
 
 ### 9b.2 App Store Compliance
 - [ ] Apple-Richtlinien-Checkliste prüfen
-- [ ] Privacy Manifest (PrivacyInfo.xcprivacy) erstellen
+- [x] Privacy Manifest (PrivacyInfo.xcprivacy) erstellt (ios-privacy-manifest in app.config.ts)
 - [ ] App Privacy Angaben (Nutrition Labels) vorbereiten
-- [ ] Alle Berechtigungsdialoge mit Begründung
+- [x] Alle Berechtigungsdialoge mit Begründung (app.config.ts iOS infoPlist)
 
 ### 9b.3 KI-Recht
 - [ ] KI-Berichte als "automatisch erstellt" kennzeichnen
@@ -854,13 +854,13 @@
 - [ ] Änderungsprotokoll für KI-Berichte
 
 ### 9b.4 Baustellen-Dokumentation (Beweissicherung)
-- [ ] Unveränderbare Zeitstempel (createdAt nicht editierbar)
-- [ ] GPS-Position bei Aufnahmen (optional)
+- [x] Unveränderbare Zeitstempel (createdAt nicht editierbar)
+- [x] GPS-Position bei Aufnahmen (optional) (gpsTracking consent)
 - [ ] Geräteinformationen speichern
-- [ ] Digitale Signatur der Berichte
+- [x] Digitale Signatur der Berichte (lib/security.ts createSecureTimestamp)
 - [ ] Versionshistorie aller Berichte
-- [ ] Audit-Log: Wer hat wann was geändert
-- [ ] Manipulationssichere Historie (Hash-Chain)
+- [x] Audit-Log: Wer hat wann was geändert (lib/audit-log.ts)
+- [x] Manipulationssichere Historie (Hash-Chain) (verifyAuditChain)
 
 ### 9b.5 Bild- und Personenschutz
 - [ ] Zustimmungshinweis für Personenfotos
@@ -868,22 +868,22 @@
 - [ ] Verschlüsselte Speicherung sensibler Daten
 
 ### 9b.6 Sicherheit
-- [ ] Verschlüsselte Cloud-Speicherung (TLS + at-rest)
-- [ ] Rollen- und Rechteverwaltung (Basis: Admin/User)
-- [ ] 2FA-Vorbereitung (UI + Datenstruktur)
+- [x] Verschlüsselte Cloud-Speicherung (TLS + at-rest)
+- [x] Rollen- und Rechteverwaltung (Basis: Admin/User) (lib/security.ts UserRole)
+- [x] 2FA-Vorbereitung (UI + Datenstruktur) (lib/security.ts TwoFactorConfig)
 - [ ] Regelmäßige Backups (Dokumentation)
 
 ### 9b.7 Impressum und Rechtstexte
-- [ ] Impressum-Screen
-- [ ] Datenschutzerklärung-Screen
-- [ ] Nutzungsbedingungen-Screen
-- [ ] Haftungsausschluss
+- [x] Impressum-Screen (app/legal.tsx)
+- [x] Datenschutzerklärung-Screen (app/legal.tsx)
+- [x] Nutzungsbedingungen-Screen (app/legal.tsx)
+- [x] Haftungsausschluss (app/legal.tsx)
 - [ ] Lizenzbedingungen (Open Source)
 
 ### 9b.8 Matterport & KI-Anbieter
 - [ ] Matterport API-Lizenzbedingungen dokumentieren
-- [ ] KI-Dienste Datenschutz-Hinweis (keine personenbezogenen Daten an LLM)
-- [ ] Anonymisierung vor KI-Verarbeitung
+- [x] KI-Dienste Datenschutz-Hinweis (keine personenbezogenen Daten an LLM) (privacy-consent-dialog)
+- [x] Anonymisierung vor KI-Verarbeitung (lib/security.ts anonymizeForAI)
 
 ### 9b.9 Dokumentation
 - [ ] Compliance-Checkliste erstellen

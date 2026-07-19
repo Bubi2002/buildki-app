@@ -1113,6 +1113,41 @@ Regeln:
         const content = await generateProfessionalReport(input);
         return { content };
       }),
+    /**
+     * Generate a professional Bautagebuch (daily construction report).
+     * Combines weather, attendance, defects, protocols, photos into structured report.
+     */
+    generateBautagebuch: publicProcedure
+      .input(
+        z.object({
+          projectName: z.string(),
+          projectAddress: z.string().optional(),
+          date: z.string(),
+          weatherJson: z.string().optional(),
+          attendanceJson: z.string().optional(),
+          defectsJson: z.string().optional(),
+          protocolsJson: z.string().optional(),
+          activities: z.array(z.string()).optional(),
+          photos: z.array(z.string()).optional(),
+          previousDayNotes: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { generateBautagebuch } = await import("./bautagebuch-engine");
+        const result = await generateBautagebuch({
+          projectName: input.projectName,
+          projectAddress: input.projectAddress,
+          date: input.date,
+          weather: input.weatherJson ? JSON.parse(input.weatherJson) : undefined,
+          attendance: input.attendanceJson ? JSON.parse(input.attendanceJson) : [],
+          defects: input.defectsJson ? JSON.parse(input.defectsJson) : [],
+          protocols: input.protocolsJson ? JSON.parse(input.protocolsJson) : [],
+          activities: input.activities,
+          photos: input.photos,
+          previousDayNotes: input.previousDayNotes,
+        });
+        return result;
+      }),
   }),
 
 });

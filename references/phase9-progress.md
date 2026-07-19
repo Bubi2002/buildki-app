@@ -26,21 +26,24 @@
    - Sync status tracking (idle/syncing/synced/error/offline)
    - executeFullSync() function for complete sync cycle
 
-## STILL TODO (Phase 9):
-1. **Sync UI Screen** - Add a settings/sync screen showing:
-   - Sync status, last sync time, manual sync button
-   - Conflict count, items synced
-   
-2. **KI-Bautagebuch** - server endpoint + UI:
-   - Server: generate daily report via LLM from day's data
-   - Include: weather, attendance, defects with photos, progress
-   - PDF export of daily report
-   - Auto-trigger at end of day or manual
+## COMPLETED (continued):
+4. **Sync UI** - settings.tsx syncNow updated to use executeFullSync (defects + projects)
 
-3. **KI-Bericht Optimization** - server/report-engine.ts:
-   - Better system prompt for Bauleiter-quality language
-   - Structured sections
-   - Photo references inline
+5. **KI-Bautagebuch** - DONE:
+   - server/bautagebuch-engine.ts: Full daily report generation via LLM
+   - server/routers.ts: generateBautagebuch endpoint added
+   - app/bautagebuch.tsx: Complete UI with weather, attendance, defects, photos, PDF export
+   - Professional VOB/B §12 compliant prompts
+   - Dashboard tool link added
+
+6. **KI-Bericht Optimization** - DONE:
+   - server/report-engine.ts: Enhanced system prompt with VOB/B terminology, DIN references
+   - Abhängigkeiten-Erkennung zwischen Gewerken
+   - Professional footer with document metadata
+   - Enhanced user prompt with 7 quality instructions
+   - Gewerke-Bezeichnungen erweitert (z.B. "Heizung/Klima/Lüftung" statt nur "Heizung/Klima")
+
+## STILL TODO (Phase 9b):
 
 4. **Legal/Compliance (Phase 9b)** - Full list in todo.md:
    - DSGVO (privacy policy, consent, data export/deletion)
@@ -64,3 +67,20 @@
 ## TypeScript Status: 0 errors
 ## Tests: 27 passed, 1 skipped
 ## Dev Server: Running (port 3000 + 8081)
+## Checkpoint: 48c6f2c7 (Cloud-Sync complete)
+
+## NEXT STEPS:
+1. KI-Bautagebuch (Phase 9.2) - server endpoint + UI
+2. KI-Bericht optimization (Phase 9.3)
+3. Legal/Compliance (Phase 9b) - DSGVO, App Store, KI-Recht, Audit-Log, Security, Rechtstexte
+
+## COMPLIANCE REQUIREMENTS (from user):
+- DSGVO: Privacy policy, consent dialogs, data export/deletion, AVV, EU storage
+- App Store: Privacy Manifest, Nutrition Labels, permission dialogs
+- KI-Recht: AI disclaimer, user must verify, audit log, change tracking
+- Beweissicherung: Immutable timestamps, GPS, device info, digital signatures, version history, audit log, hash-chain
+- Bild/Personenschutz: Consent for photos of people, face blur option, encrypted storage
+- Security: TLS+at-rest encryption, roles (Admin/User), 2FA prep, backups
+- Rechtstexte: Impressum, Datenschutz, Nutzungsbedingungen, Haftungsausschluss, Lizenzen
+- Matterport: API license compliance, data caching rules
+- KI-Anbieter: No PII to LLM, anonymization before processing
