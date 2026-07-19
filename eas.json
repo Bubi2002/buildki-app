@@ -29,7 +29,6 @@
       "ios": {
         "buildConfiguration": "Release"
       },
-      "autoSubmit": true,
       "channel": "testflight",
       "env": {
         "EXPO_PUBLIC_ENV": "testflight"
