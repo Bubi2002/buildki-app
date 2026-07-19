@@ -18,6 +18,7 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -39,6 +40,9 @@ import { AnalysisCard, type AnalysisData } from "@/components/analysis/AnalysisC
 
 // Defect store for adoption
 import { saveDefect, deleteDefect, type Defect, type DefectPriority } from "@/lib/defect-store";
+
+// PDF export
+import { generateAndSharePdf, type ProfessionalPdfOptions, type PdfSection, getCompanyInfo } from "@/lib/pdf-professional";
 
 // Undo toast component
 import { UndoToast } from "@/components/UndoToast";
@@ -113,6 +117,14 @@ export default function PhotoAnalysisScreen() {
   const [dismissedDefects, setDismissedDefects] = useState<Set<string>>(new Set());
   const [adoptedTasks, setAdoptedTasks] = useState<Set<string>>(new Set());
   const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
+
+  // Manual defect entry
+  const [manualDefects, setManualDefects] = useState<Array<{ id: string; title: string; description: string; severity: string }>>([]);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualDescription, setManualDescription] = useState("");
+  const [manualSeverity, setManualSeverity] = useState<"critical" | "major" | "minor" | "cosmetic">("major");
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Undo toast state
   const [undoToast, setUndoToast] = useState<{ visible: boolean; message: string; itemId: string; itemType: "defect" | "task" }>({
@@ -389,6 +401,138 @@ export default function PhotoAnalysisScreen() {
     setDismissedTasks(newDismissed);
   };
 
+  // ─── Manual Defect Helpers ──────────────────────────────────────────────────
+
+  const handleAddManualDefect = () => {
+    if (!manualTitle.trim()) {
+      Alert.alert("Fehler", "Bitte einen Titel eingeben.");
+      return;
+    }
+    const newDefect = {
+      id: `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title: manualTitle.trim(),
+      description: manualDescription.trim() || "Manuell erfasster Mangel",
+      severity: manualSeverity,
+    };
+    setManualDefects((prev) => [...prev, newDefect]);
+    setManualTitle("");
+    setManualDescription("");
+    setManualSeverity("major");
+    setShowManualEntry(false);
+    if (Platform.OS !== "web") {
+      const Haptics = require("expo-haptics");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleRemoveManualDefect = (id: string) => {
+    setManualDefects((prev) => prev.filter((d) => d.id !== id));
+  };
+
+  const getSeverityLabel = (severity: string): string => {
+    switch (severity) {
+      case "critical": return "Kritisch";
+      case "major": return "Schwer";
+      case "minor": return "Leicht";
+      case "cosmetic": return "Kosmetisch";
+      default: return severity;
+    }
+  };
+
+  const getSeverityColor = (severity: string): string => {
+    switch (severity) {
+      case "critical": return "#DC2626";
+      case "major": return "#F59E0B";
+      case "minor": return "#3B82F6";
+      case "cosmetic": return "#6B7280";
+      default: return "#6B7280";
+    }
+  };
+
+  // ─── PDF Export ─────────────────────────────────────────────────────────────
+
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const companyInfo = await getCompanyInfo();
+      const sections: PdfSection[] = [];
+
+      // Summary section
+      sections.push({
+        title: "Analyseergebnis",
+        content: [
+          `**Projekt:** ${activeProject?.name || "Unbekannt"}`,
+          roomName ? `**Raum:** ${roomName}` : "",
+          `**Datum:** ${new Date().toLocaleDateString("de-DE")}`,
+          `**Fotos analysiert:** ${photos.length}`,
+          result ? `**Baufortschritt:** ${result.progress.overallPercent}%` : "",
+          result ? `\n${result.summary}` : "",
+        ].filter(Boolean).join("\n"),
+      });
+
+      // KI-detected defects
+      if (result && result.defects.length > 0) {
+        sections.push({
+          title: "KI-erkannte Mängel",
+          content: `Insgesamt **${result.defects.length} Mängel** durch KI-Analyse erkannt.`,
+        });
+        for (const defect of result.defects) {
+          let content = `**Schweregrad:** ${getSeverityLabel(defect.severity)}\n`;
+          if (defect.trade) content += `**Gewerk:** ${defect.trade}\n`;
+          if (defect.location) content += `**Ort:** ${defect.location}\n`;
+          content += `\n${defect.description}`;
+          if (defect.suggestedAction) content += `\n\n**Maßnahme:** ${defect.suggestedAction}`;
+          sections.push({ title: defect.title, content });
+        }
+      }
+
+      // Manual defects
+      if (manualDefects.length > 0) {
+        sections.push({
+          title: "Manuell erfasste Mängel",
+          content: `Insgesamt **${manualDefects.length} Mängel** manuell hinzugefügt.`,
+        });
+        for (const defect of manualDefects) {
+          let content = `**Schweregrad:** ${getSeverityLabel(defect.severity)}\n`;
+          content += `\n${defect.description}`;
+          sections.push({ title: defect.title, content });
+        }
+      }
+
+      // Tasks
+      if (result && result.tasks.length > 0) {
+        sections.push({
+          title: "Aufgaben",
+          content: `Insgesamt **${result.tasks.length} Aufgaben** erkannt.`,
+        });
+        for (const task of result.tasks) {
+          let content = `**Priorität:** ${task.priority}\n`;
+          if (task.trade) content += `**Gewerk:** ${task.trade}\n`;
+          if (task.estimatedDuration) content += `**Geschätzte Dauer:** ${task.estimatedDuration}\n`;
+          content += `\n${task.description}`;
+          sections.push({ title: task.title, content });
+        }
+      }
+
+      const options: ProfessionalPdfOptions = {
+        title: activeProject?.name || "Bildanalyse-Bericht",
+        subtitle: roomName ? `Raum: ${roomName}` : "KI-Bildanalyse",
+        reportType: "Bildanalyse-Bericht",
+        datum: new Date().toLocaleDateString("de-DE"),
+        sections,
+        companyInfo: companyInfo || undefined,
+        accentColor: "#0a7ea4",
+        includeTableOfContents: (result?.defects.length || 0) + manualDefects.length > 5,
+      };
+
+      await generateAndSharePdf(options);
+    } catch (error: any) {
+      Alert.alert("Export-Fehler", error.message || "PDF-Export fehlgeschlagen");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   // ─── Analysis ───────────────────────────────────────────────────────────────
 
   const runAnalysis = async () => {
@@ -631,6 +775,115 @@ export default function PhotoAnalysisScreen() {
                 ))}
               </View>
             )}
+
+            {/* ─── Manual Defect Entry ─── */}
+            <View style={[styles.manualSection, { borderColor: colors.border }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialIcons name="edit-note" size={20} color={colors.foreground} />
+                  <Text style={[styles.manualSectionTitle, { color: colors.foreground }]}>Eigene Mängel</Text>
+                </View>
+                <Pressable
+                  onPress={() => setShowManualEntry(!showManualEntry)}
+                  style={({ pressed }) => [styles.addManualBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name={showManualEntry ? "close" : "add"} size={18} color="#FFF" />
+                  <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>
+                    {showManualEntry ? "Abbrechen" : "Hinzufügen"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {showManualEntry && (
+                <View style={[styles.manualForm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <TextInput
+                    value={manualTitle}
+                    onChangeText={setManualTitle}
+                    placeholder="Mangel-Titel *"
+                    placeholderTextColor={colors.muted}
+                    style={[styles.manualInput, { color: colors.foreground, borderColor: colors.border }]}
+                    returnKeyType="next"
+                  />
+                  <TextInput
+                    value={manualDescription}
+                    onChangeText={setManualDescription}
+                    placeholder="Beschreibung (optional)"
+                    placeholderTextColor={colors.muted}
+                    style={[styles.manualInput, styles.manualTextArea, { color: colors.foreground, borderColor: colors.border }]}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                    {(["critical", "major", "minor", "cosmetic"] as const).map((sev) => (
+                      <Pressable
+                        key={sev}
+                        onPress={() => setManualSeverity(sev)}
+                        style={[styles.severityChip, {
+                          backgroundColor: manualSeverity === sev ? getSeverityColor(sev) + "20" : "transparent",
+                          borderColor: manualSeverity === sev ? getSeverityColor(sev) : colors.border,
+                        }]}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: manualSeverity === sev ? getSeverityColor(sev) : colors.muted }}>
+                          {getSeverityLabel(sev)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Pressable
+                    onPress={handleAddManualDefect}
+                    style={({ pressed }) => [styles.saveManualBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                  >
+                    <MaterialIcons name="check" size={18} color="#FFF" />
+                    <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Mangel speichern</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {manualDefects.map((defect) => (
+                <View key={defect.id} style={[styles.manualDefectItem, { borderColor: colors.border }]}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View style={[styles.severityDot, { backgroundColor: getSeverityColor(defect.severity) }]} />
+                      <Text style={[styles.manualDefectTitle, { color: colors.foreground }]}>{defect.title}</Text>
+                    </View>
+                    {defect.description !== "Manuell erfasster Mangel" && (
+                      <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2, marginLeft: 18 }} numberOfLines={2}>{defect.description}</Text>
+                    )}
+                  </View>
+                  <Pressable onPress={() => handleRemoveManualDefect(defect.id)} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+                    <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                  </Pressable>
+                </View>
+              ))}
+
+              {manualDefects.length === 0 && !showManualEntry && (
+                <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 8 }}>
+                  Keine manuellen Mängel hinzugefügt
+                </Text>
+              )}
+            </View>
+
+            {/* ─── PDF Export Button ─── */}
+            <Pressable
+              onPress={handleExportPdf}
+              disabled={isExportingPdf}
+              style={({ pressed }) => [styles.exportButton, {
+                backgroundColor: isExportingPdf ? colors.muted : "#DC2626",
+                opacity: pressed && !isExportingPdf ? 0.85 : 1,
+              }]}
+            >
+              {isExportingPdf ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFF" />
+                  <Text style={styles.exportButtonText}>PDF wird erstellt...</Text>
+                </>
+              ) : (
+                <>
+                  <MaterialIcons name="picture-as-pdf" size={22} color="#FFF" />
+                  <Text style={styles.exportButtonText}>Als PDF exportieren</Text>
+                </>
+              )}
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -760,5 +1013,85 @@ const styles = StyleSheet.create({
   },
   adoptionSection: {
     gap: 0,
+  },
+  manualSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+  },
+  manualSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  addManualBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  manualForm: {
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+    gap: 10,
+  },
+  manualInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  manualTextArea: {
+    minHeight: 70,
+    textAlignVertical: "top",
+  },
+  severityChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  saveManualBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  manualDefectItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0.5,
+    gap: 12,
+  },
+  manualDefectTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  severityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  exportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+  },
+  exportButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

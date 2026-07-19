@@ -922,3 +922,16 @@
 - [x] 30 Tests bestanden, 1 übersprungen, 0 Fehler
 - [x] TypeScript: 0 Fehler
 - [x] Matterport Basic Auth: 1 Modell im Account bestätigt
+
+## Phase 10b: Bild-Analyse Erweiterungen (2026-07-19)
+
+### 10b.1 Manuelle Mängel-Eingabe
+- [x] Eingabefeld für eigene Mängel unterhalb der KI-Ergebnisse
+- [x] Titel, Beschreibung, Schweregrad manuell eingeben
+- [x] Manuelle Mängel in gleiche Liste wie KI-Mängel integrieren
+- [x] Alle Mängel (KI + manuell) gemeinsam im PDF exportierbar
+
+### 10b.2 PDF-Export
+- [x] Button "Als PDF exportieren" am Ende der Ergebnisseite
+- [x] PDF enthält: alle Mängel (KI + manuell), Raum, Datum, Projekt, Aufgaben
+- [x] Professionelles Layout mit protoKI-Branding (generateAndSharePdf)
