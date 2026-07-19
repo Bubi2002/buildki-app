@@ -575,3 +575,32 @@
 - [x] Launch P2: Matterport – Modelle laden, Räume erkennen, mit Projekt verknüpfen
 - [ ] Launch P3: Document AI – PDF→KI→Entity Review→Knowledge Layer→Construction Brain
 - [x] Launch P4: Smart Progress – automatische Berechnung aus Fotos/Sprache/Docs/Matterport/Timeline
+- [ ] Document AI E2E Flow verifizieren und fixen (Upload→Extraktion→Review→Knowledge Layer→Brain)
+- [ ] Werkzeuge-Tab: Progress, Matterport Viewer, Document AI im Tool-Grid verlinken
+- [ ] Construction Brain Floating Action Button auf Startscreen
+
+## MASTER-AUFTRAG
+- [ ] P1: Projekte erstellen, bearbeiten, archivieren, löschen
+- [ ] P1: Gebäude, Geschosse, Räume verwalten (vollständig)
+- [ ] P1: Videos aufnehmen und hochladen
+- [ ] P1: Dateien und Pläne hochladen
+- [ ] P1: Notizen erfassen
+- [ ] P1: Anwesenheit dokumentieren
+- [ ] P1: Unterschriften erfassen
+- [ ] P1: Verantwortliche zuweisen (Mängel + Aufgaben)
+- [ ] P1: Daten dauerhaft speichern + nach Neustart laden
+- [ ] P2: KI-Berichtssystem (10 Typen)
+- [ ] P2: KI-Strukturerkennung (Datum, Projekt, Gebäude, Geschoss, Raum, Personen, Firmen, Arbeiten, Fortschritt, Mängel, Fristen)
+- [ ] P2: Bericht vor Speichern bearbeitbar
+- [ ] P3: Mängelmanagement vollständig (8 Status, Fotos vorher/nachher, Plan-Markierung, Kommentare, Nachprüfung)
+- [ ] P3: Mängelbericht als PDF
+- [ ] P6: Baufortschritt nach Projekt/Gebäude/Geschoss/Raum/Gewerk/Firma/Zeitraum
+- [ ] P7: Timeline erweitert (alle Inhaltstypen + Filter)
+- [ ] P8: Stunden und Bautagebuch (Start/Stop, manuell, Mitarbeiter, Tätigkeit, Kosten, Export)
+- [ ] P9: Aufgaben vollständig (Verantwortliche, Firma, Frist, Erinnerung, Priorität, Fotos, Kalender)
+- [ ] P10: PDF professionell (Logo, Kopf/Fuß, Bilder, Markierungen, Unterschriften, Seitenzahlen)
+- [ ] P11: UI/UX Baustellentauglich (große Buttons, Einhandbedienung, keine toten Buttons, deutsch)
+- [ ] P12: Einstellungen/Profil vollständig
+- [ ] P13: Rollen und Berechtigungen (10 Rollen)
+- [ ] P14: Performance + Offline-Cache
+- [ ] P15: End-to-End Tests aller Kernfunktionen

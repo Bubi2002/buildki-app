@@ -2909,10 +2909,35 @@ export default function RecordScreen() {
           </View>
         </View>
       </Modal>
+      {/* Construction Brain FAB */}
+      {!isRecording && !isProcessing && (
+        <Pressable
+          onPress={() => router.push("/ai-assistant")}
+          style={({ pressed }) => [{
+            position: "absolute",
+            bottom: 100,
+            right: 16,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: "#E040FB",
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+            opacity: pressed ? 0.8 : 1,
+            transform: [{ scale: pressed ? 0.92 : 1 }],
+          }]}
+        >
+          <MaterialIcons name="psychology" size={28} color="#FFFFFF" />
+        </Pressable>
+      )}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -41,7 +41,10 @@ const TOOLS: ToolItem[] = [
   { key: "bericht", label: "Bericht", icon: "summarize", color: "#7B1FA2", route: "/protocol-merge" },
   { key: "vergleich", label: "Vergleich", icon: "compare", color: "#5C6BC0", route: "/comparison" },
   { key: "kalender", label: "Kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
-  { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
+  { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport-viewer" },
+  { key: "fortschritt", label: "Fortschritt", icon: "trending-up", color: "#4CAF50", route: "/progress" },
+  { key: "dokument_ai", label: "Dokument-KI", icon: "smart-toy", color: "#FF6F00", route: "/document-ai" },
+  { key: "brain", label: "Brain", icon: "psychology", color: "#E040FB", route: "/ai-assistant" },
 ];
 
 export default function AIWorkbenchScreen() {
