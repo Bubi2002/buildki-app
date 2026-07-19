@@ -3,7 +3,7 @@ import { timelineEngine } from "@/lib/timeline-engine";
 const DEFECTS_KEY = "defects";
 const DEFECT_HISTORY_KEY = "defect_history";
 
-export type DefectStatus = "offen" | "in_bearbeitung" | "erledigt";
+export type DefectStatus = "offen" | "zugewiesen" | "in_bearbeitung" | "nachbesserung" | "pruefung" | "erledigt" | "abgelehnt" | "geschlossen";
 export type DefectPriority = "hoch" | "mittel" | "niedrig";
 
 export type DefectHistoryAction = 
@@ -29,6 +29,13 @@ export type DefectHistoryEntry = {
 
 export type DefectSource = "manual" | "ki_analysis" | "matterport" | "checklist";
 
+export type DefectComment = {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+};
+
 export type Defect = {
   id: string;
   projectId: string;
@@ -39,13 +46,26 @@ export type Defect = {
   status: DefectStatus;
   priority: DefectPriority;
   category: string;
+  gewerk?: string;
   photos: string[];
+  /** Photos taken before repair (Vorher) */
+  beforePhotos?: string[];
+  /** Photos taken after repair (Nachher) */
+  afterPhotos?: string[];
   assignee?: string;
+  assigneeFirma?: string;
   dueDate?: string;
   location?: string;
+  /** Floor/Geschoss */
+  floor?: string;
+  /** Room/Raum */
+  room?: string;
+  comments?: DefectComment[];
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  /** Date of follow-up inspection */
+  followUpDate?: string;
   protocolId?: string;
   /** Source of the defect (manual entry, KI analysis, Matterport, checklist) */
   source?: DefectSource;
@@ -261,8 +281,13 @@ export async function recordPhotoRemoved(defectId: string): Promise<void> {
 export function formatHistoryEntry(entry: DefectHistoryEntry): string {
   const statusLabels: Record<string, string> = {
     offen: "Offen",
+    zugewiesen: "Zugewiesen",
     in_bearbeitung: "In Bearbeitung",
+    nachbesserung: "Nachbesserung",
+    pruefung: "Pr\u00fcfung",
     erledigt: "Erledigt",
+    abgelehnt: "Abgelehnt",
+    geschlossen: "Geschlossen",
   };
   const priorityLabels: Record<string, string> = {
     hoch: "Hoch",

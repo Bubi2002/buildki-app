@@ -585,15 +585,18 @@
 - [ ] P1: Videos aufnehmen und hochladen
 - [ ] P1: Dateien und Pläne hochladen
 - [ ] P1: Notizen erfassen
-- [ ] P1: Anwesenheit dokumentieren
+- [x] P1: Anwesenheit dokumentieren (Screen erstellt mit Tages-Erfassung, Firma, Gewerk, Zeiten)
 - [ ] P1: Unterschriften erfassen
 - [ ] P1: Verantwortliche zuweisen (Mängel + Aufgaben)
 - [ ] P1: Daten dauerhaft speichern + nach Neustart laden
 - [ ] P2: KI-Berichtssystem (10 Typen)
 - [ ] P2: KI-Strukturerkennung (Datum, Projekt, Gebäude, Geschoss, Raum, Personen, Firmen, Arbeiten, Fortschritt, Mängel, Fristen)
 - [ ] P2: Bericht vor Speichern bearbeitbar
-- [ ] P3: Mängelmanagement vollständig (8 Status, Fotos vorher/nachher, Plan-Markierung, Kommentare, Nachprüfung)
-- [ ] P3: Mängelbericht als PDF
+- [x] P3: Mängelmanagement – 8 Status implementiert (offen, zugewiesen, in_bearbeitung, nachbesserung, pruefung, erledigt, abgelehnt, geschlossen)
+- [x] P3: Mängelmanagement – Kommentar-System (DefectComment Typ + addDefectComment Funktion)
+- [x] P3: Mängelmanagement – Vorher/Nachher-Fotos (beforePhotos/afterPhotos im Defect-Typ)
+- [ ] P3: Mängelmanagement – Nachprüfungs-Workflow UI (followUpDate-Picker im Detail-Modal)
+- [x] P3: Mängelbericht als PDF (8 Status in PDF-Export integriert)
 - [ ] P6: Baufortschritt nach Projekt/Gebäude/Geschoss/Raum/Gewerk/Firma/Zeitraum
 - [ ] P7: Timeline erweitert (alle Inhaltstypen + Filter)
 - [ ] P8: Stunden und Bautagebuch (Start/Stop, manuell, Mitarbeiter, Tätigkeit, Kosten, Export)
@@ -604,3 +607,24 @@
 - [ ] P13: Rollen und Berechtigungen (10 Rollen)
 - [ ] P14: Performance + Offline-Cache
 - [ ] P15: End-to-End Tests aller Kernfunktionen
+
+## Session: P1 Grundworkflow-Stabilisierung (2025-07-19)
+- [x] Fix: Dashboard-Route /matterport-viewer → /matterport (Datei existierte als matterport.tsx)
+- [x] Fix: Dashboard-Route /comparison → /photo-compare (existierender Screen)
+- [x] Fix: Dashboard-Route /export-center → /export (existierender Screen)
+- [x] Fix: Dashboard-Route /defect-export → /defects (existierender Screen)
+- [x] Fix: Doppelten Excel-Eintrag aus Dashboard entfernt
+- [x] Dashboard: Aufgaben, Räume, Notizen, Timeline, Anwesenheit hinzugefügt
+- [x] Dashboard: Werkzeuge neu sortiert (wichtigste oben)
+- [x] project-detail: Räume-Tool-Card hinzugefügt (Route /rooms)
+- [x] project-detail: Anwesenheit-Tool-Card hinzugefügt (Route /attendance)
+- [x] Mängelmanagement: DefectStatus von 3 auf 8 erweitert
+- [x] Mängelmanagement: Status-Filter zeigt alle 8 Status
+- [x] Mängelmanagement: Quick-Status-Change zeigt alle 8 Status (Wrap-Layout)
+- [x] Mängelmanagement: cycleStatus-Logik für 8 Status aktualisiert
+- [x] Mängelmanagement: PDF-Export für 8 Status aktualisiert
+- [x] Mängelmanagement: formatHistoryEntry für 8 Status aktualisiert
+- [x] Defect-Typ erweitert: gewerk, beforePhotos, afterPhotos, floor, room, comments, followUpDate, assigneeFirma
+- [x] Neues Modul: lib/defect-comments.ts (addDefectComment, addBeforePhoto, addAfterPhoto, setFollowUpDate, requestReinspection)
+- [x] Neuer Screen: app/attendance.tsx (Anwesenheits-Dokumentation mit Tageserfassung)
+- [x] TypeScript: 0 Fehler nach allen Änderungen

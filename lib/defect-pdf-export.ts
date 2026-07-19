@@ -97,13 +97,23 @@ export async function generateDefectPdfHtml(
   // Build HTML
   const statusColors: Record<DefectStatus, string> = {
     offen: "#EF4444",
+    zugewiesen: "#FF9800",
     in_bearbeitung: "#F59E0B",
+    nachbesserung: "#E91E63",
+    pruefung: "#9C27B0",
     erledigt: "#22C55E",
+    abgelehnt: "#795548",
+    geschlossen: "#607D8B",
   };
   const statusLabels: Record<DefectStatus, string> = {
     offen: "Offen",
+    zugewiesen: "Zugewiesen",
     in_bearbeitung: "In Bearbeitung",
+    nachbesserung: "Nachbesserung",
+    pruefung: "Pr\u00fcfung",
     erledigt: "Erledigt",
+    abgelehnt: "Abgelehnt",
+    geschlossen: "Geschlossen",
   };
   const priorityColors: Record<DefectPriority, string> = {
     hoch: "#DC2626",

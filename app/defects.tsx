@@ -118,9 +118,14 @@ export default function DefectsScreen() {
 
   const cycleStatus = async (defect: Defect) => {
     const nextStatus: Record<DefectStatus, DefectStatus> = {
-      offen: "in_bearbeitung",
-      in_bearbeitung: "erledigt",
-      erledigt: "offen",
+      offen: "zugewiesen",
+      zugewiesen: "in_bearbeitung",
+      in_bearbeitung: "pruefung",
+      nachbesserung: "in_bearbeitung",
+      pruefung: "erledigt",
+      erledigt: "geschlossen",
+      abgelehnt: "offen",
+      geschlossen: "offen",
     };
     const newStatus = nextStatus[defect.status];
     await updateDefectStatus(defect.id, newStatus);
@@ -142,16 +147,25 @@ export default function DefectsScreen() {
     ]);
   };
 
-  const statusColors: Record<DefectStatus, string> = {
+    const statusColors: Record<DefectStatus, string> = {
     offen: colors.error,
+    zugewiesen: "#FF9800",
     in_bearbeitung: colors.warning,
+    nachbesserung: "#E91E63",
+    pruefung: "#9C27B0",
     erledigt: colors.success,
+    abgelehnt: "#795548",
+    geschlossen: "#607D8B",
   };
-
   const statusLabels: Record<DefectStatus, string> = {
-    offen: t('status_offen'),
+    offen: "Offen",
+    zugewiesen: "Zugewiesen",
     in_bearbeitung: "In Arbeit",
-    erledigt: t('status_erledigt'),
+    nachbesserung: "Nachbesserung",
+    pruefung: "Pr\u00fcfung",
+    erledigt: "Erledigt",
+    abgelehnt: "Abgelehnt",
+    geschlossen: "Geschlossen",
   };
 
   const priorityIcons: Record<DefectPriority, string> = {
@@ -243,7 +257,7 @@ export default function DefectsScreen() {
 
       {/* Status Filter */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {(["alle", "offen", "in_bearbeitung", "erledigt"] as const).map((f) => (
+        {(["alle", "offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"] as const).map((f) => (
           <Pressable
             key={f}
             onPress={() => setFilter(f)}
@@ -254,7 +268,7 @@ export default function DefectsScreen() {
             ]}
           >
             <Text style={[styles.filterText, { color: filter === f ? colors.primary : colors.muted }]}>
-              {f === "alle" ? t('filter_alle') : f === "in_bearbeitung" ? t('filter_in_arbeit') : f === "offen" ? t('status_offen') : t('status_erledigt')}
+              {f === "alle" ? "Alle" : statusLabels[f]}
             </Text>
           </Pressable>
         ))}
@@ -474,8 +488,8 @@ export default function DefectsScreen() {
                 {/* Quick Status Change */}
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('status_u00e4ndern')}</Text>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    {(["offen", "in_bearbeitung", "erledigt"] as DefectStatus[]).map((s) => (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"] as DefectStatus[]).map((s) => (
                       <Pressable
                         key={s}
                         onPress={async () => {
@@ -488,7 +502,7 @@ export default function DefectsScreen() {
                           if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         }}
                         style={({ pressed }) => [{
-                          flex: 1, paddingVertical: 8, borderRadius: 0, alignItems: "center",
+                          minWidth: "30%", paddingVertical: 8, paddingHorizontal: 10, borderRadius: 0, alignItems: "center",
                           borderWidth: 1,
                           borderColor: selectedDefect.status === s ? statusColors[s] : colors.border,
                           backgroundColor: selectedDefect.status === s ? statusColors[s] + "15" : "transparent",

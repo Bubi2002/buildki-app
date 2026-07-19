@@ -502,6 +502,15 @@ export default function ProjectDetailScreen() {
           <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>{t('werkzeuge')}</Text>
           <View style={styles.toolsGrid}>
             <Pressable
+              onPress={() => router.push(`/rooms?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
+                <MaterialIcons name="layers" size={22} color="#5C6BC0" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Räume</Text>
+            </Pressable>
+            <Pressable
               onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
@@ -551,6 +560,15 @@ export default function ProjectDetailScreen() {
                 <MaterialIcons name="groups" size={22} color="#1E88E5" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('team_title')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/attendance?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#00897B15' }]}>
+                <MaterialIcons name="how-to-reg" size={22} color="#00897B" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Anwesenheit</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
