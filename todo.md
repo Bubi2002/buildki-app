@@ -692,7 +692,7 @@
 - [x] 3. Workflow-Verifikation: E2E 7/7 Tests + Position-Numbering 6/6 Tests = 17 Tests passed, 0 TS-Fehler
 - [x] 4. Vollständiger technischer Test: Dev-Server stabil (Port 3000 + 8081), alle Module kompilieren fehlerfrei
 - [x] 5. TestFlight-Build vorbereitet: eas.json fertig (Apple Team TLHL2MRJB4), nur noch Expo-Account-Login nötig
-- [ ] (ausstehend) Matterport-Secrets eintragen (User: "später")
+- [x] Matterport-Secrets eingetragen (MATTERPORT_TOKEN_ID + MATTERPORT_TOKEN_SECRET validiert)
 - [ ] (ausstehend) Expo-Account erstellen + eas login + eas build ausführen
 - [ ] (niedrige Prio) UI-Animationen verfeinern
 
