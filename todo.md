@@ -948,3 +948,14 @@
 - [x] Tab-Label "Aufnahme" für den Record-Tab setzen (nav_home = Aufnahme)
 - [x] Quick-Actions oben auf Tools-Tab: Neue Aufnahme + Letztes Protokoll
 - [x] TestFlight-Build vorbereiten (Checkpoint für Publish)
+
+## Phase 11: Video-Import von externen Quellen (2026-07-19)
+
+- [x] Video aus Galerie/WhatsApp/externen Apps auswählen (ImagePicker)
+- [x] Video aus Dateien/Downloads importieren (DocumentPicker für E-Mail-Anhänge, Dropbox)
+- [x] Video mit Kamera aufnehmen
+- [x] Video an Server hochladen (base64, max 50MB)
+- [x] Audio aus Video extrahieren und per KI transkribieren
+- [x] Protokoll aus Transkription generieren und speichern
+- [x] Video-Upload-Screen mit Fortschrittsanzeige (app/video-upload.tsx)
+- [x] Tool-Eintrag "Video" im Tools-Grid (erste Position)

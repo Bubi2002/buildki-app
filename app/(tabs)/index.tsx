@@ -67,6 +67,7 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
+  { key: "video_import", label: "Video", icon: "videocam", color: "#00BCD4", route: "/video-upload" },
   { key: "ki_analyse", label: "KI-Analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
   { key: "maengel", label: "Mängel", icon: "warning", color: "#FF9800", route: "/defects" },
   { key: "nachpruefung", label: "Nachprüfung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
