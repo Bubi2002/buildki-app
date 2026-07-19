@@ -47,6 +47,9 @@ import { UndoToast } from "@/components/UndoToast";
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
 import { getSourceLabel, getSourceColor } from "@/shared/ai-types";
 
+// Timeline
+import { timelineEngine } from "@/lib/timeline-engine";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SelectedPhoto {
@@ -430,6 +433,20 @@ export default function PhotoAnalysisScreen() {
       });
 
       setResult(analysisResult as AnalysisResult);
+
+      // Timeline event
+      try {
+        await timelineEngine.emit({
+          projectId: activeProject.id,
+          eventType: "analysis_completed",
+          source: "photo",
+          title: "Fotoanalyse abgeschlossen",
+          description: `${photosWithBase64.length} Fotos analysiert${roomName ? ` (${roomName})` : ""}`,
+          entityType: "analysis",
+          roomName: roomName || undefined,
+          tags: ["analysis", "photo", "ki"],
+        });
+      } catch {}
 
     } catch (error: any) {
       Alert.alert(

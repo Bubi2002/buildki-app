@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 import { exportTasksAsCSV } from "@/lib/csv-export";
 import { useTranslation } from "@/lib/language-provider";
+import { timelineEngine } from "@/lib/timeline-engine";
 
 type TodoItem = {
   task: string;
@@ -104,6 +105,21 @@ export default function TasksScreen() {
       if (protocolIdx !== -1 && protocols[protocolIdx].todos) {
         protocols[protocolIdx].todos[item.todoIndex].done = !item.done;
         await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+
+        // Timeline event
+        try {
+          const projectId = protocols[protocolIdx].projectId || "default";
+          await timelineEngine.emit({
+            projectId,
+            eventType: !item.done ? "task_completed" : "task_updated",
+            source: "user",
+            title: !item.done ? "Aufgabe erledigt" : "Aufgabe wieder geöffnet",
+            description: item.task,
+            entityId: item.protocolId,
+            entityType: "task",
+            tags: ["task", !item.done ? "completed" : "reopened"],
+          });
+        } catch {}
       }
 
       // Update local state

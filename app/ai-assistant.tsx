@@ -1,11 +1,16 @@
 /**
- * protoKI – AI Site Assistant
+ * protoKI – Construction Brain
  * 
- * Knowledge Layer basierter Assistent. Kein klassischer Chat.
- * Fragt ausschließlich den Knowledge Layer, analysiert nie direkt Bilder/Dateien.
- * Conversation Memory: Behält Gesprächskontext über mehrere Nachrichten.
+ * Zentraler Projektassistent. Arbeitet AUSSCHLIESSLICH auf dem Knowledge Layer.
+ * Keine Rohdaten-Analyse. Strukturierte Antworten statt reiner Chat.
+ * 
+ * Features:
+ * - Intent-Erkennung (lokal)
+ * - Strukturierte Ergebnisse (Mängel, Aufgaben, Räume, Gewerke)
+ * - Vorschläge für Folgefragen
+ * - Conversation Memory
+ * - Quick Actions für häufige Fragen
  */
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
@@ -17,216 +22,169 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { trpc } from "@/lib/trpc";
-import { knowledgeLayer } from "@/lib/knowledge-layer";
+import { constructionBrain, type BrainResponse, type BrainResponseDetail } from "@/lib/construction-brain";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Message = {
+type HistoryEntry = {
   id: string;
-  role: "user" | "assistant";
-  content: string;
+  question: string;
+  response: BrainResponse;
   timestamp: string;
 };
 
-type ConversationMemory = {
-  projectId: string;
-  messages: Message[];
-  lastUpdated: string;
-};
+// ─── Quick Actions ──────────────────────────────────────────────────────────
 
-const SUGGESTIONS = [
-  { icon: "warning", text: "Welche Mängel sind offen?", color: "#FF9800" },
-  { icon: "today", text: "Was ist heute passiert?", color: "#5DADE2" },
-  { icon: "meeting-room", text: "Welche Räume sind fertig?", color: "#66BB6A" },
-  { icon: "priority-high", text: "Welche Aufgaben sind kritisch?", color: "#EF4444" },
-  { icon: "engineering", text: "Welche Gewerke fehlen?", color: "#AB47BC" },
-  { icon: "summarize", text: "Erstelle einen Wochenbericht.", color: "#FF7043" },
-  { icon: "trending-up", text: "Zeige den Baufortschritt.", color: "#00BFA5" },
+const QUICK_ACTIONS = [
+  { label: "Offene Mängel", query: "Welche Mängel sind offen?", icon: "warning" as const },
+  { label: "Überfällige Aufgaben", query: "Welche Aufgaben sind überfällig?", icon: "schedule" as const },
+  { label: "Kritische Gewerke", query: "Welche Gewerke sind kritisch?", icon: "priority-high" as const },
+  { label: "Tageszusammenfassung", query: "Tageszusammenfassung", icon: "today" as const },
+  { label: "Wochenbericht", query: "Wochenbericht", icon: "date-range" as const },
+  { label: "Baufortschritt", query: "Wie ist der Baufortschritt?", icon: "trending-up" as const },
+  { label: "Raumstatus", query: "Welche Räume sind fertig?", icon: "meeting-room" as const },
+  { label: "Projektübersicht", query: "Projektübersicht", icon: "dashboard" as const },
 ];
 
-const MEMORY_KEY = "ai-assistant-memory";
-const MAX_CONTEXT_MESSAGES = 20;
+// ─── Constants ──────────────────────────────────────────────────────────────
 
-export default function AIAssistantScreen() {
-  const colors = useColors();
+const HISTORY_KEY = "construction_brain_history";
+const MAX_HISTORY = 50;
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
+export default function ConstructionBrainScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
+  const colors = useColors();
   const scrollRef = useRef<ScrollView>(null);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [currentResponse, setCurrentResponse] = useState<BrainResponse | null>(null);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
-  // tRPC for LLM calls (uses support.chat which accepts messages array)
-  const chatMutation = trpc.support.chat.useMutation();
+  // ─── Load Project ───────────────────────────────────────────────────────────
 
-  // Load project
   useEffect(() => {
-    if (params.projectId && params.projectName) {
-      setActiveProject({ id: params.projectId, name: decodeURIComponent(params.projectName) });
-    } else {
-      loadActiveProject();
-    }
+    loadActiveProject();
+    loadHistory();
   }, []);
 
-  // Load conversation memory when project changes
-  useEffect(() => {
-    if (activeProject) {
-      loadConversationMemory(activeProject.id);
-    }
-  }, [activeProject?.id]);
-
   const loadActiveProject = async () => {
+    if (params.projectId && params.projectName) {
+      setActiveProject({ id: params.projectId, name: params.projectName });
+      return;
+    }
     try {
-      const projectsJson = await AsyncStorage.getItem("projects");
-      const lastId = await AsyncStorage.getItem("last-selected-project-id");
-      if (projectsJson && lastId) {
-        const projects = JSON.parse(projectsJson);
-        const project = projects.find((p: any) => p.id === lastId);
-        if (project) setActiveProject({ id: project.id, name: project.name });
-      }
-    } catch {}
-  };
-
-  const loadConversationMemory = async (projectId: string) => {
-    try {
-      const stored = await AsyncStorage.getItem(`${MEMORY_KEY}-${projectId}`);
+      const stored = await AsyncStorage.getItem("active_project");
       if (stored) {
-        const memory: ConversationMemory = JSON.parse(stored);
-        setMessages(memory.messages);
-      } else {
-        setMessages([]);
+        const proj = JSON.parse(stored);
+        setActiveProject({ id: proj.id, name: proj.name });
       }
-    } catch {
-      setMessages([]);
-    }
-  };
-
-  const saveConversationMemory = async (msgs: Message[]) => {
-    if (!activeProject) return;
-    try {
-      const memory: ConversationMemory = {
-        projectId: activeProject.id,
-        messages: msgs.slice(-MAX_CONTEXT_MESSAGES),
-        lastUpdated: new Date().toISOString(),
-      };
-      await AsyncStorage.setItem(`${MEMORY_KEY}-${activeProject.id}`, JSON.stringify(memory));
     } catch {}
   };
 
-  const clearConversation = async () => {
-    setMessages([]);
-    if (activeProject) {
-      await AsyncStorage.removeItem(`${MEMORY_KEY}-${activeProject.id}`);
-    }
+  const loadHistory = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      if (stored) setHistory(JSON.parse(stored));
+    } catch {}
   };
 
-  // ─── Send Message ──────────────────────────────────────────────────────────
+  const saveHistory = async (entries: HistoryEntry[]) => {
+    try {
+      const trimmed = entries.slice(-MAX_HISTORY);
+      await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+    } catch {}
+  };
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || !activeProject) return;
+  // ─── Ask Question ─────────────────────────────────────────────────────────
 
-    const userMsg: Message = {
-      id: `msg_${Date.now()}_u`,
-      role: "user",
-      content: text.trim(),
-      timestamp: new Date().toISOString(),
-    };
+  const askQuestion = useCallback(async (question: string) => {
+    if (!question.trim() || !activeProject) return;
 
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
     setInputText("");
     setIsLoading(true);
+    setCurrentResponse(null);
+    setShowHistory(false);
 
     try {
-      // 1. Query Knowledge Layer for context
-      const knowledgeContext = await knowledgeLayer.queryForAssistant(
-        activeProject.id,
-        text.trim()
-      );
+      const response = await constructionBrain.ask(activeProject.id, question.trim());
+      setCurrentResponse(response);
 
-      // 2. Build conversation context (memory)
-      const conversationContext = updatedMessages
-        .slice(-10)
-        .map(m => `${m.role === "user" ? "Benutzer" : "Assistent"}: ${m.content}`)
-        .join("\n");
-
-      // 3. Build prompt with knowledge + conversation memory
-      const systemPrompt = buildAssistantPrompt(
-        activeProject.name,
-        knowledgeContext,
-        conversationContext
-      );
-
-      // 4. Call LLM via server (support.chat with project context injected)
-      const chatMessages = [
-        { role: "user" as const, content: `${systemPrompt}\n\nBitte antworte auf die letzte Frage des Benutzers.` },
-      ];
-      const response = await chatMutation.mutateAsync({ messages: chatMessages });
-
-      // 5. Extract assistant response
-      const assistantContent = response.response || "Keine Antwort erhalten.";
-
-      const assistantMsg: Message = {
-        id: `msg_${Date.now()}_a`,
-        role: "assistant",
-        content: assistantContent,
+      const entry: HistoryEntry = {
+        id: `brain_${Date.now()}`,
+        question: question.trim(),
+        response,
         timestamp: new Date().toISOString(),
       };
 
-      const finalMessages = [...updatedMessages, assistantMsg];
-      setMessages(finalMessages);
-      await saveConversationMemory(finalMessages);
+      const updated = [...history, entry];
+      setHistory(updated);
+      await saveHistory(updated);
     } catch (error: any) {
-      const errorMsg: Message = {
-        id: `msg_${Date.now()}_e`,
-        role: "assistant",
-        content: "Entschuldigung, ich konnte die Anfrage nicht verarbeiten. Bitte versuche es erneut.",
-        timestamp: new Date().toISOString(),
-      };
-      const finalMessages = [...updatedMessages, errorMsg];
-      setMessages(finalMessages);
+      setCurrentResponse({
+        intent: "unknown",
+        title: "Fehler",
+        summary: "Konnte die Anfrage nicht verarbeiten. Bitte erneut versuchen.",
+        details: [],
+        suggestions: ["Projektübersicht", "Offene Mängel?"],
+      });
     } finally {
       setIsLoading(false);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
+  }, [activeProject, history]);
+
+  // ─── Clear ────────────────────────────────────────────────────────────────
+
+  const clearHistory = async () => {
+    setHistory([]);
+    setCurrentResponse(null);
+    await AsyncStorage.removeItem(HISTORY_KEY);
   };
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
+  // ─── Render Detail Item ───────────────────────────────────────────────────
 
-  function buildAssistantPrompt(
-    projectName: string,
-    knowledgeContext: string,
-    conversationContext: string
-  ): string {
-    return `Du bist der AI Site Assistant für das Bauprojekt "${projectName}".
-Du beantwortest Fragen ausschließlich basierend auf dem Knowledge Layer des Projekts.
-Du analysierst NIEMALS direkt Bilder oder Dateien. Du nutzt nur die vorhandenen Daten.
+  const renderDetail = (detail: BrainResponseDetail, index: number) => {
+    const iconMap: Record<string, string> = {
+      defect: "warning",
+      task: "check-circle-outline",
+      observation: "visibility",
+      progress: "trending-up",
+      info: "info-outline",
+    };
 
-PROJEKT-WISSENSBASIS:
-${knowledgeContext}
+    const colorMap: Record<string, string> = {
+      defect: "#EF4444",
+      task: "#3B82F6",
+      observation: "#8B5CF6",
+      progress: "#22C55E",
+      info: "#6B7280",
+    };
 
-GESPRÄCHSVERLAUF (für Kontext-Referenzen wie "es", "dort", "davon"):
-${conversationContext}
+    return (
+      <View key={index} style={styles.detailItem}>
+        <MaterialIcons
+          name={(iconMap[detail.type] || "info-outline") as any}
+          size={16}
+          color={colorMap[detail.type] || "#6B7280"}
+        />
+        <Text style={styles.detailText}>{detail.content}</Text>
+      </View>
+    );
+  };
 
-AKTUELLE FRAGE: ${conversationContext.split("\n").pop()?.replace("Benutzer: ", "") || ""}
-
-Antworte auf Deutsch, präzise und hilfreich. Beziehe dich auf konkrete Daten aus der Wissensbasis.
-Wenn du etwas nicht weißt, sage es ehrlich.`;
-  }
-
-
-
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <ScreenContainer className="p-0">
@@ -241,95 +199,136 @@ Wenn du etwas nicht weißt, sage es ehrlich.`;
             <MaterialIcons name="arrow-back" size={24} color="#F0F4F8" />
           </Pressable>
           <View style={{ flex: 1, alignItems: "center" }}>
-            <Text style={styles.headerTitle}>AI Site Assistant</Text>
+            <Text style={styles.headerTitle}>Construction Brain</Text>
             {activeProject && (
               <Text style={styles.headerProject}>{activeProject.name}</Text>
             )}
           </View>
-          <Pressable onPress={clearConversation} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <MaterialIcons name="delete-outline" size={22} color="#8FA3B8" />
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable onPress={() => setShowHistory(!showHistory)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+              <MaterialIcons name="history" size={22} color={showHistory ? "#5DADE2" : "#8FA3B8"} />
+            </Pressable>
+            <Pressable onPress={clearHistory} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+              <MaterialIcons name="delete-outline" size={22} color="#8FA3B8" />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Messages */}
+        {/* Main Content */}
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={styles.messagesContent}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+          contentContainerStyle={styles.content}
         >
-          {/* Welcome Section (shown when no messages) */}
-          {messages.length === 0 && (
-            <View style={styles.welcomeSection}>
-              <View style={styles.welcomeIcon}>
-                <MaterialIcons name="smart-toy" size={36} color="#0EA5E9" />
-              </View>
-              <Text style={styles.welcomeTitle}>
-                Hallo{activeProject ? ` – ${activeProject.name}` : ""}
+          {/* No Project Warning */}
+          {!activeProject && (
+            <View style={styles.warningCard}>
+              <MaterialIcons name="info" size={20} color="#F59E0B" />
+              <Text style={styles.warningText}>
+                Bitte zuerst ein Projekt auswählen, damit der Construction Brain auf die Wissensbasis zugreifen kann.
               </Text>
-              <Text style={styles.welcomeSubtitle}>
-                Frage mich alles über dieses Projekt.
-              </Text>
-              <Text style={styles.welcomeNote}>
-                Ich nutze den Knowledge Layer und behalte den Gesprächskontext.
-              </Text>
+            </View>
+          )}
 
-              {/* Suggestions */}
-              <View style={styles.suggestions}>
-                {SUGGESTIONS.map((suggestion, idx) => (
+          {/* History View */}
+          {showHistory && (
+            <View style={styles.historySection}>
+              <Text style={styles.sectionTitle}>Verlauf</Text>
+              {history.length === 0 ? (
+                <Text style={styles.emptyText}>Noch keine Fragen gestellt.</Text>
+              ) : (
+                history.slice(-20).reverse().map(entry => (
+                  <Pressable
+                    key={entry.id}
+                    style={({ pressed }) => [styles.historyItem, pressed && { opacity: 0.7 }]}
+                    onPress={() => {
+                      setCurrentResponse(entry.response);
+                      setShowHistory(false);
+                    }}
+                  >
+                    <Text style={styles.historyQuestion}>{entry.question}</Text>
+                    <Text style={styles.historyTime}>
+                      {new Date(entry.timestamp).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
+            </View>
+          )}
+
+          {/* Quick Actions (when no response shown) */}
+          {!currentResponse && !isLoading && !showHistory && (
+            <View style={styles.quickActionsSection}>
+              <Text style={styles.sectionTitle}>Schnellzugriff</Text>
+              <View style={styles.quickActionsGrid}>
+                {QUICK_ACTIONS.map((action, idx) => (
                   <Pressable
                     key={idx}
-                    onPress={() => sendMessage(suggestion.text)}
-                    style={({ pressed }) => [styles.suggestionChip, { opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.7, transform: [{ scale: 0.97 }] }]}
+                    onPress={() => askQuestion(action.query)}
                   >
-                    <MaterialIcons name={suggestion.icon as any} size={16} color={suggestion.color} />
-                    <Text style={styles.suggestionText}>{suggestion.text}</Text>
+                    <MaterialIcons name={action.icon} size={22} color="#5DADE2" />
+                    <Text style={styles.quickActionLabel}>{action.label}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
           )}
 
-          {/* Message Bubbles */}
-          {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.messageBubble,
-                msg.role === "user" ? styles.userBubble : styles.assistantBubble,
-              ]}
-            >
-              {msg.role === "assistant" && (
-                <View style={styles.assistantIcon}>
-                  <MaterialIcons name="smart-toy" size={14} color="#0EA5E9" />
+          {/* Loading */}
+          {isLoading && (
+            <View style={styles.loadingCard}>
+              <ActivityIndicator size="small" color="#5DADE2" />
+              <Text style={styles.loadingText}>Knowledge Layer wird abgefragt...</Text>
+            </View>
+          )}
+
+          {/* Response Card */}
+          {currentResponse && !isLoading && (
+            <View style={styles.responseSection}>
+              {/* Title & Summary */}
+              <View style={styles.responseHeader}>
+                <Text style={styles.responseTitle}>{currentResponse.title}</Text>
+                <Text style={styles.responseSummary}>{currentResponse.summary}</Text>
+              </View>
+
+              {/* Stats */}
+              {currentResponse.stats && Object.keys(currentResponse.stats).length > 0 && (
+                <View style={styles.statsRow}>
+                  {Object.entries(currentResponse.stats).slice(0, 4).map(([key, value]) => (
+                    <View key={key} style={styles.statBadge}>
+                      <Text style={styles.statValue}>{String(value)}</Text>
+                      <Text style={styles.statLabel}>{key}</Text>
+                    </View>
+                  ))}
                 </View>
               )}
-              <View style={[
-                styles.bubbleContent,
-                msg.role === "user" ? styles.userContent : styles.assistantContent,
-              ]}>
-                <Text style={[
-                  styles.messageText,
-                  msg.role === "user" ? styles.userText : styles.assistantText,
-                ]}>
-                  {msg.content}
-                </Text>
-              </View>
-            </View>
-          ))}
 
-          {/* Loading indicator */}
-          {isLoading && (
-            <View style={[styles.messageBubble, styles.assistantBubble]}>
-              <View style={styles.assistantIcon}>
-                <MaterialIcons name="smart-toy" size={14} color="#0EA5E9" />
-              </View>
-              <View style={[styles.bubbleContent, styles.assistantContent]}>
-                <View style={styles.typingIndicator}>
-                  <ActivityIndicator size="small" color="#0EA5E9" />
-                  <Text style={styles.typingText}>Denke nach...</Text>
+              {/* Details */}
+              {currentResponse.details.length > 0 && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.detailsTitle}>Details</Text>
+                  {currentResponse.details.map((d, i) => renderDetail(d, i))}
                 </View>
-              </View>
+              )}
+
+              {/* Suggestions */}
+              {currentResponse.suggestions && currentResponse.suggestions.length > 0 && (
+                <View style={styles.suggestionsSection}>
+                  <Text style={styles.suggestionsTitle}>Weitere Fragen</Text>
+                  <View style={styles.suggestionsRow}>
+                    {currentResponse.suggestions.map((s, i) => (
+                      <Pressable
+                        key={i}
+                        style={({ pressed }) => [styles.suggestionChip, pressed && { opacity: 0.7 }]}
+                        onPress={() => askQuestion(s)}
+                      >
+                        <Text style={styles.suggestionText}>{s}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
         </ScrollView>
@@ -337,28 +336,25 @@ Wenn du etwas nicht weißt, sage es ehrlich.`;
         {/* Input Bar */}
         <View style={styles.inputBar}>
           <TextInput
-            style={styles.textInput}
-            placeholder="Frage stellen..."
-            placeholderTextColor="#8FA3B8"
+            style={styles.input}
             value={inputText}
             onChangeText={setInputText}
-            multiline
-            maxLength={500}
+            placeholder="Frage zum Projekt stellen..."
+            placeholderTextColor="#6B7280"
             returnKeyType="send"
-            onSubmitEditing={() => sendMessage(inputText)}
+            onSubmitEditing={() => askQuestion(inputText)}
+            editable={!!activeProject}
           />
           <Pressable
-            onPress={() => sendMessage(inputText)}
-            disabled={!inputText.trim() || isLoading}
-            style={({ pressed }) => [
-              styles.sendButton,
-              {
-                backgroundColor: inputText.trim() ? "#0EA5E9" : "#1E3A5F",
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
+            onPress={() => askQuestion(inputText)}
+            style={({ pressed }) => [styles.sendButton, pressed && { opacity: 0.7 }]}
+            disabled={!inputText.trim() || isLoading || !activeProject}
           >
-            <MaterialIcons name="send" size={18} color={inputText.trim() ? "#FFF" : "#8FA3B8"} />
+            <MaterialIcons
+              name="send"
+              size={20}
+              color={inputText.trim() && activeProject ? "#5DADE2" : "#4A5568"}
+            />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -366,163 +362,251 @@ Wenn du etwas nicht weißt, sage es ehrlich.`;
   );
 }
 
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#1E3A5F",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1E293B",
+    backgroundColor: "#0F1A2E",
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
     color: "#F0F4F8",
   },
   headerProject: {
-    fontSize: 11,
-    color: "#8FA3B8",
-    marginTop: 1,
+    fontSize: 12,
+    color: "#5DADE2",
+    marginTop: 2,
   },
-  messagesContent: {
+  content: {
     padding: 16,
     paddingBottom: 20,
   },
-  // Welcome
-  welcomeSection: {
-    alignItems: "center",
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  welcomeIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#0EA5E920",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  welcomeTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#F0F4F8",
-    marginBottom: 4,
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: "#8FA3B8",
-    marginBottom: 4,
-  },
-  welcomeNote: {
-    fontSize: 11,
-    color: "#5A6A7A",
-    marginBottom: 20,
-  },
-  suggestions: {
-    width: "100%",
-    gap: 6,
-  },
-  suggestionChip: {
+  warningCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#0F1E30",
+    backgroundColor: "#1C1A00",
     borderWidth: 1,
-    borderColor: "#1E3A5F",
+    borderColor: "#F59E0B33",
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    padding: 14,
+    marginBottom: 16,
   },
-  suggestionText: {
-    fontSize: 13,
-    color: "#F0F4F8",
+  warningText: {
     flex: 1,
+    fontSize: 13,
+    color: "#F59E0B",
+    lineHeight: 18,
   },
-  // Messages
-  messageBubble: {
-    flexDirection: "row",
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#8FA3B8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
     marginBottom: 12,
+  },
+  // Quick Actions
+  quickActionsSection: {
+    marginBottom: 20,
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  quickAction: {
+    width: "47%",
+    backgroundColor: "#1A2332",
+    borderWidth: 1,
+    borderColor: "#2A3A4E",
+    borderRadius: 10,
+    padding: 14,
+    alignItems: "center",
     gap: 8,
   },
-  userBubble: {
-    justifyContent: "flex-end",
+  quickActionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#CBD5E1",
+    textAlign: "center",
   },
-  assistantBubble: {
-    justifyContent: "flex-start",
-  },
-  assistantIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#0EA5E915",
+  // Loading
+  loadingCard: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
+    gap: 12,
+    backgroundColor: "#1A2332",
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
   },
-  bubbleContent: {
-    maxWidth: "78%",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  userContent: {
-    backgroundColor: "#0EA5E9",
-    borderBottomRightRadius: 4,
-  },
-  assistantContent: {
-    backgroundColor: "#0F1E30",
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
+  loadingText: {
     fontSize: 14,
+    color: "#8FA3B8",
+  },
+  // Response
+  responseSection: {
+    gap: 16,
+  },
+  responseHeader: {
+    backgroundColor: "#1A2332",
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: "#5DADE2",
+  },
+  responseTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#F0F4F8",
+    marginBottom: 6,
+  },
+  responseSummary: {
+    fontSize: 14,
+    color: "#CBD5E1",
     lineHeight: 20,
   },
-  userText: {
-    color: "#FFFFFF",
-  },
-  assistantText: {
-    color: "#F0F4F8",
-  },
-  typingIndicator: {
+  // Stats
+  statsRow: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
-  typingText: {
-    fontSize: 13,
+  statBadge: {
+    backgroundColor: "#1A2332",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    minWidth: 70,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#5DADE2",
+  },
+  statLabel: {
+    fontSize: 10,
     color: "#8FA3B8",
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  // Details
+  detailsSection: {
+    backgroundColor: "#1A2332",
+    borderRadius: 12,
+    padding: 14,
+  },
+  detailsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8FA3B8",
+    marginBottom: 10,
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2A3A4E",
+  },
+  detailText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#CBD5E1",
+    lineHeight: 18,
+  },
+  // Suggestions
+  suggestionsSection: {
+    marginTop: 4,
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginBottom: 8,
+  },
+  suggestionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  suggestionChip: {
+    backgroundColor: "#1A2332",
+    borderWidth: 1,
+    borderColor: "#5DADE233",
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  suggestionText: {
+    fontSize: 12,
+    color: "#5DADE2",
+  },
+  // History
+  historySection: {
+    marginBottom: 16,
+  },
+  historyItem: {
+    backgroundColor: "#1A2332",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  historyQuestion: {
+    flex: 1,
+    fontSize: 13,
+    color: "#CBD5E1",
+  },
+  historyTime: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginLeft: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontStyle: "italic",
   },
   // Input
   inputBar: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderTopWidth: 0.5,
-    borderTopColor: "#1E3A5F",
-    backgroundColor: "#0A1220",
+    borderTopWidth: 1,
+    borderTopColor: "#1E293B",
+    backgroundColor: "#0F1A2E",
     gap: 8,
   },
-  textInput: {
+  input: {
     flex: 1,
-    backgroundColor: "#0F1E30",
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
+    backgroundColor: "#1A2332",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
     color: "#F0F4F8",
-    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: "#2A3A4E",
   },
   sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1A2332",
     alignItems: "center",
     justifyContent: "center",
   },

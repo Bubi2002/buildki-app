@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { timelineEngine } from "@/lib/timeline-engine";
 
 const DIARY_KEY = "construction-diary";
 
@@ -43,9 +44,26 @@ export async function getDiaryEntryForDate(projectId: string, date: string): Pro
 export async function saveDiaryEntry(entry: DiaryEntry): Promise<void> {
   const entries = await getDiaryEntries();
   const idx = entries.findIndex((e) => e.id === entry.id);
+  const isNew = idx < 0;
   if (idx >= 0) entries[idx] = { ...entry, updatedAt: new Date().toISOString() };
   else entries.push(entry);
   await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(entries));
+
+  // Timeline event for new diary entries
+  if (isNew) {
+    try {
+      await timelineEngine.emit({
+        projectId: entry.projectId || "default",
+        eventType: "report_generated",
+        source: "user",
+        title: "Bautagesbericht erstellt",
+        description: `Tagebuch ${entry.date}`,
+        entityId: entry.id,
+        entityType: "report",
+        tags: ["diary", "report"],
+      });
+    } catch {}
+  }
 }
 
 export async function deleteDiaryEntry(entryId: string): Promise<void> {

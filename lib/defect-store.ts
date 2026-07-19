@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { timelineEngine } from "@/lib/timeline-engine";
 const DEFECTS_KEY = "defects";
 const DEFECT_HISTORY_KEY = "defect_history";
 
@@ -81,9 +81,27 @@ export async function getDefects(projectId?: string): Promise<Defect[]> {
 export async function saveDefect(defect: Defect): Promise<void> {
   const defects = await getDefects();
   const idx = defects.findIndex((d) => d.id === defect.id);
+  const isNew = idx < 0;
   if (idx >= 0) defects[idx] = { ...defect, updatedAt: new Date().toISOString() };
   else defects.push(defect);
   await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(defects));
+
+  // Timeline event
+  try {
+    await timelineEngine.emit({
+      projectId: defect.projectId || "default",
+      eventType: isNew ? "defect_created" : "defect_updated",
+      source: (defect.source === "ki_analysis" ? "photo" : "user") as any,
+      title: isNew ? "Mangel erstellt" : "Mangel aktualisiert",
+      description: defect.title,
+      entityId: defect.id,
+      entityType: "defect",
+      roomName: defect.location,
+      confidence: defect.confidence,
+      tags: ["defect", defect.priority],
+      priority: defect.priority === "hoch" ? "high" : defect.priority === "mittel" ? "medium" : "low",
+    });
+  } catch {}
 }
 
 export async function deleteDefect(defectId: string): Promise<void> {
@@ -105,6 +123,23 @@ export async function updateDefectStatus(defectId: string, status: DefectStatus)
     // Record history
     const action: DefectHistoryAction = status === "erledigt" ? "resolved" : oldStatus === "erledigt" ? "reopened" : "status_changed";
     await addHistoryEntry(defectId, action, oldStatus, status);
+
+    // Timeline event
+    try {
+      const defect = defects[idx];
+      await timelineEngine.emit({
+        projectId: defect.projectId || "default",
+        eventType: status === "erledigt" ? "defect_resolved" : "defect_updated",
+        source: "user",
+        title: status === "erledigt" ? "Mangel behoben" : `Mangel: ${oldStatus} → ${status}`,
+        description: defect.title,
+        entityId: defectId,
+        entityType: "defect",
+        roomName: defect.location,
+        tags: ["defect", status],
+        priority: defect.priority === "hoch" ? "high" : defect.priority === "mittel" ? "medium" : "low",
+      });
+    } catch {}
   }
 }
 

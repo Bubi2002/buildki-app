@@ -8,6 +8,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import { getApiBaseUrl } from "@/constants/oauth";
+import { timelineEngine } from "@/lib/timeline-engine";
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -361,6 +362,61 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     
     notifyListeners(job.protocolId, "done");
     activeJobs.delete(job.protocolId);
+
+    // ─── Timeline Events ───────────────────────────────────────────
+    try {
+      const projectId = protocols[idx]?.projectId || "default";
+      const photoCount = job.photos?.length || 0;
+
+      await timelineEngine.emit({
+        projectId,
+        eventType: "recording_completed",
+        source: "user",
+        title: "Aufnahme abgeschlossen",
+        description: `Protokoll erstellt (${photoCount} Fotos)`,
+        entityId: job.protocolId,
+        entityType: "report",
+        tags: ["recording", "protocol"],
+      });
+
+      await timelineEngine.emit({
+        projectId,
+        eventType: "protocol_generated",
+        source: "photo",
+        title: "Protokoll generiert",
+        description: protocols[idx]?.title || "Neues Protokoll",
+        entityId: job.protocolId,
+        entityType: "report",
+        tags: ["protocol", "ki"],
+      });
+
+      if (todos.length > 0) {
+        await timelineEngine.emit({
+          projectId,
+          eventType: "task_created",
+          source: "speech",
+          title: `${todos.length} Aufgaben extrahiert`,
+          description: todos.map((t: any) => t.task).slice(0, 3).join(", "),
+          entityId: job.protocolId,
+          entityType: "task",
+          tags: ["task", "ki", "speech"],
+        });
+      }
+
+      if (photoCount > 0) {
+        await timelineEngine.emit({
+          projectId,
+          eventType: "photo_captured",
+          source: "user",
+          title: `${photoCount} Fotos aufgenommen`,
+          entityId: job.protocolId,
+          entityType: "photo",
+          tags: ["photo"],
+        });
+      }
+    } catch (timelineErr) {
+      console.warn("[BG-Processor] Timeline emit failed (non-critical):", timelineErr);
+    }
     
     // Auto-send email if enabled
     try {

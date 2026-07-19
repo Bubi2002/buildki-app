@@ -306,6 +306,189 @@ class ProjectKnowledgeLayer {
     return `${statsContext}${generalContext}${specificContext}`;
   }
 
+  // ─── Construction Brain Query Methods ─────────────────────────────────────
+
+  /**
+   * Get all open defects for a project, optionally filtered by room/trade.
+   */
+  async getOpenDefects(projectId: string, filters?: {
+    room?: string;
+    trade?: string;
+    severity?: string;
+    since?: string;
+  }): Promise<ProjectKnowledgeEntry[]> {
+    let entries = await this.getProjectKnowledge(projectId);
+    entries = entries.filter(e => e.type === "defect");
+    if (filters?.room) {
+      const room = filters.room.toLowerCase();
+      entries = entries.filter(e => (e.metadata.location as string || "").toLowerCase().includes(room) || e.content.toLowerCase().includes(room));
+    }
+    if (filters?.trade) {
+      const trade = filters.trade.toLowerCase();
+      entries = entries.filter(e => (e.metadata.trade as string || "").toLowerCase().includes(trade));
+    }
+    if (filters?.severity) {
+      entries = entries.filter(e => e.metadata.severity === filters.severity);
+    }
+    if (filters?.since) {
+      const sinceDate = new Date(filters.since).getTime();
+      entries = entries.filter(e => new Date(e.timestamp).getTime() >= sinceDate);
+    }
+    return entries;
+  }
+
+  /**
+   * Get all open tasks for a project, optionally filtered.
+   */
+  async getOpenTasks(projectId: string, filters?: {
+    trade?: string;
+    priority?: string;
+    overdue?: boolean;
+  }): Promise<ProjectKnowledgeEntry[]> {
+    let entries = await this.getProjectKnowledge(projectId);
+    entries = entries.filter(e => e.type === "task");
+    if (filters?.trade) {
+      const trade = filters.trade.toLowerCase();
+      entries = entries.filter(e => (e.metadata.trade as string || "").toLowerCase().includes(trade));
+    }
+    if (filters?.priority) {
+      entries = entries.filter(e => e.metadata.priority === filters.priority);
+    }
+    if (filters?.overdue) {
+      const now = Date.now();
+      entries = entries.filter(e => {
+        const deadline = e.metadata.deadline as string | null;
+        return deadline && new Date(deadline).getTime() < now;
+      });
+    }
+    return entries;
+  }
+
+  /**
+   * Get entries related to a specific room.
+   */
+  async getByRoom(projectId: string, roomName: string): Promise<ProjectKnowledgeEntry[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    const room = roomName.toLowerCase();
+    return entries.filter(e =>
+      e.content.toLowerCase().includes(room) ||
+      (e.metadata.location as string || "").toLowerCase().includes(room)
+    );
+  }
+
+  /**
+   * Get entries related to a specific trade (Gewerk).
+   */
+  async getByTrade(projectId: string, tradeName: string): Promise<ProjectKnowledgeEntry[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    const trade = tradeName.toLowerCase();
+    return entries.filter(e =>
+      (e.metadata.trade as string || "").toLowerCase().includes(trade) ||
+      e.content.toLowerCase().includes(trade)
+    );
+  }
+
+  /**
+   * Get entries from a specific time period.
+   */
+  async getByTimeRange(projectId: string, since: string, until?: string): Promise<ProjectKnowledgeEntry[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    const sinceTime = new Date(since).getTime();
+    const untilTime = until ? new Date(until).getTime() : Date.now();
+    return entries.filter(e => {
+      const t = new Date(e.timestamp).getTime();
+      return t >= sinceTime && t <= untilTime;
+    });
+  }
+
+  /**
+   * Get entries by source type.
+   */
+  async getBySource(projectId: string, source: string): Promise<ProjectKnowledgeEntry[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    return entries.filter(e => e.source === source);
+  }
+
+  /**
+   * Get critical trades (trades with critical/major defects or overdue tasks).
+   */
+  async getCriticalTrades(projectId: string): Promise<{ trade: string; defects: number; overdueTasks: number; severity: string }[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    const tradeMap: Record<string, { defects: number; overdueTasks: number; maxSeverity: string }> = {};
+    const now = Date.now();
+    const severityOrder = ["cosmetic", "minor", "major", "critical"];
+
+    for (const e of entries) {
+      const trade = e.metadata.trade as string;
+      if (!trade) continue;
+      if (!tradeMap[trade]) tradeMap[trade] = { defects: 0, overdueTasks: 0, maxSeverity: "cosmetic" };
+
+      if (e.type === "defect") {
+        tradeMap[trade].defects++;
+        const sev = e.metadata.severity as string || "cosmetic";
+        if (severityOrder.indexOf(sev) > severityOrder.indexOf(tradeMap[trade].maxSeverity)) {
+          tradeMap[trade].maxSeverity = sev;
+        }
+      }
+      if (e.type === "task") {
+        const deadline = e.metadata.deadline as string | null;
+        if (deadline && new Date(deadline).getTime() < now) {
+          tradeMap[trade].overdueTasks++;
+        }
+      }
+    }
+
+    return Object.entries(tradeMap)
+      .filter(([_, v]) => v.maxSeverity === "critical" || v.maxSeverity === "major" || v.overdueTasks > 0)
+      .map(([trade, v]) => ({ trade, defects: v.defects, overdueTasks: v.overdueTasks, severity: v.maxSeverity }))
+      .sort((a, b) => severityOrder.indexOf(b.severity) - severityOrder.indexOf(a.severity));
+  }
+
+  /**
+   * Get weekly changes summary.
+   */
+  async getWeeklyChanges(projectId: string): Promise<{
+    newDefects: number;
+    newTasks: number;
+    newObservations: number;
+    entries: ProjectKnowledgeEntry[];
+  }> {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const entries = await this.getByTimeRange(projectId, oneWeekAgo);
+    return {
+      newDefects: entries.filter(e => e.type === "defect").length,
+      newTasks: entries.filter(e => e.type === "task").length,
+      newObservations: entries.filter(e => e.type === "observation").length,
+      entries,
+    };
+  }
+
+  /**
+   * Get all unique rooms mentioned in the project.
+   */
+  async getProjectRooms(projectId: string): Promise<string[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    const rooms = new Set<string>();
+    for (const e of entries) {
+      const loc = e.metadata.location as string;
+      if (loc) rooms.add(loc);
+    }
+    return Array.from(rooms).sort();
+  }
+
+  /**
+   * Get all unique trades mentioned in the project.
+   */
+  async getProjectTrades(projectId: string): Promise<string[]> {
+    const entries = await this.getProjectKnowledge(projectId);
+    const trades = new Set<string>();
+    for (const e of entries) {
+      const trade = e.metadata.trade as string;
+      if (trade) trades.add(trade);
+    }
+    return Array.from(trades).sort();
+  }
+
   /**
    * Clear all knowledge for a project.
    */

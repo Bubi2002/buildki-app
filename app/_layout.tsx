@@ -36,6 +36,7 @@ const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 export const unstable_settings = {
   anchor: "(tabs)",
+  initialRouteName: "(tabs)",
 };
 
 function BiometricLockOverlay({

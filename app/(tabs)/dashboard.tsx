@@ -13,40 +13,35 @@ type Project = {
   description?: string;
 };
 
-// ─── AI Workbench Module Definition ──────────────────────────────────────────
+// ─── Tool Grid (matching screenshot layout) ─────────────────────────────────
 
-interface WorkbenchModule {
+interface ToolItem {
   key: string;
   label: string;
   icon: string;
   color: string;
   route: string;
-  description: string;
 }
 
-const AI_MODULES: WorkbenchModule[] = [
-  { key: "neue_analyse", label: "Neue Analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis", description: "Fotos analysieren" },
-  { key: "analyse_historie", label: "Analyse-Historie", icon: "history", color: "#5C6BC0", route: "/analysis-history", description: "Vergangene Analysen" },
-  { key: "batch_analyse", label: "Batch-Analyse", icon: "burst-mode", color: "#00BFA5", route: "/batch-analysis", description: "Mehrere Fotos gleichzeitig" },
-  { key: "ai_assistant", label: "AI Site Assistant", icon: "smart-toy", color: "#0EA5E9", route: "/ai-assistant", description: "Fragen zum Projekt" },
-  { key: "baufortschritt", label: "Baufortschritt", icon: "trending-up", color: "#66BB6A", route: "/dashboard-stats", description: "Fortschrittsübersicht" },
-  { key: "berichte", label: "Berichte", icon: "summarize", color: "#FF7043", route: "/protocol-merge", description: "Berichte erstellen" },
-  { key: "ki_einstellungen", label: "KI-Einstellungen", icon: "tune", color: "#78909C", route: "/(tabs)/settings", description: "KI konfigurieren" },
-];
-
-const TOOL_MODULES: WorkbenchModule[] = [
-  { key: "maengel", label: "Mängel", icon: "warning", color: "#FF9800", route: "/defects", description: "Mängelverwaltung" },
-  { key: "grundriss", label: "Grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan", description: "Grundriss-Ansicht" },
-  { key: "tagebuch", label: "Tagebuch", icon: "menu-book", color: "#66BB6A", route: "/diary", description: "Bautagebuch" },
-  { key: "checklisten", label: "Checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists", description: "Prüflisten" },
-  { key: "team", label: "Team", icon: "groups", color: "#5C6BC0", route: "/team", description: "Teamverwaltung" },
-  { key: "fotos", label: "Fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery", description: "Fotogalerie" },
-  { key: "qr_scan", label: "QR-Scan", icon: "qr-code-scanner", color: "#00BCD4", route: "/qr-scanner", description: "QR-Codes scannen" },
-  { key: "zeiterfassung", label: "Zeiten", icon: "timer", color: "#FF5722", route: "/time-tracking", description: "Zeiterfassung" },
-  { key: "export", label: "Export", icon: "ios-share", color: "#43A047", route: "/export-center", description: "Daten exportieren" },
-  { key: "kalender", label: "Kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view", description: "Termine" },
-  { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport", description: "3D-Scans" },
-  { key: "cloud", label: "Cloud", icon: "cloud-download", color: "#607D8B", route: "/cloud-import", description: "Cloud-Import" },
+const TOOLS: ToolItem[] = [
+  { key: "ki_analyse", label: "KI-Analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
+  { key: "grundriss", label: "Grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
+  { key: "maengel", label: "Mängel", icon: "warning", color: "#FF9800", route: "/defects" },
+  { key: "tagebuch", label: "Tagebuch", icon: "menu-book", color: "#66BB6A", route: "/diary" },
+  { key: "checklisten", label: "Checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
+  { key: "team", label: "Team", icon: "groups", color: "#5C6BC0", route: "/team" },
+  { key: "statistik", label: "Statistik", icon: "bar-chart", color: "#26A69A", route: "/dashboard-stats" },
+  { key: "fotos", label: "Fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },
+  { key: "qr_scan", label: "QR-Scan", icon: "qr-code-scanner", color: "#00BCD4", route: "/qr-scanner" },
+  { key: "zeiterfassung", label: "Zeiterfassung", icon: "timer", color: "#FF5722", route: "/time-tracking" },
+  { key: "cloud", label: "Cloud", icon: "cloud-download", color: "#607D8B", route: "/cloud-import" },
+  { key: "export", label: "Export", icon: "ios-share", color: "#43A047", route: "/export" },
+  { key: "excel", label: "Excel", icon: "table-chart", color: "#388E3C", route: "/export-center" },
+  { key: "maengel_xls", label: "Mängel-XLS", icon: "error-outline", color: "#D32F2F", route: "/defect-export" },
+  { key: "bericht", label: "Bericht", icon: "summarize", color: "#7B1FA2", route: "/protocol-merge" },
+  { key: "vergleich", label: "Vergleich", icon: "compare", color: "#5C6BC0", route: "/comparison" },
+  { key: "kalender", label: "Kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
+  { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
 ];
 
 export default function AIWorkbenchScreen() {
@@ -89,19 +84,14 @@ export default function AIWorkbenchScreen() {
   return (
     <ScreenContainer className="p-0">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>AI Workbench</Text>
-          <Text style={styles.subtitle}>Zentrale KI-Plattform</Text>
-        </View>
 
-        {/* Project Selector */}
+        {/* ─── Project Selector ─────────────────────────────────────────── */}
         <Pressable
           onPress={() => setShowProjectPicker(!showProjectPicker)}
           style={({ pressed }) => [styles.projectSelector, { opacity: pressed ? 0.8 : 1 }]}
         >
           <View style={styles.projectSelectorLeft}>
-            <View style={[styles.projectDot, { backgroundColor: selectedProject?.color || '#5DADE2' }]} />
+            <View style={[styles.projectDot, { backgroundColor: selectedProject?.color || '#E53935' }]} />
             <View style={{ flex: 1 }}>
               <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
               <Text style={styles.projectSelectorName} numberOfLines={1}>
@@ -146,7 +136,7 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
-        {/* Quick Action: Recording */}
+        {/* ─── Neue Aufnahme starten ───────────────────────────────────── */}
         <Pressable
           onPress={() => router.push('/(tabs)/' as any)}
           style={({ pressed }) => [styles.recordButton, { opacity: pressed ? 0.85 : 1 }]}
@@ -156,79 +146,40 @@ export default function AIWorkbenchScreen() {
           <MaterialIcons name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
         </Pressable>
 
-        {/* AI MODULES Section */}
-        <View style={styles.sectionHeader}>
-          <MaterialIcons name="auto-awesome" size={16} color="#7C4DFF" />
-          <Text style={styles.sectionTitle}>KI-MODULE</Text>
-        </View>
-
-        <View style={styles.aiGrid}>
-          {AI_MODULES.map((mod) => (
-            <Pressable
-              key={mod.key}
-              onPress={() => navigateModule(mod.route)}
-              style={({ pressed }) => [styles.aiCard, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.aiIconWrap, { backgroundColor: mod.color + "20" }]}>
-                <MaterialIcons name={mod.icon as any} size={22} color={mod.color} />
-              </View>
-              <View style={styles.aiCardContent}>
-                <Text style={styles.aiCardLabel}>{mod.label}</Text>
-                <Text style={styles.aiCardDesc}>{mod.description}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={18} color="#4A5568" />
-            </Pressable>
-          ))}
-        </View>
-
-        {/* TOOLS Section */}
-        <Text style={styles.toolsSectionTitle}>WERKZEUGE</Text>
+        {/* ─── TOOLS Grid (3 columns, matching screenshot) ─────────────── */}
+        <Text style={styles.toolsSectionTitle}>TOOLS</Text>
 
         <View style={styles.toolGrid}>
-          {TOOL_MODULES.map((tool) => (
+          {TOOLS.map((tool) => (
             <Pressable
               key={tool.key}
               onPress={() => navigateModule(tool.route)}
               style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <MaterialIcons name={tool.icon as any} size={22} color={tool.color} />
+              <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
               <Text style={styles.toolLabel} numberOfLines={1}>{tool.label}</Text>
             </Pressable>
           ))}
         </View>
+
       </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#F0F4F8',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#8FA3B8',
-    marginTop: 2,
-  },
+  // ─── Project Selector ──────────────────────────────────────────────────────
   projectSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 14,
     backgroundColor: '#0F1E30',
     borderWidth: 1,
     borderColor: '#1E3A5F',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 8,
+    padding: 14,
   },
   projectSelectorLeft: {
     flexDirection: 'row',
@@ -245,13 +196,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#8FA3B8',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    fontWeight: '600',
   },
   projectSelectorName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#F0F4F8',
-    marginTop: 1,
+    marginTop: 2,
   },
   projectDropdown: {
     marginHorizontal: 16,
@@ -259,7 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F1E30',
     borderWidth: 1,
     borderColor: '#1E3A5F',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 6,
   },
   noProjects: {
@@ -273,7 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   projectItemActive: {
     backgroundColor: '#1E3A5F40',
@@ -292,103 +244,55 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#5DADE2',
   },
+  // ─── Record Button ─────────────────────────────────────────────────────────
   recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 14,
     backgroundColor: '#E53935',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 8,
   },
   recordButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
     flex: 1,
   },
-  // AI Section
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 22,
-    marginBottom: 10,
-    paddingLeft: 20,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#7C4DFF',
-    letterSpacing: 1,
-  },
-  aiGrid: {
-    paddingHorizontal: 16,
-    gap: 6,
-  },
-  aiCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0F1E30',
-    borderWidth: 1,
-    borderColor: '#1E3A5F',
-    borderRadius: 10,
-    padding: 12,
-    gap: 12,
-  },
-  aiIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aiCardContent: {
-    flex: 1,
-  },
-  aiCardLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F0F4F8',
-  },
-  aiCardDesc: {
-    fontSize: 11,
-    color: '#8FA3B8',
-    marginTop: 1,
-  },
-  // Tools Section
+  // ─── Tools Grid ────────────────────────────────────────────────────────────
   toolsSectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#8FA3B8',
-    letterSpacing: 1,
-    marginTop: 22,
-    marginBottom: 8,
+    letterSpacing: 1.5,
+    marginTop: 20,
+    marginBottom: 10,
     paddingLeft: 20,
   },
   toolGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 14,
-    gap: 6,
+    gap: 8,
   },
   toolCard: {
-    width: '31.5%',
+    width: '31%',
     backgroundColor: '#0F1E30',
     borderWidth: 1,
     borderColor: '#1E3A5F',
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 4,
-    gap: 4,
+    gap: 6,
   },
   toolLabel: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
     color: '#F0F4F8',
     textAlign: 'center',
   },

@@ -16,6 +16,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName="dashboard"
       screenOptions={{
         tabBarActiveTintColor: "#5DADE2",
         tabBarInactiveTintColor: "#7F8C9B",
@@ -32,17 +33,17 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
-        options={{
-          title: t("nav_home"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="mic.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="dashboard"
         options={{
           title: t("werkzeuge"),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: t("nav_home"),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="mic.fill" color={color} />,
         }}
       />
       <Tabs.Screen
