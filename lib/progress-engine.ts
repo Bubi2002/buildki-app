@@ -284,6 +284,13 @@ class ProgressEngine {
     const now = new Date().toISOString();
     if (events.length > 0) sources.push({ type: "timeline", count: events.length, lastUpdate: now });
     if (openDefects.length + openTasks.length > 0) sources.push({ type: "knowledge", count: openDefects.length + openTasks.length, lastUpdate: now });
+    // Add matterport source if knowledge-layer has matterport entries
+    try {
+      const matterportEntries = await knowledgeLayer.getBySource(projectId, "matterport");
+      if (matterportEntries.length > 0) {
+        sources.push({ type: "matterport", count: matterportEntries.length, lastUpdate: now });
+      }
+    } catch {}
 
     // 10. Create snapshot
     const snapshot: ProgressSnapshot = {

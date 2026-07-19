@@ -64,10 +64,8 @@ interface ModelDetails {
 
 type ViewMode = "connect" | "models" | "detail";
 
-// Feature gate: Set to `true` once Matterport production API is approved.
-// Until then, a sandbox banner is shown. Functionality works but may be limited.
-// To activate: set env var MATTERPORT_PRODUCTION_ENABLED=true or change this constant.
-const MATTERPORT_PRODUCTION_ENABLED = false;
+// Feature gate: Production API credentials are now validated and active.
+const MATTERPORT_PRODUCTION_ENABLED = true;
 
 export default function MatterportScreen() {
   const router = useRouter();
@@ -583,29 +581,38 @@ export default function MatterportScreen() {
 
         {/* Open 3D Viewer Button */}
         <Pressable
-          onPress={() => router.push(`/matterport-viewer?modelId=${selectedModel.id}` as any)}
+          onPress={() => {
+            // Pass projectId from active_project for room import & defect linking
+            AsyncStorage.getItem("active_project").then(stored => {
+              const proj = stored ? JSON.parse(stored) : null;
+              const projectParam = proj?.id ? `&projectId=${proj.id}` : "";
+              router.push(`/matterport-viewer?modelId=${selectedModel.id}${projectParam}` as any);
+            }).catch(() => {
+              router.push(`/matterport-viewer?modelId=${selectedModel.id}` as any);
+            });
+          }}
           style={({ pressed }) => [styles.detailCard, { backgroundColor: "#00B0FF", borderColor: "#00B0FF", opacity: pressed ? 0.8 : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }]}
         >
           <MaterialIcons name="view-in-ar" size={22} color="#fff" />
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>3D-Modell öffnen</Text>
         </Pressable>
 
-        {/* Phase 2 Preview */}
+        {/* KI-Analyse Features */}
         <View style={[styles.detailCard, { backgroundColor: "rgba(0, 176, 255, 0.05)", borderColor: "#00B0FF" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
             <MaterialIcons name="auto-awesome" size={20} color="#00B0FF" />
             <Text style={[styles.detailCardTitle, { color: "#00B0FF", marginLeft: 8, marginBottom: 0 }]}>
-              Phase 2: KI-Analyse (in Vorbereitung)
+              KI-Analyse
             </Text>
           </View>
           <Text style={[styles.detailText, { color: colors.muted }]}>
-            Nach Freischaltung der Production API werden folgende KI-Funktionen verfügbar:
+            Folgende KI-Funktionen stehen über das 3D-Modell zur Verfügung:
           </Text>
           <View style={{ marginTop: 8 }}>
             {["Baufortschritt (%)", "Fehlende Gewerke erkennen", "Mängel automatisch identifizieren", "Bautagesbericht generieren", "Aufgaben ableiten"].map((item, i) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-                <MaterialIcons name="radio-button-unchecked" size={14} color={colors.muted} />
-                <Text style={[{ marginLeft: 8, fontSize: 13, color: colors.muted }]}>{item}</Text>
+                <MaterialIcons name="check-circle-outline" size={14} color="#00B0FF" />
+                <Text style={[{ marginLeft: 8, fontSize: 13, color: colors.foreground }]}>{item}</Text>
               </View>
             ))}
           </View>

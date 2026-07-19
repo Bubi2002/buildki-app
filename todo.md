@@ -888,3 +888,37 @@
 ### 9b.9 Dokumentation
 - [ ] Compliance-Checkliste erstellen
 - [ ] Alle rechtlichen Entscheidungen dokumentieren
+
+## Phase 10: Matterport Vollständige Integration (2026-07-19)
+
+### 10.1 Credentials & Konfiguration
+- [x] MATTERPORT_TOKEN_ID eingetragen und validiert (Basic Auth OK)
+- [x] MATTERPORT_TOKEN_SECRET eingetragen und validiert
+- [x] MATTERPORT_SDK_KEY eingetragen (b2au..., 25 Zeichen)
+- [x] Server env.ts: alle 3 Keys korrekt referenziert
+- [x] getSdkKey tRPC-Endpoint liefert SDK-Key an Client
+
+### 10.2 Viewer & Modell
+- [x] MATTERPORT_PRODUCTION_ENABLED = true (Sandbox-Banner entfernt)
+- [x] 3D-Viewer: applicationKey (SDK-Key) wird korrekt an Embed-URL übergeben
+- [x] projectId wird beim Öffnen des Viewers aus active_project übergeben
+- [x] SDK Bridge: Pin-Placement, Floor-Switch, View-Modes, Navigation funktionsfähig
+- [x] KI-Analyse-Abschnitt aktualisiert (nicht mehr "in Vorbereitung")
+
+### 10.3 Matterport-Service (Production)
+- [x] lib/matterport-service.ts: Stubs durch echte tRPC-Server-Aufrufe ersetzt
+- [x] syncSpace: Lädt Räume + Etagen und speist Knowledge-Layer
+- [x] getRooms/getFloorPlans/getSweeps: Echte Server-Endpoints via fetch
+- [x] analyzeSpace: Nutzt reale Raum-/Sweep-/Tag-Daten für Analyse-Ergebnis
+- [x] Knowledge-Layer-Ingestion: Räume + Etagen mit source="matterport"
+
+### 10.4 KI-Baufortschritt Foundation
+- [x] Progress-Engine: Matterport-Source wird aus Knowledge-Layer geladen
+- [x] Knowledge-Layer: Matterport-Daten (Räume, Etagen, Scans) verfügbar
+- [x] Timeline: scan_imported + scan_analyzed Events werden emittiert
+- [x] Defect-Store: Matterport-Defekte mit 3D-Position verknüpft
+
+### 10.5 Tests
+- [x] 30 Tests bestanden, 1 übersprungen, 0 Fehler
+- [x] TypeScript: 0 Fehler
+- [x] Matterport Basic Auth: 1 Modell im Account bestätigt
