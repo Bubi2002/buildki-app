@@ -1171,8 +1171,7 @@ Regeln:
         const { analyzeProtocol } = await import("./construction-assistant");
         return analyzeProtocol(input);
       }),
-  }),
+    }),
 
 });
-
 export type AppRouter = typeof appRouter;

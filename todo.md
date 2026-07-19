@@ -1047,3 +1047,9 @@
 - [x] Berechtigungsdialoge prüfen (privacy-consent-dialog.tsx)
 - [x] Crash-Tests durchführen (0 TypeScript-Fehler, 30 Tests bestanden)
 - [ ] Performance-Optimierung (optional, kein Blocker)
+
+## Phase 16: KI-Support, Tutorial & Abo-Modell (2026-07-19)
+- [x] KI-Support-Chat Screen erstellen (in-app Hilfe mit LLM) (app/support-chat.tsx)
+- [x] Tutorial/Bedienungsanleitung Screen erstellen (app/tutorial.tsx)
+- [x] Abo-/Preismodell: 10€+MwSt/Monat oder 100€+MwSt/Jahr, 14 Tage Trial (app/subscription.tsx)
+- [x] Alle auf Tools-Tab (erste Maske) als prominente Buttons hinzufügen (Anleitung, KI-Support, Abo)

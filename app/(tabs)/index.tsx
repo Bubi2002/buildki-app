@@ -529,6 +529,31 @@ export default function AIWorkbenchScreen() {
           </Pressable>
         </View>
 
+        {/* ─── Hilfe & Abo ───────────────────────────────────────────── */}
+        <View style={styles.helpRow}>
+          <Pressable
+            onPress={() => router.push('/tutorial' as any)}
+            style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="menu-book" size={20} color="#5DADE2" />
+            <Text style={styles.helpBtnText}>Anleitung</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/support-chat' as any)}
+            style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="support-agent" size={20} color="#A78BFA" />
+            <Text style={styles.helpBtnText}>KI-Support</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/subscription' as any)}
+            style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="credit-card" size={20} color="#4ADE80" />
+            <Text style={styles.helpBtnText}>Abo</Text>
+          </Pressable>
+        </View>
+
         {/* ─── TOOLS Grid (3 columns) ─────────────────────────────────────── */}
         <Text style={styles.toolsSectionTitle}>TOOLS</Text>
 
@@ -866,6 +891,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#5DADE2',
+  },
+  // ─── Help Row ──────────────────────────────────────────────────────────────
+  helpRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  helpBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderWidth: 1,
+  },
+  helpBtnText: {
+    color: '#E8F0FE',
+    fontSize: 12,
+    fontWeight: '600',
   },
   // ─── Tools Grid ────────────────────────────────────────────────────────────
   toolsSectionTitle: {

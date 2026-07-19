@@ -65,6 +65,14 @@ function getFaqItems(t: (key: any) => string) { return [
     question: t('faq_q_offline'),
     answer: t('faq_a_offline'),
   },
+  {
+    question: "Was kostet ProtoKI?",
+    answer: "ProtoKI kostet 10,00 \u20ac + MwSt. pro Monat oder 100,00 \u20ac + MwSt. pro Jahr (2 Monate gratis). Jede Lizenz beginnt mit 14 Tagen kostenloser Testphase.",
+  },
+  {
+    question: "Wie importiere ich ein Video aus WhatsApp?",
+    answer: "Du hast zwei M\u00f6glichkeiten: 1) \u00d6ffne Tools \u2192 Video-Import und w\u00e4hle das Video aus der Galerie. 2) Teile das Video direkt aus WhatsApp \u00fcber die iOS-Teilen-Funktion an ProtoKI.",
+  },
 ]; }
 
 export default function SupportChatScreen() {
