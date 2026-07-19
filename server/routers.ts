@@ -911,6 +911,31 @@ Regeln:
         const { rawResponse, ...clientResult } = result;
         return clientResult;
       }),
+
+    /**
+     * Generate a professional construction report from transcription + metadata.
+     * Uses structured JSON output for per-trade summaries, then formats as Markdown.
+     */
+    generateReport: publicProcedure
+      .input(
+        z.object({
+          reportType: z.string(),
+          transcription: z.string(),
+          projectName: z.string().optional(),
+          datum: z.string().optional(),
+          floor: z.string().optional(),
+          room: z.string().optional(),
+          defectsJson: z.string().optional(),
+          photosJson: z.string().optional(),
+          attendeesJson: z.string().optional(),
+          additionalContext: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { generateProfessionalReport } = await import("./report-engine");
+        const content = await generateProfessionalReport(input);
+        return { content };
+      }),
   }),
 
 });

@@ -1,14 +1,17 @@
 /**
- * protoKI – KI-Berichtsgenerator
- * 
- * Screen for generating professional reports from recordings/transcriptions.
+ * protoKI – Professioneller KI-Berichtsgenerator
+ *
  * Features:
- * - 10 report type selection
- * - Structure recognition preview
- * - Editable report before saving
- * - PDF export
+ * - 10 Berichtstypen mit spezialisierten Prompts
+ * - Automatische Gewerk-Zusammenfassung via LLM
+ * - Fotos an den richtigen Stellen referenziert
+ * - Professionelle Bauleiter-Sprache
+ * - Mängel-Daten aus defect-store integriert
+ * - Anwesenheitsdaten aus attendance_records
+ * - Editierbarer Bericht vor Export
+ * - PDF-Export mit Markdown-Rendering
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -17,41 +20,62 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  FlatList,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { REPORT_TYPES, type ReportType, type ReportTypeConfig, buildReportPrompt, buildStructureRecognitionPrompt, type RecognizedStructure } from "@/lib/report-types";
+import { REPORT_TYPES, type ReportType, type ReportTypeConfig } from "@/lib/report-types";
 import { trpc } from "@/lib/trpc";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
+import { getDefects, type Defect } from "@/lib/defect-store";
 
-type Step = "select" | "configure" | "generating" | "edit" | "done";
+type Step = "select" | "configure" | "generating" | "preview" | "edit";
+
+type PhotoRef = {
+  uri: string;
+  description: string;
+  room?: string;
+  trade?: string;
+};
 
 export default function ReportGeneratorScreen() {
   const router = useRouter();
   const colors = useColors();
-  const params = useLocalSearchParams<{ protocolId?: string; transcription?: string; projectId?: string; roomId?: string; roomName?: string; floorName?: string }>();
+  const params = useLocalSearchParams<{
+    protocolId?: string;
+    transcription?: string;
+    projectId?: string;
+    roomId?: string;
+    roomName?: string;
+    floorName?: string;
+  }>();
 
   const [step, setStep] = useState<Step>("select");
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [transcription, setTranscription] = useState(params.transcription || "");
   const [reportContent, setReportContent] = useState("");
-  const [recognizedStructure, setRecognizedStructure] = useState<RecognizedStructure | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState("");
+  const [generationProgress, setGenerationProgress] = useState(0);
 
-  // Additional metadata
+  // Metadata
   const [reportDatum, setReportDatum] = useState(new Date().toLocaleDateString("de-DE"));
   const [reportProjekt, setReportProjekt] = useState("");
   const [reportFloor, setReportFloor] = useState(params.floorName || "");
   const [reportRoom, setReportRoom] = useState(params.roomName || "");
   const [projectFloors, setProjectFloors] = useState<Floor[]>([]);
   const [projectRooms, setProjectRooms] = useState<Room[]>([]);
+  const [includeDefects, setIncludeDefects] = useState(true);
+  const [includeAttendance, setIncludeAttendance] = useState(true);
+  const [includePhotos, setIncludePhotos] = useState(true);
+
+  // tRPC mutation for report generation
+  const generateReportMutation = trpc.analysis.generateReport.useMutation();
 
   // Load floors/rooms for the project
   React.useEffect(() => {
@@ -65,6 +89,12 @@ export default function ReportGeneratorScreen() {
     })();
   }, [params.projectId]);
 
+  /**
+   * Main report generation flow:
+   * 1. Gather context data (defects, attendance, photos)
+   * 2. Call server LLM with structured output
+   * 3. Receive formatted Markdown report
+   */
   const generateReport = async () => {
     if (!selectedType || !transcription.trim()) {
       Alert.alert("Fehler", "Bitte Berichtstyp und Transkription angeben.");
@@ -73,77 +103,137 @@ export default function ReportGeneratorScreen() {
 
     setStep("generating");
     setIsGenerating(true);
+    setGenerationProgress(0);
 
     try {
-      // Step 1: Structure Recognition
-      setGenerationStep("Strukturerkennung...");
-      const structurePrompt = buildStructureRecognitionPrompt(transcription, selectedType);
+      // Step 1: Gather defect data
+      setGenerationStep("Projektdaten sammeln...");
+      setGenerationProgress(10);
 
-      // Use the server LLM for structure recognition
-      // For now, we create a basic structure from the text
-      const basicStructure: RecognizedStructure = {
-        datum: reportDatum,
-        projekt: reportProjekt || undefined,
-        personen: [],
-        firmen: [],
-        arbeiten: [],
-        maengel: [],
-        fristen: [],
-      };
-      setRecognizedStructure(basicStructure);
-
-      // Step 2: Generate Report
-      setGenerationStep("Bericht wird generiert...");
-      const reportPrompt = buildReportPrompt(
-        selectedType,
-        transcription,
-        basicStructure,
-        {
-          datum: reportDatum,
-          projekt: reportProjekt || undefined,
-        }
-      );
-
-      // Call server LLM
-      const result = await fetch("/api/trpc/analysis.generateReport", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          json: {
-            prompt: reportPrompt,
-            reportType: selectedType,
-          },
-        }),
-      }).catch(() => null);
-
-      if (result && result.ok) {
-        const data = await result.json();
-        setReportContent(data?.result?.data?.json?.content || generateFallbackReport(selectedType, transcription, basicStructure));
-      } else {
-        // Fallback: Generate a structured template
-        setReportContent(generateFallbackReport(selectedType, transcription, basicStructure));
+      let defectsJson: string | undefined;
+      if (includeDefects && params.projectId) {
+        try {
+          const defects = await getDefects(params.projectId);
+          if (defects.length > 0) {
+            defectsJson = JSON.stringify(
+              defects.map((d) => ({
+                title: d.title,
+                status: d.status,
+                priority: d.priority,
+                location: d.location,
+                gewerk: (d as any).gewerk || d.category,
+                description: d.description,
+                dueDate: d.dueDate,
+                assignee: d.assignee,
+                positionCode: (d as any).positionCode,
+              }))
+            );
+          }
+        } catch {}
       }
 
-      setStep("edit");
+      // Step 2: Gather attendance data
+      setGenerationStep("Anwesenheitsdaten laden...");
+      setGenerationProgress(25);
+
+      let attendeesJson: string | undefined;
+      if (includeAttendance) {
+        try {
+          const raw = await AsyncStorage.getItem("attendance_records");
+          if (raw) {
+            const records = JSON.parse(raw);
+            // Find today's or most recent record
+            const today = new Date().toISOString().slice(0, 10);
+            const todayRecord = records.find((r: any) => r.date === today) || records[records.length - 1];
+            if (todayRecord?.workers?.length > 0) {
+              attendeesJson = JSON.stringify(
+                todayRecord.workers.map((w: any) => ({
+                  name: w.name,
+                  company: w.firma,
+                  role: w.gewerk,
+                }))
+              );
+            }
+          }
+        } catch {}
+      }
+
+      // Step 3: Gather photo references
+      setGenerationStep("Fotodokumentation vorbereiten...");
+      setGenerationProgress(40);
+
+      let photosJson: string | undefined;
+      if (includePhotos && params.projectId) {
+        try {
+          // Get photos from defects
+          const defects = await getDefects(params.projectId);
+          const photoRefs: PhotoRef[] = [];
+          for (const d of defects) {
+            if (d.photos?.length > 0) {
+              photoRefs.push({
+                uri: d.photos[0],
+                description: `Mangel: ${d.title}`,
+                room: d.location,
+                trade: (d as any).gewerk || d.category,
+              });
+            }
+          }
+          if (photoRefs.length > 0) {
+            photosJson = JSON.stringify(photoRefs.slice(0, 20));
+          }
+        } catch {}
+      }
+
+      // Step 4: Call server LLM for professional report
+      setGenerationStep("KI generiert professionellen Bericht...");
+      setGenerationProgress(60);
+
+      const result = await generateReportMutation.mutateAsync({
+        reportType: selectedType,
+        transcription,
+        projectName: reportProjekt || undefined,
+        datum: reportDatum,
+        floor: reportFloor || undefined,
+        room: reportRoom || undefined,
+        defectsJson,
+        photosJson,
+        attendeesJson,
+        additionalContext: params.protocolId
+          ? `Protokoll-ID: ${params.protocolId}`
+          : undefined,
+      });
+
+      setGenerationStep("Formatierung abschließen...");
+      setGenerationProgress(90);
+
+      if (result.content) {
+        setReportContent(result.content);
+      } else {
+        setReportContent(generateFallbackReport(selectedType));
+      }
+
+      setGenerationProgress(100);
+      setStep("preview");
     } catch (error: any) {
-      Alert.alert("Fehler", error.message || "Berichtsgenerierung fehlgeschlagen");
-      setStep("configure");
+      // Fallback to local template
+      setReportContent(generateFallbackReport(selectedType));
+      setStep("preview");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const generateFallbackReport = (type: ReportType, text: string, structure: RecognizedStructure): string => {
-    const config = REPORT_TYPES.find(r => r.id === type)!;
+  const generateFallbackReport = (type: ReportType): string => {
+    const config = REPORT_TYPES.find((r) => r.id === type)!;
     const date = reportDatum || new Date().toLocaleDateString("de-DE");
     const project = reportProjekt || "[Projektname]";
 
     let report = `# ${config.label}\n\n`;
-    report += `**Datum:** ${date}\n`;
-    report += `**Projekt:** ${project}\n\n`;
+    report += `| | |\n|---|---|\n`;
+    report += `| **Projekt** | ${project} |\n`;
+    report += `| **Datum** | ${date} |\n\n`;
     report += `---\n\n`;
 
-    // Generate sections based on type
     for (const section of config.sections) {
       report += `## ${section}\n\n`;
       report += `[Bitte ergänzen]\n\n`;
@@ -151,23 +241,41 @@ export default function ReportGeneratorScreen() {
 
     report += `---\n\n`;
     report += `## Originaltranskription\n\n`;
-    report += `> ${text.slice(0, 500)}${text.length > 500 ? "..." : ""}\n\n`;
+    report += `> ${transcription.slice(0, 500)}${transcription.length > 500 ? "..." : ""}\n\n`;
     report += `---\n\n`;
     report += `*Erstellt mit protoKI am ${date}*\n`;
 
     return report;
   };
 
-  const saveReport = () => {
-    // Save the report content back to the protocol or as standalone
-    Alert.alert(
-      "Bericht speichern",
-      "Der Bericht wurde erfolgreich erstellt und kann als PDF exportiert werden.",
-      [
-        { text: "PDF exportieren", onPress: () => router.push("/export" as any) },
-        { text: "Fertig", onPress: () => router.back() },
-      ]
-    );
+  const saveReport = async () => {
+    // Save to AsyncStorage for later PDF export
+    try {
+      const reportData = {
+        id: `report_${Date.now()}`,
+        type: selectedType,
+        content: reportContent,
+        projectId: params.projectId,
+        projectName: reportProjekt,
+        datum: reportDatum,
+        createdAt: new Date().toISOString(),
+      };
+      const existing = await AsyncStorage.getItem("saved_reports");
+      const reports = existing ? JSON.parse(existing) : [];
+      reports.unshift(reportData);
+      await AsyncStorage.setItem("saved_reports", JSON.stringify(reports.slice(0, 50)));
+
+      Alert.alert(
+        "Bericht gespeichert",
+        "Der Bericht wurde erfolgreich gespeichert und kann als PDF exportiert werden.",
+        [
+          { text: "PDF exportieren", onPress: () => router.push("/export" as any) },
+          { text: "Fertig", onPress: () => router.back() },
+        ]
+      );
+    } catch {
+      Alert.alert("Fehler", "Bericht konnte nicht gespeichert werden.");
+    }
   };
 
   // ─── Step: Select Report Type ─────────────────────────────────────────────────
@@ -213,7 +321,7 @@ export default function ReportGeneratorScreen() {
 
   // ─── Step: Configure ──────────────────────────────────────────────────────────
   const renderConfigureStep = () => {
-    const config = REPORT_TYPES.find(r => r.id === selectedType);
+    const config = REPORT_TYPES.find((r) => r.id === selectedType);
     if (!config) return null;
 
     return (
@@ -274,19 +382,68 @@ export default function ReportGeneratorScreen() {
               <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Raum</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  {projectRooms.filter(r => !reportFloor || r.floorId === projectFloors.find(f => f.name === reportFloor)?.id).map((r) => (
-                    <Pressable
-                      key={r.id}
-                      onPress={() => setReportRoom(r.name)}
-                      style={[styles.chipBtn, { backgroundColor: reportRoom === r.name ? config.color + "20" : colors.surface, borderColor: reportRoom === r.name ? config.color : colors.border }]}
-                    >
-                      <Text style={{ color: reportRoom === r.name ? config.color : colors.foreground, fontSize: 13 }}>{r.name}</Text>
-                    </Pressable>
-                  ))}
+                  {projectRooms
+                    .filter((r) => !reportFloor || r.floorId === projectFloors.find((f) => f.name === reportFloor)?.id)
+                    .map((r) => (
+                      <Pressable
+                        key={r.id}
+                        onPress={() => setReportRoom(r.name)}
+                        style={[styles.chipBtn, { backgroundColor: reportRoom === r.name ? config.color + "20" : colors.surface, borderColor: reportRoom === r.name ? config.color : colors.border }]}
+                      >
+                        <Text style={{ color: reportRoom === r.name ? config.color : colors.foreground, fontSize: 13 }}>{r.name}</Text>
+                      </Pressable>
+                    ))}
                 </View>
               </ScrollView>
             </>
           )}
+
+          {/* Data Integration Options */}
+          <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 16 }]}>Datenquellen einbeziehen</Text>
+          <View style={[styles.optionsContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Pressable
+              onPress={() => setIncludeDefects(!includeDefects)}
+              style={styles.optionRow}
+            >
+              <MaterialIcons
+                name={includeDefects ? "check-box" : "check-box-outline-blank"}
+                size={22}
+                color={includeDefects ? config.color : colors.muted}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Mängeldaten</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>Aktuelle Mängel aus dem Projekt einbeziehen</Text>
+              </View>
+            </Pressable>
+            <Pressable
+              onPress={() => setIncludeAttendance(!includeAttendance)}
+              style={styles.optionRow}
+            >
+              <MaterialIcons
+                name={includeAttendance ? "check-box" : "check-box-outline-blank"}
+                size={22}
+                color={includeAttendance ? config.color : colors.muted}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Anwesenheitsliste</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>Heutige Anwesenheit als Teilnehmer</Text>
+              </View>
+            </Pressable>
+            <Pressable
+              onPress={() => setIncludePhotos(!includePhotos)}
+              style={styles.optionRow}
+            >
+              <MaterialIcons
+                name={includePhotos ? "check-box" : "check-box-outline-blank"}
+                size={22}
+                color={includePhotos ? config.color : colors.muted}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Fotodokumentation</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>Foto-Referenzen an passenden Stellen</Text>
+              </View>
+            </Pressable>
+          </View>
 
           {/* Transcription Input */}
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
@@ -304,12 +461,12 @@ export default function ReportGeneratorScreen() {
 
           {/* Sections Preview */}
           <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 8 }]}>
-            Berichts-Abschnitte
+            Berichts-Abschnitte (KI-generiert)
           </Text>
           <View style={[styles.sectionsPreview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {config.sections.map((section, i) => (
+            {["Zusammenfassung", "Fortschritt nach Gewerken", "Mängelübersicht", "Nächste Maßnahmen", "Fotodokumentation"].map((section, i) => (
               <View key={i} style={styles.sectionItem}>
-                <Text style={[styles.sectionNumber, { color: config.color }]}>{i + 1}</Text>
+                <MaterialIcons name="auto-awesome" size={14} color={config.color} />
                 <Text style={[styles.sectionName, { color: colors.foreground }]}>{section}</Text>
               </View>
             ))}
@@ -325,7 +482,7 @@ export default function ReportGeneratorScreen() {
             ]}
           >
             <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-            <Text style={styles.generateBtnText}>Bericht generieren</Text>
+            <Text style={styles.generateBtnText}>Professionellen Bericht generieren</Text>
           </Pressable>
 
           <Pressable
@@ -341,39 +498,136 @@ export default function ReportGeneratorScreen() {
   };
 
   // ─── Step: Generating ─────────────────────────────────────────────────────────
-  const renderGeneratingStep = () => (
-    <View style={styles.generatingContainer}>
-      <ActivityIndicator size="large" color="#00B0FF" />
-      <Text style={[styles.generatingTitle, { color: colors.foreground }]}>
-        KI generiert Bericht...
-      </Text>
-      <Text style={[styles.generatingStep, { color: colors.muted }]}>
-        {generationStep}
-      </Text>
-      <View style={styles.generatingSteps}>
-        {["Strukturerkennung", "Bericht generieren", "Formatierung"].map((s, i) => (
-          <View key={i} style={styles.generatingStepRow}>
-            <MaterialIcons
-              name={
-                generationStep.includes(s.slice(0, 6))
-                  ? "hourglass-top"
-                  : i < (generationStep.includes("Format") ? 2 : generationStep.includes("Bericht") ? 1 : 0)
-                  ? "check-circle"
-                  : "radio-button-unchecked"
-              }
-              size={16}
-              color={
-                generationStep.includes(s.slice(0, 6))
-                  ? "#00B0FF"
-                  : i < (generationStep.includes("Format") ? 2 : generationStep.includes("Bericht") ? 1 : 0)
-                  ? colors.success
-                  : colors.muted
-              }
-            />
-            <Text style={[styles.generatingStepText, { color: colors.foreground }]}>{s}</Text>
-          </View>
-        ))}
+  const renderGeneratingStep = () => {
+    const steps = [
+      { label: "Projektdaten sammeln", threshold: 10 },
+      { label: "Anwesenheit & Fotos laden", threshold: 30 },
+      { label: "KI-Analyse & Strukturierung", threshold: 60 },
+      { label: "Professionelle Formatierung", threshold: 90 },
+    ];
+
+    return (
+      <View style={styles.generatingContainer}>
+        <ActivityIndicator size="large" color="#00B0FF" />
+        <Text style={[styles.generatingTitle, { color: colors.foreground }]}>
+          Professioneller Bericht wird erstellt...
+        </Text>
+        <Text style={[styles.generatingStep, { color: colors.muted }]}>
+          {generationStep}
+        </Text>
+
+        {/* Progress bar */}
+        <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+          <View style={[styles.progressFill, { width: `${generationProgress}%` }]} />
+        </View>
+        <Text style={{ color: colors.muted, fontSize: 12 }}>{generationProgress}%</Text>
+
+        <View style={styles.generatingSteps}>
+          {steps.map((s, i) => {
+            const isDone = generationProgress >= s.threshold;
+            const isActive = !isDone && (i === 0 || generationProgress >= steps[i - 1].threshold);
+            return (
+              <View key={i} style={styles.generatingStepRow}>
+                <MaterialIcons
+                  name={isDone ? "check-circle" : isActive ? "hourglass-top" : "radio-button-unchecked"}
+                  size={16}
+                  color={isDone ? colors.success : isActive ? "#00B0FF" : colors.muted}
+                />
+                <Text style={[styles.generatingStepText, { color: isDone ? colors.foreground : colors.muted }]}>
+                  {s.label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
+    );
+  };
+
+  // ─── Step: Preview (read-only Markdown view) ──────────────────────────────────
+  const renderPreviewStep = () => (
+    <View style={{ flex: 1 }}>
+      <View style={[styles.editHeader, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.editTitle, { color: colors.foreground }]}>Bericht-Vorschau</Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Pressable
+            onPress={() => setStep("edit")}
+            style={({ pressed }) => [styles.editBtn, { borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <MaterialIcons name="edit" size={16} color={colors.foreground} />
+            <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "500" }}>Bearbeiten</Text>
+          </Pressable>
+          <Pressable
+            onPress={saveReport}
+            style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
+          >
+            <MaterialIcons name="check" size={16} color="#fff" />
+            <Text style={styles.saveBtnText}>Speichern</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+        {/* Simple Markdown rendering */}
+        {reportContent.split("\n").map((line, i) => {
+          if (line.startsWith("# ")) {
+            return <Text key={i} style={[styles.mdH1, { color: colors.foreground }]}>{line.slice(2)}</Text>;
+          }
+          if (line.startsWith("## ")) {
+            return <Text key={i} style={[styles.mdH2, { color: colors.foreground }]}>{line.slice(3)}</Text>;
+          }
+          if (line.startsWith("### ")) {
+            return <Text key={i} style={[styles.mdH3, { color: colors.foreground }]}>{line.slice(4)}</Text>;
+          }
+          if (line.startsWith("---")) {
+            return <View key={i} style={[styles.mdHr, { backgroundColor: colors.border }]} />;
+          }
+          if (line.startsWith("| ") && line.includes("|")) {
+            // Table row
+            const cells = line.split("|").filter(Boolean).map((c) => c.trim());
+            if (cells.every((c) => c.match(/^[-:]+$/))) return null; // separator row
+            return (
+              <View key={i} style={styles.mdTableRow}>
+                {cells.map((cell, ci) => (
+                  <Text key={ci} style={[styles.mdTableCell, { color: colors.foreground, borderColor: colors.border }]} numberOfLines={2}>
+                    {cell.replace(/\*\*/g, "")}
+                  </Text>
+                ))}
+              </View>
+            );
+          }
+          if (line.startsWith("- ") || line.startsWith("* ")) {
+            return (
+              <View key={i} style={styles.mdListItem}>
+                <Text style={{ color: colors.muted }}>•</Text>
+                <Text style={[styles.mdText, { color: colors.foreground, flex: 1 }]}>{line.slice(2).replace(/\*\*/g, "")}</Text>
+              </View>
+            );
+          }
+          if (line.startsWith("> ")) {
+            return (
+              <View key={i} style={[styles.mdBlockquote, { borderLeftColor: colors.primary || "#00B0FF" }]}>
+                <Text style={[styles.mdText, { color: colors.muted, fontStyle: "italic" }]}>{line.slice(2)}</Text>
+              </View>
+            );
+          }
+          if (line.match(/^\d+\. /)) {
+            return (
+              <View key={i} style={styles.mdListItem}>
+                <Text style={{ color: colors.muted, width: 20 }}>{line.match(/^\d+/)![0]}.</Text>
+                <Text style={[styles.mdText, { color: colors.foreground, flex: 1 }]}>{line.replace(/^\d+\. /, "").replace(/\*\*/g, "")}</Text>
+              </View>
+            );
+          }
+          if (line.startsWith("*") && line.endsWith("*")) {
+            return <Text key={i} style={[styles.mdText, { color: colors.muted, fontStyle: "italic", marginBottom: 4 }]}>{line.replace(/\*/g, "")}</Text>;
+          }
+          if (line.trim() === "") {
+            return <View key={i} style={{ height: 8 }} />;
+          }
+          return <Text key={i} style={[styles.mdText, { color: colors.foreground }]}>{line.replace(/\*\*/g, "")}</Text>;
+        })}
+      </ScrollView>
     </View>
   );
 
@@ -382,12 +636,15 @@ export default function ReportGeneratorScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={{ flex: 1 }}>
         <View style={[styles.editHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.editTitle, { color: colors.foreground }]}>Bericht bearbeiten</Text>
+          <Pressable onPress={() => setStep("preview")} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, flexDirection: "row", alignItems: "center", gap: 4 })}>
+            <MaterialIcons name="arrow-back" size={18} color={colors.foreground} />
+            <Text style={{ color: colors.foreground, fontSize: 14 }}>Vorschau</Text>
+          </Pressable>
           <Pressable
             onPress={saveReport}
             style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
           >
-            <MaterialIcons name="check" size={18} color="#fff" />
+            <MaterialIcons name="check" size={16} color="#fff" />
             <Text style={styles.saveBtnText}>Speichern</Text>
           </Pressable>
         </View>
@@ -413,7 +670,8 @@ export default function ReportGeneratorScreen() {
         <Pressable
           onPress={() => {
             if (step === "configure") { setStep("select"); return; }
-            if (step === "edit") { setStep("configure"); return; }
+            if (step === "preview") { setStep("configure"); return; }
+            if (step === "edit") { setStep("preview"); return; }
             router.back();
           }}
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
@@ -428,6 +686,7 @@ export default function ReportGeneratorScreen() {
       {step === "select" && renderSelectStep()}
       {step === "configure" && renderConfigureStep()}
       {step === "generating" && renderGeneratingStep()}
+      {step === "preview" && renderPreviewStep()}
       {step === "edit" && renderEditStep()}
     </ScreenContainer>
   );
@@ -461,7 +720,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   typeCard: {
-    width: "48%",
+    width: "48%" as any,
     padding: 14,
     borderRadius: 0,
     borderWidth: 1,
@@ -503,6 +762,26 @@ const styles = StyleSheet.create({
     minHeight: 120,
     textAlignVertical: "top",
   },
+  optionsContainer: {
+    borderWidth: 1,
+    borderRadius: 0,
+    padding: 4,
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  optionLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  optionDesc: {
+    fontSize: 11,
+    marginTop: 1,
+  },
   sectionsPreview: {
     borderWidth: 1,
     borderRadius: 0,
@@ -513,11 +792,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 4,
-  },
-  sectionNumber: {
-    fontSize: 12,
-    fontWeight: "700",
-    width: 20,
   },
   sectionName: {
     fontSize: 13,
@@ -574,6 +848,18 @@ const styles = StyleSheet.create({
   generatingStepText: {
     fontSize: 14,
   },
+  progressBar: {
+    width: "80%" as any,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 12,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#00B0FF",
+    borderRadius: 2,
+  },
   editHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -585,6 +871,15 @@ const styles = StyleSheet.create({
   editTitle: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 0,
   },
   saveBtn: {
     flexDirection: "row",
@@ -607,6 +902,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     minHeight: 400,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   chipBtn: {
     paddingHorizontal: 12,
@@ -615,5 +911,57 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     minHeight: 36,
     justifyContent: "center" as const,
+  },
+  // Markdown rendering styles
+  mdH1: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  mdH2: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 6,
+    marginTop: 16,
+  },
+  mdH3: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+    marginTop: 12,
+  },
+  mdText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  mdHr: {
+    height: 1,
+    marginVertical: 12,
+  },
+  mdTableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e5e7eb",
+  },
+  mdTableCell: {
+    flex: 1,
+    fontSize: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRightWidth: 0.5,
+  },
+  mdListItem: {
+    flexDirection: "row",
+    gap: 6,
+    paddingVertical: 2,
+    paddingLeft: 4,
+  },
+  mdBlockquote: {
+    borderLeftWidth: 3,
+    paddingLeft: 12,
+    paddingVertical: 4,
+    marginVertical: 4,
   },
 });
