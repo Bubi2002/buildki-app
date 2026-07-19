@@ -1053,3 +1053,8 @@
 - [x] Tutorial/Bedienungsanleitung Screen erstellen (app/tutorial.tsx)
 - [x] Abo-/Preismodell: 10€+MwSt/Monat oder 100€+MwSt/Jahr, 14 Tage Trial (app/subscription.tsx)
 - [x] Alle auf Tools-Tab (erste Maske) als prominente Buttons hinzufügen (Anleitung, KI-Support, Abo)
+
+## Phase 17: Vollständige AGB (2026-07-19)
+- [x] Professionelle AGB erstellen (orientiert an PlanRadar/Capmo, angepasst auf ProtoKI SaaS-Modell)
+- [x] AGB-Inhalt im Legal-Screen unter Nutzungsbedingungen ersetzen durch vollständige AGB
+- [ ] Professionelles TikTok-Werbevideo für ProtoKI erstellen

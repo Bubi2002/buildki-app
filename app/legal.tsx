@@ -253,34 +253,128 @@ function ImpressumContent() {
 function AGBContent() {
   return (
     <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Nutzungsbedingungen</Text>
-      <Text className="text-sm text-muted">Stand: Juli 2026</Text>
+      <Text className="text-xl font-bold text-foreground">Allgemeine Geschäftsbedingungen</Text>
+      <Text className="text-sm text-muted">der Iserloh Projektmanagement GmbH{"\n"}gültig ab 1. Juli 2026</Text>
 
-      <Section title="1. Geltungsbereich">
-        <P>Diese Nutzungsbedingungen gelten für die Verwendung der ProtoKI-App durch gewerbliche Nutzer im Bereich Bauwesen und Projektmanagement.</P>
+      <Section title="§ 1 Geltungsbereich">
+        <P>1.1 Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) regeln die vertragliche Beziehung zwischen der Iserloh Projektmanagement GmbH, vertreten durch Jörg Iserloh (nachfolgend „Anbieter“) und Ihnen als Kunden (nachfolgend „Kunde“) in Bezug auf die Nutzung der mobilen Applikation „ProtoKI – Video-Protokoll App“ sowie der zugehörigen Cloud-Dienste (nachfolgend gemeinsam „Software“).</P>
+        <P>1.2 Die Software und die zugehörigen Dienste sind ausschließlich für den Geschäftsverkehr (B2B) bestimmt. Die Nutzung ist ausschließlich Unternehmern im Sinne von § 14 BGB gestattet. Der Kunde bestätigt mit Vertragsschluss, dass er in Ausübung seiner gewerblichen oder selbstständigen beruflichen Tätigkeit handelt.</P>
+        <P>1.3 Abweichende oder entgegenstehende allgemeine Geschäftsbedingungen des Kunden werden nicht anerkannt, sofern der Anbieter diesen nicht ausdrücklich schriftlich zugestimmt hat.</P>
+        <P>1.4 Der Anbieter ist berechtigt, diese AGB mit einer Ankündigungsfrist von sechs (6) Wochen per E-Mail zu ändern. Widerspricht der Kunde nicht innerhalb von vier (4) Wochen nach Zugang der Änderungsmitteilung in Textform, gelten die geänderten AGB als akzeptiert. Der Anbieter weist in der Änderungsmitteilung gesondert auf diese Rechtsfolge hin.</P>
       </Section>
 
-      <Section title="2. Leistungsbeschreibung">
-        <P>ProtoKI bietet KI-gestützte Baudokumentation, Mängelmanagement und Berichterstellung. Die App ist ein Werkzeug zur Unterstützung – nicht zum Ersatz – der fachlichen Arbeit des Bauleiters.</P>
+      <Section title="§ 2 Vertragsgegenstand und Leistungsbeschreibung">
+        <P>2.1 Der Anbieter stellt dem Kunden die Software „ProtoKI“ als Software-as-a-Service (SaaS) in der jeweils aktuellen Version zur Nutzung über das Internet sowie als mobile Applikation (iOS/Android) zur Verfügung.</P>
+        <P>2.2 Die Software umfasst insbesondere folgende Funktionen:</P>
+        <Bullet text="KI-gestützte Sprachtranskription und Protokollerstellung" />
+        <Bullet text="Mängelmanagement mit Fotodokumentation und Statusverfolgung" />
+        <Bullet text="3D-Gebäudemodell-Integration (Matterport)" />
+        <Bullet text="Automatische Bautagebuch-Erstellung" />
+        <Bullet text="PDF-Export mit professionellem Branding" />
+        <Bullet text="Cloud-Synchronisation und Offline-Funktionalität" />
+        <Bullet text="Push-Benachrichtigungen und Fristenverwaltung" />
+        <Bullet text="Team-Kollaboration und Projektverwaltung" />
+        <P>2.3 Der Anbieter behält sich vor, die Software jederzeit weiterzuentwickeln und zu ändern. Bei wesentlichen Leistungsänderungen wird der Kunde rechtzeitig vorab informiert. Entstehen dem Kunden durch Leistungsänderungen unzumutbare Nachteile, ist er berechtigt, den Vertrag außerordentlich zum Zeitpunkt der Änderung zu kündigen.</P>
+        <P>2.4 Die KI-gestützten Funktionen dienen ausschließlich als Arbeitshilfe. Sie ersetzen nicht die fachliche Prüfung durch qualifiziertes Personal. Der Anbieter übernimmt keine Gewähr für die inhaltliche Richtigkeit KI-generierter Inhalte.</P>
       </Section>
 
-      <Section title="3. Pflichten des Nutzers">
-        <Bullet text="Prüfung aller KI-generierten Inhalte vor Freigabe" />
-        <Bullet text="Sicherstellung der Richtigkeit eingegebener Daten" />
-        <Bullet text="Einhaltung des Datenschutzes bei Personenfotos" />
-        <Bullet text="Keine Eingabe sensibler personenbezogener Daten in KI-Felder" />
+      <Section title="§ 3 Vertragsschluss und Testphase">
+        <P>3.1 Der Vertrag kommt durch Registrierung des Kunden in der App und Bestätigung dieser AGB zustande.</P>
+        <P>3.2 Jeder Kunde hat die Möglichkeit, die Software für einen Zeitraum von vierzehn (14) Tagen kostenlos und unverbindlich zu testen (Testphase). Während der Testphase stehen alle Funktionen uneingeschränkt zur Verfügung.</P>
+        <P>3.3 Nach Ablauf der Testphase wird der Zugang gesperrt, sofern der Kunde kein kostenpflichtiges Abonnement abschließt. Eine automatische Umstellung in ein kostenpflichtiges Abonnement findet nicht statt. Bereits erfasste Daten bleiben für weitere 30 Tage gespeichert.</P>
       </Section>
 
-      <Section title="4. Haftungsbeschränkung">
-        <P>Die Haftung für KI-generierte Inhalte ist ausgeschlossen. Der Nutzer trägt die Verantwortung für die Prüfung und Freigabe aller Dokumente. ProtoKI haftet nicht für Schäden, die aus der ungeprüften Verwendung von KI-Berichten entstehen.</P>
+      <Section title="§ 4 Preise und Zahlungsbedingungen">
+        <P>4.1 Für die Nutzung der Software nach Ablauf der Testphase gelten folgende Lizenzgebühren:</P>
+        <Bullet text="Monatsabonnement: 10,00 € zzgl. MwSt. pro Lizenz/Monat" />
+        <Bullet text="Jahresabonnement: 100,00 € zzgl. MwSt. pro Lizenz/Jahr (ca. 16% Ersparnis)" />
+        <P>4.2 Die Abrechnung erfolgt im Voraus. Beim Monatsabonnement monatlich, beim Jahresabonnement jährlich zum Vertragsbeginn.</P>
+        <P>4.3 Alle Preise verstehen sich netto zuzüglich der jeweils geltenden gesetzlichen Umsatzsteuer (derzeit 19%).</P>
+        <P>4.4 Der Anbieter ist berechtigt, die Preise mit einer Ankündigungsfrist von drei (3) Monaten zum Ende der jeweiligen Vertragslaufzeit anzupassen. Der Kunde hat in diesem Fall ein Sonderkündigungsrecht zum Zeitpunkt des Inkrafttretens der Preisänderung.</P>
+        <P>4.5 Bei Zahlungsverzug ist der Anbieter berechtigt, den Zugang zur Software nach erfolgloser Mahnung mit angemessener Nachfrist zu sperren. Die Zahlungspflicht des Kunden bleibt hiervon unberührt.</P>
       </Section>
 
-      <Section title="5. Verfügbarkeit">
-        <P>ProtoKI strebt eine Verfügbarkeit von 99% an. Wartungsarbeiten werden vorab angekündigt. Die Offline-Funktionalität gewährleistet die Nutzung ohne Internetverbindung.</P>
+      <Section title="§ 5 Nutzungsrechte und Lizenzen">
+        <P>5.1 Der Anbieter räumt dem Kunden für die Dauer des Vertrages ein nicht-ausschließliches, nicht übertragbares und nicht unterlizenzierbares Recht ein, die Software im vereinbarten Umfang zu nutzen.</P>
+        <P>5.2 Eine Lizenz berechtigt zur Nutzung durch eine (1) namentlich benannte natürliche Person. Die gemeinsame Nutzung eines Accounts durch mehrere Personen (Account Sharing) ist nicht gestattet.</P>
+        <P>5.3 Der Kunde darf die Software nicht zurückentwickeln, dekompilieren oder disassemblieren, es sei denn, dies ist nach geltendem Recht zwingend gestattet.</P>
+        <P>5.4 Alle Rechte an der Software, einschließlich Urheberrechte, Markenrechte und sonstige Schutzrechte, verbleiben beim Anbieter.</P>
+        <P>5.5 Die vom Kunden in die Software eingegebenen Daten (Projekte, Protokolle, Fotos, Mängel etc.) verbleiben im Eigentum des Kunden.</P>
       </Section>
 
-      <Section title="6. Kündigung">
-        <P>Der Nutzer kann sein Konto jederzeit löschen. Alle Daten werden gemäß DSGVO vollständig entfernt. Gesetzliche Aufbewahrungspflichten bleiben unberührt.</P>
+      <Section title="§ 6 Pflichten des Kunden">
+        <P>6.1 Der Kunde verpflichtet sich:</P>
+        <Bullet text="Die Software nur bestimmungsgemäß und im Einklang mit diesen AGB zu verwenden" />
+        <Bullet text="Seine Zugangsdaten sicher zu verwahren und Dritten nicht zugänglich zu machen" />
+        <Bullet text="Alle KI-generierten Inhalte vor Freigabe und Weitergabe auf Richtigkeit zu prüfen" />
+        <Bullet text="Die Richtigkeit der eingegebenen Daten sicherzustellen" />
+        <Bullet text="Den Datenschutz bei Personenfotos und personenbezogenen Daten einzuhalten" />
+        <Bullet text="Die für die Nutzung erforderliche IT-Infrastruktur auf eigene Kosten bereitzuhalten" />
+        <P>6.2 Der Kunde haftet für sämtliche Handlungen, die über seinen Account erfolgen, auch wenn diese nicht von ihm autorisiert waren, sofern er die unbefugte Nutzung zu vertreten hat.</P>
+        <P>6.3 Der Kunde wird den Anbieter unverzüglich informieren, wenn er Kenntnis von einer unbefugten Nutzung seines Accounts erlangt.</P>
+      </Section>
+
+      <Section title="§ 7 Verfügbarkeit und Wartung">
+        <P>7.1 Der Anbieter strebt eine Verfügbarkeit der Cloud-Dienste von 99% im Jahresdurchschnitt an. Nicht eingerechnet werden:</P>
+        <Bullet text="Geplante Wartungsarbeiten (werden mind. 24 Stunden vorab angekündigt)" />
+        <Bullet text="Ausfälle durch höhere Gewalt oder Umstände außerhalb des Einflussbereichs" />
+        <Bullet text="Störungen der Internetverbindung des Kunden" />
+        <P>7.2 Die Offline-Funktionalität der App gewährleistet die lokale Nutzung auch ohne Internetverbindung. Eine Synchronisation erfolgt automatisch bei Wiederherstellung der Verbindung.</P>
+        <P>7.3 Geplante Wartungsarbeiten werden nach Möglichkeit außerhalb der üblichen Geschäftszeiten (Mo–Fr, 08:00–18:00 Uhr) durchgeführt.</P>
+      </Section>
+
+      <Section title="§ 8 Gewährleistung und Haftung">
+        <P>8.1 Der Anbieter stellt die Software nach dem Grundsatz der „bestmöglichen Bemühungen“ (Best Efforts) zur Verfügung.</P>
+        <P>8.2 Der Anbieter haftet nicht für:</P>
+        <Bullet text="Die inhaltliche Richtigkeit KI-generierter Protokolle, Berichte und Analysen" />
+        <Bullet text="Schäden aus der ungeprüften Verwendung KI-generierter Inhalte" />
+        <Bullet text="Datenverluste, die auf Handlungen des Kunden zurückzuführen sind" />
+        <Bullet text="Funktionsstörungen aufgrund unzureichender IT-Infrastruktur des Kunden" />
+        <Bullet text="Mittelbare Schäden, entgangenen Gewinn oder Folgeschäden" />
+        <P>8.3 Die Haftung ist – außer bei Vorsatz und grober Fahrlässigkeit – auf den vorhersehbaren, vertragstypischen Schaden begrenzt, maximal auf die vom Kunden in den letzten 12 Monaten gezahlten Lizenzgebühren.</P>
+        <P>8.4 Die vorstehenden Haftungsbeschränkungen gelten nicht für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit sowie für Ansprüche nach dem Produkthaftungsgesetz.</P>
+      </Section>
+
+      <Section title="§ 9 Datenschutz und Datensicherheit">
+        <P>9.1 Der Anbieter verarbeitet personenbezogene Daten ausschließlich gemäß der geltenden Datenschutzerklärung und im Einklang mit der DSGVO.</P>
+        <P>9.2 Soweit der Anbieter im Auftrag des Kunden personenbezogene Daten verarbeitet, wird ein Auftragsverarbeitungsvertrag (AVV) gemäß Art. 28 DSGVO geschlossen.</P>
+        <P>9.3 Die Datenverarbeitung erfolgt auf Servern in der Europäischen Union (Deutschland). Eine Übermittlung in Drittländer findet nicht statt.</P>
+        <P>9.4 Bei der KI-Verarbeitung werden Texte vor der Analyse anonymisiert. Keine personenbezogenen Daten werden an KI-Dienste übermittelt.</P>
+      </Section>
+
+      <Section title="§ 10 Vertragslaufzeit und Kündigung">
+        <P>10.1 Das Monatsabonnement hat eine Mindestlaufzeit von einem (1) Monat und verlängert sich automatisch um jeweils einen weiteren Monat, sofern es nicht mit einer Frist von vierzehn (14) Tagen zum Ende der jeweiligen Laufzeit gekündigt wird.</P>
+        <P>10.2 Das Jahresabonnement hat eine Mindestlaufzeit von zwölf (12) Monaten und verlängert sich automatisch um jeweils zwölf weitere Monate, sofern es nicht mit einer Frist von einem (1) Monat zum Ende der jeweiligen Laufzeit gekündigt wird.</P>
+        <P>10.3 Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt unberührt. Ein wichtiger Grund liegt insbesondere vor bei:</P>
+        <Bullet text="Wesentlichem Verstoß gegen diese AGB trotz Abmahnung" />
+        <Bullet text="Zahlungsverzug des Kunden von mehr als 30 Tagen trotz Mahnung" />
+        <Bullet text="Insolvenzantrag über das Vermögen einer Vertragspartei" />
+        <P>10.4 Die Kündigung bedarf der Textform (E-Mail genügt). Die Kündigung kann auch direkt in der App unter Einstellungen vorgenommen werden.</P>
+        <P>10.5 Nach Vertragsende stehen dem Kunden seine Daten für einen Zeitraum von dreißig (30) Tagen zum Export zur Verfügung. Danach werden alle Kundendaten unwiderruflich gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen.</P>
+      </Section>
+
+      <Section title="§ 11 Geistiges Eigentum">
+        <P>11.1 Sämtliche Rechte an der Software, einschließlich des Quellcodes, der Benutzeroberfläche, der Dokumentation und aller Weiterentwicklungen, stehen ausschließlich dem Anbieter zu.</P>
+        <P>11.2 Die vom Kunden erstellten Inhalte (Protokolle, Berichte, Fotos, Mängeldokumentation) verbleiben im geistigen Eigentum des Kunden.</P>
+        <P>11.3 Der Kunde gestattet dem Anbieter, anonymisierte und aggregierte Nutzungsdaten zur Verbesserung der Software zu verwenden.</P>
+      </Section>
+
+      <Section title="§ 12 Vertraulichkeit">
+        <P>12.1 Beide Parteien verpflichten sich, alle im Rahmen der Vertragsbeziehung erlangten vertraulichen Informationen der jeweils anderen Partei geheim zu halten und nur für die Zwecke dieses Vertrages zu verwenden.</P>
+        <P>12.2 Diese Verpflichtung gilt nicht für Informationen, die öffentlich bekannt sind, dem Empfänger bereits bekannt waren oder von Dritten rechtmäßig erlangt wurden.</P>
+        <P>12.3 Die Vertraulichkeitsverpflichtung besteht über das Vertragsende hinaus für einen Zeitraum von drei (3) Jahren fort.</P>
+      </Section>
+
+      <Section title="§ 13 Schlussbestimmungen">
+        <P>13.1 Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts (CISG).</P>
+        <P>13.2 Gerichtsstand für alle Streitigkeiten aus oder im Zusammenhang mit diesem Vertrag ist – soweit gesetzlich zulässig – der Sitz des Anbieters.</P>
+        <P>13.3 Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt. An die Stelle der unwirksamen Bestimmung tritt eine wirksame Regelung, die dem wirtschaftlichen Zweck am nächsten kommt.</P>
+        <P>13.4 Änderungen und Ergänzungen dieser AGB bedürfen der Textform.</P>
+        <P>13.5 Der Anbieter ist berechtigt, Rechte und Pflichten aus diesem Vertrag ganz oder teilweise auf Dritte zu übertragen, sofern dies für den Kunden zumutbar ist.</P>
+      </Section>
+
+      <Section title="Kontakt">
+        <P>Iserloh Projektmanagement GmbH{"\n"}Geschäftsführer: Jörg Iserloh{"\n"}E-Mail: info@iserloh.net</P>
       </Section>
     </View>
   );
