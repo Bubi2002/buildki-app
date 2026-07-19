@@ -22,7 +22,8 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
-import { generateAndSharePdf, type ProfessionalPdfOptions, type PdfSection, getCompanyInfo } from "@/lib/pdf-professional";
+import { generateAndSharePdf, generateQrCodeBase64, type ProfessionalPdfOptions, type PdfSection, getCompanyInfo } from "@/lib/pdf-professional";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STATUS_LABELS: Record<DefectStatus, string> = {
   offen: "Offen",
@@ -116,6 +117,22 @@ export default function DefectExportScreen() {
         });
       }
 
+      // Generate QR code for digital version
+      const qrData = `protoki://defects/${params.projectId || "all"}`;
+      const qrCodeBase64 = await generateQrCodeBase64(qrData);
+
+      // Check for Matterport link
+      let matterportLink: string | undefined;
+      try {
+        if (params.projectId) {
+          const matterportData = await AsyncStorage.getItem(`matterport_model_${params.projectId}`);
+          if (matterportData) {
+            const parsed = JSON.parse(matterportData);
+            if (parsed.modelId) matterportLink = `https://my.matterport.com/show/?m=${parsed.modelId}`;
+          }
+        }
+      } catch {}
+
       const options: ProfessionalPdfOptions = {
         title: "Mängelbericht",
         subtitle: params.projectId ? `Projekt: ${params.projectId}` : undefined,
@@ -125,6 +142,9 @@ export default function DefectExportScreen() {
         companyInfo: companyInfo || undefined,
         accentColor: "#EF4444",
         includeTableOfContents: filteredDefects.length > 5,
+        qrCodeBase64: qrCodeBase64 || undefined,
+        qrCodeLabel: "Digitalen Mängelbericht öffnen",
+        matterportLink,
       };
 
       await generateAndSharePdf(options);

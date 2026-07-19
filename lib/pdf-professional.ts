@@ -67,6 +67,9 @@ export interface ProfessionalPdfOptions {
   watermark?: string;
   footerText?: string;
   accentColor?: string;
+  qrCodeBase64?: string; // Pre-generated QR code as base64 data URL
+  qrCodeLabel?: string; // Label below QR code
+  matterportLink?: string; // Link to Matterport 3D model
 }
 
 /**
@@ -385,11 +388,18 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     ${projekt ? `<tr><td>Projekt</td><td>${projekt}</td></tr>` : ""}
     ${projektNummer ? `<tr><td>Projekt-Nr.</td><td>${projektNummer}</td></tr>` : ""}
     ${reportType ? `<tr><td>Berichtstyp</td><td>${reportType}</td></tr>` : ""}
+    ${options.matterportLink ? `<tr><td>3D-Modell</td><td><a href="${options.matterportLink}" style="color:${accentColor};text-decoration:none;">${options.matterportLink}</a></td></tr>` : ""}
   </table>
 
   ${tocHtml}
   ${sectionsHtml}
   ${signaturesHtml}
+  ${options.qrCodeBase64 ? `
+  <div style="text-align:center;margin-top:30px;padding:20px;border-top:1px solid #e0e0e0;">
+    <img src="${options.qrCodeBase64}" style="width:100px;height:100px;" />
+    <p style="font-size:9px;color:#666;margin-top:6px;">${options.qrCodeLabel || "QR-Code scannen f\u00fcr digitale Version"}</p>
+    ${options.matterportLink ? `<p style="font-size:8px;color:#888;margin-top:2px;">3D-Modell: <a href="${options.matterportLink}" style="color:${accentColor};">${options.matterportLink}</a></p>` : ""}
+  </div>` : ""}
 
   <div class="footer">
     ${footerText || `Erstellt mit protoKI \u2022 ${datum}`}
@@ -418,6 +428,24 @@ function markdownToHtml(md: string): string {
   html = html.replace(/(<li>.*?<\/li>)+/gs, (match) => `<ul>${match}</ul>`);
 
   return `<p>${html}</p>`;
+}
+
+/**
+ * Generate a QR code as base64 data URL using the qrcode package.
+ * Falls back gracefully if QR generation fails.
+ */
+export async function generateQrCodeBase64(data: string): Promise<string | null> {
+  try {
+    const QRCode = require("qrcode");
+    const dataUrl = await QRCode.toDataURL(data, {
+      width: 200,
+      margin: 1,
+      color: { dark: "#1a1a1a", light: "#ffffff" },
+    });
+    return dataUrl;
+  } catch {
+    return null;
+  }
 }
 
 /**

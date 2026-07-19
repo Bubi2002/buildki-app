@@ -1152,6 +1152,27 @@ Regeln:
       }),
   }),
 
+  // KI-Baustellenassistent: Intelligente Protokoll-Analyse
+  assistant: router({
+    analyzeProtocol: publicProcedure
+      .input(
+        z.object({
+          protocolText: z.string(),
+          projectName: z.string(),
+          roomName: z.string().optional(),
+          existingDefects: z.array(z.string()).optional(),
+          existingPhotos: z.number().optional(),
+          existingTrades: z.array(z.string()).optional(),
+          previousProtocols: z.array(z.string()).optional(),
+          projectPhase: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { analyzeProtocol } = await import("./construction-assistant");
+        return analyzeProtocol(input);
+      }),
+  }),
+
 });
 
 export type AppRouter = typeof appRouter;

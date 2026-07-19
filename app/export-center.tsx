@@ -32,6 +32,7 @@ import {
   type CompanyInfo,
   type ProfessionalPdfOptions,
 } from "@/lib/pdf-professional";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type ExportType = "protocol" | "defects" | "diary" | "photos" | "report" | "attendance";
 
@@ -101,11 +102,17 @@ export default function ExportCenterScreen() {
   const handleExport = async (type: ExportType) => {
     setIsExporting(true);
     try {
-      // Demo export to show the PDF system works
+      // Get active project name
+      let projektName = "";
+      try {
+        const stored = await AsyncStorage.getItem("active_project");
+        if (stored) { const p = JSON.parse(stored); projektName = p.name || p.id || ""; }
+      } catch {}
+
       const options: ProfessionalPdfOptions = {
         title: getExportTitle(type),
         datum: new Date().toLocaleDateString("de-DE"),
-        projekt: "Demo-Projekt",
+        projekt: projektName || undefined,
         companyInfo: companyInfo || undefined,
         accentColor: EXPORT_OPTIONS.find(o => o.id === type)?.color || "#0a7ea4",
         sections: [

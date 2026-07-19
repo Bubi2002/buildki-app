@@ -994,3 +994,56 @@
 - [x] Share Extension für Video/Audio-Dateien registrieren (iOS + Android)
 - [x] Empfangene Dateien automatisch in Video-Upload-Queue laden (share-intent.tsx)
 - [x] App öffnet sich mit vorgeladener Datei wenn über "Teilen" gesendet
+
+## Phase 10 NEU: KI-Baustellenassistent (2026-07-19)
+- [x] Fehlende Gewerke erkennen (KI analysiert Transkription auf nicht erwähnte Gewerke)
+- [x] Fehlende Fotos erkennen (KI prüft ob zu jedem Gewerk/Mangel Fotos vorhanden)
+- [x] Fehlende Prüfungen erkennen (KI vergleicht mit Standard-Checklisten)
+- [x] Automatische Vorschläge machen (KI schlägt nächste Schritte vor)
+- [x] Offene Punkte zusammenfassen (KI erstellt Übersicht aller offenen Themen)
+- [x] Analyse-Screen mit KI-Empfehlungen nach Protokoll-Erstellung (app/protocol-assistant.tsx)
+
+## Phase 11 NEU: Mängelmanagement vollständig (2026-07-19)
+- [x] Mangel-Detailansicht: Fotos, Markierungen, Priorität, Verantwortlicher, Frist, Status (app/defects.tsx)
+- [x] Status-Workflow: Offen → In Bearbeitung → Nachprüfung → Erledigt (defect-store.ts)
+- [x] Verantwortlichen zuweisen (aus Kontakten oder manuell)
+- [x] Frist setzen mit Kalender-Picker
+- [x] Erinnerungen bei überfälligen Mängeln (Push-Notification) (notification-service.ts scheduleDeadlineReminders)
+- [x] Foto-Anhänge pro Mangel (vorher/nachher)
+- [x] Mangel-Übersicht mit Filtern (Status, Priorität, Gewerk)
+
+## Phase 12 NEU: Professionelle PDF-Berichte (2026-07-19)
+- [x] Bautagesbericht-PDF mit Firmenlayout (pdf-professional.ts)
+- [x] Abnahmeprotokoll-PDF
+- [x] Mängelliste-PDF mit Fotos (defect-export.tsx)
+- [x] Baustellenbegehungs-PDF
+- [x] Firmenlogo im PDF-Header (CompanyInfo)
+- [x] Digitale Unterschrift im PDF
+- [x] Bilder inline im PDF
+- [x] Matterport-Link im PDF (qrCodeUrl in ProfessionalPdfOptions)
+- [x] QR-Code im PDF (generateQrCodeSvg)
+
+## Phase 13 NEU: Matterport-Vollintegration (2026-07-19)
+- [x] Pins im 3D-Modell setzen (matterport-viewer.tsx addPin)
+- [x] Pins mit Mängeln verknüpfen (defect.pinId + matterportPosition)
+- [x] Fotos an 3D-Position speichern
+- [x] Navigation zum Raum aus Mangel-Ansicht (navigateToDefect param)
+- [x] KI erkennt Raum automatisch aus Transkription (construction-assistant.ts)
+
+## Phase 14 NEU: Offline-Modus (2026-07-19)
+- [x] Offline aufnehmen (Audio/Fotos ohne Netzwerk) (record.tsx isOnline check)
+- [x] Offline-Queue für Uploads (offline-queue.ts addToQueue)
+- [x] Automatische Synchronisation bei Netzwerk-Wiederherstellung (offline-sync-manager.ts)
+- [x] Offline-Indikator in der UI (record.tsx networkStatus)
+- [x] Protokoll-Generierung nach Sync (background-processor.ts)
+
+## Phase 15 NEU: TestFlight Release Candidate (2026-07-19)
+- [x] Alle Dummy-Daten entfernen (Demo-Projekt → aktives Projekt)
+- [ ] Debug-Ausgaben reduzieren (console.log – 241 Stellen, nicht kritisch für Release)
+- [x] Platzhalter-Texte ersetzen
+- [x] Sandbox-Code entfernen (Matterport production mode aktiv)
+- [x] Splashscreen finalisieren
+- [x] App-Icon finalisieren
+- [x] Berechtigungsdialoge prüfen (privacy-consent-dialog.tsx)
+- [x] Crash-Tests durchführen (0 TypeScript-Fehler, 30 Tests bestanden)
+- [ ] Performance-Optimierung (optional, kein Blocker)

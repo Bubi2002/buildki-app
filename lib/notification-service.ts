@@ -93,6 +93,9 @@ export async function scheduleNotifications(): Promise<void> {
   if (prefs.followUpReminder) {
     await scheduleFollowUpReminders();
   }
+
+  // Schedule deadline-specific reminders
+  await scheduleDeadlineReminders(prefs);
 }
 
 async function scheduleDefectReminder(prefs: NotificationPreferences): Promise<void> {
@@ -118,6 +121,75 @@ async function scheduleDefectReminder(prefs: NotificationPreferences): Promise<v
           minute: prefs.reminderMinute,
         },
       });
+    }
+  } catch {}
+}
+
+/**
+ * Schedule reminders for defects with upcoming or overdue deadlines (dueDate).
+ */
+async function scheduleDeadlineReminders(prefs: NotificationPreferences): Promise<void> {
+  try {
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects();
+    const now = new Date();
+
+    for (const defect of defects) {
+      if (!defect.dueDate || defect.status === "erledigt" || defect.status === "geschlossen") continue;
+      const due = new Date(defect.dueDate);
+      const diffMs = due.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      // Overdue: notify immediately
+      if (diffDays < 0) {
+        const triggerDate = new Date();
+        triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute + 10, 0, 0);
+        if (triggerDate.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "\u26a0\ufe0f Frist \u00fcberschritten",
+              body: `"${defect.title}" - Frist war am ${due.toLocaleDateString("de-DE")}`,
+              data: { type: "overdue_deadline", defectId: defect.id },
+              sound: true,
+            },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 10 },
+          });
+        }
+        break; // Only one overdue notification per schedule cycle
+      }
+
+      // Due today
+      if (diffDays === 0) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "\u23f0 Frist heute",
+            body: `"${defect.title}" muss heute erledigt werden!`,
+            data: { type: "deadline_today", defectId: defect.id },
+            sound: true,
+          },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 2 },
+        });
+        break;
+      }
+
+      // Due in 1-3 days
+      if (diffDays >= 1 && diffDays <= 3) {
+        const triggerDate = new Date(defect.dueDate);
+        triggerDate.setDate(triggerDate.getDate() - 1);
+        triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+        if (triggerDate.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `\ud83d\udcc5 Frist in ${diffDays} ${diffDays === 1 ? "Tag" : "Tagen"}`,
+              body: `"${defect.title}" - Frist: ${due.toLocaleDateString("de-DE")}`,
+              data: { type: "deadline_upcoming", defectId: defect.id },
+              sound: true,
+            },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
+          });
+        }
+        break;
+      }
     }
   } catch {}
 }
