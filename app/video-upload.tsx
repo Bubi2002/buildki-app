@@ -228,6 +228,21 @@ export default function VideoUploadScreen() {
     setStep("choose_type");
   };
 
+  const formatTimestamp = (seconds: number): string => {
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const formatTranscriptionWithTimestamps = (result: any): string => {
+    if (result.segments && result.segments.length > 0) {
+      return result.segments
+        .map((seg: any) => `[${formatTimestamp(seg.start)}] ${seg.text.trim()}`)
+        .join("\n");
+    }
+    return result.text;
+  };
+
   const processSingleVideo = async (video: VideoFile, _index: number) => {
     setStep("uploading");
     setProgress(10);
@@ -253,14 +268,17 @@ export default function VideoUploadScreen() {
 
     const transcribeResult = await transcribeMutation.mutateAsync({
       audioUrl: uploadResult.url,
-      language: "de",
-      prompt: "Transkribiere das gesprochene Video auf Deutsch. Es handelt sich um eine Baustellenbegehung oder Besprechung.",
+      language: "auto",
+      prompt: "Transcribe the spoken audio accurately. Detect the language automatically.",
     });
 
     setProgress(80);
-    setTranscription(prev => prev + (prev ? "\n\n---\n\n" : "") + `[${video.name}]\n${transcribeResult.text}`);
-    setQueue(prev => prev.map((item, idx) => 
-      item.video.uri === video.uri ? { ...item, transcription: transcribeResult.text } : item
+    const timestampedText = formatTranscriptionWithTimestamps(transcribeResult);
+    const detectedLang = transcribeResult.language || "unbekannt";
+    const header = `[${video.name}] (Sprache: ${detectedLang})`;
+    setTranscription(prev => prev + (prev ? "\n\n---\n\n" : "") + `${header}\n${timestampedText}`);
+    setQueue(prev => prev.map((item) => 
+      item.video.uri === video.uri ? { ...item, transcription: timestampedText } : item
     ));
     setProgress(100);
   };

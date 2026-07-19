@@ -30,6 +30,7 @@ import {
 import { NetworkBanner } from "@/components/network-banner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PrivacyConsentDialog } from "@/components/privacy-consent-dialog";
+import { ShareIntentProvider } from "expo-share-intent";
 import * as QuickActions from "expo-quick-actions";
 import { useRouter as useQuickRouter } from "expo-router";
 
@@ -285,6 +286,7 @@ export default function RootLayout() {
   const content = (
     <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <ShareIntentProvider>
       <LanguageProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
@@ -305,6 +307,7 @@ export default function RootLayout() {
         />
       )}
       </LanguageProvider>
+      </ShareIntentProvider>
     </GestureHandlerRootView>
     </ErrorBoundary>
   );

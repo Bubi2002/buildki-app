@@ -976,3 +976,21 @@
 - [x] Mehrere Videos auf einmal auswählen (allowsMultipleSelection)
 - [x] Queue-Anzeige mit Fortschritt pro Video
 - [x] Nacheinander verarbeiten und Protokolle erstellen
+
+## Phase 11c: Video-Import Erweitert (2026-07-19)
+
+### 11c.1 Automatische Spracherkennung
+- [x] Sprache nicht mehr hardcoded "de" sondern automatisch erkennen lassen
+- [x] Server-seitig: language-Parameter auf "auto" setzen wenn nicht spezifiziert
+- [x] Erkannte Sprache im Ergebnis anzeigen (Header: Sprache: detected)
+
+### 11c.2 Zeitstempel in Transkription
+- [x] Server: Whisper-Timestamps anfordern (verbose_json mit segments)
+- [x] Zeitmarken im Transkriptionstext anzeigen ([MM:SS] Text)
+- [ ] Tap auf Zeitstempel → Video an dieser Stelle abspielen (optional, später)
+
+### 11c.3 Share Extension (expo-share-intent)
+- [x] expo-share-intent installieren und konfigurieren
+- [x] Share Extension für Video/Audio-Dateien registrieren (iOS + Android)
+- [x] Empfangene Dateien automatisch in Video-Upload-Queue laden (share-intent.tsx)
+- [x] App öffnet sich mit vorgeladener Datei wenn über "Teilen" gesendet

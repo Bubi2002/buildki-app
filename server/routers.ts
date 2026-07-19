@@ -33,8 +33,10 @@ export const appRouter = router({
 
         const result = await transcribeAudio({
           audioUrl,
-          language: input.language || "de",
-          prompt: input.prompt || "Transkribiere die Sprachaufnahme auf Deutsch",
+          language: input.language === "auto" ? undefined : (input.language || "de"),
+          prompt: input.prompt || (input.language === "auto"
+            ? "Transcribe the spoken audio accurately, detecting the language automatically"
+            : "Transkribiere die Sprachaufnahme auf Deutsch"),
         });
 
         if ("error" in result) {
