@@ -508,7 +508,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
                 <MaterialIcons name="layers" size={22} color="#5C6BC0" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Räume</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('matterport_raeume')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
@@ -568,7 +568,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#00897B15' }]}>
                 <MaterialIcons name="how-to-reg" size={22} color="#00897B" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>Anwesenheit</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('anwesenheit' as any)}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
@@ -801,9 +801,9 @@ const styles = StyleSheet.create({
   toolsSection: { paddingHorizontal: 16, marginBottom: 16 },
   toolsSectionTitle: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   toolsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  toolCard: { width: "30.5%", alignItems: "center", paddingVertical: 14, borderRadius: 0, position: "relative" },
-  toolIconBg: { width: 42, height: 42, borderRadius: 0, alignItems: "center", justifyContent: "center", marginBottom: 6 },
-  toolCardLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  toolCard: { width: "30.5%", alignItems: "center", paddingVertical: 14, minHeight: 72, borderRadius: 0, position: "relative" },
+  toolIconBg: { width: 44, height: 44, borderRadius: 0, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  toolCardLabel: { fontSize: 12, fontWeight: "600", textAlign: "center" },
   toolCardBadge: { fontSize: 10, marginTop: 2 },
   toolBadge: { position: "absolute", top: 6, right: "20%", minWidth: 16, height: 16, borderRadius: 0, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   toolBadgeText: { fontSize: 9, fontWeight: "700", color: "#FFFFFF" },

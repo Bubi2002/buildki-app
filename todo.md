@@ -656,3 +656,19 @@
 - [x] Mängel-Export Screen (defect-export.tsx) mit Status-Filter und PDF-Generierung
 - [x] Dashboard: KI-Bericht, Mängel-PDF, Vergleich als neue Werkzeuge hinzugefügt
 - [x] Dashboard: Export-Route auf export-center.tsx umgeleitet
+
+## Phase 3: Funktionale Beta (2025-07-19)
+- [ ] Matterport: SDK-Token als Secret konfigurieren (MATTERPORT_SDK_KEY)
+- [ ] Matterport: Viewer mit echtem Modell testen (Showcase-URL laden)
+- [ ] Matterport: Pins im echten Modell setzen und Status-Sync verifizieren
+- [ ] E2E-Test: Aufnahme (Audio + Foto) → KI-Transkription → Protokoll erstellen
+- [ ] E2E-Test: Mängelliste erstellen und bearbeiten
+- [ ] E2E-Test: PDF erzeugen und teilen
+- [ ] E2E-Test: Matterport 3D-Viewer öffnen und navigieren
+- [ ] E2E-Test: Offline-Sync prüfen (Flugmodus → Aufnahme → Reconnect)
+- [x] UI-Polish: Touch Targets vergrößert (Dashboard/project-detail toolCards minHeight:72, defects/protocols filter buttons vergrößert)
+- [x] UI-Polish: Texte auf Deutsch vereinheitlicht (Räume/Anwesenheit auf t() umgestellt, i18n-Keys DE/EN/FR ergänzt)
+- [ ] UI-Polish: Icons und Farben konsistent (fortlaufend)
+- [ ] UI-Polish: Abstände und Animationen (fortlaufend)
+- [ ] TestFlight: EAS Build erstellen (eas build --profile testflight)
+- [ ] TestFlight: App ohne Expo Go auf iPhone installierbar
