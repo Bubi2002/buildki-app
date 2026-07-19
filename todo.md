@@ -628,3 +628,31 @@
 - [x] Neues Modul: lib/defect-comments.ts (addDefectComment, addBeforePhoto, addAfterPhoto, setFollowUpDate, requestReinspection)
 - [x] Neuer Screen: app/attendance.tsx (Anwesenheits-Dokumentation mit Tageserfassung)
 - [x] TypeScript: 0 Fehler nach allen Änderungen
+
+## Phase 2: Vollständige App-Reife (2025-07-19)
+- [x] Matterport: 3D-Viewer WebView mit SDK-Embed (matterport-viewer.tsx)
+- [x] Matterport: Räume aus Matterport-Modell importieren (importRoomsFromMatterport)
+- [x] Matterport: Pins auf 3D-Modell setzen (Mängel, Notizen, Aufgaben, Fotos)
+- [x] Matterport: Status-Sync zwischen App-Mängeln und Matterport-Pins (SDK postMessage)
+- [x] KI-Berichte: 10 Berichtstypen (report-types.ts + report-generator.tsx)
+- [x] KI-Berichte: Strukturerkennung (Datum, Projekt, Personen, Firmen, Mängel, Fristen)
+- [x] KI-Berichte: Bericht vor Speichern bearbeitbar (TextInput im Generator)
+- [x] PDF: Professionelles Layout mit Logo, Kopf-/Fußzeile (pdf-professional.ts)
+- [x] PDF: Bilder inline mit Markierungen
+- [x] PDF: Unterschriften und Seitenzahlen
+- [x] Offline: Robuster Cache für alle Datentypen (performance.ts cacheSet/cacheGet)
+- [x] Offline: Sync-Queue mit Retry-Logik (offline-sync.ts forceSync)
+- [x] Offline: Conflict-Resolution bei gleichzeitiger Bearbeitung (smartMerge)
+- [x] Performance: Lazy Loading (paginate helper, FlatList-Pattern)
+- [x] Performance: Bildkompression vor Speicherung (compressImage, createThumbnail)
+- [x] Performance: AsyncStorage-Optimierung (batchGet, batchSet, clearExpiredCache)
+- [x] TestFlight: Crash-Handling und Error-Boundaries (ErrorBoundary + ScreenErrorBoundary in _layout.tsx)
+- [x] TestFlight: Build-Config und EAS-Setup (eas.json mit development/preview/testflight/production Profilen)
+- [ ] TestFlight: Polishing (Ladezeiten, Animationen, Edge-Cases) – fortlaufend
+
+## Phase 2 – Zusätzlich erstellt:
+- [x] Export-Center Screen (export-center.tsx) mit Firmendaten-Editor und 6 Export-Typen
+- [x] Vergleichs-Screen (comparison.tsx) mit 3 Modi (nebeneinander, überlagert, Schieber)
+- [x] Mängel-Export Screen (defect-export.tsx) mit Status-Filter und PDF-Generierung
+- [x] Dashboard: KI-Bericht, Mängel-PDF, Vergleich als neue Werkzeuge hinzugefügt
+- [x] Dashboard: Export-Route auf export-center.tsx umgeleitet

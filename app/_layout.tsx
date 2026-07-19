@@ -28,6 +28,7 @@ import {
   getLockTimeout,
 } from "@/lib/biometric-lock";
 import { NetworkBanner } from "@/components/network-banner";
+import { ErrorBoundary } from "@/components/error-boundary";
 import * as QuickActions from "expo-quick-actions";
 import { useRouter as useQuickRouter } from "expo-router";
 
@@ -261,6 +262,7 @@ export default function RootLayout() {
   }, [initialInsets, initialFrame]);
 
   const content = (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LanguageProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
@@ -282,6 +284,7 @@ export default function RootLayout() {
       )}
       </LanguageProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 
   const shouldOverrideSafeArea = Platform.OS === "web";

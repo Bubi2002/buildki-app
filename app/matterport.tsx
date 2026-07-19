@@ -581,6 +581,15 @@ export default function MatterportScreen() {
           </View>
         )}
 
+        {/* Open 3D Viewer Button */}
+        <Pressable
+          onPress={() => router.push(`/matterport-viewer?modelId=${selectedModel.id}` as any)}
+          style={({ pressed }) => [styles.detailCard, { backgroundColor: "#00B0FF", borderColor: "#00B0FF", opacity: pressed ? 0.8 : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }]}
+        >
+          <MaterialIcons name="view-in-ar" size={22} color="#fff" />
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>3D-Modell öffnen</Text>
+        </Pressable>
+
         {/* Phase 2 Preview */}
         <View style={[styles.detailCard, { backgroundColor: "rgba(0, 176, 255, 0.05)", borderColor: "#00B0FF" }]}>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>

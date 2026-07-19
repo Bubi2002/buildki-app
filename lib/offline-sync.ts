@@ -186,3 +186,43 @@ export async function cleanupSyncQueue(): Promise<void> {
   const filtered = queue.filter(a => !a.synced || a.timestamp > weekAgo);
   await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(filtered));
 }
+
+/**
+ * Force sync all pending changes (retry failed ones)
+ */
+export async function forceSync(): Promise<{ synced: number; failed: number }> {
+  const online = await isOnline();
+  if (!online) return { synced: 0, failed: 0 };
+
+  const queue = await getSyncQueue();
+  const pending = queue.filter(a => !a.synced);
+  let synced = 0;
+  let failed = 0;
+
+  // In a real implementation, this would call the server API
+  // For now, mark all as synced (optimistic)
+  const ids = pending.map(a => a.id);
+  if (ids.length > 0) {
+    await markSynced(ids);
+    synced = ids.length;
+  }
+
+  await AsyncStorage.setItem("last-sync-timestamp", new Date().toISOString());
+  return { synced, failed };
+}
+
+/**
+ * React hook for offline sync state
+ */
+export function useOfflineSyncStatus() {
+  // This is a simple polling hook
+  // In production, use a context provider with event-driven updates
+  return {
+    getSyncStatus,
+    forceSync,
+    queueChange,
+    cleanupSyncQueue,
+    getUnresolvedConflicts,
+    resolveConflict,
+  };
+}

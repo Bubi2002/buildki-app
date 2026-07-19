@@ -9,6 +9,9 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "development"
       }
     },
     "preview": {
@@ -26,7 +29,10 @@
       "ios": {
         "buildConfiguration": "Release"
       },
-      "channel": "testflight"
+      "channel": "testflight",
+      "env": {
+        "EXPO_PUBLIC_ENV": "testflight"
+      }
     },
     "production": {
       "autoIncrement": true,
