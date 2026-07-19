@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet, RefreshControl } from "react-native";
+import { ScrollView, Text, View, Pressable, StyleSheet, RefreshControl, Alert } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -499,14 +499,33 @@ export default function AIWorkbenchScreen() {
         )}
 
         {/* ─── Neue Aufnahme starten ───────────────────────────────────── */}
-        <Pressable
-          onPress={() => router.push('/(tabs)/' as any)}
-          style={({ pressed }) => [styles.recordButton, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <MaterialIcons name="mic" size={20} color="#fff" />
-          <Text style={styles.recordButtonText}>{t('neue_aufnahme_starten')}</Text>
-          <MaterialIcons name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
-        </Pressable>
+        <View style={styles.quickActionsRow}>
+          <Pressable
+            onPress={() => router.push('/(tabs)/record' as any)}
+            style={({ pressed }) => [styles.quickActionBtn, styles.quickActionPrimary, { opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="mic" size={22} color="#fff" />
+            <Text style={styles.quickActionPrimaryText}>{t('neue_aufnahme_starten')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              try {
+                const data = await AsyncStorage.getItem("protocols");
+                const protocols: Protocol[] = data ? JSON.parse(data) : [];
+                if (protocols.length > 0) {
+                  const sorted = [...protocols].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  router.push(`/protocol-detail?id=${sorted[0].id}` as any);
+                } else {
+                  Alert.alert("Keine Protokolle", "Es gibt noch keine Protokolle.");
+                }
+              } catch { }
+            }}
+            style={({ pressed }) => [styles.quickActionBtn, styles.quickActionSecondary, { opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="history" size={22} color="#5DADE2" />
+            <Text style={styles.quickActionSecondaryText}>{t('letzte_protokolle')}</Text>
+          </Pressable>
+        </View>
 
         {/* ─── TOOLS Grid (3 columns) ─────────────────────────────────────── */}
         <Text style={styles.toolsSectionTitle}>TOOLS</Text>
@@ -812,22 +831,39 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   // ─── Record Button ─────────────────────────────────────────────────────────
-  recordButton: {
+  quickActionsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 14,
-    backgroundColor: '#E53935',
-    borderRadius: 0,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 8,
+    gap: 10,
   },
-  recordButtonText: {
-    fontSize: 15,
+  quickActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    gap: 8,
+    borderRadius: 0,
+  },
+  quickActionPrimary: {
+    backgroundColor: '#E53935',
+  },
+  quickActionPrimaryText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
-    flex: 1,
+  },
+  quickActionSecondary: {
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+  },
+  quickActionSecondaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#5DADE2',
   },
   // ─── Tools Grid ────────────────────────────────────────────────────────────
   toolsSectionTitle: {

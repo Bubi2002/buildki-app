@@ -942,3 +942,9 @@
 - [x] Aufnahme als zweiten Tab positioniert
 - [x] App startet auf Tools-Tab (initialRouteName="index")
 - [x] dashboard.tsx → index.tsx umbenannt, index.tsx → record.tsx umbenannt
+
+## Phase 10d: Tab-Verbesserungen & Quick-Actions (2026-07-19)
+
+- [x] Tab-Label "Aufnahme" für den Record-Tab setzen (nav_home = Aufnahme)
+- [x] Quick-Actions oben auf Tools-Tab: Neue Aufnahme + Letztes Protokoll
+- [x] TestFlight-Build vorbereiten (Checkpoint für Publish)
