@@ -553,6 +553,27 @@ export default function DefectsScreen() {
                   </View>
                 </View>
 
+                {/* Nachprüfung Button */}
+                <Pressable
+                  onPress={() => {
+                    setShowDetailModal(false);
+                    router.push(`/follow-up?projectId=${selectedDefect.projectId}&defectId=${selectedDefect.id}` as any);
+                  }}
+                  style={({ pressed }) => [{
+                    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                    paddingVertical: 12, marginBottom: 16, borderWidth: 1,
+                    borderColor: "#A78BFA40", backgroundColor: "#A78BFA10",
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <MaterialIcons name="event-repeat" size={18} color="#A78BFA" />
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#A78BFA" }}>
+                    {selectedDefect.followUpDate
+                      ? `Nachprüfung: ${new Date(selectedDefect.followUpDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}`
+                      : "Nachprüfung planen"}
+                  </Text>
+                </Pressable>
+
                 {/* History Timeline */}
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('verlauf')}</Text>

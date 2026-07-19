@@ -695,3 +695,21 @@
 - [ ] (ausstehend) Matterport-Secrets eintragen (User: "später")
 - [ ] (ausstehend) Expo-Account erstellen + eas login + eas build ausführen
 - [ ] (niedrige Prio) UI-Animationen verfeinern
+
+## Phase 6: Dashboard Live-Daten + Nachprüfungs-Workflow (2026-07-19)
+- [x] Dashboard: Echte Projektzahlen aus project-store (Anzahl Projekte, aktives Projekt)
+- [x] Dashboard: Offene Mängel live aus defect-store (Anzahl pro Status: offen, in Arbeit, überfällig, erledigt)
+- [x] Dashboard: Fortschritt live aus progress-engine (overallPercent, phase)
+- [x] Dashboard: Protokoll-Statistiken (gesamt, diese Woche)
+- [x] Dashboard: Anwesenheits-Zusammenfassung (heute anwesend aus attendance_records)
+- [x] Dashboard: Letzte Aktivitäten (Timeline-Events, max 5)
+- [x] Dashboard: Aufgaben-Fortschrittsbalken (erledigt/offen)
+- [x] Dashboard: Kritische Warnungen (hohe Priorität, überfällig, Nachprüfungen)
+- [x] Dashboard: Räume fertig/gesamt aus room-store
+- [x] Nachprüfung: followUpDate-Picker im Mängel-Detail (Button → /follow-up Screen)
+- [x] Nachprüfung: Status "pruefung" in Workflow integriert (requestReinspection)
+- [x] Nachprüfung: Push-Benachrichtigung am Vortag + Tag der Nachprüfung
+- [x] Nachprüfung: Ergebnis-Dialog (Mangel behoben / Nachbesserung nötig)
+- [x] Nachprüfung: Vollständiger /follow-up Screen mit Filter, Stats, Terminauswahl
+- [x] Nachprüfung: notification-service.ts Defect-Filter auf deutsche Status korrigiert
+- [x] Nachprüfung: Tool-Kachel im Dashboard-Grid hinzugefügt

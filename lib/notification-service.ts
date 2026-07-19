@@ -18,6 +18,7 @@ export type NotificationPreferences = {
   openDefectsReminder: boolean;
   checklistReminder: boolean;
   dailyDigest: boolean;
+  followUpReminder: boolean;
   reminderHour: number; // 0-23
   reminderMinute: number; // 0-59
 };
@@ -27,11 +28,13 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   openDefectsReminder: true,
   checklistReminder: true,
   dailyDigest: true,
+  followUpReminder: true,
   reminderHour: 8,
   reminderMinute: 0,
 };
 
 const PREFS_KEY = "notification_preferences";
+const FOLLOWUP_NOTIFICATIONS_KEY = "followup_scheduled_notifications";
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
   try {
@@ -85,13 +88,21 @@ export async function scheduleNotifications(): Promise<void> {
   if (prefs.dailyDigest) {
     await scheduleDailyDigest(prefs);
   }
+
+  // Schedule follow-up inspection reminders
+  if (prefs.followUpReminder) {
+    await scheduleFollowUpReminders();
+  }
 }
 
 async function scheduleDefectReminder(prefs: NotificationPreferences): Promise<void> {
   try {
     const defectsData = await AsyncStorage.getItem("defects");
     const defects = JSON.parse(defectsData || "[]");
-    const openDefects = defects.filter((d: any) => d.status === "open");
+    // Fix: use correct German status values
+    const openDefects = defects.filter((d: any) =>
+      d.status === "offen" || d.status === "zugewiesen" || d.status === "in_bearbeitung" || d.status === "nachbesserung"
+    );
 
     if (openDefects.length > 0) {
       await Notifications.scheduleNotificationAsync({
@@ -159,6 +170,130 @@ async function scheduleDailyDigest(prefs: NotificationPreferences): Promise<void
   } catch {}
 }
 
+/**
+ * Schedule follow-up inspection reminders for defects with followUpDate.
+ * Schedules a notification for the morning of the follow-up date and one day before.
+ */
+async function scheduleFollowUpReminders(): Promise<void> {
+  try {
+    const defectsData = await AsyncStorage.getItem("defects");
+    const defects = JSON.parse(defectsData || "[]");
+    const prefs = await getNotificationPreferences();
+
+    const now = new Date();
+    const maxFutureDays = 30; // Only schedule up to 30 days ahead (Expo limit)
+
+    const defectsWithFollowUp = defects.filter((d: any) =>
+      d.followUpDate &&
+      d.status !== "erledigt" &&
+      d.status !== "geschlossen"
+    );
+
+    for (const defect of defectsWithFollowUp) {
+      const followUpDate = new Date(defect.followUpDate);
+      const diffMs = followUpDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      // Schedule for the day of the follow-up
+      if (diffDays >= 0 && diffDays <= maxFutureDays) {
+        const triggerDate = new Date(defect.followUpDate);
+        triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+
+        if (triggerDate.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "🔍 Nachprüfung heute",
+              body: `Nachprüfung fällig: ${defect.title}${defect.location ? ` (${defect.location})` : ""}`,
+              data: { type: "followup", defectId: defect.id },
+              sound: true,
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: triggerDate,
+            },
+          });
+        }
+      }
+
+      // Schedule reminder one day before
+      if (diffDays >= 1 && diffDays <= maxFutureDays) {
+        const dayBefore = new Date(defect.followUpDate);
+        dayBefore.setDate(dayBefore.getDate() - 1);
+        dayBefore.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+
+        if (dayBefore.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "📋 Nachprüfung morgen",
+              body: `Morgen: Nachprüfung für "${defect.title}"${defect.assignee ? ` (${defect.assignee})` : ""}`,
+              data: { type: "followup_reminder", defectId: defect.id },
+              sound: true,
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: dayBefore,
+            },
+          });
+        }
+      }
+    }
+  } catch {}
+}
+
+/**
+ * Schedule a specific follow-up notification for a single defect.
+ * Called when user sets a follow-up date on a defect.
+ */
+export async function scheduleFollowUpForDefect(defectId: string, defectTitle: string, followUpDate: string, location?: string): Promise<void> {
+  if (Platform.OS === "web") return;
+
+  const prefs = await getNotificationPreferences();
+  if (!prefs.enabled || !prefs.followUpReminder) return;
+
+  const hasPermission = await requestPermissions();
+  if (!hasPermission) return;
+
+  const now = new Date();
+  const targetDate = new Date(followUpDate);
+  targetDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+
+  // Schedule day-of notification
+  if (targetDate.getTime() > now.getTime()) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "🔍 Nachprüfung heute",
+        body: `Nachprüfung fällig: ${defectTitle}${location ? ` (${location})` : ""}`,
+        data: { type: "followup", defectId },
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: targetDate,
+      },
+    });
+  }
+
+  // Schedule day-before notification
+  const dayBefore = new Date(followUpDate);
+  dayBefore.setDate(dayBefore.getDate() - 1);
+  dayBefore.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+
+  if (dayBefore.getTime() > now.getTime()) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "📋 Nachprüfung morgen",
+        body: `Morgen: Nachprüfung für "${defectTitle}"`,
+        data: { type: "followup_reminder", defectId },
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: dayBefore,
+      },
+    });
+  }
+}
+
 export async function sendImmediateNotification(title: string, body: string, data?: any): Promise<void> {
   if (Platform.OS === "web") return;
   const hasPermission = await requestPermissions();
@@ -168,4 +303,34 @@ export async function sendImmediateNotification(title: string, body: string, dat
     content: { title, body, data, sound: true },
     trigger: null,
   });
+}
+
+/**
+ * Get all defects that have a follow-up date set and are pending inspection.
+ */
+export async function getPendingFollowUps(): Promise<any[]> {
+  try {
+    const defectsData = await AsyncStorage.getItem("defects");
+    const defects = JSON.parse(defectsData || "[]");
+    return defects.filter((d: any) =>
+      d.followUpDate &&
+      d.status !== "erledigt" &&
+      d.status !== "geschlossen"
+    ).sort((a: any, b: any) => new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime());
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get overdue follow-ups (follow-up date has passed but defect not resolved).
+ */
+export async function getOverdueFollowUps(): Promise<any[]> {
+  try {
+    const pending = await getPendingFollowUps();
+    const now = new Date();
+    return pending.filter((d: any) => new Date(d.followUpDate) < now);
+  } catch {
+    return [];
+  }
 }

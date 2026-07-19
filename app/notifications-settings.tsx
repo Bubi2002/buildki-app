@@ -106,6 +106,7 @@ export default function NotificationsSettingsScreen() {
     openDefectsReminder: true,
     checklistReminder: true,
     dailyDigest: true,
+    followUpReminder: true,
     reminderHour: 8,
     reminderMinute: 0,
   });

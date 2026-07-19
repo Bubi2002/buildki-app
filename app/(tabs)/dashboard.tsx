@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { ScrollView, Text, View, Pressable, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { ScrollView, Text, View, Pressable, StyleSheet, RefreshControl } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useTranslation } from "@/lib/language-provider";
+import { getDefects, getDefectStats, type Defect } from "@/lib/defect-store";
+import { getOverdueDefects } from "@/lib/defect-pdf-export";
+import { progressEngine, type ProgressSnapshot } from "@/lib/progress-engine";
+import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeIcon, getEventTypeColor } from "@/lib/timeline-engine";
+import { getProjectStructure } from "@/lib/room-store";
 
 type Project = {
   id: string;
@@ -13,7 +18,45 @@ type Project = {
   description?: string;
 };
 
-// ─── Tool Grid (matching screenshot layout) ─────────────────────────────────
+type Protocol = {
+  id: string;
+  title: string;
+  createdAt: string;
+  status: "processing" | "ready" | "sent";
+  todos?: Array<{ task: string; done: boolean }>;
+  projectId?: string;
+};
+
+type AttendanceRecord = {
+  id: string;
+  projectId: string;
+  date: string;
+  workers: Array<{ id: string; name: string; firma: string; gewerk: string }>;
+};
+
+// ─── Live Stats Type ────────────────────────────────────────────────────────
+type LiveStats = {
+  totalProjects: number;
+  totalProtocols: number;
+  thisWeekProtocols: number;
+  openDefects: number;
+  inProgressDefects: number;
+  overdueDefects: number;
+  resolvedDefects: number;
+  totalDefects: number;
+  highPriorityDefects: number;
+  overallProgress: number;
+  progressPhase: string;
+  openTasks: number;
+  completedTasks: number;
+  todayAttendance: number;
+  roomsTotal: number;
+  roomsCompleted: number;
+  recentEvents: TimelineEvent[];
+  pendingFollowUps: number;
+};
+
+// ─── Tool Grid ──────────────────────────────────────────────────────────────
 
 interface ToolItem {
   key: string;
@@ -25,9 +68,10 @@ interface ToolItem {
 
 const TOOLS: ToolItem[] = [
   { key: "ki_analyse", label: "KI-Analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
-  { key: "maengel", label: "M\u00e4ngel", icon: "warning", color: "#FF9800", route: "/defects" },
+  { key: "maengel", label: "Mängel", icon: "warning", color: "#FF9800", route: "/defects" },
+  { key: "nachpruefung", label: "Nachprüfung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
   { key: "aufgaben", label: "Aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
-  { key: "raeume", label: "R\u00e4ume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
+  { key: "raeume", label: "Räume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
   { key: "grundriss", label: "Grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
   { key: "tagebuch", label: "Tagebuch", icon: "menu-book", color: "#66BB6A", route: "/diary" },
   { key: "checklisten", label: "Checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
@@ -57,6 +101,27 @@ export default function AIWorkbenchScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState<LiveStats>({
+    totalProjects: 0,
+    totalProtocols: 0,
+    thisWeekProtocols: 0,
+    openDefects: 0,
+    inProgressDefects: 0,
+    overdueDefects: 0,
+    resolvedDefects: 0,
+    totalDefects: 0,
+    highPriorityDefects: 0,
+    overallProgress: 0,
+    progressPhase: "",
+    openTasks: 0,
+    completedTasks: 0,
+    todayAttendance: 0,
+    roomsTotal: 0,
+    roomsCompleted: 0,
+    recentEvents: [],
+    pendingFollowUps: 0,
+  });
 
   const loadProjects = useCallback(async () => {
     try {
@@ -72,7 +137,124 @@ export default function AIWorkbenchScreen() {
     } catch {}
   }, []);
 
-  useEffect(() => { loadProjects(); }, [loadProjects]);
+  const loadLiveStats = useCallback(async (projectId?: string) => {
+    try {
+      // 1. Projects
+      const projectsData = await AsyncStorage.getItem("projects");
+      const allProjects: Project[] = projectsData ? JSON.parse(projectsData) : [];
+
+      // 2. Protocols
+      const protocolsData = await AsyncStorage.getItem("protocols");
+      const allProtocols: Protocol[] = protocolsData ? JSON.parse(protocolsData) : [];
+      const projectProtocols = projectId
+        ? allProtocols.filter(p => p.projectId === projectId)
+        : allProtocols;
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const thisWeek = projectProtocols.filter(p => new Date(p.createdAt) > weekAgo);
+
+      // Tasks from protocols
+      let openTasks = 0;
+      let completedTasks = 0;
+      projectProtocols.forEach(p => {
+        if (p.todos && Array.isArray(p.todos)) {
+          openTasks += p.todos.filter(td => !td.done).length;
+          completedTasks += p.todos.filter(td => td.done).length;
+        }
+      });
+
+      // 3. Defects
+      const allDefects = await getDefects(projectId || undefined);
+      const defectStats = getDefectStats(allDefects);
+      const overdueDefects = getOverdueDefects(allDefects);
+      const highPriority = allDefects.filter(d => d.priority === "hoch" && d.status !== "erledigt" && d.status !== "geschlossen").length;
+      const pendingFollowUps = allDefects.filter(d => d.followUpDate && d.status !== "erledigt" && d.status !== "geschlossen").length;
+
+      // 4. Progress
+      let overallProgress = 0;
+      let progressPhase = "";
+      if (projectId) {
+        try {
+          const snapshot = await progressEngine.calculateProgress(projectId);
+          overallProgress = snapshot.overallPercent;
+          progressPhase = snapshot.phase;
+        } catch {}
+      }
+
+      // 5. Rooms
+      let roomsTotal = 0;
+      let roomsCompleted = 0;
+      if (projectId) {
+        try {
+          const structure = await getProjectStructure(projectId);
+          roomsTotal = structure.rooms.length;
+          roomsCompleted = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
+        } catch {}
+      }
+
+      // 6. Attendance (today)
+      let todayAttendance = 0;
+      try {
+        const attendanceData = await AsyncStorage.getItem("attendance_records");
+        const records: AttendanceRecord[] = attendanceData ? JSON.parse(attendanceData) : [];
+        const today = new Date().toISOString().split("T")[0];
+        const todayRecords = records.filter(r =>
+          r.date === today && (!projectId || r.projectId === projectId)
+        );
+        todayAttendance = todayRecords.reduce((sum, r) => sum + (r.workers?.length || 0), 0);
+      } catch {}
+
+      // 7. Timeline (recent events)
+      let recentEvents: TimelineEvent[] = [];
+      try {
+        const events = await timelineEngine.query({
+          projectId: projectId || undefined,
+          limit: 5,
+        });
+        recentEvents = events;
+      } catch {}
+
+      setStats({
+        totalProjects: allProjects.length,
+        totalProtocols: projectProtocols.length,
+        thisWeekProtocols: thisWeek.length,
+        openDefects: defectStats.offen,
+        inProgressDefects: defectStats.inBearbeitung,
+        overdueDefects: overdueDefects.length,
+        resolvedDefects: defectStats.erledigt,
+        totalDefects: defectStats.total,
+        highPriorityDefects: highPriority,
+        overallProgress,
+        progressPhase,
+        openTasks,
+        completedTasks,
+        todayAttendance,
+        roomsTotal,
+        roomsCompleted,
+        recentEvents,
+        pendingFollowUps,
+      });
+    } catch (e) {
+      console.error("Dashboard live stats error:", e);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProjects();
+    }, [loadProjects])
+  );
+
+  useEffect(() => {
+    loadLiveStats(selectedProject?.id);
+  }, [selectedProject, loadLiveStats]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProjects();
+    await loadLiveStats(selectedProject?.id);
+    setRefreshing(false);
+  };
 
   const selectProject = async (project: Project) => {
     setSelectedProject(project);
@@ -88,9 +270,23 @@ export default function AIWorkbenchScreen() {
     }
   };
 
+  // ─── Phase Label ────────────────────────────────────────────────────────────
+  const phaseLabels: Record<string, string> = {
+    rohbau: "Rohbau",
+    ausbau_1: "Ausbau 1",
+    ausbau_2: "Ausbau 2",
+    ausbau_3: "Ausbau 3",
+    fertigstellung: "Fertigstellung",
+    abnahme: "Abnahme",
+  };
+
   return (
     <ScreenContainer className="p-0">
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5DADE2" />}
+      >
 
         {/* ─── Project Selector ─────────────────────────────────────────── */}
         <Pressable
@@ -143,6 +339,165 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
+        {/* ─── Live Stats Overview ────────────────────────────────────────── */}
+        <View style={styles.statsSection}>
+          <Text style={styles.statsSectionTitle}>ÜBERSICHT</Text>
+
+          {/* Progress Bar */}
+          {selectedProject && (
+            <Pressable
+              onPress={() => navigateModule("/progress")}
+              style={({ pressed }) => [styles.progressCard, { opacity: pressed ? 0.8 : 1 }]}
+            >
+              <View style={styles.progressHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialIcons name="trending-up" size={18} color="#4CAF50" />
+                  <Text style={styles.progressLabel}>Baufortschritt</Text>
+                </View>
+                <Text style={styles.progressPercent}>{stats.overallProgress}%</Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${Math.min(stats.overallProgress, 100)}%` }]} />
+              </View>
+              {stats.progressPhase ? (
+                <Text style={styles.progressPhase}>Phase: {phaseLabels[stats.progressPhase] || stats.progressPhase}</Text>
+              ) : null}
+            </Pressable>
+          )}
+
+          {/* Stats Grid */}
+          <View style={styles.statsGrid}>
+            <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="warning" size={20} color="#F87171" />
+              <Text style={styles.statValue}>{stats.openDefects}</Text>
+              <Text style={styles.statLabel}>Offen</Text>
+            </Pressable>
+            <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="build" size={20} color="#FBBF24" />
+              <Text style={styles.statValue}>{stats.inProgressDefects}</Text>
+              <Text style={styles.statLabel}>In Arbeit</Text>
+            </Pressable>
+            <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="schedule" size={20} color="#FB7185" />
+              <Text style={styles.statValue}>{stats.overdueDefects}</Text>
+              <Text style={styles.statLabel}>Überfällig</Text>
+            </Pressable>
+            <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="check-circle" size={20} color="#4ADE80" />
+              <Text style={styles.statValue}>{stats.resolvedDefects}</Text>
+              <Text style={styles.statLabel}>Erledigt</Text>
+            </Pressable>
+          </View>
+
+          {/* Secondary Stats Row */}
+          <View style={styles.statsGrid}>
+            <Pressable onPress={() => router.push("/(tabs)/protocols" as any)} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="description" size={20} color="#5DADE2" />
+              <Text style={styles.statValue}>{stats.totalProtocols}</Text>
+              <Text style={styles.statLabel}>Protokolle</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push("/(tabs)/protocols" as any)} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="trending-up" size={20} color="#A78BFA" />
+              <Text style={styles.statValue}>{stats.thisWeekProtocols}</Text>
+              <Text style={styles.statLabel}>Diese Woche</Text>
+            </Pressable>
+            <Pressable onPress={() => navigateModule("/attendance")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="groups" size={20} color="#00897B" />
+              <Text style={styles.statValue}>{stats.todayAttendance}</Text>
+              <Text style={styles.statLabel}>Heute vor Ort</Text>
+            </Pressable>
+            <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="layers" size={20} color="#5C6BC0" />
+              <Text style={styles.statValue}>{stats.roomsCompleted}/{stats.roomsTotal}</Text>
+              <Text style={styles.statLabel}>Räume fertig</Text>
+            </Pressable>
+          </View>
+
+          {/* Critical Alerts */}
+          {(stats.highPriorityDefects > 0 || stats.overdueDefects > 0 || stats.pendingFollowUps > 0) && (
+            <View style={styles.alertsContainer}>
+              {stats.highPriorityDefects > 0 && (
+                <Pressable
+                  onPress={() => navigateModule("/defects")}
+                  style={({ pressed }) => [styles.alertRow, { opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="priority-high" size={16} color="#F87171" />
+                  <Text style={styles.alertText}>
+                    {stats.highPriorityDefects} {stats.highPriorityDefects === 1 ? "Mangel" : "Mängel"} mit hoher Priorität
+                  </Text>
+                  <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
+                </Pressable>
+              )}
+              {stats.overdueDefects > 0 && (
+                <Pressable
+                  onPress={() => navigateModule("/defects")}
+                  style={({ pressed }) => [styles.alertRow, { opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="event-busy" size={16} color="#FB7185" />
+                  <Text style={styles.alertText}>
+                    {stats.overdueDefects} {stats.overdueDefects === 1 ? "Mangel" : "Mängel"} überfällig
+                  </Text>
+                  <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
+                </Pressable>
+              )}
+              {stats.pendingFollowUps > 0 && (
+                <Pressable
+                  onPress={() => navigateModule("/defects")}
+                  style={({ pressed }) => [styles.alertRow, { opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="event-repeat" size={16} color="#A78BFA" />
+                  <Text style={styles.alertText}>
+                    {stats.pendingFollowUps} Nachprüfung{stats.pendingFollowUps !== 1 ? "en" : ""} ausstehend
+                  </Text>
+                  <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Tasks Summary */}
+          {(stats.openTasks > 0 || stats.completedTasks > 0) && (
+            <View style={styles.tasksSummary}>
+              <View style={styles.tasksHeader}>
+                <MaterialIcons name="task-alt" size={16} color="#5DADE2" />
+                <Text style={styles.tasksTitle}>Aufgaben</Text>
+              </View>
+              <View style={styles.tasksBar}>
+                <View style={[styles.tasksBarFill, { width: `${stats.openTasks + stats.completedTasks > 0 ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }]} />
+              </View>
+              <Text style={styles.tasksText}>
+                {stats.completedTasks} erledigt / {stats.openTasks} offen
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ─── Recent Activity ────────────────────────────────────────────── */}
+        {stats.recentEvents.length > 0 && (
+          <View style={styles.activitySection}>
+            <View style={styles.activityHeader}>
+              <Text style={styles.activityTitle}>LETZTE AKTIVITÄTEN</Text>
+              <Pressable onPress={() => navigateModule("/smart-timeline")} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={styles.activityMore}>Alle anzeigen</Text>
+              </Pressable>
+            </View>
+            {stats.recentEvents.map((event) => (
+              <View key={event.id} style={styles.activityItem}>
+                <View style={[styles.activityDot, { backgroundColor: getEventTypeColor(event.eventType) }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.activityItemTitle} numberOfLines={1}>{event.title}</Text>
+                  <Text style={styles.activityItemMeta}>
+                    {getEventTypeLabel(event.eventType)} {event.roomName ? `• ${event.roomName}` : ""}
+                  </Text>
+                </View>
+                <Text style={styles.activityTime}>
+                  {formatRelativeTime(event.timestamp)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* ─── Neue Aufnahme starten ───────────────────────────────────── */}
         <Pressable
           onPress={() => router.push('/(tabs)/' as any)}
@@ -153,7 +508,7 @@ export default function AIWorkbenchScreen() {
           <MaterialIcons name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
         </Pressable>
 
-        {/* ─── TOOLS Grid (3 columns, matching screenshot) ─────────────── */}
+        {/* ─── TOOLS Grid (3 columns) ─────────────────────────────────────── */}
         <Text style={styles.toolsSectionTitle}>TOOLS</Text>
 
         <View style={styles.toolGrid}>
@@ -172,6 +527,21 @@ export default function AIWorkbenchScreen() {
       </ScrollView>
     </ScreenContainer>
   );
+}
+
+// ─── Helper ─────────────────────────────────────────────────────────────────
+function formatRelativeTime(timestamp: string): string {
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  const diff = now - then;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Jetzt";
+  if (minutes < 60) return `${minutes} Min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} Std`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} T`;
+  return new Date(timestamp).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 }
 
 const styles = StyleSheet.create({
@@ -250,6 +620,196 @@ const styles = StyleSheet.create({
   projectItemTextActive: {
     fontWeight: '600',
     color: '#5DADE2',
+  },
+  // ─── Stats Section ─────────────────────────────────────────────────────────
+  statsSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+  },
+  statsSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8FA3B8',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  // Progress Card
+  progressCard: {
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 0,
+    padding: 14,
+    marginBottom: 10,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F0F4F8',
+  },
+  progressPercent: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#4CAF50',
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: '#1E3A5F',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 6,
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  progressPhase: {
+    fontSize: 11,
+    color: '#8FA3B8',
+    marginTop: 6,
+  },
+  // Stats Grid
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 0,
+    padding: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F0F4F8',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#8FA3B8',
+    textAlign: 'center',
+  },
+  // Alerts
+  alertsContainer: {
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#F8717130',
+    borderRadius: 0,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  alertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E3A5F',
+  },
+  alertText: {
+    fontSize: 13,
+    color: '#F0F4F8',
+    flex: 1,
+    fontWeight: '500',
+  },
+  // Tasks Summary
+  tasksSummary: {
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 0,
+    padding: 12,
+    marginBottom: 10,
+  },
+  tasksHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  tasksTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F0F4F8',
+  },
+  tasksBar: {
+    height: 4,
+    backgroundColor: '#1E3A5F',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  tasksBarFill: {
+    height: 4,
+    backgroundColor: '#4ADE80',
+    borderRadius: 2,
+  },
+  tasksText: {
+    fontSize: 11,
+    color: '#8FA3B8',
+  },
+  // ─── Activity Section ──────────────────────────────────────────────────────
+  activitySection: {
+    marginHorizontal: 16,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  activityTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8FA3B8',
+    letterSpacing: 1.5,
+  },
+  activityMore: {
+    fontSize: 12,
+    color: '#5DADE2',
+    fontWeight: '500',
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E3A5F',
+  },
+  activityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  activityItemTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#F0F4F8',
+  },
+  activityItemMeta: {
+    fontSize: 11,
+    color: '#8FA3B8',
+    marginTop: 1,
+  },
+  activityTime: {
+    fontSize: 11,
+    color: '#8FA3B8',
+    fontWeight: '500',
   },
   // ─── Record Button ─────────────────────────────────────────────────────────
   recordButton: {
