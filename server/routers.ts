@@ -864,6 +864,12 @@ Regeln:
         const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelMatterTags(credentials, input.modelId);
       }),
+
+    // Get SDK Key for client-side embed (never expose API tokens)
+    getSdkKey: publicProcedure
+      .query(() => {
+        return { sdkKey: ENV.matterportSdkKey };
+      }),
   }),
 
   // ─── KI-Analyse ──────────────────────────────────────────────────────────────

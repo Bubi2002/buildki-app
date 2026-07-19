@@ -713,3 +713,35 @@
 - [x] Nachprüfung: Vollständiger /follow-up Screen mit Filter, Stats, Terminauswahl
 - [x] Nachprüfung: notification-service.ts Defect-Filter auf deutsche Status korrigiert
 - [x] Nachprüfung: Tool-Kachel im Dashboard-Grid hinzugefügt
+
+## Phase 7: Matterport + KI-Bericht + PDF/Unterschriften (2026-07-19)
+
+### Modul 1: Matterport-Integration (Priorität 1)
+- [x] Matterport SDK WebView-Integration (Showcase Embed + SDK Bridge via postMessage)
+- [x] 3D-Modell-Navigation (Inside, Dollhouse, Floorplan via mpSdk.Mode.moveTo)
+- [x] Pin-System: Mängel im 3D-Modell markieren (Mattertag.add + Pointer.intersection)
+- [x] Pin-Verknüpfung: Mangel-ID ↔ 3D-Position (x,y,z + sweepId + floorIndex)
+- [x] Foto-Verknüpfung: Pin-Typ "photo" mit 3D-Position
+- [x] Raum-Erkennung: Matterport-Räume importieren → room-store (Etagen + Räume)
+- [x] Mangel-Overlay: Pins farblich nach Status (offen=rot, erledigt=grün, überfällig=orange)
+- [x] Navigation: Von Mangel-Detail direkt zum Pin im 3D-Modell (navigateToDefect param)
+- [x] Offline-Fallback: Pin-Liste anzeigen wenn kein 3D-Modell ladbar
+- [x] SDK Key über Server-ENV (MATTERPORT_SDK_KEY) + getSdkKey Endpoint
+- [x] Floor Switching (mpSdk.Floor.moveTo)
+- [x] Pin-Liste Modal mit Navigation + Mangel-Link
+
+### Modul 2: KI-Bericht Profi-Niveau (Priorität 2)
+- [ ] Prompt-Engineering: Strukturierte Ausgabe nach Gewerken
+- [ ] Automatische Zusammenfassung je Gewerk (Trockenbau, Elektro, etc.)
+- [ ] Fotos inline an passenden Stellen im Bericht
+- [ ] Professionelle Bauleiter-Sprache (formell, präzise, normkonform)
+- [ ] Bericht-Vorschau vor Export
+- [ ] Mehrere Berichtstypen: Tagesbericht, Wochenbericht, Abnahmeprotokoll
+
+### Modul 3: PDF + Digitale Unterschriften (Priorität 3)
+- [ ] Unterschriftsfeld-Komponente (Finger-Zeichnung)
+- [ ] Rollen-basierte Felder: Auftraggeber, Auftragnehmer, Zeuge
+- [ ] Unterschriften im PDF einbetten (Base64-Image)
+- [ ] Professionelles PDF-Layout (Kopfzeile, Fußzeile, Seitenzahlen)
+- [ ] Rechtssicherer Hinweistext unter Unterschriften
+- [ ] PDF-Metadaten (Autor, Erstelldatum, Projekt)

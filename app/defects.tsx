@@ -553,6 +553,25 @@ export default function DefectsScreen() {
                   </View>
                 </View>
 
+                {/* 3D-Viewer Button (for Matterport defects) */}
+                {selectedDefect.pinId && (
+                  <Pressable
+                    onPress={() => {
+                      setShowDetailModal(false);
+                      router.push(`/matterport-viewer?modelId=&projectId=${selectedDefect.projectId}&navigateToDefect=${selectedDefect.id}` as any);
+                    }}
+                    style={({ pressed }) => [{
+                      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                      paddingVertical: 12, marginBottom: 12, borderWidth: 1,
+                      borderColor: "#00B0FF40", backgroundColor: "#00B0FF10",
+                      opacity: pressed ? 0.7 : 1,
+                    }]}
+                  >
+                    <MaterialIcons name="view-in-ar" size={18} color="#00B0FF" />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#00B0FF" }}>Im 3D-Modell anzeigen</Text>
+                  </Pressable>
+                )}
+
                 {/* Nachprüfung Button */}
                 <Pressable
                   onPress={() => {

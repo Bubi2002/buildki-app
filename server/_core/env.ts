@@ -9,4 +9,5 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   matterportTokenId: process.env.MATTERPORT_TOKEN_ID ?? "",
   matterportTokenSecret: process.env.MATTERPORT_TOKEN_SECRET ?? "",
+  matterportSdkKey: process.env.MATTERPORT_SDK_KEY ?? "",
 };
