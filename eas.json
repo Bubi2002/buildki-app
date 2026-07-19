@@ -27,9 +27,9 @@
       "distribution": "store",
       "autoIncrement": true,
       "ios": {
-        "buildConfiguration": "Release",
-        "autoSubmit": true
+        "buildConfiguration": "Release"
       },
+      "autoSubmit": true,
       "channel": "testflight",
       "env": {
         "EXPO_PUBLIC_ENV": "testflight"
