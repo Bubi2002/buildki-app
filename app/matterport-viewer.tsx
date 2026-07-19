@@ -260,6 +260,15 @@ export default function MatterportViewerScreen() {
           updatedAt: new Date().toISOString(),
           source: "matterport" as const,
         };
+        // Generate position code if gewerk and floor are set
+        if (newPinGewerk && selectedFloor) {
+          try {
+            const { generatePositionCode } = await import("@/lib/position-numbering");
+            const floorNum = selectedFloor.sequence ?? 0;
+            const code = await generatePositionCode(projectId, newPinGewerk, floorNum, defect.id);
+            (defect as any).positionCode = code;
+          } catch {}
+        }
         await saveDefect(defect);
         await recordDefectCreated(defect.id);
         pin.linkedEntityId = defect.id;

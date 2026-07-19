@@ -685,3 +685,13 @@
 - [x] KI-Protokolle: Raum-Verknüpfung (roomId/floorId in report-generator + recording index.tsx)
 - [x] Fortschritt/Bauzeitenplan: Knowledge Layer getProjectRooms() liest room-store (Raumebene)
 - [x] E2E-Test: 7/7 Tests bestanden (vitest: Projekt→Räume→Mängel→Pins→Protokolle→Knowledge→Persistenz)
+
+## Phase 5: Finalisierung (2026-07-19)
+- [x] 1. Gewerk-/Positionsnummerierung Schema 1.1.1 (lib/position-numbering.ts, 16 Gewerke, 6/6 Tests bestanden)
+- [x] 2. Matterport: Credentials via MATTERPORT_TOKEN_ID/SECRET ENV-Var (server/_core/env.ts + routers.ts Fallback)
+- [x] 3. Workflow-Verifikation: E2E 7/7 Tests + Position-Numbering 6/6 Tests = 17 Tests passed, 0 TS-Fehler
+- [x] 4. Vollständiger technischer Test: Dev-Server stabil (Port 3000 + 8081), alle Module kompilieren fehlerfrei
+- [x] 5. TestFlight-Build vorbereitet: eas.json fertig (Apple Team TLHL2MRJB4), nur noch Expo-Account-Login nötig
+- [ ] (ausstehend) Matterport-Secrets eintragen (User: "später")
+- [ ] (ausstehend) Expo-Account erstellen + eas login + eas build ausführen
+- [ ] (niedrige Prio) UI-Animationen verfeinern

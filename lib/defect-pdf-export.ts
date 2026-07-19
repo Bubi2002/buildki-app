@@ -182,7 +182,7 @@ export async function generateDefectPdfHtml(
     const dueDate = d.dueDate ? new Date(d.dueDate).toLocaleDateString("de-DE") : "–";
     html += `<tr>
       <td>${i + 1}</td>
-      <td>${d.title}</td>
+      <td>${(d as any).positionCode ? `[${(d as any).positionCode}] ` : ''}${d.title}</td>
       <td><span class="badge" style="background: ${statusColors[d.status]};">${statusLabels[d.status]}</span></td>
       <td style="color: ${priorityColors[d.priority]}; font-weight: 600;">${priorityLabels[d.priority]}</td>
       <td>${gewerk}</td>
@@ -206,7 +206,7 @@ export async function generateDefectPdfHtml(
 
       html += `<div class="defect-card" style="border-left: 4px solid ${statusColors[d.status]};">`;
       html += `<div class="defect-header">
-        <div class="defect-title">${i + 1}. ${d.title}</div>
+        <div class="defect-title">${(d as any).positionCode ? `<span style="font-family:monospace;color:${accentColor};">[${(d as any).positionCode}]</span> ` : ''}${i + 1}. ${d.title}</div>
         <span class="badge" style="background: ${statusColors[d.status]};">${statusLabels[d.status]}</span>
       </div>`;
 

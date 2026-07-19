@@ -9,6 +9,7 @@ import { getDb } from "./db";
 import { protocols } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import * as matterport from "./matterport";
+import { ENV } from "./_core/env";
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: "ok" })),
@@ -762,11 +763,11 @@ Regeln:
     // Verify credentials and connect account
     connect: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         const valid = await matterport.verifyCredentials(credentials);
         if (!valid) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Ungültige Matterport API-Zugangsdaten" });
@@ -777,14 +778,14 @@ Regeln:
     // List all models
     listModels: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         pageSize: z.number().optional(),
         offset: z.string().optional(),
         query: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.listModels(credentials, {
           pageSize: input.pageSize,
           offset: input.offset,
@@ -795,72 +796,72 @@ Regeln:
     // Get model details by ID
     getModel: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelDetails(credentials, input.modelId);
       }),
 
     // Get model basic info
     getModelBasic: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelBasic(credentials, input.modelId);
       }),
 
     // Get floors for a model
     getFloors: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelFloors(credentials, input.modelId);
       }),
 
     // Get rooms for a model
     getRooms: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelRooms(credentials, input.modelId);
       }),
 
     // Get sweeps (scan points) for a model
     getSweeps: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelSweeps(credentials, input.modelId);
       }),
 
     // Get MatterTags for a model
     getMatterTags: publicProcedure
       .input(z.object({
-        tokenId: z.string().min(1),
-        tokenSecret: z.string().min(1),
+        tokenId: z.string().default(""),
+        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId, tokenSecret: input.tokenSecret };
+        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
         return matterport.getModelMatterTags(credentials, input.modelId);
       }),
   }),

@@ -42,6 +42,7 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
+import { generatePositionCode, GEWERKE_NUMBERED } from "@/lib/position-numbering";
 
 export default function DefectsScreen() {
   const { t } = useTranslation();
@@ -122,6 +123,14 @@ export default function DefectsScreen() {
       updatedAt: new Date().toISOString(),
     };
 
+    // Generate position code (Gewerk.Geschoss.Position)
+    if (newGewerk && newFloorId) {
+      const floor = floors.find(f => f.id === newFloorId);
+      if (floor) {
+        const code = await generatePositionCode(projectId, newGewerk, floor.number, defect.id);
+        defect.positionCode = code;
+      }
+    }
     await saveDefect(defect);
     await recordDefectCreated(defect.id);
     setDefects([defect, ...defects]);
@@ -221,7 +230,7 @@ export default function DefectsScreen() {
           <MaterialIcons name={priorityIcons[item.priority] as any} size={18} color={item.priority === "hoch" ? colors.error : colors.muted} />
         </View>
         <Text style={[styles.defectMeta, { color: colors.muted }]}>
-          {(item as any).gewerk || item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
+          {item.positionCode ? `[${item.positionCode}] ` : ""}{(item as any).gewerk || item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
         </Text>
         {item.description ? (
           <Text style={[styles.defectDesc, { color: colors.muted }]} numberOfLines={2}>
@@ -351,6 +360,12 @@ export default function DefectsScreen() {
                   </Pressable>
                 </View>
 
+                {/* Position Code */}
+                {selectedDefect.positionCode && (
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary, marginBottom: 8, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                    Position: {selectedDefect.positionCode}
+                  </Text>
+                )}
                 {/* Status + Priority */}
                 <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
                   <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: statusColors[selectedDefect.status] + "20" }}>

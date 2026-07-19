@@ -64,6 +64,8 @@ export type Defect = {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  /** Position code (Schema: Gewerk.Geschoss.Position, e.g. "1.2.3") */
+  positionCode?: string;
   /** Date of follow-up inspection */
   followUpDate?: string;
   protocolId?: string;
