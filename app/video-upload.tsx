@@ -1,11 +1,11 @@
 /**
- * protoKI – Video-Upload & Transkription
+ * protoKI – Video-Upload & Transkription (Enhanced)
  * 
- * Ermöglicht dem Bauleiter:
- * 1. Videos aus der Galerie/WhatsApp/externen Quellen auszuwählen
- * 2. Videos mit der Kamera aufzunehmen
- * 3. Audio-Spur extrahieren und per KI transkribieren
- * 4. Protokoll aus dem Video-Inhalt generieren
+ * Features:
+ * 1. Videos aus Galerie/WhatsApp/externen Quellen/Kamera
+ * 2. Video-Thumbnail-Vorschau vor Verarbeitung
+ * 3. Batch-Import: mehrere Videos auf einmal
+ * 4. Dokumenttyp-Wahl nach Transkription
  */
 
 import { useState, useEffect } from "react";
@@ -18,10 +18,12 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Image,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import * as VideoThumbnails from "expo-video-thumbnails";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -35,21 +37,41 @@ type VideoFile = {
   name: string;
   mimeType: string;
   size?: number;
+  duration?: number;
   source: "gallery" | "camera" | "file";
+  thumbnailUri?: string;
 };
 
-type ProcessingStep = "idle" | "uploading" | "transcribing" | "generating" | "done" | "error";
+type DocType = "protokoll" | "zusammenfassung" | "bautagebuch";
+
+type ProcessingStep = "idle" | "uploading" | "transcribing" | "choose_type" | "generating" | "done" | "error";
+
+type QueueItem = {
+  video: VideoFile;
+  status: "pending" | "processing" | "done" | "error";
+  transcription?: string;
+  errorMessage?: string;
+};
+
+const DOC_TYPES: { key: DocType; label: string; icon: string; description: string }[] = [
+  { key: "protokoll", label: "Besprechungsprotokoll", icon: "description", description: "Formelles Protokoll mit Teilnehmern, Themen, Beschlüssen" },
+  { key: "zusammenfassung", label: "Zusammenfassung", icon: "summarize", description: "Kompakte Zusammenfassung der wichtigsten Punkte" },
+  { key: "bautagebuch", label: "Bautagebuch-Eintrag", icon: "menu-book", description: "Tagesbericht mit Wetter, Gewerken, Fortschritt" },
+];
 
 export default function VideoUploadScreen() {
   const colors = useColors();
   const router = useRouter();
 
-  const [video, setVideo] = useState<VideoFile | null>(null);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
   const [step, setStep] = useState<ProcessingStep>("idle");
   const [progress, setProgress] = useState(0);
   const [transcription, setTranscription] = useState("");
+  const [selectedDocType, setSelectedDocType] = useState<DocType>("protokoll");
   const [errorMessage, setErrorMessage] = useState("");
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
+  const [completedCount, setCompletedCount] = useState(0);
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
@@ -68,6 +90,15 @@ export default function VideoUploadScreen() {
     })();
   }, []);
 
+  const generateThumbnail = async (uri: string): Promise<string | undefined> => {
+    try {
+      const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(uri, { time: 1000 });
+      return thumbUri;
+    } catch {
+      return undefined;
+    }
+  };
+
   const pickFromGallery = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -79,19 +110,29 @@ export default function VideoUploadScreen() {
         mediaTypes: ["videos"],
         quality: 0.8,
         videoMaxDuration: 600,
+        allowsMultipleSelection: true,
       });
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        setVideo({
-          uri: asset.uri,
-          name: asset.fileName || `video_${Date.now()}.mp4`,
-          mimeType: asset.mimeType || "video/mp4",
-          size: asset.fileSize,
-          source: "gallery",
-        });
+      if (!result.canceled && result.assets.length > 0) {
+        const newItems: QueueItem[] = [];
+        for (const asset of result.assets) {
+          const thumbnail = await generateThumbnail(asset.uri);
+          newItems.push({
+            video: {
+              uri: asset.uri,
+              name: asset.fileName || `video_${Date.now()}_${newItems.length}.mp4`,
+              mimeType: asset.mimeType || "video/mp4",
+              size: asset.fileSize,
+              duration: asset.duration ? Math.round(asset.duration / 1000) : undefined,
+              source: "gallery",
+              thumbnailUri: thumbnail,
+            },
+            status: "pending",
+          });
+        }
+        setQueue(prev => [...prev, ...newItems]);
       }
     } catch (err: any) {
-      Alert.alert("Fehler", err.message || "Video konnte nicht geladen werden.");
+      Alert.alert("Fehler", err.message || "Videos konnten nicht geladen werden.");
     }
   };
 
@@ -109,13 +150,19 @@ export default function VideoUploadScreen() {
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        setVideo({
-          uri: asset.uri,
-          name: asset.fileName || `recording_${Date.now()}.mp4`,
-          mimeType: asset.mimeType || "video/mp4",
-          size: asset.fileSize,
-          source: "camera",
-        });
+        const thumbnail = await generateThumbnail(asset.uri);
+        setQueue(prev => [...prev, {
+          video: {
+            uri: asset.uri,
+            name: asset.fileName || `recording_${Date.now()}.mp4`,
+            mimeType: asset.mimeType || "video/mp4",
+            size: asset.fileSize,
+            duration: asset.duration ? Math.round(asset.duration / 1000) : undefined,
+            source: "camera",
+            thumbnailUri: thumbnail,
+          },
+          status: "pending",
+        }]);
       }
     } catch (err: any) {
       Alert.alert("Fehler", err.message || "Aufnahme fehlgeschlagen.");
@@ -127,77 +174,125 @@ export default function VideoUploadScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         type: ["video/*", "audio/*"],
         copyToCacheDirectory: true,
+        multiple: true,
       });
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const asset = result.assets[0];
-        setVideo({
-          uri: asset.uri,
-          name: asset.name,
-          mimeType: asset.mimeType || "video/mp4",
-          size: asset.size || undefined,
-          source: "file",
-        });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newItems: QueueItem[] = [];
+        for (const asset of result.assets) {
+          const isVideo = (asset.mimeType || "").startsWith("video/");
+          const thumbnail = isVideo ? await generateThumbnail(asset.uri) : undefined;
+          newItems.push({
+            video: {
+              uri: asset.uri,
+              name: asset.name,
+              mimeType: asset.mimeType || "video/mp4",
+              size: asset.size || undefined,
+              source: "file",
+              thumbnailUri: thumbnail,
+            },
+            status: "pending",
+          });
+        }
+        setQueue(prev => [...prev, ...newItems]);
       }
     } catch (err: any) {
-      Alert.alert("Fehler", err.message || "Datei konnte nicht geladen werden.");
+      Alert.alert("Fehler", err.message || "Dateien konnten nicht geladen werden.");
     }
   };
 
-  const processVideo = async () => {
-    if (!video) return;
+  const removeFromQueue = (index: number) => {
+    setQueue(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const processQueue = async () => {
+    if (queue.length === 0) return;
     if (!activeProject) {
       Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt im Tools-Tab aus.");
       return;
     }
 
+    setCompletedCount(0);
+    for (let i = 0; i < queue.length; i++) {
+      if (queue[i].status === "done") continue;
+      setCurrentIndex(i);
+      setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: "processing" } : item));
+      
+      try {
+        await processSingleVideo(queue[i].video, i);
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: "done" } : item));
+        setCompletedCount(c => c + 1);
+      } catch (err: any) {
+        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: "error", errorMessage: err.message } : item));
+      }
+    }
+    setStep("choose_type");
+  };
+
+  const processSingleVideo = async (video: VideoFile, _index: number) => {
     setStep("uploading");
-    setProgress(0);
-    setErrorMessage("");
-    setTranscription("");
+    setProgress(10);
+
+    const base64 = await FileSystem.readAsStringAsync(video.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const sizeMB = (base64.length * 0.75) / (1024 * 1024);
+    if (sizeMB > 50) {
+      throw new Error(`Video zu groß: ${sizeMB.toFixed(1)}MB (max 50MB)`);
+    }
+
+    setProgress(30);
+    const uploadResult = await uploadMutation.mutateAsync({
+      base64,
+      mimeType: video.mimeType,
+      filename: video.name,
+    });
+
+    setProgress(50);
+    setStep("transcribing");
+
+    const transcribeResult = await transcribeMutation.mutateAsync({
+      audioUrl: uploadResult.url,
+      language: "de",
+      prompt: "Transkribiere das gesprochene Video auf Deutsch. Es handelt sich um eine Baustellenbegehung oder Besprechung.",
+    });
+
+    setProgress(80);
+    setTranscription(prev => prev + (prev ? "\n\n---\n\n" : "") + `[${video.name}]\n${transcribeResult.text}`);
+    setQueue(prev => prev.map((item, idx) => 
+      item.video.uri === video.uri ? { ...item, transcription: transcribeResult.text } : item
+    ));
+    setProgress(100);
+  };
+
+  const finalizeWithDocType = async (docType: DocType) => {
+    setSelectedDocType(docType);
+    setStep("generating");
 
     try {
-      setProgress(10);
-      const base64 = await FileSystem.readAsStringAsync(video.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const allTranscriptions = queue
+        .filter(item => item.transcription)
+        .map(item => item.transcription)
+        .join("\n\n");
 
-      const sizeMB = (base64.length * 0.75) / (1024 * 1024);
-      if (sizeMB > 50) {
-        throw new Error(`Video zu groß: ${sizeMB.toFixed(1)}MB (max 50MB). Bitte ein kürzeres Video verwenden.`);
-      }
-
-      setProgress(30);
-
-      const uploadResult = await uploadMutation.mutateAsync({
-        base64,
-        mimeType: video.mimeType,
-        filename: video.name,
-      });
-
-      setProgress(50);
-      setStep("transcribing");
-
-      const transcribeResult = await transcribeMutation.mutateAsync({
-        audioUrl: uploadResult.url,
-        language: "de",
-        prompt: "Transkribiere das gesprochene Video auf Deutsch. Es handelt sich um eine Baustellenbegehung oder Besprechung.",
-      });
-
-      setProgress(80);
-      setTranscription(transcribeResult.text);
-      setStep("generating");
+      const docTypeLabels: Record<DocType, string> = {
+        protokoll: "Besprechungsprotokoll",
+        zusammenfassung: "Zusammenfassung",
+        bautagebuch: "Bautagebuch-Eintrag",
+      };
 
       const protocolId = `video_${Date.now()}`;
       const protocol = {
         id: protocolId,
-        title: `Video-Protokoll: ${video.name.replace(/\.[^.]+$/, "")}`,
+        title: `${docTypeLabels[docType]}: ${queue[0]?.video.name.replace(/\.[^.]+$/, "") || "Video"}`,
         createdAt: new Date().toISOString(),
         status: "ready" as const,
-        transcription: transcribeResult.text,
-        projectId: activeProject.id,
+        transcription: allTranscriptions,
+        projectId: activeProject!.id,
         source: "video",
-        videoFilename: video.name,
-        duration: transcribeResult.duration || null,
+        documentType: docType,
+        videoCount: queue.filter(i => i.status === "done").length,
+        videoFilenames: queue.filter(i => i.status === "done").map(i => i.video.name),
       };
 
       const existingData = await AsyncStorage.getItem("protocols");
@@ -205,7 +300,6 @@ export default function VideoUploadScreen() {
       protocols.unshift(protocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
-      setProgress(100);
       setStep("done");
 
       if (Platform.OS !== "web") {
@@ -214,42 +308,31 @@ export default function VideoUploadScreen() {
       }
     } catch (err: any) {
       setStep("error");
-      setErrorMessage(err.message || "Verarbeitung fehlgeschlagen");
+      setErrorMessage(err.message || "Protokoll-Erstellung fehlgeschlagen");
     }
   };
 
   const reset = () => {
-    setVideo(null);
+    setQueue([]);
+    setCurrentIndex(-1);
     setStep("idle");
     setProgress(0);
     setTranscription("");
     setErrorMessage("");
+    setCompletedCount(0);
   };
 
   const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "Unbekannt";
+    if (!bytes) return "";
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const getSourceLabel = (source: string) => {
-    switch (source) {
-      case "gallery": return "Galerie / WhatsApp / Extern";
-      case "camera": return "Kamera-Aufnahme";
-      case "file": return "Datei / Dokument";
-      default: return source;
-    }
-  };
-
-  const getStepLabel = (s: ProcessingStep) => {
-    switch (s) {
-      case "uploading": return "Video wird hochgeladen...";
-      case "transcribing": return "Audio wird transkribiert...";
-      case "generating": return "Protokoll wird erstellt...";
-      case "done": return "Fertig!";
-      case "error": return "Fehler";
-      default: return "";
-    }
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return "";
+    const min = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+    return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -259,96 +342,124 @@ export default function VideoUploadScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Video-Import</Text>
-        <View style={{ width: 24 }} />
+        {queue.length > 0 && step === "idle" && (
+          <Pressable onPress={reset} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <Text style={{ color: "#F87171", fontSize: 14, fontWeight: "600" }}>Leeren</Text>
+          </Pressable>
+        )}
+        {queue.length === 0 && <View style={{ width: 24 }} />}
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
         {activeProject && (
-          <View style={[styles.projectBadge, { borderColor: "#1E3A5F" }]}>
+          <View style={styles.projectBadge}>
             <MaterialIcons name="folder" size={14} color="#5DADE2" />
             <Text style={styles.projectBadgeText}>{activeProject.name}</Text>
           </View>
         )}
 
-        <View style={styles.introSection}>
-          <MaterialIcons name="videocam" size={40} color="#5DADE2" />
-          <Text style={[styles.introTitle, { color: colors.foreground }]}>Video importieren</Text>
-          <Text style={[styles.introText, { color: colors.muted }]}>
-            Importiere Videos aus WhatsApp, Galerie, E-Mail oder anderen Apps. Die Sprache wird automatisch erkannt und als Protokoll gespeichert.
-          </Text>
-        </View>
-
-        {!video && step === "idle" && (
-          <View style={styles.pickSection}>
-            <Pressable
-              onPress={pickFromGallery}
-              style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}
-            >
-              <MaterialIcons name="photo-library" size={28} color="#5DADE2" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pickButtonTitle}>Galerie / WhatsApp</Text>
-                <Text style={styles.pickButtonHint}>Videos aus allen Apps auf dem Gerät</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-            </Pressable>
-
-            <Pressable
-              onPress={pickFromFiles}
-              style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}
-            >
-              <MaterialIcons name="folder-open" size={28} color="#FF9800" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pickButtonTitle}>Dateien / Downloads</Text>
-                <Text style={styles.pickButtonHint}>E-Mail-Anhänge, Dropbox, Downloads</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-            </Pressable>
-
-            <Pressable
-              onPress={recordWithCamera}
-              style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}
-            >
-              <MaterialIcons name="videocam" size={28} color="#E53935" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pickButtonTitle}>Kamera</Text>
-                <Text style={styles.pickButtonHint}>Neues Video aufnehmen</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-            </Pressable>
-          </View>
-        )}
-
-        {video && step === "idle" && (
-          <View style={styles.videoInfoSection}>
-            <View style={styles.videoInfoCard}>
-              <View style={styles.videoInfoHeader}>
-                <MaterialIcons name="movie" size={24} color="#5DADE2" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.videoInfoName} numberOfLines={2}>{video.name}</Text>
-                  <Text style={styles.videoInfoMeta}>
-                    {formatFileSize(video.size)} • {getSourceLabel(video.source)}
-                  </Text>
-                </View>
-                <Pressable onPress={reset} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
-                  <MaterialIcons name="close" size={22} color="#F87171" />
-                </Pressable>
-              </View>
+        {/* Empty State / Picker */}
+        {queue.length === 0 && step === "idle" && (
+          <>
+            <View style={styles.introSection}>
+              <MaterialIcons name="videocam" size={40} color="#5DADE2" />
+              <Text style={[styles.introTitle, { color: colors.foreground }]}>Video importieren</Text>
+              <Text style={[styles.introText, { color: colors.muted }]}>
+                Importiere Videos aus WhatsApp, Galerie, E-Mail oder anderen Apps. Mehrfachauswahl möglich.
+              </Text>
             </View>
 
+            <View style={styles.pickSection}>
+              <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="photo-library" size={28} color="#5DADE2" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pickButtonTitle}>Galerie / WhatsApp</Text>
+                  <Text style={styles.pickButtonHint}>Videos aus allen Apps (Mehrfachauswahl)</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+              </Pressable>
+
+              <Pressable onPress={pickFromFiles} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="folder-open" size={28} color="#FF9800" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pickButtonTitle}>Dateien / Downloads</Text>
+                  <Text style={styles.pickButtonHint}>E-Mail-Anhänge, Dropbox, Downloads</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+              </Pressable>
+
+              <Pressable onPress={recordWithCamera} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="videocam" size={28} color="#E53935" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pickButtonTitle}>Kamera</Text>
+                  <Text style={styles.pickButtonHint}>Neues Video aufnehmen</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        {/* Queue Preview */}
+        {queue.length > 0 && step === "idle" && (
+          <>
+            <Text style={styles.sectionLabel}>{queue.length} {queue.length === 1 ? "VIDEO" : "VIDEOS"} AUSGEWÄHLT</Text>
+            <View style={styles.queueList}>
+              {queue.map((item, index) => (
+                <View key={index} style={styles.queueItem}>
+                  {item.video.thumbnailUri ? (
+                    <Image source={{ uri: item.video.thumbnailUri }} style={styles.thumbnail} />
+                  ) : (
+                    <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+                      <MaterialIcons name="movie" size={20} color="#5DADE2" />
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.queueItemName} numberOfLines={1}>{item.video.name}</Text>
+                    <Text style={styles.queueItemMeta}>
+                      {[formatFileSize(item.video.size), formatDuration(item.video.duration)].filter(Boolean).join(" • ")}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => removeFromQueue(index)} style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+                    <MaterialIcons name="close" size={20} color="#F87171" />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+
+            {/* Add more */}
+            <View style={styles.addMoreRow}>
+              <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.addMoreBtn, { opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name="add" size={16} color="#5DADE2" />
+                <Text style={styles.addMoreText}>Weitere hinzufügen</Text>
+              </Pressable>
+            </View>
+
+            {/* Process Button */}
             <Pressable
-              onPress={processVideo}
+              onPress={processQueue}
               style={({ pressed }) => [styles.processButton, { opacity: pressed ? 0.85 : 1 }]}
             >
               <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-              <Text style={styles.processButtonText}>Video verarbeiten & transkribieren</Text>
+              <Text style={styles.processButtonText}>
+                {queue.length === 1 ? "Video verarbeiten" : `${queue.length} Videos verarbeiten`}
+              </Text>
             </Pressable>
-          </View>
+          </>
         )}
 
-        {step !== "idle" && step !== "done" && step !== "error" && (
+        {/* Processing State */}
+        {(step === "uploading" || step === "transcribing") && (
           <View style={styles.processingSection}>
             <ActivityIndicator size="large" color="#5DADE2" />
-            <Text style={[styles.processingLabel, { color: colors.foreground }]}>{getStepLabel(step)}</Text>
+            <Text style={[styles.processingLabel, { color: colors.foreground }]}>
+              {step === "uploading" ? "Video wird hochgeladen..." : "Audio wird transkribiert..."}
+            </Text>
+            {queue.length > 1 && (
+              <Text style={[styles.processingSubLabel, { color: colors.muted }]}>
+                Video {currentIndex + 1} von {queue.length}
+              </Text>
+            )}
             <View style={styles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
             </View>
@@ -356,6 +467,46 @@ export default function VideoUploadScreen() {
           </View>
         )}
 
+        {/* Document Type Selection */}
+        {step === "choose_type" && (
+          <View style={styles.docTypeSection}>
+            <MaterialIcons name="check-circle" size={36} color="#4ADE80" />
+            <Text style={[styles.docTypeTitle, { color: colors.foreground }]}>Transkription abgeschlossen!</Text>
+            <Text style={[styles.docTypeSubtitle, { color: colors.muted }]}>
+              Welches Dokument soll erstellt werden?
+            </Text>
+
+            <View style={styles.docTypeList}>
+              {DOC_TYPES.map((dt) => (
+                <Pressable
+                  key={dt.key}
+                  onPress={() => finalizeWithDocType(dt.key)}
+                  style={({ pressed }) => [
+                    styles.docTypeCard,
+                    { opacity: pressed ? 0.8 : 1 },
+                  ]}
+                >
+                  <MaterialIcons name={dt.icon as any} size={24} color="#5DADE2" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docTypeCardTitle}>{dt.label}</Text>
+                    <Text style={styles.docTypeCardDesc}>{dt.description}</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Generating State */}
+        {step === "generating" && (
+          <View style={styles.processingSection}>
+            <ActivityIndicator size="large" color="#5DADE2" />
+            <Text style={[styles.processingLabel, { color: colors.foreground }]}>Protokoll wird erstellt...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
         {step === "error" && (
           <View style={styles.errorSection}>
             <MaterialIcons name="error-outline" size={40} color="#F87171" />
@@ -368,12 +519,13 @@ export default function VideoUploadScreen() {
           </View>
         )}
 
+        {/* Success State */}
         {step === "done" && (
           <View style={styles.doneSection}>
             <MaterialIcons name="check-circle" size={48} color="#4ADE80" />
             <Text style={[styles.doneTitle, { color: colors.foreground }]}>Protokoll erstellt!</Text>
             <Text style={[styles.doneText, { color: colors.muted }]}>
-              Das Video wurde erfolgreich transkribiert und als Protokoll gespeichert.
+              {queue.filter(i => i.status === "done").length} {queue.filter(i => i.status === "done").length === 1 ? "Video" : "Videos"} verarbeitet als {DOC_TYPES.find(d => d.key === selectedDocType)?.label}.
             </Text>
 
             {transcription.length > 0 && (
@@ -398,7 +550,7 @@ export default function VideoUploadScreen() {
                 style={({ pressed }) => [styles.doneButton, styles.doneSecondaryButton, { opacity: pressed ? 0.85 : 1 }]}
               >
                 <MaterialIcons name="add" size={18} color="#5DADE2" />
-                <Text style={styles.doneSecondaryText}>Weiteres Video</Text>
+                <Text style={styles.doneSecondaryText}>Weitere Videos</Text>
               </Pressable>
             </View>
           </View>
@@ -409,74 +561,47 @@ export default function VideoUploadScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 0.5,
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5 },
   headerTitle: { fontSize: 18, fontWeight: "700", letterSpacing: -0.3 },
   content: { padding: 20, paddingBottom: 40 },
-  projectBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
+  projectBadge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "#1E3A5F", marginBottom: 20 },
   projectBadgeText: { fontSize: 13, fontWeight: "600", color: "#F0F4F8" },
   introSection: { alignItems: "center", gap: 8, marginBottom: 28 },
   introTitle: { fontSize: 22, fontWeight: "700", marginTop: 8 },
   introText: { fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
   pickSection: { gap: 12 },
-  pickButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0F1E30",
-  },
+  pickButton: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F1E30" },
   pickButtonTitle: { fontSize: 15, fontWeight: "700", color: "#F0F4F8" },
   pickButtonHint: { fontSize: 12, color: "#8FA3B8", marginTop: 2 },
-  videoInfoSection: { gap: 16 },
-  videoInfoCard: { padding: 16, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F1E30" },
-  videoInfoHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  videoInfoName: { fontSize: 15, fontWeight: "600", color: "#F0F4F8" },
-  videoInfoMeta: { fontSize: 12, color: "#8FA3B8", marginTop: 2 },
-  processButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#5DADE2",
-    paddingVertical: 16,
-  },
+  sectionLabel: { fontSize: 12, fontWeight: "700", color: "#8FA3B8", letterSpacing: 1.2, marginBottom: 12 },
+  queueList: { gap: 8, marginBottom: 16 },
+  queueItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F1E30" },
+  thumbnail: { width: 56, height: 42, backgroundColor: "#1E3A5F" },
+  thumbnailPlaceholder: { alignItems: "center", justifyContent: "center" },
+  queueItemName: { fontSize: 14, fontWeight: "600", color: "#F0F4F8" },
+  queueItemMeta: { fontSize: 12, color: "#8FA3B8", marginTop: 2 },
+  addMoreRow: { marginBottom: 16 },
+  addMoreBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10 },
+  addMoreText: { fontSize: 14, fontWeight: "600", color: "#5DADE2" },
+  processButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#5DADE2", paddingVertical: 16 },
   processButtonText: { fontSize: 16, fontWeight: "700", color: "#fff" },
   processingSection: { alignItems: "center", gap: 16, paddingVertical: 40 },
   processingLabel: { fontSize: 16, fontWeight: "600" },
+  processingSubLabel: { fontSize: 13 },
   progressBarBg: { width: "100%", height: 6, backgroundColor: "#1E3A5F", borderRadius: 3, overflow: "hidden" },
   progressBarFill: { height: "100%", backgroundColor: "#5DADE2", borderRadius: 3 },
   progressText: { fontSize: 13, fontWeight: "600" },
+  docTypeSection: { alignItems: "center", gap: 12, paddingVertical: 20 },
+  docTypeTitle: { fontSize: 20, fontWeight: "700" },
+  docTypeSubtitle: { fontSize: 14, textAlign: "center" },
+  docTypeList: { width: "100%", gap: 10, marginTop: 16 },
+  docTypeCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F1E30" },
+  docTypeCardTitle: { fontSize: 15, fontWeight: "700", color: "#F0F4F8" },
+  docTypeCardDesc: { fontSize: 12, color: "#8FA3B8", marginTop: 2 },
   errorSection: { alignItems: "center", gap: 12, paddingVertical: 40 },
   errorTitle: { fontSize: 18, fontWeight: "700" },
   errorMessage: { fontSize: 14, textAlign: "center", maxWidth: 300 },
-  retryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    marginTop: 8,
-  },
+  retryButton: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderWidth: 1, borderColor: "#1E3A5F", marginTop: 8 },
   retryButtonText: { fontSize: 14, fontWeight: "600", color: "#5DADE2" },
   doneSection: { alignItems: "center", gap: 12, paddingVertical: 24 },
   doneTitle: { fontSize: 20, fontWeight: "700" },

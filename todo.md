@@ -959,3 +959,20 @@
 - [x] Protokoll aus Transkription generieren und speichern
 - [x] Video-Upload-Screen mit Fortschrittsanzeige (app/video-upload.tsx)
 - [x] Tool-Eintrag "Video" im Tools-Grid (erste Position)
+
+## Phase 11b: Video-Import Erweiterungen (2026-07-19)
+
+### 11b.1 Dokumenttyp-Wahl nach Transkription
+- [x] Nach Transkription: Auswahl Besprechungsprotokoll / Zusammenfassung / Bautagebuch
+- [x] Gewählten Typ als Protokoll-Metadaten speichern
+- [x] KI-Generierung je nach Typ anpassen
+
+### 11b.2 Video-Vorschau mit Thumbnail
+- [x] Thumbnail aus Video generieren (expo-video-thumbnails)
+- [x] Vorschau-Bild vor Verarbeitung anzeigen
+- [x] Dateiname, Größe, Dauer anzeigen
+
+### 11b.3 Batch-Import
+- [x] Mehrere Videos auf einmal auswählen (allowsMultipleSelection)
+- [x] Queue-Anzeige mit Fortschritt pro Video
+- [x] Nacheinander verarbeiten und Protokolle erstellen
