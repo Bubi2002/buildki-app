@@ -83,8 +83,11 @@ export default function RegisterScreen() {
       // Start trial period
       await AsyncStorage.setItem(TRIAL_STORAGE_KEY, new Date().toISOString());
 
-      // Navigate to profile onboarding
-      router.replace("/onboarding-profile" as any);
+      // Navigate to email verification (Double-Opt-In)
+      router.replace({
+        pathname: "/verify-email",
+        params: { email: email.trim().toLowerCase() },
+      } as any);
     } catch (e) {
       Alert.alert("Fehler", "Registrierung fehlgeschlagen. Bitte versuche es erneut.");
     } finally {

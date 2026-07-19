@@ -15,4 +15,9 @@ export const ENV = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   stripeMonthlyPriceId: process.env.STRIPE_MONTHLY_PRICE_ID ?? "",
   stripeYearlyPriceId: process.env.STRIPE_YEARLY_PRICE_ID ?? "",
+  // SMTP (Strato)
+  smtpHost: process.env.SMTP_HOST ?? "smtp.strato.de",
+  smtpPort: process.env.SMTP_PORT ?? "465",
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPass: process.env.SMTP_PASS ?? "",
 };

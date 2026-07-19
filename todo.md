@@ -1067,3 +1067,12 @@
 - [x] Professionelle AGB erstellen (orientiert an PlanRadar/Capmo, angepasst auf ProtoKI SaaS-Modell)
 - [x] AGB-Inhalt im Legal-Screen unter Nutzungsbedingungen ersetzen durch vollständige AGB
 - [ ] Professionelles TikTok-Werbevideo für ProtoKI erstellen
+
+## Phase 11: Stripe-Setup, iOS-Fix, Auth-Features (2026-07-20)
+- [x] Stripe-Setup-Anleitung als PDF erstellen (Produkte anlegen, Webhook, API-Keys)
+- [x] iOS-Build-Problem lösen (expo-share-intent komplett entfernt, verhinderte Autolinking)
+- [x] Passwort-Zurücksetzen Feature implementieren (app/forgot-password.tsx, 3-Schritt-Flow)
+- [x] E-Mail-Bestätigung (Double-Opt-In) implementieren (app/verify-email.tsx, server/auth-email.ts)
+- [x] SMTP-E-Mail-Service (server/email.ts, Strato-SMTP, professionelle HTML-Templates)
+- [x] Login-Screen: "Passwort vergessen?" Link hinzugefügt
+- [x] Registrierung: Leitet jetzt zu E-Mail-Bestätigung weiter (statt direkt Onboarding)

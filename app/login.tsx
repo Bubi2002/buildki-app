@@ -140,6 +140,13 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
+            <TouchableOpacity
+              onPress={() => router.push("/forgot-password" as any)}
+              style={{ alignItems: "center", marginTop: 12 }}
+            >
+              <Text style={styles.registerLink}>Passwort vergessen?</Text>
+            </TouchableOpacity>
+
             <View style={styles.registerRow}>
               <Text style={styles.registerText}>Noch kein Konto? </Text>
               <TouchableOpacity onPress={() => router.push("/register" as any)}>

@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerDropboxRoutes } from "../dropbox-oauth";
 import { registerStripeRoutes } from "../stripe";
+import { authEmailRouter } from "../auth-email";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -61,6 +62,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerDropboxRoutes(app);
   registerStripeRoutes(app);
+  app.use(authEmailRouter);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
