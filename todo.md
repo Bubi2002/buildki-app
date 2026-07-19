@@ -801,3 +801,90 @@
 - [x] Keine toten Links/Buttons (alle onPress-Handler verifiziert)
 - [x] Alle Stores korrekt initialisiert (defect-store, room-store, project-store)
 - [x] Alle Imports aufgelöst (keine fehlenden lib/ oder components/ Dateien)
+
+## Phase 9: Cloud-Sync + KI-Bautagebuch + KI-Bericht (2026-07-19)
+
+### 9.1 Cloud-Synchronisation
+- [ ] Datenbank-Schema: Tabellen für Projekte, Protokolle, Mängel, Fotos
+- [ ] Server-Sync-Endpoints: Push/Pull für alle Datentypen
+- [ ] Offline-First: Lokale Änderungen queuen, bei Verbindung synchronisieren
+- [ ] Konfliktlösung: Last-Write-Wins mit updatedAt-Vergleich bei mehreren Geräten
+- [ ] Foto-Sync: Bilder in S3/Storage hochladen und URLs synchronisieren
+- [ ] Anhänge-Sync: PDFs, Sprachnotizen, Unterschriften synchronisieren
+- [ ] Auto-Sync: Regelmäßiger Hintergrund-Sync bei Verbindung
+- [ ] Sync-Status-UI: Anzeige des Sync-Fortschritts
+
+### 9.2 KI-Bautagebuch
+- [ ] Tagesbericht-Generator: Alle Aufnahmen eines Tages zusammenführen
+- [ ] Wetter automatisch ergänzen (aus bestehender Wetter-Integration)
+- [ ] Anwesenheit automatisch zusammenfassen
+- [ ] Mängel mit Fotos einfügen
+- [ ] Professionelles Tagesbericht-Layout
+- [ ] PDF-Export des Tagesberichts
+- [ ] Automatische Generierung am Tagesende (oder manuell auslösbar)
+
+### 9.3 KI-Berichte optimieren
+- [ ] Prompt-Tuning: Professionelle Bauleiter-Sprache
+- [ ] Fehlende Informationen logisch ergänzen
+- [ ] Einheitliches Layout und Struktur
+- [ ] Gewerk-Zusammenfassungen verbessern
+- [ ] Foto-Referenzen im Fließtext
+
+## Phase 9b: Rechtliche und technische Compliance (2026-07-19)
+
+### 9b.1 Datenschutz (DSGVO)
+- [ ] Datenschutzerklärung erstellen (in-app + Web)
+- [ ] Einwilligungsdialoge für Kamera, Mikrofon, Fotos, Standort
+- [ ] Aufbewahrungsfristen definieren und implementieren
+- [ ] Export personenbezogener Daten (DSGVO Art. 20)
+- [ ] Löschung personenbezogener Daten (DSGVO Art. 17)
+- [ ] AVV-Vorlage für Cloud-Dienste vorbereiten
+- [ ] EU-Speicherung sicherstellen (Dokumentation)
+
+### 9b.2 App Store Compliance
+- [ ] Apple-Richtlinien-Checkliste prüfen
+- [ ] Privacy Manifest (PrivacyInfo.xcprivacy) erstellen
+- [ ] App Privacy Angaben (Nutrition Labels) vorbereiten
+- [ ] Alle Berechtigungsdialoge mit Begründung
+
+### 9b.3 KI-Recht
+- [ ] KI-Berichte als "automatisch erstellt" kennzeichnen
+- [ ] Hinweis: Nutzer muss Berichte prüfen
+- [ ] Nachvollziehbarkeit der KI-Ausgaben (Input/Output Log)
+- [ ] Änderungsprotokoll für KI-Berichte
+
+### 9b.4 Baustellen-Dokumentation (Beweissicherung)
+- [ ] Unveränderbare Zeitstempel (createdAt nicht editierbar)
+- [ ] GPS-Position bei Aufnahmen (optional)
+- [ ] Geräteinformationen speichern
+- [ ] Digitale Signatur der Berichte
+- [ ] Versionshistorie aller Berichte
+- [ ] Audit-Log: Wer hat wann was geändert
+- [ ] Manipulationssichere Historie (Hash-Chain)
+
+### 9b.5 Bild- und Personenschutz
+- [ ] Zustimmungshinweis für Personenfotos
+- [ ] Gesichter-Verpixelung (Hinweis in Einstellungen)
+- [ ] Verschlüsselte Speicherung sensibler Daten
+
+### 9b.6 Sicherheit
+- [ ] Verschlüsselte Cloud-Speicherung (TLS + at-rest)
+- [ ] Rollen- und Rechteverwaltung (Basis: Admin/User)
+- [ ] 2FA-Vorbereitung (UI + Datenstruktur)
+- [ ] Regelmäßige Backups (Dokumentation)
+
+### 9b.7 Impressum und Rechtstexte
+- [ ] Impressum-Screen
+- [ ] Datenschutzerklärung-Screen
+- [ ] Nutzungsbedingungen-Screen
+- [ ] Haftungsausschluss
+- [ ] Lizenzbedingungen (Open Source)
+
+### 9b.8 Matterport & KI-Anbieter
+- [ ] Matterport API-Lizenzbedingungen dokumentieren
+- [ ] KI-Dienste Datenschutz-Hinweis (keine personenbezogenen Daten an LLM)
+- [ ] Anonymisierung vor KI-Verarbeitung
+
+### 9b.9 Dokumentation
+- [ ] Compliance-Checkliste erstellen
+- [ ] Alle rechtlichen Entscheidungen dokumentieren

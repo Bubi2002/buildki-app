@@ -27,7 +27,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "@/lib/language-provider";
 import { useThemeContext } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
-import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced } from "@/lib/cloud-sync";
+import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced, executeFullSync } from "@/lib/cloud-sync";
 import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import {
@@ -709,6 +709,7 @@ export default function SettingsScreen() {
     }
     setSyncing(true);
     try {
+      // 1. Sync protocols (legacy)
       const protocols = await getLocalProtocols();
       const unsynced = protocols.filter((p) => !p.synced);
       for (const p of unsynced) {
@@ -729,7 +730,13 @@ export default function SettingsScreen() {
         });
         await markProtocolSynced(p.id);
       }
-      Alert.alert(t('alert_sync_abgeschlossen'), `${unsynced.length} Protokoll(e) synchronisiert.`);
+      // 2. Full sync (defects + projects) via new unified cloud-sync
+      const result = await executeFullSync(trpc);
+      const totalPushed = result.pushed.defects + result.pushed.projects;
+      const totalPulled = result.pulled.defects + result.pulled.projects;
+      const totalConflicts = result.conflicts.defects + result.conflicts.projects;
+      const totalSynced = unsynced.length + totalPushed + totalPulled;
+      Alert.alert('Sync abgeschlossen', `${totalSynced} Element(e) synchronisiert (${totalConflicts} Konflikte gel\u00f6st).`);
     } catch (error) {
       Alert.alert(t('alert_sync_fehler'), t('msg_die_synchronisation_konnte_nicht_abgeschlossen'));
     } finally {

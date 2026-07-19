@@ -380,6 +380,183 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
 
         return { success: true };
       }),
+
+    // ─── Defect Sync ────────────────────────────────────────────────────────
+    pushDefects: protectedProcedure
+      .input(z.object({
+        defects: z.array(z.object({
+          localId: z.string(),
+          projectId: z.string(),
+          title: z.string(),
+          description: z.string().nullable().optional(),
+          status: z.string(),
+          priority: z.string(),
+          category: z.string().nullable().optional(),
+          gewerk: z.string().nullable().optional(),
+          photos: z.string().nullable().optional(),
+          beforePhotos: z.string().nullable().optional(),
+          afterPhotos: z.string().nullable().optional(),
+          assignee: z.string().nullable().optional(),
+          assigneeFirma: z.string().nullable().optional(),
+          dueDate: z.string().nullable().optional(),
+          location: z.string().nullable().optional(),
+          floor: z.string().nullable().optional(),
+          room: z.string().nullable().optional(),
+          positionCode: z.string().nullable().optional(),
+          followUpDate: z.string().nullable().optional(),
+          followUpResult: z.string().nullable().optional(),
+          source: z.string().nullable().optional(),
+          confidence: z.number().nullable().optional(),
+          protocolId: z.string().nullable().optional(),
+          analysisId: z.string().nullable().optional(),
+          matterportModelId: z.string().nullable().optional(),
+          matterportPosition: z.string().nullable().optional(),
+          matterportNormal: z.string().nullable().optional(),
+          matterportSweepId: z.string().nullable().optional(),
+          matterportFloorIndex: z.number().nullable().optional(),
+          matterportFloorName: z.string().nullable().optional(),
+          matterportRoomId: z.string().nullable().optional(),
+          matterportRoomName: z.string().nullable().optional(),
+          aiSummary: z.string().nullable().optional(),
+          voiceNoteUri: z.string().nullable().optional(),
+          signatures: z.string().nullable().optional(),
+          comments: z.string().nullable().optional(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+          resolvedAt: z.string().nullable().optional(),
+        })),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { pushDefects } = await import("./sync-service");
+        return pushDefects(ctx.user.id, input.defects);
+      }),
+
+    pullDefects: protectedProcedure
+      .input(z.object({ since: z.string().optional() }))
+      .query(async ({ input, ctx }) => {
+        const { pullDefects } = await import("./sync-service");
+        return { defects: await pullDefects(ctx.user.id, input.since) };
+      }),
+
+    deleteDefect: protectedProcedure
+      .input(z.object({ localId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const { deleteDefect } = await import("./sync-service");
+        await deleteDefect(ctx.user.id, input.localId);
+        return { success: true };
+      }),
+
+    // ─── Project Sync ───────────────────────────────────────────────────────
+    pushProjects: protectedProcedure
+      .input(z.object({
+        projects: z.array(z.object({
+          localId: z.string(),
+          name: z.string(),
+          description: z.string().nullable().optional(),
+          prefix: z.string().nullable().optional(),
+          color: z.string().nullable().optional(),
+          address: z.string().nullable().optional(),
+          client: z.string().nullable().optional(),
+          status: z.string().nullable().optional(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+        })),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { pushProjects } = await import("./sync-service");
+        return pushProjects(ctx.user.id, input.projects);
+      }),
+
+    pullProjects: protectedProcedure
+      .input(z.object({ since: z.string().optional() }))
+      .query(async ({ input, ctx }) => {
+        const { pullProjects } = await import("./sync-service");
+        return { projects: await pullProjects(ctx.user.id, input.since) };
+      }),
+
+    // ─── Attachment Upload ───────────────────────────────────────────────────
+    uploadAttachment: protectedProcedure
+      .input(z.object({
+        entityType: z.string(),
+        entityLocalId: z.string(),
+        fileData: z.string(), // base64
+        fileName: z.string(),
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { uploadAttachment } = await import("./sync-service");
+        return uploadAttachment(
+          ctx.user.id,
+          input.entityType,
+          input.entityLocalId,
+          input.fileData,
+          input.fileName,
+          input.mimeType
+        );
+      }),
+
+    // ─── Full Sync (combined push + pull) ───────────────────────────────────
+    fullSync: protectedProcedure
+      .input(z.object({
+        defects: z.array(z.object({
+          localId: z.string(),
+          projectId: z.string(),
+          title: z.string(),
+          description: z.string().nullable().optional(),
+          status: z.string(),
+          priority: z.string(),
+          category: z.string().nullable().optional(),
+          gewerk: z.string().nullable().optional(),
+          photos: z.string().nullable().optional(),
+          beforePhotos: z.string().nullable().optional(),
+          afterPhotos: z.string().nullable().optional(),
+          assignee: z.string().nullable().optional(),
+          assigneeFirma: z.string().nullable().optional(),
+          dueDate: z.string().nullable().optional(),
+          location: z.string().nullable().optional(),
+          floor: z.string().nullable().optional(),
+          room: z.string().nullable().optional(),
+          positionCode: z.string().nullable().optional(),
+          followUpDate: z.string().nullable().optional(),
+          followUpResult: z.string().nullable().optional(),
+          source: z.string().nullable().optional(),
+          confidence: z.number().nullable().optional(),
+          protocolId: z.string().nullable().optional(),
+          analysisId: z.string().nullable().optional(),
+          matterportModelId: z.string().nullable().optional(),
+          matterportPosition: z.string().nullable().optional(),
+          matterportNormal: z.string().nullable().optional(),
+          matterportSweepId: z.string().nullable().optional(),
+          matterportFloorIndex: z.number().nullable().optional(),
+          matterportFloorName: z.string().nullable().optional(),
+          matterportRoomId: z.string().nullable().optional(),
+          matterportRoomName: z.string().nullable().optional(),
+          aiSummary: z.string().nullable().optional(),
+          voiceNoteUri: z.string().nullable().optional(),
+          signatures: z.string().nullable().optional(),
+          comments: z.string().nullable().optional(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+          resolvedAt: z.string().nullable().optional(),
+        })),
+        projects: z.array(z.object({
+          localId: z.string(),
+          name: z.string(),
+          description: z.string().nullable().optional(),
+          prefix: z.string().nullable().optional(),
+          color: z.string().nullable().optional(),
+          address: z.string().nullable().optional(),
+          client: z.string().nullable().optional(),
+          status: z.string().nullable().optional(),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+        })),
+        lastSyncAt: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { fullSync } = await import("./sync-service");
+        return fullSync(ctx.user.id, input);
+      }),
   }),
 
 

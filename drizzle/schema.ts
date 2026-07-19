@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -6,12 +6,7 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-or
  * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -35,9 +30,9 @@ export const protocols = mysqlTable("protocols", {
   protocol: text("protocol"),
   templateName: varchar("templateName", { length: 128 }),
   templateId: varchar("templateId", { length: 64 }),
-  todos: text("todos"), // JSON string
-  markers: text("markers"), // JSON string
-  photos: text("photos"), // JSON string of photo URLs
+  todos: text("todos"),
+  markers: text("markers"),
+  photos: text("photos"),
   duration: int("duration"),
   recordingMode: varchar("recordingMode", { length: 16 }),
   calendarEventId: varchar("calendarEventId", { length: 128 }),
@@ -47,3 +42,114 @@ export const protocols = mysqlTable("protocols", {
 
 export type Protocol = typeof protocols.$inferSelect;
 export type InsertProtocol = typeof protocols.$inferInsert;
+
+// ─── Projects table for cloud sync ────────────────────────────────────────────
+export const projects = mysqlTable("projects", {
+  id: int("id").autoincrement().primaryKey(),
+  localId: varchar("localId", { length: 64 }).notNull(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  prefix: varchar("prefix", { length: 16 }),
+  color: varchar("color", { length: 32 }),
+  address: text("address"),
+  client: varchar("client", { length: 255 }),
+  status: varchar("status", { length: 32 }).default("active"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = typeof projects.$inferInsert;
+
+// ─── Defects table for cloud sync ─────────────────────────────────────────────
+export const defects = mysqlTable("defects", {
+  id: int("id").autoincrement().primaryKey(),
+  localId: varchar("localId", { length: 64 }).notNull(),
+  userId: int("userId").notNull(),
+  projectId: varchar("projectId", { length: 64 }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 32 }).notNull().default("offen"),
+  priority: varchar("priority", { length: 16 }).notNull().default("mittel"),
+  category: varchar("category", { length: 64 }),
+  gewerk: varchar("gewerk", { length: 64 }),
+  photos: text("photos"), // JSON array of URLs
+  beforePhotos: text("beforePhotos"), // JSON array
+  afterPhotos: text("afterPhotos"), // JSON array
+  assignee: varchar("assignee", { length: 128 }),
+  assigneeFirma: varchar("assigneeFirma", { length: 128 }),
+  dueDate: varchar("dueDate", { length: 32 }),
+  location: varchar("location", { length: 255 }),
+  floor: varchar("floor", { length: 64 }),
+  room: varchar("room", { length: 128 }),
+  positionCode: varchar("positionCode", { length: 32 }),
+  followUpDate: varchar("followUpDate", { length: 32 }),
+  followUpResult: varchar("followUpResult", { length: 32 }),
+  source: varchar("source", { length: 32 }),
+  confidence: int("confidence"), // stored as 0-100
+  protocolId: varchar("protocolId", { length: 64 }),
+  analysisId: varchar("analysisId", { length: 64 }),
+  // Matterport integration
+  matterportModelId: varchar("matterportModelId", { length: 128 }),
+  matterportPosition: text("matterportPosition"), // JSON {x,y,z}
+  matterportNormal: text("matterportNormal"), // JSON {x,y,z}
+  matterportSweepId: varchar("matterportSweepId", { length: 128 }),
+  matterportFloorIndex: int("matterportFloorIndex"),
+  matterportFloorName: varchar("matterportFloorName", { length: 128 }),
+  matterportRoomId: varchar("matterportRoomId", { length: 128 }),
+  matterportRoomName: varchar("matterportRoomName", { length: 128 }),
+  // KI integration
+  aiSummary: text("aiSummary"),
+  voiceNoteUri: text("voiceNoteUri"),
+  // Signatures (JSON array of {role, paths, signedAt})
+  signatures: text("signatures"),
+  // Comments (JSON array)
+  comments: text("comments"),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  resolvedAt: timestamp("resolvedAt"),
+});
+
+export type DbDefect = typeof defects.$inferSelect;
+export type InsertDefect = typeof defects.$inferInsert;
+
+// ─── Attachments table for file sync ──────────────────────────────────────────
+export const attachments = mysqlTable("attachments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  entityType: varchar("entityType", { length: 32 }).notNull(), // "defect" | "protocol" | "project" | "diary"
+  entityLocalId: varchar("entityLocalId", { length: 64 }).notNull(),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  storageUrl: varchar("storageUrl", { length: 512 }).notNull(),
+  originalName: varchar("originalName", { length: 255 }),
+  mimeType: varchar("mimeType", { length: 128 }),
+  sizeBytes: int("sizeBytes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = typeof attachments.$inferInsert;
+
+// ─── Daily Reports (Bautagebuch) ──────────────────────────────────────────────
+export const dailyReports = mysqlTable("daily_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  localId: varchar("localId", { length: 64 }).notNull(),
+  userId: int("userId").notNull(),
+  projectId: varchar("projectId", { length: 64 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  weather: text("weather"), // JSON {temp, condition, wind}
+  attendance: text("attendance"), // JSON array
+  defectsSummary: text("defectsSummary"), // JSON array of defect refs
+  activities: text("activities"), // JSON array of activities
+  notes: text("notes"),
+  generatedReport: text("generatedReport"), // LLM-generated Markdown
+  photos: text("photos"), // JSON array of photo URLs
+  status: varchar("status", { length: 32 }).default("draft"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DailyReport = typeof dailyReports.$inferSelect;
+export type InsertDailyReport = typeof dailyReports.$inferInsert;
