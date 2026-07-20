@@ -1081,6 +1081,8 @@
 - [x] P0-1: Echte serverseitige Auth (bcrypt-Hashing, JWT, Token-Refresh, Auth-Gate, Logout)
 - [x] P0-2: Alle Endpunkte publicProcedure → protectedProcedure (nur health bleibt public)
 - [ ] P0-3: localhost:3000-Fallbacks entfernen, Produktions-URL via EAS Secrets
+- [x] Fix: Dynamic require of "cookie" in production build (ESM-kompatiblen Import verwendet)
+- [x] Fix: eas.json validiert (kein autoSubmit im build-Profil vorhanden)
 - [x] P0-4: E-Mail-Verifizierung absichern, Passwort-Reset nur serverseitig
 - [x] P0-5: Stripe-Fix (Webhook-Signatur erzwungen, kein Demo-Fallback, Auth-Middleware auf alle Stripe-Routes)
 - [x] P0-6: Matterport-Token → nur serverseitig (ENV), Client sendet keine Credentials mehr

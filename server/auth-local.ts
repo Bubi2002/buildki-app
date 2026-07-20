@@ -13,9 +13,8 @@ import { randomUUID } from "crypto";
 import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { COOKIE_NAME } from "../shared/const";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const cookieLib = require("cookie") as { serialize: (name: string, value: string, opts: Record<string, unknown>) => string; parse: (str: string) => Record<string, string> };
-const serializeCookie = cookieLib.serialize;
+import * as cookieModule from "cookie";
+const serializeCookie = (cookieModule as any).serialize || (cookieModule as any).stringifySetCookie;
 import * as db from "./db";
 import {
   sendEmail,
