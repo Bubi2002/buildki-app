@@ -134,7 +134,6 @@ export default function RootLayout() {
       try {
         const { runMigrations, runIntegrityCheck } = require("@/lib/data-versioning");
         const { ran, errors } = await runMigrations();
-        if (ran > 0) console.log(`[Startup] ${ran} migration(s) applied`);
         if (errors > 0) console.warn(`[Startup] ${errors} migration error(s)`);
         const { errors: integrityErrors } = await runIntegrityCheck();
         if (integrityErrors.length > 0) console.warn("[Startup] Integrity issues:", integrityErrors);

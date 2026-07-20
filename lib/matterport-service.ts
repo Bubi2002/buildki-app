@@ -118,7 +118,6 @@ class MatterportService implements IMatterportService {
 
     const creds = await this.getCredentials();
     if (!creds) {
-      console.log("[Matterport] No credentials available for sync");
       return;
     }
 
@@ -172,7 +171,6 @@ class MatterportService implements IMatterportService {
       );
       await AsyncStorage.setItem(SPACES_KEY, JSON.stringify(updated));
 
-      console.log(`[Matterport] Synced space ${spaceId}: ${rooms.length} rooms, ${floors.length} floors`);
     } catch (error: any) {
       console.error("[Matterport] Sync failed:", error.message);
     }
@@ -270,11 +268,9 @@ class MatterportService implements IMatterportService {
   }
 
   async updateTag(tagId: string, updates: Partial<MatterportTag>): Promise<void> {
-    console.log("[Matterport] updateTag:", tagId, updates);
   }
 
   async deleteTag(tagId: string): Promise<void> {
-    console.log("[Matterport] deleteTag:", tagId);
   }
 
   // ─── Analysis (KI-Baufortschritt Foundation) ───────────────────────────────

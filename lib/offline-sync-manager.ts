@@ -12,7 +12,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 
 const SYNC_STATUS_KEY = "offline-sync-status";
 const MAX_QUEUE_RETRIES = 5;
-const BASE_RETRY_DELAY_MS = 2000; // 2s, 4s, 8s, 16s, 32s exponential backoff
+const BASE_RETRY_DELAY_MS = 2000; // 2s, 4s, 8s, 16s, 32s exponential Backoff
 
 // Sync state
 export type SyncStatus = {
@@ -148,13 +148,11 @@ async function processQueue(): Promise<void> {
       return;
     }
 
-    console.log(`[SyncManager] Processing ${pending.length} queued recordings...`);
 
     for (const item of pending) {
       // Check if still online before each item
       const stillOnline = await isOnline();
       if (!stillOnline) {
-        console.log("[SyncManager] Lost connectivity, pausing sync");
         updateStatus({ isOnline: false, isSyncing: false });
         isSyncRunning = false;
         return;
@@ -166,7 +164,6 @@ async function processQueue(): Promise<void> {
       try {
         await processQueuedRecording(item);
         await removeFromQueue(item.id);
-        console.log(`[SyncManager] Successfully processed queued recording ${item.id}`);
       } catch (error: any) {
         const errMsg = error?.message || String(error);
         console.error(`[SyncManager] Failed to process ${item.id}:`, errMsg);
@@ -180,7 +177,6 @@ async function processQueue(): Promise<void> {
         // Exponential backoff: wait before next item
         if (newRetryCount < MAX_QUEUE_RETRIES) {
           const delay = BASE_RETRY_DELAY_MS * Math.pow(2, newRetryCount - 1);
-          console.log(`[SyncManager] Backoff ${delay}ms before next item`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }

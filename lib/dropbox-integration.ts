@@ -473,7 +473,6 @@ export async function autoUploadIfEnabled(
 
   const result = await uploadPdfToDropbox(pdfUri, options);
   if (result.success) {
-    console.log(`[Dropbox] Auto-upload successful: ${result.dropboxPath}`);
   } else {
     console.warn(`[Dropbox] Auto-upload failed: ${result.error}`);
   }

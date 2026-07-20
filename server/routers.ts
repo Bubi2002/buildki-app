@@ -15,7 +15,7 @@ export const appRouter = router({
   health: publicProcedure.query(() => ({ status: "ok" })),
 
   voice: router({
-    transcribe: publicProcedure
+    transcribe: protectedProcedure
       .input(
         z.object({
           audioUrl: z.string(),
@@ -52,7 +52,7 @@ export const appRouter = router({
   }),
 
   protocol: router({
-    generate: publicProcedure
+    generate: protectedProcedure
       .input(
         z.object({
           transcription: z.string(),
@@ -166,7 +166,7 @@ export const appRouter = router({
         return { protocol: protocolText, templateName: template.name };
       }),
 
-    extractTodos: publicProcedure
+    extractTodos: protectedProcedure
       .input(
         z.object({
           transcription: z.string(),
@@ -233,7 +233,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
   }),
 
   upload: router({
-    audio: publicProcedure
+    audio: protectedProcedure
       .input(
         z.object({
           base64: z.string(),
@@ -564,7 +564,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
 
   // Speaker Identification / Diarization
   speaker: router({
-    identify: publicProcedure
+    identify: protectedProcedure
       .input(
         z.object({
           transcription: z.string(),
@@ -618,7 +618,7 @@ Beispiel:
   }),
   // Send action items per email
   email: router({
-    sendActionItems: publicProcedure
+    sendActionItems: protectedProcedure
       .input(
         z.object({
           todos: z.array(z.object({
@@ -689,7 +689,7 @@ Beispiel:
   }),
 
     notification: router({
-    sendTaskNotification: publicProcedure
+    sendTaskNotification: protectedProcedure
       .input(
         z.object({
           title: z.string(),
@@ -709,7 +709,7 @@ Beispiel:
       }),
   }),
 streaming: router({
-    transcribeChunk: publicProcedure
+    transcribeChunk: protectedProcedure
       .input(
         z.object({
           audioUrl: z.string(),
@@ -742,7 +742,7 @@ streaming: router({
       }),
   }),
   translate: router({
-    translateProtocol: publicProcedure
+    translateProtocol: protectedProcedure
       .input(
         z.object({
           text: z.string(),
@@ -791,7 +791,7 @@ Wichtige Regeln:
   }),
 
   agenda: router({
-    generateSuggestions: publicProcedure
+    generateSuggestions: protectedProcedure
       .input(z.object({
         protocols: z.array(z.object({
           id: z.string(),
@@ -826,7 +826,7 @@ Wichtige Regeln:
         }
       }),
   }),
-  detectDocumentType: publicProcedure
+  detectDocumentType: protectedProcedure
       .input(z.object({ transcription: z.string() }))
       .mutation(async ({ input }) => {
         const response = await invokeLLM({
@@ -874,7 +874,7 @@ Antworte NUR mit einem JSON-Objekt im Format:
       }),
 
   support: router({
-    chat: publicProcedure
+    chat: protectedProcedure
       .input(
         z.object({
           messages: z.array(
@@ -940,13 +940,13 @@ Regeln:
 
   matterport: router({
     // Verify credentials and connect account
-    connect: publicProcedure
-      .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
-      }))
-      .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+    connect: protectedProcedure
+      .input(z.object({}))
+      .mutation(async () => {
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
+        if (!credentials.tokenId || !credentials.tokenSecret) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Matterport API-Zugangsdaten nicht konfiguriert" });
+        }
         const valid = await matterport.verifyCredentials(credentials);
         if (!valid) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Ungültige Matterport API-Zugangsdaten" });
@@ -955,16 +955,14 @@ Regeln:
       }),
 
     // List all models
-    listModels: publicProcedure
+    listModels: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         pageSize: z.number().optional(),
         offset: z.string().optional(),
         query: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.listModels(credentials, {
           pageSize: input.pageSize,
           offset: input.offset,
@@ -973,79 +971,67 @@ Regeln:
       }),
 
     // Get model details by ID
-    getModel: publicProcedure
+    getModel: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.getModelDetails(credentials, input.modelId);
       }),
 
     // Get model basic info
-    getModelBasic: publicProcedure
+    getModelBasic: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.getModelBasic(credentials, input.modelId);
       }),
 
     // Get floors for a model
-    getFloors: publicProcedure
+    getFloors: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.getModelFloors(credentials, input.modelId);
       }),
 
     // Get rooms for a model
-    getRooms: publicProcedure
+    getRooms: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.getModelRooms(credentials, input.modelId);
       }),
 
     // Get sweeps (scan points) for a model
-    getSweeps: publicProcedure
+    getSweeps: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.getModelSweeps(credentials, input.modelId);
       }),
 
     // Get MatterTags for a model
-    getMatterTags: publicProcedure
+    getMatterTags: protectedProcedure
       .input(z.object({
-        tokenId: z.string().default(""),
-        tokenSecret: z.string().default(""),
         modelId: z.string().min(1),
       }))
       .mutation(async ({ input }) => {
-        const credentials = { tokenId: input.tokenId || ENV.matterportTokenId, tokenSecret: input.tokenSecret || ENV.matterportTokenSecret };
+        const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
         return matterport.getModelMatterTags(credentials, input.modelId);
       }),
 
     // Get SDK Key for client-side embed (never expose API tokens)
-    getSdkKey: publicProcedure
+    getSdkKey: protectedProcedure
       .query(() => {
         return { sdkKey: ENV.matterportSdkKey };
       }),
@@ -1053,7 +1039,7 @@ Regeln:
 
   // ─── KI-Analyse ──────────────────────────────────────────────────────────────
   analysis: router({
-    uploadPhoto: publicProcedure
+    uploadPhoto: protectedProcedure
       .input(
         z.object({
           base64: z.string(),
@@ -1067,7 +1053,7 @@ Regeln:
         return { url };
       }),
 
-    analyzePhoto: publicProcedure
+    analyzePhoto: protectedProcedure
       .input(
         z.object({
           imageUrls: z.array(z.string()).min(1).max(5),
@@ -1095,7 +1081,7 @@ Regeln:
      * Generate a professional construction report from transcription + metadata.
      * Uses structured JSON output for per-trade summaries, then formats as Markdown.
      */
-    generateReport: publicProcedure
+    generateReport: protectedProcedure
       .input(
         z.object({
           reportType: z.string(),
@@ -1119,7 +1105,7 @@ Regeln:
      * Generate a professional Bautagebuch (daily construction report).
      * Combines weather, attendance, defects, protocols, photos into structured report.
      */
-    generateBautagebuch: publicProcedure
+    generateBautagebuch: protectedProcedure
       .input(
         z.object({
           projectName: z.string(),
@@ -1154,7 +1140,7 @@ Regeln:
 
   // KI-Baustellenassistent: Intelligente Protokoll-Analyse
   assistant: router({
-    analyzeProtocol: publicProcedure
+    analyzeProtocol: protectedProcedure
       .input(
         z.object({
           protocolText: z.string(),

@@ -1076,3 +1076,14 @@
 - [x] SMTP-E-Mail-Service (server/email.ts, Strato-SMTP, professionelle HTML-Templates)
 - [x] Login-Screen: "Passwort vergessen?" Link hinzugefügt
 - [x] Registrierung: Leitet jetzt zu E-Mail-Bestätigung weiter (statt direkt Onboarding)
+
+## P0 Release-Blocker (2026-07-20) – KRITISCH
+- [x] P0-1: Echte serverseitige Auth (bcrypt-Hashing, JWT, Token-Refresh, Auth-Gate, Logout)
+- [x] P0-2: Alle Endpunkte publicProcedure → protectedProcedure (nur health bleibt public)
+- [ ] P0-3: localhost:3000-Fallbacks entfernen, Produktions-URL via EAS Secrets
+- [x] P0-4: E-Mail-Verifizierung absichern, Passwort-Reset nur serverseitig
+- [x] P0-5: Stripe-Fix (Webhook-Signatur erzwungen, kein Demo-Fallback, Auth-Middleware auf alle Stripe-Routes)
+- [x] P0-6: Matterport-Token → nur serverseitig (ENV), Client sendet keine Credentials mehr
+- [x] P0-7: Rechtstexte vereinheitlicht (immobau-ka GmbH), Platzhalter entfernt, vollständiges Impressum
+- [x] P0-8: Console-Logs bereinigt (112 entfernt, nur Auth-Debug-Logs in _core beibehalten)
+- [x] P0-9: Tests repariert (7 passed, 1 skipped, 0 failed)

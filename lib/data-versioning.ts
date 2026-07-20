@@ -154,7 +154,6 @@ export async function runMigrations(): Promise<{ ran: number; errors: number }> 
     return { ran: 0, errors: 0 };
   }
 
-  console.log(`[DataVersioning] Migrating from v${storedVersion} to v${CURRENT_SCHEMA_VERSION}...`);
   
   let ran = 0;
   let errors = 0;
@@ -186,7 +185,6 @@ export async function runMigrations(): Promise<{ ran: number; errors: number }> 
       
       // Update stored version after each successful migration
       await AsyncStorage.setItem(SCHEMA_VERSION_KEY, version.toString());
-      console.log(`[DataVersioning] Migration to v${version} successful. Keys affected: ${result.keysAffected.join(", ") || "none"}`);
     } catch (error: any) {
       entry.success = false;
       entry.error = error?.message || String(error);
@@ -240,7 +238,6 @@ async function restoreBackup(targetVersion: number): Promise<void> {
         await AsyncStorage.setItem(key, value as string);
       }
     }
-    console.log(`[DataVersioning] Restored backup for v${targetVersion}`);
   } catch (e) {
     console.error("[DataVersioning] Backup restore failed:", e);
   }

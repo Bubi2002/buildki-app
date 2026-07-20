@@ -12,8 +12,9 @@
  * - Yearly: 140,00 € netto/Jahr zzgl. MwSt. (~10% Ersparnis)
  */
 import Stripe from "stripe";
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { ENV } from "./_core/env";
+import { sdk } from "./_core/sdk";
 
 // Initialize Stripe (lazy – only when key is configured)
 let stripeInstance: Stripe | null = null;
@@ -41,10 +42,27 @@ interface SubscriptionRecord {
 const subscriptionCache = new Map<string, SubscriptionRecord>();
 
 /**
+ * Auth middleware for Stripe routes (reuses the same JWT validation as tRPC)
+ */
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    (req as any).user = user;
+    next();
+  } catch {
+    res.status(401).json({ error: "Unauthorized" });
+  }
+}
+
+/**
  * Register all Stripe-related Express routes
  */
 export function registerStripeRoutes(app: Express) {
-  // Health check for Stripe configuration
+  // Health check for Stripe configuration (public)
   app.get("/api/stripe/status", (_req: Request, res: Response) => {
     const configured = !!ENV.stripeSecretKey;
     res.json({
@@ -59,7 +77,7 @@ export function registerStripeRoutes(app: Express) {
    * Creates a Stripe Checkout Session for subscription
    * Body: { email: string, plan: "monthly" | "yearly", successUrl?: string, cancelUrl?: string }
    */
-  app.post("/api/stripe/create-checkout-session", async (req: Request, res: Response) => {
+  app.post("/api/stripe/create-checkout-session", requireAuth, async (req: Request, res: Response) => {
     try {
       const stripe = getStripe();
       const { email, plan, successUrl, cancelUrl } = req.body;
@@ -130,7 +148,7 @@ export function registerStripeRoutes(app: Express) {
    * Creates a Stripe Customer Portal session for self-service management
    * Body: { email: string }
    */
-  app.post("/api/stripe/create-portal-session", async (req: Request, res: Response) => {
+  app.post("/api/stripe/create-portal-session", requireAuth, async (req: Request, res: Response) => {
     try {
       const stripe = getStripe();
       const { email } = req.body;
@@ -162,7 +180,7 @@ export function registerStripeRoutes(app: Express) {
    * GET /api/stripe/subscription-status?email=...
    * Returns the current subscription status for a user
    */
-  app.get("/api/stripe/subscription-status", async (req: Request, res: Response) => {
+  app.get("/api/stripe/subscription-status", requireAuth, async (req: Request, res: Response) => {
     try {
       const email = req.query.email as string;
       if (!email) {
@@ -182,11 +200,11 @@ export function registerStripeRoutes(app: Express) {
 
       // Query Stripe
       if (!ENV.stripeSecretKey) {
-        res.json({
-          active: true,
-          status: "trialing",
+        res.status(503).json({
+          active: false,
+          status: "not_configured",
           plan: null,
-          message: "Stripe not configured – trial mode active",
+          message: "Stripe not configured",
         });
         return;
       }
@@ -245,19 +263,23 @@ export function registerStripeRoutes(app: Express) {
 
       let event: Stripe.Event;
 
-      if (ENV.stripeWebhookSecret && sig) {
-        try {
-          // For webhook signature verification, need raw body
-          const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-          event = stripe.webhooks.constructEvent(rawBody, sig, ENV.stripeWebhookSecret);
-        } catch (err: any) {
-          console.error("[Stripe Webhook] Signature verification failed:", err.message);
-          res.status(400).json({ error: "Webhook signature verification failed" });
-          return;
-        }
-      } else {
-        // No webhook secret – parse directly (dev mode)
-        event = req.body as Stripe.Event;
+      if (!ENV.stripeWebhookSecret) {
+        res.status(503).json({ error: "Webhook secret not configured" });
+        return;
+      }
+      if (!sig) {
+        res.status(400).json({ error: "Missing stripe-signature header" });
+        return;
+      }
+
+      try {
+        // For webhook signature verification, need raw body
+        const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+        event = stripe.webhooks.constructEvent(rawBody, sig, ENV.stripeWebhookSecret);
+      } catch (err: any) {
+        console.error("[Stripe Webhook] Signature verification failed:", err.message);
+        res.status(400).json({ error: "Webhook signature verification failed" });
+        return;
       }
 
       console.log(`[Stripe Webhook] Event: ${event.type}`);

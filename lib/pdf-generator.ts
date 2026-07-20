@@ -884,10 +884,8 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   // Convert photos to base64 data URIs
   const photoDataUris: string[] = [];
   if (protocol.photos && protocol.photos.length > 0) {
-    console.log(`[PDF-Gen] Processing ${protocol.photos.length} photos...`);
     for (let i = 0; i < protocol.photos.length; i++) {
       const photoUri = protocol.photos[i];
-      console.log(`[PDF-Gen] Photo ${i + 1}: ${photoUri}`);
       
       // Step 1: Compress the photo for smaller PDF size
       const compressedUri = await compressPhotoForPdf(photoUri);
@@ -900,7 +898,6 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       }
       // If direct read fails, try copying to a temp location first (handles iOS ph:// and picker URIs)
       if (!dataUri && photoUri) {
-        console.log(`[PDF-Gen] Photo ${i + 1}: Direct read failed, trying copy fallback...`);
         try {
           const tempPath = `${FileSystem.cacheDirectory}pdf-photo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}.jpg`;
           await FileSystem.copyAsync({ from: photoUri, to: tempPath });
@@ -917,7 +914,6 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
         }
       }
       if (dataUri) {
-        console.log(`[PDF-Gen] Photo ${i + 1}: ✓ Converted to base64 (${Math.round(dataUri.length / 1024)}KB)`);
         photoDataUris.push(dataUri);
       } else {
         console.warn(`[PDF-Gen] Photo ${i + 1}: ✗ FAILED to convert - will be missing from PDF`);
@@ -925,7 +921,6 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
         photoDataUris.push("");
       }
     }
-    console.log(`[PDF-Gen] Successfully converted ${photoDataUris.filter(u => u).length}/${protocol.photos.length} photos`);
   }
 
   // Convert plan image to base64 if available
@@ -997,7 +992,6 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     : html;
 
   // Generate PDF (with timeout to prevent hanging)
-  console.log("[PDF-Gen] Generating PDF file...");
   const printResult = await withTimeout(
     Print.printToFileAsync({
       html: finalHtml,
@@ -1015,7 +1009,6 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     throw new Error("PDF-Generierung hat zu lange gedauert. Bitte versuche es erneut.");
   }
   const { uri } = printResult;
-  console.log("[PDF-Gen] PDF generated:", uri);
 
   // Rename to meaningful filename using configured schema
   try {

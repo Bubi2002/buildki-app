@@ -936,7 +936,6 @@ export default function RecordScreen() {
         }
       }, 4000);
     } catch (err) {
-      console.log("Chapter speech recording failed, using text input", err);
       setChapterListening(false);
       setChapterRecording(false);
       // Show alert so user knows to type instead
@@ -979,7 +978,6 @@ export default function RecordScreen() {
         confirmChapter(chapterName);
       }
     } catch (err) {
-      console.log("Chapter transcription failed", err);
       // Resume main recording on error too
       if (isRecording) {
         try {

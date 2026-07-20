@@ -1,7 +1,6 @@
 /**
  * ProtoKI – Login-Screen
- * Für bestehende Nutzer: E-Mail + Passwort Login
- * Verlinkt zur Registrierung für neue Nutzer
+ * Server-side authentication with bcrypt + JWT
  */
 import { useState } from "react";
 import {
@@ -17,12 +16,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
-
-const REGISTRATION_KEY = "@protoki_registered";
-const ONBOARDING_PROFILE_COMPLETE_KEY = "@protoki_onboarding_profile_complete";
+import * as Auth from "@/lib/_core/auth";
+import { apiCall } from "@/lib/_core/api";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -39,30 +36,44 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // Check if user is registered locally
-      const regData = await AsyncStorage.getItem(REGISTRATION_KEY);
-      if (regData) {
-        const parsed = JSON.parse(regData);
-        if (parsed.email === email.trim().toLowerCase()) {
-          // Check if profile onboarding is complete
-          const profileComplete = await AsyncStorage.getItem(ONBOARDING_PROFILE_COMPLETE_KEY);
-          if (profileComplete !== "true") {
-            router.replace("/onboarding-profile" as any);
-          } else {
-            router.replace("/(tabs)" as any);
-          }
-          return;
-        }
-      }
+      const result = await apiCall<{
+        success: boolean;
+        sessionToken: string;
+        user: {
+          id: number;
+          openId: string;
+          name: string | null;
+          email: string | null;
+          loginMethod: string | null;
+          role: string;
+          emailVerified: boolean;
+          lastSignedIn: string;
+        };
+      }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
 
-      // Fallback: Try OAuth login for server-authenticated users
-      const { startOAuthLogin } = require("@/constants/oauth");
-      const result = await startOAuthLogin();
-      if (result) {
+      if (result.success && result.sessionToken) {
+        // Store session token (native) / cookie set by server (web)
+        await Auth.setSessionToken(result.sessionToken);
+        await Auth.setUserInfo({
+          id: result.user.id,
+          openId: result.user.openId,
+          name: result.user.name,
+          email: result.user.email,
+          loginMethod: result.user.loginMethod,
+          lastSignedIn: new Date(result.user.lastSignedIn),
+        });
+
         router.replace("/(tabs)" as any);
       }
-    } catch (e) {
-      Alert.alert("Fehler", "Anmeldung fehlgeschlagen. Bitte pr\u00FCfe deine Zugangsdaten.");
+    } catch (e: any) {
+      const msg = e?.message || "Anmeldung fehlgeschlagen. Bitte prüfe deine Zugangsdaten.";
+      Alert.alert("Fehler", msg);
     } finally {
       setLoading(false);
     }
@@ -84,7 +95,7 @@ export default function LoginScreen() {
               <MaterialIcons name="architecture" size={40} color="#5DADE2" />
             </View>
             <Text style={styles.brandTitle}>ProtoKI</Text>
-            <Text style={styles.brandSubtitle}>Willkommen zur\u00FCck</Text>
+            <Text style={styles.brandSubtitle}>Willkommen zurück</Text>
           </View>
 
           {/* Form */}

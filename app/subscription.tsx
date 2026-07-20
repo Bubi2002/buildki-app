@@ -76,7 +76,6 @@ export default function SubscriptionScreen() {
         subscribedAt: null,
       });
     } catch (e) {
-      console.log("Error loading subscription state:", e);
     }
   };
 

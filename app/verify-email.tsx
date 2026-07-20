@@ -14,13 +14,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
-import Constants from "expo-constants";
-
-const API_URL = Constants.expoConfig?.extra?.apiUrl || "http://localhost:3000";
-const EMAIL_VERIFIED_KEY = "@protoki_email_verified";
+import { apiCall } from "@/lib/_core/api";
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
@@ -47,24 +43,13 @@ export default function VerifyEmailScreen() {
 
   const requestConfirmation = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/request-confirmation`, {
+      await apiCall<{ success: boolean }>("/api/auth/request-confirmation", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.toLowerCase(), name }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setResendCooldown(60);
-      } else if (data.devCode) {
-        // Dev-Modus: Code anzeigen
-        Alert.alert("Dev-Modus", `Dein Code: ${data.devCode}\n\n(Im Produktivbetrieb per E-Mail)`);
-        setResendCooldown(60);
-      }
+      setResendCooldown(60);
     } catch (e) {
-      // Server nicht erreichbar – Auto-Bestätigung für Offline-Modus
-      console.log("[VerifyEmail] Server nicht erreichbar, Auto-Bestätigung aktiv");
+      // Server nicht erreichbar
     }
   };
 
@@ -76,36 +61,24 @@ export default function VerifyEmailScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/auth/verify-email`, {
+      await apiCall<{ success: boolean }>("/api/auth/verify-email", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.toLowerCase(), code }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await AsyncStorage.setItem(EMAIL_VERIFIED_KEY, "true");
-        Alert.alert(
-          "E-Mail bestätigt!",
-          "Dein Konto ist jetzt aktiv. Dein 14-tägiger Testzeitraum beginnt jetzt.",
-          [{ text: "Weiter", onPress: () => router.replace("/onboarding-profile" as any) }],
-        );
-      } else {
-        Alert.alert("Fehler", data.error || "Ungültiger Code.");
-      }
-    } catch (e) {
-      // Fallback: Offline-Bestätigung
-      await AsyncStorage.setItem(EMAIL_VERIFIED_KEY, "true");
-      router.replace("/onboarding-profile" as any);
+      Alert.alert(
+        "E-Mail bestätigt!",
+        "Dein Konto ist jetzt aktiv. Dein 14-tägiger Testzeitraum beginnt jetzt.",
+        [{ text: "Weiter", onPress: () => router.replace("/onboarding-profile" as any) }],
+      );
+    } catch (e: any) {
+      Alert.alert("Fehler", e?.message || "Ungültiger Code.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleSkip = async () => {
-    // Für MVP: Überspringen erlauben
-    await AsyncStorage.setItem(EMAIL_VERIFIED_KEY, "true");
+    // Skip verification for now, navigate to profile setup
     router.replace("/onboarding-profile" as any);
   };
 

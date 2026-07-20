@@ -168,7 +168,7 @@ function DatenschutzContent() {
       <Text className="text-sm text-muted">Stand: Juli 2026</Text>
 
       <Section title="1. Verantwortlicher">
-        <P>Iserloh Projektmanagement GmbH{"\n"}Vertreten durch: Jörg Iserloh{"\n"}E-Mail: info@iserloh.net</P>
+        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Vertreten durch: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@immobau-ka.de{"\n"}Registergericht: Amtsgericht Mannheim, HRB 734893</P>
       </Section>
 
       <Section title="2. Erhobene Daten">
@@ -215,7 +215,7 @@ function DatenschutzContent() {
       </Section>
 
       <Section title="8. Kontakt Datenschutzbeauftragter">
-        <P>Bei Fragen zum Datenschutz:{"\n"}E-Mail: datenschutz@iserloh.net</P>
+        <P>Bei Fragen zum Datenschutz:{"\n"}immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}E-Mail: datenschutz@immobau-ka.de</P>
       </Section>
     </View>
   );
@@ -227,20 +227,25 @@ function ImpressumContent() {
       <Text className="text-xl font-bold text-foreground">Impressum</Text>
 
       <Section title="Angaben gemäß § 5 TMG">
-        <P>Iserloh Projektmanagement GmbH{"\n"}Geschäftsführer: Jörg Iserloh</P>
-        <P>E-Mail: info@iserloh.net{"\n"}Telefon: Auf Anfrage</P>
+        <P>immobau-ka GmbH{"\n"}Ringstraße 6{"\n"}76228 Karlsruhe</P>
+        <P>Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh</P>
+        <P>E-Mail: info@immobau-ka.de{"\n"}Telefon: Auf Anfrage</P>
       </Section>
 
       <Section title="Registereintrag">
-        <P>Eingetragen im Handelsregister.{"\n"}Registergericht: [Amtsgericht]{"\n"}Registernummer: [HRB-Nummer]</P>
+        <P>Eingetragen im Handelsregister.{"\n"}Registergericht: Amtsgericht Mannheim{"\n"}Registernummer: HRB 734893</P>
       </Section>
 
-      <Section title="Umsatzsteuer-ID">
-        <P>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG:{"\n"}[USt-IdNr.]</P>
+      <Section title="Steuernummer">
+        <P>Steuernummer: 34413/61771{"\n"}Finanzamt Karlsruhe-Durlach</P>
+      </Section>
+
+      <Section title="Bankverbindung">
+        <P>Sparkasse Karlsruhe{"\n"}IBAN: DE19 6605 0101 0108 2934 40{"\n"}BIC: KARSDE66XXX</P>
       </Section>
 
       <Section title="Verantwortlich für den Inhalt">
-        <P>Jörg Iserloh{"\n"}(Anschrift wie oben)</P>
+        <P>Dipl. Ing. (FH) Jörg Iserloh{"\n"}Ringstraße 6, 76228 Karlsruhe</P>
       </Section>
 
       <Section title="Haftungsausschluss">
@@ -254,10 +259,10 @@ function AGBContent() {
   return (
     <View className="gap-4 pb-8">
       <Text className="text-xl font-bold text-foreground">Allgemeine Geschäftsbedingungen</Text>
-      <Text className="text-sm text-muted">der Iserloh Projektmanagement GmbH{"\n"}gültig ab 1. Juli 2026</Text>
+      <Text className="text-sm text-muted">der immobau-ka GmbH{"\n"}gültig ab 1. Juli 2026</Text>
 
       <Section title="§ 1 Geltungsbereich">
-        <P>1.1 Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) regeln die vertragliche Beziehung zwischen der Iserloh Projektmanagement GmbH, vertreten durch Jörg Iserloh (nachfolgend „Anbieter“) und Ihnen als Kunden (nachfolgend „Kunde“) in Bezug auf die Nutzung der mobilen Applikation „ProtoKI – Video-Protokoll App“ sowie der zugehörigen Cloud-Dienste (nachfolgend gemeinsam „Software“).</P>
+        <P>1.1 Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) regeln die vertragliche Beziehung zwischen der immobau-ka GmbH, vertreten durch Dipl. Ing. (FH) Jörg Iserloh (nachfolgend „Anbieter“) und Ihnen als Kunden (nachfolgend „Kunde“) in Bezug auf die Nutzung der mobilen Applikation „ProtoKI – Video-Protokoll App“ sowie der zugehörigen Cloud-Dienste (nachfolgend gemeinsam „Software“).</P>
         <P>1.2 Die Software und die zugehörigen Dienste sind ausschließlich für den Geschäftsverkehr (B2B) bestimmt. Die Nutzung ist ausschließlich Unternehmern im Sinne von § 14 BGB gestattet. Der Kunde bestätigt mit Vertragsschluss, dass er in Ausübung seiner gewerblichen oder selbstständigen beruflichen Tätigkeit handelt.</P>
         <P>1.3 Abweichende oder entgegenstehende allgemeine Geschäftsbedingungen des Kunden werden nicht anerkannt, sofern der Anbieter diesen nicht ausdrücklich schriftlich zugestimmt hat.</P>
         <P>1.4 Der Anbieter ist berechtigt, diese AGB mit einer Ankündigungsfrist von sechs (6) Wochen per E-Mail zu ändern. Widerspricht der Kunde nicht innerhalb von vier (4) Wochen nach Zugang der Änderungsmitteilung in Textform, gelten die geänderten AGB als akzeptiert. Der Anbieter weist in der Änderungsmitteilung gesondert auf diese Rechtsfolge hin.</P>
@@ -374,7 +379,7 @@ function AGBContent() {
       </Section>
 
       <Section title="Kontakt">
-        <P>Iserloh Projektmanagement GmbH{"\n"}Geschäftsführer: Jörg Iserloh{"\n"}E-Mail: info@iserloh.net</P>
+        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@immobau-ka.de</P>
       </Section>
     </View>
   );

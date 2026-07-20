@@ -89,4 +89,54 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Local Auth Helpers ──────────────────────────────────────────────────────
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createLocalUser(data: {
+  openId: string;
+  email: string;
+  name: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  company?: string | null;
+  phone?: string | null;
+  passwordHash: string;
+  loginMethod: string;
+  trialStartedAt?: Date | null;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(users).values({
+    openId: data.openId,
+    email: data.email,
+    name: data.name,
+    firstName: data.firstName ?? null,
+    lastName: data.lastName ?? null,
+    company: data.company ?? null,
+    phone: data.phone ?? null,
+    passwordHash: data.passwordHash,
+    loginMethod: data.loginMethod,
+    emailVerified: false,
+    trialStartedAt: data.trialStartedAt ?? new Date(),
+    lastSignedIn: new Date(),
+  });
+}
+
+export async function updateEmailVerified(email: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailVerified: true }).where(eq(users.email, email));
+}
+
+export async function updateUserPassword(email: string, passwordHash: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ passwordHash }).where(eq(users.email, email));
+}

@@ -352,15 +352,11 @@ export default function MatterportViewerScreen() {
     setShowImportModal(true);
     setImportStatus("Lade Etagen...");
     try {
-      const floors = await getFloorsMutation.mutateAsync({
-        tokenId: credentials.tokenId, tokenSecret: credentials.tokenSecret, modelId,
-      });
+      const floors = await getFloorsMutation.mutateAsync({ modelId });
       setModelFloors(floors);
       setImportStatus(`${floors.length} Etagen geladen. Lade Räume...`);
 
-      const rooms = await getRoomsMutation.mutateAsync({
-        tokenId: credentials.tokenId, tokenSecret: credentials.tokenSecret, modelId,
-      });
+      const rooms = await getRoomsMutation.mutateAsync({ modelId });
       setModelRooms(rooms);
       setImportStatus(`${rooms.length} Räume geladen. Importiere...`);
 
@@ -478,7 +474,6 @@ export default function MatterportViewerScreen() {
           mpSdk = await iframe.contentWindow.MP_SDK.connect(iframe.contentWindow);
         }
       } catch(e) {
-        console.log('SDK connect attempt 1 failed:', e.message);
       }
 
       // If SDK connected, set up event listeners

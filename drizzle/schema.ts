@@ -12,6 +12,22 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  // Local auth fields
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  emailVerified: boolean("emailVerified").default(false),
+  emailVerifyToken: varchar("emailVerifyToken", { length: 64 }),
+  emailVerifyExpiry: timestamp("emailVerifyExpiry"),
+  resetToken: varchar("resetToken", { length: 64 }),
+  resetExpiry: timestamp("resetExpiry"),
+  // Subscription / billing
+  stripeCustomerId: varchar("stripeCustomerId", { length: 64 }),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
+  trialStartedAt: timestamp("trialStartedAt"),
+  // Profile
+  phone: varchar("phone", { length: 32 }),
+  company: varchar("company", { length: 255 }),
+  firstName: varchar("firstName", { length: 128 }),
+  lastName: varchar("lastName", { length: 128 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

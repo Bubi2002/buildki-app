@@ -16,13 +16,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
-import Constants from "expo-constants";
-
-const API_URL = Constants.expoConfig?.extra?.apiUrl || "http://localhost:3000";
-const REGISTRATION_KEY = "@protoki_registered";
+import { apiCall } from "@/lib/_core/api";
 
 type Step = "email" | "code" | "newPassword";
 
@@ -44,33 +40,14 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/auth/request-reset`, {
+      await apiCall<{ success: boolean; message: string }>("/api/auth/request-reset", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert("Code gesendet", "Prüfe dein E-Mail-Postfach für den 6-stelligen Code.");
-        setStep("code");
-      } else {
-        // Im Dev-Modus: Code direkt anzeigen
-        if (data.devCode) {
-          Alert.alert("Dev-Modus", `Dein Code: ${data.devCode}\n\n(Im Produktivbetrieb wird dieser per E-Mail gesendet)`);
-          setStep("code");
-        } else {
-          Alert.alert("Fehler", data.error || "Etwas ist schiefgelaufen.");
-        }
-      }
-    } catch (e) {
-      // Fallback: Lokaler Reset ohne Server
-      Alert.alert(
-        "Hinweis",
-        "E-Mail-Versand nicht verfügbar. Du kannst dein Passwort direkt zurücksetzen.",
-      );
-      setStep("newPassword");
+      Alert.alert("Code gesendet", "Falls ein Konto existiert, wurde ein Reset-Code an deine E-Mail gesendet.");
+      setStep("code");
+    } catch (e: any) {
+      Alert.alert("Fehler", e?.message || "Etwas ist schiefgelaufen.");
     } finally {
       setLoading(false);
     }
@@ -84,22 +61,13 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/auth/verify-reset-code`, {
+      await apiCall<{ success: boolean }>("/api/auth/verify-reset-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), code }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setStep("newPassword");
-      } else {
-        Alert.alert("Fehler", data.error || "Ungültiger Code.");
-      }
-    } catch (e) {
-      // Fallback: Direkt zum Passwort-Setzen
       setStep("newPassword");
+    } catch (e: any) {
+      Alert.alert("Fehler", e?.message || "Ungültiger Code.");
     } finally {
       setLoading(false);
     }
@@ -117,23 +85,22 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      // Passwort lokal aktualisieren
-      const regData = await AsyncStorage.getItem(REGISTRATION_KEY);
-      if (regData) {
-        const parsed = JSON.parse(regData);
-        if (parsed.email === email.trim().toLowerCase()) {
-          parsed.password = newPassword;
-          await AsyncStorage.setItem(REGISTRATION_KEY, JSON.stringify(parsed));
-        }
-      }
+      await apiCall<{ success: boolean }>("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          code,
+          newPassword,
+        }),
+      });
 
       Alert.alert(
         "Passwort geändert",
         "Dein Passwort wurde erfolgreich zurückgesetzt. Du kannst dich jetzt anmelden.",
         [{ text: "Zum Login", onPress: () => router.replace("/login" as any) }],
       );
-    } catch (e) {
-      Alert.alert("Fehler", "Passwort konnte nicht geändert werden.");
+    } catch (e: any) {
+      Alert.alert("Fehler", e?.message || "Passwort konnte nicht geändert werden.");
     } finally {
       setLoading(false);
     }

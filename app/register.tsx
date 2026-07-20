@@ -18,12 +18,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
-
-const REGISTRATION_KEY = "@protoki_registered";
-const TRIAL_STORAGE_KEY = "@protoki_trial_start";
+import * as Auth from "@/lib/_core/auth";
+import { apiCall } from "@/lib/_core/api";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -72,24 +70,49 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // Store registration data locally
-      const registrationData = {
-        email: email.trim().toLowerCase(),
-        registeredAt: new Date().toISOString(),
-        onboardingComplete: false,
-      };
-      await AsyncStorage.setItem(REGISTRATION_KEY, JSON.stringify(registrationData));
+      const result = await apiCall<{
+        success: boolean;
+        sessionToken: string;
+        user: {
+          id: number;
+          openId: string;
+          name: string | null;
+          email: string | null;
+          loginMethod: string | null;
+          role: string;
+          emailVerified: boolean;
+          lastSignedIn: string;
+        };
+      }>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          name: email.trim().toLowerCase().split("@")[0],
+        }),
+      });
 
-      // Start trial period
-      await AsyncStorage.setItem(TRIAL_STORAGE_KEY, new Date().toISOString());
+      if (result.success && result.sessionToken) {
+        // Store session token (native) / cookie set by server (web)
+        await Auth.setSessionToken(result.sessionToken);
+        await Auth.setUserInfo({
+          id: result.user.id,
+          openId: result.user.openId,
+          name: result.user.name,
+          email: result.user.email,
+          loginMethod: result.user.loginMethod,
+          lastSignedIn: new Date(result.user.lastSignedIn),
+        });
 
-      // Navigate to email verification (Double-Opt-In)
-      router.replace({
-        pathname: "/verify-email",
-        params: { email: email.trim().toLowerCase() },
-      } as any);
-    } catch (e) {
-      Alert.alert("Fehler", "Registrierung fehlgeschlagen. Bitte versuche es erneut.");
+        // Navigate to email verification (Double-Opt-In)
+        router.replace({
+          pathname: "/verify-email",
+          params: { email: email.trim().toLowerCase() },
+        } as any);
+      }
+    } catch (e: any) {
+      const msg = e?.message || "Registrierung fehlgeschlagen. Bitte versuche es erneut.";
+      Alert.alert("Fehler", msg);
     } finally {
       setLoading(false);
     }

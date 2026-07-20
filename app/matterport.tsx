@@ -102,7 +102,7 @@ export default function MatterportScreen() {
         setIsConnected(true);
         setViewMode("models");
         // Auto-load models
-        loadModels(creds.tokenId, creds.tokenSecret);
+        loadModels();
       }
     } catch (e) {
       console.error("Failed to load Matterport credentials:", e);
@@ -130,10 +130,7 @@ export default function MatterportScreen() {
     setStatusMessage("");
 
     try {
-      const result = await connectMutation.mutateAsync({
-        tokenId: tokenId.trim(),
-        tokenSecret: tokenSecret.trim(),
-      });
+      const result = await connectMutation.mutateAsync({});
 
       if (result.success) {
         setIsConnected(true);
@@ -142,7 +139,7 @@ export default function MatterportScreen() {
         // Auto-switch to models view
         setTimeout(() => {
           setViewMode("models");
-          loadModels(tokenId.trim(), tokenSecret.trim());
+          loadModels();
         }, 1000);
       }
     } catch (error: any) {
@@ -153,17 +150,10 @@ export default function MatterportScreen() {
     }
   };
 
-  const loadModels = async (id?: string, secret?: string) => {
-    const tId = id || tokenId;
-    const tSecret = secret || tokenSecret;
-
-    if (!tId || !tSecret) return;
-
+  const loadModels = async () => {
     setIsLoading(true);
     try {
       const result = await listModelsMutation.mutateAsync({
-        tokenId: tId,
-        tokenSecret: tSecret,
         pageSize: 50,
       });
 
@@ -180,8 +170,6 @@ export default function MatterportScreen() {
     setIsLoading(true);
     try {
       const result = await getModelMutation.mutateAsync({
-        tokenId,
-        tokenSecret,
         modelId,
       });
 

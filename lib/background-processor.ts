@@ -52,7 +52,6 @@ async function withRetry<T>(
       lastError = error;
       if (attempt < MAX_RETRIES && isRetryableError(error)) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        console.log(`[BG-Processor] ${protocolId}: ${stepName} failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${delay}ms...`);
         if (onRetry) onRetry(attempt + 1, MAX_RETRIES);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
@@ -129,7 +128,6 @@ async function autoSendPdfIfEnabled(protocolId: string) {
   const branding = await getPdfBranding();
   
   if (!branding.autoSendEmail) {
-    console.log(`[BG-Processor] Auto-send disabled, skipping email for ${protocolId}`);
     return;
   }
   
@@ -139,7 +137,6 @@ async function autoSendPdfIfEnabled(protocolId: string) {
   const bccRecipients = (branding.emailBcc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
   
   if (recipients.length === 0) {
-    console.log(`[BG-Processor] No email recipients configured, skipping auto-send`);
     return;
   }
   
@@ -149,7 +146,6 @@ async function autoSendPdfIfEnabled(protocolId: string) {
   const protocol = protocols.find((p: any) => p.id === protocolId);
   
   if (!protocol || !protocol.protocol) {
-    console.log(`[BG-Processor] Protocol not found or empty, skipping auto-send`);
     return;
   }
   
@@ -174,7 +170,6 @@ async function autoSendPdfIfEnabled(protocolId: string) {
   });
   
   if (!pdfUri) {
-    console.log(`[BG-Processor] PDF generation failed, skipping auto-send`);
     return;
   }
   
@@ -207,9 +202,7 @@ async function autoSendPdfIfEnabled(protocolId: string) {
         body: bodyText,
         attachments: [pdfUri],
       });
-      console.log(`[BG-Processor] Auto-send email composed for ${protocolId}`);
     } else {
-      console.log(`[BG-Processor] Mail composer not available, skipping auto-send`);
     }
   } catch (mailErr) {
     console.warn(`[BG-Processor] Mail composer failed:`, mailErr);
@@ -232,7 +225,6 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     
     const fileInfo = await FileSystem.getInfoAsync(job.fileUri);
     const fileSizeMB = fileInfo.exists && fileInfo.size ? fileInfo.size / (1024 * 1024) : 0;
-    console.log(`[BG-Processor] ${job.protocolId}: Uploading (${fileSizeMB.toFixed(1)} MB)...`);
     
     // Read file as base64
     const base64 = await FileSystem.readAsStringAsync(job.fileUri, {
@@ -246,7 +238,6 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       job.protocolId,
       (attempt, max) => updateProtocolStep(job.protocolId, `uploading (Versuch ${attempt + 1}/${max + 1})`)
     );
-    console.log(`[BG-Processor] ${job.protocolId}: Upload complete`);
     
     // Step 2: Transcribe
     job.status = "transcribing";
@@ -295,7 +286,6 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       const segText = s.text.toLowerCase().trim();
       return !whisperHallucinations.some(h => segText.includes(h));
     });
-    console.log(`[BG-Processor] ${job.protocolId}: Transcription complete (${transcriptionSegments.length} segments)`);
     
     // Step 3: Generate Protocol
     job.status = "generating";
@@ -317,7 +307,6 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       job.protocolId,
       (attempt, max) => updateProtocolStep(job.protocolId, `generating (Versuch ${attempt + 1}/${max + 1})`)
     );
-    console.log(`[BG-Processor] ${job.protocolId}: Protocol generated`);
     
     // Step 4: Extract Todos
     job.status = "extracting-todos";
@@ -357,7 +346,6 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         processingError: undefined,
       };
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
-      console.log(`[BG-Processor] ${job.protocolId}: Saved to AsyncStorage as ready`);
     }
     
     notifyListeners(job.protocolId, "done");
