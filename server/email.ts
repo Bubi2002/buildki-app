@@ -1,5 +1,5 @@
 /**
- * ProtoKI – E-Mail Service
+ * BuildKI – E-Mail Service
  * Sendet E-Mails über Strato SMTP (info@iserloh.net)
  * Verwendet für: Passwort-Reset, E-Mail-Bestätigung, Benachrichtigungen
  */
@@ -31,7 +31,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const transporter = createTransporter();
     
     await transporter.sendMail({
-      from: `"ProtoKI" <${ENV.smtpUser || "info@iserloh.net"}>`,
+      from: `"BuildKI" <${ENV.smtpUser || "info@iserloh.net"}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -49,11 +49,11 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
 export function getPasswordResetEmail(code: string, name?: string): { subject: string; html: string } {
   return {
-    subject: "ProtoKI – Passwort zurücksetzen",
+    subject: "BuildKI – Passwort zurücksetzen",
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0B1622; color: #F0F4F8;">
         <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="color: #5DADE2; font-size: 28px; margin: 0;">ProtoKI</h1>
+          <h1 style="color: #5DADE2; font-size: 28px; margin: 0;">BuildKI</h1>
         </div>
         <div style="background: #132238; padding: 32px; border: 1px solid #1E3A5F;">
           <h2 style="color: #F0F4F8; margin-top: 0;">Passwort zurücksetzen</h2>
@@ -76,7 +76,7 @@ export function getPasswordResetEmail(code: string, name?: string): { subject: s
           </p>
         </div>
         <p style="color: #4A5568; font-size: 12px; text-align: center; margin-top: 24px;">
-          © ${new Date().getFullYear()} ProtoKI – Digitale Bauprotokolle
+          © ${new Date().getFullYear()} BuildKI – Digitale Bauprotokolle
         </p>
       </div>
     `,
@@ -85,16 +85,16 @@ export function getPasswordResetEmail(code: string, name?: string): { subject: s
 
 export function getEmailConfirmationEmail(code: string, name?: string): { subject: string; html: string } {
   return {
-    subject: "ProtoKI – E-Mail-Adresse bestätigen",
+    subject: "BuildKI – E-Mail-Adresse bestätigen",
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0B1622; color: #F0F4F8;">
         <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="color: #5DADE2; font-size: 28px; margin: 0;">ProtoKI</h1>
+          <h1 style="color: #5DADE2; font-size: 28px; margin: 0;">BuildKI</h1>
         </div>
         <div style="background: #132238; padding: 32px; border: 1px solid #1E3A5F;">
           <h2 style="color: #F0F4F8; margin-top: 0;">E-Mail bestätigen</h2>
           <p style="color: #A0AEC0; line-height: 1.6;">
-            ${name ? `Hallo ${name},` : "Willkommen bei ProtoKI!"}
+            ${name ? `Hallo ${name},` : "Willkommen bei BuildKI!"}
           </p>
           <p style="color: #A0AEC0; line-height: 1.6;">
             Bitte bestätige deine E-Mail-Adresse mit dem folgenden Code:
@@ -112,7 +112,7 @@ export function getEmailConfirmationEmail(code: string, name?: string): { subjec
           </p>
         </div>
         <p style="color: #4A5568; font-size: 12px; text-align: center; margin-top: 24px;">
-          © ${new Date().getFullYear()} ProtoKI – Digitale Bauprotokolle
+          © ${new Date().getFullYear()} BuildKI – Digitale Bauprotokolle
         </p>
       </div>
     `,
@@ -121,14 +121,14 @@ export function getEmailConfirmationEmail(code: string, name?: string): { subjec
 
 export function getWelcomeEmail(name?: string): { subject: string; html: string } {
   return {
-    subject: "Willkommen bei ProtoKI – Dein 14-Tage-Test startet jetzt!",
+    subject: "Willkommen bei BuildKI – Dein 14-Tage-Test startet jetzt!",
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0B1622; color: #F0F4F8;">
         <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="color: #5DADE2; font-size: 28px; margin: 0;">ProtoKI</h1>
+          <h1 style="color: #5DADE2; font-size: 28px; margin: 0;">BuildKI</h1>
         </div>
         <div style="background: #132238; padding: 32px; border: 1px solid #1E3A5F;">
-          <h2 style="color: #F0F4F8; margin-top: 0;">Willkommen bei ProtoKI! 🎉</h2>
+          <h2 style="color: #F0F4F8; margin-top: 0;">Willkommen bei BuildKI! 🎉</h2>
           <p style="color: #A0AEC0; line-height: 1.6;">
             ${name ? `Hallo ${name},` : "Hallo,"}
           </p>
@@ -146,7 +146,7 @@ export function getWelcomeEmail(name?: string): { subject: string; html: string 
           </p>
         </div>
         <p style="color: #4A5568; font-size: 12px; text-align: center; margin-top: 24px;">
-          © ${new Date().getFullYear()} ProtoKI – Digitale Bauprotokolle
+          © ${new Date().getFullYear()} BuildKI – Digitale Bauprotokolle
         </p>
       </div>
     `,

@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Stripe Payment Integration
+ * BuildKI – Stripe Payment Integration
  * 
  * Handles:
  * - Checkout Session creation (monthly/yearly)
@@ -107,7 +107,7 @@ export function registerStripeRoutes(app: Express) {
       } else {
         customer = await stripe.customers.create({
           email,
-          metadata: { source: "protoki-app" },
+          metadata: { source: "buildki-app" },
         });
       }
 
@@ -121,7 +121,7 @@ export function registerStripeRoutes(app: Express) {
         cancel_url: cancelUrl || "https://protokollapp-c7amcxpp.manus.space/payment-cancel",
         subscription_data: {
           trial_period_days: 14,
-          metadata: { plan, source: "protoki-app" },
+          metadata: { plan, source: "buildki-app" },
         },
         locale: "de",
         allow_promotion_codes: true,

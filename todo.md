@@ -1064,9 +1064,9 @@
 - [x] Alle auf Tools-Tab (erste Maske) als prominente Buttons hinzufügen (Anleitung, KI-Support, Abo)
 
 ## Phase 17: Vollständige AGB (2026-07-19)
-- [x] Professionelle AGB erstellen (orientiert an PlanRadar/Capmo, angepasst auf ProtoKI SaaS-Modell)
+- [x] Professionelle AGB erstellen (orientiert an PlanRadar/Capmo, angepasst auf BuildKI SaaS-Modell)
 - [x] AGB-Inhalt im Legal-Screen unter Nutzungsbedingungen ersetzen durch vollständige AGB
-- [ ] Professionelles TikTok-Werbevideo für ProtoKI erstellen
+- [ ] Professionelles TikTok-Werbevideo für BuildKI erstellen
 
 ## Phase 11: Stripe-Setup, iOS-Fix, Auth-Features (2026-07-20)
 - [x] Stripe-Setup-Anleitung als PDF erstellen (Produkte anlegen, Webhook, API-Keys)

@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Privacy Consent Manager
+ * BuildKI – Privacy Consent Manager
  * 
  * Manages user consent for:
  * - KI-Verarbeitung (AI processing)
@@ -13,7 +13,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logAudit } from "./audit-log";
 
-const CONSENT_KEY = "protoki_privacy_consent";
+const CONSENT_KEY = "buildki_privacy_consent";
 
 export interface PrivacyConsent {
   version: number; // Consent version (increment when policy changes)

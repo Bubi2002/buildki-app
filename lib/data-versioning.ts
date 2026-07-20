@@ -9,8 +9,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Current schema version - increment when data format changes
 export const CURRENT_SCHEMA_VERSION = 2;
-const SCHEMA_VERSION_KEY = "protoki_schema_version";
-const MIGRATION_LOG_KEY = "protoki_migration_log";
+const SCHEMA_VERSION_KEY = "buildki_schema_version";
+const MIGRATION_LOG_KEY = "buildki_migration_log";
 
 export type MigrationLogEntry = {
   fromVersion: number;
@@ -208,7 +208,7 @@ export async function runMigrations(): Promise<{ ran: number; errors: number }> 
  */
 async function createBackup(targetVersion: number): Promise<void> {
   const criticalKeys = ["defects", "protocols", "timeline-events", "attendance_records", "checklists"];
-  const backupKey = `protoki_backup_v${targetVersion}`;
+  const backupKey = `buildki_backup_v${targetVersion}`;
   
   const backup: Record<string, string | null> = {};
   for (const key of criticalKeys) {
@@ -226,7 +226,7 @@ async function createBackup(targetVersion: number): Promise<void> {
  * Restore from backup if migration fails
  */
 async function restoreBackup(targetVersion: number): Promise<void> {
-  const backupKey = `protoki_backup_v${targetVersion}`;
+  const backupKey = `buildki_backup_v${targetVersion}`;
   
   try {
     const raw = await AsyncStorage.getItem(backupKey);

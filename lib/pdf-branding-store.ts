@@ -45,7 +45,7 @@ export const DEFAULT_BRANDING: PdfBranding = {
   companyWebsite: "",
   logoUri: null,
   headerText: "",
-  footerText: "Erstellt mit ProtoKI",
+  footerText: "Erstellt mit BuildKI",
   showPageNumbers: true,
   showDate: true,
   showProjectName: true,
@@ -257,7 +257,7 @@ export function generateCoverPage(
     
     <!-- Footer -->
     <div style="margin-top: 24px; font-size: 10px; color: #666;">
-      ${branding.footerText || "Erstellt mit ProtoKI"}
+      ${branding.footerText || "Erstellt mit BuildKI"}
     </div>
   </div>`;
 }

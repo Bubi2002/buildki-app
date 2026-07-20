@@ -84,7 +84,7 @@ function BiometricLockOverlay({
       <View style={{ alignItems: 'center', padding: 32 }}>
         <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
         <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', marginBottom: 8 }}>
-          ProtoKI gesperrt
+          BuildKI gesperrt
         </Text>
         <Text style={{ fontSize: 15, color: '#9ca3af', textAlign: 'center', marginBottom: 32 }}>
           Bitte authentifiziere dich mit {biometricLabel}, um fortzufahren.

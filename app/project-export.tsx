@@ -116,7 +116,7 @@ export default function ProjectExportScreen() {
 
       exportText += `\n═══════════════════════════════════════\n`;
       exportText += `Ende des Exports\n`;
-      exportText += `Generiert mit ProtoKI\n`;
+      exportText += `Generiert mit BuildKI\n`;
       exportText += `═══════════════════════════════════════\n`;
 
       // Share

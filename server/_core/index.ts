@@ -76,7 +76,7 @@ async function startServer() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Datenschutzerklärung – ProtoKI</title>
+  <title>Datenschutzerklärung – BuildKI</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.7; color: #1a1a1a; background: #fafafa; padding: 40px 20px; }
@@ -93,13 +93,13 @@ async function startServer() {
 <body>
   <div class="container">
     <h1>Datenschutzerklärung</h1>
-    <p class="meta">ProtoKI – Baustellenprotokoll App | Stand: Juli 2026</p>
+    <p class="meta">BuildKI – Baustellenprotokoll App | Stand: Juli 2026</p>
 
     <h2>1. Verantwortlicher</h2>
     <p>Jörg Iserloh<br>CI Concepts<br>Ringstr. 6, 76228 Karlsruhe<br>E-Mail: info@ciconcepts.net<br>Telefon: +49 172 327 6466</p>
 
     <h2>2. Welche Daten werden erhoben?</h2>
-    <p>ProtoKI verarbeitet folgende Daten ausschließlich zur Erstellung von Baustellenprotokollen:</p>
+    <p>BuildKI verarbeitet folgende Daten ausschließlich zur Erstellung von Baustellenprotokollen:</p>
     <ul>
       <li><strong>Audio-Aufnahmen:</strong> Sprachaufnahmen werden zur Transkription an unseren Server übermittelt und nach der Verarbeitung gelöscht.</li>
       <li><strong>Fotos:</strong> Aufgenommene oder aus der Galerie gewählte Bilder werden lokal auf Ihrem Gerät gespeichert und optional in PDF-Protokolle eingebettet.</li>

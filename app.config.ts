@@ -21,7 +21,7 @@ const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
-  appName: "ProtoKI",
+  appName: "BuildKI",
   appSlug: "protokoll-app",
   logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663729981946/C7amCXpPYwQNP8pDBUNaVq/icon-jqkvjdAT5U49vB6tPnVhoj.png",
   scheme: schemeFromBundleId,
@@ -45,13 +45,13 @@ const config: ExpoConfig = {
     backgroundColor: "#0B1622",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      NSCameraUsageDescription: "ProtoKI benötigt Zugriff auf die Kamera, um Fotos und Videos von Mängeln aufzunehmen.",
-      NSMicrophoneUsageDescription: "ProtoKI benötigt Zugriff auf das Mikrofon, um Sprachnotizen aufzuzeichnen.",
-      NSPhotoLibraryUsageDescription: "ProtoKI benötigt Zugriff auf deine Fotos, um Bilder für Mängel und Protokolle auszuwählen.",
-      NSLocationWhenInUseUsageDescription: "ProtoKI benötigt deinen Standort, um ihn dem Protokoll zuzuweisen.",
-      NSCalendarsUsageDescription: "ProtoKI benötigt Zugriff auf deinen Kalender, um Nachprüfungstermine zu erstellen.",
-      NSContactsUsageDescription: "ProtoKI benötigt Zugriff auf deine Kontakte, um Empfänger schnell auszuwählen.",
-      NSFaceIDUsageDescription: "ProtoKI möchte Face ID verwenden, um die App zu entsperren.",
+      NSCameraUsageDescription: "BuildKI benötigt Zugriff auf die Kamera, um Fotos und Videos von Mängeln aufzunehmen.",
+      NSMicrophoneUsageDescription: "BuildKI benötigt Zugriff auf das Mikrofon, um Sprachnotizen aufzuzeichnen.",
+      NSPhotoLibraryUsageDescription: "BuildKI benötigt Zugriff auf deine Fotos, um Bilder für Mängel und Protokolle auszuwählen.",
+      NSLocationWhenInUseUsageDescription: "BuildKI benötigt deinen Standort, um ihn dem Protokoll zuzuweisen.",
+      NSCalendarsUsageDescription: "BuildKI benötigt Zugriff auf deinen Kalender, um Nachprüfungstermine zu erstellen.",
+      NSContactsUsageDescription: "BuildKI benötigt Zugriff auf deine Kontakte, um Empfänger schnell auszuwählen.",
+      NSFaceIDUsageDescription: "BuildKI möchte Face ID verwenden, um die App zu entsperren.",
       UIViewControllerBasedStatusBarAppearance: true,
     },
   },
@@ -98,15 +98,15 @@ const config: ExpoConfig = {
     [
       "expo-camera",
       {
-        cameraPermission: "ProtoKI benötigt Zugriff auf die Kamera, um Videos aufzunehmen.",
-        microphonePermission: "ProtoKI benötigt Zugriff auf das Mikrofon, um Sprache aufzuzeichnen.",
+        cameraPermission: "BuildKI benötigt Zugriff auf die Kamera, um Videos aufzunehmen.",
+        microphonePermission: "BuildKI benötigt Zugriff auf das Mikrofon, um Sprache aufzuzeichnen.",
         recordAudioAndroid: true,
       },
     ],
     [
       "expo-audio",
       {
-        microphonePermission: "ProtoKI benötigt Zugriff auf das Mikrofon.",
+        microphonePermission: "BuildKI benötigt Zugriff auf das Mikrofon.",
       },
     ],
     [
@@ -119,19 +119,19 @@ const config: ExpoConfig = {
     [
       "expo-image-picker",
       {
-        photosPermission: "ProtoKI benötigt Zugriff auf deine Fotos, um ein Logo auszuwählen.",
+        photosPermission: "BuildKI benötigt Zugriff auf deine Fotos, um ein Logo auszuwählen.",
       },
     ],
     [
       "expo-calendar",
       {
-        calendarPermission: "ProtoKI benötigt Zugriff auf deinen Kalender, um Protokolle mit Terminen zu verknüpfen.",
+        calendarPermission: "BuildKI benötigt Zugriff auf deinen Kalender, um Protokolle mit Terminen zu verknüpfen.",
       },
     ],
     [
       "expo-location",
       {
-        locationWhenInUsePermission: "ProtoKI benötigt deinen Standort, um ihn dem Protokoll zuzuweisen.",
+        locationWhenInUsePermission: "BuildKI benötigt deinen Standort, um ihn dem Protokoll zuzuweisen.",
       },
     ],
     [
@@ -149,13 +149,13 @@ const config: ExpoConfig = {
     [
       "expo-contacts",
       {
-        contactsPermission: "ProtoKI benötigt Zugriff auf deine Kontakte, um Empfänger schnell auszuwählen.",
+        contactsPermission: "BuildKI benötigt Zugriff auf deine Kontakte, um Empfänger schnell auszuwählen.",
       },
     ],
     [
       "expo-local-authentication",
       {
-        faceIDPermission: "ProtoKI möchte Face ID verwenden, um die App zu entsperren.",
+        faceIDPermission: "BuildKI möchte Face ID verwenden, um die App zu entsperren.",
       },
     ],
     [

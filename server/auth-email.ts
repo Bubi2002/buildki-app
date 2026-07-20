@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Auth E-Mail Routes
+ * BuildKI – Auth E-Mail Routes
  * Server-Endpunkte für Passwort-Reset und E-Mail-Bestätigung
  */
 import { Router, Request, Response } from "express";

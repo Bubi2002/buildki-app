@@ -277,7 +277,7 @@ export async function exportTaqlohnzettelPdf(
   </div>
 
   <div class="footer">
-    Erstellt mit ProtoKI • ${new Date().toLocaleDateString("de-DE")}
+    Erstellt mit BuildKI • ${new Date().toLocaleDateString("de-DE")}
   </div>
 </body>
 </html>`;
@@ -354,7 +354,7 @@ export async function exportWeeklyPdf(
     <div class="total-label">Gesamtstunden diese Woche</div>
   </div>
 
-  <div class="footer">Erstellt mit ProtoKI • ${new Date().toLocaleDateString("de-DE")}</div>
+  <div class="footer">Erstellt mit BuildKI • ${new Date().toLocaleDateString("de-DE")}</div>
 </body>
 </html>`;
 

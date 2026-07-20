@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Local Auth Routes (Email/Password)
+ * BuildKI – Local Auth Routes (Email/Password)
  *
  * Secure server-side authentication with:
  * - bcrypt password hashing

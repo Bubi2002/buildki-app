@@ -361,7 +361,7 @@ function generateMarkdownReport(parsed: any, input: BautagebuchInput): string {
   }
 
   md += `---\n\n`;
-  md += `*Erstellt mit ProtoKI – KI-gestütztes Bautagebuch*\n`;
+  md += `*Erstellt mit BuildKI – KI-gestütztes Bautagebuch*\n`;
 
   return md;
 }

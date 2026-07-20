@@ -43,7 +43,7 @@ describe("Data Versioning", () => {
     expect(result.errors).toBe(0);
 
     // Verify version was updated
-    expect(mockStorage["protoki_schema_version"]).toBe(
+    expect(mockStorage["buildki_schema_version"]).toBe(
       CURRENT_SCHEMA_VERSION.toString()
     );
   });
@@ -75,7 +75,7 @@ describe("Data Versioning", () => {
 
   it("should not re-run migrations if already at current version", async () => {
     const { CURRENT_SCHEMA_VERSION, runMigrations } = await import("../lib/data-versioning");
-    mockStorage["protoki_schema_version"] = CURRENT_SCHEMA_VERSION.toString();
+    mockStorage["buildki_schema_version"] = CURRENT_SCHEMA_VERSION.toString();
 
     const result = await runMigrations();
     expect(result.ran).toBe(0);
@@ -89,8 +89,8 @@ describe("Data Versioning", () => {
     await runMigrations();
 
     // Backup should exist
-    expect(mockStorage["protoki_backup_v2"]).toBeDefined();
-    const backup = JSON.parse(mockStorage["protoki_backup_v2"]);
+    expect(mockStorage["buildki_backup_v2"]).toBeDefined();
+    const backup = JSON.parse(mockStorage["buildki_backup_v2"]);
     expect(backup.defects).toBeDefined();
   });
 

@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Login-Screen
+ * BuildKI – Login-Screen
  * Server-side authentication with bcrypt + JWT
  */
 import { useState } from "react";
@@ -94,7 +94,7 @@ export default function LoginScreen() {
             <View style={styles.logoBox}>
               <MaterialIcons name="architecture" size={40} color="#5DADE2" />
             </View>
-            <Text style={styles.brandTitle}>ProtoKI</Text>
+            <Text style={styles.brandTitle}>BuildKI</Text>
             <Text style={styles.brandSubtitle}>Willkommen zurück</Text>
           </View>
 

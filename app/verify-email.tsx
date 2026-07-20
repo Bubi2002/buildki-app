@@ -1,5 +1,5 @@
 /**
- * ProtoKI – E-Mail-Bestätigung (Double-Opt-In)
+ * BuildKI – E-Mail-Bestätigung (Double-Opt-In)
  * Wird nach der Registrierung angezeigt
  * Nutzer gibt den 6-stelligen Code ein, der per E-Mail gesendet wurde
  */

@@ -100,7 +100,7 @@ export async function scheduleDailySummary(settings?: DailySummarySettings): Pro
   if (weekdays.length === 7 || weekdays.length === 0) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "ProtoKI \u2013 Tages-Zusammenfassung",
+        title: "BuildKI \u2013 Tages-Zusammenfassung",
         body: "Tippe hier, um deine Tages\u00fcbersicht zu sehen.",
         data: { type: "daily_summary" },
       },
@@ -115,7 +115,7 @@ export async function scheduleDailySummary(settings?: DailySummarySettings): Pro
     for (const weekday of weekdays) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "ProtoKI \u2013 Tages-Zusammenfassung",
+          title: "BuildKI \u2013 Tages-Zusammenfassung",
           body: "Tippe hier, um deine Tages\u00fcbersicht zu sehen.",
           data: { type: "daily_summary" },
         },

@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Registrierungs-Screen
+ * BuildKI – Registrierungs-Screen
  * Minimales Formular: E-Mail + Passwort + AGB-Checkbox
  * Button: "14 Tage kostenlos testen"
  * Darunter: "Keine Kreditkarte erforderlich. Jederzeit kündbar."
@@ -137,7 +137,7 @@ export default function RegisterScreen() {
             <View style={styles.logoBox}>
               <MaterialIcons name="architecture" size={40} color="#5DADE2" />
             </View>
-            <Text style={styles.brandTitle}>ProtoKI</Text>
+            <Text style={styles.brandTitle}>BuildKI</Text>
             <Text style={styles.brandSubtitle}>
               KI-gestützte Baudokumentation{"\n"}für Profis
             </Text>

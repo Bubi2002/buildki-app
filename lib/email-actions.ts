@@ -39,7 +39,7 @@ export function generateActionItemsEmailBody(
     body += `   Frist: ${todo.deadline}\n\n`;
   });
 
-  body += `---\nAutomatisch generiert von ProtoKI\n`;
+  body += `---\nAutomatisch generiert von BuildKI\n`;
   return body;
 }
 

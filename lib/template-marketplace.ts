@@ -25,7 +25,7 @@ const SAMPLE_MARKETPLACE: MarketplaceTemplate[] = [
     icon: "construction",
     description: "Detaillierter Bericht für Baustellenbegehungen mit Mängelerfassung",
     systemPrompt: "Erstelle einen strukturierten Baustellenbegehungsbericht mit: 1. **Allgemeine Informationen** 2. **Baufortschritt** 3. **Festgestellte Mängel** 4. **Sicherheitsaspekte** 5. **Nächste Schritte**",
-    author: "ProtoKI Team",
+    author: "BuildKI Team",
     downloads: 1250,
     rating: 4.8,
     category: "baustelle",

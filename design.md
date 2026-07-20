@@ -1,8 +1,8 @@
-# ProtoKI – Design Document
+# BuildKI – Design Document
 
 ## App Overview
 
-ProtoKI is a native mobile app that enables users to record videos while speaking into the microphone, automatically transcribes the speech using AI, generates a structured protocol/report, and shares it via WhatsApp or Email.
+BuildKI is a native mobile app that enables users to record videos while speaking into the microphone, automatically transcribes the speech using AI, generates a structured protocol/report, and shares it via WhatsApp or Email.
 
 ---
 

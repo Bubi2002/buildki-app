@@ -673,7 +673,7 @@ Beispiel:
                 <tbody>${todoRows}</tbody>
               </table>
               <p style="color: #666; font-size: 12px; margin-top: 20px;">
-                Gesendet von ${input.senderName || 'ProtoKI App'} • Automatisch generiert
+                Gesendet von ${input.senderName || 'BuildKI App'} • Automatisch generiert
               </p>
             </div>
           </div>
@@ -886,10 +886,10 @@ Antworte NUR mit einem JSON-Objekt im Format:
         })
       )
       .mutation(async ({ input }) => {
-        const systemPrompt = `Du bist der KI-Support-Assistent für die App "ProtoKI – Video-Protokoll App". Du hilfst Benutzern bei allen Fragen zur App.
+        const systemPrompt = `Du bist der KI-Support-Assistent für die App "BuildKI – Video-Protokoll App". Du hilfst Benutzern bei allen Fragen zur App.
 
 Über die App:
-ProtoKI ist eine professionelle App für Baustellenprotokolle, Besprechungsnotizen und Dokumentation. Hauptfunktionen:
+BuildKI ist eine professionelle App für Baustellenprotokolle, Besprechungsnotizen und Dokumentation. Hauptfunktionen:
 
 1. AUFNAHME: Audio-Aufnahme mit optionaler Foto-Funktion. Modi: "Audio+Foto" (Sprache + Kamera) und "Nur Audio" (Diktier-Modus).
 2. PROJEKTE: Baustellen/Projekte anlegen mit Name, Farbe, Präfix für automatische Nummerierung (z.B. BST-001, BST-002).

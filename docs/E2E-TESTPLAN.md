@@ -1,4 +1,4 @@
-# ProtoKI – End-to-End Testplan
+# BuildKI – End-to-End Testplan
 
 ## Ziel
 Vollständiger Funktionstest aller Kernfeatures auf einem echten iPhone (Expo Go oder TestFlight-Build).

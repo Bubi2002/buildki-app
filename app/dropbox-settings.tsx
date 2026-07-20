@@ -229,7 +229,7 @@ export default function DropboxSettingsScreen() {
               <TextInput
                 value={settings.baseFolderPath}
                 onChangeText={(text) => updateSetting("baseFolderPath", text)}
-                placeholder="/ProtoKI"
+                placeholder="/BuildKI"
                 placeholderTextColor={colors.muted}
                 style={{
                   backgroundColor: colors.background,
@@ -245,7 +245,7 @@ export default function DropboxSettingsScreen() {
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, color: colors.foreground }}>{t('projektunterordner')}</Text>
-                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('erstellt_zb_protokiprojektname')}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{t('erstellt_zb_buildkiprojektname')}</Text>
                 </View>
                 <Switch
                   value={settings.useProjectSubfolders}

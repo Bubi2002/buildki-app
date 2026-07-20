@@ -692,7 +692,7 @@ function generatePdfHtml(
       <div>
         ${logoHtml}
         <h1 style="font-size: 24px; font-weight: 800; color: #1A237E; margin: 8px 0 4px 0;">Gutachterliche Bewertung</h1>
-        <p style="font-size: 11px; color: #666; margin: 0;">Erstellt mit ProtoKI</p>
+        <p style="font-size: 11px; color: #666; margin: 0;">Erstellt mit BuildKI</p>
       </div>
       <div style="text-align: right;">
         ${companyInfoHtml}
@@ -704,7 +704,7 @@ function generatePdfHtml(
     <div class="header-left">
       ${logoHtml}
       <h1 class="doc-title">${protocol.templateName || "Protokoll"}</h1>
-      <p class="doc-subtitle">Erstellt mit ProtoKI</p>
+      <p class="doc-subtitle">Erstellt mit BuildKI</p>
     </div>
     <div class="header-right">
       ${companyInfoHtml}
@@ -837,7 +837,7 @@ function generatePdfHtml(
   ${company.watermarkEnabled && company.watermarkText ? `<div class="watermark">${company.watermarkText}</div>` : ''}
 
   <div class="footer">
-    ${company.companyName ? company.companyName + " | " : ""}Erstellt am ${date} um ${time} | ProtoKI Protokoll-App
+    ${company.companyName ? company.companyName + " | " : ""}Erstellt am ${date} um ${time} | BuildKI Protokoll-App
   </div>
 </body>
 </html>`;

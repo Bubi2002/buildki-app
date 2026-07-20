@@ -118,7 +118,7 @@ export default function DefectExportScreen() {
       }
 
       // Generate QR code for digital version
-      const qrData = `protoki://defects/${params.projectId || "all"}`;
+      const qrData = `buildki://defects/${params.projectId || "all"}`;
       const qrCodeBase64 = await generateQrCodeBase64(qrData);
 
       // Check for Matterport link

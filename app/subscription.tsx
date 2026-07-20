@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Preise & Abonnement
+ * BuildKI – Preise & Abonnement
  * Neues Preismodell: 12,99 € netto/Monat oder 140,00 € netto/Jahr
  * Mit Monat/Jahr-Umschalter (Toggle)
  * Design: Dark-Navy #0B1622, eckige Kästen, helle Schrift, Akzent Blau
@@ -22,8 +22,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { createCheckoutSession, createPortalSession, checkStripeStatus } from "@/lib/stripe-client";
 
-const TRIAL_STORAGE_KEY = "@protoki_trial_start";
-const SUB_STORAGE_KEY = "@protoki_subscription";
+const TRIAL_STORAGE_KEY = "@buildki_trial_start";
+const SUB_STORAGE_KEY = "@buildki_subscription";
 const TRIAL_DAYS = 14;
 
 interface SubscriptionState {
@@ -88,7 +88,7 @@ export default function SubscriptionScreen() {
 
   const handleSubscribe = async () => {
     // Get user email from registration data
-    const regData = await AsyncStorage.getItem("@protoki_registered");
+    const regData = await AsyncStorage.getItem("@buildki_registered");
     const email = regData ? JSON.parse(regData).email : null;
 
     if (!email) {
@@ -139,7 +139,7 @@ export default function SubscriptionScreen() {
   };
 
   const handleManageSubscription = async () => {
-    const regData = await AsyncStorage.getItem("@protoki_registered");
+    const regData = await AsyncStorage.getItem("@buildki_registered");
     const email = regData ? JSON.parse(regData).email : null;
     if (!email) return;
 
@@ -187,7 +187,7 @@ export default function SubscriptionScreen() {
             {subState.plan === "trial" && "Alle Funktionen uneingeschr\u00E4nkt verf\u00FCgbar."}
             {subState.plan === "monthly" && "N\u00E4chste Abrechnung: 12,99 \u20AC + MwSt./Monat"}
             {subState.plan === "yearly" && "N\u00E4chste Abrechnung: 140,00 \u20AC + MwSt./Jahr"}
-            {subState.plan === "expired" && "Bitte w\u00E4hle ein Abo, um ProtoKI weiter zu nutzen."}
+            {subState.plan === "expired" && "Bitte w\u00E4hle ein Abo, um BuildKI weiter zu nutzen."}
           </Text>
         </View>
 

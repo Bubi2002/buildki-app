@@ -1,8 +1,8 @@
-# ProtoKI – Stripe-Einrichtung Schritt für Schritt
+# BuildKI – Stripe-Einrichtung Schritt für Schritt
 
 ## Übersicht
 
-ProtoKI verwendet Stripe für die Zahlungsabwicklung. Nutzer zahlen über einen sicheren Stripe-Checkout im Browser – die App selbst speichert keine Zahlungsdaten. Stripe übernimmt PCI-Compliance, Rechnungserstellung und Abo-Verwaltung.
+BuildKI verwendet Stripe für die Zahlungsabwicklung. Nutzer zahlen über einen sicheren Stripe-Checkout im Browser – die App selbst speichert keine Zahlungsdaten. Stripe übernimmt PCI-Compliance, Rechnungserstellung und Abo-Verwaltung.
 
 **Preismodell:**
 
@@ -31,7 +31,7 @@ Beide Pläne starten mit einer **14-tägigen kostenlosen Testphase**.
 ### 2.1 Produkt erstellen
 
 1. Gehen Sie zu **Produkte** → **Produkt hinzufügen**
-2. Name: `ProtoKI Professional`
+2. Name: `BuildKI Professional`
 3. Beschreibung: `KI-gestützte Baustellendokumentation – Protokolle, Mängelverwaltung, 3D-Modelle`
 
 ### 2.2 Monatspreis anlegen
@@ -68,7 +68,7 @@ Beide Pläne starten mit einer **14-tägigen kostenlosen Testphase**.
 
 ## Schritt 4: Webhook einrichten
 
-Webhooks informieren ProtoKI über Zahlungsereignisse (neues Abo, Kündigung, Zahlung fehlgeschlagen).
+Webhooks informieren BuildKI über Zahlungsereignisse (neues Abo, Kündigung, Zahlung fehlgeschlagen).
 
 1. Gehen Sie zu **Entwickler** → **Webhooks** → **Endpoint hinzufügen**
 2. Endpoint-URL: `https://protokollapp-c7amcxpp.manus.space/api/stripe/webhook`
@@ -83,7 +83,7 @@ Webhooks informieren ProtoKI über Zahlungsereignisse (neues Abo, Kündigung, Za
 
 ---
 
-## Schritt 5: API-Keys in ProtoKI eintragen
+## Schritt 5: API-Keys in BuildKI eintragen
 
 Sie benötigen 4 Werte aus Stripe. So finden Sie diese:
 
@@ -91,8 +91,8 @@ Sie benötigen 4 Werte aus Stripe. So finden Sie diese:
 |-----|-------------|--------|
 | `STRIPE_SECRET_KEY` | Entwickler → API-Schlüssel → Secret Key | `sk_live_...` oder `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | Entwickler → Webhooks → Ihr Endpoint → Signing Secret | `whsec_...` |
-| `STRIPE_MONTHLY_PRICE_ID` | Produkte → ProtoKI Professional → Monatspreis → ID | `price_...` |
-| `STRIPE_YEARLY_PRICE_ID` | Produkte → ProtoKI Professional → Jahrespreis → ID | `price_...` |
+| `STRIPE_MONTHLY_PRICE_ID` | Produkte → BuildKI Professional → Monatspreis → ID | `price_...` |
+| `STRIPE_YEARLY_PRICE_ID` | Produkte → BuildKI Professional → Jahrespreis → ID | `price_...` |
 
 ### Eintragen in der App:
 
@@ -151,7 +151,7 @@ Stripe erstellt automatisch Rechnungen für jede Zahlung:
 Konfigurieren Sie unter **Einstellungen** → **Billing** → **Rechnungen**:
 - Ihre Firmenadresse
 - USt-IdNr.
-- Logo (ProtoKI-Logo hochladen)
+- Logo (BuildKI-Logo hochladen)
 - Fußzeile (z.B. "Vielen Dank für Ihr Vertrauen")
 
 ---
@@ -159,12 +159,12 @@ Konfigurieren Sie unter **Einstellungen** → **Billing** → **Rechnungen**:
 ## Zusammenfassung der benötigten Schritte
 
 1. ☐ Stripe-Account erstellen und verifizieren
-2. ☐ Produkt "ProtoKI Professional" anlegen
+2. ☐ Produkt "BuildKI Professional" anlegen
 3. ☐ Monatspreis (12,99€) anlegen → Price ID notieren
 4. ☐ Jahrespreis (140€) anlegen → Price ID notieren
 5. ☐ Stripe Tax aktivieren (19% MwSt.)
 6. ☐ Webhook erstellen → Signing Secret notieren
-7. ☐ 4 API-Keys in ProtoKI-Secrets eintragen
+7. ☐ 4 API-Keys in BuildKI-Secrets eintragen
 8. ☐ Im Test-Modus testen
 9. ☐ Kundenportal aktivieren
 10. ☐ Rechnungseinstellungen konfigurieren

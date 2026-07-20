@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Security Module
+ * BuildKI – Security Module
  * 
  * Provides:
  * - Data encryption/decryption helpers (AES-256 via expo-crypto)
@@ -101,7 +101,7 @@ export function hasPermission(role: UserRole, permission: keyof UserPermissions)
 
 // ─── Secure Storage ───────────────────────────────────────────────────────────
 
-const SECURE_PREFIX = "protoki_secure_";
+const SECURE_PREFIX = "buildki_secure_";
 
 /**
  * Store a value securely (iOS Keychain / Android Keystore).
@@ -147,7 +147,7 @@ export interface AppSession {
   twoFactorVerified: boolean;
 }
 
-const SESSION_KEY = "protoki_session";
+const SESSION_KEY = "buildki_session";
 
 export async function getSession(): Promise<AppSession | null> {
   try {
@@ -175,7 +175,7 @@ export interface TwoFactorConfig {
   setupAt?: string;
 }
 
-const TWO_FA_KEY = "protoki_2fa_config";
+const TWO_FA_KEY = "buildki_2fa_config";
 
 export async function get2FAConfig(): Promise<TwoFactorConfig> {
   try {

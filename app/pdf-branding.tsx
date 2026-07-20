@@ -54,7 +54,7 @@ export default function PdfBrandingScreen() {
       
       const FileSystem = await import("expo-file-system/legacy");
       const Sharing = await import("expo-sharing");
-      const filePath = `${FileSystem.documentDirectory}protoki-branding.json`;
+      const filePath = `${FileSystem.documentDirectory}buildki-branding.json`;
       await FileSystem.writeAsStringAsync(filePath, jsonStr);
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
@@ -249,7 +249,7 @@ export default function PdfBrandingScreen() {
           <TextInput
             value={branding.footerText}
             onChangeText={(v) => updateField("footerText", v)}
-            placeholder="z.B. Erstellt mit ProtoKI"
+            placeholder="z.B. Erstellt mit BuildKI"
             placeholderTextColor={colors.muted}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           />
@@ -644,7 +644,7 @@ export default function PdfBrandingScreen() {
           {/* Footer Preview */}
           <View style={{ height: 1, backgroundColor: "#e5e7eb", marginBottom: 6 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 8, color: "#999" }}>{branding.footerText || "Erstellt mit ProtoKI"}</Text>
+            <Text style={{ fontSize: 8, color: "#999" }}>{branding.footerText || "Erstellt mit BuildKI"}</Text>
             <Text style={{ fontSize: 8, color: "#999" }}>
               {branding.showDate ? "15.06.2026" : ""}{branding.showDate && branding.showPageNumbers ? " | " : ""}{branding.showPageNumbers ? "Seite 1 / 3" : ""}
             </Text>

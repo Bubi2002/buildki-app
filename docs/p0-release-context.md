@@ -14,7 +14,7 @@
 - `server/routers.ts`: Die meisten Endpunkte nutzen publicProcedure (voice.transcribe, protocol.generate, upload.audio etc.)
 - Nur sync-Endpunkte nutzen protectedProcedure
 - `lib/_core/auth.ts`: SecureStore für Token, getUserInfo/setUserInfo
-- `app/login.tsx`: Fake-Auth – liest @protoki_registered aus AsyncStorage, prüft Passwort NICHT
+- `app/login.tsx`: Fake-Auth – liest @buildki_registered aus AsyncStorage, prüft Passwort NICHT
 - `app/register.tsx`: Speichert nur lokal in AsyncStorage, kein Server-User
 - `app/verify-email.tsx`: Bei Fehler + "Später bestätigen" wird trotzdem als verifiziert markiert
 - `app/forgot-password.tsx`: Speichert neues Passwort in AsyncStorage (Klartext!)

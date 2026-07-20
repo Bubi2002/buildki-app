@@ -1,5 +1,5 @@
 /**
- * Dropbox Integration for ProtoKI
+ * Dropbox Integration for BuildKI
  * 
  * Real Dropbox OAuth2 integration with direct API upload.
  * - OAuth2 flow via server proxy (handles token exchange)
@@ -26,7 +26,7 @@ export interface DropboxSettings {
   enabled: boolean;
   autoUploadPdf: boolean;
   autoUploadPhotos: boolean;
-  baseFolderPath: string; // e.g., "/ProtoKI" or "/Bauprojekte"
+  baseFolderPath: string; // e.g., "/BuildKI" or "/Bauprojekte"
   useProjectSubfolders: boolean;
   fileNamingPattern: "project_date" | "number_title" | "custom";
   customPattern?: string;
@@ -61,7 +61,7 @@ const DEFAULT_SETTINGS: DropboxSettings = {
   enabled: false,
   autoUploadPdf: true,
   autoUploadPhotos: false,
-  baseFolderPath: "/ProtoKI",
+  baseFolderPath: "/BuildKI",
   useProjectSubfolders: true,
   fileNamingPattern: "project_date",
   isConnected: false,

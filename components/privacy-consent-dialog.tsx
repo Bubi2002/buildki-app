@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Privacy Consent Dialog
+ * BuildKI – Privacy Consent Dialog
  * 
  * Shows on first launch (or after policy update) to collect DSGVO-compliant consent.
  * Required consents: auditLog (Beweissicherung)
@@ -103,7 +103,7 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
         {/* Intro */}
         <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
           <Text style={[styles.intro, { color: colors.foreground }]}>
-            ProtoKI verarbeitet Ihre Projektdaten lokal und optional in der Cloud.
+            BuildKI verarbeitet Ihre Projektdaten lokal und optional in der Cloud.
             Bitte lesen Sie die folgenden Punkte und erteilen Sie Ihre Einwilligung.
           </Text>
           <Text style={[styles.subIntro, { color: colors.muted }]}>

@@ -279,7 +279,7 @@ async function buildMergedHtml(
 
   html += `
 <div class="footer">
-  Generiert mit ProtoKI | ${new Date().toLocaleDateString("de-DE")} | ${project.name}
+  Generiert mit BuildKI | ${new Date().toLocaleDateString("de-DE")} | ${project.name}
 </div>
 </body>
 </html>`;

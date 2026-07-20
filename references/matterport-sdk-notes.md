@@ -27,7 +27,7 @@ Since we embed in a WebView, we need to:
 3. Use `window.ReactNativeWebView.postMessage()` to communicate with React Native
 4. Inject JavaScript via `webViewRef.current.injectJavaScript()` to send commands
 
-### Architecture for ProtoKI
+### Architecture for BuildKI
 1. **Embed HTML** loads Matterport iframe + SDK bootstrap
 2. **SDK connects** to the iframe after load
 3. **Bridge layer** translates RN commands → SDK calls and SDK events → RN messages

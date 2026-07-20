@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Passwort zurücksetzen
+ * BuildKI – Passwort zurücksetzen
  * 3-Schritt-Flow: E-Mail eingeben → Code eingeben → Neues Passwort setzen
  */
 import { useState } from "react";

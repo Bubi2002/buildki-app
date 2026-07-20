@@ -27,7 +27,7 @@ export default function ProgressScreen() {
   useEffect(() => { loadProject(); }, []);
 
   const loadProject = async () => {
-    const pid = await AsyncStorage.getItem("protoki_active_project");
+    const pid = await AsyncStorage.getItem("buildki_active_project");
     if (pid) { setProjectId(pid); await calculate(pid); }
     else setLoading(false);
   };

@@ -41,7 +41,7 @@ export async function createBackup(): Promise<void> {
     };
 
     const jsonContent = JSON.stringify(backup, null, 2);
-    const fileName = `ProtoKI_Backup_${new Date().toISOString().split("T")[0]}.json`;
+    const fileName = `BuildKI_Backup_${new Date().toISOString().split("T")[0]}.json`;
 
     if (Platform.OS === "web") {
       const blob = new Blob([jsonContent], { type: "application/json" });
@@ -103,7 +103,7 @@ export async function restoreBackup(): Promise<boolean> {
 
     // Validate backup structure
     if (!backup.version || !backup.data || typeof backup.data !== "object") {
-      Alert.alert("Ungültige Datei", "Die ausgewählte Datei ist kein gültiges ProtoKI-Backup.");
+      Alert.alert("Ungültige Datei", "Die ausgewählte Datei ist kein gültiges BuildKI-Backup.");
       return false;
     }
 

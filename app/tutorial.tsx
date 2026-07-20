@@ -1,6 +1,6 @@
 /**
  * Tutorial / Bedienungsanleitung
- * Vollständige Anleitung aller ProtoKI-Funktionen mit Schritt-für-Schritt-Erklärungen.
+ * Vollständige Anleitung aller BuildKI-Funktionen mit Schritt-für-Schritt-Erklärungen.
  */
 import { useState } from "react";
 import {
@@ -54,7 +54,7 @@ const TUTORIAL_SECTIONS: TutorialSection[] = [
       "Öffne Tools → Video-Import.",
       "Wähle eine Quelle: Galerie, Dateien/Downloads oder Kamera.",
       "Du kannst auch mehrere Videos gleichzeitig auswählen (Batch-Import).",
-      "Videos aus WhatsApp: Öffne das Video in WhatsApp → Teilen → ProtoKI.",
+      "Videos aus WhatsApp: Öffne das Video in WhatsApp → Teilen → BuildKI.",
       "Nach dem Upload wird die Audiospur automatisch transkribiert.",
       "Wähle den Dokumenttyp: Besprechungsprotokoll, Zusammenfassung oder Bautagebuch.",
     ],
@@ -123,7 +123,7 @@ const TUTORIAL_SECTIONS: TutorialSection[] = [
     icon: "cloud-off",
     title: "Offline-Modus",
     steps: [
-      "ProtoKI funktioniert auch ohne Internet.",
+      "BuildKI funktioniert auch ohne Internet.",
       "Aufnahmen und Fotos werden lokal gespeichert.",
       "Sobald du wieder online bist, wird alles automatisch synchronisiert.",
       "Der Sync-Status wird in den Einstellungen angezeigt.",
@@ -166,7 +166,7 @@ export default function TutorialScreen() {
         {/* Intro */}
         <View style={[styles.introCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
           <MaterialIcons name="menu-book" size={28} color={colors.primary} />
-          <Text style={[styles.introTitle, { color: colors.foreground }]}>Willkommen bei ProtoKI</Text>
+          <Text style={[styles.introTitle, { color: colors.foreground }]}>Willkommen bei BuildKI</Text>
           <Text style={[styles.introText, { color: colors.muted }]}>
             Die intelligente Baustellendokumentation. Tippe auf einen Abschnitt, um die Schritt-für-Schritt-Anleitung zu sehen.
           </Text>

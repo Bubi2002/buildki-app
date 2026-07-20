@@ -39,7 +39,7 @@ Die Kapitelüberschriften sind nummeriert und dunkelblau gesetzt, z. B.:
 - Gelb-beige Hervorhebungsbox für wichtige gutachterliche Einordnung.
 - Sehr formeller, technischer Berichtscharakter.
 
-## Relevanz für ProtoKI
+## Relevanz für BuildKI
 Dieses PDF ist ein starkes Referenzbeispiel für einen neuen Dokumenttyp im Stil eines formellen Gutachtens bzw. technischen Bewertungsberichts. Besonders relevant sind:
 - Titelblatt mit Metadatenkasten
 - nummerierte Kapitelstruktur
@@ -62,7 +62,7 @@ Ab Seite 6 wechselt das Dokument in eine stark bildgestützte Befundaufnahme. Di
 
 Auffällig ist ein konsistentes Seitenmuster: Pro Abschnitt erscheinen meist zwei Fotos nebeneinander, darunter jeweils kursiv gesetzte Bildunterschriften mit fortlaufender Nummerierung wie `Bild 1`, `Bild 2` usw. Unter dem Bildblock folgt ein erläuternder Fließtext. Danach schließt oft eine gelb-beige Bewertungsbox an, die mit Formulierungen wie **„Gutachterliche Bewertung“** beginnt und die technische Schlussfolgerung verdichtet.
 
-Für ProtoKI ist das besonders relevant, weil hier ein klarer Zielstil für einen gutachterlichen Dokumenttyp sichtbar wird: thematisch gruppierte Fotoblöcke statt lose Fotodokumentation, feste Bildnummern mit fachlicher Beschreibung, sowie ein wiederkehrender Dreiklang aus **Befund**, **Erläuterung** und **Bewertung**.
+Für BuildKI ist das besonders relevant, weil hier ein klarer Zielstil für einen gutachterlichen Dokumenttyp sichtbar wird: thematisch gruppierte Fotoblöcke statt lose Fotodokumentation, feste Bildnummern mit fachlicher Beschreibung, sowie ein wiederkehrender Dreiklang aus **Befund**, **Erläuterung** und **Bewertung**.
 
 Quelle dieser Ergänzung: visuelle Prüfung der Seiten 6–10 aus `/home/ubuntu/upload/Gutachterliche_Bewertung_WHG_Flaeche_Shell_Karlsruhe_25Seiten(1).pdf`.
 
@@ -72,7 +72,7 @@ Die Seiten 11 bis 15 bestätigen die hohe formale Konsistenz des Berichts. Auf S
 
 Mit Kapitel `7. Visuelle Befundaufnahme: Anschlüsse an Zapfsäuleninseln` wird derselbe Seitenrhythmus erneut verwendet: erst eine thematische Überschrift, dann zwei bis vier Bilder mit präzisen Bildunterschriften, anschließend erklärender Fließtext und eine zusammenfassende **gutachterliche Bewertung** in gelb-beiger Box. Inhaltlich fällt auf, dass der Bericht die Befunde nicht nur beschreibt, sondern sie unmittelbar normativ und technisch interpretiert.
 
-Für ProtoKI lässt sich daraus ableiten, dass ein zukünftiger Gutachten-Template-Typ nicht bloß Fotos anhängen sollte. Stattdessen wäre ein strukturierter Modus sinnvoll, der Fotos **kapitelweise gruppiert**, mit **fortlaufender Bildnummer**, **automatisch generierter Bildunterschrift**, **Befundtext** und **Bewertungsbox** ausgibt.
+Für BuildKI lässt sich daraus ableiten, dass ein zukünftiger Gutachten-Template-Typ nicht bloß Fotos anhängen sollte. Stattdessen wäre ein strukturierter Modus sinnvoll, der Fotos **kapitelweise gruppiert**, mit **fortlaufender Bildnummer**, **automatisch generierter Bildunterschrift**, **Befundtext** und **Bewertungsbox** ausgibt.
 
 Quelle dieser Ergänzung: visuelle Prüfung der Seiten 11–15 aus `/home/ubuntu/upload/Gutachterliche_Bewertung_WHG_Flaeche_Shell_Karlsruhe_25Seiten(1).pdf`.
 
@@ -82,7 +82,7 @@ Die Seiten 16 und 17 führen den gutachterlichen Aufbau mit Kapitel `8. Visuelle
 
 Mit Kapitel `9. Weitere fotografische Dokumentation (Anlage)` verändert sich der Charakter leicht. Hier tritt die argumentative Bewertung in den Hintergrund, während die fotografische Ergänzungsdokumentation stärker in den Vordergrund rückt. Die Seiten 18 bis 20 bestehen aus mehreren Übersichts- und Detailfotos mit fortlaufenden Bildnummern; die Bildmenge pro Seite steigt deutlich an, die Kommentierung bleibt dagegen knapper. Das wirkt wie ein Anhang zur Beweissicherung.
 
-Für ProtoKI ist diese Unterscheidung wichtig: Ein gutachterlicher Bericht sollte offenbar aus einem **bewertenden Hauptteil** und einem **fotografischen Anlagenblock** bestehen. Das ist deutlich anders als eine einfache lineare Fotodokumentation am Dokumentende und könnte als eigener Exportmodus modelliert werden.
+Für BuildKI ist diese Unterscheidung wichtig: Ein gutachterlicher Bericht sollte offenbar aus einem **bewertenden Hauptteil** und einem **fotografischen Anlagenblock** bestehen. Das ist deutlich anders als eine einfache lineare Fotodokumentation am Dokumentende und könnte als eigener Exportmodus modelliert werden.
 
 Quelle dieser Ergänzung: visuelle Prüfung der Seiten 16–20 aus `/home/ubuntu/upload/Gutachterliche_Bewertung_WHG_Flaeche_Shell_Karlsruhe_25Seiten(1).pdf`.
 
@@ -92,6 +92,6 @@ Die späteren Seiten zeigen den Abschluss des Dokuments sehr klar. Nach weiteren
 
 Kapitel `11. Fazit und gutachterliches Gesamturteil` hebt das Kernergebnis in einer rot umrandeten Bewertungsbox hervor. Direkt danach folgt Kapitel `12. Sanierungskonzept und Empfehlung zum weiteren Vorgehen` in einer grün hinterlegten Handlungsbox. Das Dokument endet damit nicht nur mit einer Bewertung, sondern mit einer klaren fachlichen Konsequenz und konkreten Maßnahmen.
 
-Für ProtoKI ist dieses Ende besonders wertvoll: Ein hochwertiger Gutachten-Export sollte offenbar in drei Schlussstufen arbeiten, nämlich **Mängeltabelle**, **Gesamturteil** und **Empfehlungs-/Sanierungsteil**. Genau diese Dramaturgie unterscheidet den Bericht deutlich von klassischen Gesprächsprotokollen.
+Für BuildKI ist dieses Ende besonders wertvoll: Ein hochwertiger Gutachten-Export sollte offenbar in drei Schlussstufen arbeiten, nämlich **Mängeltabelle**, **Gesamturteil** und **Empfehlungs-/Sanierungsteil**. Genau diese Dramaturgie unterscheidet den Bericht deutlich von klassischen Gesprächsprotokollen.
 
 Quelle dieser Ergänzung: visuelle Prüfung der Seiten 21–25 aus `/home/ubuntu/upload/Gutachterliche_Bewertung_WHG_Flaeche_Shell_Karlsruhe_25Seiten(1).pdf`.

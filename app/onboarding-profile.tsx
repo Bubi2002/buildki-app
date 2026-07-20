@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Onboarding Profil-Vervollständigung
+ * BuildKI – Onboarding Profil-Vervollständigung
  * Pflichtfelder: Vorname, Nachname, Handynummer
  * Optional: Unternehmen
  * Muss ausgefüllt werden bevor Dashboard freigeschaltet wird.
@@ -22,8 +22,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 
-const PROFILE_KEY = "@protoki_user_profile";
-const ONBOARDING_PROFILE_COMPLETE_KEY = "@protoki_onboarding_profile_complete";
+const PROFILE_KEY = "@buildki_user_profile";
+const ONBOARDING_PROFILE_COMPLETE_KEY = "@buildki_onboarding_profile_complete";
 
 interface UserProfile {
   firstName: string;

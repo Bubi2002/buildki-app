@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Legal & Privacy Screens
+ * BuildKI – Legal & Privacy Screens
  * 
  * Provides:
  * - Datenschutzerklärung (Privacy Policy)
@@ -43,7 +43,7 @@ export default function LegalScreen() {
       
       const allKeys = await AsyncStorage.getAllKeys();
       const relevantKeys = allKeys.filter(k => 
-        k.startsWith("protoki_") || 
+        k.startsWith("buildki_") || 
         k.startsWith("defects") || 
         k.startsWith("projects") ||
         k.startsWith("protocols") ||
@@ -67,7 +67,7 @@ export default function LegalScreen() {
       
       await Share.share({
         message: exportString,
-        title: "ProtoKI – Datenexport (DSGVO Art. 15)",
+        title: "BuildKI – Datenexport (DSGVO Art. 15)",
       });
     } catch (error: any) {
       Alert.alert("Fehler", `Export fehlgeschlagen: ${error.message}`);
@@ -172,7 +172,7 @@ function DatenschutzContent() {
       </Section>
 
       <Section title="2. Erhobene Daten">
-        <P>ProtoKI verarbeitet folgende Daten:</P>
+        <P>BuildKI verarbeitet folgende Daten:</P>
         <Bullet text="Projektdaten (Name, Adresse, Beteiligte)" />
         <Bullet text="Mängeldokumentation (Beschreibung, Fotos, Standort)" />
         <Bullet text="Sprachaufnahmen (Protokolle, Notizen)" />
@@ -188,7 +188,7 @@ function DatenschutzContent() {
       </Section>
 
       <Section title="4. KI-Verarbeitung">
-        <P>ProtoKI verwendet KI-Modelle zur Berichterstellung. Dabei gilt:</P>
+        <P>BuildKI verwendet KI-Modelle zur Berichterstellung. Dabei gilt:</P>
         <Bullet text="Keine personenbezogenen Daten werden an KI-Dienste übermittelt" />
         <Bullet text="Transkriptionen werden vor der KI-Verarbeitung anonymisiert" />
         <Bullet text="KI-generierte Inhalte sind als solche gekennzeichnet" />
@@ -262,14 +262,14 @@ function AGBContent() {
       <Text className="text-sm text-muted">der immobau-ka GmbH{"\n"}gültig ab 1. Juli 2026</Text>
 
       <Section title="§ 1 Geltungsbereich">
-        <P>1.1 Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) regeln die vertragliche Beziehung zwischen der immobau-ka GmbH, vertreten durch Dipl. Ing. (FH) Jörg Iserloh (nachfolgend „Anbieter“) und Ihnen als Kunden (nachfolgend „Kunde“) in Bezug auf die Nutzung der mobilen Applikation „ProtoKI – Video-Protokoll App“ sowie der zugehörigen Cloud-Dienste (nachfolgend gemeinsam „Software“).</P>
+        <P>1.1 Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) regeln die vertragliche Beziehung zwischen der immobau-ka GmbH, vertreten durch Dipl. Ing. (FH) Jörg Iserloh (nachfolgend „Anbieter“) und Ihnen als Kunden (nachfolgend „Kunde“) in Bezug auf die Nutzung der mobilen Applikation „BuildKI – Video-Protokoll App“ sowie der zugehörigen Cloud-Dienste (nachfolgend gemeinsam „Software“).</P>
         <P>1.2 Die Software und die zugehörigen Dienste sind ausschließlich für den Geschäftsverkehr (B2B) bestimmt. Die Nutzung ist ausschließlich Unternehmern im Sinne von § 14 BGB gestattet. Der Kunde bestätigt mit Vertragsschluss, dass er in Ausübung seiner gewerblichen oder selbstständigen beruflichen Tätigkeit handelt.</P>
         <P>1.3 Abweichende oder entgegenstehende allgemeine Geschäftsbedingungen des Kunden werden nicht anerkannt, sofern der Anbieter diesen nicht ausdrücklich schriftlich zugestimmt hat.</P>
         <P>1.4 Der Anbieter ist berechtigt, diese AGB mit einer Ankündigungsfrist von sechs (6) Wochen per E-Mail zu ändern. Widerspricht der Kunde nicht innerhalb von vier (4) Wochen nach Zugang der Änderungsmitteilung in Textform, gelten die geänderten AGB als akzeptiert. Der Anbieter weist in der Änderungsmitteilung gesondert auf diese Rechtsfolge hin.</P>
       </Section>
 
       <Section title="§ 2 Vertragsgegenstand und Leistungsbeschreibung">
-        <P>2.1 Der Anbieter stellt dem Kunden die Software „ProtoKI“ als Software-as-a-Service (SaaS) in der jeweils aktuellen Version zur Nutzung über das Internet sowie als mobile Applikation (iOS/Android) zur Verfügung.</P>
+        <P>2.1 Der Anbieter stellt dem Kunden die Software „BuildKI“ als Software-as-a-Service (SaaS) in der jeweils aktuellen Version zur Nutzung über das Internet sowie als mobile Applikation (iOS/Android) zur Verfügung.</P>
         <P>2.2 Die Software umfasst insbesondere folgende Funktionen:</P>
         <Bullet text="KI-gestützte Sprachtranskription und Protokollerstellung" />
         <Bullet text="Mängelmanagement mit Fotodokumentation und Statusverfolgung" />
@@ -393,7 +393,7 @@ function KIHinweisContent() {
       <View className="bg-warning/10 border border-warning/30 rounded-lg p-4">
         <Text className="text-sm font-bold text-foreground mb-2">Wichtiger Hinweis zur KI-Nutzung</Text>
         <Text className="text-sm text-foreground leading-5">
-          ProtoKI verwendet künstliche Intelligenz zur Unterstützung der Baudokumentation. KI-generierte Inhalte können Fehler enthalten und müssen vor der Verwendung geprüft werden.
+          BuildKI verwendet künstliche Intelligenz zur Unterstützung der Baudokumentation. KI-generierte Inhalte können Fehler enthalten und müssen vor der Verwendung geprüft werden.
         </Text>
       </View>
 
@@ -431,7 +431,7 @@ function LizenzenContent() {
   return (
     <View className="gap-4 pb-8">
       <Text className="text-xl font-bold text-foreground">Open-Source-Lizenzen</Text>
-      <P>ProtoKI verwendet folgende Open-Source-Bibliotheken:</P>
+      <P>BuildKI verwendet folgende Open-Source-Bibliotheken:</P>
 
       <LicenseItem name="React Native" license="MIT" />
       <LicenseItem name="Expo" license="MIT" />

@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Audit-Log System
+ * BuildKI – Audit-Log System
  * 
  * Manipulationssichere Protokollierung aller relevanten Aktionen.
  * Verwendet SHA-256 Hash-Chain für Unveränderbarkeit.
@@ -68,8 +68,8 @@ export interface AuditEntry {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const AUDIT_LOG_KEY = "protoki_audit_log";
-const AUDIT_META_KEY = "protoki_audit_meta";
+const AUDIT_LOG_KEY = "buildki_audit_log";
+const AUDIT_META_KEY = "buildki_audit_meta";
 const MAX_LOCAL_ENTRIES = 5000; // Keep last 5000 entries locally
 const APP_VERSION = "1.0.0";
 
@@ -107,7 +107,7 @@ async function getDeviceId(): Promise<string> {
   if (cachedDeviceId) return cachedDeviceId;
   
   try {
-    const stored = await AsyncStorage.getItem("protoki_device_id");
+    const stored = await AsyncStorage.getItem("buildki_device_id");
     if (stored) {
       cachedDeviceId = stored;
       return stored;
@@ -117,7 +117,7 @@ async function getDeviceId(): Promise<string> {
   // Generate a new device ID
   const newId = `dev_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
-    await AsyncStorage.setItem("protoki_device_id", newId);
+    await AsyncStorage.setItem("buildki_device_id", newId);
   } catch {}
   cachedDeviceId = newId;
   return newId;

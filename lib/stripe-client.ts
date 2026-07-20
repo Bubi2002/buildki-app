@@ -1,5 +1,5 @@
 /**
- * ProtoKI – Stripe Client Helper
+ * BuildKI – Stripe Client Helper
  * Communicates with our server's Stripe endpoints
  */
 import { Platform } from "react-native";

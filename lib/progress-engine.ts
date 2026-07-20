@@ -113,7 +113,7 @@ function extractFloor(room: string): string {
 
 // ─── Progress Engine ────────────────────────────────────────────────────────
 
-const STORAGE_KEY = "protoki_progress_snapshots";
+const STORAGE_KEY = "buildki_progress_snapshots";
 
 class ProgressEngine {
   private snapshots: ProgressSnapshot[] = [];

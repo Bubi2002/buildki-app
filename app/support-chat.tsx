@@ -66,12 +66,12 @@ function getFaqItems(t: (key: any) => string) { return [
     answer: t('faq_a_offline'),
   },
   {
-    question: "Was kostet ProtoKI?",
-    answer: "ProtoKI kostet 10,00 \u20ac + MwSt. pro Monat oder 100,00 \u20ac + MwSt. pro Jahr (2 Monate gratis). Jede Lizenz beginnt mit 14 Tagen kostenloser Testphase.",
+    question: "Was kostet BuildKI?",
+    answer: "BuildKI kostet 10,00 \u20ac + MwSt. pro Monat oder 100,00 \u20ac + MwSt. pro Jahr (2 Monate gratis). Jede Lizenz beginnt mit 14 Tagen kostenloser Testphase.",
   },
   {
     question: "Wie importiere ich ein Video aus WhatsApp?",
-    answer: "Du hast zwei M\u00f6glichkeiten: 1) \u00d6ffne Tools \u2192 Video-Import und w\u00e4hle das Video aus der Galerie. 2) Teile das Video direkt aus WhatsApp \u00fcber die iOS-Teilen-Funktion an ProtoKI.",
+    answer: "Du hast zwei M\u00f6glichkeiten: 1) \u00d6ffne Tools \u2192 Video-Import und w\u00e4hle das Video aus der Galerie. 2) Teile das Video direkt aus WhatsApp \u00fcber die iOS-Teilen-Funktion an BuildKI.",
   },
 ]; }
 
@@ -192,7 +192,7 @@ export default function SupportChatScreen() {
         <View style={[styles.supportIconContainer, { backgroundColor: colors.primary + "15" }]}>
           <MaterialIcons name="support-agent" size={40} color={colors.primary} />
         </View>
-        <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>{t('protoki_support')}</Text>
+        <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>{t('buildki_support')}</Text>
         <Text style={[styles.welcomeSubtitle, { color: colors.muted }]}>
           Wie kann ich dir helfen? Stelle eine Frage oder wähle ein Thema aus.
         </Text>

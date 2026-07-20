@@ -77,7 +77,7 @@ export default function TeamScreen() {
       const inviteMessage = t('einladung_nachricht').replace('{name}', newName.trim()).replace('{role}', getRoleLabel(newRole));
 
       if (newEmail.trim()) {
-        const subject = encodeURIComponent("Einladung zum ProtoKI-Team");
+        const subject = encodeURIComponent("Einladung zum BuildKI-Team");
         const body = encodeURIComponent(inviteMessage);
         const mailUrl = `mailto:${newEmail.trim()}?subject=${subject}&body=${body}`;
         try {
