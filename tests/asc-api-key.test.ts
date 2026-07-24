@@ -1,33 +1,36 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync, existsSync } from "fs";
+import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 
-describe("App Store Connect API Key Configuration", () => {
-  it("should have ASC_API_KEY_ISSUER_ID set", () => {
-    const issuerId = process.env.ASC_API_KEY_ISSUER_ID;
-    expect(issuerId).toBeDefined();
-    expect(issuerId).toBe("399f93d6-934a-4c82-bc2f-3b2e7ccb3da8");
+const fixturePath = resolve(__dirname, "fixtures/AuthKey_TESTKEY001.p8");
+
+describe("App Store Connect credential contract (test environment)", () => {
+  it("provides test-only issuer and key identifiers", () => {
+    expect(process.env.ASC_API_KEY_ISSUER_ID).toBe(
+      "00000000-0000-4000-8000-000000000000",
+    );
+    expect(process.env.ASC_API_KEY_ID).toBe("TESTKEY001");
   });
 
-  it("should have ASC_API_KEY_ID set", () => {
-    const keyId = process.env.ASC_API_KEY_ID;
-    expect(keyId).toBeDefined();
-    expect(keyId).toBe("3K2KU8YZXY");
-  });
+  it("uses a harmless private-key-shaped fixture", () => {
+    expect(existsSync(fixturePath)).toBe(true);
 
-  it("should have the .p8 key file present", () => {
-    const p8Path = resolve(__dirname, "../AuthKey_3K2KU8YZXY.p8");
-    expect(existsSync(p8Path)).toBe(true);
-    const content = readFileSync(p8Path, "utf-8");
+    const content = readFileSync(fixturePath, "utf-8");
     expect(content).toContain("-----BEGIN PRIVATE KEY-----");
+    expect(content).toContain("TEST-FIXTURE-NOT-A-REAL-PRIVATE-KEY");
     expect(content).toContain("-----END PRIVATE KEY-----");
   });
 
-  it("eas.json should reference the API key for testflight submit", () => {
+  it("keeps the TestFlight submit configuration structurally complete", () => {
     const easPath = resolve(__dirname, "../eas.json");
     const eas = JSON.parse(readFileSync(easPath, "utf-8"));
-    expect(eas.submit.testflight.ios.ascApiKeyId).toBe("3K2KU8YZXY");
-    expect(eas.submit.testflight.ios.ascApiKeyIssuerId).toBe("399f93d6-934a-4c82-bc2f-3b2e7ccb3da8");
-    expect(eas.submit.testflight.ios.ascApiKeyPath).toBe("./AuthKey_3K2KU8YZXY.p8");
+    const iosSubmit = eas.submit?.testflight?.ios;
+
+    expect(iosSubmit).toBeDefined();
+    expect(iosSubmit.ascApiKeyId).toMatch(/^[A-Z0-9]+$/);
+    expect(iosSubmit.ascApiKeyIssuerId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(iosSubmit.ascApiKeyPath).toMatch(/\.p8$/);
   });
 });

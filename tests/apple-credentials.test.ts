@@ -1,24 +1,25 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
-describe("Apple Developer Credentials", () => {
-  it("should have EXPO_APPLE_ID set", () => {
+describe("Apple credential contract (test environment)", () => {
+  it("provides a non-production Apple ID for tests", () => {
     const appleId = process.env.EXPO_APPLE_ID;
+
     expect(appleId).toBeDefined();
-    expect(appleId).toContain("@");
-    expect(appleId).toBe("info@iserloh.net");
+    expect(appleId).toMatch(/^[^@]+@[^@]+\.invalid$/);
   });
 
-  it("should have EXPO_APPLE_APP_SPECIFIC_PASSWORD set", () => {
+  it("provides an app-specific-password-shaped test value", () => {
     const password = process.env.EXPO_APPLE_APP_SPECIFIC_PASSWORD;
+
     expect(password).toBeDefined();
-    expect(password!.length).toBeGreaterThan(10);
-    // App-specific passwords have format xxxx-xxxx-xxxx-xxxx
     expect(password).toMatch(/^[a-z]{4}-[a-z]{4}-[a-z]{4}-[a-z]{4}$/);
   });
 
-  it("should have EXPO_APPLE_TEAM_ID set", () => {
+  it("provides a test-only Apple team identifier", () => {
     const teamId = process.env.EXPO_APPLE_TEAM_ID;
+
     expect(teamId).toBeDefined();
-    expect(teamId).toBe("TLHL2MRJB4");
+    expect(teamId).toMatch(/^[A-Z0-9]{10}$/);
+    expect(teamId).toBe("TESTTEAM01");
   });
 });

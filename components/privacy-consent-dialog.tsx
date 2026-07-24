@@ -162,7 +162,7 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
             <Text style={[styles.legalText, { color: colors.muted }]}>
               • Auskunft über gespeicherte Daten{"\n"}
               • Berichtigung unrichtiger Daten{"\n"}
-              • Löschung Ihrer Daten ("Recht auf Vergessenwerden"){"\n"}
+              • Löschung Ihrer Daten (&quot;Recht auf Vergessenwerden&quot;){"\n"}
               • Einschränkung der Verarbeitung{"\n"}
               • Datenübertragbarkeit (Export){"\n"}
               • Widerspruch gegen die Verarbeitung{"\n"}

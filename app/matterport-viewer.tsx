@@ -942,7 +942,7 @@ export default function MatterportViewerScreen() {
               <View style={{ alignItems: "center", paddingVertical: 32 }}>
                 <MaterialIcons name="place" size={40} color={colors.muted} />
                 <Text style={{ color: colors.muted, marginTop: 8, fontSize: 14 }}>
-                  Noch keine Pins. Tippen Sie auf "Pin" in der Toolbar, dann auf eine Stelle im 3D-Modell.
+                  Noch keine Pins. Tippen Sie auf &quot;Pin&quot; in der Toolbar, dann auf eine Stelle im 3D-Modell.
                 </Text>
               </View>
             ) : (

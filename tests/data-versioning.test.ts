@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { resolve } from "path";
 
 // Mock AsyncStorage
 const mockStorage: Record<string, string> = {};
@@ -126,7 +127,10 @@ describe("Offline Sync Manager - Exponential Backoff", () => {
   it("should have exponential backoff constant defined", async () => {
     // Read the file to verify the constant exists
     const fs = await import("fs");
-    const content = fs.readFileSync("/home/ubuntu/protokoll-app/lib/offline-sync-manager.ts", "utf-8");
+    const content = fs.readFileSync(
+      resolve(__dirname, "../lib/offline-sync-manager.ts"),
+      "utf-8",
+    );
     expect(content).toContain("BASE_RETRY_DELAY_MS");
     expect(content).toContain("Math.pow(2,");
     expect(content).toContain("Backoff");

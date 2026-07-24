@@ -516,10 +516,10 @@ export default function ProtocolsScreen() {
     }
   };
 
-  const renderRightActions = (item: Protocol) => (
+  const renderRightActions = (item: Protocol) => function ProtocolRightActions(
     progress: Animated.AnimatedInterpolation<number>,
     dragX: Animated.AnimatedInterpolation<number>
-  ) => {
+  ) {
     return (
       <View style={{ flexDirection: "row", marginBottom: 10 }}>
         <RectButton
@@ -533,10 +533,10 @@ export default function ProtocolsScreen() {
     );
   };
 
-  const renderLeftActions = (item: Protocol) => (
+  const renderLeftActions = (item: Protocol) => function ProtocolLeftActions(
     progress: Animated.AnimatedInterpolation<number>,
     dragX: Animated.AnimatedInterpolation<number>
-  ) => {
+  ) {
     return (
       <View style={{ flexDirection: "row", marginBottom: 10 }}>
         <RectButton
@@ -680,7 +680,7 @@ export default function ProtocolsScreen() {
           <MaterialIcons name="search-off" size={64} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('keine_ergebnisse')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Für "{searchQuery}" wurden keine Protokolle gefunden.
+            Für &quot;{searchQuery}&quot; wurden keine Protokolle gefunden.
           </Text>
         </>
       ) : filterBy === "favorites" ? (

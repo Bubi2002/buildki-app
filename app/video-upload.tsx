@@ -29,8 +29,11 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 import { trpc } from "@/lib/trpc";
+import { getVideoUploadGate } from "@/lib/video-upload-gate";
 
 type VideoFile = {
   uri: string;
@@ -62,6 +65,25 @@ const DOC_TYPES: { key: DocType; label: string; icon: string; description: strin
 export default function VideoUploadScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { loading: authLoading, isAuthenticated } = useAuth();
+  const { isConnected } = useNetworkStatus();
+  const uploadGate = getVideoUploadGate({
+    authLoading,
+    isAuthenticated,
+    isConnected,
+  });
+  const uploadGateColor =
+    uploadGate.reason === "offline"
+      ? colors.warning
+      : uploadGate.reason === "auth-required"
+        ? colors.error
+        : colors.muted;
+  const uploadGateIcon =
+    uploadGate.reason === "offline"
+      ? "cloud-off"
+      : uploadGate.reason === "auth-required"
+        ? "lock-outline"
+        : "hourglass-top";
 
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -204,8 +226,35 @@ export default function VideoUploadScreen() {
     setQueue(prev => prev.filter((_, i) => i !== index));
   };
 
+  const openLogin = () => {
+    router.push("/login" as any);
+  };
+
+  const showBlockedUploadMessage = () => {
+    if (uploadGate.reason === "auth-required") {
+      Alert.alert(
+        uploadGate.title || "Anmeldung erforderlich",
+        uploadGate.message || "Bitte melde dich an, um Videos zu verarbeiten.",
+        [
+          { text: "Abbrechen", style: "cancel" },
+          { text: uploadGate.actionLabel || "Anmelden", onPress: openLogin },
+        ],
+      );
+      return;
+    }
+
+    Alert.alert(
+      uploadGate.title || "Video-Upload nicht verfügbar",
+      uploadGate.message || "Bitte versuche es später erneut.",
+    );
+  };
+
   const processQueue = async () => {
     if (queue.length === 0) return;
+    if (!uploadGate.allowed) {
+      showBlockedUploadMessage();
+      return;
+    }
     if (!activeProject) {
       Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt im Tools-Tab aus.");
       return;
@@ -376,6 +425,46 @@ export default function VideoUploadScreen() {
           </View>
         )}
 
+        {step === "idle" && !uploadGate.allowed && (
+          <View
+            style={[
+              styles.uploadGateBanner,
+              {
+                borderColor: uploadGateColor,
+                backgroundColor: `${uploadGateColor}18`,
+              },
+            ]}
+            accessibilityRole="alert"
+          >
+            <MaterialIcons
+              name={uploadGateIcon as any}
+              size={22}
+              color={uploadGateColor}
+            />
+            <View style={styles.uploadGateContent}>
+              <Text style={[styles.uploadGateTitle, { color: colors.foreground }]}>
+                {uploadGate.title}
+              </Text>
+              <Text style={[styles.uploadGateMessage, { color: colors.muted }]}>
+                {uploadGate.message}
+              </Text>
+              {uploadGate.reason === "auth-required" && (
+                <Pressable
+                  onPress={openLogin}
+                  style={({ pressed }) => [
+                    styles.uploadGateAction,
+                    { borderColor: uploadGateColor, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.uploadGateActionText, { color: uploadGateColor }]}>
+                    {uploadGate.actionLabel}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Empty State / Picker */}
         {queue.length === 0 && step === "idle" && (
           <>
@@ -456,7 +545,13 @@ export default function VideoUploadScreen() {
             {/* Process Button */}
             <Pressable
               onPress={processQueue}
-              style={({ pressed }) => [styles.processButton, { opacity: pressed ? 0.85 : 1 }]}
+              disabled={!uploadGate.allowed}
+              accessibilityState={{ disabled: !uploadGate.allowed }}
+              style={({ pressed }) => [
+                styles.processButton,
+                !uploadGate.allowed && styles.processButtonDisabled,
+                { opacity: pressed && uploadGate.allowed ? 0.85 : 1 },
+              ]}
             >
               <MaterialIcons name="auto-awesome" size={20} color="#fff" />
               <Text style={styles.processButtonText}>
@@ -584,6 +679,12 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   projectBadge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: "#1E3A5F", marginBottom: 20 },
   projectBadgeText: { fontSize: 13, fontWeight: "600", color: "#F0F4F8" },
+  uploadGateBanner: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14, borderWidth: 1, marginBottom: 20 },
+  uploadGateContent: { flex: 1, gap: 4 },
+  uploadGateTitle: { fontSize: 15, fontWeight: "700" },
+  uploadGateMessage: { fontSize: 13, lineHeight: 19 },
+  uploadGateAction: { alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, marginTop: 8 },
+  uploadGateActionText: { fontSize: 13, fontWeight: "700" },
   introSection: { alignItems: "center", gap: 8, marginBottom: 28 },
   introTitle: { fontSize: 22, fontWeight: "700", marginTop: 8 },
   introText: { fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
@@ -602,6 +703,7 @@ const styles = StyleSheet.create({
   addMoreBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10 },
   addMoreText: { fontSize: 14, fontWeight: "600", color: "#5DADE2" },
   processButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#5DADE2", paddingVertical: 16 },
+  processButtonDisabled: { backgroundColor: "#35506A", opacity: 0.65 },
   processButtonText: { fontSize: 16, fontWeight: "700", color: "#fff" },
   processingSection: { alignItems: "center", gap: 16, paddingVertical: 40 },
   processingLabel: { fontSize: 16, fontWeight: "600" },

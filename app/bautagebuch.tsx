@@ -357,7 +357,7 @@ export default function BautagebuchScreen() {
             <MaterialIcons name="description" size={48} color={colors.border} />
             <Text className="text-muted text-center mt-3">
               Noch keine Tagesberichte erstellt.{"\n"}
-              Tippe oben auf "Tagesbericht erstellen".
+              Tippe oben auf &quot;Tagesbericht erstellen&quot;.
             </Text>
           </View>
         ) : (

@@ -251,7 +251,7 @@ export default function RoomsScreen() {
           <View style={styles.empty}>
             <MaterialIcons name="apartment" size={48} color="#4A5568" />
             <Text style={styles.emptyText}>Noch keine Geschosse angelegt</Text>
-            <Text style={styles.emptyHint}>Tippe oben auf "+ Geschoss" um zu beginnen</Text>
+            <Text style={styles.emptyHint}>Tippe oben auf &quot;+ Geschoss&quot; um zu beginnen</Text>
           </View>
         )}
       </ScrollView>

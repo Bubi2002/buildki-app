@@ -385,7 +385,7 @@ export default function PdfBrandingScreen() {
                 placeholderTextColor={colors.muted}
                 style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
               />
-              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>z.B. "Vertraulich" oder "Entwurf" – leer lassen f\u00fcr Standard</Text>
+              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>z.B. &quot;Vertraulich&quot; oder &quot;Entwurf&quot; – leer lassen f\u00fcr Standard</Text>
             </View>
           )}
         </View>

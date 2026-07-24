@@ -328,7 +328,7 @@ export default function DropboxSettingsScreen() {
                 <Text style={{ fontSize: 12, color: "#0061FF", fontWeight: "600", marginBottom: 4 }}>{t('so_funktionierts')}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, lineHeight: 16 }}>
                   Verbinde dein Dropbox-Konto, um PDFs und Fotos automatisch in deinen Projektordner hochzuladen. Die Dateien werden direkt über die Dropbox-API übertragen – kein manuelles Teilen nötig.{"\n\n"}
-                  Alternativ kannst du auch ohne Verbindung den "In Dropbox speichern" Button in der PDF-Vorschau nutzen (über das System-Teilen-Menü).
+                  Alternativ kannst du auch ohne Verbindung den &quot;In Dropbox speichern&quot; Button in der PDF-Vorschau nutzen (über das System-Teilen-Menü).
                 </Text>
               </View>
             </View>

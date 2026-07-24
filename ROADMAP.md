@@ -1,6 +1,14 @@
 # protoKI – Produkt-Roadmap
 
-> Letzte Aktualisierung: 19. Juli 2026
+> Letzte Aktualisierung: 24. Juli 2026
+
+---
+
+## Version 1.0.44 – vorgemerkt
+
+| Feature | Status | Beschreibung |
+|---------|--------|--------------|
+| Streaming-/Chunk-Upload für große Video- und Audiodateien | 🔲 Vorgemerkt | Datei in kontrollierten Teilen übertragen, Fortschritt und Wiederaufnahme unterstützen; ausdrücklich **nicht Bestandteil von 1.0.43** |
 
 ---
 
