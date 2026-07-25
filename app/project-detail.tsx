@@ -426,6 +426,16 @@ export default function ProjectDetailScreen() {
           </Pressable>
         </View>
 
+        {/* Gesamter Projektinhalt nutzt einen einzigen vertikalen Scrollcontainer. */}
+        <FlatList
+          data={protocols}
+          keyExtractor={(item) => item.id}
+          style={styles.projectScroll}
+          contentContainerStyle={styles.projectScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
+          ListHeaderComponent={(
+            <>
         {project.description ? (
           <Text style={[styles.description, { color: colors.muted }]}>{project.description}</Text>
         ) : null}
@@ -685,12 +695,8 @@ export default function ProjectDetailScreen() {
             <Text style={[styles.statLabel, { color: colors.muted }]}>{t('project_sort_created')}</Text>
           </View>
         </View>
-
-        {/* Protocols list */}
-        <FlatList
-          data={protocols}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+            </>
+          )}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push(`/protocol-detail?id=${item.id}` as any)}
@@ -720,6 +726,7 @@ export default function ProjectDetailScreen() {
             </View>
           }
         />
+
 
         {/* Assign Modal */}
         {showAssignModal && (
@@ -782,12 +789,13 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 20, fontWeight: "800" },
   statLabel: { fontSize: 12, marginTop: 2 },
   statDivider: { width: 1, alignSelf: "stretch" },
-  list: { paddingHorizontal: 16, paddingBottom: 100 },
-  protocolItem: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
+  projectScroll: { flex: 1 },
+  projectScrollContent: { paddingBottom: 120 },
+  protocolItem: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginHorizontal: 16, marginBottom: 8 },
   protocolInfo: { flex: 1 },
   protocolTitle: { fontSize: 16, fontWeight: "600", marginBottom: 3 },
   protocolDate: { fontSize: 13 },
-  emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
+  emptyState: { alignItems: "center", paddingTop: 60, paddingHorizontal: 16, gap: 12 },
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
   modalOverlay: { justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
   modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },

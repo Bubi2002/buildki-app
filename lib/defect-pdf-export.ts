@@ -2,30 +2,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDefects, getDefectHistory, type Defect, type DefectStatus, type DefectPriority } from "./defect-store";
 import { getPdfBranding, generatePdfHeader, generatePdfFooter, generateCoverPage } from "./pdf-branding-store";
 import * as FileSystem from "expo-file-system/legacy";
+import { TRADE_NAMES, type TradeName } from "./trades";
 
 /**
  * Gewerke (trades) for defect assignment
  */
-export const GEWERKE = [
-  "Elektro",
-  "Sanitär",
-  "Heizung/Klima",
-  "Rohbau",
-  "Trockenbau",
-  "Maler/Lackierer",
-  "Bodenbelag",
-  "Fliesen",
-  "Dachdecker",
-  "Fenster/Türen",
-  "Schlosser/Metallbau",
-  "Garten/Außenanlage",
-  "Aufzug",
-  "Brandschutz",
-  "Schreiner",
-  "Sonstiges",
-] as const;
+export const GEWERKE = TRADE_NAMES;
 
-export type Gewerk = typeof GEWERKE[number];
+export type Gewerk = TradeName;
 
 /**
  * Generate a professional Mängel-PDF report for a project

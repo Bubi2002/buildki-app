@@ -684,6 +684,7 @@ export default function SettingsScreen() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
   const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
+  const [templateFeedback, setTemplateFeedback] = useState("");
   const [saved, setSaved] = useState(false);
   const [syncEnabled, setSyncEnabledState] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -827,6 +828,24 @@ export default function SettingsScreen() {
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+
+  const selectProtocolTemplate = async (template: ProtocolTemplate) => {
+    const updated = { ...settings, templateId: template.id };
+    setSettings(updated);
+    await AsyncStorage.setItem("protokoll-settings", JSON.stringify(updated));
+    setTemplateFeedback(`„${template.name}“ ist jetzt die Standard-Vorlage.`);
+    setSaved(true);
+    setTimeout(() => {
+      setTemplateFeedback("");
+      setSaved(false);
+    }, 2400);
+  };
+
+  const openTemplateEditor = () => {
+    setTemplateFeedback("Vorlageneditor wird geöffnet …");
+    router.push({ pathname: "/template-editor" } as any);
   };
 
   const updateCompany = <K extends keyof CompanySettings>(key: K, value: CompanySettings[K]) => {
@@ -1164,157 +1183,145 @@ return (
             Wähle die Standard-Vorlage für neue Protokolle
           </Text>
 
-          {/* Custom Templates */}
-          {customTemplates.length > 0 && (
-            <View style={[styles.customTemplateSection, { marginBottom: 12 }]}>
-              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>{t('eigene_vorlagen')}</Text>
-              {customTemplates.map((template) => (
-                <View key={template.id} style={[styles.customTemplateRow, { borderColor: settings.templateId === template.id ? colors.primary : colors.border, backgroundColor: settings.templateId === template.id ? colors.primary + "15" : colors.surface }]}>
-                  <Pressable
-                    onPress={() => updateSetting("templateId", template.id)}
-                    style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, padding: 12 }}
-                  >
-                    <MaterialIcons name={template.icon as any} size={22} color={settings.templateId === template.id ? colors.primary : colors.muted} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.templateName, { color: settings.templateId === template.id ? colors.primary : colors.foreground }]}>{template.name}</Text>
-                      <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={1}>{template.description}</Text>
-                    </View>
-                    {settings.templateId === template.id && (
-                      <MaterialIcons name="check-circle" size={18} color={colors.primary} />
-                    )}
-                  </Pressable>
-          {/* Vorlagen-Marktplatz */}
           <Pressable
-            onPress={() => router.push("/template-marketplace" as any)}
-            style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="store" size={22} color={colors.primary} />
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>{t('vorlagenmarktplatz')}</Text>
-              <Text style={[styles.settingDesc, { color: colors.muted }]}>{t('vorlagen_entdecken_und_teilen')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          {/* Agenda-Vorbereitung */}
-          <Pressable
-            onPress={() => router.push("/agenda-preparation" as any)}
-            style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="event-note" size={22} color={colors.primary} />
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>{t('agendavorbereitung')}</Text>
-              <Text style={[styles.settingDesc, { color: colors.muted }]}>{t('kigestuetzte_meetingagenden_erstellen')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          {/* Kanban Board */}
-          <Pressable
-            onPress={() => router.push("/kanban" as any)}
-            style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="view-kanban" size={22} color={colors.primary} />
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>{t('kanban_board')}</Text>
-              <Text style={[styles.settingDesc, { color: colors.muted }]}>{t('aufgaben_visuell_verwalten')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-                  <View style={{ flexDirection: "row", gap: 4, paddingRight: 8 }}>
-                    <Pressable onPress={() => router.push(`/template-editor?editId=${template.id}` as any)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
-                      <MaterialIcons name="edit" size={18} color={colors.muted} />
-                    </Pressable>
-            <Pressable
-              onPress={() => router.push("/recurring-meetings" as any)}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border })}
-            >
-              <MaterialIcons name="event-repeat" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: "500", color: colors.foreground }}>{t('wiederkehrende_meetings')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted }}>{t('automatisch_protokolle_vorbereiten')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-                    <Pressable onPress={() => deleteCustomTemplate(template.id)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 6 }]}>
-                      <MaterialIcons name="delete" size={18} color={colors.error} />
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Create new template button */}
-          <Pressable
-            onPress={() => router.push("/template-editor" as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Eigene Vorlage erstellen"
+            accessibilityHint="Öffnet den Vorlageneditor"
+            onPress={openTemplateEditor}
             style={({ pressed }) => [
               styles.createTemplateButton,
-              { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+              { borderColor: colors.primary, backgroundColor: colors.primary + "0D", opacity: pressed ? 0.65 : 1 },
             ]}
           >
-            <MaterialIcons name="add" size={20} color={colors.primary} />
+            <MaterialIcons name="add" size={22} color={colors.primary} />
             <Text style={[styles.createTemplateText, { color: colors.primary }]}>
               Eigene Vorlage erstellen
             </Text>
+            <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
           </Pressable>
 
-          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 16, marginBottom: 8 }]}>{t('standardvorlagen')}</Text>
+          {!!templateFeedback && (
+            <View style={{ minHeight: 42, borderWidth: 1, borderColor: colors.success, backgroundColor: colors.success + "12", paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialIcons name="check-circle" size={18} color={colors.success} />
+              <Text style={{ flex: 1, color: colors.success, fontSize: 13, fontWeight: "600" }}>{templateFeedback}</Text>
+            </View>
+          )}
 
+          {customTemplates.length > 0 && (
+            <View style={[styles.customTemplateSection, { marginBottom: 12 }]}>
+              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>Eigene Vorlagen</Text>
+              {customTemplates.map((template) => {
+                const isSelected = settings.templateId === template.id;
+                return (
+                  <View
+                    key={template.id}
+                    style={[styles.customTemplateRow, { borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary + "15" : colors.surface }]}
+                  >
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={`${template.name} als Standard-Vorlage auswählen`}
+                      onPress={() => void selectProtocolTemplate(template)}
+                      style={({ pressed }) => [{ flex: 1, minHeight: 64, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, opacity: pressed ? 0.65 : 1 }]}
+                    >
+                      <MaterialIcons name={template.icon as any} size={22} color={isSelected ? colors.primary : colors.muted} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.templateName, { color: isSelected ? colors.primary : colors.foreground }]}>{template.name}</Text>
+                        <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={1}>{template.description}</Text>
+                      </View>
+                      {isSelected && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
+                    </Pressable>
+                    <View style={{ flexDirection: "row", borderLeftWidth: 1, borderLeftColor: colors.border }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${template.name} bearbeiten`}
+                        onPress={() => router.push({ pathname: "/template-editor", params: { editId: template.id } } as any)}
+                        style={({ pressed }) => [{ width: 44, height: 64, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 }]}
+                      >
+                        <MaterialIcons name="edit" size={19} color={colors.muted} />
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${template.name} löschen`}
+                        onPress={() => Alert.alert("Vorlage löschen", `„${template.name}“ endgültig löschen?`, [
+                          { text: "Abbrechen", style: "cancel" },
+                          { text: "Löschen", style: "destructive", onPress: () => void deleteCustomTemplate(template.id) },
+                        ])}
+                        style={({ pressed }) => [{ width: 44, height: 64, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 }]}
+                      >
+                        <MaterialIcons name="delete" size={19} color={colors.error} />
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 6, marginBottom: 8 }]}>Standard-Vorlagen</Text>
           <View style={styles.templateGrid}>
             {PROTOCOL_TEMPLATES.map((template) => {
               const isSelected = settings.templateId === template.id;
               return (
-              <Pressable
-                key={template.id}
-                onPress={() => updateSetting("templateId", template.id)}
-                style={({ pressed }) => [
-                  styles.templateCard,
-                  {
-                    backgroundColor: isSelected
-                      ? colors.primary + "12"
-                      : colors.surface,
-                    borderColor: isSelected
-                      ? colors.primary
-                      : colors.border,
-                    transform: [{ scale: pressed ? 0.97 : 1 }],
-                    ...(isSelected ? {
-                      shadowColor: colors.primary,
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 8,
-                      elevation: 3,
-                    } : {}),
-                  },
-                ]}
-              >
-                <View style={styles.templateIconRow}>
-                  <MaterialIcons
-                    name={template.icon as any}
-                    size={26}
-                    color={isSelected ? colors.primary : colors.muted}
-                  />
-                  {isSelected && (
-                    <MaterialIcons name="check-circle" size={22} color={colors.primary} />
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.templateName,
-                    { color: isSelected ? colors.primary : colors.foreground },
+                <Pressable
+                  key={template.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  accessibilityLabel={`${template.name} als Standard-Vorlage auswählen`}
+                  onPress={() => void selectProtocolTemplate(template)}
+                  style={({ pressed }) => [
+                    styles.templateCard,
+                    {
+                      backgroundColor: isSelected ? colors.primary + "12" : colors.surface,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      opacity: pressed ? 0.68 : 1,
+                    },
                   ]}
-                  numberOfLines={2}
                 >
-                  {template.name}
-                </Text>
-                <Text
-                  style={[styles.templateDescription, { color: colors.muted }]}
-                  numberOfLines={2}
-                >
-                  {template.description}
-                </Text>
-              </Pressable>
+                  <View style={styles.templateIconRow}>
+                    <MaterialIcons name={template.icon as any} size={26} color={isSelected ? colors.primary : colors.muted} />
+                    {isSelected && <MaterialIcons name="check-circle" size={22} color={colors.primary} />}
+                  </View>
+                  <Text style={[styles.templateName, { color: isSelected ? colors.primary : colors.foreground }]} numberOfLines={2}>
+                    {template.name}
+                  </Text>
+                  <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={2}>
+                    {template.description}
+                  </Text>
+                  <Text style={{ color: isSelected ? colors.primary : colors.muted, fontSize: 10, fontWeight: "700", marginTop: 8 }}>
+                    {isSelected ? "AUSGEWÄHLT" : "AUSWÄHLEN"}
+                  </Text>
+                </Pressable>
               );
             })}
           </View>
+        </View>
+
+        {/* Additional protocol tools — deliberately outside all template cards */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Weitere Protokoll-Werkzeuge</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>Vorlagen verwalten und wiederkehrende Abläufe vorbereiten</Text>
+          {[
+            { route: "/template-marketplace", icon: "store", label: "Vorlagenmarktplatz", description: "Vorlagen entdecken und teilen" },
+            { route: "/agenda-preparation", icon: "event-note", label: "Agendavorbereitung", description: "KI-gestützte Meetingagenden erstellen" },
+            { route: "/kanban", icon: "view-kanban", label: "Kanban Board", description: "Aufgaben visuell verwalten" },
+            { route: "/recurring-meetings", icon: "event-repeat", label: "Wiederkehrende Meetings", description: "Protokolle automatisch vorbereiten" },
+          ].map((item) => (
+            <Pressable
+              key={item.route}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              onPress={() => router.push(item.route as any)}
+              style={({ pressed }) => [styles.settingRow, { opacity: pressed ? 0.65 : 1 }]}
+            >
+              <MaterialIcons name={item.icon as any} size={22} color={colors.primary} />
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>{item.label}</Text>
+                <Text style={[styles.settingDesc, { color: colors.muted }]}>{item.description}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            </Pressable>
+          ))}
         </View>
 
         {/* Recipients Section */}

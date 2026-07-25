@@ -15,6 +15,7 @@ export type DiaryEntry = {
   workersOnSite?: number;
   workHours?: { from: string; to: string };
   activities: string[];
+  trades?: string[];
   incidents: string[];
   deliveries: string[];
   notes: string;
@@ -84,6 +85,7 @@ export async function generateDiaryFromProtocols(
     projectId,
     date,
     activities: [],
+    trades: [],
     incidents: [],
     deliveries: [],
     notes: "",
@@ -135,8 +137,14 @@ export function formatDiaryForExport(entry: DiaryEntry): string {
   }
   text += "\n";
 
+  if (entry.trades && entry.trades.length > 0) {
+    text += "GEWERKE:\n";
+    entry.trades.forEach((trade) => { text += `  • ${trade}\n`; });
+    text += "\n";
+  }
+
   if (entry.activities.length > 0) {
-    text += "TÄTIGKEITEN:\n";
+    text += "TÄTIGKEITEN / DETAILS:\n";
     entry.activities.forEach((a) => { text += `  • ${a}\n`; });
     text += "\n";
   }

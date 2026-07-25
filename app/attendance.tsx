@@ -10,13 +10,15 @@ import {
   ScrollView,
   Alert,
   KeyboardAvoidingView,
+  Keyboard,
+  Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
+import { TradePicker } from "@/components/trade-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "@/lib/language-provider";
 
@@ -82,6 +84,7 @@ export default function AttendanceScreen() {
   };
 
   const addWorker = async () => {
+    Keyboard.dismiss();
     if (!workerName.trim()) {
       Alert.alert("Fehler", "Name ist erforderlich");
       return;
@@ -308,6 +311,8 @@ export default function AttendanceScreen() {
               value={workerName}
               onChangeText={setWorkerName}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
 
             <TextInput
@@ -316,14 +321,15 @@ export default function AttendanceScreen() {
               placeholderTextColor={colors.muted}
               value={workerFirma}
               onChangeText={setWorkerFirma}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
 
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Gewerk (z.B. Elektro, Sanitär)"
-              placeholderTextColor={colors.muted}
+            <TradePicker
               value={workerGewerk}
-              onChangeText={setWorkerGewerk}
+              onChange={setWorkerGewerk}
+              placeholder="Gewerk auswählen (optional)"
+              accessibilityLabel="Gewerk der Person auswählen"
             />
 
             <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
@@ -336,6 +342,8 @@ export default function AttendanceScreen() {
                   value={arrivalTime}
                   onChangeText={setArrivalTime}
                   keyboardType="numbers-and-punctuation"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -347,6 +355,8 @@ export default function AttendanceScreen() {
                   value={departureTime}
                   onChangeText={setDepartureTime}
                   keyboardType="numbers-and-punctuation"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
             </View>
@@ -357,11 +367,13 @@ export default function AttendanceScreen() {
               placeholderTextColor={colors.muted}
               value={workerNotes}
               onChangeText={setWorkerNotes}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
 
             <View style={styles.modalButtons}>
               <Pressable
-                onPress={() => setShowAddModal(false)}
+                onPress={() => { Keyboard.dismiss(); setShowAddModal(false); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
                 <Text style={{ fontSize: 15, color: colors.muted }}>Abbrechen</Text>

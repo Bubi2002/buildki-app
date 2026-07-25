@@ -11,6 +11,7 @@ import { progressEngine, type ProgressSnapshot } from "@/lib/progress-engine";
 import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeIcon, getEventTypeColor } from "@/lib/timeline-engine";
 import { getProjectStructure } from "@/lib/room-store";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
+import { filterDashboardItemsByProject, normalizeDashboardProjectId } from "@/lib/dashboard-project-context";
 
 type Project = {
   id: string;
@@ -56,6 +57,27 @@ type LiveStats = {
   recentEvents: TimelineEvent[];
   pendingFollowUps: number;
 };
+
+const createEmptyLiveStats = (): LiveStats => ({
+  totalProjects: 0,
+  totalProtocols: 0,
+  thisWeekProtocols: 0,
+  openDefects: 0,
+  inProgressDefects: 0,
+  overdueDefects: 0,
+  resolvedDefects: 0,
+  totalDefects: 0,
+  highPriorityDefects: 0,
+  overallProgress: 0,
+  progressPhase: "",
+  openTasks: 0,
+  completedTasks: 0,
+  todayAttendance: 0,
+  roomsTotal: 0,
+  roomsCompleted: 0,
+  recentEvents: [],
+  pendingFollowUps: 0,
+});
 
 // ─── Tool Grid ──────────────────────────────────────────────────────────────
 
@@ -105,26 +127,7 @@ export default function AIWorkbenchScreen() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState<LiveStats>({
-    totalProjects: 0,
-    totalProtocols: 0,
-    thisWeekProtocols: 0,
-    openDefects: 0,
-    inProgressDefects: 0,
-    overdueDefects: 0,
-    resolvedDefects: 0,
-    totalDefects: 0,
-    highPriorityDefects: 0,
-    overallProgress: 0,
-    progressPhase: "",
-    openTasks: 0,
-    completedTasks: 0,
-    todayAttendance: 0,
-    roomsTotal: 0,
-    roomsCompleted: 0,
-    recentEvents: [],
-    pendingFollowUps: 0,
-  });
+  const [stats, setStats] = useState<LiveStats>(createEmptyLiveStats);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -146,6 +149,12 @@ export default function AIWorkbenchScreen() {
   }, []);
 
   const loadLiveStats = useCallback(async (projectId?: string) => {
+    const activeProjectId = normalizeDashboardProjectId(projectId);
+    if (!activeProjectId) {
+      setStats(createEmptyLiveStats());
+      return;
+    }
+
     try {
       // 1. Projects
       const projectsData = await AsyncStorage.getItem("projects");
@@ -154,9 +163,7 @@ export default function AIWorkbenchScreen() {
       // 2. Protocols
       const protocolsData = await AsyncStorage.getItem("protocols");
       const allProtocols: Protocol[] = protocolsData ? JSON.parse(protocolsData) : [];
-      const projectProtocols = projectId
-        ? allProtocols.filter(p => p.projectId === projectId)
-        : allProtocols;
+      const projectProtocols = filterDashboardItemsByProject(allProtocols, activeProjectId);
       const now = new Date();
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thisWeek = projectProtocols.filter(p => new Date(p.createdAt) > weekAgo);
@@ -172,7 +179,7 @@ export default function AIWorkbenchScreen() {
       });
 
       // 3. Defects
-      const allDefects = await getDefects(projectId || undefined);
+      const allDefects = await getDefects(activeProjectId);
       const defectStats = getDefectStats(allDefects);
       const overdueDefects = getOverdueDefects(allDefects);
       const highPriority = allDefects.filter(d => d.priority === "hoch" && d.status !== "erledigt" && d.status !== "geschlossen").length;
@@ -181,24 +188,20 @@ export default function AIWorkbenchScreen() {
       // 4. Progress
       let overallProgress = 0;
       let progressPhase = "";
-      if (projectId) {
-        try {
-          const snapshot = await progressEngine.calculateProgress(projectId);
-          overallProgress = snapshot.overallPercent;
-          progressPhase = snapshot.phase;
-        } catch {}
-      }
+      try {
+        const snapshot = await progressEngine.calculateProgress(activeProjectId);
+        overallProgress = snapshot.overallPercent;
+        progressPhase = snapshot.phase;
+      } catch {}
 
       // 5. Rooms
       let roomsTotal = 0;
       let roomsCompleted = 0;
-      if (projectId) {
-        try {
-          const structure = await getProjectStructure(projectId);
-          roomsTotal = structure.rooms.length;
-          roomsCompleted = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
-        } catch {}
-      }
+      try {
+        const structure = await getProjectStructure(activeProjectId);
+        roomsTotal = structure.rooms.length;
+        roomsCompleted = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
+      } catch {}
 
       // 6. Attendance (today)
       let todayAttendance = 0;
@@ -207,7 +210,7 @@ export default function AIWorkbenchScreen() {
         const records: AttendanceRecord[] = attendanceData ? JSON.parse(attendanceData) : [];
         const today = new Date().toISOString().split("T")[0];
         const todayRecords = records.filter(r =>
-          r.date === today && (!projectId || r.projectId === projectId)
+          r.date === today && r.projectId === activeProjectId
         );
         todayAttendance = todayRecords.reduce((sum, r) => sum + (r.workers?.length || 0), 0);
       } catch {}
@@ -216,7 +219,7 @@ export default function AIWorkbenchScreen() {
       let recentEvents: TimelineEvent[] = [];
       try {
         const events = await timelineEngine.query({
-          projectId: projectId || undefined,
+          projectId: activeProjectId,
           limit: 5,
         });
         recentEvents = events;
@@ -329,21 +332,37 @@ export default function AIWorkbenchScreen() {
       >
 
         {/* ─── Project Selector ─────────────────────────────────────────── */}
-        <Pressable
-          onPress={() => setShowProjectPicker(!showProjectPicker)}
-          style={({ pressed }) => [styles.projectSelector, { opacity: pressed ? 0.8 : 1 }]}
-        >
-          <View style={styles.projectSelectorLeft}>
-            <View style={[styles.projectDot, { backgroundColor: selectedProject?.color || '#E53935' }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
-              <Text style={styles.projectSelectorName} numberOfLines={1}>
-                {selectedProject?.name || t('kein_projekt')}
-              </Text>
+        <View style={styles.projectSelector}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Projekt auswählen"
+            onPress={() => setShowProjectPicker(!showProjectPicker)}
+            style={({ pressed }) => [styles.projectSelectorToggle, { opacity: pressed ? 0.8 : 1 }]}
+          >
+            <View style={styles.projectSelectorLeft}>
+              <View style={[styles.projectDot, { backgroundColor: selectedProject?.color || '#E53935' }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
+                <Text style={styles.projectSelectorName} numberOfLines={1}>
+                  {selectedProject?.name || t('kein_projekt')}
+                </Text>
+              </View>
             </View>
-          </View>
-          <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={24} color="#8FA3B8" />
-        </Pressable>
+            <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={24} color="#8FA3B8" />
+          </Pressable>
+          {selectedProject ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Aktives Projekt ${selectedProject.name} löschen`}
+              accessibilityHint="Öffnet eine Sicherheitsabfrage vor dem Löschen"
+              hitSlop={8}
+              onPress={() => confirmDeleteProject(selectedProject)}
+              style={({ pressed }) => [styles.activeProjectDeleteButton, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <MaterialIcons name="delete-outline" size={22} color="#F87171" />
+            </Pressable>
+          ) : null}
+        </View>
 
         {/* Project Picker Dropdown */}
         {showProjectPicker && (
@@ -394,9 +413,10 @@ export default function AIWorkbenchScreen() {
         <View style={styles.statsSection}>
           <Text style={styles.statsSectionTitle}>ÜBERSICHT</Text>
 
-          {/* Progress Bar */}
-          {selectedProject && (
-            <Pressable
+          {selectedProject ? (
+            <>
+              {/* Progress Bar */}
+              <Pressable
               onPress={() => navigateModule("/progress")}
               style={({ pressed }) => [styles.progressCard, { opacity: pressed ? 0.8 : 1 }]}
             >
@@ -413,10 +433,9 @@ export default function AIWorkbenchScreen() {
               {stats.progressPhase ? (
                 <Text style={styles.progressPhase}>Phase: {phaseLabels[stats.progressPhase] || stats.progressPhase}</Text>
               ) : null}
-            </Pressable>
-          )}
+              </Pressable>
 
-          {/* Stats Grid */}
+              {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="warning" size={20} color="#F87171" />
@@ -506,25 +525,35 @@ export default function AIWorkbenchScreen() {
             </View>
           )}
 
-          {/* Tasks Summary */}
-          {(stats.openTasks > 0 || stats.completedTasks > 0) && (
-            <View style={styles.tasksSummary}>
-              <View style={styles.tasksHeader}>
-                <MaterialIcons name="task-alt" size={16} color="#5DADE2" />
-                <Text style={styles.tasksTitle}>Aufgaben</Text>
-              </View>
-              <View style={styles.tasksBar}>
-                <View style={[styles.tasksBarFill, { width: `${stats.openTasks + stats.completedTasks > 0 ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }]} />
-              </View>
-              <Text style={styles.tasksText}>
-                {stats.completedTasks} erledigt / {stats.openTasks} offen
+              {/* Tasks Summary */}
+              {(stats.openTasks > 0 || stats.completedTasks > 0) && (
+                <View style={styles.tasksSummary}>
+                  <View style={styles.tasksHeader}>
+                    <MaterialIcons name="task-alt" size={16} color="#5DADE2" />
+                    <Text style={styles.tasksTitle}>Aufgaben</Text>
+                  </View>
+                  <View style={styles.tasksBar}>
+                    <View style={[styles.tasksBarFill, { width: `${stats.openTasks + stats.completedTasks > 0 ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }]} />
+                  </View>
+                  <Text style={styles.tasksText}>
+                    {stats.completedTasks} erledigt / {stats.openTasks} offen
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.noProjectOverview} accessibilityRole="summary">
+              <MaterialIcons name="folder-off" size={30} color="#8FA3B8" />
+              <Text style={styles.noProjectOverviewTitle}>Keine Projektdaten</Text>
+              <Text style={styles.noProjectOverviewText}>
+                Erstelle oder wähle zuerst ein Projekt. Alte Aufgaben, Mängel und Protokolle werden hier nicht projektübergreifend angezeigt.
               </Text>
             </View>
           )}
         </View>
 
         {/* ─── Recent Activity ────────────────────────────────────────────── */}
-        {stats.recentEvents.length > 0 && (
+        {selectedProject && stats.recentEvents.length > 0 && (
           <View style={styles.activitySection}>
             <View style={styles.activityHeader}>
               <Text style={styles.activityTitle}>LETZTE AKTIVITÄTEN</Text>
@@ -643,15 +672,31 @@ const styles = StyleSheet.create({
   // ─── Project Selector ──────────────────────────────────────────────────────
   projectSelector: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
     marginHorizontal: 16,
     marginTop: 14,
     backgroundColor: '#0F1E30',
     borderWidth: 1,
     borderColor: '#1E3A5F',
     borderRadius: 0,
+    overflow: 'hidden',
+  },
+  projectSelectorToggle: {
+    flex: 1,
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 14,
+  },
+  activeProjectDeleteButton: {
+    width: 52,
+    minHeight: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderLeftWidth: 1,
+    borderLeftColor: '#1E3A5F',
+    backgroundColor: '#F871710D',
   },
   projectSelectorLeft: {
     flexDirection: 'row',
@@ -743,6 +788,28 @@ const styles = StyleSheet.create({
     color: '#8FA3B8',
     letterSpacing: 1.5,
     marginBottom: 12,
+  },
+  noProjectOverview: {
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 0,
+    paddingVertical: 28,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    gap: 8,
+  },
+  noProjectOverviewTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F0F4F8',
+  },
+  noProjectOverviewText: {
+    maxWidth: 310,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#8FA3B8',
+    textAlign: 'center',
   },
   // Progress Card
   progressCard: {

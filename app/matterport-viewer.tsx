@@ -30,6 +30,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { WebView } from "react-native-webview";
 import { ScreenContainer } from "@/components/screen-container";
+import { TradePicker } from "@/components/trade-picker";
 import { useColors } from "@/hooks/use-colors";
 import { getProjectStructure, addFloor, addRoom } from "@/lib/room-store";
 import { trpc } from "@/lib/trpc";
@@ -898,17 +899,12 @@ export default function MatterportViewerScreen() {
               {(newPinType === "defect" || newPinType === "task") && (
                 <View style={{ marginBottom: 12 }}>
                   <Text style={[styles.sectionLabel, { color: colors.muted }]}>Gewerk</Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                    {["Elektro", "Sanitär", "Heizung/Klima", "Rohbau", "Trockenbau", "Maler/Lackierer", "Bodenbelag", "Fliesen", "Fenster/Türen", "Dach/Fassade", "Aufzug", "Sonstiges"].map((g) => (
-                      <Pressable
-                        key={g}
-                        onPress={() => setNewPinGewerk(newPinGewerk === g ? "" : g)}
-                        style={[styles.chipBtn, { borderColor: newPinGewerk === g ? "#00B0FF" : colors.border, backgroundColor: newPinGewerk === g ? "#00B0FF15" : colors.surface }]}
-                      >
-                        <Text style={{ fontSize: 12, color: newPinGewerk === g ? "#00B0FF" : colors.muted }}>{g}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
+                  <TradePicker
+                    value={newPinGewerk}
+                    onChange={setNewPinGewerk}
+                    placeholder="Gewerk auswählen (optional)"
+                    accessibilityLabel="Gewerk für den Matterport-Pin auswählen"
+                  />
                 </View>
               )}
             </ScrollView>

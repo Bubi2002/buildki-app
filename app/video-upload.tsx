@@ -8,7 +8,7 @@
  * 4. Dokumenttyp-Wahl nach Transkription
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -38,6 +38,7 @@ import {
   estimateDecodedBase64Bytes,
   validateVideoSizeBytes,
 } from "@/lib/video-upload-validation";
+import { createAsyncInvocationGuard } from "@/lib/async-invocation-guard";
 
 type VideoFile = {
   uri: string;
@@ -98,6 +99,8 @@ export default function VideoUploadScreen() {
   const [errorMessage, setErrorMessage] = useState("");
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
   const [completedCount, setCompletedCount] = useState(0);
+  const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
+  const filePickerGuard = useRef(createAsyncInvocationGuard());
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
@@ -197,11 +200,21 @@ export default function VideoUploadScreen() {
 
   const pickFromFiles = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["video/*", "audio/*"],
-        copyToCacheDirectory: true,
-        multiple: true,
+      const invocation = await filePickerGuard.current.run(async () => {
+        setIsFilePickerOpen(true);
+        try {
+          return await DocumentPicker.getDocumentAsync({
+            type: ["video/*", "audio/*"],
+            copyToCacheDirectory: true,
+            multiple: true,
+          });
+        } finally {
+          setIsFilePickerOpen(false);
+        }
       });
+
+      if (!invocation.started) return;
+      const result = invocation.value;
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newItems: QueueItem[] = [];
         for (const asset of result.assets) {
@@ -505,13 +518,28 @@ export default function VideoUploadScreen() {
                 <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
               </Pressable>
 
-              <Pressable onPress={pickFromFiles} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
+              <Pressable
+                onPress={pickFromFiles}
+                disabled={isFilePickerOpen}
+                accessibilityState={{ disabled: isFilePickerOpen, busy: isFilePickerOpen }}
+                style={({ pressed }) => [
+                  styles.pickButton,
+                  isFilePickerOpen && styles.pickButtonBusy,
+                  { opacity: pressed && !isFilePickerOpen ? 0.8 : 1 },
+                ]}
+              >
                 <MaterialIcons name="folder-open" size={28} color="#FF9800" />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pickButtonTitle}>Dateien / Downloads</Text>
-                  <Text style={styles.pickButtonHint}>E-Mail-Anhänge, Dropbox, Downloads</Text>
+                  <Text style={styles.pickButtonHint}>
+                    {isFilePickerOpen ? "Dateiauswahl ist bereits geöffnet" : "E-Mail-Anhänge, Dropbox, Downloads"}
+                  </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                {isFilePickerOpen ? (
+                  <ActivityIndicator size="small" color="#FF9800" />
+                ) : (
+                  <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                )}
               </Pressable>
 
               <Pressable onPress={recordWithCamera} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
@@ -709,6 +737,7 @@ const styles = StyleSheet.create({
   introText: { fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 320 },
   pickSection: { gap: 12 },
   pickButton: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F1E30" },
+  pickButtonBusy: { opacity: 0.65 },
   pickButtonTitle: { fontSize: 15, fontWeight: "700", color: "#F0F4F8" },
   pickButtonHint: { fontSize: 12, color: "#8FA3B8", marginTop: 2 },
   sectionLabel: { fontSize: 12, fontWeight: "700", color: "#8FA3B8", letterSpacing: 1.2, marginBottom: 12 },

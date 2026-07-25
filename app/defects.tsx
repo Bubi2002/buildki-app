@@ -10,6 +10,7 @@ import {
   TextInput,
   ScrollView,
   Image,
+  KeyboardAvoidingView,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -39,6 +40,7 @@ import {
 } from "@/lib/defect-store";
 import { requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
 import { SignaturePad } from "@/components/signature-pad";
+import { TradePicker } from "@/components/trade-picker";
 import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getProjectStructure, getFloors, getAllRooms, type Floor, type Room } from "@/lib/room-store";
 import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
@@ -68,6 +70,7 @@ export default function DefectsScreen() {
   const [newAssignee, setNewAssignee] = useState<string>("");
   const [newFloorId, setNewFloorId] = useState<string>("");
   const [newRoomId, setNewRoomId] = useState<string>("");
+  const [newPhotos, setNewPhotos] = useState<string[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [gewerkFilter, setGewerkFilter] = useState<string>("alle");
@@ -107,6 +110,44 @@ export default function DefectsScreen() {
   });
   const stats = getDefectStats(defects);
 
+  const addNewDefectCameraPhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(t('alert_berechtigung'), t('msg_kamerazugriff_wird_benu00f6tigt'));
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setNewPhotos((photos) => [...photos, result.assets[0].uri]);
+    }
+  };
+
+  const addNewDefectLibraryPhotos = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(t('alert_berechtigung'), "Zugriff auf die Fotomediathek wird benötigt.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsMultipleSelection: true,
+      selectionLimit: 5,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      setNewPhotos((photos) => [...photos, ...result.assets.map((asset) => asset.uri)]);
+    }
+  };
+
+  const removeNewDefectPhoto = (index: number) => {
+    setNewPhotos((photos) => photos.filter((_, photoIndex) => photoIndex !== index));
+  };
+
   const createDefect = async () => {
     if (!newTitle.trim()) return;
 
@@ -118,7 +159,7 @@ export default function DefectsScreen() {
       status: "offen",
       priority: newPriority,
       category: newCategory,
-      photos: [],
+      photos: [...newPhotos],
       location: newLocation.trim() || undefined,
       floor: newFloorId ? floors.find(f => f.id === newFloorId)?.name : undefined,
       room: newRoomId ? rooms.find(r => r.id === newRoomId)?.name : undefined,
@@ -139,6 +180,9 @@ export default function DefectsScreen() {
     }
     await saveDefect(defect);
     await recordDefectCreated(defect.id);
+    for (let photoIndex = 0; photoIndex < newPhotos.length; photoIndex += 1) {
+      await recordPhotoAdded(defect.id);
+    }
     setDefects([defect, ...defects]);
     setShowCreateModal(false);
     setNewTitle("");
@@ -149,6 +193,7 @@ export default function DefectsScreen() {
     setNewAssignee("");
     setNewFloorId("");
     setNewRoomId("");
+    setNewPhotos([]);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -736,8 +781,20 @@ export default function DefectsScreen() {
       {/* Create Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neuen_mangel_erfassen')}</Text>
+          <KeyboardAvoidingView
+            style={styles.createKeyboardAvoider}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+          >
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <ScrollView
+                style={styles.createFormScroll}
+                contentContainerStyle={styles.createFormContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+                showsVerticalScrollIndicator
+              >
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neuen_mangel_erfassen')}</Text>
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
@@ -747,17 +804,57 @@ export default function DefectsScreen() {
               onChangeText={setNewTitle}
             />
 
-            <TextInput
-              style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder={t('project_description')}
-              placeholderTextColor={colors.muted}
-              value={newDescription}
-              onChangeText={setNewDescription}
-              multiline
-              numberOfLines={3}
-            />
+                <TextInput
+                  style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                  placeholder={t('project_description')}
+                  placeholderTextColor={colors.muted}
+                  value={newDescription}
+                  onChangeText={setNewDescription}
+                  multiline
+                  numberOfLines={3}
+                />
 
-            {/* Geschoss / Raum Picker */}
+                {/* Fotos direkt beim Erfassen */}
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Fotos ({newPhotos.length})</Text>
+                {newPhotos.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.newPhotoPreviewScroll}>
+                    {newPhotos.map((photo, index) => (
+                      <View key={`${photo}-${index}`} style={styles.newPhotoPreviewItem}>
+                        <Image source={{ uri: photo }} style={styles.newPhotoPreviewImage} />
+                        <Pressable
+                          onPress={() => removeNewDefectPhoto(index)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Foto ${index + 1} entfernen`}
+                          style={({ pressed }) => [styles.newPhotoRemoveButton, pressed && { opacity: 0.7 }]}
+                        >
+                          <MaterialIcons name="close" size={16} color="#FFFFFF" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+                <View style={styles.newPhotoActions}>
+                  <Pressable
+                    onPress={addNewDefectCameraPhoto}
+                    accessibilityRole="button"
+                    accessibilityLabel="Foto mit der Kamera aufnehmen"
+                    style={({ pressed }) => [styles.newPhotoActionButton, { borderColor: colors.primary }, pressed && { opacity: 0.7 }]}
+                  >
+                    <MaterialIcons name="camera-alt" size={20} color={colors.primary} />
+                    <Text style={[styles.newPhotoActionText, { color: colors.primary }]}>Kamera</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={addNewDefectLibraryPhotos}
+                    accessibilityRole="button"
+                    accessibilityLabel="Fotos aus der Galerie auswählen"
+                    style={({ pressed }) => [styles.newPhotoActionButton, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+                  >
+                    <MaterialIcons name="photo-library" size={20} color={colors.muted} />
+                    <Text style={[styles.newPhotoActionText, { color: colors.muted }]}>Galerie</Text>
+                  </Pressable>
+                </View>
+
+                {/* Geschoss / Raum Picker */}
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>Geschoss</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {floors.length > 0 ? floors.sort((a,b) => a.number - b.number).map((f) => (
@@ -830,23 +927,12 @@ export default function DefectsScreen() {
 
             {/* Gewerk */}
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('gewerk')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-              {GEWERKE.map((g) => (
-                <Pressable
-                  key={g}
-                  onPress={() => setNewGewerk(g)}
-                  style={[
-                    styles.categoryBtn,
-                    { borderColor: newGewerk === g ? colors.primary : colors.border },
-                    newGewerk === g && { backgroundColor: colors.primary + "15" },
-                  ]}
-                >
-                  <Text style={[styles.categoryText, { color: newGewerk === g ? colors.primary : colors.muted }]}>
-                    {g}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <TradePicker
+              value={newGewerk}
+              onChange={setNewGewerk}
+              allowEmpty={false}
+              accessibilityLabel="Gewerk für den neuen Mangel auswählen"
+            />
 
             {/* Category */}
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('kategorie')}</Text>
@@ -909,7 +995,17 @@ export default function DefectsScreen() {
 
             <View style={styles.modalButtons}>
               <Pressable
-                onPress={() => { setShowCreateModal(false); setNewTitle(""); setNewDescription(""); setNewLocation(""); }}
+                onPress={() => {
+                  setShowCreateModal(false);
+                  setNewTitle("");
+                  setNewDescription("");
+                  setNewLocation("");
+                  setNewPhotos([]);
+                  setNewDueDate("");
+                  setNewAssignee("");
+                  setNewFloorId("");
+                  setNewRoomId("");
+                }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
                 <Text style={[styles.cancelBtnText, { color: colors.muted }]}>{t('cancel')}</Text>
@@ -920,8 +1016,10 @@ export default function DefectsScreen() {
               >
                 <Text style={styles.saveBtnText}>{t('erstellen')}</Text>
               </Pressable>
+              </View>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </ScreenContainer>
@@ -951,7 +1049,17 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "85%" },
+  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 24, maxHeight: "92%" },
+  createKeyboardAvoider: { flex: 1, justifyContent: "flex-end" },
+  createFormScroll: { flexGrow: 0 },
+  createFormContent: { paddingBottom: 20 },
+  newPhotoPreviewScroll: { marginBottom: 12, maxHeight: 96 },
+  newPhotoPreviewItem: { width: 88, height: 88, marginRight: 10, position: "relative" },
+  newPhotoPreviewImage: { width: 88, height: 88, borderRadius: 0 },
+  newPhotoRemoveButton: { position: "absolute", top: 4, right: 4, width: 26, height: 26, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(198,40,40,0.92)" },
+  newPhotoActions: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  newPhotoActionButton: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderRadius: 0 },
+  newPhotoActionText: { fontSize: 14, fontWeight: "700" },
   modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   input: { borderWidth: 1, borderRadius: 0, padding: 12, fontSize: 15, marginBottom: 12 },
   textArea: { minHeight: 80, textAlignVertical: "top" },

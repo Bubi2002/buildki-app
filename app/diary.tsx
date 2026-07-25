@@ -9,14 +9,18 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  InputAccessoryView,
+  Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
+import { TradePicker } from "@/components/trade-picker";
 import {
   DiaryEntry,
   getDiaryEntries,
@@ -24,6 +28,8 @@ import {
   deleteDiaryEntry,
   formatDiaryForExport,
 } from "@/lib/diary-store";
+
+const DIARY_INPUT_ACCESSORY_ID = "diary-input-accessory";
 
 export default function DiaryScreen() {
   const { t } = useTranslation();
@@ -40,6 +46,8 @@ export default function DiaryScreen() {
   const [workers, setWorkers] = useState("");
   const [workFrom, setWorkFrom] = useState("07:00");
   const [workTo, setWorkTo] = useState("16:00");
+  const [selectedTrades, setSelectedTrades] = useState<string[]>([]);
+  const [tradeToAdd, setTradeToAdd] = useState("");
   const [activities, setActivities] = useState("");
   const [deliveries, setDeliveries] = useState("");
   const [incidents, setIncidents] = useState("");
@@ -59,13 +67,15 @@ export default function DiaryScreen() {
   const today = new Date().toISOString().split("T")[0];
 
   const createEntry = async () => {
+    Keyboard.dismiss();
     const entry: DiaryEntry = {
       id: `diary-${projectId}-${today}-${Date.now()}`,
       projectId,
       date: today,
       workersOnSite: workers ? parseInt(workers) : undefined,
       workHours: { from: workFrom, to: workTo },
-      activities: activities.split("\n").filter((a) => a.trim()),
+      trades: [...selectedTrades],
+      activities: activities.split("\n").map((activity) => activity.trim()).filter(Boolean),
       deliveries: deliveries.split("\n").filter((d) => d.trim()),
       incidents: incidents.split("\n").filter((i) => i.trim()),
       notes: notes.trim(),
@@ -87,10 +97,23 @@ export default function DiaryScreen() {
     setWorkers("");
     setWorkFrom("07:00");
     setWorkTo("16:00");
+    setSelectedTrades([]);
+    setTradeToAdd("");
     setActivities("");
     setDeliveries("");
     setIncidents("");
     setNotes("");
+  };
+
+  const addSelectedTrade = (trade: string) => {
+    setTradeToAdd("");
+    Keyboard.dismiss();
+    if (!trade) return;
+    setSelectedTrades((current) => current.includes(trade) ? current : [...current, trade]);
+  };
+
+  const removeSelectedTrade = (trade: string) => {
+    setSelectedTrades((current) => current.filter((item) => item !== trade));
   };
 
   const removeEntry = (entryId: string) => {
@@ -156,13 +179,13 @@ export default function DiaryScreen() {
         )}
         <View style={styles.entryStat}>
           <MaterialIcons name="list" size={14} color={colors.muted} />
-          <Text style={[styles.entryStatText, { color: colors.muted }]}>{item.activities.length} Tätigkeiten</Text>
+          <Text style={[styles.entryStatText, { color: colors.muted }]}>{item.trades?.length || item.activities.length} Gewerke</Text>
         </View>
       </View>
 
-      {item.activities.length > 0 && (
+      {((item.trades?.length || 0) > 0 || item.activities.length > 0) && (
         <Text style={[styles.activityPreview, { color: colors.foreground }]} numberOfLines={2}>
-          {item.activities.slice(0, 2).join(" • ")}
+          {[...(item.trades || []), ...item.activities].slice(0, 3).join(" • ")}
         </Text>
       )}
     </Pressable>
@@ -237,9 +260,18 @@ export default function DiaryScreen() {
                     </Text>
                   )}
 
+                  {selectedEntry.trades && selectedEntry.trades.length > 0 && (
+                    <View style={styles.detailBlock}>
+                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>Gewerke</Text>
+                      {selectedEntry.trades.map((trade) => (
+                        <Text key={trade} style={[styles.detailItem, { color: colors.muted }]}>• {trade}</Text>
+                      ))}
+                    </View>
+                  )}
+
                   {selectedEntry.activities.length > 0 && (
                     <View style={styles.detailBlock}>
-                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>{t('taetigkeiten')}</Text>
+                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>Tätigkeitsdetails</Text>
                       {selectedEntry.activities.map((a, i) => (
                         <Text key={i} style={[styles.detailItem, { color: colors.muted }]}>• {a}</Text>
                       ))}
@@ -285,8 +317,20 @@ export default function DiaryScreen() {
 
       {/* Create Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <ScrollView style={[styles.modalContent, { backgroundColor: colors.surface }]} contentContainerStyle={{ paddingBottom: 40 }}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <ScrollView
+              style={styles.createScroll}
+              contentContainerStyle={styles.createScrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+              onScrollBeginDrag={Keyboard.dismiss}
+              showsVerticalScrollIndicator
+            >
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neuer_tagebucheintrag')}</Text>
             <Text style={[styles.modalSubtitle, { color: colors.muted }]}>{formatDate(today)}</Text>
 
@@ -300,6 +344,9 @@ export default function DiaryScreen() {
                   value={workers}
                   onChangeText={setWorkers}
                   keyboardType="numeric"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
                 />
               </View>
               <View style={styles.formHalf}>
@@ -311,6 +358,9 @@ export default function DiaryScreen() {
                     onChangeText={setWorkFrom}
                     placeholder="07:00"
                     placeholderTextColor={colors.muted}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
+                    inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
                   />
                   <Text style={[{ color: colors.muted }]}>–</Text>
                   <TextInput
@@ -319,20 +369,53 @@ export default function DiaryScreen() {
                     onChangeText={setWorkTo}
                     placeholder="16:00"
                     placeholderTextColor={colors.muted}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
+                    inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
                   />
                 </View>
               </View>
             </View>
 
-            <Text style={[styles.formLabel, { color: colors.muted }]}>{t('taetigkeiten_eine_pro_zeile')}</Text>
+            <Text style={[styles.formLabel, { color: colors.muted }]}>Gewerke</Text>
+            <TradePicker
+              value={tradeToAdd}
+              onChange={addSelectedTrade}
+              placeholder="Gewerk hinzufügen"
+              allowEmpty={false}
+              accessibilityLabel="Gewerk zum Tagebuch hinzufügen"
+            />
+            {selectedTrades.length > 0 && (
+              <FlatList
+                horizontal
+                data={selectedTrades}
+                keyExtractor={(item) => item}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.selectedTrades}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => removeSelectedTrade(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item} entfernen`}
+                    style={[styles.selectedTradeChip, { borderColor: colors.primary, backgroundColor: colors.primary + "12" }]}
+                  >
+                    <Text style={[styles.selectedTradeText, { color: colors.primary }]}>{item}</Text>
+                    <MaterialIcons name="close" size={16} color={colors.primary} />
+                  </Pressable>
+                )}
+              />
+            )}
+
+            <Text style={[styles.formLabel, { color: colors.muted }]}>Tätigkeitsdetails (optional, eine pro Zeile)</Text>
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="z.B. Estrich EG verlegt&#10;Elektro OG verkabelt"
+              placeholder="z.B. Obergeschoss nivelliert"
               placeholderTextColor={colors.muted}
               value={activities}
               onChangeText={setActivities}
               multiline
-              numberOfLines={4}
+              numberOfLines={3}
+              inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
             />
 
             <Text style={[styles.formLabel, { color: colors.muted }]}>{t('lieferungen_eine_pro_zeile')}</Text>
@@ -344,6 +427,7 @@ export default function DiaryScreen() {
               onChangeText={setDeliveries}
               multiline
               numberOfLines={3}
+              inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
             />
 
             <Text style={[styles.formLabel, { color: colors.muted }]}>{t('vorkommnisse')}</Text>
@@ -355,6 +439,7 @@ export default function DiaryScreen() {
               onChangeText={setIncidents}
               multiline
               numberOfLines={2}
+              inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
             />
 
             <Text style={[styles.formLabel, { color: colors.muted }]}>{t('bemerkungen')}</Text>
@@ -366,11 +451,12 @@ export default function DiaryScreen() {
               onChangeText={setNotes}
               multiline
               numberOfLines={2}
+              inputAccessoryViewID={Platform.OS === "ios" ? DIARY_INPUT_ACCESSORY_ID : undefined}
             />
 
             <View style={styles.modalButtons}>
               <Pressable
-                onPress={() => { setShowCreateModal(false); resetForm(); }}
+                onPress={() => { Keyboard.dismiss(); setShowCreateModal(false); resetForm(); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
                 <Text style={[styles.cancelBtnText, { color: colors.muted }]}>{t('cancel')}</Text>
@@ -382,9 +468,20 @@ export default function DiaryScreen() {
                 <Text style={styles.saveBtnText}>{t('save')}</Text>
               </Pressable>
             </View>
-          </ScrollView>
-        </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {Platform.OS === "ios" && (
+        <InputAccessoryView nativeID={DIARY_INPUT_ACCESSORY_ID}>
+          <View style={[styles.keyboardAccessory, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Pressable onPress={Keyboard.dismiss} accessibilityRole="button" accessibilityLabel="Tastatur schließen" style={styles.keyboardDoneButton}>
+              <Text style={[styles.keyboardDoneText, { color: colors.primary }]}>Fertig</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
     </ScreenContainer>
   );
 }
@@ -415,6 +512,8 @@ const styles = StyleSheet.create({
   emptySubtext: { fontSize: 13, textAlign: "center", paddingHorizontal: 32 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "90%" },
+  createScroll: { flexGrow: 0 },
+  createScrollContent: { paddingBottom: 56 },
   modalTitle: { fontSize: 18, fontWeight: "700" },
   modalSubtitle: { fontSize: 14, marginTop: 4, marginBottom: 16 },
   detailSection: { fontSize: 14, marginTop: 8 },
@@ -426,6 +525,9 @@ const styles = StyleSheet.create({
   formRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
   formHalf: { flex: 1 },
   formLabel: { fontSize: 13, fontWeight: "500", marginBottom: 6, marginTop: 8 },
+  selectedTrades: { gap: 8, paddingBottom: 4 },
+  selectedTradeChip: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 0, paddingHorizontal: 12 },
+  selectedTradeText: { fontSize: 13, fontWeight: "700" },
   input: { borderWidth: 1, borderRadius: 0, padding: 12, fontSize: 15, marginBottom: 8 },
   textArea: { minHeight: 70, textAlignVertical: "top" },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -435,4 +537,7 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontSize: 15, fontWeight: "600" },
   saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, alignItems: "center" },
   saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  keyboardAccessory: { minHeight: 44, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", borderTopWidth: 1, paddingHorizontal: 12 },
+  keyboardDoneButton: { minWidth: 72, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  keyboardDoneText: { fontSize: 16, fontWeight: "800" },
 });

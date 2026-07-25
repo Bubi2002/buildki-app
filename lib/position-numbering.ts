@@ -11,28 +11,12 @@
  * und bei neuen Einträgen korrekt fortgeführt.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { TRADES, getTradeName, getTradeNumber } from "./trades";
 
 const NUMBERING_KEY = "position_numbering";
 
 // ─── Gewerke mit fester Nummerierung ─────────────────────────────────────────
-export const GEWERKE_NUMBERED = [
-  { nr: 1, name: "Trockenbau" },
-  { nr: 2, name: "Fliesen" },
-  { nr: 3, name: "Elektro" },
-  { nr: 4, name: "Sanitär" },
-  { nr: 5, name: "Heizung/Klima" },
-  { nr: 6, name: "Maler/Lackierer" },
-  { nr: 7, name: "Bodenbelag" },
-  { nr: 8, name: "Rohbau" },
-  { nr: 9, name: "Dachdecker" },
-  { nr: 10, name: "Fenster/Türen" },
-  { nr: 11, name: "Schlosser/Metallbau" },
-  { nr: 12, name: "Garten/Außenanlage" },
-  { nr: 13, name: "Aufzug" },
-  { nr: 14, name: "Brandschutz" },
-  { nr: 15, name: "Schreiner" },
-  { nr: 16, name: "Sonstiges" },
-] as const;
+export const GEWERKE_NUMBERED = TRADES;
 
 // ─── Geschoss-Nummerierung ───────────────────────────────────────────────────
 // Geschoss-Nummer wird aus dem Floor.number-Feld berechnet:
@@ -69,18 +53,14 @@ async function saveCounterState(state: PositionCounter): Promise<void> {
  * Returns the number (1-16) or 16 (Sonstiges) if not found.
  */
 export function getGewerkNummer(gewerkName: string): number {
-  const found = GEWERKE_NUMBERED.find(
-    (g) => g.name.toLowerCase() === gewerkName.toLowerCase()
-  );
-  return found?.nr ?? 16;
+  return getTradeNumber(gewerkName);
 }
 
 /**
  * Get Gewerk name by number.
  */
 export function getGewerkByNummer(nr: number): string {
-  const found = GEWERKE_NUMBERED.find((g) => g.nr === nr);
-  return found?.name ?? "Sonstiges";
+  return getTradeName(nr);
 }
 
 /**

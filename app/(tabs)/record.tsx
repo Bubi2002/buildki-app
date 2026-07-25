@@ -1972,7 +1972,7 @@ export default function RecordScreen() {
             mode="picture"
             zoom={cameraZoom}
             flash={flashMode}
-            enableTorch={flashMode === "on"}
+            enableTorch={cameraFacing === "back" && flashMode === "on"}
             active={isFocused}
             onCameraReady={() => setCameraReady(true)}
             onMountError={(e) => console.warn("Camera mount error:", e?.message)}
@@ -1983,7 +1983,7 @@ export default function RecordScreen() {
       <View style={[styles.overlayContainer, { pointerEvents: "box-none", paddingTop: insets.top }]}>
         {/* Active Project Header (top of camera) */}
         {selectedProject && (
-          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 0, gap: 8, backgroundColor: "rgba(0,0,0,0.5)", alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}>
+          <Pressable onPress={changeProject} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, margin: 12, marginTop: 4, borderRadius: 0, gap: 8, backgroundColor: "rgba(0,0,0,0.5)", alignSelf: "flex-start", maxWidth: "58%", opacity: pressed ? 0.7 : 1 }]}>
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: selectedProject.color, borderWidth: 1, borderColor: "rgba(255,255,255,0.5)" }} />
             <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFFFFF" }}>{selectedProject.name}</Text>
             <MaterialIcons name="swap-horiz" size={14} color="rgba(255,255,255,0.7)" />
@@ -1996,63 +1996,108 @@ export default function RecordScreen() {
           </Pressable>
         )}
 
-        {/* Camera controls - top right */}
-        <View style={{ position: "absolute", top: 12, right: 16, flexDirection: "row", gap: 8 }}>
-          {/* Timer button */}
+        {/* Camera controls - safe-area aware and never hidden behind the Dynamic Island */}
+        <View style={{ position: "absolute", top: insets.top + 8, right: 16, width: 104, gap: 8 }}>
+          <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
+            {/* Camera flip */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Kamera wechseln"
+              onPress={() => {
+                setCameraFacing((previous) => {
+                  const next = previous === "back" ? "front" : "back";
+                  if (next === "front") setFlashMode("off");
+                  return next;
+                });
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }}
+              style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="flip-camera-ios" size={22} color="#FFFFFF" />
+            </Pressable>
+            {/* Grid toggle */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={showGrid ? "Kameraraster ausschalten" : "Kameraraster einschalten"}
+              onPress={() => {
+                setShowGrid(previous => !previous);
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="grid-on" size={22} color={showGrid ? "#FFD700" : "rgba(255,255,255,0.65)"} />
+            </Pressable>
+          </View>
+
+          {/* Photo flash / continuous light. One tap from AUTO enables the torch. */}
           <Pressable
-            onPress={() => {
-              const timers: Array<0 | 3 | 5 | 10> = [0, 3, 5, 10];
-              const idx = timers.indexOf(photoTimer);
-              setPhotoTimer(timers[(idx + 1) % 4]);
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <View style={{ alignItems: "center" }}>
-              <MaterialIcons name="timer" size={22} color={photoTimer > 0 ? "#FFD700" : "rgba(255,255,255,0.5)"} />
-              {photoTimer > 0 && <Text style={{ fontSize: 9, color: "#FFD700", fontWeight: "700", marginTop: -2 }}>{photoTimer}s</Text>}
-            </View>
-          </Pressable>
-          {/* Flash toggle */}
-          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={flashMode === "on" ? "Dauerlicht eingeschaltet" : flashMode === "auto" ? "Fotoblitz automatisch, Dauerlicht einschalten" : "Dauerlicht ausgeschaltet"}
+            accessibilityHint="Wechselt zwischen Automatik, Dauerlicht und Aus"
+            disabled={cameraFacing === "front"}
             onPress={() => {
               const modes: Array<"auto" | "on" | "off"> = ["auto", "on", "off"];
-              const idx = modes.indexOf(flashMode);
-              setFlashMode(modes[(idx + 1) % 3]);
+              const index = modes.indexOf(flashMode);
+              setFlashMode(modes[(index + 1) % modes.length]);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{
+              minHeight: 44,
+              paddingHorizontal: 8,
+              paddingVertical: 8,
+              borderRadius: 0,
+              borderWidth: 1,
+              borderColor: flashMode === "on" ? "#FFD700" : "rgba(255,255,255,0.25)",
+              backgroundColor: flashMode === "on" ? "rgba(255,215,0,0.24)" : "rgba(0,0,0,0.62)",
+              opacity: cameraFacing === "front" ? 0.42 : pressed ? 0.7 : 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }]}
           >
             <MaterialIcons
-              name={flashMode === "on" ? "flash-on" : flashMode === "auto" ? "flash-auto" : "flash-off"}
-              size={22}
-              color={flashMode === "off" ? "rgba(255,255,255,0.5)" : "#FFD700"}
+              name={flashMode === "on" ? "flashlight-on" : flashMode === "auto" ? "flash-auto" : "flash-off"}
+              size={20}
+              color={flashMode === "off" || cameraFacing === "front" ? "rgba(255,255,255,0.65)" : "#FFD700"}
             />
+            <Text style={{ color: flashMode === "on" ? "#FFD700" : "#FFFFFF", fontSize: 10, fontWeight: "800" }}>
+              {cameraFacing === "front" ? "NICHT VERFÜGBAR" : flashMode === "on" ? "LICHT EIN" : flashMode === "auto" ? "AUTO" : "LICHT AUS"}
+            </Text>
           </Pressable>
-          {/* Camera flip */}
+
+          {/* Photo timer */}
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={photoTimer > 0 ? `Fototimer ${photoTimer} Sekunden` : "Fototimer aus"}
             onPress={() => {
-              setCameraFacing(prev => prev === "back" ? "front" : "back");
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="flip-camera-ios" size={22} color="#FFFFFF" />
-          </Pressable>
-          {/* Grid toggle */}
-          <Pressable
-            onPress={() => {
-              setShowGrid(prev => !prev);
+              const timers: Array<0 | 3 | 5 | 10> = [0, 3, 5, 10];
+              const index = timers.indexOf(photoTimer);
+              setPhotoTimer(timers[(index + 1) % timers.length]);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
-            style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 0, padding: 10, opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{
+              minHeight: 40,
+              paddingHorizontal: 8,
+              paddingVertical: 7,
+              borderRadius: 0,
+              backgroundColor: "rgba(0,0,0,0.62)",
+              opacity: pressed ? 0.7 : 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }]}
           >
-            <MaterialIcons name="grid-on" size={22} color={showGrid ? "#FFD700" : "rgba(255,255,255,0.5)"} />
+            <MaterialIcons name="timer" size={18} color={photoTimer > 0 ? "#FFD700" : "rgba(255,255,255,0.65)"} />
+            <Text style={{ fontSize: 10, color: photoTimer > 0 ? "#FFD700" : "#FFFFFF", fontWeight: "800" }}>
+              {photoTimer > 0 ? `${photoTimer} SEK.` : "TIMER AUS"}
+            </Text>
           </Pressable>
         </View>
 
         {/* Zoom slider - always visible */}
-        <View style={{ position: "absolute", right: 16, top: 60, bottom: 200, justifyContent: "center", alignItems: "center" }}>
+        <View style={{ position: "absolute", right: 16, top: insets.top + 176, bottom: 200, justifyContent: "center", alignItems: "center" }}>
           <View style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 0, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", gap: 4 }}>
             <Pressable onPress={() => setCameraZoom(Math.min(1, cameraZoom + 0.05))} style={({ pressed }) => [{ padding: 4, opacity: pressed ? 0.5 : 1 }]}>
               <MaterialIcons name="add" size={18} color="#FFFFFF" />

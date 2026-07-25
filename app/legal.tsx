@@ -123,25 +123,48 @@ export default function LegalScreen() {
         <Text className="text-lg font-bold text-foreground ml-4">Rechtliches</Text>
       </View>
 
-      {/* Tab Navigation */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="border-b border-border">
-        <View className="flex-row px-2 py-2 gap-1">
-          {sections.map((s) => (
+      {/* Compact tab navigation — content height must never stretch with the screen */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, maxHeight: 54, borderBottomWidth: 1, borderBottomColor: "#223A55" }}
+        contentContainerStyle={{ minHeight: 53, paddingHorizontal: 8, paddingVertical: 5, gap: 6, alignItems: "center" }}
+      >
+        {sections.map((section) => {
+          const isActive = activeSection === section.key;
+          return (
             <TouchableOpacity
-              key={s.key}
-              onPress={() => setActiveSection(s.key)}
-              className={`px-3 py-2 rounded-lg ${activeSection === s.key ? "bg-primary" : "bg-surface"}`}
+              key={section.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={section.title}
+              onPress={() => setActiveSection(section.key)}
+              activeOpacity={0.65}
+              style={{
+                height: 42,
+                paddingHorizontal: 14,
+                borderRadius: 0,
+                borderWidth: 1,
+                borderColor: isActive ? "#5BA7D9" : "#223A55",
+                backgroundColor: isActive ? "#5BA7D9" : "#12233D",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Text className={`text-sm font-medium ${activeSection === s.key ? "text-background" : "text-foreground"}`}>
-                {s.title}
+              <Text style={{ color: isActive ? "#06111D" : "#F4F7FA", fontSize: 13, fontWeight: "700" }}>
+                {section.title}
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          );
+        })}
       </ScrollView>
 
-      {/* Content */}
-      <ScrollView className="flex-1 px-4 py-4">
+      {/* Only the legal text scrolls vertically */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
         {activeSection === "datenschutz" && <DatenschutzContent />}
         {activeSection === "impressum" && <ImpressumContent />}
         {activeSection === "agb" && <AGBContent />}
@@ -168,7 +191,7 @@ function DatenschutzContent() {
       <Text className="text-sm text-muted">Stand: Juli 2026</Text>
 
       <Section title="1. Verantwortlicher">
-        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Vertreten durch: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@immobau-ka.de{"\n"}Registergericht: Amtsgericht Mannheim, HRB 734893</P>
+        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Vertreten durch: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@iserloh.net{"\n"}Registergericht: Amtsgericht Mannheim, HRB 734893</P>
       </Section>
 
       <Section title="2. Erhobene Daten">
@@ -215,7 +238,7 @@ function DatenschutzContent() {
       </Section>
 
       <Section title="8. Kontakt Datenschutzbeauftragter">
-        <P>Bei Fragen zum Datenschutz:{"\n"}immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}E-Mail: datenschutz@immobau-ka.de</P>
+        <P>Bei Fragen zum Datenschutz:{"\n"}immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}E-Mail: info@iserloh.net</P>
       </Section>
     </View>
   );
@@ -229,7 +252,7 @@ function ImpressumContent() {
       <Section title="Angaben gemäß § 5 TMG">
         <P>immobau-ka GmbH{"\n"}Ringstraße 6{"\n"}76228 Karlsruhe</P>
         <P>Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh</P>
-        <P>E-Mail: info@immobau-ka.de{"\n"}Telefon: Auf Anfrage</P>
+        <P>E-Mail: info@iserloh.net{"\n"}Telefon: Auf Anfrage</P>
       </Section>
 
       <Section title="Registereintrag">
@@ -379,7 +402,7 @@ function AGBContent() {
       </Section>
 
       <Section title="Kontakt">
-        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@immobau-ka.de</P>
+        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@iserloh.net</P>
       </Section>
     </View>
   );

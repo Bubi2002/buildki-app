@@ -16,11 +16,13 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
+import { TradePicker } from "@/components/trade-picker";
 import {
   type Floor,
   type Room,
@@ -82,6 +84,7 @@ export default function RoomsScreen() {
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   const handleAddFloor = async () => {
+    Keyboard.dismiss();
     if (!newFloorName.trim() || !projectId) return;
     const num = parseInt(newFloorNumber) || 0;
     await addFloor(projectId, newFloorName.trim(), num);
@@ -93,6 +96,7 @@ export default function RoomsScreen() {
   };
 
   const handleAddRoom = async () => {
+    Keyboard.dismiss();
     if (!newRoomName.trim() || !projectId || !addRoomFloorId) return;
     await addRoom(projectId, addRoomFloorId, newRoomName.trim(), newRoomNumber.trim() || undefined, newRoomTrade.trim() || undefined);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -268,6 +272,8 @@ export default function RoomsScreen() {
               value={newFloorName}
               onChangeText={setNewFloorName}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
             <TextInput
               style={styles.input}
@@ -276,9 +282,11 @@ export default function RoomsScreen() {
               value={newFloorNumber}
               onChangeText={setNewFloorNumber}
               keyboardType="numeric"
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
             <View style={styles.modalActions}>
-              <Pressable onPress={() => setShowAddFloor(false)} style={({ pressed }) => [styles.modalBtn, { opacity: pressed ? 0.7 : 1 }]}>
+              <Pressable onPress={() => { Keyboard.dismiss(); setShowAddFloor(false); }} style={({ pressed }) => [styles.modalBtn, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={styles.modalBtnCancel}>Abbrechen</Text>
               </Pressable>
               <Pressable onPress={handleAddFloor} style={({ pressed }) => [styles.modalBtn, styles.modalBtnPrimary, { opacity: pressed ? 0.7 : 1 }]}>
@@ -301,6 +309,8 @@ export default function RoomsScreen() {
               value={newRoomName}
               onChangeText={setNewRoomName}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
             <TextInput
               style={styles.input}
@@ -308,16 +318,17 @@ export default function RoomsScreen() {
               placeholderTextColor="#6B7280"
               value={newRoomNumber}
               onChangeText={setNewRoomNumber}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Gewerk (z.B. Fliesen) – optional"
-              placeholderTextColor="#6B7280"
+            <TradePicker
               value={newRoomTrade}
-              onChangeText={setNewRoomTrade}
+              onChange={setNewRoomTrade}
+              placeholder="Gewerk auswählen (optional)"
+              accessibilityLabel="Gewerk für den Raum auswählen"
             />
             <View style={styles.modalActions}>
-              <Pressable onPress={() => setShowAddRoom(false)} style={({ pressed }) => [styles.modalBtn, { opacity: pressed ? 0.7 : 1 }]}>
+              <Pressable onPress={() => { Keyboard.dismiss(); setShowAddRoom(false); }} style={({ pressed }) => [styles.modalBtn, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={styles.modalBtnCancel}>Abbrechen</Text>
               </Pressable>
               <Pressable onPress={handleAddRoom} style={({ pressed }) => [styles.modalBtn, styles.modalBtnPrimary, { opacity: pressed ? 0.7 : 1 }]}>
