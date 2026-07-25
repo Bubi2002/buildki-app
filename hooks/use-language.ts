@@ -9,15 +9,17 @@ export function useLanguage() {
   const [language, setLang] = useState<Language>("de");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    loadLanguage();
-  }, []);
-
-  const loadLanguage = async () => {
+  async function loadLanguage() {
     const lang = await getLanguage();
     setLang(lang);
     setIsLoaded(true);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadLanguage();
+    });
+  }, []);
 
   const setLanguage = useCallback(async (lang: Language) => {
     setLang(lang);

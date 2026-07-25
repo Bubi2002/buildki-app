@@ -16,7 +16,7 @@ export type QueuedRecording = {
   createdAt: string;
   status: "pending" | "processing" | "failed";
   retryCount: number;
-  markers?: Array<{ time: number; label: string }>;
+  markers?: { time: number; label: string }[];
   location?: {
     latitude: number;
     longitude: number;

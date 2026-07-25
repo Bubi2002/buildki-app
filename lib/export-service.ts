@@ -9,7 +9,6 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
-import { Platform } from "react-native";
 import { getDefects, type Defect } from "@/lib/defect-store";
 import { knowledgeLayer } from "@/lib/knowledge-layer";
 import type { ProjectKnowledgeEntry } from "@/shared/ai-types";
@@ -70,7 +69,7 @@ class ExportService {
   /**
    * Get available export formats with metadata.
    */
-  getFormats(): Array<{ id: ExportFormat; label: string; icon: string; description: string }> {
+  getFormats(): { id: ExportFormat; label: string; icon: string; description: string }[] {
     return [
       { id: "pdf", label: "PDF", icon: "picture-as-pdf", description: "Professioneller Bericht zum Ausdrucken" },
       { id: "csv", label: "CSV", icon: "table-chart", description: "Tabelle für Excel/Google Sheets" },
@@ -82,7 +81,7 @@ class ExportService {
   /**
    * Get available export scopes.
    */
-  getScopes(): Array<{ id: ExportScope; label: string; icon: string }> {
+  getScopes(): { id: ExportScope; label: string; icon: string }[] {
     return [
       { id: "defects", label: "Mängel", icon: "warning" },
       { id: "tasks", label: "Aufgaben", icon: "task-alt" },

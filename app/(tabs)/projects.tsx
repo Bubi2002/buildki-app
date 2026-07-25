@@ -63,14 +63,9 @@ export default function OverviewTab() {
   const [newPrefix, setNewPrefix] = useState("");
   const [newColor, setNewColor] = useState(PROJECT_COLORS[0]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [loadedAt, setLoadedAt] = useState(0);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [projData, protoData] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -81,8 +76,15 @@ export default function OverviewTab() {
       setProjects(projData ? JSON.parse(projData) : []);
       setProtocols(protoData ? JSON.parse(protoData) : []);
       setDefects(allDefects as any);
+      setLoadedAt(Date.now());
     } catch {}
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const favorites = useMemo(() => projects.filter(p => p.favorite && !p.archived), [projects]);
   const activeProjects = useMemo(() => projects.filter(p => !p.archived), [projects]);
@@ -92,9 +94,10 @@ export default function OverviewTab() {
   );
   const openDefects = useMemo(() => defects.filter(d => d.status !== 'erledigt' && d.status !== 'done'), [defects]);
   const weekProtocols = useMemo(() => {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    if (!loadedAt) return [];
+    const weekAgo = new Date(loadedAt - 7 * 24 * 60 * 60 * 1000);
     return protocols.filter(p => new Date(p.createdAt) >= weekAgo);
-  }, [protocols]);
+  }, [loadedAt, protocols]);
 
   const createProject = async () => {
     if (!newName.trim()) {

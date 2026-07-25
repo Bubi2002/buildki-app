@@ -67,7 +67,7 @@ function getFaqItems(t: (key: any) => string) { return [
   },
   {
     question: "Was kostet BuildKI?",
-    answer: "BuildKI kostet 10,00 \u20ac + MwSt. pro Monat oder 100,00 \u20ac + MwSt. pro Jahr (2 Monate gratis). Jede Lizenz beginnt mit 14 Tagen kostenloser Testphase.",
+    answer: "Tarife, Steuern, Laufzeit und Zahlungsarchitektur sind im Compliance-Prüfentwurf noch nicht festgelegt. In der App ist kein Kauf- oder Demo-Abonnement aktiviert. OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN.",
   },
   {
     question: "Wie importiere ich ein Video aus WhatsApp?",
@@ -120,7 +120,7 @@ export default function SupportChatScreen() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch  {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

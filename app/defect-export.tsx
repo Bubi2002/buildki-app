@@ -47,14 +47,16 @@ export default function DefectExportScreen() {
   const [includeComments, setIncludeComments] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
-  useEffect(() => {
-    loadDefects();
-  }, []);
-
-  const loadDefects = async () => {
+  async function loadDefects() {
     const all = await getDefects(params.projectId);
     setDefects(all);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadDefects();
+    });
+  }, []);
 
   const filteredDefects = defects.filter(d => selectedStatuses.includes(d.status));
 

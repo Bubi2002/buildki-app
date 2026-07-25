@@ -7,13 +7,11 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
-  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "@/lib/language-provider";
 import {
   CLOUD_PROVIDERS,
@@ -51,16 +49,18 @@ export default function CloudPhotoExportScreen() {
   );
   const [showHistory, setShowHistory] = useState(false);
 
-  useEffect(() => {
-    loadPreferences();
-  }, []);
-
-  const loadPreferences = async () => {
+  async function loadPreferences() {
     const pref = await getPreferredProvider();
     setPreferredProvider(pref);
     const history = await getExportHistory();
     setExportHistory(history);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadPreferences();
+    });
+  }, []);
 
   const togglePhotoSelection = (index: number) => {
     setSelectedPhotos((prev) =>

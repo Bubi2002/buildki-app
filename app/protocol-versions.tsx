@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal , Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -12,7 +12,6 @@ import {
   type ProtocolVersion,
 } from "@/lib/protocol-versions";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 
 export default function ProtocolVersionsScreen() {
@@ -28,14 +27,16 @@ export default function ProtocolVersionsScreen() {
   const [showDiff, setShowDiff] = useState(false);
   const [diffData, setDiffData] = useState<{ added: string[]; removed: string[]; unchanged: number } | null>(null);
 
-  useEffect(() => {
-    loadVersions();
-  }, [protocolId]);
-
-  const loadVersions = async () => {
+  async function loadVersions() {
     const v = await getProtocolVersions(protocolId);
     setVersions(v);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadVersions();
+    });
+  }, [protocolId]);
 
   const viewVersion = (version: ProtocolVersion) => {
     setSelectedVersion(version);

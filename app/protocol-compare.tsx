@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -61,27 +61,24 @@ export default function ProtocolCompareScreen() {
   const [selectedA, setSelectedA] = useState<Protocol | null>(null);
   const [selectedB, setSelectedB] = useState<Protocol | null>(null);
   const [selecting, setSelecting] = useState<"A" | "B" | null>(null);
-  const [diff, setDiff] = useState<DiffLine[]>([]);
 
-  useEffect(() => {
-    loadProtocols();
-  }, []);
-
-  useEffect(() => {
-    if (selectedA && selectedB) {
-      const result = computeDiff(selectedA.protocol, selectedB.protocol);
-      setDiff(result);
-    } else {
-      setDiff([]);
-    }
-  }, [selectedA, selectedB]);
-
-  const loadProtocols = async () => {
+  async function loadProtocols() {
     try {
       const data = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
       setProtocols(data.filter((p: any) => p.status === "ready"));
     } catch { /* ignore */ }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadProtocols();
+    });
+  }, []);
+
+  const diff = useMemo(
+    () => (selectedA && selectedB ? computeDiff(selectedA.protocol, selectedB.protocol) : []),
+    [selectedA, selectedB],
+  );
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("de-DE", {

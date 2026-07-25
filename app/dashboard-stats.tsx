@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl , Platform } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
@@ -11,7 +11,6 @@ import { getUpcomingEvents, CalendarEvent } from "@/lib/calendar-integration";
 import { getDefects, getDefectStats } from "@/lib/defect-store";
 import { getOverdueDefects } from "@/lib/defect-pdf-export";
 import { useRouter } from "expo-router";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 
 type DashboardStats = {
@@ -24,6 +23,27 @@ type DashboardStats = {
   openDefects: number;
   overdueDefects: number;
 };
+
+type StatCardProps = {
+  icon: string;
+  label: string;
+  value: number;
+  color: string;
+  onPress?: () => void;
+};
+
+function StatCard({ icon, label, value, color, onPress }: StatCardProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 0, padding: 14, minWidth: "45%", opacity: pressed && onPress ? 0.7 : 1 }]}
+    >
+      <MaterialIcons name={icon as any} size={20} color={color} />
+      <Text style={{ fontSize: 22, fontWeight: "700", color: "#F0F4F8", marginTop: 6 }}>{value}</Text>
+      <Text style={{ fontSize: 11, color: "#8FA3B8", marginTop: 2 }}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function DashboardStatsScreen() {
   const { t } = useTranslation();
@@ -109,7 +129,9 @@ export default function DashboardStatsScreen() {
   }, []);
 
   useEffect(() => {
-    loadDashboard();
+    void Promise.resolve().then(() => {
+      loadDashboard();
+    });
   }, [loadDashboard]);
 
   const onRefresh = async () => {
@@ -117,17 +139,6 @@ export default function DashboardStatsScreen() {
     await loadDashboard();
     setRefreshing(false);
   };
-
-  const StatCard = ({ icon, label, value, color, onPress }: { icon: string; label: string; value: number; color: string; onPress?: () => void }) => (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [{ flex: 1, backgroundColor: "#0F1E30", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 0, padding: 14, minWidth: "45%", opacity: pressed && onPress ? 0.7 : 1 }]}
-    >
-      <MaterialIcons name={icon as any} size={20} color={color} />
-      <Text style={{ fontSize: 22, fontWeight: "700", color: "#F0F4F8", marginTop: 6 }}>{value}</Text>
-      <Text style={{ fontSize: 11, color: "#8FA3B8", marginTop: 2 }}>{label}</Text>
-    </Pressable>
-  );
 
   return (
     <ScreenContainer className="p-0">

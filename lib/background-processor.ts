@@ -71,7 +71,7 @@ export interface PendingJob {
   style: string;
   format: string;
   createdAt: string;
-  markers?: Array<{ time: number; label: string }>;
+  markers?: { time: number; label: string }[];
   photos?: string[];
   photoTimestamps?: number[];
   status: "queued" | "uploading" | "transcribing" | "generating" | "extracting-todos" | "done" | "failed";
@@ -211,9 +211,9 @@ async function autoSendPdfIfEnabled(protocolId: string) {
 
 export async function startBackgroundProcessing(job: PendingJob, apiClient: {
   upload: (base64: string, mimeType: string, filename: string) => Promise<{ url: string }>;
-  transcribe: (audioUrl: string, language: string) => Promise<{ text: string; segments?: Array<{ start: number; end: number; text: string }> }>;
-  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: Array<{ time: number; label: string }>, photoCount?: number, photoTimestamps?: number[]) => Promise<{ protocol: string }>;
-  extractTodos: (transcription: string, protocolText: string) => Promise<{ todos: Array<{ task: string; assignee: string; priority: string; deadline: string }> }>;
+  transcribe: (audioUrl: string, language: string) => Promise<{ text: string; segments?: { start: number; end: number; text: string }[] }>;
+  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[]) => Promise<{ protocol: string }>;
+  extractTodos: (transcription: string, protocolText: string) => Promise<{ todos: { task: string; assignee: string; priority: string; deadline: string }[] }>;
 }) {
   activeJobs.set(job.protocolId, job);
   
@@ -313,7 +313,7 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     notifyListeners(job.protocolId, "extracting-todos");
     await updateProtocolStep(job.protocolId, "extracting-todos");
     
-    let todos: Array<{ task: string; assignee: string; priority: string; deadline: string; done: boolean }> = [];
+    let todos: { task: string; assignee: string; priority: string; deadline: string; done: boolean }[] = [];
     try {
       const todosResult = await apiClient.extractTodos(transcription.text, protocol.protocol);
       todos = (todosResult.todos || []).map((t: any) => ({

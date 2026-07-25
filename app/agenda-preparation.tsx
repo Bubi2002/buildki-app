@@ -9,14 +9,13 @@ import {
   Alert,
   Modal,
   ScrollView,
-} from "react-native";
+ Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import {
@@ -51,7 +50,7 @@ export default function AgendaPreparationScreen() {
     }, [])
   );
 
-  const loadData = async () => {
+  async function loadData() {
     try {
       const projectsData = JSON.parse(await AsyncStorage.getItem("projects") || "[]");
       setProjects(projectsData);
@@ -64,7 +63,7 @@ export default function AgendaPreparationScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const toggleItem = (item: AgendaItem) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

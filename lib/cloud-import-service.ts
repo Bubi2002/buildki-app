@@ -1,6 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { Platform } from "react-native";
 
 export type CloudProvider = "device" | "dropbox" | "google-drive" | "icloud" | "onedrive";
 

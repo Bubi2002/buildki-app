@@ -15,9 +15,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getDefects, saveDefect, updateDefectStatus, type Defect, type DefectStatus } from "@/lib/defect-store";
-import { requestReinspection, setFollowUpDate } from "@/lib/defect-comments";
+import { getDefects, updateDefectStatus, type Defect } from "@/lib/defect-store";
+import { requestReinspection } from "@/lib/defect-comments";
 import { scheduleFollowUpForDefect, sendImmediateNotification } from "@/lib/notification-service";
 import { addHistoryEntry } from "@/lib/defect-store";
 
@@ -41,7 +40,7 @@ export default function FollowUpScreen() {
     }, [projectId])
   );
 
-  const loadFollowUps = async () => {
+  async function loadFollowUps() {
     const allDefects = await getDefects(projectId || undefined);
     // Show defects that have followUpDate or are in "pruefung" status
     const followUpDefects = allDefects.filter(d =>
@@ -50,7 +49,7 @@ export default function FollowUpScreen() {
       d.status !== "geschlossen"
     );
     setDefects(followUpDefects);
-  };
+  }
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];

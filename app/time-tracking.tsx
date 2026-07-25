@@ -69,17 +69,19 @@ export default function TimeTrackingScreen() {
       }, 1000);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      setElapsed(0);
+      void Promise.resolve().then(() => {
+        setElapsed(0);
+      });
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [activeTimer]);
 
-  const loadSettings = async () => {
+  async function loadSettings() {
     const s = await getTimeTrackingSettings();
     setSettings(s);
-  };
+  }
 
   const handleSaveSettings = async () => {
     await saveTimeTrackingSettings(settings);
@@ -87,7 +89,7 @@ export default function TimeTrackingScreen() {
     Alert.alert(t('alert_gespeichert'), t('msg_einstellungen_wurden_gespeichert'));
   };
 
-  const loadData = async () => {
+  async function loadData() {
     const timer = await getActiveTimer();
     setActiveTimer(timer);
     if (timer) {
@@ -98,7 +100,7 @@ export default function TimeTrackingScreen() {
     setEntries(all);
     setTodayTotal(await getTodayTotal(projectId));
     setWeekTotal(await getWeekTotal(projectId));
-  };
+  }
 
   const handleStart = async () => {
     if (!projectId || !projectName) {

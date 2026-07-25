@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,17 +7,14 @@ import {
   StyleSheet,
   ScrollView,
   Modal,
-  TextInput,
-  Alert,
   Dimensions,
-} from "react-native";
+ Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 
 type KanbanStatus = "offen" | "in_arbeit" | "erledigt";
@@ -53,13 +50,7 @@ export default function KanbanScreen() {
   const [activeColumn, setActiveColumn] = useState<KanbanStatus>("offen");
   const screenWidth = Dimensions.get("window").width;
 
-  useFocusEffect(
-    useCallback(() => {
-      loadTasks();
-    }, [])
-  );
-
-  const loadTasks = async () => {
+  async function loadTasks() {
     try {
       const protocols = JSON.parse(await AsyncStorage.getItem("protocols") || "[]");
       const kanbanState = JSON.parse(await AsyncStorage.getItem("kanban-state") || "{}");
@@ -105,7 +96,13 @@ export default function KanbanScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [])
+  );
 
   const moveTask = async (task: KanbanTask, newStatus: KanbanStatus) => {
     if (Platform.OS !== "web") {

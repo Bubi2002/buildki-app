@@ -40,29 +40,29 @@ export interface MatterportModel {
     photos?: { count: number };
     meshes?: { count: number };
   };
-  floors?: Array<{
+  floors?: {
     id: string;
     label: string;
     sequence: number;
-  }>;
-  rooms?: Array<{
+  }[];
+  rooms?: {
     id: string;
     label: string;
     floor?: { id: string; label: string };
-  }>;
-  mattertags?: Array<{
+  }[];
+  mattertags?: {
     id: string;
     label: string;
     description?: string;
     mediaType?: string;
     position?: { x: number; y: number; z: number };
-  }>;
-  sweeps?: Array<{
+  }[];
+  sweeps?: {
     id: string;
     position: { x: number; y: number; z: number };
     rotation: { x: number; y: number; z: number };
     floor?: { id: string };
-  }>;
+  }[];
 }
 
 export interface MatterportModelSummary {
@@ -266,7 +266,7 @@ export async function getModelBasic(
 export async function getModelFloors(
   credentials: MatterportCredentials,
   modelId: string
-): Promise<Array<{ id: string; label: string; sequence: number }>> {
+): Promise<{ id: string; label: string; sequence: number }[]> {
   const query = `
     query {
       model(id: "${modelId}") {
@@ -289,7 +289,7 @@ export async function getModelFloors(
 export async function getModelRooms(
   credentials: MatterportCredentials,
   modelId: string
-): Promise<Array<{ id: string; label: string; floor?: { id: string; label: string } }>> {
+): Promise<{ id: string; label: string; floor?: { id: string; label: string } }[]> {
   const query = `
     query {
       model(id: "${modelId}") {
@@ -312,7 +312,7 @@ export async function getModelRooms(
 export async function getModelSweeps(
   credentials: MatterportCredentials,
   modelId: string
-): Promise<Array<{ id: string; position: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number }; floor?: { id: string } }>> {
+): Promise<{ id: string; position: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number }; floor?: { id: string } }[]> {
   const query = `
     query {
       model(id: "${modelId}") {
@@ -336,7 +336,7 @@ export async function getModelSweeps(
 export async function getModelMatterTags(
   credentials: MatterportCredentials,
   modelId: string
-): Promise<Array<{ id: string; label: string; description?: string; mediaType?: string; position?: { x: number; y: number; z: number } }>> {
+): Promise<{ id: string; label: string; description?: string; mediaType?: string; position?: { x: number; y: number; z: number } }[]> {
   const query = `
     query {
       model(id: "${modelId}") {

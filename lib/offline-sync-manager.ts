@@ -4,11 +4,11 @@
  * Monitors network connectivity and automatically processes queued recordings
  * when the device comes back online. Provides UI hooks for sync status.
  */
-import * as Network from "expo-network";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getQueue, updateQueueItem, removeFromQueue, isOnline, type QueuedRecording } from "./offline-queue";
 import { startBackgroundProcessing, type PendingJob } from "./background-processor";
 import { getApiBaseUrl } from "@/constants/oauth";
+import { getPrivacyChoices } from "./privacy-consent";
 
 const SYNC_STATUS_KEY = "offline-sync-status";
 const MAX_QUEUE_RETRIES = 5;
@@ -22,6 +22,7 @@ export type SyncStatus = {
   lastSyncAt: string | null;
   lastError: string | null;
   currentItem: string | null; // ID of currently syncing item
+  blockedByConsent: boolean;
 };
 
 type SyncListener = (status: SyncStatus) => void;
@@ -33,6 +34,7 @@ let currentSyncStatus: SyncStatus = {
   lastSyncAt: null,
   lastError: null,
   currentItem: null,
+  blockedByConsent: true,
 };
 
 let networkSubscription: any = null;
@@ -67,6 +69,24 @@ function updateStatus(updates: Partial<SyncStatus>) {
  * Initialize the sync manager - call this once at app startup
  */
 export async function initSyncManager(): Promise<void> {
+  stopSyncManager();
+  const choices = await getPrivacyChoices();
+  const transferAllowed = choices.cloudSync && choices.aiProcessing;
+
+  if (!transferAllowed) {
+    const queue = await getQueue();
+    updateStatus({
+      isSyncing: false,
+      pendingCount: queue.filter(q => q.status === "pending" || q.status === "failed").length,
+      currentItem: null,
+      blockedByConsent: true,
+      lastError: null,
+    });
+    return;
+  }
+
+  updateStatus({ blockedByConsent: false });
+
   // Load persisted status
   try {
     const stored = await AsyncStorage.getItem(SYNC_STATUS_KEY);
@@ -135,6 +155,11 @@ function startNetworkMonitoring(): void {
  */
 async function processQueue(): Promise<void> {
   if (isSyncRunning) return;
+  const choices = await getPrivacyChoices();
+  if (!choices.cloudSync || !choices.aiProcessing) {
+    updateStatus({ isSyncing: false, currentItem: null, blockedByConsent: true });
+    return;
+  }
   isSyncRunning = true;
   updateStatus({ isSyncing: true, lastError: null });
 
@@ -150,6 +175,13 @@ async function processQueue(): Promise<void> {
 
 
     for (const item of pending) {
+      const currentChoices = await getPrivacyChoices();
+      if (!currentChoices.cloudSync || !currentChoices.aiProcessing) {
+        updateStatus({ isSyncing: false, currentItem: null, blockedByConsent: true });
+        isSyncRunning = false;
+        return;
+      }
+
       // Check if still online before each item
       const stillOnline = await isOnline();
       if (!stillOnline) {
@@ -226,7 +258,7 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
       const data = await response.json();
       return data.result?.data?.json || data.result?.data || data;
     },
-    generateProtocol: async (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: Array<{ time: number; label: string }>, photoCount?: number, photoTimestamps?: number[]) => {
+    generateProtocol: async (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[]) => {
       const response = await fetch(`${apiBaseUrl}/api/trpc/voice.generateProtocol`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -270,6 +302,15 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
  * Manually trigger sync (e.g., from a "Retry" button)
  */
 export async function triggerSync(): Promise<void> {
+  const choices = await getPrivacyChoices();
+  if (!choices.cloudSync || !choices.aiProcessing) {
+    updateStatus({
+      lastError: "Cloud- und KI-Verarbeitung sind in den Datenschutzoptionen deaktiviert.",
+      blockedByConsent: true,
+    });
+    return;
+  }
+
   const online = await isOnline();
   if (!online) {
     updateStatus({ lastError: "Keine Internetverbindung" });
@@ -282,6 +323,9 @@ export async function triggerSync(): Promise<void> {
  * Get human-readable sync status text
  */
 export function getSyncStatusText(): string {
+  if (currentSyncStatus.blockedByConsent) {
+    return "Lokal gespeichert – Cloud/KI in Datenschutzoptionen deaktiviert";
+  }
   if (currentSyncStatus.isSyncing) {
     return "Synchronisiere...";
   }

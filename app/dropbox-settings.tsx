@@ -45,11 +45,11 @@ export default function DropboxSettingsScreen() {
     }
   }, [params.dropbox_connected, params.error]);
 
-  const loadData = async () => {
+  async function loadData() {
     const [s, h] = await Promise.all([getDropboxSettings(), getUploadHistory()]);
     setSettings(s);
     setHistory(h);
-  };
+  }
 
   const updateSetting = async <K extends keyof DropboxSettings>(key: K, value: DropboxSettings[K]) => {
     if (!settings) return;

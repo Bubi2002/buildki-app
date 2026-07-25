@@ -1,8 +1,7 @@
 /**
  * BuildKI – Registrierungs-Screen
- * Minimales Formular: E-Mail + Passwort + AGB-Checkbox
- * Button: "14 Tage kostenlos testen"
- * Darunter: "Keine Kreditkarte erforderlich. Jederzeit kündbar."
+ * Minimales Formular: E-Mail + Passwort + Nutzungsbedingungen-Prüfentwurf.
+ * Der Compliance-Zweig enthält bewusst kein Testphasen- oder Kaufversprechen.
  */
 import { useState } from "react";
 import {
@@ -49,8 +48,8 @@ export default function RegisterScreen() {
 
     if (!password) {
       newErrors.password = "Passwort ist erforderlich";
-    } else if (password.length < 8) {
-      newErrors.password = "Mindestens 8 Zeichen erforderlich";
+    } else if (password.length < 12) {
+      newErrors.password = "Mindestens 12 Zeichen erforderlich";
     }
 
     if (password !== confirmPassword) {
@@ -58,7 +57,7 @@ export default function RegisterScreen() {
     }
 
     if (!agbAccepted) {
-      newErrors.agb = "Bitte akzeptiere die AGB und Datenschutzbestimmungen";
+      newErrors.agb = "Bitte akzeptiere den Nutzungsbedingungen-Prüfentwurf";
     }
 
     setErrors(newErrors);
@@ -172,7 +171,7 @@ export default function RegisterScreen() {
                 <MaterialIcons name="lock" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Mindestens 8 Zeichen"
+                  placeholder="Mindestens 12 Zeichen"
                   placeholderTextColor="#4A5568"
                   value={password}
                   onChangeText={(text) => { setPassword(text); setErrors((e) => ({ ...e, password: undefined })); }}
@@ -215,10 +214,11 @@ export default function RegisterScreen() {
                 {agbAccepted && <MaterialIcons name="check" size={16} color="#FFF" />}
               </View>
               <Text style={styles.checkboxText}>
-                Ich akzeptiere die{" "}
+                Ich akzeptiere den{" "}
                 <Text style={styles.linkText} onPress={() => router.push("/legal" as any)}>
-                  AGB und Datenschutzbestimmungen
+                  Nutzungsbedingungen-Prüfentwurf
                 </Text>
+                .
               </Text>
             </TouchableOpacity>
             {errors.agb && <Text style={[styles.errorText, { marginTop: -4, marginBottom: 8 }]}>{errors.agb}</Text>}
@@ -235,14 +235,14 @@ export default function RegisterScreen() {
               ) : (
                 <>
                   <MaterialIcons name="rocket-launch" size={20} color="#FFF" />
-                  <Text style={styles.registerBtnText}>14 Tage kostenlos testen</Text>
+                  <Text style={styles.registerBtnText}>Prüfkonto erstellen</Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Trust Signals */}
             <Text style={styles.trustText}>
-              Keine Kreditkarte erforderlich. Jederzeit kündbar.
+              Kein Kauf und kein Abonnement. Nicht veröffentlichungsfähiger Compliance-Prüfentwurf.
             </Text>
 
             {/* Login Link */}

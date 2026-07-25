@@ -30,15 +30,11 @@ Notifications.setNotificationHandler({
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === "web") return false;
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  const { granted: previouslyGranted } = await Notifications.getPermissionsAsync();
+  if (previouslyGranted) return true;
 
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  return finalStatus === "granted";
+  const { granted } = await Notifications.requestPermissionsAsync();
+  return granted;
 }
 
 export async function scheduleTaskReminders(hoursBefore: number = 24): Promise<number> {

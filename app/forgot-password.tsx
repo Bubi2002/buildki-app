@@ -74,8 +74,8 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleSetNewPassword = async () => {
-    if (newPassword.length < 8) {
-      Alert.alert("Fehler", "Das Passwort muss mindestens 8 Zeichen lang sein.");
+    if (newPassword.length < 12) {
+      Alert.alert("Fehler", "Das Passwort muss mindestens 12 Zeichen lang sein.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -140,7 +140,7 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.subtitle}>
               {step === "email" && "Gib deine E-Mail-Adresse ein und wir senden dir einen Reset-Code."}
               {step === "code" && "Gib den 6-stelligen Code ein, den wir an deine E-Mail gesendet haben."}
-              {step === "newPassword" && "Wähle ein neues Passwort mit mindestens 8 Zeichen."}
+              {step === "newPassword" && "Wähle ein neues Passwort mit mindestens 12 Zeichen."}
             </Text>
           </View>
 
@@ -230,7 +230,7 @@ export default function ForgotPasswordScreen() {
                   <MaterialIcons name="lock" size={20} color="#5A6B7E" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Mindestens 8 Zeichen"
+                    placeholder="Mindestens 12 Zeichen"
                     placeholderTextColor="#4A5568"
                     value={newPassword}
                     onChangeText={setNewPassword}

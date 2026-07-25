@@ -44,7 +44,7 @@ interface StructuredReport {
     critical: number;
     open: number;
     resolved: number;
-    items: Array<{
+    items: {
       id: string;
       title: string;
       trade: string;
@@ -52,11 +52,11 @@ interface StructuredReport {
       severity: string;
       status: string;
       photoRef?: string;
-    }>;
+    }[];
   };
-  attendees: Array<{ name: string; company: string; role: string }>;
+  attendees: { name: string; company: string; role: string }[];
   decisions: string[];
-  nextActions: Array<{ action: string; responsible: string; deadline: string }>;
+  nextActions: { action: string; responsible: string; deadline: string }[];
   generalObservations: string[];
 }
 
@@ -286,7 +286,7 @@ Erstelle den Bericht als strukturiertes JSON.`;
 
     // Format structured data into professional Markdown
     return formatReportMarkdown(parsed, reportType, photosJson);
-  } catch (error: any) {
+  } catch  {
     // Fallback: return a basic template if LLM fails
     return generateFallbackMarkdown(reportType, projectName, datum, transcription);
   }

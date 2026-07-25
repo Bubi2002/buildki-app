@@ -132,12 +132,12 @@ const TUTORIAL_SECTIONS: TutorialSection[] = [
   {
     id: "abo",
     icon: "credit-card",
-    title: "Abo & Preise",
+    title: "Abonnement & Abrechnung",
     steps: [
-      "14 Tage kostenlose Testphase – alle Funktionen uneingeschränkt.",
-      "Monatsabo: 10,00 € + MwSt. pro Monat (jederzeit kündbar).",
-      "Jahresabo: 100,00 € + MwSt. pro Jahr (2 Monate gratis).",
-      "Verwalte dein Abo unter Einstellungen → Abonnement.",
+      "Im Compliance-Prüfentwurf ist kein Kauf- oder Demo-Abonnement aktiviert.",
+      "Tarife, Steuern, Laufzeit und Zielgruppe sind vor Veröffentlichung verbindlich festzulegen.",
+      "Für digitale iOS-Funktionen ist StoreKit/In-App Purchase der Standardprüfpfad.",
+      "Den aktuellen Entscheidungsvorbehalt findest du unter Einstellungen → Abonnement.",
     ],
   },
 ];

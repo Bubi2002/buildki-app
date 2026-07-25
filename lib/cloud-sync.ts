@@ -41,8 +41,8 @@ export interface LocalProtocol {
   templateName: string;
   templateId: string;
   photos: string[];
-  todos: Array<{ task: string; assignee: string; priority: string; deadline: string; done: boolean }>;
-  markers?: Array<{ time: number; label: string }>;
+  todos: { task: string; assignee: string; priority: string; deadline: string; done: boolean }[];
+  markers?: { time: number; label: string }[];
   duration: number;
   recordingMode: string;
   createdAt: string;

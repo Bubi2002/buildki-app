@@ -1,7 +1,7 @@
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 
 export type CloudExportProvider = "dropbox" | "google-drive" | "onedrive" | "icloud" | "system-share";
 

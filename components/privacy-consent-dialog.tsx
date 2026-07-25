@@ -1,198 +1,200 @@
-/**
- * BuildKI – Privacy Consent Dialog
- * 
- * Shows on first launch (or after policy update) to collect DSGVO-compliant consent.
- * Required consents: auditLog (Beweissicherung)
- * Optional consents: analytics, cloudSync, aiProcessing, gpsTracking, photoPersons
- */
-import { useState } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, Modal } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useEffect, useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
 import { useColors } from "@/hooks/use-colors";
-import { saveConsent, type PrivacyConsent } from "@/lib/privacy-consent";
+import {
+  CURRENT_CONSENT_VERSION,
+  DEFAULT_PRIVACY_CHOICES,
+  saveConsent,
+  type OptionalPurpose,
+  type PrivacyChoices,
+} from "@/lib/privacy-consent";
+import {
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_DRAFT_MARKER,
+  LEGAL_DRAFT_NOTICE,
+} from "@/lib/legal-draft";
 
 interface Props {
   visible: boolean;
-  onAccept: () => void;
+  onAccept: (choices: PrivacyChoices) => void;
 }
 
-type ConsentKey = keyof PrivacyConsent["consents"];
-
-interface ConsentItem {
-  key: ConsentKey;
+interface PurposeItem {
+  key: OptionalPurpose;
   label: string;
   description: string;
-  required: boolean;
+  transmittedData: string;
 }
 
-const CONSENT_ITEMS: ConsentItem[] = [
-  {
-    key: "auditLog",
-    label: "Beweissicherungs-Protokoll",
-    description: "Manipulationssichere Dokumentation aller Änderungen für die Beweissicherung auf Baustellen. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse).",
-    required: true,
-  },
+const PURPOSE_ITEMS: PurposeItem[] = [
   {
     key: "aiProcessing",
-    label: "KI-Verarbeitung",
-    description: "Nutzung von KI zur Berichterstellung und Analyse. Texte werden vor der Verarbeitung anonymisiert (keine Namen, Adressen, Telefonnummern an KI-Dienste).",
-    required: false,
+    label: "KI und Transkription",
+    description:
+      "Erlaubt die Übertragung ausgewählter Audio-, Video-, Foto-, Dokument-, Transkript- und Projektinhalte an BuildKI-Server und den technisch angebundenen KI-/Forge-Dienst.",
+    transmittedData:
+      "Empfänger, Region, AVV, Drittlandgrundlage und Löschfrist: " +
+      LEGAL_DRAFT_MARKER,
   },
   {
     key: "cloudSync",
     label: "Cloud-Synchronisation",
-    description: "Synchronisation Ihrer Daten über mehrere Geräte hinweg. Daten werden verschlüsselt auf EU-Servern gespeichert (Frankfurt am Main).",
-    required: false,
+    description:
+      "Erlaubt die kontoübergreifende Übertragung und Speicherung von Projekten, Protokollen, Mängeln, Aufgaben, Anhängen und Synchronisationsdaten.",
+    transmittedData:
+      "Hosting-/Speicheranbieter, Region, AVV, Backup- und Löschfrist: " +
+      LEGAL_DRAFT_MARKER,
   },
   {
     key: "gpsTracking",
-    label: "GPS-Erfassung",
-    description: "Speicherung von GPS-Koordinaten bei Mängeln und Fotos für die Beweissicherung und Zuordnung auf Baustellen.",
-    required: false,
-  },
-  {
-    key: "photoPersons",
-    label: "Fotos mit Personen",
-    description: "Erfassung und Speicherung von Fotos, auf denen Personen erkennbar sind. Relevant für Baustellendokumentation mit Arbeitern.",
-    required: false,
-  },
-  {
-    key: "analytics",
-    label: "Nutzungsanalyse",
-    description: "Anonymisierte Analyse der App-Nutzung zur Verbesserung der Funktionen. Keine personenbezogenen Daten werden übermittelt.",
-    required: false,
+    label: "Standort für konkrete Funktionen",
+    description:
+      "Erlaubt eine Standortabfrage nur nach einer Nutzeraktion, zum Beispiel für Wetter, Aufnahmeort oder Verortung. Die Betriebssystemfreigabe wird erst bei tatsächlicher Nutzung angefragt.",
+    transmittedData:
+      "Je Funktion können Koordinaten lokal gespeichert oder an Wetter-/BuildKI-Dienste übertragen werden.",
   },
 ];
 
 export function PrivacyConsentDialog({ visible, onAccept }: Props) {
   const colors = useColors();
-  const [consents, setConsents] = useState<Record<ConsentKey, boolean>>({
-    auditLog: true,
-    aiProcessing: true,
-    cloudSync: false,
-    gpsTracking: true,
-    photoPersons: false,
-    analytics: false,
+  const [choices, setChoices] = useState<PrivacyChoices>({
+    ...DEFAULT_PRIVACY_CHOICES,
   });
+  const [saving, setSaving] = useState(false);
 
-  const toggleConsent = (key: ConsentKey, required: boolean) => {
-    if (required) return; // Can't toggle required consents
-    setConsents((prev) => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    if (visible) {
+      void Promise.resolve().then(() => {
+        setChoices({ ...DEFAULT_PRIVACY_CHOICES });
+        setSaving(false);
+      });
+    }
+  }, [visible]);
+
+  const togglePurpose = (purpose: OptionalPurpose) => {
+    setChoices((previous) => ({
+      ...previous,
+      [purpose]: !previous[purpose],
+    }));
   };
 
-  const allRequiredAccepted = CONSENT_ITEMS
-    .filter((i) => i.required)
-    .every((i) => consents[i.key]);
-
-  const handleAccept = async () => {
-    await saveConsent(consents as PrivacyConsent["consents"]);
-    onAccept();
+  const handleContinue = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const saved = await saveConsent(choices, "first-run");
+      onAccept(saved.choices);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <MaterialIcons name="privacy-tip" size={28} color={colors.primary} />
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            Datenschutz & Einwilligung
-          </Text>
+          <View style={styles.headerText}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Datenschutzoptionen</Text>
+            <Text style={[styles.version, { color: colors.muted }]}>Version {CURRENT_CONSENT_VERSION}</Text>
+          </View>
         </View>
 
-        {/* Intro */}
-        <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.warningBox, { borderColor: colors.error }]}>
+            <Text style={[styles.warningTitle, { color: colors.error }]}>Nicht veröffentlichungsfähiger Prüfentwurf</Text>
+            <Text style={[styles.warningText, { color: colors.foreground }]}>{LEGAL_DRAFT_NOTICE}</Text>
+          </View>
+
           <Text style={[styles.intro, { color: colors.foreground }]}>
-            BuildKI verarbeitet Ihre Projektdaten lokal und optional in der Cloud.
-            Bitte lesen Sie die folgenden Punkte und erteilen Sie Ihre Einwilligung.
+            Die Grundfunktionen können ohne optionale Freigaben verwendet werden. Alle Schalter sind standardmäßig aus. Aktivieren Sie nur Zwecke, die Sie wirklich nutzen möchten.
           </Text>
           <Text style={[styles.subIntro, { color: colors.muted }]}>
-            * Pflichtfelder sind für die Nutzung der App erforderlich.
-            Optionale Einwilligungen können jederzeit in den Einstellungen widerrufen werden.
+            Notwendige lokale Verarbeitung, Kontosicherheit und gesetzlich erforderliche Nachweise werden nicht als Einwilligung dargestellt. Optionale Freigaben können jederzeit mit Wirkung für die Zukunft widerrufen werden.
           </Text>
 
-          {/* Consent Items */}
-          {CONSENT_ITEMS.map((item) => (
-            <Pressable
-              key={item.key}
-              onPress={() => toggleConsent(item.key, item.required)}
-              style={({ pressed }) => [
-                styles.consentItem,
-                {
-                  backgroundColor: consents[item.key] ? colors.primary + "08" : colors.surface,
-                  borderColor: consents[item.key] ? colors.primary : colors.border,
-                  opacity: pressed && !item.required ? 0.8 : 1,
-                },
-              ]}
-            >
-              <View style={styles.consentHeader}>
-                <View style={[
-                  styles.checkbox,
+          {PURPOSE_ITEMS.map((item) => {
+            const enabled = choices[item.key];
+            return (
+              <Pressable
+                key={item.key}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: enabled }}
+                accessibilityLabel={item.label}
+                onPress={() => togglePurpose(item.key)}
+                style={({ pressed }) => [
+                  styles.purposeItem,
                   {
-                    backgroundColor: consents[item.key] ? colors.primary : "transparent",
-                    borderColor: consents[item.key] ? colors.primary : colors.border,
+                    backgroundColor: enabled ? colors.primary + "10" : colors.surface,
+                    borderColor: enabled ? colors.primary : colors.border,
+                    opacity: pressed ? 0.82 : 1,
                   },
-                ]}>
-                  {consents[item.key] && (
-                    <MaterialIcons name="check" size={14} color="#FFF" />
-                  )}
+                ]}
+              >
+                <View style={styles.purposeHeader}>
+                  <View
+                    style={[
+                      styles.checkbox,
+                      {
+                        backgroundColor: enabled ? colors.primary : "transparent",
+                        borderColor: enabled ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    {enabled && <MaterialIcons name="check" size={15} color="#FFF" />}
+                  </View>
+                  <Text style={[styles.purposeLabel, { color: colors.foreground }]}>{item.label}</Text>
+                  <Text style={[styles.optionalBadge, { color: colors.muted }]}>Optional</Text>
                 </View>
-                <View style={styles.consentLabelRow}>
-                  <Text style={[styles.consentLabel, { color: colors.foreground }]}>
-                    {item.label}
-                  </Text>
-                  {item.required && (
-                    <Text style={[styles.requiredBadge, { color: colors.error }]}>
-                      Pflicht
-                    </Text>
-                  )}
-                </View>
-              </View>
-              <Text style={[styles.consentDesc, { color: colors.muted }]}>
-                {item.description}
-              </Text>
-            </Pressable>
-          ))}
+                <Text style={[styles.description, { color: colors.foreground }]}>{item.description}</Text>
+                <Text style={[styles.dataDetail, { color: colors.muted }]}>{item.transmittedData}</Text>
+              </Pressable>
+            );
+          })}
 
-          {/* Legal References */}
-          <View style={[styles.legalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.legalTitle, { color: colors.foreground }]}>
-              Ihre Rechte (DSGVO Art. 15-21)
-            </Text>
-            <Text style={[styles.legalText, { color: colors.muted }]}>
-              • Auskunft über gespeicherte Daten{"\n"}
-              • Berichtigung unrichtiger Daten{"\n"}
-              • Löschung Ihrer Daten (&quot;Recht auf Vergessenwerden&quot;){"\n"}
-              • Einschränkung der Verarbeitung{"\n"}
-              • Datenübertragbarkeit (Export){"\n"}
-              • Widerspruch gegen die Verarbeitung{"\n"}
-              • Widerruf erteilter Einwilligungen{"\n\n"}
-              Verantwortlicher: Iserloh Bau GmbH{"\n"}
-              Kontakt: info@iserloh.net{"\n"}
-              Datenschutzbeauftragter: datenschutz@iserloh.net
+          <View style={[styles.rightsBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.rightsTitle, { color: colors.foreground }]}>Ihre Entscheidung</Text>
+            <Text style={[styles.rightsText, { color: colors.muted }]}>
+              • Keine optionale Freigabe ist Voraussetzung für die Grundnutzung.{"\n"}
+              • Deaktivierte Zwecke bleiben technisch gesperrt.{"\n"}
+              • Betriebssystemberechtigungen werden erst unmittelbar vor der konkreten Funktion angefragt.{"\n"}
+              • Widerruf, Export und Löschung sind in „Rechtliches → Meine Daten“ beziehungsweise über die Datenschutzoptionen erreichbar.{"\n"}
+              • Datenschutzkontakt: {LEGAL_CONTACT_EMAIL}
             </Text>
           </View>
         </ScrollView>
 
-        {/* Accept Button */}
         <View style={[styles.footer, { borderTopColor: colors.border }]}>
           <Pressable
-            onPress={handleAccept}
-            disabled={!allRequiredAccepted}
+            onPress={handleContinue}
+            disabled={saving}
             style={({ pressed }) => [
-              styles.acceptBtn,
+              styles.continueButton,
               {
-                backgroundColor: allRequiredAccepted ? colors.primary : colors.border,
-                opacity: pressed ? 0.8 : 1,
+                backgroundColor: saving ? colors.border : colors.primary,
+                opacity: pressed ? 0.82 : 1,
               },
             ]}
           >
-            <Text style={styles.acceptBtnText}>
-              Einwilligung erteilen & App nutzen
+            <Text style={styles.continueButtonText}>
+              {saving ? "Speichere..." : "Auswahl speichern und fortfahren"}
             </Text>
           </Pressable>
           <Text style={[styles.footerNote, { color: colors.muted }]}>
-            Sie können Ihre Einwilligungen jederzeit unter Einstellungen → Rechtliches widerrufen.
+            Fortfahren ist auch mit allen optionalen Schaltern auf „Aus“ möglich.
           </Text>
         </View>
       </View>
@@ -211,42 +213,34 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
+  headerText: { flex: 1 },
   headerTitle: { fontSize: 20, fontWeight: "700" },
+  version: { fontSize: 11, marginTop: 2 },
   scrollArea: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
+  warningBox: { borderWidth: 2, padding: 14, marginBottom: 18 },
+  warningTitle: { fontSize: 13, fontWeight: "800", marginBottom: 6 },
+  warningText: { fontSize: 12, lineHeight: 18 },
   intro: { fontSize: 15, lineHeight: 22, marginBottom: 8 },
   subIntro: { fontSize: 13, lineHeight: 18, marginBottom: 20 },
-  consentItem: {
-    padding: 16,
-    borderWidth: 1,
-    borderRadius: 0,
-    marginBottom: 12,
-  },
-  consentHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 },
+  purposeItem: { padding: 16, borderWidth: 1, marginBottom: 12 },
+  purposeHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   checkbox: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     borderWidth: 2,
-    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
-  consentLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  consentLabel: { fontSize: 15, fontWeight: "600" },
-  requiredBadge: { fontSize: 11, fontWeight: "700" },
-  consentDesc: { fontSize: 13, lineHeight: 18, marginLeft: 34 },
-  legalBox: { padding: 16, borderWidth: 1, borderRadius: 0, marginTop: 16 },
-  legalTitle: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
-  legalText: { fontSize: 12, lineHeight: 18 },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-  },
-  acceptBtn: {
-    paddingVertical: 16,
-    alignItems: "center",
-    borderRadius: 0,
-  },
-  acceptBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
+  purposeLabel: { fontSize: 15, fontWeight: "700", flex: 1 },
+  optionalBadge: { fontSize: 11, fontWeight: "700" },
+  description: { fontSize: 13, lineHeight: 19 },
+  dataDetail: { fontSize: 12, lineHeight: 18, marginTop: 8 },
+  rightsBox: { padding: 16, borderWidth: 1, marginTop: 8 },
+  rightsTitle: { fontSize: 14, fontWeight: "700", marginBottom: 8 },
+  rightsText: { fontSize: 12, lineHeight: 18 },
+  footer: { padding: 20, borderTopWidth: 1 },
+  continueButton: { paddingVertical: 16, alignItems: "center" },
+  continueButtonText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
   footerNote: { fontSize: 11, textAlign: "center", marginTop: 8 },
 });

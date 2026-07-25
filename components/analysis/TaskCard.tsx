@@ -6,7 +6,7 @@
  * Nutzbar für: Foto-Analyse, Matterport, IFC, AI Site Assistant
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
@@ -39,8 +39,8 @@ export function TaskCard({
   showActions = true,
 }: TaskCardProps) {
   const colors = useColors();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const [scaleAnim] = useState(() => new Animated.Value(1));
+  const [checkOpacity] = useState(() => new Animated.Value(0));
   const prevAdopted = useRef(isAdopted);
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "../../shared/const.js";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { requireServerConsent } from "../privacy-consent";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -26,6 +27,18 @@ const requireUser = t.middleware(async (opts) => {
 });
 
 export const protectedProcedure = t.procedure.use(requireUser);
+
+const requirePurpose = (purpose: "aiProcessing" | "cloudSync") =>
+  t.middleware(async ({ ctx, next }) => {
+    if (!ctx.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+    }
+    await requireServerConsent(ctx.user.id, purpose);
+    return next({ ctx: { ...ctx, user: ctx.user } });
+  });
+
+export const aiProcedure = protectedProcedure.use(requirePurpose("aiProcessing"));
+export const cloudProcedure = protectedProcedure.use(requirePurpose("cloudSync"));
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {

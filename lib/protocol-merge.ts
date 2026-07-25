@@ -19,10 +19,10 @@ type Protocol = {
   projectId?: string;
   templateName?: string;
   photos?: string[];
-  todos?: Array<{ text: string; done: boolean; assignee?: string; priority?: string; dueDate?: string }>;
+  todos?: { text: string; done: boolean; assignee?: string; priority?: string; dueDate?: string }[];
   location?: string;
   weather?: { temperature?: number; temp?: number; description?: string; condition?: string };
-  markers?: Array<{ time: number; label: string }>;
+  markers?: { time: number; label: string }[];
   recordingMode?: string;
   duration?: number;
   protocolNumber?: string;
@@ -171,7 +171,7 @@ async function buildMergedHtml(
     : "";
   
   // Collect all todos across protocols
-  const allTodos: Array<{ text: string; done: boolean; assignee?: string; priority?: string; protocol: string }> = [];
+  const allTodos: { text: string; done: boolean; assignee?: string; priority?: string; protocol: string }[] = [];
   if (options.includeTodos !== false) {
     for (const p of protocols) {
       if (p.todos) {

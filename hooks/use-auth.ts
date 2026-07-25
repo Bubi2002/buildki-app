@@ -102,7 +102,9 @@ export function useAuth(options?: UseAuthOptions) {
       if (Platform.OS === "web") {
         // Web: fetch user from API directly (user will login manually if needed)
         console.log("[useAuth] Web: fetching user from API...");
-        fetchUser();
+        void Promise.resolve().then(() => {
+          void fetchUser();
+        });
       } else {
         // Native: check for cached user info first for faster initial load
         Auth.getUserInfo().then((cachedUser) => {
@@ -119,7 +121,9 @@ export function useAuth(options?: UseAuthOptions) {
       }
     } else {
       console.log("[useAuth] autoFetch disabled, setting loading to false");
-      setLoading(false);
+      void Promise.resolve().then(() => {
+        setLoading(false);
+      });
     }
   }, [autoFetch, fetchUser]);
 

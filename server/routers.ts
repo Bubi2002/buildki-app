@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure, aiProcedure, cloudProcedure } from "./_core/trpc";
+import { privacyRouter } from "./privacy-router";
+import { accountRouter } from "./account-router";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
@@ -10,12 +12,29 @@ import { protocols } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 import * as matterport from "./matterport";
 import { ENV } from "./_core/env";
+import {
+  MATTERPORT_RELEASE_ALLOWED,
+  MATTERPORT_RELEASE_HOLD_CODE,
+  MATTERPORT_RELEASE_HOLD_MESSAGE,
+} from "../shared/matterport-compliance";
+
+const matterportProcedure = cloudProcedure.use(async ({ next }) => {
+  if (!MATTERPORT_RELEASE_ALLOWED) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `${MATTERPORT_RELEASE_HOLD_CODE}: ${MATTERPORT_RELEASE_HOLD_MESSAGE}`,
+    });
+  }
+  return next();
+});
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: "ok" })),
+  privacy: privacyRouter,
+  account: accountRouter,
 
   voice: router({
-    transcribe: protectedProcedure
+    transcribe: aiProcedure
       .input(
         z.object({
           audioUrl: z.string(),
@@ -52,7 +71,7 @@ export const appRouter = router({
   }),
 
   protocol: router({
-    generate: protectedProcedure
+    generate: aiProcedure
       .input(
         z.object({
           transcription: z.string(),
@@ -166,7 +185,7 @@ export const appRouter = router({
         return { protocol: protocolText, templateName: template.name };
       }),
 
-    extractTodos: protectedProcedure
+    extractTodos: aiProcedure
       .input(
         z.object({
           transcription: z.string(),
@@ -233,7 +252,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
   }),
 
   upload: router({
-    audio: protectedProcedure
+    audio: cloudProcedure
       .input(
         z.object({
           base64: z.string(),
@@ -264,7 +283,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
   // Cloud Sync endpoints (require login)
   sync: router({
     // Upload a protocol to the cloud
-    pushProtocol: protectedProcedure
+    pushProtocol: cloudProcedure
       .input(
         z.object({
           localId: z.string(),
@@ -337,7 +356,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       }),
 
     // Pull all protocols from the cloud
-    pullProtocols: protectedProcedure.query(async ({ ctx }) => {
+    pullProtocols: cloudProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const userId = ctx.user.id;
@@ -369,7 +388,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
     }),
 
     // Delete a protocol from the cloud
-    deleteProtocol: protectedProcedure
+    deleteProtocol: cloudProcedure
       .input(z.object({ localId: z.string() }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -384,7 +403,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       }),
 
     // ─── Defect Sync ────────────────────────────────────────────────────────
-    pushDefects: protectedProcedure
+    pushDefects: cloudProcedure
       .input(z.object({
         defects: z.array(z.object({
           localId: z.string(),
@@ -433,14 +452,14 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
         return pushDefects(ctx.user.id, input.defects);
       }),
 
-    pullDefects: protectedProcedure
+    pullDefects: cloudProcedure
       .input(z.object({ since: z.string().optional() }))
       .query(async ({ input, ctx }) => {
         const { pullDefects } = await import("./sync-service");
         return { defects: await pullDefects(ctx.user.id, input.since) };
       }),
 
-    deleteDefect: protectedProcedure
+    deleteDefect: cloudProcedure
       .input(z.object({ localId: z.string() }))
       .mutation(async ({ input, ctx }) => {
         const { deleteDefect } = await import("./sync-service");
@@ -449,7 +468,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       }),
 
     // ─── Project Sync ───────────────────────────────────────────────────────
-    pushProjects: protectedProcedure
+    pushProjects: cloudProcedure
       .input(z.object({
         projects: z.array(z.object({
           localId: z.string(),
@@ -469,14 +488,14 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
         return pushProjects(ctx.user.id, input.projects);
       }),
 
-    pullProjects: protectedProcedure
+    pullProjects: cloudProcedure
       .input(z.object({ since: z.string().optional() }))
       .query(async ({ input, ctx }) => {
         const { pullProjects } = await import("./sync-service");
         return { projects: await pullProjects(ctx.user.id, input.since) };
       }),
 
-    deleteProject: protectedProcedure
+    deleteProject: cloudProcedure
       .input(z.object({ localId: z.string() }))
       .mutation(async ({ input, ctx }) => {
         const { deleteProject } = await import("./sync-service");
@@ -485,7 +504,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       }),
 
     // ─── Attachment Upload ───────────────────────────────────────────────────
-    uploadAttachment: protectedProcedure
+    uploadAttachment: cloudProcedure
       .input(z.object({
         entityType: z.string(),
         entityLocalId: z.string(),
@@ -506,7 +525,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
       }),
 
     // ─── Full Sync (combined push + pull) ───────────────────────────────────
-    fullSync: protectedProcedure
+    fullSync: cloudProcedure
       .input(z.object({
         defects: z.array(z.object({
           localId: z.string(),
@@ -572,7 +591,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
 
   // Speaker Identification / Diarization
   speaker: router({
-    identify: protectedProcedure
+    identify: aiProcedure
       .input(
         z.object({
           transcription: z.string(),
@@ -717,7 +736,7 @@ Beispiel:
       }),
   }),
 streaming: router({
-    transcribeChunk: protectedProcedure
+    transcribeChunk: aiProcedure
       .input(
         z.object({
           audioUrl: z.string(),
@@ -750,7 +769,7 @@ streaming: router({
       }),
   }),
   translate: router({
-    translateProtocol: protectedProcedure
+    translateProtocol: aiProcedure
       .input(
         z.object({
           text: z.string(),
@@ -799,7 +818,7 @@ Wichtige Regeln:
   }),
 
   agenda: router({
-    generateSuggestions: protectedProcedure
+    generateSuggestions: aiProcedure
       .input(z.object({
         protocols: z.array(z.object({
           id: z.string(),
@@ -834,7 +853,7 @@ Wichtige Regeln:
         }
       }),
   }),
-  detectDocumentType: protectedProcedure
+  detectDocumentType: aiProcedure
       .input(z.object({ transcription: z.string() }))
       .mutation(async ({ input }) => {
         const response = await invokeLLM({
@@ -882,7 +901,7 @@ Antworte NUR mit einem JSON-Objekt im Format:
       }),
 
   support: router({
-    chat: protectedProcedure
+    chat: aiProcedure
       .input(
         z.object({
           messages: z.array(
@@ -948,7 +967,7 @@ Regeln:
 
   matterport: router({
     // Verify credentials and connect account
-    connect: protectedProcedure
+    connect: matterportProcedure
       .input(z.object({}))
       .mutation(async () => {
         const credentials = { tokenId: ENV.matterportTokenId, tokenSecret: ENV.matterportTokenSecret };
@@ -963,7 +982,7 @@ Regeln:
       }),
 
     // List all models
-    listModels: protectedProcedure
+    listModels: matterportProcedure
       .input(z.object({
         pageSize: z.number().optional(),
         offset: z.string().optional(),
@@ -979,7 +998,7 @@ Regeln:
       }),
 
     // Get model details by ID
-    getModel: protectedProcedure
+    getModel: matterportProcedure
       .input(z.object({
         modelId: z.string().min(1),
       }))
@@ -989,7 +1008,7 @@ Regeln:
       }),
 
     // Get model basic info
-    getModelBasic: protectedProcedure
+    getModelBasic: matterportProcedure
       .input(z.object({
         modelId: z.string().min(1),
       }))
@@ -999,7 +1018,7 @@ Regeln:
       }),
 
     // Get floors for a model
-    getFloors: protectedProcedure
+    getFloors: matterportProcedure
       .input(z.object({
         modelId: z.string().min(1),
       }))
@@ -1009,7 +1028,7 @@ Regeln:
       }),
 
     // Get rooms for a model
-    getRooms: protectedProcedure
+    getRooms: matterportProcedure
       .input(z.object({
         modelId: z.string().min(1),
       }))
@@ -1019,7 +1038,7 @@ Regeln:
       }),
 
     // Get sweeps (scan points) for a model
-    getSweeps: protectedProcedure
+    getSweeps: matterportProcedure
       .input(z.object({
         modelId: z.string().min(1),
       }))
@@ -1029,7 +1048,7 @@ Regeln:
       }),
 
     // Get MatterTags for a model
-    getMatterTags: protectedProcedure
+    getMatterTags: matterportProcedure
       .input(z.object({
         modelId: z.string().min(1),
       }))
@@ -1039,7 +1058,7 @@ Regeln:
       }),
 
     // Get SDK Key for client-side embed (never expose API tokens)
-    getSdkKey: protectedProcedure
+    getSdkKey: matterportProcedure
       .query(() => {
         return { sdkKey: ENV.matterportSdkKey };
       }),
@@ -1047,7 +1066,7 @@ Regeln:
 
   // ─── KI-Analyse ──────────────────────────────────────────────────────────────
   analysis: router({
-    uploadPhoto: protectedProcedure
+    uploadPhoto: cloudProcedure
       .input(
         z.object({
           base64: z.string(),
@@ -1061,7 +1080,7 @@ Regeln:
         return { url };
       }),
 
-    analyzePhoto: protectedProcedure
+    analyzePhoto: aiProcedure
       .input(
         z.object({
           imageUrls: z.array(z.string()).min(1).max(5),
@@ -1089,7 +1108,7 @@ Regeln:
      * Generate a professional construction report from transcription + metadata.
      * Uses structured JSON output for per-trade summaries, then formats as Markdown.
      */
-    generateReport: protectedProcedure
+    generateReport: aiProcedure
       .input(
         z.object({
           reportType: z.string(),
@@ -1113,7 +1132,7 @@ Regeln:
      * Generate a professional Bautagebuch (daily construction report).
      * Combines weather, attendance, defects, protocols, photos into structured report.
      */
-    generateBautagebuch: protectedProcedure
+    generateBautagebuch: aiProcedure
       .input(
         z.object({
           projectName: z.string(),
@@ -1148,7 +1167,7 @@ Regeln:
 
   // KI-Baustellenassistent: Intelligente Protokoll-Analyse
   assistant: router({
-    analyzeProtocol: protectedProcedure
+    analyzeProtocol: aiProcedure
       .input(
         z.object({
           protocolText: z.string(),

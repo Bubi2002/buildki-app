@@ -15,11 +15,11 @@ export function useFeatureToggles() {
     loadToggles();
   }, []);
 
-  const loadToggles = async () => {
+  async function loadToggles() {
     const t = await getFeatureToggles();
     setToggles([...t]);
     setLoaded(true);
-  };
+  }
 
   const toggle = useCallback(async (key: FeatureKey, enabled: boolean) => {
     await setFeatureEnabled(key, enabled);

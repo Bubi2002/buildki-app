@@ -22,7 +22,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  FlatList,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -73,14 +72,7 @@ export default function ConstructionBrainScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // ─── Load Project ───────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    loadActiveProject();
-    loadHistory();
-  }, []);
-
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     if (params.projectId && params.projectName) {
       setActiveProject({ id: params.projectId, name: params.projectName });
       return;
@@ -92,14 +84,23 @@ export default function ConstructionBrainScreen() {
         setActiveProject({ id: proj.id, name: proj.name });
       }
     } catch {}
-  };
+  }
 
-  const loadHistory = async () => {
+  async function loadHistory() {
     try {
       const stored = await AsyncStorage.getItem(HISTORY_KEY);
       if (stored) setHistory(JSON.parse(stored));
     } catch {}
-  };
+  }
+
+  // ─── Load Project ───────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadActiveProject();
+      void loadHistory();
+    });
+  }, []);
 
   const saveHistory = async (entries: HistoryEntry[]) => {
     try {
@@ -132,7 +133,7 @@ export default function ConstructionBrainScreen() {
       const updated = [...history, entry];
       setHistory(updated);
       await saveHistory(updated);
-    } catch (error: any) {
+    } catch  {
       setCurrentResponse({
         intent: "unknown",
         title: "Fehler",

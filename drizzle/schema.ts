@@ -36,6 +36,36 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// Current account-level privacy choices. One row per authenticated user.
+export const privacyConsents = mysqlTable("privacy_consents", {
+  userId: int("userId").primaryKey(),
+  version: int("version").notNull(),
+  aiProcessing: boolean("aiProcessing").default(false).notNull(),
+  cloudSync: boolean("cloudSync").default(false).notNull(),
+  gpsTracking: boolean("gpsTracking").default(false).notNull(),
+  acceptedAt: timestamp("acceptedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  revokedAt: timestamp("revokedAt"),
+  source: varchar("source", { length: 32 }).default("app").notNull(),
+});
+
+export type PrivacyConsentRecord = typeof privacyConsents.$inferSelect;
+export type InsertPrivacyConsentRecord = typeof privacyConsents.$inferInsert;
+
+// Append-only evidence of purpose grants and withdrawals.
+export const privacyConsentEvents = mysqlTable("privacy_consent_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  version: int("version").notNull(),
+  purpose: mysqlEnum("purpose", ["aiProcessing", "cloudSync", "gpsTracking"]).notNull(),
+  granted: boolean("granted").notNull(),
+  occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+  source: varchar("source", { length: 32 }).default("app").notNull(),
+});
+
+export type PrivacyConsentEvent = typeof privacyConsentEvents.$inferSelect;
+export type InsertPrivacyConsentEvent = typeof privacyConsentEvents.$inferInsert;
+
 // Protocol table for cloud sync
 export const protocols = mysqlTable("protocols", {
   id: int("id").autoincrement().primaryKey(),

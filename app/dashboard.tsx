@@ -37,6 +37,14 @@ type StatCard = {
   color: string;
 };
 
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const colors = useColors();
@@ -57,13 +65,7 @@ export default function DashboardScreen() {
   const [templateStats, setTemplateStats] = useState<{ name: string; count: number; percentage: number }[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ label: string; count: number }[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadStats();
-    }, [])
-  );
-
-  const loadStats = async () => {
+  async function loadStats() {
     try {
       const data = await AsyncStorage.getItem("protocols");
       const allProtocols: Protocol[] = JSON.parse(data || "[]");
@@ -146,15 +148,13 @@ export default function DashboardScreen() {
     } catch (e) {
       console.error("Error loading stats:", e);
     }
-  };
+  }
 
-  const getWeekNumber = (date: Date): number => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  };
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [])
+  );
 
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);

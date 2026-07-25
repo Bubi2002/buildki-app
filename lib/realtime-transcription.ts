@@ -12,7 +12,6 @@
  * - Full transcription is assembled from all chunks at the end
  */
 import { useState, useRef, useCallback } from "react";
-import { Platform } from "react-native";
 
 export type LiveTranscriptChunk = {
   text: string;

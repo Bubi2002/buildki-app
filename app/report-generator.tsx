@@ -11,7 +11,7 @@
  * - Editierbarer Bericht vor Export
  * - PDF-Export mit Markdown-Rendering
  */
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -29,10 +29,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { REPORT_TYPES, type ReportType, type ReportTypeConfig } from "@/lib/report-types";
+import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { trpc } from "@/lib/trpc";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
-import { getDefects, type Defect } from "@/lib/defect-store";
+import { getDefects } from "@/lib/defect-store";
 
 type Step = "select" | "configure" | "generating" | "preview" | "edit";
 
@@ -230,7 +230,7 @@ export default function ReportGeneratorScreen() {
 
       setGenerationProgress(100);
       setStep("preview");
-    } catch (error: any) {
+    } catch  {
       // Fallback to local template
       setReportContent(generateFallbackReport(selectedType));
       setStep("preview");

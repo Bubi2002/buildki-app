@@ -1,136 +1,74 @@
-/**
- * BuildKI – Legal & Privacy Screens
- * 
- * Provides:
- * - Datenschutzerklärung (Privacy Policy)
- * - Impressum
- * - Nutzungsbedingungen (Terms of Service)
- * - KI-Hinweis (AI Disclaimer)
- * - Lizenzen (Open Source)
- * - DSGVO Data Export / Deletion
- */
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   ScrollView,
   Text,
-  View,
   TouchableOpacity,
-  Alert,
-  Share,
+  View,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { ScreenContainer } from "@/components/screen-container";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { exportAuditLog } from "@/lib/audit-log";
-import { getDefects } from "@/lib/defect-store";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-type LegalSection = "datenschutz" | "impressum" | "agb" | "ki-hinweis" | "lizenzen" | "dsgvo-export";
+import { DataRightsSection } from "@/components/data-rights-section";
+import { ScreenContainer } from "@/components/screen-container";
+import {
+  LEGAL_BUSINESS_MODEL,
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_DRAFT_MARKER,
+  LEGAL_DRAFT_NOTICE,
+  LEGAL_DRAFT_VERSION,
+  LEGAL_PROVIDER,
+} from "@/lib/legal-draft";
+
+type LegalSection =
+  | "datenschutz"
+  | "impressum"
+  | "agb"
+  | "ki-hinweis"
+  | "lizenzen"
+  | "dsgvo-export";
+
+const SECTIONS: { key: LegalSection; title: string }[] = [
+  { key: "datenschutz", title: "Datenschutz" },
+  { key: "impressum", title: "Impressum" },
+  { key: "agb", title: "Nutzungsbedingungen" },
+  { key: "ki-hinweis", title: "KI-Hinweis" },
+  { key: "lizenzen", title: "Lizenzen" },
+  { key: "dsgvo-export", title: "Meine Daten" },
+];
 
 export default function LegalScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ section?: string }>();
   const [activeSection, setActiveSection] = useState<LegalSection>(
-    (params.section as LegalSection) || "datenschutz"
+    (params.section as LegalSection) || "datenschutz",
   );
-  const [exporting, setExporting] = useState(false);
-
-  const handleDataExport = useCallback(async () => {
-    setExporting(true);
-    try {
-      // Collect all user data for DSGVO Art. 15 export
-      const auditLog = await exportAuditLog();
-      const defects = await getDefects();
-      
-      const allKeys = await AsyncStorage.getAllKeys();
-      const relevantKeys = allKeys.filter(k => 
-        k.startsWith("buildki_") || 
-        k.startsWith("defects") || 
-        k.startsWith("projects") ||
-        k.startsWith("protocols") ||
-        k.startsWith("attendance")
-      );
-      const allData = await AsyncStorage.multiGet(relevantKeys);
-      
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        exportReason: "DSGVO Art. 15 – Auskunftsrecht",
-        userData: {
-          defects: defects,
-          otherData: Object.fromEntries(
-            allData.map(([key, value]) => [key, value ? JSON.parse(value) : null])
-          ),
-        },
-        auditLog: JSON.parse(auditLog),
-      };
-      
-      const exportString = JSON.stringify(exportData, null, 2);
-      
-      await Share.share({
-        message: exportString,
-        title: "BuildKI – Datenexport (DSGVO Art. 15)",
-      });
-    } catch (error: any) {
-      Alert.alert("Fehler", `Export fehlgeschlagen: ${error.message}`);
-    } finally {
-      setExporting(false);
-    }
-  }, []);
-
-  const handleDataDeletion = useCallback(() => {
-    Alert.alert(
-      "Daten löschen",
-      "Möchten Sie ALLE Ihre Daten unwiderruflich löschen? Dies umfasst:\n\n• Alle Projekte\n• Alle Mängel und Fotos\n• Alle Protokolle\n• Alle Berichte\n• Audit-Log\n\nDiese Aktion kann NICHT rückgängig gemacht werden.",
-      [
-        { text: "Abbrechen", style: "cancel" },
-        {
-          text: "Alle Daten löschen",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const allKeys = await AsyncStorage.getAllKeys();
-              await AsyncStorage.multiRemove(allKeys);
-              Alert.alert("Erledigt", "Alle lokalen Daten wurden gelöscht. Die App wird zurückgesetzt.", [
-                { text: "OK" }
-              ]);
-            } catch (error: any) {
-              Alert.alert("Fehler", `Löschung fehlgeschlagen: ${error.message}`);
-            }
-          },
-        },
-      ]
-    );
-  }, []);
-
-  const sections: { key: LegalSection; title: string }[] = [
-    { key: "datenschutz", title: "Datenschutz" },
-    { key: "impressum", title: "Impressum" },
-    { key: "agb", title: "Nutzungsbedingungen" },
-    { key: "ki-hinweis", title: "KI-Hinweis" },
-    { key: "lizenzen", title: "Lizenzen" },
-    { key: "dsgvo-export", title: "Meine Daten" },
-  ];
 
   return (
     <ScreenContainer className="p-0">
-      {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.6}
-        >
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.6}>
           <Text className="text-primary text-base">← Zurück</Text>
         </TouchableOpacity>
         <Text className="text-lg font-bold text-foreground ml-4">Rechtliches</Text>
       </View>
 
-      {/* Compact tab navigation — content height must never stretch with the screen */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0, maxHeight: 54, borderBottomWidth: 1, borderBottomColor: "#223A55" }}
-        contentContainerStyle={{ minHeight: 53, paddingHorizontal: 8, paddingVertical: 5, gap: 6, alignItems: "center" }}
+        style={{
+          flexGrow: 0,
+          maxHeight: 54,
+          borderBottomWidth: 1,
+          borderBottomColor: "#223A55",
+        }}
+        contentContainerStyle={{
+          minHeight: 53,
+          paddingHorizontal: 8,
+          paddingVertical: 5,
+          gap: 6,
+          alignItems: "center",
+        }}
       >
-        {sections.map((section) => {
+        {SECTIONS.map((section) => {
           const isActive = activeSection === section.key;
           return (
             <TouchableOpacity
@@ -143,7 +81,6 @@ export default function LegalScreen() {
               style={{
                 height: 42,
                 paddingHorizontal: 14,
-                borderRadius: 0,
                 borderWidth: 1,
                 borderColor: isActive ? "#5BA7D9" : "#223A55",
                 backgroundColor: isActive ? "#5BA7D9" : "#12233D",
@@ -151,7 +88,13 @@ export default function LegalScreen() {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: isActive ? "#06111D" : "#F4F7FA", fontSize: 13, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: isActive ? "#06111D" : "#F4F7FA",
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
                 {section.title}
               </Text>
             </TouchableOpacity>
@@ -159,86 +102,134 @@ export default function LegalScreen() {
         })}
       </ScrollView>
 
-      {/* Only the legal text scrolls vertically */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 40,
+        }}
         showsVerticalScrollIndicator={false}
       >
+        <DraftBanner />
         {activeSection === "datenschutz" && <DatenschutzContent />}
         {activeSection === "impressum" && <ImpressumContent />}
         {activeSection === "agb" && <AGBContent />}
         {activeSection === "ki-hinweis" && <KIHinweisContent />}
         {activeSection === "lizenzen" && <LizenzenContent />}
-        {activeSection === "dsgvo-export" && (
-          <DSGVOExportContent
-            onExport={handleDataExport}
-            onDelete={handleDataDeletion}
-            exporting={exporting}
-          />
-        )}
+        {activeSection === "dsgvo-export" && <DataRightsSection />}
       </ScrollView>
     </ScreenContainer>
   );
 }
 
-// ─── Content Components ───────────────────────────────────────────────────────
+function DraftBanner() {
+  return (
+    <View className="border border-error bg-error/10 p-4 mb-5">
+      <Text className="text-error text-sm font-bold mb-2">
+        NICHT VERÖFFENTLICHUNGSFÄHIG
+      </Text>
+      <Text className="text-foreground text-sm leading-5">{LEGAL_DRAFT_NOTICE}</Text>
+      <Text className="text-muted text-xs mt-2">Entwurfsversion: {LEGAL_DRAFT_VERSION}</Text>
+    </View>
+  );
+}
 
 function DatenschutzContent() {
   return (
-    <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Datenschutzerklärung</Text>
-      <Text className="text-sm text-muted">Stand: Juli 2026</Text>
+    <View className="gap-5 pb-8">
+      <Text className="text-xl font-bold text-foreground">Datenschutz-Prüfentwurf</Text>
 
       <Section title="1. Verantwortlicher">
-        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Vertreten durch: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@iserloh.net{"\n"}Registergericht: Amtsgericht Mannheim, HRB 734893</P>
+        <OpenLine label="Name/Firma" value={LEGAL_PROVIDER.legalName} />
+        <OpenLine label="Rechtsform" value={LEGAL_PROVIDER.legalForm} />
+        <OpenLine label="Anschrift" value={`${LEGAL_PROVIDER.streetAddress}, ${LEGAL_PROVIDER.postalCodeAndCity}`} />
+        <OpenLine label="Vertretung" value={LEGAL_PROVIDER.representative} />
+        <P>E-Mail: {LEGAL_CONTACT_EMAIL}</P>
+        <OpenLine label="Datenschutzbeauftragter" value={LEGAL_PROVIDER.dataProtectionOfficer} />
+        <P>
+          Bis zur verbindlichen Betreiberbestätigung dient {LEGAL_CONTACT_EMAIL} ausschließlich als allgemeiner Datenschutzkontakt; eine förmliche Bestellung eines Datenschutzbeauftragten wird nicht behauptet.
+        </P>
       </Section>
 
-      <Section title="2. Erhobene Daten">
-        <P>BuildKI verarbeitet folgende Daten:</P>
-        <Bullet text="Projektdaten (Name, Adresse, Beteiligte)" />
-        <Bullet text="Mängeldokumentation (Beschreibung, Fotos, Standort)" />
-        <Bullet text="Sprachaufnahmen (Protokolle, Notizen)" />
-        <Bullet text="GPS-Koordinaten (zur Verortung von Mängeln)" />
-        <Bullet text="Geräteinformationen (für Audit-Log)" />
-        <Bullet text="Nutzungsdaten (Audit-Trail für Beweissicherung)" />
+      <Section title="2. Betroffene Personen und Datenkategorien">
+        <Bullet text="Kontoinhaber: E-Mail-Adresse, Name, Benutzer-ID, Login-, Verifikations- und Sitzungsdaten" />
+        <Bullet text="Projektbeteiligte und Kontakte: Namen, Firmen, Rollen, E-Mail-Adressen und Telefonnummern" />
+        <Bullet text="Beschäftigte und Auftragnehmer: Anwesenheit, Arbeitszeiten, Tätigkeiten, Aufgaben, Verantwortlichkeiten und Status" />
+        <Bullet text="Baustellendaten: Projekte, Räume, Mängel, Protokolle, Termine, Standorte, Wetter- und Matterport-Bezüge" />
+        <Bullet text="Nutzerinhalte: Audio, Video, Fotos, Anhänge, Transkripte, Notizen, Exporte und KI-Ergebnisse" />
+        <Bullet text="Betriebsdaten: Audit-, Sicherheits-, Fehler-, Geräte-, Push- und Synchronisationsinformationen" />
+        <Bullet text="Abrechnungsdaten nur bei tatsächlich aktiviertem, zulässigem Zahlungsmodell" />
       </Section>
 
-      <Section title="3. Zweck der Verarbeitung">
-        <Bullet text="Baudokumentation und Mängelmanagement (Art. 6 Abs. 1 lit. b DSGVO)" />
-        <Bullet text="Beweissicherung gemäß VOB/B §12 (Art. 6 Abs. 1 lit. f DSGVO)" />
-        <Bullet text="KI-gestützte Berichterstellung (Art. 6 Abs. 1 lit. a DSGVO – Einwilligung)" />
+      <Section title="3. Zwecke und vorläufige Rechtsgrundlagen">
+        <Bullet text={`Kontoregistrierung, Authentifizierung und Bereitstellung der gewünschten Appfunktionen: endgültiges B2B/B2C-Modell und konkrete Rechtsgrundlage – ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text="Projekt-, Protokoll-, Aufgaben- und Mängelverwaltung: Vertrag beziehungsweise dokumentiertes berechtigtes Interesse, abhängig von Verantwortungsrolle und Kundenvertrag" />
+        <Bullet text="Optionale KI-, Standort-, Cloud- und Drittanbieterfunktionen: nur nach zweckbezogener Aktivierung und transparenter Information; konkrete Rechtsgrundlage ist funktionsbezogen zu dokumentieren" />
+        <Bullet text="Sicherheit, Missbrauchsabwehr und notwendige Protokollierung: berechtigtes Interesse beziehungsweise gesetzliche Pflicht, nach dokumentierter Interessenabwägung" />
+        <Bullet text="Gesetzliche Aufbewahrung und Rechtsverteidigung: nur soweit konkret erforderlich" />
       </Section>
 
-      <Section title="4. KI-Verarbeitung">
-        <P>BuildKI verwendet KI-Modelle zur Berichterstellung. Dabei gilt:</P>
-        <Bullet text="Keine personenbezogenen Daten werden an KI-Dienste übermittelt" />
-        <Bullet text="Transkriptionen werden vor der KI-Verarbeitung anonymisiert" />
-        <Bullet text="KI-generierte Inhalte sind als solche gekennzeichnet" />
-        <Bullet text="Der Nutzer ist für die Prüfung und Freigabe verantwortlich" />
+      <Section title="4. Lokale und serverseitige Verarbeitung">
+        <P>
+          BuildKI speichert einen Teil der Projekte, Einstellungen, Medienverweise und Einwilligungsinformationen lokal auf dem Gerät. Bei Konto-, Cloud-, Synchronisations-, Upload-, E-Mail-, KI-, Zahlungs-, Dropbox-, Matterport-, Wetter- oder Pushfunktionen werden Daten zusätzlich an BuildKI-Server oder externe Anbieter übertragen. Eine Deinstallation löscht daher nicht automatisch alle Daten.
+        </P>
       </Section>
 
-      <Section title="5. Speicherung und Sicherheit">
-        <Bullet text="Lokale Daten: Verschlüsselt auf dem Gerät (iOS Keychain / Android Keystore)" />
-        <Bullet text="Cloud-Sync: TLS 1.3 verschlüsselt, EU-Rechenzentrum" />
-        <Bullet text="Fotos: Verschlüsselt gespeichert, kein Zugriff durch Dritte" />
-        <Bullet text="Backups: Automatisch, verschlüsselt, 30 Tage Aufbewahrung" />
+      <Section title="5. Empfänger und Dienstleister">
+        <Bullet text={`BuildKI-Backend, Datenbank und Objektspeicher – Vertragspartner, Region, AVV, Transfergrundlage und Löschfrist: ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`KI-/Transkriptions-/Analyseanbieter (technischer Forge-Endpunkt) – Rechtsträger, Modelle, Region, AVV, SCC und Löschfrist: ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`E-Mail-Versand (technisch Strato SMTP) – Vertrag, Region, AVV und Löschfrist: ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`Stripe nur bei künftig rechtlich und Apple-konform aktiviertem Zahlungsmodell – Vertrags-/Transferangaben: ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`Dropbox und Matterport nur bei freiwilliger Verbindung durch den Nutzer – Vertrags-/Transferangaben: ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`Apple/Expo für Betriebssystem-, Push-, TestFlight- und Storeprozesse – konkrete Produktivkonfiguration: ${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text="Open-Meteo für Wetterabfragen; zu übertragen sind nur die hierfür notwendigen Standort-/Zeitparameter" />
       </Section>
 
-      <Section title="6. Ihre Rechte (DSGVO Art. 15-22)">
-        <Bullet text="Auskunftsrecht (Art. 15): Export aller Daten unter 'Meine Daten'" />
-        <Bullet text="Berichtigungsrecht (Art. 16): Daten jederzeit in der App änderbar" />
-        <Bullet text="Löschungsrecht (Art. 17): Vollständige Datenlöschung unter 'Meine Daten'" />
-        <Bullet text="Datenübertragbarkeit (Art. 20): JSON-Export aller Daten" />
-        <Bullet text="Widerspruchsrecht (Art. 21): KI-Verarbeitung jederzeit deaktivierbar" />
+      <Section title="6. Drittlandübermittlungen">
+        <P>
+          Ob und welche Anbieter Daten außerhalb EU/EWR verarbeiten, welche Angemessenheitsbeschlüsse, Standardvertragsklauseln oder zusätzlichen Maßnahmen gelten, ist je Produktivvertrag zu bestätigen.
+        </P>
+        <OpenValue />
       </Section>
 
-      <Section title="7. Auftragsverarbeitung">
-        <P>Für die Cloud-Synchronisation wird ein Auftragsverarbeitungsvertrag (AVV) gemäß Art. 28 DSGVO mit dem Hosting-Anbieter geschlossen. Serverstandort: EU (Deutschland).</P>
+      <Section title="7. Speicherdauer und Löschkonzept">
+        <P>
+          Verbindliche Fristen für Konten, Projekte, Audio, Video, Fotos, Transkripte, KI-Anfragen, Objektspeicher, Auditdaten, Sicherheitslogs, Zahlungsunterlagen und Backups sind noch nicht beschlossen.
+        </P>
+        <OpenValue />
+        <P>
+          Daten werden im Prüfentwurf nicht mit einer erfundenen pauschalen 30-Tage-Frist beschrieben. Gesetzliche Aufbewahrung und technische Backupzyklen müssen je Datenkategorie dokumentiert werden.
+        </P>
       </Section>
 
-      <Section title="8. Kontakt Datenschutzbeauftragter">
-        <P>Bei Fragen zum Datenschutz:{"\n"}immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}E-Mail: info@iserloh.net</P>
+      <Section title="8. Audio, Video, Fotos und Beschäftigtendaten">
+        <P>
+          Nutzer müssen vor nichtöffentlichen Audio-/Videoaufnahmen alle betroffenen Personen informieren und eine geeignete Rechtsgrundlage sicherstellen. Personenfotos, Anwesenheit, Arbeitszeit, Standort und Aufgaben können Beschäftigten- oder Drittdaten betreffen. Unternehmen müssen Erforderlichkeit, Informationspflichten, mögliche Betriebsratsmitbestimmung und erforderliche Vereinbarungen eigenständig prüfen.
+        </P>
+      </Section>
+
+      <Section title="9. Ihre Rechte">
+        <Bullet text="Auskunft und Kopie der personenbezogenen Daten" />
+        <Bullet text="Berichtigung unrichtiger Daten" />
+        <Bullet text="Löschung oder Einschränkung, soweit keine vorrangige Pflicht entgegensteht" />
+        <Bullet text="Datenübertragbarkeit, soweit anwendbar" />
+        <Bullet text="Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen" />
+        <Bullet text="Widerruf einer Einwilligung für die Zukunft" />
+        <Bullet text="Beschwerde bei einer zuständigen Datenschutzaufsichtsbehörde" />
+        <P>Kontakt für Anfragen: {LEGAL_CONTACT_EMAIL}</P>
+      </Section>
+
+      <Section title="10. Endgerätespeicherung und Tracking">
+        <P>
+          Für den ausdrücklich gewünschten Appbetrieb notwendige lokale Speicherungen werden transparent dokumentiert. Ein Analytics-, Werbe-, Profiling- oder Tracking-SDK ist im geprüften Quellstand nicht nachgewiesen und wird nicht behauptet. Eine spätere Einführung erfordert eine erneute TDDDG-/DSGVO-Prüfung vor Aktivierung.
+        </P>
+      </Section>
+
+      <Section title="11. Aktualität und Veröffentlichungssperre">
+        <P>
+          Dieser Text ist ein technischer Prüfentwurf. Er darf erst nach Betreiberbestätigung, Dienstleister-/Transferprüfung, Löschkonzept, finaler Zahlungsentscheidung und anwaltlicher Prüfung veröffentlicht werden.
+        </P>
       </Section>
     </View>
   );
@@ -246,33 +237,33 @@ function DatenschutzContent() {
 
 function ImpressumContent() {
   return (
-    <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Impressum</Text>
-
-      <Section title="Angaben gemäß § 5 TMG">
-        <P>immobau-ka GmbH{"\n"}Ringstraße 6{"\n"}76228 Karlsruhe</P>
-        <P>Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh</P>
-        <P>E-Mail: info@iserloh.net{"\n"}Telefon: Auf Anfrage</P>
+    <View className="gap-5 pb-8">
+      <Text className="text-xl font-bold text-foreground">Impressum-Prüfentwurf</Text>
+      <Section title="Angaben gemäß § 5 DDG">
+        <OpenLine label="Name/Firma" value={LEGAL_PROVIDER.legalName} />
+        <OpenLine label="Rechtsform" value={LEGAL_PROVIDER.legalForm} />
+        <OpenLine label="Ladungsfähige Anschrift" value={`${LEGAL_PROVIDER.streetAddress}, ${LEGAL_PROVIDER.postalCodeAndCity}`} />
+        <OpenLine label="Vertretungsberechtigter" value={LEGAL_PROVIDER.representative} />
+        <P>E-Mail: {LEGAL_CONTACT_EMAIL}</P>
+        <OpenLine label="Telefon/weitere schnelle Kontaktmöglichkeit" value={LEGAL_PROVIDER.phone} />
       </Section>
 
-      <Section title="Registereintrag">
-        <P>Eingetragen im Handelsregister.{"\n"}Registergericht: Amtsgericht Mannheim{"\n"}Registernummer: HRB 734893</P>
+      <Section title="Register und Identifikationsnummern">
+        <OpenLine label="Registergericht" value={LEGAL_PROVIDER.registerCourt} />
+        <OpenLine label="Registernummer" value={LEGAL_PROVIDER.registerNumber} />
+        <OpenLine label="USt-IdNr. oder Wirtschafts-IdNr." value={LEGAL_PROVIDER.vatOrBusinessId} />
+        <P>Eine interne Steuernummer und Bankverbindung werden im Impressum nicht veröffentlicht.</P>
       </Section>
 
-      <Section title="Steuernummer">
-        <P>Steuernummer: 34413/61771{"\n"}Finanzamt Karlsruhe-Durlach</P>
+      <Section title="Inhaltliche Verantwortung und Support">
+        <OpenLine label="Inhaltlich verantwortlich" value={LEGAL_PROVIDER.representative} />
+        <P>Support und Datenschutzkontakt: {LEGAL_CONTACT_EMAIL}</P>
       </Section>
 
-      <Section title="Bankverbindung">
-        <P>Sparkasse Karlsruhe{"\n"}IBAN: DE19 6605 0101 0108 2934 40{"\n"}BIC: KARSDE66XXX</P>
-      </Section>
-
-      <Section title="Verantwortlich für den Inhalt">
-        <P>Dipl. Ing. (FH) Jörg Iserloh{"\n"}Ringstraße 6, 76228 Karlsruhe</P>
-      </Section>
-
-      <Section title="Haftungsausschluss">
-        <P>Die KI-generierten Berichte dienen als Arbeitshilfe und ersetzen nicht die fachliche Prüfung durch qualifiziertes Personal. Der Nutzer ist für die Richtigkeit und Vollständigkeit der freigegebenen Dokumente verantwortlich.</P>
+      <Section title="KI-Hinweis">
+        <P>
+          KI-generierte Inhalte sind Arbeitshilfen, können fehlerhaft sein und müssen vor Freigabe, Versand oder Verwendung fachlich geprüft werden. Sie ersetzen keine rechtliche, technische oder sicherheitsrelevante Fachentscheidung.
+        </P>
       </Section>
     </View>
   );
@@ -280,129 +271,68 @@ function ImpressumContent() {
 
 function AGBContent() {
   return (
-    <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Allgemeine Geschäftsbedingungen</Text>
-      <Text className="text-sm text-muted">der immobau-ka GmbH{"\n"}gültig ab 1. Juli 2026</Text>
+    <View className="gap-5 pb-8">
+      <Text className="text-xl font-bold text-foreground">Nutzungsbedingungen – Prüfentwurf</Text>
 
-      <Section title="§ 1 Geltungsbereich">
-        <P>1.1 Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB“) regeln die vertragliche Beziehung zwischen der immobau-ka GmbH, vertreten durch Dipl. Ing. (FH) Jörg Iserloh (nachfolgend „Anbieter“) und Ihnen als Kunden (nachfolgend „Kunde“) in Bezug auf die Nutzung der mobilen Applikation „BuildKI – Video-Protokoll App“ sowie der zugehörigen Cloud-Dienste (nachfolgend gemeinsam „Software“).</P>
-        <P>1.2 Die Software und die zugehörigen Dienste sind ausschließlich für den Geschäftsverkehr (B2B) bestimmt. Die Nutzung ist ausschließlich Unternehmern im Sinne von § 14 BGB gestattet. Der Kunde bestätigt mit Vertragsschluss, dass er in Ausübung seiner gewerblichen oder selbstständigen beruflichen Tätigkeit handelt.</P>
-        <P>1.3 Abweichende oder entgegenstehende allgemeine Geschäftsbedingungen des Kunden werden nicht anerkannt, sofern der Anbieter diesen nicht ausdrücklich schriftlich zugestimmt hat.</P>
-        <P>1.4 Der Anbieter ist berechtigt, diese AGB mit einer Ankündigungsfrist von sechs (6) Wochen per E-Mail zu ändern. Widerspricht der Kunde nicht innerhalb von vier (4) Wochen nach Zugang der Änderungsmitteilung in Textform, gelten die geänderten AGB als akzeptiert. Der Anbieter weist in der Änderungsmitteilung gesondert auf diese Rechtsfolge hin.</P>
+      <Section title="1. Anbieter, Zielgruppe und Vertragsschluss">
+        <OpenLine label="Vertragspartner/Anbieter" value={LEGAL_PROVIDER.legalName} />
+        <OpenLine label="B2B-, B2C- oder gemischtes Modell" value={LEGAL_BUSINESS_MODEL.audience} />
+        <P>
+          Die Registrierung allein darf erst dann als Vertragsschluss bezeichnet werden, wenn Anbieter, Zielgruppe, Leistungsumfang, Tarif und Annahmeprozess verbindlich festgelegt sind.
+        </P>
       </Section>
 
-      <Section title="§ 2 Vertragsgegenstand und Leistungsbeschreibung">
-        <P>2.1 Der Anbieter stellt dem Kunden die Software „BuildKI“ als Software-as-a-Service (SaaS) in der jeweils aktuellen Version zur Nutzung über das Internet sowie als mobile Applikation (iOS/Android) zur Verfügung.</P>
-        <P>2.2 Die Software umfasst insbesondere folgende Funktionen:</P>
-        <Bullet text="KI-gestützte Sprachtranskription und Protokollerstellung" />
-        <Bullet text="Mängelmanagement mit Fotodokumentation und Statusverfolgung" />
-        <Bullet text="3D-Gebäudemodell-Integration (Matterport)" />
-        <Bullet text="Automatische Bautagebuch-Erstellung" />
-        <Bullet text="PDF-Export mit professionellem Branding" />
-        <Bullet text="Cloud-Synchronisation und Offline-Funktionalität" />
-        <Bullet text="Push-Benachrichtigungen und Fristenverwaltung" />
-        <Bullet text="Team-Kollaboration und Projektverwaltung" />
-        <P>2.3 Der Anbieter behält sich vor, die Software jederzeit weiterzuentwickeln und zu ändern. Bei wesentlichen Leistungsänderungen wird der Kunde rechtzeitig vorab informiert. Entstehen dem Kunden durch Leistungsänderungen unzumutbare Nachteile, ist er berechtigt, den Vertrag außerordentlich zum Zeitpunkt der Änderung zu kündigen.</P>
-        <P>2.4 Die KI-gestützten Funktionen dienen ausschließlich als Arbeitshilfe. Sie ersetzen nicht die fachliche Prüfung durch qualifiziertes Personal. Der Anbieter übernimmt keine Gewähr für die inhaltliche Richtigkeit KI-generierter Inhalte.</P>
+      <Section title="2. Leistungsumfang">
+        <P>
+          BuildKI unterstützt projektbezogene Baudokumentation, Protokolle, Aufgaben, Mängel, Fotos, Videos und Exporte sowie optionale Cloud-, KI- und Dropbox-Funktionen. Verfügbarkeit und Leistungsumfang richten sich nach der tatsächlich freigeschalteten Konfiguration. Nicht nachgewiesene SLAs, automatische Synchronisationsgarantien oder unbegrenzte Funktionen werden nicht zugesagt.
+        </P>
+        <P>
+          Die Matterport-Integration ist im Prüfentwurf technisch gesperrt. Commercial Partner Terms, zulässige Monetarisierung und App-Store-Verteilung, DPA-Rollen, Transfers, Löschung, Endnutzerbedingungen sowie mandantensichere Account-/Modellzuordnung: {LEGAL_DRAFT_MARKER}
+        </P>
       </Section>
 
-      <Section title="§ 3 Vertragsschluss und Testphase">
-        <P>3.1 Der Vertrag kommt durch Registrierung des Kunden in der App und Bestätigung dieser AGB zustande.</P>
-        <P>3.2 Jeder Kunde hat die Möglichkeit, die Software für einen Zeitraum von vierzehn (14) Tagen kostenlos und unverbindlich zu testen (Testphase). Während der Testphase stehen alle Funktionen uneingeschränkt zur Verfügung.</P>
-        <P>3.3 Nach Ablauf der Testphase wird der Zugang gesperrt, sofern der Kunde kein kostenpflichtiges Abonnement abschließt. Eine automatische Umstellung in ein kostenpflichtiges Abonnement findet nicht statt. Bereits erfasste Daten bleiben für weitere 30 Tage gespeichert.</P>
+      <Section title="3. KI-Funktionen">
+        <P>
+          Transkripte, Zusammenfassungen, Berichte, Aufgaben, Übersetzungen und sonstige Vorschläge können automatisiert beziehungsweise KI-gestützt erzeugt werden. Der Nutzer muss Ergebnisse vor fachlicher oder rechtlicher Verwendung prüfen. BuildKI trifft keine autonome verbindliche Bau-, Sicherheits-, Personal- oder Rechtsentscheidung.
+        </P>
       </Section>
 
-      <Section title="§ 4 Preise und Zahlungsbedingungen">
-        <P>4.1 Für die Nutzung der Software nach Ablauf der Testphase gelten folgende Lizenzgebühren:</P>
-        <Bullet text="Monatsabonnement: 10,00 € zzgl. MwSt. pro Lizenz/Monat" />
-        <Bullet text="Jahresabonnement: 100,00 € zzgl. MwSt. pro Lizenz/Jahr (ca. 16% Ersparnis)" />
-        <P>4.2 Die Abrechnung erfolgt im Voraus. Beim Monatsabonnement monatlich, beim Jahresabonnement jährlich zum Vertragsbeginn.</P>
-        <P>4.3 Alle Preise verstehen sich netto zuzüglich der jeweils geltenden gesetzlichen Umsatzsteuer (derzeit 19%).</P>
-        <P>4.4 Der Anbieter ist berechtigt, die Preise mit einer Ankündigungsfrist von drei (3) Monaten zum Ende der jeweiligen Vertragslaufzeit anzupassen. Der Kunde hat in diesem Fall ein Sonderkündigungsrecht zum Zeitpunkt des Inkrafttretens der Preisänderung.</P>
-        <P>4.5 Bei Zahlungsverzug ist der Anbieter berechtigt, den Zugang zur Software nach erfolgloser Mahnung mit angemessener Nachfrist zu sperren. Die Zahlungspflicht des Kunden bleibt hiervon unberührt.</P>
+      <Section title="4. Preise, Testphase und Zahlung">
+        <OpenLine label="Monatspreis" value={LEGAL_BUSINESS_MODEL.monthlyPrice} />
+        <OpenLine label="Jahrespreis" value={LEGAL_BUSINESS_MODEL.yearlyPrice} />
+        <OpenLine label="Testphase" value={LEGAL_BUSINESS_MODEL.trialTerms} />
+        <OpenLine label="Zahlungsarchitektur" value={LEGAL_BUSINESS_MODEL.paymentArchitecture} />
+        <P>
+          Bis zur Apple- und vertragsrechtlichen Entscheidung darf kein ungeklärter externer Kauf digitaler Premiumfunktionen aus der iOS-App angeboten werden.
+        </P>
       </Section>
 
-      <Section title="§ 5 Nutzungsrechte und Lizenzen">
-        <P>5.1 Der Anbieter räumt dem Kunden für die Dauer des Vertrages ein nicht-ausschließliches, nicht übertragbares und nicht unterlizenzierbares Recht ein, die Software im vereinbarten Umfang zu nutzen.</P>
-        <P>5.2 Eine Lizenz berechtigt zur Nutzung durch eine (1) namentlich benannte natürliche Person. Die gemeinsame Nutzung eines Accounts durch mehrere Personen (Account Sharing) ist nicht gestattet.</P>
-        <P>5.3 Der Kunde darf die Software nicht zurückentwickeln, dekompilieren oder disassemblieren, es sei denn, dies ist nach geltendem Recht zwingend gestattet.</P>
-        <P>5.4 Alle Rechte an der Software, einschließlich Urheberrechte, Markenrechte und sonstige Schutzrechte, verbleiben beim Anbieter.</P>
-        <P>5.5 Die vom Kunden in die Software eingegebenen Daten (Projekte, Protokolle, Fotos, Mängel etc.) verbleiben im Eigentum des Kunden.</P>
+      <Section title="5. Nutzungs- und Kundenpflichten">
+        <Bullet text="Zugangsdaten schützen und unbefugte Nutzung melden" />
+        <Bullet text="Nur rechtmäßig erhobene Projekt-, Personen-, Audio-, Bild- und Beschäftigtendaten verarbeiten" />
+        <Bullet text="Vor nichtöffentlichen Aufnahmen alle Betroffenen informieren und erforderliche Zustimmungen/Rechtsgrundlagen sicherstellen" />
+        <Bullet text="KI-Ausgaben vor Freigabe, Versand oder Verwendung prüfen" />
+        <Bullet text="Betriebsrats-, Beschäftigtendatenschutz-, Geheimhaltungs- und Kundenpflichten beachten" />
       </Section>
 
-      <Section title="§ 6 Pflichten des Kunden">
-        <P>6.1 Der Kunde verpflichtet sich:</P>
-        <Bullet text="Die Software nur bestimmungsgemäß und im Einklang mit diesen AGB zu verwenden" />
-        <Bullet text="Seine Zugangsdaten sicher zu verwahren und Dritten nicht zugänglich zu machen" />
-        <Bullet text="Alle KI-generierten Inhalte vor Freigabe und Weitergabe auf Richtigkeit zu prüfen" />
-        <Bullet text="Die Richtigkeit der eingegebenen Daten sicherzustellen" />
-        <Bullet text="Den Datenschutz bei Personenfotos und personenbezogenen Daten einzuhalten" />
-        <Bullet text="Die für die Nutzung erforderliche IT-Infrastruktur auf eigene Kosten bereitzuhalten" />
-        <P>6.2 Der Kunde haftet für sämtliche Handlungen, die über seinen Account erfolgen, auch wenn diese nicht von ihm autorisiert waren, sofern er die unbefugte Nutzung zu vertreten hat.</P>
-        <P>6.3 Der Kunde wird den Anbieter unverzüglich informieren, wenn er Kenntnis von einer unbefugten Nutzung seines Accounts erlangt.</P>
+      <Section title="6. Auftragsverarbeitung und Unterauftragnehmer">
+        <P>
+          Ob der BuildKI-Anbieter für Kundendaten als Auftragsverarbeiter handelt, welche AVV, TOM, Unterauftragnehmer, Regionen und Transfermechanismen gelten, ist vor Produktivbetrieb vertraglich festzulegen.
+        </P>
+        <OpenValue />
       </Section>
 
-      <Section title="§ 7 Verfügbarkeit und Wartung">
-        <P>7.1 Der Anbieter strebt eine Verfügbarkeit der Cloud-Dienste von 99% im Jahresdurchschnitt an. Nicht eingerechnet werden:</P>
-        <Bullet text="Geplante Wartungsarbeiten (werden mind. 24 Stunden vorab angekündigt)" />
-        <Bullet text="Ausfälle durch höhere Gewalt oder Umstände außerhalb des Einflussbereichs" />
-        <Bullet text="Störungen der Internetverbindung des Kunden" />
-        <P>7.2 Die Offline-Funktionalität der App gewährleistet die lokale Nutzung auch ohne Internetverbindung. Eine Synchronisation erfolgt automatisch bei Wiederherstellung der Verbindung.</P>
-        <P>7.3 Geplante Wartungsarbeiten werden nach Möglichkeit außerhalb der üblichen Geschäftszeiten (Mo–Fr, 08:00–18:00 Uhr) durchgeführt.</P>
+      <Section title="7. Laufzeit, Kündigung und Daten nach Vertragsende">
+        <OpenLine label="Laufzeit/Kündigung" value={LEGAL_BUSINESS_MODEL.cancellationTerms} />
+        <OpenLine label="Exportfrist nach Vertragsende" value={LEGAL_DRAFT_MARKER} />
+        <OpenLine label="Löschung/gesetzliche Aufbewahrung" value={LEGAL_DRAFT_MARKER} />
       </Section>
 
-      <Section title="§ 8 Gewährleistung und Haftung">
-        <P>8.1 Der Anbieter stellt die Software nach dem Grundsatz der „bestmöglichen Bemühungen“ (Best Efforts) zur Verfügung.</P>
-        <P>8.2 Der Anbieter haftet nicht für:</P>
-        <Bullet text="Die inhaltliche Richtigkeit KI-generierter Protokolle, Berichte und Analysen" />
-        <Bullet text="Schäden aus der ungeprüften Verwendung KI-generierter Inhalte" />
-        <Bullet text="Datenverluste, die auf Handlungen des Kunden zurückzuführen sind" />
-        <Bullet text="Funktionsstörungen aufgrund unzureichender IT-Infrastruktur des Kunden" />
-        <Bullet text="Mittelbare Schäden, entgangenen Gewinn oder Folgeschäden" />
-        <P>8.3 Die Haftung ist – außer bei Vorsatz und grober Fahrlässigkeit – auf den vorhersehbaren, vertragstypischen Schaden begrenzt, maximal auf die vom Kunden in den letzten 12 Monaten gezahlten Lizenzgebühren.</P>
-        <P>8.4 Die vorstehenden Haftungsbeschränkungen gelten nicht für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit sowie für Ansprüche nach dem Produkthaftungsgesetz.</P>
-      </Section>
-
-      <Section title="§ 9 Datenschutz und Datensicherheit">
-        <P>9.1 Der Anbieter verarbeitet personenbezogene Daten ausschließlich gemäß der geltenden Datenschutzerklärung und im Einklang mit der DSGVO.</P>
-        <P>9.2 Soweit der Anbieter im Auftrag des Kunden personenbezogene Daten verarbeitet, wird ein Auftragsverarbeitungsvertrag (AVV) gemäß Art. 28 DSGVO geschlossen.</P>
-        <P>9.3 Die Datenverarbeitung erfolgt auf Servern in der Europäischen Union (Deutschland). Eine Übermittlung in Drittländer findet nicht statt.</P>
-        <P>9.4 Bei der KI-Verarbeitung werden Texte vor der Analyse anonymisiert. Keine personenbezogenen Daten werden an KI-Dienste übermittelt.</P>
-      </Section>
-
-      <Section title="§ 10 Vertragslaufzeit und Kündigung">
-        <P>10.1 Das Monatsabonnement hat eine Mindestlaufzeit von einem (1) Monat und verlängert sich automatisch um jeweils einen weiteren Monat, sofern es nicht mit einer Frist von vierzehn (14) Tagen zum Ende der jeweiligen Laufzeit gekündigt wird.</P>
-        <P>10.2 Das Jahresabonnement hat eine Mindestlaufzeit von zwölf (12) Monaten und verlängert sich automatisch um jeweils zwölf weitere Monate, sofern es nicht mit einer Frist von einem (1) Monat zum Ende der jeweiligen Laufzeit gekündigt wird.</P>
-        <P>10.3 Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt unberührt. Ein wichtiger Grund liegt insbesondere vor bei:</P>
-        <Bullet text="Wesentlichem Verstoß gegen diese AGB trotz Abmahnung" />
-        <Bullet text="Zahlungsverzug des Kunden von mehr als 30 Tagen trotz Mahnung" />
-        <Bullet text="Insolvenzantrag über das Vermögen einer Vertragspartei" />
-        <P>10.4 Die Kündigung bedarf der Textform (E-Mail genügt). Die Kündigung kann auch direkt in der App unter Einstellungen vorgenommen werden.</P>
-        <P>10.5 Nach Vertragsende stehen dem Kunden seine Daten für einen Zeitraum von dreißig (30) Tagen zum Export zur Verfügung. Danach werden alle Kundendaten unwiderruflich gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen.</P>
-      </Section>
-
-      <Section title="§ 11 Geistiges Eigentum">
-        <P>11.1 Sämtliche Rechte an der Software, einschließlich des Quellcodes, der Benutzeroberfläche, der Dokumentation und aller Weiterentwicklungen, stehen ausschließlich dem Anbieter zu.</P>
-        <P>11.2 Die vom Kunden erstellten Inhalte (Protokolle, Berichte, Fotos, Mängeldokumentation) verbleiben im geistigen Eigentum des Kunden.</P>
-        <P>11.3 Der Kunde gestattet dem Anbieter, anonymisierte und aggregierte Nutzungsdaten zur Verbesserung der Software zu verwenden.</P>
-      </Section>
-
-      <Section title="§ 12 Vertraulichkeit">
-        <P>12.1 Beide Parteien verpflichten sich, alle im Rahmen der Vertragsbeziehung erlangten vertraulichen Informationen der jeweils anderen Partei geheim zu halten und nur für die Zwecke dieses Vertrages zu verwenden.</P>
-        <P>12.2 Diese Verpflichtung gilt nicht für Informationen, die öffentlich bekannt sind, dem Empfänger bereits bekannt waren oder von Dritten rechtmäßig erlangt wurden.</P>
-        <P>12.3 Die Vertraulichkeitsverpflichtung besteht über das Vertragsende hinaus für einen Zeitraum von drei (3) Jahren fort.</P>
-      </Section>
-
-      <Section title="§ 13 Schlussbestimmungen">
-        <P>13.1 Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts (CISG).</P>
-        <P>13.2 Gerichtsstand für alle Streitigkeiten aus oder im Zusammenhang mit diesem Vertrag ist – soweit gesetzlich zulässig – der Sitz des Anbieters.</P>
-        <P>13.3 Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt. An die Stelle der unwirksamen Bestimmung tritt eine wirksame Regelung, die dem wirtschaftlichen Zweck am nächsten kommt.</P>
-        <P>13.4 Änderungen und Ergänzungen dieser AGB bedürfen der Textform.</P>
-        <P>13.5 Der Anbieter ist berechtigt, Rechte und Pflichten aus diesem Vertrag ganz oder teilweise auf Dritte zu übertragen, sofern dies für den Kunden zumutbar ist.</P>
-      </Section>
-
-      <Section title="Kontakt">
-        <P>immobau-ka GmbH{"\n"}Ringstraße 6, 76228 Karlsruhe{"\n"}Geschäftsführer: Dipl. Ing. (FH) Jörg Iserloh{"\n"}E-Mail: info@iserloh.net</P>
+      <Section title="8. Haftung, Gewährleistung und Rechtswahl">
+        <P>
+          Gewährleistungs-, Haftungs-, Gerichtsstands-, AGB-Änderungs- und Übertragungsklauseln werden in diesem Prüfentwurf nicht als verbindlich dargestellt. Sie müssen nach Zielgruppe und Geschäftsmodell von einer qualifizierten Rechtsberatung formuliert werden.
+        </P>
+        <OpenValue />
       </Section>
     </View>
   );
@@ -410,41 +340,41 @@ function AGBContent() {
 
 function KIHinweisContent() {
   return (
-    <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">KI-Hinweis</Text>
+    <View className="gap-5 pb-8">
+      <Text className="text-xl font-bold text-foreground">Transparenz zu KI-Funktionen</Text>
 
-      <View className="bg-warning/10 border border-warning/30 rounded-lg p-4">
-        <Text className="text-sm font-bold text-foreground mb-2">Wichtiger Hinweis zur KI-Nutzung</Text>
+      <View className="bg-warning/10 border border-warning/30 p-4">
+        <Text className="text-sm font-bold text-foreground mb-2">Menschliche Prüfung erforderlich</Text>
         <Text className="text-sm text-foreground leading-5">
-          BuildKI verwendet künstliche Intelligenz zur Unterstützung der Baudokumentation. KI-generierte Inhalte können Fehler enthalten und müssen vor der Verwendung geprüft werden.
+          BuildKI nutzt KI-gestützte Verarbeitung. Ergebnisse können unvollständig, missverständlich oder falsch sein und dürfen nicht ungeprüft als verbindliche Bau-, Sicherheits-, Personal- oder Rechtsentscheidung verwendet werden.
         </Text>
       </View>
 
-      <Section title="Was die KI macht">
-        <Bullet text="Transkription von Sprachaufnahmen zu Text" />
-        <Bullet text="Strukturierung von Protokollen nach Gewerken" />
-        <Bullet text="Erstellung von Bautagebüchern aus Tagesdaten" />
-        <Bullet text="Zusammenfassung von Mängelbeschreibungen" />
-        <Bullet text="Vorschläge für Fristen und Verantwortliche" />
+      <Section title="KI-gestützte Funktionen im geprüften Quellstand">
+        <Bullet text="Audio-/Video-Transkription und Sprecherzuordnung" />
+        <Bullet text="Protokollstrukturierung, Zusammenfassung und Aufgabenextraktion" />
+        <Bullet text="Agenda, Übersetzung, Dokument-, Foto- und Berichtsanalysen" />
+        <Bullet text="Bautagebuch-, Support- und Formulierungshilfen" />
       </Section>
 
-      <Section title="Was die KI NICHT macht">
-        <Bullet text="Eigenständige Entscheidungen treffen" />
-        <Bullet text="Dokumente ohne Nutzerfreigabe versenden" />
-        <Bullet text="Personenbezogene Daten an Dritte weitergeben" />
-        <Bullet text="Rechtlich bindende Aussagen treffen" />
+      <Section title="Übermittelte Inhalte">
+        <P>
+          Je Funktion können Transkripte, Projektnamen, Protokolle, Aufgaben, Dokumente, Fotos, Anhänge und Nutzereingaben an einen serverseitig angebundenen KI-/Forge-Endpunkt übertragen werden. Eine vollständige Anonymisierung findet im geprüften Stand nicht zuverlässig statt.
+        </P>
+        <OpenLine label="Vertragspartner, Modell, Region, AVV, SCC und Löschfrist" value={LEGAL_DRAFT_MARKER} />
       </Section>
 
-      <Section title="Ihre Verantwortung">
-        <P>Als Bauleiter/Projektleiter sind Sie verantwortlich für:</P>
-        <Bullet text="Prüfung aller KI-generierten Berichte auf Richtigkeit" />
-        <Bullet text="Freigabe von Dokumenten vor Weitergabe an Dritte" />
-        <Bullet text="Korrektur fehlerhafter KI-Ausgaben" />
-        <Bullet text="Sicherstellung der Vollständigkeit der Dokumentation" />
+      <Section title="Steuerung und Verantwortung">
+        <Bullet text="Optionale KI-Verarbeitung muss vor Nutzung aktiv freigegeben und später wieder deaktivierbar sein" />
+        <Bullet text="Ohne Freigabe dürfen keine neuen Inhalte für KI-Zwecke übertragen werden" />
+        <Bullet text="Automatisch erzeugte Inhalte müssen als KI-gestützt erkennbar bleiben" />
+        <Bullet text="Nutzer prüfen, korrigieren und bestätigen Ergebnisse vor Weitergabe" />
       </Section>
 
-      <Section title="Nachvollziehbarkeit">
-        <P>Alle KI-Aktionen werden im Audit-Log protokolliert. Sie können jederzeit nachvollziehen, welche Inhalte KI-generiert wurden und welche manuell erstellt wurden.</P>
+      <Section title="KI-Kompetenz und Organisation">
+        <P>
+          Betreiber und Geschäftskunden müssen Personen, die KI-Funktionen konfigurieren, bedienen oder bewerten, angemessen schulen. Ein organisatorischer Schulungs- und Freigabenachweis ist vor Veröffentlichung zu erstellen.
+        </P>
       </Section>
     </View>
   );
@@ -453,77 +383,22 @@ function KIHinweisContent() {
 function LizenzenContent() {
   return (
     <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Open-Source-Lizenzen</Text>
-      <P>BuildKI verwendet folgende Open-Source-Bibliotheken:</P>
-
-      <LicenseItem name="React Native" license="MIT" />
-      <LicenseItem name="Expo" license="MIT" />
-      <LicenseItem name="NativeWind" license="MIT" />
-      <LicenseItem name="tRPC" license="MIT" />
-      <LicenseItem name="Drizzle ORM" license="Apache 2.0" />
+      <Text className="text-xl font-bold text-foreground">Open-Source-Hinweise – Prüfstand</Text>
+      <P>
+        Die folgende Liste ist ein Auszug. Vor Veröffentlichung muss ein automatisiert erzeugtes vollständiges Third-Party-Notices-Dokument mit Paketversionen, Lizenztexten und erforderlichen Hinweisen eingebunden werden.
+      </P>
+      <LicenseItem name="React / React Native" license="MIT" />
+      <LicenseItem name="Expo / Expo Router" license="MIT" />
       <LicenseItem name="React Navigation" license="MIT" />
       <LicenseItem name="AsyncStorage" license="MIT" />
-      <LicenseItem name="Expo Router" license="MIT" />
-      <LicenseItem name="Tailwind CSS" license="MIT" />
+      <LicenseItem name="NativeWind / Tailwind CSS" license="MIT" />
+      <LicenseItem name="tRPC" license="MIT" />
+      <LicenseItem name="Drizzle ORM" license="Apache-2.0" />
       <LicenseItem name="Zod" license="MIT" />
-
-      <Text className="text-xs text-muted mt-4">
-        Vollständige Lizenzinformationen finden Sie in den jeweiligen Paket-Repositories auf GitHub.
-      </Text>
+      <OpenLine label="Vollständige Lizenzprüfung" value={LEGAL_DRAFT_MARKER} />
     </View>
   );
 }
-
-function DSGVOExportContent({
-  onExport,
-  onDelete,
-  exporting,
-}: {
-  onExport: () => void;
-  onDelete: () => void;
-  exporting: boolean;
-}) {
-  return (
-    <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Meine Daten (DSGVO)</Text>
-
-      <Section title="Datenauskunft (Art. 15 DSGVO)">
-        <P>Sie haben das Recht, eine Kopie aller über Sie gespeicherten Daten zu erhalten. Der Export enthält alle Projekte, Mängel, Protokolle, Berichte und das Audit-Log.</P>
-        <TouchableOpacity
-          onPress={onExport}
-          disabled={exporting}
-          className={`mt-3 px-4 py-3 rounded-lg ${exporting ? "bg-muted" : "bg-primary"}`}
-        >
-          <Text className="text-background text-center font-semibold">
-            {exporting ? "Exportiere..." : "Alle Daten exportieren (JSON)"}
-          </Text>
-        </TouchableOpacity>
-      </Section>
-
-      <Section title="Datenlöschung (Art. 17 DSGVO)">
-        <P>Sie können alle Ihre Daten unwiderruflich löschen. Dies umfasst alle lokalen und synchronisierten Daten. Diese Aktion kann nicht rückgängig gemacht werden.</P>
-        <TouchableOpacity
-          onPress={onDelete}
-          className="mt-3 px-4 py-3 rounded-lg bg-error"
-        >
-          <Text className="text-background text-center font-semibold">
-            Alle Daten löschen
-          </Text>
-        </TouchableOpacity>
-      </Section>
-
-      <Section title="Datenberichtigung (Art. 16 DSGVO)">
-        <P>Alle Ihre Daten können direkt in der App bearbeitet und korrigiert werden. Änderungen werden im Audit-Log protokolliert.</P>
-      </Section>
-
-      <Section title="Widerspruch KI-Verarbeitung (Art. 21 DSGVO)">
-        <P>Sie können die KI-Verarbeitung Ihrer Daten jederzeit in den Einstellungen deaktivieren. Bereits generierte Berichte bleiben erhalten.</P>
-      </Section>
-    </View>
-  );
-}
-
-// ─── Helper Components ────────────────────────────────────────────────────────
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -547,11 +422,29 @@ function Bullet({ text }: { text: string }) {
   );
 }
 
+function OpenValue() {
+  return (
+    <Text className="text-sm text-error font-bold leading-5">{LEGAL_DRAFT_MARKER}</Text>
+  );
+}
+
+function OpenLine({ label, value }: { label: string; value: string }) {
+  const isOpen = value.includes(LEGAL_DRAFT_MARKER);
+  return (
+    <View className="border-l-2 border-border pl-3 py-1">
+      <Text className="text-xs text-muted font-semibold">{label}</Text>
+      <Text className={`text-sm leading-5 ${isOpen ? "text-error font-bold" : "text-foreground"}`}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 function LicenseItem({ name, license }: { name: string; license: string }) {
   return (
     <View className="flex-row justify-between items-center py-2 border-b border-border">
       <Text className="text-sm text-foreground">{name}</Text>
-      <Text className="text-xs text-muted bg-surface px-2 py-1 rounded">{license}</Text>
+      <Text className="text-xs text-muted bg-surface px-2 py-1">{license}</Text>
     </View>
   );
 }

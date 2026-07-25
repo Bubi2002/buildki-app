@@ -28,11 +28,7 @@ export default function ProjectExportScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<"text" | "summary" | "full">("full");
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [projectsData, protocolsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -49,7 +45,13 @@ export default function ProjectExportScreen() {
       setProtocols(projectProtocols);
       setSelectedProtocols(new Set(projectProtocols.map((p) => p.id)));
     } catch {}
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadData();
+    });
+  }, [id]);
 
   const toggleProtocol = (protocolId: string) => {
     setSelectedProtocols((prev) => {
@@ -132,7 +134,7 @@ export default function ProjectExportScreen() {
           title: `Projekt-Export: ${project.name}`,
         });
       }
-    } catch (error) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_export_konnte_nicht_erstellt_werden'));
     } finally {
       setIsExporting(false);

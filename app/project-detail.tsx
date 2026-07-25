@@ -60,13 +60,7 @@ export default function ProjectDetailScreen() {
   const [planCount, setPlanCount] = useState(0);
   const [defectCount, setDefectCount] = useState({ open: 0, total: 0 });
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [id])
-  );
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [projectsData, protocolsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -99,7 +93,13 @@ export default function ProjectDetailScreen() {
     } catch (e) {
       console.error("Error loading project detail:", e);
     }
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [id])
+  );
 
   const assignProtocol = async (protocolId: string) => {
     try {
@@ -110,7 +110,7 @@ export default function ProjectDetailScreen() {
       setAllProtocols(updated);
       setProtocols(updated.filter((p) => p.projectId === id));
       setShowAssignModal(false);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_zuordnung_fehlgeschlagen'));
     }
   };
@@ -454,7 +454,7 @@ export default function ProjectDetailScreen() {
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
               <Text style={{ fontSize: 11, color: colors.muted }}>{protocols.length} Protokolle</Text>
-              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.total - defectCount.open}/{defectCount.total} M\u00e4ngel erledigt</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.total - defectCount.open}/{defectCount.total} Mängel erledigt</Text>
             </View>
           </View>
         )}

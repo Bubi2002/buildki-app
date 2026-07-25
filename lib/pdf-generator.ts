@@ -60,7 +60,7 @@ type PdfProtocol = {
   templateId?: string;
   photos?: string[];
   photoTimestamps?: number[]; // seconds since recording start for each photo
-  transcriptionSegments?: Array<{ start: number; end: number; text: string }>; // Whisper segments with timing
+  transcriptionSegments?: { start: number; end: number; text: string }[]; // Whisper segments with timing
   photoCaptions?: string[]; // pre-computed captions per photo (fallback if segments unavailable)
   todos?: TodoItem[];
   duration: number;
@@ -86,13 +86,13 @@ type PdfProtocol = {
   } | null;
   signaturePaths?: string[];
   signatures?: { role: string; paths: string[]; signedAt: string }[];
-  checklistResults?: Array<{
+  checklistResults?: {
     name: string;
     inspector: string;
     completedAt?: string;
-    items: Array<{ text: string; checked: boolean; note?: string }>;
+    items: { text: string; checked: boolean; note?: string }[];
     completionRate: number;
-  }>;
+  }[];
 };
 
 type CompanySettings = {
@@ -146,7 +146,7 @@ async function loadCompanySettings(): Promise<CompanySettings> {
       companyData.watermarkText = wm.text;
     }
     return companyData;
-  } catch (error) {
+  } catch  {
     // Ignore
   }
   return {};

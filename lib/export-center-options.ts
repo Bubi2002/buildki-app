@@ -1,10 +1,7 @@
 export type ExportCenterType =
   | "protocol"
   | "defects"
-  | "diary"
-  | "photos"
-  | "report"
-  | "attendance";
+  | "photos";
 
 export type ExportCenterOption = {
   id: ExportCenterType;
@@ -12,7 +9,6 @@ export type ExportCenterOption = {
   description: string;
   icon: string;
   color: string;
-  available: boolean;
 };
 
 export type ExportCenterAction =
@@ -35,7 +31,6 @@ export const EXPORT_CENTER_OPTIONS: ExportCenterOption[] = [
     description: "Protokoll auswählen und den echten PDF-Export öffnen",
     icon: "description",
     color: "#1E88E5",
-    available: true,
   },
   {
     id: "defects",
@@ -43,15 +38,6 @@ export const EXPORT_CENTER_OPTIONS: ExportCenterOption[] = [
     description: "Projektmängel filtern und als PDF exportieren",
     icon: "warning",
     color: "#EF4444",
-    available: true,
-  },
-  {
-    id: "diary",
-    label: "Bautagebuch",
-    description: "PDF-Gesamtexport noch nicht verfügbar",
-    icon: "menu-book",
-    color: "#7B1FA2",
-    available: false,
   },
   {
     id: "photos",
@@ -59,23 +45,6 @@ export const EXPORT_CENTER_OPTIONS: ExportCenterOption[] = [
     description: "Protokoll mit Fotos auswählen und echte Fotos exportieren",
     icon: "photo-library",
     color: "#43A047",
-    available: true,
-  },
-  {
-    id: "report",
-    label: "KI-Bericht",
-    description: "Projektweiter PDF-Export noch nicht verfügbar",
-    icon: "auto-awesome",
-    color: "#00B0FF",
-    available: false,
-  },
-  {
-    id: "attendance",
-    label: "Anwesenheitsliste",
-    description: "PDF-Tabellenexport noch nicht verfügbar",
-    icon: "people",
-    color: "#FF9800",
-    available: false,
   },
 ];
 
@@ -111,24 +80,6 @@ export function getExportCenterAction(
         dialogTitle: "Protokoll mit Fotos auswählen",
         dialogMessage:
           "Öffne ein Protokoll mit Fotos und wähle dort „Fotos exportieren“. Es werden ausschließlich die tatsächlich hinterlegten Bilder angeboten.",
-      };
-    case "diary":
-      return {
-        kind: "unavailable",
-        reason:
-          "Der Bautagebuch-PDF-Gesamtexport ist noch nicht implementiert. Es wird bewusst kein Platzhalterdokument erzeugt.",
-      };
-    case "report":
-      return {
-        kind: "unavailable",
-        reason:
-          "Der projektweite KI-Bericht-PDF-Export ist noch nicht implementiert. Es wird bewusst kein Platzhalterdokument erzeugt.",
-      };
-    case "attendance":
-      return {
-        kind: "unavailable",
-        reason:
-          "Der PDF-Tabellenexport der Anwesenheit ist noch nicht implementiert. Es wird bewusst kein Platzhalterdokument erzeugt.",
       };
   }
 }

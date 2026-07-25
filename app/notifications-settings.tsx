@@ -36,7 +36,9 @@ function NumberInput({ value, min, max, onValueChange, colors, formatValue }: {
   const [text, setText] = useState(formatValue(value));
 
   useEffect(() => {
-    setText(formatValue(value));
+    void Promise.resolve().then(() => {
+      setText(formatValue(value));
+    });
   }, [value]);
 
   const increment = () => {
@@ -113,11 +115,7 @@ export default function NotificationsSettingsScreen() {
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mo-Fr default
   const [hasPermission, setHasPermission] = useState(true);
 
-  useEffect(() => {
-    loadPrefs();
-  }, []);
-
-  const loadPrefs = async () => {
+  async function loadPrefs() {
     const saved = await getNotificationPreferences();
     setPrefs(saved);
     // Load saved weekdays
@@ -128,7 +126,13 @@ export default function NotificationsSettingsScreen() {
       const perm = await requestPermissions();
       setHasPermission(perm);
     }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadPrefs();
+    });
+  }, []);
 
   const updatePref = async (key: keyof NotificationPreferences, value: boolean | number) => {
     const updated = { ...prefs, [key]: value };

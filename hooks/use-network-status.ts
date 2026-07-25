@@ -58,7 +58,9 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
       const handleOffline = () => setIsConnected(false);
       window.addEventListener("online", handleOnline);
       window.addEventListener("offline", handleOffline);
-      setIsConnected(navigator.onLine);
+      void Promise.resolve().then(() => {
+        setIsConnected(navigator.onLine);
+      });
       return () => {
         window.removeEventListener("online", handleOnline);
         window.removeEventListener("offline", handleOffline);
@@ -73,7 +75,7 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
     };
   }, []);
 
-  const checkConnectivity = async () => {
+  async function checkConnectivity() {
     try {
       if (Platform.OS === "web") {
         setIsConnected(navigator.onLine);
@@ -93,9 +95,9 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
     } catch {
       setIsConnected(false);
     }
-  };
+  }
 
-  const loadSyncState = async () => {
+  async function loadSyncState() {
     try {
       // Count from both general sync queue and offline recording queue
       const queue = await AsyncStorage.getItem(PENDING_SYNC_KEY);
@@ -111,7 +113,7 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
       const lastSync = await AsyncStorage.getItem(LAST_SYNCED_KEY);
       setLastSyncedAt(lastSync);
     } catch { /* ignore */ }
-  };
+  }
 
   const addToSyncQueue = async (item: any) => {
     try {
@@ -122,7 +124,7 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
     } catch { /* ignore */ }
   };
 
-  const triggerSync = async () => {
+  async function triggerSync() {
     if (isSyncing) return;
     setIsSyncing(true);
     try {
@@ -147,7 +149,7 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
       await loadSyncState();
     } catch { /* ignore */ }
     setIsSyncing(false);
-  };
+  }
 
   return {
     isConnected,

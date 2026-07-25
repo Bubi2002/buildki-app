@@ -63,13 +63,13 @@ export interface DocumentAnalysisResult {
   // Extracted structured data
   rooms: string[];
   trades: string[];
-  persons: Array<{ name: string; role?: string; company?: string }>;
-  companies: Array<{ name: string; role?: string }>;
+  persons: { name: string; role?: string; company?: string }[];
+  companies: { name: string; role?: string }[];
   appointments: ExtractedAppointment[];
   tasks: ExtractedTask[];
   defects: ExtractedDefect[];
-  quantities: Array<{ item: string; amount: string; unit: string }>;
-  references: Array<{ title: string; type: string; number?: string }>;
+  quantities: { item: string; amount: string; unit: string }[];
+  references: { title: string; type: string; number?: string }[];
   
   // Raw entities
   entities: ExtractedEntity[];
@@ -131,7 +131,7 @@ class DocumentAIService {
           projectName: request.projectName,
           additionalContext: this.buildAnalysisPrompt(request),
         });
-      } catch (error) {
+      } catch  {
         // Fallback: create minimal result
       }
     }

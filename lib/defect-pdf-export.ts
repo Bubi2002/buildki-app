@@ -1,6 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getDefects, getDefectHistory, type Defect, type DefectStatus, type DefectPriority } from "./defect-store";
-import { getPdfBranding, generatePdfHeader, generatePdfFooter, generateCoverPage } from "./pdf-branding-store";
+import { getDefects, type Defect, type DefectStatus, type DefectPriority } from "./defect-store";
+import { getPdfBranding, generatePdfHeader, generatePdfFooter } from "./pdf-branding-store";
 import * as FileSystem from "expo-file-system/legacy";
 import { TRADE_NAMES, type TradeName } from "./trades";
 

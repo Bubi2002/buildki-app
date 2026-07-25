@@ -76,7 +76,7 @@ export async function deleteDiaryEntry(entryId: string): Promise<void> {
 export async function generateDiaryFromProtocols(
   projectId: string,
   date: string,
-  protocols: Array<{ id: string; title: string; summary?: string; weather?: any }>
+  protocols: { id: string; title: string; summary?: string; weather?: any }[]
 ): Promise<DiaryEntry> {
   const existing = await getDiaryEntryForDate(projectId, date);
 

@@ -53,13 +53,10 @@ export async function saveNotificationPreferences(prefs: NotificationPreferences
 
 export async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === "web") return false;
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  return finalStatus === "granted";
+  const { granted: previouslyGranted } = await Notifications.getPermissionsAsync();
+  if (previouslyGranted) return true;
+  const { granted } = await Notifications.requestPermissionsAsync();
+  return granted;
 }
 
 export async function scheduleNotifications(): Promise<void> {

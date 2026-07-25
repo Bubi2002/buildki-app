@@ -8,7 +8,7 @@
  * 4. Mängel/Aufgaben per Tap in die Mängelliste/Aufgabenliste übernehmen
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ import { ProgressCard, type ProgressData } from "@/components/analysis/ProgressC
 import { DefectCard, type DefectData } from "@/components/analysis/DefectCard";
 import { TaskCard, type TaskData } from "@/components/analysis/TaskCard";
 import { ReviewCard } from "@/components/analysis/ReviewCard";
-import { AnalysisCard, type AnalysisData } from "@/components/analysis/AnalysisCard";
+import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 
 // Defect store for adoption
 import { saveDefect, deleteDefect, type Defect, type DefectPriority } from "@/lib/defect-store";
@@ -46,10 +46,10 @@ import { generateAndSharePdf, type ProfessionalPdfOptions, type PdfSection, getC
 
 // Undo toast component
 import { UndoToast } from "@/components/UndoToast";
+import { createLocalId } from "@/lib/id";
 
 // Central AI Service
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
-import { getSourceLabel, getSourceColor } from "@/shared/ai-types";
 
 // Timeline
 import { timelineEngine } from "@/lib/timeline-engine";
@@ -76,7 +76,7 @@ interface AnalysisResult {
     activeTrades: string[];
     pendingTrades: string[];
   };
-  defects: Array<{
+  defects: {
     id: string;
     title: string;
     description: string;
@@ -85,8 +85,8 @@ interface AnalysisResult {
     location: string;
     suggestedAction: string;
     confidence: number;
-  }>;
-  tasks: Array<{
+  }[];
+  tasks: {
     id: string;
     title: string;
     description: string;
@@ -94,7 +94,7 @@ interface AnalysisResult {
     trade: string;
     estimatedDuration: string;
     deadline: string | null;
-  }>;
+  }[];
   observations: string[];
 }
 
@@ -119,7 +119,7 @@ export default function PhotoAnalysisScreen() {
   const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
 
   // Manual defect entry
-  const [manualDefects, setManualDefects] = useState<Array<{ id: string; title: string; description: string; severity: string }>>([]);
+  const [manualDefects, setManualDefects] = useState<{ id: string; title: string; description: string; severity: string }[]>([]);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualTitle, setManualTitle] = useState("");
   const [manualDescription, setManualDescription] = useState("");
@@ -203,7 +203,7 @@ export default function PhotoAnalysisScreen() {
         uri: asset.uri,
         base64: asset.base64 || undefined,
         mimeType: asset.mimeType || "image/jpeg",
-        filename: asset.fileName || `photo_${Date.now()}.jpg`,
+        filename: asset.fileName || `${createLocalId("photo")}.jpg`,
       }));
       setPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
       setResult(null);
@@ -230,7 +230,7 @@ export default function PhotoAnalysisScreen() {
         uri: asset.uri,
         base64: asset.base64 || undefined,
         mimeType: asset.mimeType || "image/jpeg",
-        filename: asset.fileName || `photo_${Date.now()}.jpg`,
+        filename: asset.fileName || `${createLocalId("photo")}.jpg`,
       };
       setPhotos((prev) => [...prev, newPhoto].slice(0, 5));
       setResult(null);
@@ -308,7 +308,7 @@ export default function PhotoAnalysisScreen() {
         const Haptics = require("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    } catch (error) {
+    } catch  {
       Alert.alert("Fehler", "Mangel konnte nicht gespeichert werden.");
     }
   };
@@ -347,7 +347,7 @@ export default function PhotoAnalysisScreen() {
         const Haptics = require("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    } catch (error) {
+    } catch  {
       Alert.alert("Fehler", "Aufgabe konnte nicht gespeichert werden.");
     }
   };
@@ -551,7 +551,7 @@ export default function PhotoAnalysisScreen() {
 
     try {
       // Prepare photos with base64
-      const photosWithBase64: Array<{ base64: string; mimeType: string; filename: string }> = [];
+      const photosWithBase64: { base64: string; mimeType: string; filename: string }[] = [];
       for (const photo of photos) {
         let base64Data = photo.base64;
         if (!base64Data) {

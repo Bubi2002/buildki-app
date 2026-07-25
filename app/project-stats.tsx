@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, ScrollView, Pressable, Dimensions } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -33,11 +33,7 @@ export default function ProjectStatsScreen() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [timeRange, setTimeRange] = useState<"week" | "month" | "all">("month");
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [projectsData, protocolsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -54,7 +50,13 @@ export default function ProjectStatsScreen() {
       const allDefects = await getDefects(id);
       setDefects(allDefects as any);
     } catch {}
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadData();
+    });
+  }, [id]);
 
   const stats = useMemo(() => {
     const now = new Date();

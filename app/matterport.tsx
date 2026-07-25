@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
-  TextInput,
   Pressable,
   ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
-  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,8 +16,11 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
-
-const MATTERPORT_CREDENTIALS_KEY = "matterport_credentials";
+import {
+  MATTERPORT_RELEASE_ALLOWED,
+  MATTERPORT_RELEASE_HOLD_MESSAGE,
+  MATTERPORT_RELEASE_HOLD_TITLE,
+} from "@/shared/matterport-compliance";
 
 // We use mutations for all Matterport API calls since they are imperative (user-triggered)
 
@@ -56,16 +57,16 @@ interface ModelDetails {
     photos?: { count: number };
     meshes?: { count: number };
   };
-  floors?: Array<{ id: string; label: string; sequence: number }>;
-  rooms?: Array<{ id: string; label: string; floor?: { id: string; label: string } }>;
-  mattertags?: Array<{ id: string; label: string; description?: string; position?: { x: number; y: number; z: number } }>;
-  sweeps?: Array<{ id: string; position: { x: number; y: number; z: number } }>;
+  floors?: { id: string; label: string; sequence: number }[];
+  rooms?: { id: string; label: string; floor?: { id: string; label: string } }[];
+  mattertags?: { id: string; label: string; description?: string; position?: { x: number; y: number; z: number } }[];
+  sweeps?: { id: string; position: { x: number; y: number; z: number } }[];
 }
 
 type ViewMode = "connect" | "models" | "detail";
 
-// Feature gate: Production API credentials are now validated and active.
-const MATTERPORT_PRODUCTION_ENABLED = true;
+// Vertrags- und Release-Gate: bis zur schriftlichen kommerziellen Freigabe fail-closed.
+const MATTERPORT_PRODUCTION_ENABLED = MATTERPORT_RELEASE_ALLOWED;
 
 export default function MatterportScreen() {
   const router = useRouter();
@@ -73,8 +74,6 @@ export default function MatterportScreen() {
   const { t } = useTranslation();
 
   const [viewMode, setViewMode] = useState<ViewMode>("connect");
-  const [tokenId, setTokenId] = useState("");
-  const [tokenSecret, setTokenSecret] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [models, setModels] = useState<MatterportModel[]>([]);
@@ -87,45 +86,36 @@ export default function MatterportScreen() {
   const listModelsMutation = trpc.matterport.listModels.useMutation();
   const getModelMutation = trpc.matterport.getModel.useMutation();
 
-  // Load saved credentials on mount
   useEffect(() => {
-    loadCredentials();
+    AsyncStorage.removeItem("matterport_credentials").catch(() => undefined);
   }, []);
 
-  const loadCredentials = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(MATTERPORT_CREDENTIALS_KEY);
-      if (stored) {
-        const creds = JSON.parse(stored);
-        setTokenId(creds.tokenId);
-        setTokenSecret(creds.tokenSecret);
-        setIsConnected(true);
-        setViewMode("models");
-        // Auto-load models
-        loadModels();
-      }
-    } catch (e) {
-      console.error("Failed to load Matterport credentials:", e);
-    }
-  };
-
-  const saveCredentials = async (id: string, secret: string) => {
-    try {
-      await AsyncStorage.setItem(
-        MATTERPORT_CREDENTIALS_KEY,
-        JSON.stringify({ tokenId: id, tokenSecret: secret })
-      );
-    } catch (e) {
-      console.error("Failed to save Matterport credentials:", e);
-    }
-  };
+  if (!MATTERPORT_RELEASE_ALLOWED) {
+    return (
+      <ScreenContainer className="p-0">
+        <View style={[styles.navHeader, { borderBottomColor: colors.border }]}>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+          </Pressable>
+          <Text style={[styles.navTitle, { color: colors.foreground }]}>Matterport</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={{ flex: 1, padding: 20, justifyContent: "center" }}>
+          <View style={[styles.detailCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialIcons name="gpp-maybe" size={34} color="#F59E0B" />
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 14 }]}>
+              {MATTERPORT_RELEASE_HOLD_TITLE}
+            </Text>
+            <Text style={[styles.detailText, { color: colors.muted, marginTop: 12 }]}>
+              {MATTERPORT_RELEASE_HOLD_MESSAGE}
+            </Text>
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   const testConnection = async () => {
-    if (!tokenId.trim() || !tokenSecret.trim()) {
-      Alert.alert("Fehler", "Bitte Token ID und Token Secret eingeben.");
-      return;
-    }
-
     setIsLoading(true);
     setStatusMessage("");
 
@@ -135,14 +125,13 @@ export default function MatterportScreen() {
       if (result.success) {
         setIsConnected(true);
         setStatusMessage(t("matterport_verbindung_erfolgreich"));
-        await saveCredentials(tokenId.trim(), tokenSecret.trim());
         // Auto-switch to models view
         setTimeout(() => {
           setViewMode("models");
           loadModels();
         }, 1000);
       }
-    } catch (error: any) {
+    } catch  {
       setStatusMessage(t("matterport_verbindung_fehlgeschlagen"));
       setIsConnected(false);
     } finally {
@@ -183,9 +172,6 @@ export default function MatterportScreen() {
   };
 
   const disconnect = async () => {
-    await AsyncStorage.removeItem(MATTERPORT_CREDENTIALS_KEY);
-    setTokenId("");
-    setTokenSecret("");
     setIsConnected(false);
     setModels([]);
     setSelectedModel(null);
@@ -239,34 +225,11 @@ export default function MatterportScreen() {
         )}
       </View>
 
-      {/* Token Input */}
-      <View style={styles.inputSection}>
-        <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-          {t("matterport_token_id")}
+      <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}>
+        <MaterialIcons name="security" size={18} color="#00B0FF" />
+        <Text style={[styles.infoText, { color: colors.foreground }]}>
+          Matterport-Zugangsdaten werden ausschließlich als serverseitige Secrets konfiguriert. BuildKI speichert keine Matterport-Token auf diesem Gerät und überträgt keine Token aus Eingabefeldern.
         </Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          value={tokenId}
-          onChangeText={setTokenId}
-          placeholder="z.B. a1b2c3d4e5f6..."
-          placeholderTextColor={colors.muted}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <Text style={[styles.inputLabel, { color: colors.foreground, marginTop: 16 }]}>
-          {t("matterport_token_secret")}
-        </Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          value={tokenSecret}
-          onChangeText={setTokenSecret}
-          placeholder="Token Secret eingeben..."
-          placeholderTextColor={colors.muted}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
       </View>
 
       {/* Status Message */}
@@ -313,8 +276,7 @@ export default function MatterportScreen() {
       <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <MaterialIcons name="info-outline" size={18} color={colors.muted} />
         <Text style={[styles.infoText, { color: colors.muted }]}>
-          API-Tokens finden Sie unter my.matterport.com → Settings → Developer Tools → API Token Management.
-          Tokens werden sicher auf dem Server gespeichert und niemals in der App hinterlegt.
+          Die Funktion ist nur verfügbar, wenn der Betreiber Matterport serverseitig konfiguriert und Cloud-Verarbeitung in den Datenschutzoptionen aktiviert wurde. Vertragspartner, AVV, Region und Löschfrist sind vor Veröffentlichung zu ergänzen.
         </Text>
       </View>
     </ScrollView>

@@ -5,7 +5,7 @@
  * Gruppierung nach Raum oder Aufnahmezeit.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  FlatList,
   Platform,
 } from "react-native";
 import { Image } from "expo-image";
@@ -28,15 +27,14 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
-import { getSourceLabel, getSourceColor } from "@/shared/ai-types";
 import type { BatchAnalysisResult, BatchGroupStrategy } from "@/shared/ai-types";
 import { saveDefect, deleteDefect, type Defect } from "@/lib/defect-store";
 import { UndoToast } from "@/components/UndoToast";
+import { createLocalId } from "@/lib/id";
 
 // Reusable analysis components
 import { DefectCard, type DefectData } from "@/components/analysis/DefectCard";
 import { TaskCard, type TaskData } from "@/components/analysis/TaskCard";
-import { ProgressCard, type ProgressData } from "@/components/analysis/ProgressCard";
 
 export default function BatchAnalysisScreen() {
   const colors = useColors();
@@ -44,11 +42,11 @@ export default function BatchAnalysisScreen() {
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
 
   // State
-  const [photos, setPhotos] = useState<Array<{
+  const [photos, setPhotos] = useState<{
     uri: string;
     timestamp?: string;
     roomName?: string;
-  }>>([]);
+  }[]>([]);
   const [groupStrategy, setGroupStrategy] = useState<BatchGroupStrategy>("auto");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [batchResult, setBatchResult] = useState<BatchAnalysisResult | null>(null);
@@ -74,16 +72,7 @@ export default function BatchAnalysisScreen() {
     analyzePhoto: (input) => analyzePhotoMutation.mutateAsync(input),
   };
 
-  // Load project
-  useEffect(() => {
-    if (params.projectId && params.projectName) {
-      setActiveProject({ id: params.projectId, name: params.projectName });
-    } else {
-      loadActiveProject();
-    }
-  }, []);
-
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     try {
       const projectsJson = await AsyncStorage.getItem("projects");
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
@@ -93,7 +82,18 @@ export default function BatchAnalysisScreen() {
         if (project) setActiveProject({ id: project.id, name: project.name });
       }
     } catch {}
-  };
+  }
+
+  // Load project
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      if (params.projectId && params.projectName) {
+        setActiveProject({ id: params.projectId, name: params.projectName });
+      } else {
+        void loadActiveProject();
+      }
+    });
+  }, []);
 
   // Pick multiple photos
   const pickPhotos = async () => {
@@ -120,7 +120,7 @@ export default function BatchAnalysisScreen() {
         }));
         setPhotos(prev => [...prev, ...newPhotos]);
       }
-    } catch (err) {
+    } catch  {
       Alert.alert("Fehler", "Fotos konnten nicht geladen werden.");
     }
   };
@@ -207,7 +207,7 @@ export default function BatchAnalysisScreen() {
   async function handleAdoptDefect(defect: DefectData) {
     if (!activeProject) return;
     const newDefect: Defect = {
-      id: `defect_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: createLocalId("defect"),
       projectId: activeProject.id,
       title: defect.title,
       description: `${defect.description}\n\nMaßnahme: ${defect.suggestedAction}`,
@@ -236,7 +236,7 @@ export default function BatchAnalysisScreen() {
   async function handleAdoptTask(task: TaskData) {
     if (!activeProject) return;
     const newTask = {
-      id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: createLocalId("task"),
       projectId: activeProject.id,
       title: task.title,
       description: task.description,

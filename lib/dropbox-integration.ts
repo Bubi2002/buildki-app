@@ -12,9 +12,8 @@ import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import { getApiBaseUrl } from "@/constants/oauth";
 
 // Storage keys
@@ -624,7 +623,7 @@ export async function clearUploadHistory(): Promise<void> {
  * Kept for backward compatibility
  */
 export async function uploadFilesToDropbox(
-  files: Array<{ uri: string; mimeType: string; fileName: string }>,
+  files: { uri: string; mimeType: string; fileName: string }[],
   options: {
     projectName?: string;
     protocolTitle?: string;

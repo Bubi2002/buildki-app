@@ -41,15 +41,11 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     });
   }
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  const { granted: previouslyGranted } = await Notifications.getPermissionsAsync();
+  if (previouslyGranted) return true;
 
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  return finalStatus === "granted";
+  const { granted } = await Notifications.requestPermissionsAsync();
+  return granted;
 }
 
 export async function getReminderSettings(): Promise<ReminderSettings> {

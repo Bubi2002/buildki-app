@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 import { useNetworkStatus } from "@/hooks/use-network-status";
@@ -13,10 +13,14 @@ export function NetworkBanner() {
 
   useEffect(() => {
     if (!isConnected) {
-      setShowBanner(true);
-      setWasOffline(true);
+      void Promise.resolve().then(() => {
+        setShowBanner(true);
+        setWasOffline(true);
+      });
     } else if (wasOffline && isConnected) {
-      setShowBanner(true);
+      void Promise.resolve().then(() => {
+        setShowBanner(true);
+      });
       triggerSync();
       const timer = setTimeout(() => {
         if (pendingSyncCount === 0) setShowBanner(false);

@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";

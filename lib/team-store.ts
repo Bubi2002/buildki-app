@@ -140,11 +140,11 @@ export async function deleteComment(commentId: string): Promise<void> {
   }
 }
 
-export async function getProjectTeam(projectId: string): Promise<Array<TeamMember & { permissions: string }>> {
+export async function getProjectTeam(projectId: string): Promise<(TeamMember & { permissions: string })[]> {
   const shares = await getProjectShares(projectId);
   const members = await getTeamMembers();
   return shares.map((share) => {
     const member = members.find((m) => m.id === share.memberId);
     return member ? { ...member, permissions: share.permissions } : null;
-  }).filter(Boolean) as Array<TeamMember & { permissions: string }>;
+  }).filter(Boolean) as (TeamMember & { permissions: string })[];
 }

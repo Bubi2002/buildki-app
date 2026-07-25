@@ -13,7 +13,7 @@
  * - Floor Plans (automatisch generiert)
  */
 
-import type { EntityType, AnalysisSource } from "./entities";
+import type { EntityType } from "./entities";
 
 // ─── Matterport Space ────────────────────────────────────────────────────────
 

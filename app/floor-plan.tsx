@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   ScrollView,
   Image as RNImage,
   Platform,
-  Animated,
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
@@ -77,26 +76,26 @@ export default function FloorPlanScreen() {
   const [viewMode, setViewMode] = useState<"plan" | "list">("plan");
   const [filterType, setFilterType] = useState<PlanPin["type"] | "all">("all");
 
+  async function selectPlan(plan: FloorPlan) {
+    setSelectedPlan(plan);
+    const loadedPins = await getPlanPins(plan.id);
+    setPins(loadedPins);
+    setImageSize({ width: plan.width, height: plan.height });
+  }
+
+  async function loadPlans() {
+    const loaded = await getFloorPlans(projectId);
+    setPlans(loaded);
+    if (loaded.length > 0 && !selectedPlan) {
+      await selectPlan(loaded[0]);
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
       loadPlans();
     }, [projectId])
   );
-
-  const loadPlans = async () => {
-    const loaded = await getFloorPlans(projectId);
-    setPlans(loaded);
-    if (loaded.length > 0 && !selectedPlan) {
-      selectPlan(loaded[0]);
-    }
-  };
-
-  const selectPlan = async (plan: FloorPlan) => {
-    setSelectedPlan(plan);
-    const loadedPins = await getPlanPins(plan.id);
-    setPins(loadedPins);
-    setImageSize({ width: plan.width, height: plan.height });
-  };
 
   const addPlan = async () => {
     // Show options: Galerie or Cloud
@@ -245,7 +244,7 @@ export default function FloorPlanScreen() {
 
   const filteredPins = filterType === "all" ? pins : pins.filter((p) => p.type === filterType);
 
-  const pinTypeOptions: Array<{ type: PlanPin["type"]; label: string; icon: string; color: string }> = [
+  const pinTypeOptions: { type: PlanPin["type"]; label: string; icon: string; color: string }[] = [
     { type: "chapter", label: "Kapitel", icon: "bookmark", color: PIN_COLORS.chapter },
     { type: "note", label: "Notiz", icon: "edit-note", color: PIN_COLORS.note },
     { type: "defect", label: "Mangel", icon: "report-problem", color: PIN_COLORS.defect },
@@ -657,7 +656,7 @@ export default function FloorPlanScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{showPinDetail.label}</Text>
                     <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                      {pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label} \u2022 {new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                      {pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label} • {new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
                     </Text>
                   </View>
                 </View>

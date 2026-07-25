@@ -1,43 +1,36 @@
-# P0 Release-Blocker – Kontext & Architektur-Notizen
+# P0-Releasekontext – historischer, nicht freigegebener Stand
 
-## Rechtsträger (DEFINITIV)
-- **Firma:** immobau-ka GmbH
-- **Adresse:** Ringstr. 6, 76228 Karlsruhe
-- **Steuernummer:** 34413/61771
-- **Finanzamt:** Karlsruhe-Durlach
-- Ersetze alle Vorkommen von "Iserloh Projektmanagement GmbH", "Iserloh Bau GmbH", "CI Concepts"
+**Status:** Nicht als Releasequelle verwenden. Maßgeblich sind der aktuelle Quellstand, automatisierte Tests und der jeweils freigegebene Compliance-/Release-Bericht.
 
-## Aktuelle Auth-Architektur (Befunde)
-- `server/_core/sdk.ts`: JWT-basierte Sessions existieren (createSessionToken, signSession, verifySession, authenticateRequest)
-- `server/_core/context.ts`: TrpcContext hat user: User | null, authenticateRequest wird aufgerufen
-- `server/_core/trpc.ts`: publicProcedure + protectedProcedure + adminProcedure existieren bereits
-- `server/routers.ts`: Die meisten Endpunkte nutzen publicProcedure (voice.transcribe, protocol.generate, upload.audio etc.)
-- Nur sync-Endpunkte nutzen protectedProcedure
-- `lib/_core/auth.ts`: SecureStore für Token, getUserInfo/setUserInfo
-- `app/login.tsx`: Fake-Auth – liest @buildki_registered aus AsyncStorage, prüft Passwort NICHT
-- `app/register.tsx`: Speichert nur lokal in AsyncStorage, kein Server-User
-- `app/verify-email.tsx`: Bei Fehler + "Später bestätigen" wird trotzdem als verifiziert markiert
-- `app/forgot-password.tsx`: Speichert neues Passwort in AsyncStorage (Klartext!)
+> Unbestätigte Unternehmens-, Preis-, Vertrags-, Provider- oder Produktionsangaben sind **OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN**. Frühere Angaben in dieser Datei waren keine belastbare Betreiberfreigabe.
 
-## Server-Auth Existierende Infrastruktur
-- JWT signing/verification in sdk.ts (lines 148-209)
-- authenticateRequest in sdk.ts (lines 234-291) – resolves Bearer/cookie tokens
-- User-Schema in drizzle/schema.ts mit openId
-- Manus OAuth als primärer Login-Weg
+## Betreiber- und Unternehmensdaten
 
-## Plan: Echte Email/Password Auth
-1. bcrypt für Passwort-Hashing (server/auth-local.ts)
-2. Neuer tRPC-Router: auth.register, auth.login, auth.logout, auth.refreshToken
-3. DB-Schema erweitern: passwordHash, emailVerified, emailVerifyToken, resetToken, resetExpiry
-4. JWT-Sessions mit Refresh-Token
-5. Auth-Gate in app/_layout.tsx – prüft Session bevor Tabs geladen werden
-6. login.tsx/register.tsx komplett auf Server-Calls umstellen
+Alle Angaben zu Firma, Rechtsform, Anschrift, Vertretung, Register, Steuerkennzeichen und Datenschutzkontakt sind **OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN**. Sie dürfen weder aus historischen Notizen noch aus Beispiel- oder Testdaten übernommen werden.
 
-## Preise (DEFINITIV)
-- 12,99 € netto/Monat
-- 140,00 € netto/Jahr
-- zzgl. MwSt.
-- 14 Tage kostenloser Test
+## Authentifizierung
 
-## API-URL Produktions-Domain
-- protokollapp-c7amcxpp.manus.space (deployed)
+Frühere Befunde zu lokaler Klartextspeicherung, Fake-Login, Auto-Verifikation und einem lokalen Passwort-Reset waren historische P0-Risiken. Diese Muster sind für einen Release unzulässig und dürfen nicht wieder eingeführt werden.
+
+Vor einem Release sind ausschließlich der aktuelle serverseitige Authentifizierungsablauf und die zugehörigen Regressionstests maßgeblich. Folgende Gates müssen nachweislich bestehen:
+
+| Gate | Anforderung |
+|---|---|
+| Registrierung und Login | Serverseitig validiert; keine lokale Passwortprüfung als Authentifizierung |
+| Passwörter | Ausschließlich als starker Hash; niemals Klartext in App, Datenbank, Logs oder Dokumenten |
+| E-Mail-Verifikation | Kein Bypass und keine automatische Bestätigung |
+| Reset-Codes | Gehasht, befristet, einmalig, rate-limitiert und serverseitig geprüft |
+| Sitzungen | Serverseitig widerrufbar; sichere Token-/Cookie-Verarbeitung |
+| Geheimnisse | Nur über produktive Secret-Verwaltung; niemals im Repository |
+
+## Preise, Testphase und Zahlung
+
+Preise, Währung, Netto-/Bruttoangaben, Steuer, Laufzeit, Verlängerung, Kündigung, Testphase, Zahlungsanbieter und Apple-Zahlungsarchitektur sind **OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN**. Bis zur schriftlichen Betreiber- und Rechtsfreigabe bleiben Kauf-, Trial- und Checkoutpfade fail-closed.
+
+## Produktionsdomain und öffentliche Seiten
+
+Produktionsdomain, Backend-URL sowie öffentliche Datenschutz-, Impressum-, Support- und Privacy-Choices-URLs sind **OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN**. Historische Deployment-Aliasse gelten nicht automatisch als freigegebene Produktionsziele.
+
+## Freigabegrenze
+
+Diese Datei begründet keine Releasefreigabe. Ein Release Candidate setzt vollständig grüne technische Gates, bestätigte Betreiber-/Providerfakten, finale Rechtstexte, reale Geräteabnahme und eine dokumentierte Freigabeentscheidung voraus.

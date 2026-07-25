@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,10 @@ import {
   Switch,
   Modal,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useFocusEffect } from "expo-router";
+import { useRouter , useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "@/lib/language-provider";
 import {
   getRecurringMeetings,

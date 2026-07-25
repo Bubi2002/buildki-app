@@ -104,9 +104,9 @@ export async function batchGet<T>(keys: string[]): Promise<Map<string, T>> {
 /**
  * Batch set multiple key-value pairs at once
  */
-export async function batchSet(entries: Array<[string, any]>): Promise<void> {
+export async function batchSet(entries: [string, any][]): Promise<void> {
   try {
-    const pairs: Array<[string, string]> = entries.map(([key, value]) => [
+    const pairs: [string, string][] = entries.map(([key, value]) => [
       key,
       JSON.stringify(value),
     ]);
@@ -225,14 +225,14 @@ async function getCacheIndex(): Promise<CacheEntry[]> {
 export async function getStorageUsage(): Promise<{
   totalKeys: number;
   estimatedSizeBytes: number;
-  largestKeys: Array<{ key: string; size: number }>;
+  largestKeys: { key: string; size: number }[];
 }> {
   try {
     const allKeys = await AsyncStorage.getAllKeys();
     const pairs = await AsyncStorage.multiGet(allKeys as string[]);
     
     let totalSize = 0;
-    const keySizes: Array<{ key: string; size: number }> = [];
+    const keySizes: { key: string; size: number }[] = [];
     
     for (const [key, value] of pairs) {
       const size = (value || "").length * 2; // UTF-16 approximate

@@ -19,7 +19,9 @@ import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { Image } from "expo-image";
+
+// Need to import Alert
+import { Alert } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -146,9 +148,6 @@ export default function ComparisonScreen() {
     </ScreenContainer>
   );
 }
-
-// Need to import Alert
-import { Alert } from "react-native";
 
 const styles = StyleSheet.create({
   header: {

@@ -21,14 +21,16 @@ export default function PdfBrandingScreen() {
   const [branding, setBranding] = useState<PdfBranding>(DEFAULT_BRANDING);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    loadBranding();
-  }, []);
-
-  const loadBranding = async () => {
+  async function loadBranding() {
     const b = await getPdfBranding();
     setBranding(b);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadBranding();
+    });
+  }, []);
 
   const updateField = (field: keyof PdfBranding, value: any) => {
     setBranding((prev) => ({ ...prev, [field]: value }));
@@ -63,7 +65,7 @@ export default function PdfBrandingScreen() {
           dialogTitle: "PDF-Branding exportieren",
         });
       }
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_export_fehlgeschlagen'));
     }
   };
@@ -94,7 +96,7 @@ export default function PdfBrandingScreen() {
       setBranding(merged);
       setHasChanges(true);
       Alert.alert(t('alert_importiert'), t('msg_einstellungen_wurden_geladen_bitte_speichern'));
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_import_fehlgeschlagen_ungu00fcltige_datei'));
     }
   };
@@ -356,7 +358,7 @@ export default function PdfBrandingScreen() {
                 <Text style={{ fontSize: 10, color: colors.muted, marginBottom: 4 }}>{branding.companyName || "Firmenname"}</Text>
                 <View style={{ width: 60, height: 2, backgroundColor: branding.accentColor || colors.primary, marginVertical: 6, borderRadius: 1 }} />
                 <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, textAlign: "center" }}>{t('baustellenbericht')}</Text>
-                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 4 }}>{t('beispielprojekt')}</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginTop: 4 }}>{t('project_name')}</Text>
                 <Text style={{ fontSize: 9, color: colors.muted, marginTop: 2 }}>{new Date().toLocaleDateString("de-DE")}</Text>
               </View>
             </View>
@@ -385,7 +387,7 @@ export default function PdfBrandingScreen() {
                 placeholderTextColor={colors.muted}
                 style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
               />
-              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>z.B. &quot;Vertraulich&quot; oder &quot;Entwurf&quot; – leer lassen f\u00fcr Standard</Text>
+              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>z. B. &quot;Vertraulich&quot; oder &quot;Entwurf&quot; – für Standard leer lassen</Text>
             </View>
           )}
         </View>
@@ -632,7 +634,7 @@ export default function PdfBrandingScreen() {
             <Text style={{ fontSize: 11, fontWeight: "700", color: "#1a1a1a" }}>{branding.companyName || "Firmenname"}</Text>
           </View>
           {(branding.headerText || branding.showProjectName) && (
-            <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText || "Projekt: Beispielprojekt"}</Text>
+            <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText || "Projekt"}</Text>
           )}
           <View style={{ height: 2, backgroundColor: branding.accentColor, marginVertical: 8, borderRadius: 0 }} />
           {/* Content placeholder */}

@@ -59,8 +59,8 @@ export interface AIServiceMutations {
     projectId: string;
     summary: string;
     progress: { overallPercent: number; phase: string; completedTrades: string[]; activeTrades: string[]; pendingTrades: string[] };
-    defects: Array<{ id: string; title: string; description: string; severity: string; trade: string; location: string; suggestedAction: string; confidence: number }>;
-    tasks: Array<{ id: string; title: string; description: string; priority: string; trade: string; estimatedDuration: string; deadline: string | null }>;
+    defects: { id: string; title: string; description: string; severity: string; trade: string; location: string; suggestedAction: string; confidence: number }[];
+    tasks: { id: string; title: string; description: string; priority: string; trade: string; estimatedDuration: string; deadline: string | null }[];
     observations: string[];
   }>;
 }
@@ -69,7 +69,7 @@ export interface AIServiceMutations {
 
 export interface AnalyzePhotosInput {
   /** Base64-encoded photos to upload first */
-  photos?: Array<{ base64: string; mimeType: string; filename: string }>;
+  photos?: { base64: string; mimeType: string; filename: string }[];
   /** Already-uploaded image URLs */
   imageUrls?: string[];
   projectId: string;
@@ -177,12 +177,12 @@ export interface BatchAnalyzeInput {
   /** All photo URIs (local or remote) */
   photoUris: string[];
   /** Photo metadata for grouping */
-  photoMeta?: Array<{
+  photoMeta?: {
     uri: string;
     timestamp?: string;
     roomName?: string;
     location?: { lat: number; lng: number };
-  }>;
+  }[];
   /** Preferred grouping strategy */
   groupStrategy?: BatchGroupStrategy;
   additionalContext?: string;

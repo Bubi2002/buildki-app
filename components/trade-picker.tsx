@@ -48,7 +48,9 @@ export function TradePicker({
 
   useEffect(() => {
     if (!visible) return;
-    setDraftIndex(selectedIndex);
+    void Promise.resolve().then(() => {
+      setDraftIndex(selectedIndex);
+    });
     const timer = setTimeout(() => {
       listRef.current?.scrollToIndex({ index: selectedIndex, animated: false });
     }, 0);

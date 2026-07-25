@@ -94,7 +94,7 @@ export default function OnboardingProfileScreen() {
         // Show feature tour onboarding
         router.replace("/onboarding" as any);
       }
-    } catch (e) {
+    } catch  {
       Alert.alert("Fehler", "Profil konnte nicht gespeichert werden. Bitte versuche es erneut.");
     } finally {
       setLoading(false);

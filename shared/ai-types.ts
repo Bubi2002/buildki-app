@@ -112,11 +112,11 @@ export interface BatchAnalysisResult {
   batchId: string;
   timestamp: string;
   projectId: string;
-  groups: Array<{
+  groups: {
     groupId: string;
     label: string;
     result: AnalysisResult;
-  }>;
+  }[];
   /** Aggregierte Zusammenfassung über alle Gruppen */
   aggregatedSummary: string;
   totalDefects: number;

@@ -11,13 +11,12 @@ import {
   ScrollView,
   Image,
   KeyboardAvoidingView,
-} from "react-native";
+ Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
   Defect,
@@ -41,14 +40,12 @@ import {
 import { requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
 import { SignaturePad } from "@/components/signature-pad";
 import { TradePicker } from "@/components/trade-picker";
-import { GEWERKE } from "@/lib/defect-pdf-export";
-import { getProjectStructure, getFloors, getAllRooms, type Floor, type Room } from "@/lib/room-store";
-import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
+import { GEWERKE , generateDefectPdfHtml } from "@/lib/defect-pdf-export";
+import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
-import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
-import { generatePositionCode, GEWERKE_NUMBERED } from "@/lib/position-numbering";
+import { generatePositionCode } from "@/lib/position-numbering";
 
 export default function DefectsScreen() {
   const { t } = useTranslation();
@@ -87,21 +84,21 @@ export default function DefectsScreen() {
     }, [projectId])
   );
 
-  const loadRoomStructure = async () => {
+  async function loadRoomStructure() {
     if (!projectId) return;
     try {
       const structure = await getProjectStructure(projectId);
       setFloors(structure.floors);
       setRooms(structure.rooms);
-    } catch (e) {
+    } catch  {
       // Rooms not initialized yet - that's fine
     }
-  };
+  }
 
-  const loadDefects = async () => {
+  async function loadDefects() {
     const loaded = await getDefects(projectId || undefined);
     setDefects(loaded);
-  };
+  }
 
   const filteredDefects = defects.filter((d) => {
     if (filter !== "alle" && d.status !== filter) return false;

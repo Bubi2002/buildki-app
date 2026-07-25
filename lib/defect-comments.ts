@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDefects, saveDefect, type Defect, type DefectComment } from "./defect-store";
 
 /**

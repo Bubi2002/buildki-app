@@ -9,13 +9,12 @@ import {
   Alert,
   Modal,
   ScrollView,
-} from "react-native";
+ Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 import {
   getMarketplaceTemplates,
@@ -52,7 +51,7 @@ export default function TemplateMarketplaceScreen() {
     }, [])
   );
 
-  const loadTemplates = async () => {
+  async function loadTemplates() {
     try {
       const data = await getMarketplaceTemplates();
       setTemplates(data);
@@ -61,7 +60,7 @@ export default function TemplateMarketplaceScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleImport = async (template: MarketplaceTemplate) => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

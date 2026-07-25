@@ -18,9 +18,24 @@ const THEME_STORAGE_KEY = "app-theme-mode";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useSystemColorScheme() ?? "light";
+  const reportedSystemScheme = useSystemColorScheme();
+  const systemScheme: ColorScheme = reportedSystemScheme === "dark" ? "dark" : "light";
   const [themeMode, setThemeModeState] = useState<ThemeMode>("dark");
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>("dark");
+
+  const applyScheme = useCallback((scheme: ColorScheme) => {
+    nativewindColorScheme.set(scheme);
+    Appearance.setColorScheme?.(scheme);
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.dataset.theme = scheme;
+      root.classList.toggle("dark", scheme === "dark");
+      const palette = SchemeColors[scheme];
+      Object.entries(palette).forEach(([token, value]) => {
+        root.style.setProperty(`--color-${token}`, value);
+      });
+    }
+  }, []);
 
   // Load persisted theme mode on mount
   useEffect(() => {
@@ -44,24 +59,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // React to system scheme changes when in "system" mode
   useEffect(() => {
     if (themeMode === "system") {
-      setColorSchemeState(systemScheme);
+      void Promise.resolve().then(() => {
+        setColorSchemeState(systemScheme);
+      });
       applyScheme(systemScheme);
     }
   }, [systemScheme, themeMode]);
-
-  const applyScheme = useCallback((scheme: ColorScheme) => {
-    nativewindColorScheme.set(scheme);
-    Appearance.setColorScheme?.(scheme);
-    if (typeof document !== "undefined") {
-      const root = document.documentElement;
-      root.dataset.theme = scheme;
-      root.classList.toggle("dark", scheme === "dark");
-      const palette = SchemeColors[scheme];
-      Object.entries(palette).forEach(([token, value]) => {
-        root.style.setProperty(`--color-${token}`, value);
-      });
-    }
-  }, []);
 
   const setColorScheme = useCallback((scheme: ColorScheme) => {
     setColorSchemeState(scheme);

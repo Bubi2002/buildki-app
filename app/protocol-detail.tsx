@@ -26,21 +26,20 @@ import * as Print from "expo-print";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { generateProtocolPdf, generateProtocolHtmlPreview } from "@/lib/pdf-generator";
 import { trpc } from "@/lib/trpc";
-import { SignaturePad, pathsToSvgString } from "@/components/signature-pad";
+import { SignaturePad } from "@/components/signature-pad";
 
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { WebView } from "react-native-webview";
-import { getVoiceProfiles, saveVoiceProfile, matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
-import { saveDelegation, formatDelegationNotification, TaskDelegation } from "@/lib/task-delegation";
-import { generateTimeline, formatTimestamp, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
+import { matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
+import { saveDelegation, formatDelegationNotification } from "@/lib/task-delegation";
+import { generateTimeline, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
 import { getTeamContacts, saveTeamContact, markContactUsed, updateTeamContact, TeamContact, sortContactsByRecent } from "@/lib/team-contacts";
 // expo-contacts is imported dynamically to avoid web crashes
-import { getSpeakerName, updateSpeakerName, SpeakerProfile } from "@/lib/speaker-names";
+import { getSpeakerName, updateSpeakerName } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
 import { sendActionItemsEmail } from "@/lib/email-actions";
-import { queueChange, getSyncStatus } from "@/lib/offline-sync";
 import { useTranslation } from "@/lib/language-provider";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -211,11 +210,11 @@ export default function ProtocolDetailScreen() {
     loadTemplates();
   }, [id]);
 
-  const loadTemplates = async () => {
+  async function loadTemplates() {
     const { getAllTemplates } = require("@/shared/templates");
     const templates = await getAllTemplates();
     setAvailableTemplates(templates.map((t: any) => ({ id: t.id, name: t.name, icon: t.icon, description: t.description })));
-  };
+  }
 
   // Auto-refresh while protocol is still processing in background
   useEffect(() => {
@@ -227,7 +226,7 @@ export default function ProtocolDetailScreen() {
     }
   }, [protocol?.status]);
 
-  const loadFeatureFlags = async () => {
+  async function loadFeatureFlags() {
     const { isFeatureEnabled } = require("@/lib/feature-toggles");
     const [photoAnnotation, signature, multiSignature, tags] = await Promise.all([
       isFeatureEnabled("photoAnnotation"),
@@ -236,9 +235,9 @@ export default function ProtocolDetailScreen() {
       isFeatureEnabled("tags"),
     ]);
     setFeatureFlags({ photoAnnotation, signature, multiSignature, tags });
-  };
+  }
 
-  const loadProtocol = async () => {
+  async function loadProtocol() {
     try {
       const protocols = JSON.parse(
         (await AsyncStorage.getItem("protocols")) || "[]"
@@ -265,7 +264,7 @@ export default function ProtocolDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const toggleTodo = async (index: number) => {
     const updated = [...todos];
@@ -480,10 +479,10 @@ export default function ProtocolDetailScreen() {
   const speakerMutation = trpc.speaker.identify.useMutation();
 
   // Load team contacts
-  const loadTeamContacts = async () => {
+  async function loadTeamContacts() {
     const contacts = await getTeamContacts();
     setTeamContacts(sortContactsByRecent(contacts));
-  };
+  }
 
   // Generate timeline from protocol
   const generateTimelineView = () => {
@@ -550,11 +549,11 @@ export default function ProtocolDetailScreen() {
         if (response.ok) {
           Alert.alert(t('alert_aufgabe_delegiert'), t('msg_aufgabe_delegiert_gespeichert').replace('{task}', task).replace('{assignee}', assignee));
         }
-      } catch (notifError) {
+      } catch  {
         // Notification sending failed but delegation was saved - show success anyway
         Alert.alert(t('alert_aufgabe_delegiert_ok'), t('msg_aufgabe_delegiert_gespeichert').replace('{task}', task).replace('{assignee}', assignee));
       }
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_aufgabe_konnte_nicht_delegiert_werden'));
     } finally {
       setIsDelegating(false);
@@ -715,7 +714,7 @@ export default function ProtocolDetailScreen() {
       // Fallback
       const mailtoUrl = `mailto:${recipients.join(",")}?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
       await Linking.openURL(mailtoUrl);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_email_konnte_nicht_geu00f6ffnet_werden'));
     }
   };
@@ -911,7 +910,7 @@ export default function ProtocolDetailScreen() {
         branches,
       });
       setShowMindmap(true);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_mindmap_konnte_nicht_generiert_werden'));
     } finally {
       setIsGeneratingMindmap(false);
@@ -950,7 +949,7 @@ export default function ProtocolDetailScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Alle Versionen exportieren" });
       }
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_pdfexport_fehlgeschlagen'));
     }
   };
@@ -1450,7 +1449,7 @@ export default function ProtocolDetailScreen() {
             const destUri = `${photoDir}${filename}`;
             await FileSystem.copyAsync({ from: asset.uri, to: destUri });
             persistedUris.push(destUri);
-          } catch (copyErr) {
+          } catch  {
             // Fallback to original URI if copy fails
             persistedUris.push(asset.uri);
           }
@@ -1591,7 +1590,22 @@ export default function ProtocolDetailScreen() {
               ))}
               <Pressable
                 onPress={() => {
-                  Alert.prompt ? Alert.prompt(t('tag_hinzufuegen_title'), t('tag_name_prompt'), (text) => { if (text?.trim()) updateTags([...tags, text.trim().toLowerCase()]); }) : Alert.alert(t('alert_tag_hinzufuegen'), t('msg_nutze_die_protokollliste_langes_druecken'));
+                  if (Alert.prompt) {
+                    Alert.prompt(
+                      t("tag_hinzufuegen_title"),
+                      t("tag_name_prompt"),
+                      (text) => {
+                        if (text?.trim()) {
+                          updateTags([...tags, text.trim().toLowerCase()]);
+                        }
+                      },
+                    );
+                  } else {
+                    Alert.alert(
+                      t("alert_tag_hinzufuegen"),
+                      t("msg_nutze_die_protokollliste_langes_druecken"),
+                    );
+                  }
                 }}
                 style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.border + "50", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 }}
               >
@@ -1744,7 +1758,7 @@ export default function ProtocolDetailScreen() {
             </View>
             {photos.map((photoUri, index) => {
               const captions: string[] = (protocol as any).photoCaptions || [];
-              const segments: Array<{ start: number; end: number; text: string }> = (protocol as any).transcriptionSegments || [];
+              const segments: { start: number; end: number; text: string }[] = (protocol as any).transcriptionSegments || [];
               const timestamps: number[] = (protocol as any).photoTimestamps || [];
               // Auto-generate caption from segments if not manually set
               let autoCaption = "";
@@ -2386,7 +2400,7 @@ export default function ProtocolDetailScreen() {
                 });
                 setTranslatedText(result.translated);
                 setShowTranslation(true);
-              } catch (e) {
+              } catch  {
                 Alert.alert(t('alert_fehler'), t('msg_uebersetzung_fehlgeschlagen_bitte_versuche_es'));
               } finally {
                 setIsTranslating(false);

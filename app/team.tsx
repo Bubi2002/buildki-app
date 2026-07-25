@@ -48,10 +48,10 @@ export default function TeamScreen() {
     }, [])
   );
 
-  const loadMembers = async () => {
+  async function loadMembers() {
     const loaded = await getTeamMembers();
     setMembers(loaded);
-  };
+  }
 
   const createMember = async () => {
     if (!newName.trim()) {

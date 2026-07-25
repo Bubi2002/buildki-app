@@ -42,14 +42,14 @@ export function UndoToast({ visible, message, onUndo, onDismiss, duration = 4000
     };
   }, [visible]);
 
-  const dismiss = () => {
+  function dismiss() {
     Animated.parallel([
       Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
       Animated.timing(translateY, { toValue: 20, duration: 150, useNativeDriver: true }),
     ]).start(() => {
       onDismiss();
     });
-  };
+  }
 
   const handleUndo = () => {
     if (timerRef.current) clearTimeout(timerRef.current);

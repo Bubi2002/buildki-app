@@ -39,6 +39,7 @@ import {
   validateVideoSizeBytes,
 } from "@/lib/video-upload-validation";
 import { createAsyncInvocationGuard } from "@/lib/async-invocation-guard";
+import { getPrivacyChoices } from "@/lib/privacy-consent";
 
 type VideoFile = {
   uri: string;
@@ -268,6 +269,14 @@ export default function VideoUploadScreen() {
 
   const processQueue = async () => {
     if (queue.length === 0) return;
+    const privacyChoices = await getPrivacyChoices();
+    if (!privacyChoices.cloudSync || !privacyChoices.aiProcessing) {
+      Alert.alert(
+        "Cloud-/KI-Verarbeitung deaktiviert",
+        "Die Dateien bleiben lokal ausgewählt. Aktivieren Sie Cloud-Synchronisation und KI/Transkription in den Datenschutzoptionen, bevor BuildKI Dateien liest, hochlädt oder transkribiert.",
+      );
+      return;
+    }
     if (!uploadGate.allowed) {
       showBlockedUploadMessage();
       return;

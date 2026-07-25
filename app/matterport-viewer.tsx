@@ -11,7 +11,7 @@
  * - Color-coded pin overlay by status (offen/erledigt/überfällig)
  * - Offline fallback with pin list
  */
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -22,7 +22,6 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
-  Platform,
   ScrollView,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -34,8 +33,12 @@ import { TradePicker } from "@/components/trade-picker";
 import { useColors } from "@/hooks/use-colors";
 import { getProjectStructure, addFloor, addRoom } from "@/lib/room-store";
 import { trpc } from "@/lib/trpc";
+import {
+  MATTERPORT_RELEASE_ALLOWED,
+  MATTERPORT_RELEASE_HOLD_MESSAGE,
+  MATTERPORT_RELEASE_HOLD_TITLE,
+} from "@/shared/matterport-compliance";
 
-const MATTERPORT_CREDENTIALS_KEY = "matterport_credentials";
 const LINKED_MODELS_KEY = "matterport_linked_models";
 // Legacy key kept only for non-defect pins (notes, tasks, photos)
 const LEGACY_PINS_KEY = "matterport_pins";
@@ -82,7 +85,6 @@ export default function MatterportViewerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [modelId, setModelId] = useState(params.modelId || "");
   const [projectId, setProjectId] = useState(params.projectId || "");
-  const [credentials, setCredentials] = useState<{ tokenId: string; tokenSecret: string } | null>(null);
   const [sdkKey, setSdkKey] = useState("");
   const [linkedModels, setLinkedModels] = useState<LinkedModel[]>([]);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -95,8 +97,8 @@ export default function MatterportViewerScreen() {
   const [newPinFloor, setNewPinFloor] = useState("");
   const [newPinRoom, setNewPinRoom] = useState("");
   const [newPinGewerk, setNewPinGewerk] = useState("");
-  const [modelFloors, setModelFloors] = useState<Array<{ id: string; label: string; sequence: number }>>([]);
-  const [modelRooms, setModelRooms] = useState<Array<{ id: string; label: string; floor?: { id: string; label: string } }>>([]);
+  const [modelFloors, setModelFloors] = useState<{ id: string; label: string; sequence: number }[]>([]);
+  const [modelRooms, setModelRooms] = useState<{ id: string; label: string; floor?: { id: string; label: string } }[]>([]);
   const [importStatus, setImportStatus] = useState("");
   const [sdkReady, setSdkReady] = useState(false);
   const [hasFullSdk, setHasFullSdk] = useState(false);
@@ -109,20 +111,24 @@ export default function MatterportViewerScreen() {
   // tRPC
   const getFloorsMutation = trpc.matterport.getFloors.useMutation();
   const getRoomsMutation = trpc.matterport.getRooms.useMutation();
-  const sdkKeyQuery = trpc.matterport.getSdkKey.useQuery();
+  const sdkKeyQuery = trpc.matterport.getSdkKey.useQuery(undefined, {
+    enabled: MATTERPORT_RELEASE_ALLOWED,
+  });
 
   useEffect(() => {
-    loadCredentials();
-    loadLinkedModels();
+    if (MATTERPORT_RELEASE_ALLOWED) loadLinkedModels();
+    AsyncStorage.removeItem("matterport_credentials").catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    if (modelId) loadPins();
+    if (MATTERPORT_RELEASE_ALLOWED && modelId) loadPins();
   }, [modelId]);
 
   useEffect(() => {
     if (sdkKeyQuery.data?.sdkKey) {
-      setSdkKey(sdkKeyQuery.data.sdkKey);
+      void Promise.resolve().then(() => {
+        setSdkKey(sdkKeyQuery.data.sdkKey);
+      });
     }
   }, [sdkKeyQuery.data]);
 
@@ -138,23 +144,14 @@ export default function MatterportViewerScreen() {
     }
   }, [sdkReady, params.navigateToPin, params.navigateToDefect, pins]);
 
-  const loadCredentials = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(MATTERPORT_CREDENTIALS_KEY);
-      if (stored) setCredentials(JSON.parse(stored));
-    } catch (e) {
-      console.error("Failed to load Matterport credentials:", e);
-    }
-  };
-
-  const loadLinkedModels = async () => {
+  async function loadLinkedModels() {
     try {
       const stored = await AsyncStorage.getItem(LINKED_MODELS_KEY);
       if (stored) setLinkedModels(JSON.parse(stored));
-    } catch (e) {}
-  };
+    } catch  {}
+  }
 
-  const loadPins = async () => {
+  async function loadPins() {
     try {
       // Primary: Load defect pins from defect-store (Single Source of Truth)
       const { getMatterportDefects } = await import("@/lib/defect-store");
@@ -185,14 +182,14 @@ export default function MatterportViewerScreen() {
         legacyPins = parsed.filter(p => p.type !== "defect");
       }
       setPins([...defectPins, ...legacyPins]);
-    } catch (e) {
+    } catch  {
       // Fallback: try legacy storage
       try {
         const stored = await AsyncStorage.getItem(`${LEGACY_PINS_KEY}_${modelId}`);
         if (stored) setPins(JSON.parse(stored));
       } catch {}
     }
-  };
+  }
 
   const savePins = async (newPins: MatterportPin[]) => {
     setPins(newPins);
@@ -216,13 +213,13 @@ export default function MatterportViewerScreen() {
     webViewRef.current.injectJavaScript(`window.handleRNCommand(${JSON.stringify(msg)}); true;`);
   };
 
-  const navigateToPin = (pin: MatterportPin) => {
+  function navigateToPin(pin: MatterportPin) {
     if (pin.sweepId) {
       sendSdkCommand("moveTo", { sweepId: pin.sweepId, rotation: pin.position });
     } else if (pin.position) {
       sendSdkCommand("navigateToPosition", { position: pin.position });
     }
-  };
+  }
 
   const switchViewMode = (mode: ViewMode3D) => {
     setCurrentViewMode(mode);
@@ -308,7 +305,7 @@ export default function MatterportViewerScreen() {
         await recordDefectCreated(defect.id);
         pin.linkedEntityId = defect.id;
         pin.status = "offen";
-      } catch (e) {
+      } catch  {
         // Non-critical
       }
     }
@@ -346,8 +343,8 @@ export default function MatterportViewerScreen() {
   // ─── Room Import ─────────────────────────────────────────────────────────────
 
   const importRoomsFromMatterport = async () => {
-    if (!credentials || !modelId || !projectId) {
-      Alert.alert("Fehler", "Keine Zugangsdaten oder kein Projekt verknüpft.");
+    if (!modelId || !projectId) {
+      Alert.alert("Fehler", "Kein Matterport-Modell oder Projekt verknüpft.");
       return;
     }
     setShowImportModal(true);
@@ -621,8 +618,29 @@ export default function MatterportViewerScreen() {
           setCurrentFloor(data.floorIndex);
           break;
       }
-    } catch (e) {}
+    } catch  {}
   };
+
+  // ─── Contractual Release Hold ───────────────────────────────────────────────
+
+  if (!MATTERPORT_RELEASE_ALLOWED) {
+    return (
+      <ScreenContainer className="p-0">
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Matterport</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.emptyState}>
+          <MaterialIcons name="gpp-maybe" size={58} color="#F59E0B" />
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{MATTERPORT_RELEASE_HOLD_TITLE}</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>{MATTERPORT_RELEASE_HOLD_MESSAGE}</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   // ─── No Model Selected ──────────────────────────────────────────────────────
 
@@ -1058,7 +1076,7 @@ const styles = StyleSheet.create({
   },
   actionButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(10, 15, 26, 0.9)",
     alignItems: "center",
     justifyContent: "center",

@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  StyleSheet,
   Dimensions,
   Platform,
   Alert,
@@ -45,11 +44,7 @@ export default function PhotoCompareScreen() {
   const [sliderPosition, setSliderPosition] = useState(0.5);
   const compareRef = React.useRef<View>(null);
 
-  useEffect(() => {
-    loadComparisons();
-  }, []);
-
-  const loadComparisons = async () => {
+  async function loadComparisons() {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -61,7 +56,13 @@ export default function PhotoCompareScreen() {
         }
       }
     } catch {}
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadComparisons();
+    });
+  }, []);
 
   const saveComparisons = async (updated: ComparisonPair[]) => {
     try {
@@ -96,7 +97,7 @@ export default function PhotoCompareScreen() {
       setComparisons(updated);
       await saveComparisons(updated);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_foto_konnte_nicht_geladen_werden'));
     }
   };
@@ -118,7 +119,7 @@ export default function PhotoCompareScreen() {
         setSelectedPair({ ...pair, afterUri: result.assets[0].uri, afterDate: new Date().toISOString() });
       }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_foto_konnte_nicht_geladen_werden'));
     }
   };
@@ -144,7 +145,7 @@ export default function PhotoCompareScreen() {
     try {
       const uri = await captureRef(compareRef.current, { format: "png", quality: 0.9 });
       await Sharing.shareAsync(uri, { mimeType: "image/png" });
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_vergleich_konnte_nicht_geteilt_werden'));
     }
   };

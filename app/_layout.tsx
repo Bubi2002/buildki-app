@@ -1,9 +1,8 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack , useRouter as useQuickRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { AppState, Platform, View, Text, TouchableOpacity } from "react-native";
@@ -30,11 +29,11 @@ import {
 import { NetworkBanner } from "@/components/network-banner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PrivacyConsentDialog } from "@/components/privacy-consent-dialog";
+import { PrivacyConsentSync } from "@/components/privacy-consent-sync";
+import * as QuickActions from "expo-quick-actions";
 // ShareIntentProvider temporarily disabled - share extension removed for TestFlight build
 // import { ShareIntentProvider } from "expo-share-intent";
 const ShareIntentProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-import * as QuickActions from "expo-quick-actions";
-import { useRouter as useQuickRouter } from "expo-router";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -64,7 +63,9 @@ function BiometricLockOverlay({
   };
 
   useEffect(() => {
-    handleAuthenticate();
+    void Promise.resolve().then(() => {
+      handleAuthenticate();
+    });
   }, []);
 
   return (
@@ -146,13 +147,12 @@ export default function RootLayout() {
       const { isFeatureEnabled } = require("@/lib/feature-toggles");
       setOfflineModeEnabled(await isFeatureEnabled("offlineMode"));
     })();
-    // Check privacy consent on first launch
+    // Present the current privacy choices before any optional transfer starts.
     (async () => {
-      const { hasConsent } = require("@/lib/privacy-consent");
-      const consentGiven = await hasConsent();
-      if (!consentGiven) setShowConsent(true);
+      const { needsConsentUpdate } = require("@/lib/privacy-consent");
+      if (await needsConsentUpdate()) setShowConsent(true);
     })();
-    // Initialize offline sync manager
+    // The manager itself fails closed unless Cloud + AI purposes are enabled.
     if (Platform.OS !== "web") {
       const { initSyncManager } = require("@/lib/offline-sync-manager");
       initSyncManager();
@@ -163,6 +163,16 @@ export default function RootLayout() {
       initDailySummary();
     }
   }, []);
+
+  function handleQuickAction(action: QuickActions.Action) {
+    if (action.id === "quick_record_audio" || action.id === "quick_record_photo") {
+      // Navigate to recording tab with mode parameter
+      quickRouter.replace({
+        pathname: "/(tabs)",
+        params: { quickAction: action.id },
+      });
+    }
+  }
 
   // Setup Quick Actions (iOS 3D Touch / Android App Shortcuts)
   useEffect(() => {
@@ -192,16 +202,6 @@ export default function RootLayout() {
     });
     return () => subscription.remove();
   }, []);
-
-  const handleQuickAction = (action: QuickActions.Action) => {
-    if (action.id === "quick_record_audio" || action.id === "quick_record_photo") {
-      // Navigate to recording tab with mode parameter
-      quickRouter.replace({
-        pathname: "/(tabs)",
-        params: { quickAction: action.id },
-      });
-    }
-  };
 
   // Biometric lock on app start
   useEffect(() => {
@@ -297,7 +297,17 @@ export default function RootLayout() {
             <Stack.Screen name="oauth/callback" />
           </Stack>
           {offlineModeEnabled && <NetworkBanner />}
-          <PrivacyConsentDialog visible={showConsent} onAccept={() => setShowConsent(false)} />
+          <PrivacyConsentSync />
+          <PrivacyConsentDialog
+            visible={showConsent}
+            onAccept={(choices) => {
+              setShowConsent(false);
+              if (Platform.OS !== "web" && choices.cloudSync && choices.aiProcessing) {
+                const { initSyncManager } = require("@/lib/offline-sync-manager");
+                initSyncManager();
+              }
+            }}
+          />
           <StatusBar style="auto" />
         </QueryClientProvider>
       </trpc.Provider>

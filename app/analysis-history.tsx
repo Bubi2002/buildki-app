@@ -52,7 +52,9 @@ export default function AnalysisHistoryScreen() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadHistory(); }, [loadHistory]);
+  useEffect(() => { void Promise.resolve().then(() => {
+    loadHistory();
+  }); }, [loadHistory]);
 
   // Apply filters
   const filteredEntries = entries.filter((entry) => {

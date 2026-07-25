@@ -22,7 +22,6 @@
  */
 
 import { knowledgeLayer } from "./knowledge-layer";
-import type { ProjectKnowledgeEntry } from "@/shared/ai-types";
 
 // ─── Intent Types ───────────────────────────────────────────────────────────
 

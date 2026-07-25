@@ -21,6 +21,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { onJobUpdate } from "@/lib/background-processor";
 import { useTranslation } from "@/lib/language-provider";
 import { filterProtocolsByProject, isProtocolUnassigned, UNASSIGNED_PROJECT_ID } from "@/lib/project-context";
+import { createLocalId } from "@/lib/id";
 import {
   ensureProtocolTextFields,
   getProtocolPreview,
@@ -38,7 +39,7 @@ type Protocol = {
   duration: number;
   createdAt: string;
   status: "processing" | "ready" | "sent";
-  todos?: Array<{ task: string; done: boolean }>;
+  todos?: { task: string; done: boolean }[];
   isFavorite?: boolean;
   isArchived?: boolean;
   tags?: string[];
@@ -84,40 +85,7 @@ export default function ProtocolsScreen() {
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadActiveProject();
-      loadProtocols();
-      loadProjects();
-      loadFeatureFlags();
-      setBatchMode(false);
-      setSelectedIds(new Set());
-
-      // Poll for updates when there are processing protocols
-      pollingRef.current = setInterval(() => {
-        loadProtocols();
-      }, 3000);
-
-      return () => {
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-      };
-    }, [])
-  );
-
-  // Listen for background processor job updates
-  useEffect(() => {
-    const unsubscribe = onJobUpdate((protocolId, status) => {
-      if (status === "done" || status === "failed") {
-        loadProtocols();
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  const loadProjects = async () => {
+  async function loadProjects() {
     try {
       const stored = await AsyncStorage.getItem("projects");
       if (stored) {
@@ -130,9 +98,9 @@ export default function ProtocolsScreen() {
     } catch {
       setProjects([]);
     }
-  };
+  }
 
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     try {
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
       if (lastId) {
@@ -153,9 +121,9 @@ export default function ProtocolsScreen() {
       setActiveProjectId(null);
       setActiveProjectName(null);
     }
-  };
+  }
 
-  const loadFeatureFlags = async () => {
+  async function loadFeatureFlags() {
     const { isFeatureEnabled } = require("@/lib/feature-toggles");
     const [protocolCompare, csvExport, statistics] = await Promise.all([
       isFeatureEnabled("protocolCompare"),
@@ -163,9 +131,9 @@ export default function ProtocolsScreen() {
       isFeatureEnabled("statistics"),
     ]);
     setFeatureFlags({ protocolCompare, csvExport, statistics });
-  };
+  }
 
-  const loadProtocols = async () => {
+  async function loadProtocols() {
     try {
       const stored = await AsyncStorage.getItem("protocols");
       if (stored) {
@@ -207,7 +175,40 @@ export default function ProtocolsScreen() {
     } catch (error) {
       console.error("Error loading protocols:", error);
     }
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadActiveProject();
+      loadProtocols();
+      loadProjects();
+      loadFeatureFlags();
+      setBatchMode(false);
+      setSelectedIds(new Set());
+
+      // Poll for updates when there are processing protocols
+      pollingRef.current = setInterval(() => {
+        loadProtocols();
+      }, 3000);
+
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      };
+    }, [])
+  );
+
+  // Listen for background processor job updates
+  useEffect(() => {
+    const unsubscribe = onJobUpdate((protocolId, status) => {
+      if (status === "done" || status === "failed") {
+        loadProtocols();
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const saveProtocols = async (updated: Protocol[]) => {
     setProtocols(updated);
@@ -231,7 +232,7 @@ export default function ProtocolsScreen() {
   const duplicateProtocol = async (item: Protocol) => {
     const duplicate: Protocol = {
       ...item,
-      id: Date.now().toString(),
+      id: createLocalId("protocol"),
       title: `${item.title} (Kopie)`,
       createdAt: new Date().toISOString(),
       status: "ready",
@@ -535,7 +536,7 @@ export default function ProtocolsScreen() {
       if (pdfUri && await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(pdfUri);
       }
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden'));
     }
   };

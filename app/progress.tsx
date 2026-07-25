@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
-  StyleSheet, RefreshControl, FlatList,
+  StyleSheet, RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -24,20 +24,22 @@ export default function ProgressScreen() {
   const [activeTab, setActiveTab] = useState<ViewTab>("overview");
   const [projectId, setProjectId] = useState("");
 
-  useEffect(() => { loadProject(); }, []);
-
-  const loadProject = async () => {
-    const pid = await AsyncStorage.getItem("buildki_active_project");
-    if (pid) { setProjectId(pid); await calculate(pid); }
-    else setLoading(false);
-  };
-
-  const calculate = async (pid: string) => {
+  async function calculate(pid: string) {
     setLoading(true);
     try { setSnapshot(await progressEngine.calculateProgress(pid)); }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
-  };
+  }
+
+  async function loadProject() {
+    const pid = await AsyncStorage.getItem("buildki_active_project");
+    if (pid) { setProjectId(pid); await calculate(pid); }
+    else setLoading(false);
+  }
+
+  useEffect(() => { void Promise.resolve().then(() => {
+    void loadProject();
+  }); }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

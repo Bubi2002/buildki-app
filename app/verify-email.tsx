@@ -41,17 +41,17 @@ export default function VerifyEmailScreen() {
     }
   }, [resendCooldown]);
 
-  const requestConfirmation = async () => {
+  async function requestConfirmation() {
     try {
       await apiCall<{ success: boolean }>("/api/auth/request-confirmation", {
         method: "POST",
         body: JSON.stringify({ email: email.toLowerCase(), name }),
       });
       setResendCooldown(60);
-    } catch (e) {
+    } catch  {
       // Server nicht erreichbar
     }
-  };
+  }
 
   const handleVerify = async () => {
     if (code.length !== 6) {
@@ -67,7 +67,7 @@ export default function VerifyEmailScreen() {
       });
       Alert.alert(
         "E-Mail bestätigt!",
-        "Dein Konto ist jetzt aktiv. Dein 14-tägiger Testzeitraum beginnt jetzt.",
+        "Ihre E-Mail-Adresse wurde bestätigt. Sie können die Kontoeinrichtung jetzt fortsetzen.",
         [{ text: "Weiter", onPress: () => router.replace("/onboarding-profile" as any) }],
       );
     } catch (e: any) {
@@ -75,11 +75,6 @@ export default function VerifyEmailScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSkip = async () => {
-    // Skip verification for now, navigate to profile setup
-    router.replace("/onboarding-profile" as any);
   };
 
   return (
@@ -144,11 +139,6 @@ export default function VerifyEmailScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Skip (MVP) */}
-        <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-          <Text style={styles.skipText}>Später bestätigen</Text>
-        </TouchableOpacity>
       </View>
     </ScreenContainer>
   );
@@ -235,13 +225,5 @@ const styles = StyleSheet.create({
     color: "#5DADE2",
     fontSize: 14,
     fontWeight: "600",
-  },
-  skipBtn: {
-    marginTop: 24,
-    paddingVertical: 8,
-  },
-  skipText: {
-    color: "#5A6B7E",
-    fontSize: 13,
   },
 });

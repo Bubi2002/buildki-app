@@ -54,12 +54,7 @@ export default function ExportCenterScreen() {
   const [editWebsite, setEditWebsite] = useState("");
   const [activeProject, setActiveProject] = useState<ProjectContextItem | null>(null);
 
-  useEffect(() => {
-    loadCompanyInfo();
-    loadActiveProject();
-  }, []);
-
-  const loadCompanyInfo = async () => {
+  async function loadCompanyInfo() {
     const info = await getCompanyInfo();
     if (info) {
       setCompanyInfo(info);
@@ -69,9 +64,9 @@ export default function ExportCenterScreen() {
       setEditEmail(info.email || "");
       setEditWebsite(info.website || "");
     }
-  };
+  }
 
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     try {
       const [projectsRaw, selectedProjectId] = await Promise.all([
         AsyncStorage.getItem(PROJECTS_STORAGE_KEY),
@@ -82,7 +77,14 @@ export default function ExportCenterScreen() {
     } catch {
       setActiveProject(null);
     }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadCompanyInfo();
+      void loadActiveProject();
+    });
+  }, []);
 
   const handleSaveCompany = async () => {
     if (!editName.trim()) {
@@ -106,7 +108,7 @@ export default function ExportCenterScreen() {
     const action = getExportCenterAction(type, activeProject?.id);
 
     if (action.kind === "unavailable") {
-      Alert.alert("Noch nicht verfügbar", action.reason);
+      Alert.alert("Projekt erforderlich", action.reason);
       return;
     }
 
@@ -242,13 +244,12 @@ export default function ExportCenterScreen() {
           <Pressable
             key={option.id}
             onPress={() => navigateToExportTarget(option.id)}
-            accessibilityState={{ disabled: !option.available }}
             style={({ pressed }) => [
               styles.exportCard,
               {
                 backgroundColor: colors.surface,
-                borderColor: option.available ? colors.border : colors.muted + "55",
-                opacity: pressed ? 0.8 : option.available ? 1 : 0.72,
+                borderColor: colors.border,
+                opacity: pressed ? 0.8 : 1,
               },
             ]}
           >
@@ -258,16 +259,11 @@ export default function ExportCenterScreen() {
             <View style={{ flex: 1 }}>
               <View style={styles.exportTitleRow}>
                 <Text style={[styles.exportLabel, { color: colors.foreground }]}>{option.label}</Text>
-                {!option.available && (
-                  <View style={[styles.unavailableBadge, { borderColor: colors.muted }]}>
-                    <Text style={[styles.unavailableBadgeText, { color: colors.muted }]}>NOCH NICHT VERFÜGBAR</Text>
-                  </View>
-                )}
               </View>
               <Text style={[styles.exportDesc, { color: colors.muted }]}>{option.description}</Text>
             </View>
             <MaterialIcons
-              name={option.available ? "chevron-right" : "info-outline"}
+              name="chevron-right"
               size={20}
               color={colors.muted}
             />
@@ -278,7 +274,7 @@ export default function ExportCenterScreen() {
         <View style={[styles.infoBox, { backgroundColor: "rgba(0,176,255,0.05)", borderColor: "#00B0FF" }]}>
           <MaterialIcons name="verified" size={18} color="#00B0FF" />
           <Text style={[styles.infoText, { color: colors.muted }]}>
-            Aktive Karten führen ausschließlich zu Exporten mit realen Projekt- oder Protokolldaten. Nicht implementierte PDF-Typen sind eindeutig gekennzeichnet und erzeugen keine Platzhalterdateien mehr.
+            Jede Exportkarte führt ausschließlich zu einem vorhandenen Ablauf mit realen Projekt- oder Protokolldaten.
           </Text>
         </View>
 
@@ -391,16 +387,6 @@ const styles = StyleSheet.create({
   exportLabel: {
     fontSize: 15,
     fontWeight: "600",
-  },
-  unavailableBadge: {
-    borderWidth: 1,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  unavailableBadgeText: {
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 0.4,
   },
   exportDesc: {
     fontSize: 12,

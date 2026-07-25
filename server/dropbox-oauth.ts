@@ -296,7 +296,7 @@ export function registerDropboxRoutes(app: Express) {
 
       const result = await response.json();
       res.json({ success: true, path: result.metadata?.path_display || path });
-    } catch (err: any) {
+    } catch  {
       res.status(500).json({ error: "Fehler bei Ordner-Erstellung" });
     }
   });
@@ -335,7 +335,7 @@ export function registerDropboxRoutes(app: Express) {
         email: account.email || "",
         accountId: account.account_id || "",
       });
-    } catch (err: any) {
+    } catch  {
       res.status(500).json({ error: "Fehler beim Abrufen der Kontoinformationen" });
     }
   });

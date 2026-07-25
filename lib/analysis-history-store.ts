@@ -22,8 +22,8 @@ export type AnalysisHistoryEntry = {
   status?: "pending" | "reviewed" | "adopted" | "dismissed";
   avgConfidence?: number;
   imageUrls?: string[];
-  defects?: Array<{ id: string; title: string; severity: string; trade: string; confidence: number }>;
-  tasks?: Array<{ id: string; title: string; priority: string; trade: string }>;
+  defects?: { id: string; title: string; severity: string; trade: string; confidence: number }[];
+  tasks?: { id: string; title: string; priority: string; trade: string }[];
   observations?: string[];
   progress?: { overallPercent: number; phase: string };
 };

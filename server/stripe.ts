@@ -7,9 +7,8 @@
  * - Subscription status queries
  * - Customer portal for self-service management
  * 
- * Pricing:
- * - Monthly: 12,99 € netto/Monat zzgl. MwSt.
- * - Yearly: 140,00 € netto/Jahr zzgl. MwSt. (~10% Ersparnis)
+ * New purchases are intentionally disabled in the uncommitted compliance draft.
+ * Existing, already contracted customers may still need authenticated portal access.
  */
 import Stripe from "stripe";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -18,6 +17,15 @@ import { sdk } from "./_core/sdk";
 
 // Initialize Stripe (lazy – only when key is configured)
 let stripeInstance: Stripe | null = null;
+
+export const PAYMENT_PURCHASES_ENABLED = false;
+const PAYMENT_COMPLIANCE_HOLD =
+  "OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN: Zahlungs-, Tarif- und Apple-Vertriebsmodell verbindlich festlegen.";
+
+function authenticatedEmail(req: Request): string | null {
+  const email = (req as Request & { user?: { email?: string | null } }).user?.email;
+  return typeof email === "string" && email.includes("@") ? email.toLowerCase().trim() : null;
+}
 
 function getStripe(): Stripe {
   if (!stripeInstance) {
@@ -62,13 +70,13 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
  * Register all Stripe-related Express routes
  */
 export function registerStripeRoutes(app: Express) {
-  // Health check for Stripe configuration (public)
+  // Public status reveals no secret or price configuration while purchases are on hold.
   app.get("/api/stripe/status", (_req: Request, res: Response) => {
-    const configured = !!ENV.stripeSecretKey;
     res.json({
-      configured,
-      monthlyPriceId: ENV.stripeMonthlyPriceId ? "set" : "missing",
-      yearlyPriceId: ENV.stripeYearlyPriceId ? "set" : "missing",
+      configured: false,
+      purchaseEnabled: PAYMENT_PURCHASES_ENABLED,
+      complianceReviewRequired: true,
+      message: PAYMENT_COMPLIANCE_HOLD,
     });
   });
 
@@ -79,11 +87,20 @@ export function registerStripeRoutes(app: Express) {
    */
   app.post("/api/stripe/create-checkout-session", requireAuth, async (req: Request, res: Response) => {
     try {
+      if (!PAYMENT_PURCHASES_ENABLED) {
+        res.status(503).json({
+          error: "PAYMENTS_COMPLIANCE_HOLD",
+          message: PAYMENT_COMPLIANCE_HOLD,
+        });
+        return;
+      }
+
       const stripe = getStripe();
-      const { email, plan, successUrl, cancelUrl } = req.body;
+      const email = authenticatedEmail(req);
+      const { plan, successUrl, cancelUrl } = req.body;
 
       if (!email || !plan) {
-        res.status(400).json({ error: "email and plan are required" });
+        res.status(400).json({ error: "authenticated email and plan are required" });
         return;
       }
 
@@ -120,7 +137,6 @@ export function registerStripeRoutes(app: Express) {
         success_url: successUrl || "https://protokollapp-c7amcxpp.manus.space/payment-success?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: cancelUrl || "https://protokollapp-c7amcxpp.manus.space/payment-cancel",
         subscription_data: {
-          trial_period_days: 14,
           metadata: { plan, source: "buildki-app" },
         },
         locale: "de",
@@ -128,9 +144,6 @@ export function registerStripeRoutes(app: Express) {
         automatic_tax: { enabled: true },
         billing_address_collection: "required",
         payment_method_collection: "always",
-        custom_text: {
-          submit: { message: "14 Tage kostenlos testen – danach automatische Verlängerung." },
-        },
       });
 
       res.json({
@@ -151,10 +164,10 @@ export function registerStripeRoutes(app: Express) {
   app.post("/api/stripe/create-portal-session", requireAuth, async (req: Request, res: Response) => {
     try {
       const stripe = getStripe();
-      const { email } = req.body;
+      const email = authenticatedEmail(req);
 
       if (!email) {
-        res.status(400).json({ error: "email is required" });
+        res.status(400).json({ error: "authenticated account email is required" });
         return;
       }
 
@@ -182,9 +195,9 @@ export function registerStripeRoutes(app: Express) {
    */
   app.get("/api/stripe/subscription-status", requireAuth, async (req: Request, res: Response) => {
     try {
-      const email = req.query.email as string;
+      const email = authenticatedEmail(req);
       if (!email) {
-        res.status(400).json({ error: "email query param is required" });
+        res.status(400).json({ error: "authenticated account email is required" });
         return;
       }
 

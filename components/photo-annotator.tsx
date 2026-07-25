@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,11 +13,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
   runOnJS,
 } from "react-native-reanimated";
-import Svg, { Path, Circle, Rect, Line, SvgProps } from "react-native-svg";
+import Svg, { Path, Circle, Rect, Line } from "react-native-svg";
+import { createLocalId } from "@/lib/id";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -56,10 +55,10 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   const [isDrawing, setIsDrawing] = useState(false);
   const [imageSize, setImageSize] = useState({ width: SCREEN_WIDTH - 32, height: (SCREEN_WIDTH - 32) * 1.33 });
 
-  const startPoint = useRef<{ x: number; y: number } | null>(null);
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
 
   const handleTouchStart = useCallback((x: number, y: number) => {
-    startPoint.current = { x, y };
+    setStartPoint({ x, y });
     setCurrentPath([{ x, y }]);
     setIsDrawing(true);
   }, []);
@@ -68,20 +67,21 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
     if (!isDrawing) return;
     if (currentTool === "freehand") {
       setCurrentPath(prev => [...prev, { x, y }]);
-    } else {
-      setCurrentPath([startPoint.current!, { x, y }]);
+    } else if (startPoint) {
+      setCurrentPath([startPoint, { x, y }]);
     }
-  }, [isDrawing, currentTool]);
+  }, [isDrawing, currentTool, startPoint]);
 
   const handleTouchEnd = useCallback(() => {
     if (!isDrawing || currentPath.length < 2) {
       setIsDrawing(false);
       setCurrentPath([]);
+      setStartPoint(null);
       return;
     }
 
     const newAnnotation: Annotation = {
-      id: Date.now().toString(),
+      id: createLocalId("annotation"),
       type: currentTool,
       color: currentColor,
       points: [...currentPath],
@@ -89,6 +89,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
 
     setAnnotations(prev => [...prev, newAnnotation]);
     setCurrentPath([]);
+    setStartPoint(null);
     setIsDrawing(false);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [isDrawing, currentPath, currentTool, currentColor]);

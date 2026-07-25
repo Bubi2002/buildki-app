@@ -8,13 +8,12 @@ import {
   ScrollView,
   TextInput,
   Alert,
-} from "react-native";
+ Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 import {
   AutoReportSettings,
@@ -35,16 +34,16 @@ export default function AutoReportSettingsScreen() {
   const [lastRun, setLastRun] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  async function loadSettings() {
     const s = await getAutoReportSettings();
     setSettings(s);
     const lr = await getLastReportRun();
     setLastRun(lr);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(loadSettings);
+  }, []);
 
   const handleSave = async () => {
     if (!settings) return;

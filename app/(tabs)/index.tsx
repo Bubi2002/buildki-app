@@ -5,10 +5,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useTranslation } from "@/lib/language-provider";
-import { getDefects, getDefectStats, type Defect } from "@/lib/defect-store";
+import { getDefects, getDefectStats } from "@/lib/defect-store";
 import { getOverdueDefects } from "@/lib/defect-pdf-export";
-import { progressEngine, type ProgressSnapshot } from "@/lib/progress-engine";
-import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeIcon, getEventTypeColor } from "@/lib/timeline-engine";
+import { progressEngine } from "@/lib/progress-engine";
+import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeColor } from "@/lib/timeline-engine";
 import { getProjectStructure } from "@/lib/room-store";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { filterDashboardItemsByProject, normalizeDashboardProjectId } from "@/lib/dashboard-project-context";
@@ -25,7 +25,7 @@ type Protocol = {
   title: string;
   createdAt: string;
   status: "processing" | "ready" | "sent";
-  todos?: Array<{ task: string; done: boolean }>;
+  todos?: { task: string; done: boolean }[];
   projectId?: string;
 };
 
@@ -33,7 +33,7 @@ type AttendanceRecord = {
   id: string;
   projectId: string;
   date: string;
-  workers: Array<{ id: string; name: string; firma: string; gewerk: string }>;
+  workers: { id: string; name: string; firma: string; gewerk: string }[];
 };
 
 // ─── Live Stats Type ────────────────────────────────────────────────────────
@@ -257,7 +257,9 @@ export default function AIWorkbenchScreen() {
   );
 
   useEffect(() => {
-    loadLiveStats(selectedProject?.id);
+    void Promise.resolve().then(() => {
+      loadLiveStats(selectedProject?.id);
+    });
   }, [selectedProject, loadLiveStats]);
 
   const onRefresh = async () => {

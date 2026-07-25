@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  FlatList,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -60,13 +59,7 @@ export default function TemplateEditorScreen() {
   const [outputFormat, setOutputFormat] = useState<"markdown" | "structured">("markdown");
   const [showIconPicker, setShowIconPicker] = useState(false);
 
-  useEffect(() => {
-    if (params.editId) {
-      loadTemplate(params.editId);
-    }
-  }, [params.editId]);
-
-  const loadTemplate = async (id: string) => {
+  async function loadTemplate(id: string) {
     try {
       const stored = await AsyncStorage.getItem(CUSTOM_TEMPLATES_KEY);
       if (stored) {
@@ -92,7 +85,15 @@ export default function TemplateEditorScreen() {
     } catch (error) {
       console.error("Error loading template:", error);
     }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      if (params.editId) {
+        void loadTemplate(params.editId);
+      }
+    });
+  }, [params.editId]);
 
   const addSection = () => {
     setSections([...sections, {name: "", type: "text"}]);
@@ -170,7 +171,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
       Alert.alert(t('alert_gespeichert'), t('msg_deine_vorlage_wurde_erfolgreich_gespeichert'), [
         { text: t('ok'), onPress: () => router.back() },
       ]);
-    } catch (error) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_vorlage_konnte_nicht_gespeichert_werden'));
     }
   };

@@ -47,14 +47,14 @@ export default function QRScannerScreen() {
     loadHistory();
   }, []);
 
-  const loadHistory = async () => {
+  async function loadHistory() {
     try {
       const stored = await AsyncStorage.getItem(QR_SCANS_KEY);
       const all: QRScan[] = stored ? JSON.parse(stored) : [];
       const filtered = projectId ? all.filter((s) => s.projectId === projectId) : all;
       setHistory(filtered.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime()));
     } catch {}
-  };
+  }
 
   const onBarcodeScanned = ({ type, data }: BarcodeScanningResult) => {
     setScanned(true);

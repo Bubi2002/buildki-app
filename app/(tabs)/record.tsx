@@ -19,13 +19,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   useAudioRecorder,
   RecordingPresets,
-  requestRecordingPermissionsAsync,
   setAudioModeAsync,
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRealtimeTranscription } from "@/lib/realtime-transcription";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "expo-router/react-navigation";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
@@ -35,18 +34,18 @@ import { PROTOCOL_TEMPLATES, TEMPLATE_CATEGORIES, type ProtocolTemplate, type Te
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
-import { isOnline, addToQueue, getPendingCount } from "@/lib/offline-queue";
-import { getCurrentEvent, addNotesToEvent, suggestMeetingTime, scheduleFollowUp, type CalendarEvent } from "@/lib/calendar-integration";
-import { getCurrentLocation, formatLocation, type LocationData } from "@/lib/location-service";
+import { isOnline, addToQueue } from "@/lib/offline-queue";
+import { getCurrentEvent, addNotesToEvent, type CalendarEvent } from "@/lib/calendar-integration";
+import { getCurrentLocation, type LocationData } from "@/lib/location-service";
 import { getWeatherForLocation, formatWeatherForProtocol, type WeatherData } from "@/lib/weather-service";
 import { getNextProtocolNumber } from "@/lib/protocol-numbering";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
-import { getApiBaseUrl } from "@/constants/oauth";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "@/lib/language-provider";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
+import { getPrivacyChoices } from "@/lib/privacy-consent";
 
 type RecordingMode = "audio-photo";
 
@@ -125,7 +124,7 @@ export default function RecordScreen() {
   const voiceNoteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [photoFlash, setPhotoFlash] = useState(false);
   const [mode, setMode] = useState<RecordingMode>("audio-photo");
-  const [markers, setMarkers] = useState<Array<{ time: number; label: string; photos?: string[] }>>([]);
+  const [markers, setMarkers] = useState<{ time: number; label: string; photos?: string[] }[]>([]);
   const [processingSource, setProcessingSource] = useState<"audio" | null>(null);
   const [processingStep, setProcessingStep] = useState<"compress" | "upload" | "transcription" | "protocol" | "saving" | "done">("upload");
   const [voiceCommandActive, setVoiceCommandActive] = useState(true);
@@ -167,8 +166,9 @@ export default function RecordScreen() {
   const [editProjectColor, setEditProjectColor] = useState("#E53935");
   const PROJECT_COLORS = ["#E53935","#D81B60","#8E24AA","#5C6BC0","#1E88E5","#00ACC1","#00897B","#43A047","#7CB342","#FDD835","#FB8C00","#6D4C41"];
 
-  // Audio recorder
+  // Audio recorders
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const chapterAudioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   // Note: removed useAudioRecorderState to prevent unnecessary re-renders every 500ms
   // which was causing the timer interval to get cleared on re-render
   const isStoppingRef = useRef(false); // Prevent double-stop calls
@@ -181,10 +181,12 @@ export default function RecordScreen() {
   // Load floors/rooms when project is selected
   useEffect(() => {
     if (!selectedProject?.id) {
-      setProjectFloors([]);
-      setProjectRooms([]);
-      setSelectedFloor(null);
-      setSelectedRoom(null);
+      void Promise.resolve().then(() => {
+        setProjectFloors([]);
+        setProjectRooms([]);
+        setSelectedFloor(null);
+        setSelectedRoom(null);
+      });
       return;
     }
     (async () => {
@@ -235,13 +237,15 @@ export default function RecordScreen() {
   useEffect(() => {
     if (!quickAction || !projectsLoaded || quickActionHandledRef.current) return;
     if (!selectedProject) {
-      setShowProjectPicker(true);
+      void Promise.resolve().then(() => {
+        setShowProjectPicker(true);
+      });
       return;
     }
     quickActionHandledRef.current = true;
-    setShowProjectPicker(false);
-    setMode("audio-photo");
     const timer = setTimeout(() => {
+      setShowProjectPicker(false);
+      setMode("audio-photo");
       startRecording();
     }, 800);
     return () => clearTimeout(timer);
@@ -295,7 +299,7 @@ export default function RecordScreen() {
     })();
   }, []);
 
-  const loadDefaultTemplate = async () => {
+  async function loadDefaultTemplate() {
     try {
       // First try last-used template
       const lastUsedId = await AsyncStorage.getItem("last-used-template-id");
@@ -312,10 +316,10 @@ export default function RecordScreen() {
           if (template) setSelectedTemplate(template);
         }
       }
-    } catch (error) {
+    } catch  {
       // Use default
     }
-  };
+  }
 
   // Save last-used template when it changes
   const selectTemplate = (template: ProtocolTemplate) => {
@@ -409,7 +413,7 @@ export default function RecordScreen() {
       } else {
         Alert.alert(t('export'), t('msg_teilen_ist_auf_diesem_geraet'));
       }
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_export_fehlgeschlagen'));
     }
   };
@@ -442,7 +446,7 @@ export default function RecordScreen() {
       await AsyncStorage.setItem("custom-templates", JSON.stringify(merged));
       Alert.alert(t('alert_importiert'), `${validTemplates.length} Vorlage(n) erfolgreich importiert.`);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_import_fehlgeschlagen_bitte_eine_gueltige'));
     }
   };
@@ -654,8 +658,10 @@ export default function RecordScreen() {
         waveformInterval.current = null;
       }
       if (!isRecording) {
-        setWaveformBars([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
-        setAudioLevel("good");
+        void Promise.resolve().then(() => {
+          setWaveformBars([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
+          setAudioLevel("good");
+        });
       }
     }
   }, [isRecording, isPaused]);
@@ -735,7 +741,7 @@ export default function RecordScreen() {
     }, 1000);
   }, [photoTimer]);
 
-  const takePhoto = async () => {
+  async function takePhoto() {
     if (!cameraRef.current) return;
 
     try {
@@ -791,7 +797,7 @@ export default function RecordScreen() {
     } catch (error) {
       console.error("Photo capture error:", error);
     }
-  };
+  }
 
   // --- PICK FROM GALLERY ---
   const pickFromGallery = async () => {
@@ -906,7 +912,7 @@ export default function RecordScreen() {
   const [chapterInput, setChapterInput] = useState("");
   const [chapterListening, setChapterListening] = useState(false);
   const [chapterRecording, setChapterRecording] = useState(false);
-  const chapterRecorderRef = useRef<any>(null);
+  const chapterRecorderActiveRef = useRef(false);
 
   const addMarker = (label: string) => {
     setMarkers((prev) => [...prev, { time: recordingDuration, label }]);
@@ -935,22 +941,19 @@ export default function RecordScreen() {
     try {
       // Set audio mode to allow recording BEFORE changing UI state
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-      // Use expo-av Recording API for chapter name speech
-      const { Audio } = require("expo-av");
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await recording.startAsync();
-      chapterRecorderRef.current = recording;
+      await chapterAudioRecorder.prepareToRecordAsync();
+      chapterAudioRecorder.record();
+      chapterRecorderActiveRef.current = true;
       // Only update UI state AFTER recording successfully started
       setChapterListening(true);
       setChapterRecording(true);
       // Auto-stop after 4 seconds
       setTimeout(() => {
-        if (chapterRecorderRef.current) {
-          stopChapterSpeech();
+        if (chapterRecorderActiveRef.current) {
+          void stopChapterSpeech();
         }
       }, 4000);
-    } catch (err) {
+    } catch  {
       setChapterListening(false);
       setChapterRecording(false);
       // Show alert so user knows to type instead
@@ -964,11 +967,10 @@ export default function RecordScreen() {
     try {
       setChapterRecording(false);
       setChapterListening(false);
-      if (!chapterRecorderRef.current) return;
-      const recording = chapterRecorderRef.current;
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      chapterRecorderRef.current = null;
+      if (!chapterRecorderActiveRef.current) return;
+      await chapterAudioRecorder.stop();
+      const uri = chapterAudioRecorder.uri;
+      chapterRecorderActiveRef.current = false;
       
       // Resume main recording
       if (isRecording) {
@@ -992,7 +994,7 @@ export default function RecordScreen() {
         // Auto-confirm after successful transcription
         confirmChapter(chapterName);
       }
-    } catch (err) {
+    } catch  {
       // Resume main recording on error too
       if (isRecording) {
         try {
@@ -1142,24 +1144,57 @@ export default function RecordScreen() {
   };
 
   // --- UNIFIED RECORDING CONTROLS ---
-  const startRecording = () => {
+  const beginRecordingAfterNotice = async () => {
+    const privacyChoices = await getPrivacyChoices();
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    // Realtime/AI-related speech processing remains off unless explicitly enabled.
+    if (privacyChoices.aiProcessing) {
+      startListening();
+    } else {
+      clearLiveText();
+    }
+
+    // Ask the OS for location only after the user enabled this exact purpose.
+    if (Platform.OS !== "web" && privacyChoices.gpsTracking) {
+      getCurrentLocation()
+        .then((loc) => {
+          setRecordingLocation(loc);
+          if (loc) getWeatherForLocation(loc).then(setWeatherData).catch(() => {});
+        })
+        .catch(() => {});
+    } else {
+      setRecordingLocation(null);
+      setWeatherData(null);
+    }
+
+    startAudioRecording();
+  };
+
+  function startRecording() {
     if (!selectedProject) {
-      Alert.alert("Projekt auswählen", "Bitte wähle oder erstelle zuerst ein Projekt. Jede Aufnahme wird einem Projekt zugeordnet.");
+      Alert.alert(
+        "Projekt auswählen",
+        "Bitte wähle oder erstelle zuerst ein Projekt. Jede Aufnahme wird einem Projekt zugeordnet.",
+      );
       setShowProjectPicker(true);
       return;
     }
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    startListening();
-    // Capture location and weather at recording start
-    if (Platform.OS !== "web") {
-      getCurrentLocation().then((loc) => {
-        setRecordingLocation(loc);
-        if (loc) getWeatherForLocation(loc).then(setWeatherData).catch(() => {});
-      }).catch(() => {});
-    }
-    // Both 'audio' and 'audio-photo' use the audio recorder
-    startAudioRecording();
-  };
+
+    Alert.alert(
+      "Personen vor Aufnahme informieren",
+      "Bestätigen Sie für diese Aufnahme, dass alle betroffenen Personen über Zweck, Empfänger und mögliche KI-/Cloud-Verarbeitung informiert wurden und eine geeignete Rechtsgrundlage beziehungsweise erforderliche Zustimmung vorliegt. Ohne KI-/Cloud-Freigabe wird nur eine lokale Rohaufnahme gespeichert.",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Bestätigt – Aufnahme starten",
+          onPress: () => beginRecordingAfterNotice(),
+        },
+      ],
+    );
+  }
 
   const stopRecording = () => {
     // Prevent triggering stop if already stopping
@@ -1204,12 +1239,16 @@ export default function RecordScreen() {
       }
 
       const activeProject = selectedProject;
+      const privacyChoices = await getPrivacyChoices();
+      const canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync;
       const protocolId = Date.now().toString();
       const createdAt = new Date().toISOString();
       const protocolNumber = await getNextProtocolNumber(activeProject.id);
       const placeholderProtocol = {
         id: protocolId,
-        title: "Wird verarbeitet...",
+        title: canProcessWithServer
+          ? "Wird verarbeitet..."
+          : "Lokale Aufnahme – Verarbeitung deaktiviert",
         transcription: "",
         protocol: "",
         templateName: selectedTemplate.name,
@@ -1230,8 +1269,9 @@ export default function RecordScreen() {
           city: recordingLocation.city,
         } : null,
         weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
-        status: "processing" as const,
-        processingStep: "queued" as string,
+        status: canProcessWithServer ? ("processing" as const) : ("draft" as const),
+        processingStep: canProcessWithServer ? "queued" : "consent_required",
+        sourceAudioUri: fileUri,
         projectId: activeProject.id,
         projectName: activeProject.name,
         protocolNumber: protocolNumber || undefined,
@@ -1251,6 +1291,20 @@ export default function RecordScreen() {
       const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
       protocols.unshift(placeholderProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+
+      if (!canProcessWithServer) {
+        setCapturedPhotos([]);
+        setPhotoTimestamps([]);
+        setPhotoVoiceNotes([]);
+        setIsProcessing(false);
+        setProcessingSource(null);
+        Alert.alert(
+          "Lokal gespeichert",
+          "Die Rohaufnahme wurde im ausgewählten Projekt gespeichert. Es wurden keine Daten an Cloud- oder KI-Dienste übertragen. Für Transkription und Protokollerstellung müssen KI und Cloud in den Datenschutzoptionen aktiviert werden.",
+        );
+        router.push("/(tabs)/protocols" as any);
+        return;
+      }
 
       const online = await isOnline();
       if (!online) {
@@ -1282,7 +1336,7 @@ export default function RecordScreen() {
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
-        alert("Kein Internet – das Protokoll ist im ausgewählten Projekt sichtbar und wird automatisch verarbeitet, sobald du wieder online bist.");
+        alert("Kein Internet – das Protokoll ist im ausgewählten Projekt sichtbar. Die Verarbeitung startet bei Verbindung nur, solange Cloud- und KI-Freigabe aktiv bleiben.");
         router.push("/(tabs)/protocols" as any);
         return;
       }
@@ -1326,7 +1380,7 @@ export default function RecordScreen() {
             uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),
           transcribe: (audioUrl: string, language: string) =>
             transcribeMutation.mutateAsync({ audioUrl, language }),
-          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: Array<{ time: number; label: string }>, photoCount?: number, jobPhotoTimestamps?: number[]) =>
+          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: { time: number; label: string }[], photoCount?: number, jobPhotoTimestamps?: number[]) =>
             protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount, photoTimestamps: jobPhotoTimestamps }),
           extractTodos: (transcription: string, protocolText: string) =>
             todosMutation.mutateAsync({ transcription, protocolText }),
@@ -2036,7 +2090,7 @@ export default function RecordScreen() {
             accessibilityHint="Wechselt zwischen Automatik, Dauerlicht und Aus"
             disabled={cameraFacing === "front"}
             onPress={() => {
-              const modes: Array<"auto" | "on" | "off"> = ["auto", "on", "off"];
+              const modes: ("auto" | "on" | "off")[] = ["auto", "on", "off"];
               const index = modes.indexOf(flashMode);
               setFlashMode(modes[(index + 1) % modes.length]);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -2071,7 +2125,7 @@ export default function RecordScreen() {
             accessibilityRole="button"
             accessibilityLabel={photoTimer > 0 ? `Fototimer ${photoTimer} Sekunden` : "Fototimer aus"}
             onPress={() => {
-              const timers: Array<0 | 3 | 5 | 10> = [0, 3, 5, 10];
+              const timers: (0 | 3 | 5 | 10)[] = [0, 3, 5, 10];
               const index = timers.indexOf(photoTimer);
               setPhotoTimer(timers[(index + 1) % timers.length]);
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -2744,7 +2798,7 @@ export default function RecordScreen() {
                     const sampleTranscript = t('beispiel_transkript');
                     const previewText = `${t('vorschau_beispiel_output')}\n\n${t('prompt_vorschau').replace('{prompt}', newTemplatePrompt.trim().substring(0, 100))}\n\n${t('beispiel_transkript_label')}\n\"${sampleTranscript}\"\n\n${t('erwartetes_ergebnis')}\n${t('ki_verarbeitung_hinweis')}\n\n${t('tipp_vorlage_testen')}`;
                     setTemplatePreview(previewText);
-                  } catch (e) {
+                  } catch  {
                     Alert.alert(t('alert_fehler'), t('msg_vorschau_konnte_nicht_generiert_werden'));
                   } finally {
                     setIsGeneratingPreview(false);
@@ -2980,7 +3034,7 @@ export default function RecordScreen() {
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
-                onPress={async () => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderRef.current) { try { await chapterRecorderRef.current.stopAndUnloadAsync(); } catch {} chapterRecorderRef.current = null; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
+                onPress={async () => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderActiveRef.current) { try { await chapterAudioRecorder.stop(); } catch {} chapterRecorderActiveRef.current = false; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>

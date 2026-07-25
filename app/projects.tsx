@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -52,13 +52,7 @@ export default function ProjectsScreen() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [newPrefix, setNewPrefix] = useState("");
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [projectsData, protocolsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -69,7 +63,13 @@ export default function ProjectsScreen() {
     } catch (e) {
       console.error("Error loading projects:", e);
     }
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const saveProject = async () => {
     if (!newName.trim()) {
@@ -109,7 +109,7 @@ export default function ProjectsScreen() {
       setNewPrefix("");
       setSelectedColor(PROJECT_COLORS[0]);
       setEditingProject(null);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_gespeichert_werden'));
     }
   };

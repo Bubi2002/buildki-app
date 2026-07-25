@@ -39,15 +39,7 @@ export default function ExportScreen() {
   const formats = exportService.getFormats();
   const scopes = exportService.getScopes();
 
-  useEffect(() => {
-    if (params.projectId && params.projectName) {
-      setActiveProject({ id: params.projectId, name: decodeURIComponent(params.projectName) });
-    } else {
-      loadActiveProject();
-    }
-  }, []);
-
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     try {
       const projectsJson = await AsyncStorage.getItem("projects");
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
@@ -57,7 +49,17 @@ export default function ExportScreen() {
         if (project) setActiveProject({ id: project.id, name: project.name });
       }
     } catch {}
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      if (params.projectId && params.projectName) {
+        setActiveProject({ id: params.projectId, name: decodeURIComponent(params.projectName) });
+      } else {
+        void loadActiveProject();
+      }
+    });
+  }, []);
 
   const handleExport = async () => {
     if (!activeProject) {
@@ -102,7 +104,7 @@ export default function ExportScreen() {
       } else {
         Alert.alert("Teilen nicht verfügbar", "Auf diesem Gerät ist die Teilen-Funktion nicht verfügbar.");
       }
-    } catch (error: any) {
+    } catch  {
       Alert.alert("Fehler", "Datei konnte nicht geteilt werden.");
     }
   };

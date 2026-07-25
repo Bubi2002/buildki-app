@@ -46,21 +46,7 @@ export default function SmartTimelineScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
 
-  useEffect(() => {
-    if (params.projectId && params.projectName) {
-      setActiveProject({ id: params.projectId, name: decodeURIComponent(params.projectName) });
-    } else {
-      loadActiveProject();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeProject) {
-      loadTimeline();
-    }
-  }, [activeProject, activeFilter, searchQuery]);
-
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     try {
       const projectsJson = await AsyncStorage.getItem("projects");
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
@@ -71,9 +57,19 @@ export default function SmartTimelineScreen() {
       }
     } catch {}
     setIsLoading(false);
-  };
+  }
 
-  const loadTimeline = async () => {
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      if (params.projectId && params.projectName) {
+        setActiveProject({ id: params.projectId, name: decodeURIComponent(params.projectName) });
+      } else {
+        void loadActiveProject();
+      }
+    });
+  }, []);
+
+  async function loadTimeline() {
     if (!activeProject) return;
     setIsLoading(true);
     try {
@@ -105,9 +101,17 @@ export default function SmartTimelineScreen() {
       setStats(statsResult);
     } catch {}
     setIsLoading(false);
-  };
+  }
 
-  const filterTabs: Array<{ id: FilterTab; label: string; icon: string }> = [
+  useEffect(() => {
+    if (activeProject) {
+      void Promise.resolve().then(() => {
+        void loadTimeline();
+      });
+    }
+  }, [activeProject, activeFilter, searchQuery]);
+
+  const filterTabs: { id: FilterTab; label: string; icon: string }[] = [
     { id: "all", label: "Alle", icon: "timeline" },
     { id: "defects", label: "Mängel", icon: "warning" },
     { id: "tasks", label: "Aufgaben", icon: "task-alt" },
@@ -134,7 +138,7 @@ export default function SmartTimelineScreen() {
 
   // Group events by day
   const groupedEvents = useCallback(() => {
-    const groups: Array<{ date: string; label: string; events: TimelineEvent[] }> = [];
+    const groups: { date: string; label: string; events: TimelineEvent[] }[] = [];
     let currentDate = "";
 
     for (const event of events) {

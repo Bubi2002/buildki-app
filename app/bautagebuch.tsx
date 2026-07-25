@@ -58,11 +58,7 @@ export default function BautagebuchScreen() {
 
   const generateBautagebuch = trpc.analysis.generateBautagebuch.useMutation();
 
-  useEffect(() => {
-    loadEntries();
-  }, []);
-
-  const loadEntries = async () => {
+  async function loadEntries() {
     try {
       const raw = await AsyncStorage.getItem(BAUTAGEBUCH_KEY);
       if (raw) {
@@ -71,7 +67,13 @@ export default function BautagebuchScreen() {
     } catch (e) {
       console.error("Error loading Bautagebuch entries:", e);
     }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadEntries();
+    });
+  }, []);
 
   const saveEntries = async (updated: BautagebuchEntry[]) => {
     setEntries(updated);

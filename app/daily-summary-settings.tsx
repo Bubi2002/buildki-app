@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Alert, TextInput } from "react-native";
+import { View, Text, ScrollView, Pressable, Switch, StyleSheet, Alert,  Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
@@ -12,7 +12,6 @@ import {
 } from "@/lib/daily-summary";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 
 const DEADLINE_DAYS_OPTIONS = [1, 2, 3, 5, 7];
@@ -36,27 +35,29 @@ export default function DailySummarySettingsScreen() {
   const [hasChanges, setHasChanges] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    loadSettings();
-    checkPermission();
-  }, []);
+  async function checkPermission() {
+    const { granted } = await Notifications.getPermissionsAsync();
+    setPermissionGranted(granted);
+  }
 
-  const checkPermission = async () => {
-    const { status } = await Notifications.getPermissionsAsync();
-    setPermissionGranted(status === "granted");
-  };
-
-  const requestPermission = async () => {
-    const { status } = await Notifications.requestPermissionsAsync();
-    setPermissionGranted(status === "granted");
-    if (status !== "granted") {
-      Alert.alert(t('alert_berechtigung_verweigert'), t('msg_bitte_erlaube_pushbenachrichtigungen_in_den'));
-    }
-  };
-
-  const loadSettings = async () => {
+  async function loadSettings() {
     const s = await getDailySummarySettings();
     setSettings(s);
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadSettings();
+      void checkPermission();
+    });
+  }, []);
+
+  const requestPermission = async () => {
+    const { granted } = await Notifications.requestPermissionsAsync();
+    setPermissionGranted(granted);
+    if (!granted) {
+      Alert.alert(t('alert_berechtigung_verweigert'), t('msg_bitte_erlaube_pushbenachrichtigungen_in_den'));
+    }
   };
 
   const updateSetting = <K extends keyof DailySummarySettings>(key: K, value: DailySummarySettings[K]) => {
@@ -86,8 +87,8 @@ export default function DailySummarySettingsScreen() {
     // Ensure permission before saving
     if (!permissionGranted) {
       await requestPermission();
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status !== "granted") return;
+      const { granted } = await Notifications.getPermissionsAsync();
+      if (!granted) return;
     }
     await saveDailySummarySettings(settings);
     setHasChanges(false);

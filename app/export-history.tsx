@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable, Alert, StyleSheet } from "react-native";
-import { router } from "expo-router";
+import { router , useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { getExportHistory, clearExportHistory, type PdfExportEntry } from "@/lib/pdf-export-history";
-import { useFocusEffect } from "expo-router";
 import { useTranslation } from "@/lib/language-provider";
 
 export default function ExportHistoryScreen() {
@@ -13,16 +12,16 @@ export default function ExportHistoryScreen() {
   const colors = useColors();
   const [history, setHistory] = useState<PdfExportEntry[]>([]);
 
+  async function loadHistory() {
+    const h = await getExportHistory();
+    setHistory(h);
+  }
+
   useFocusEffect(
     useCallback(() => {
       loadHistory();
     }, [])
   );
-
-  const loadHistory = async () => {
-    const h = await getExportHistory();
-    setHistory(h);
-  };
 
   const handleClear = () => {
     Alert.alert(

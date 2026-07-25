@@ -26,7 +26,6 @@ import {
   getDiaryEntries,
   saveDiaryEntry,
   deleteDiaryEntry,
-  formatDiaryForExport,
 } from "@/lib/diary-store";
 
 const DIARY_INPUT_ACCESSORY_ID = "diary-input-accessory";
@@ -59,10 +58,10 @@ export default function DiaryScreen() {
     }, [projectId])
   );
 
-  const loadEntries = async () => {
+  async function loadEntries() {
     const loaded = await getDiaryEntries(projectId || undefined);
     setEntries(loaded);
-  };
+  }
 
   const today = new Date().toISOString().split("T")[0];
 

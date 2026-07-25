@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import { Platform } from "react-native";
+import { requireConsent } from "./privacy-consent";
 
 export interface LocationData {
   latitude: number;
@@ -16,6 +17,7 @@ export interface LocationData {
  */
 export async function requestLocationPermission(): Promise<boolean> {
   if (Platform.OS === "web") return false;
+  await requireConsent("gpsTracking");
   const { status } = await Location.requestForegroundPermissionsAsync();
   return status === "granted";
 }

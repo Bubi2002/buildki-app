@@ -107,7 +107,7 @@ export interface TimelineStats {
   eventsBySource: Record<string, number>;
   eventsByTrade: Record<string, number>;
   eventsByRoom: Record<string, number>;
-  eventsPerDay: Array<{ date: string; count: number }>;
+  eventsPerDay: { date: string; count: number }[];
   recentActivity: TimelineEvent[];
 }
 

@@ -23,7 +23,7 @@ import * as DocumentPicker from "expo-document-picker";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { documentAI, type DocumentAnalysisResult, type DocumentFileType } from "@/lib/document-ai";
+import { documentAI, type DocumentAnalysisResult } from "@/lib/document-ai";
 import type { DocumentEntity, DocumentCategory } from "@/shared/entities";
 import { trpc } from "@/lib/trpc";
 
@@ -51,7 +51,7 @@ export default function DocumentAIScreen() {
     if (activeProject) loadDocuments();
   }, [activeProject]);
 
-  const loadActiveProject = async () => {
+  async function loadActiveProject() {
     try {
       const projectsJson = await AsyncStorage.getItem("projects");
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
@@ -61,13 +61,13 @@ export default function DocumentAIScreen() {
         if (project) setActiveProject({ id: project.id, name: project.name });
       }
     } catch {}
-  };
+  }
 
-  const loadDocuments = async () => {
+  async function loadDocuments() {
     if (!activeProject) return;
     const docs = await documentAI.getDocuments(activeProject.id);
     setDocuments(docs);
-  };
+  }
 
   const handlePickDocument = async () => {
     if (!activeProject) {
@@ -105,7 +105,7 @@ export default function DocumentAIScreen() {
       setCurrentResult(analysisResult);
       setShowResult(true);
       await loadDocuments();
-    } catch (error) {
+    } catch  {
       Alert.alert("Fehler", "Dokument konnte nicht analysiert werden.");
     } finally {
       setIsAnalyzing(false);

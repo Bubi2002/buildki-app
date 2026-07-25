@@ -124,7 +124,7 @@ export async function createLocalUser(data: {
     passwordHash: data.passwordHash,
     loginMethod: data.loginMethod,
     emailVerified: false,
-    trialStartedAt: data.trialStartedAt ?? new Date(),
+    trialStartedAt: data.trialStartedAt ?? null,
     lastSignedIn: new Date(),
   });
 }

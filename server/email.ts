@@ -108,7 +108,7 @@ export function getEmailConfirmationEmail(code: string, name?: string): { subjec
             Dieser Code ist <strong style="color: #F0F4F8;">30 Minuten</strong> gültig.
           </p>
           <p style="color: #A0AEC0; line-height: 1.6; margin-top: 24px;">
-            Nach der Bestätigung startet dein <strong style="color: #5DADE2;">14-tägiger kostenloser Testzeitraum</strong>.
+            Nach der Bestätigung steht dir dein <strong style="color: #5DADE2;">nicht veröffentlichungsfähiges BuildKI-Prüfkonto</strong> zur Verfügung.
           </p>
         </div>
         <p style="color: #4A5568; font-size: 12px; text-align: center; margin-top: 24px;">
@@ -121,7 +121,7 @@ export function getEmailConfirmationEmail(code: string, name?: string): { subjec
 
 export function getWelcomeEmail(name?: string): { subject: string; html: string } {
   return {
-    subject: "Willkommen bei BuildKI – Dein 14-Tage-Test startet jetzt!",
+    subject: "Willkommen bei BuildKI – Prüfkonto bestätigt",
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0B1622; color: #F0F4F8;">
         <div style="text-align: center; margin-bottom: 32px;">
@@ -133,7 +133,7 @@ export function getWelcomeEmail(name?: string): { subject: string; html: string 
             ${name ? `Hallo ${name},` : "Hallo,"}
           </p>
           <p style="color: #A0AEC0; line-height: 1.6;">
-            Dein 14-tägiger kostenloser Testzeitraum hat begonnen. Du hast jetzt Zugriff auf alle Funktionen:
+            Dein BuildKI-Prüfkonto wurde bestätigt. Dieser Compliance-Entwurf ist nicht für eine Veröffentlichung oder einen produktiven Vertragsabschluss bestimmt.
           </p>
           <ul style="color: #A0AEC0; line-height: 2;">
             <li>KI-gestützte Video-Protokolle</li>
@@ -142,7 +142,7 @@ export function getWelcomeEmail(name?: string): { subject: string; html: string 
             <li>Unbegrenzte Projekte</li>
           </ul>
           <p style="color: #A0AEC0; line-height: 1.6; margin-top: 16px;">
-            <strong style="color: #F0F4F8;">Keine Kreditkarte erforderlich.</strong> Nach 14 Tagen kannst du dich für ein Abo entscheiden.
+            <strong style="color: #F0F4F8;">Kein Kauf und kein Abonnement.</strong> Tarife und Zahlungsarchitektur sind vor Veröffentlichung verbindlich festzulegen.
           </p>
         </div>
         <p style="color: #4A5568; font-size: 12px; text-align: center; margin-top: 24px;">

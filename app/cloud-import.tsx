@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-} from "react-native";
+ Platform , Image as RNImage } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import {
   importFromCloud,
   importPlanFromCloud,
@@ -26,7 +25,6 @@ import {
   FileCategory,
 } from "@/lib/cloud-import-service";
 import { saveFloorPlan, FloorPlan } from "@/lib/floor-plan-store";
-import { Image as RNImage } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 
 type ImportAction = {
@@ -126,7 +124,7 @@ export default function CloudImportScreen() {
           [{ text: t('ok') }]
         );
       }
-    } catch (error) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_beim_import_ist_ein_fehler'));
     } finally {
       setImporting(false);

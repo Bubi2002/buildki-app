@@ -1,76 +1,28 @@
-import { describe, it, expect } from "vitest";
-import { appRouter } from "../server/routers";
+import { describe, expect, it } from "vitest";
+
+import { serializeClearedSessionCookie } from "../server/auth-local";
 import { COOKIE_NAME } from "../shared/const";
-import type { TrpcContext } from "../server/_core/context";
 
-type CookieCall = {
-  name: string;
-  options: Record<string, unknown>;
-};
+describe("auth.logout cookie policy", () => {
+  it("clears the session cookie with the non-production policy", () => {
+    const cookie = serializeClearedSessionCookie(false);
 
-type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
+    expect(cookie).toContain(`${COOKIE_NAME}=`);
+    expect(cookie).toContain("Max-Age=0");
+    expect(cookie).toContain("Path=/");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("SameSite=Lax");
+    expect(cookie).not.toContain("Secure");
+  });
 
-function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] } {
-  const clearedCookies: CookieCall[] = [];
-  
-  const user: AuthenticatedUser = {
-    id: 1,
-    openId: "sample-user",
-    email: "sample@example.com",
-    name: "Sample User",
-    loginMethod: "manus",
-    role: "user",
-    passwordHash: null,
-    emailVerified: false,
-    emailVerifyToken: null,
-    emailVerifyExpiry: null,
-    resetToken: null,
-    resetExpiry: null,
-    stripeCustomerId: null,
-    subscriptionStatus: null,
-    trialStartedAt: null,
-    phone: null,
-    company: null,
-    firstName: null,
-    lastName: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
-  };
-  
-  const ctx: TrpcContext = {
-    user,
-    req: {
-      protocol: "https",
-      headers: {},
-    } as TrpcContext["req"],
-    res: {
-      clearCookie: (name: string, options: Record<string, unknown>) => {
-        clearedCookies.push({ name, options });
-      },
-    } as TrpcContext["res"],
-  };
-  
-  return { ctx, clearedCookies };
-}
+  it("adds the Secure attribute in production", () => {
+    const cookie = serializeClearedSessionCookie(true);
 
-// TODO: Remove `.skip` below once you implement user authentication
-describe.skip("auth.logout", () => {
-  it("clears the session cookie and reports success", async () => {
-    const { ctx, clearedCookies } = createAuthContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const result = await (caller as any).auth.logout();
-
-    expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
-    expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
-    expect(clearedCookies[0]?.options).toMatchObject({
-      maxAge: -1,
-      secure: true,
-      sameSite: "none",
-      httpOnly: true,
-      path: "/",
-    });
+    expect(cookie).toContain(`${COOKIE_NAME}=`);
+    expect(cookie).toContain("Max-Age=0");
+    expect(cookie).toContain("Path=/");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("SameSite=Lax");
+    expect(cookie).toContain("Secure");
   });
 });

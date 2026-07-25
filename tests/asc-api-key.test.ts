@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 
+const projectRoot = resolve(__dirname, "..");
 const fixturePath = resolve(__dirname, "fixtures/AuthKey_TESTKEY001.p8");
 
-describe("App Store Connect credential contract (test environment)", () => {
+describe("App Store Connect credential contract", () => {
   it("provides test-only issuer and key identifiers", () => {
     expect(process.env.ASC_API_KEY_ISSUER_ID).toBe(
       "00000000-0000-4000-8000-000000000000",
@@ -21,16 +22,26 @@ describe("App Store Connect credential contract (test environment)", () => {
     expect(content).toContain("-----END PRIVATE KEY-----");
   });
 
-  it("keeps the TestFlight submit configuration structurally complete", () => {
-    const easPath = resolve(__dirname, "../eas.json");
+  it("keeps EAS submit profiles free of repository credential paths", () => {
+    const easPath = resolve(projectRoot, "eas.json");
     const eas = JSON.parse(readFileSync(easPath, "utf-8"));
-    const iosSubmit = eas.submit?.testflight?.ios;
 
-    expect(iosSubmit).toBeDefined();
-    expect(iosSubmit.ascApiKeyId).toMatch(/^[A-Z0-9]+$/);
-    expect(iosSubmit.ascApiKeyIssuerId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
-    expect(iosSubmit.ascApiKeyPath).toMatch(/\.p8$/);
+    for (const profile of ["testflight", "production"] as const) {
+      const iosSubmit = eas.submit?.[profile]?.ios;
+      expect(iosSubmit).toBeDefined();
+      expect(iosSubmit.ascAppId).toMatch(/^\d+$/);
+      expect(iosSubmit.ascApiKeyPath).toBeUndefined();
+      expect(iosSubmit.ascApiKeyId).toBeUndefined();
+      expect(iosSubmit.ascApiKeyIssuerId).toBeUndefined();
+    }
+  });
+
+  it("ignores production p8 files while allowing test fixtures", () => {
+    const rootP8Files = readdirSync(projectRoot).filter((name) => name.endsWith(".p8"));
+    expect(rootP8Files).toEqual([]);
+
+    const gitignore = readFileSync(resolve(projectRoot, ".gitignore"), "utf-8");
+    expect(gitignore).toMatch(/^\*\.p8$/m);
+    expect(gitignore).toMatch(/^!tests\/fixtures\/\*\.p8$/m);
   });
 });

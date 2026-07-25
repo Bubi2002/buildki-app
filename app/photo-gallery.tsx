@@ -66,7 +66,7 @@ export default function PhotoGalleryScreen() {
     void loadPhotos();
   }, [projectId]);
 
-  const loadPhotos = async () => {
+  async function loadPhotos() {
     try {
       const [projectsData, protocolsData, directPhotos] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -112,7 +112,7 @@ export default function PhotoGalleryScreen() {
     } catch {
       Alert.alert("Fehler", "Die Projektfotos konnten nicht geladen werden.");
     }
-  };
+  }
 
   const storeAssets = async (
     assets: ImagePicker.ImagePickerAsset[],

@@ -76,7 +76,7 @@ export default function QuickNoteScreen() {
       Alert.alert(t('alert_gespeichert'), t('msg_notiz_wurde_erfolgreich_gespeichert'), [
         { text: t('ok'), onPress: () => router.back() },
       ]);
-    } catch (e) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_notiz_konnte_nicht_gespeichert_werden'));
     } finally {
       setSaving(false);

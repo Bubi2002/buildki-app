@@ -7,7 +7,7 @@
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { getDefects, type Defect } from "./defect-store";
+import { getDefects } from "./defect-store";
 
 const DAILY_SUMMARY_SETTINGS_KEY = "daily-summary-settings";
 const LAST_SUMMARY_KEY = "last-daily-summary";
@@ -26,7 +26,7 @@ export type DailySummarySettings = {
 };
 
 export const DEFAULT_SUMMARY_SETTINGS: DailySummarySettings = {
-  enabled: true,
+  enabled: false,
   hour: 18,
   minute: 0,
   time: "18:00",
@@ -34,7 +34,7 @@ export const DEFAULT_SUMMARY_SETTINGS: DailySummarySettings = {
   includeProtocols: true,
   includeDefects: true,
   includeTasks: true,
-  defectDeadlineReminder: true,
+  defectDeadlineReminder: false,
   defectDeadlineDays: 2,
 };
 
@@ -263,9 +263,11 @@ export async function generateDailySummaryText(projectId?: string): Promise<{
  */
 export async function initDailySummary(): Promise<void> {
   const settings = await getDailySummarySettings();
+  if (!settings.enabled && !settings.defectDeadlineReminder) return;
   if (settings.enabled) {
     await scheduleDailySummary(settings);
   }
-  // Check deadlines on every app start
-  await checkDefectDeadlines();
+  if (settings.defectDeadlineReminder) {
+    await checkDefectDeadlines();
+  }
 }

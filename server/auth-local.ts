@@ -9,12 +9,11 @@
  */
 import { Router, Request, Response } from "express";
 import { hashSync, compareSync } from "bcryptjs";
-import { randomUUID } from "crypto";
+import { randomInt, randomUUID } from "crypto";
 import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { COOKIE_NAME } from "../shared/const";
 import * as cookieModule from "cookie";
-const serializeCookie = (cookieModule as any).serialize || (cookieModule as any).stringifySetCookie;
 import * as db from "./db";
 import {
   sendEmail,
@@ -22,18 +21,62 @@ import {
   getEmailConfirmationEmail,
   getWelcomeEmail,
 } from "./email";
+const serializeCookie = (cookieModule as any).serialize || (cookieModule as any).stringifySetCookie;
 
 const router = Router();
 
 const BCRYPT_ROUNDS = 12;
-const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const MIN_PASSWORD_LENGTH = 12;
+const MAX_PASSWORD_LENGTH = 128;
+const MAX_CODE_ATTEMPTS = 5;
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
-// In-memory code store (production: use DB columns emailVerifyToken/resetToken)
-const verificationCodes = new Map<string, { code: string; expires: number; name?: string }>();
-const resetCodes = new Map<string, { code: string; expires: number }>();
+// In-memory stores are process-local. A shared, rate-limited production store remains
+// OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN.
+const verificationCodes = new Map<string, { code: string; expires: number; name?: string; attempts: number }>();
+const resetCodes = new Map<string, { code: string; expires: number; attempts: number }>();
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1_000_000).toString();
+}
+
+function passwordValidationError(password: unknown): string | null {
+  if (typeof password !== "string") return "Passwort ist erforderlich";
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`;
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return `Passwort darf höchstens ${MAX_PASSWORD_LENGTH} Zeichen lang sein`;
+  }
+  return null;
+}
+
+function getLoginAttemptKey(req: Request, email: string): string {
+  return `${req.ip || "unknown"}:${email}`;
+}
+
+function isLoginRateLimited(key: string): boolean {
+  const entry = loginAttempts.get(key);
+  if (!entry) return false;
+  if (Date.now() >= entry.resetAt) {
+    loginAttempts.delete(key);
+    return false;
+  }
+  return entry.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function recordFailedLogin(key: string): void {
+  const now = Date.now();
+  const current = loginAttempts.get(key);
+  if (!current || now >= current.resetAt) {
+    loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return;
+  }
+  current.count += 1;
+  loginAttempts.set(key, current);
 }
 
 function setSessionCookie(res: Response, token: string) {
@@ -42,9 +85,19 @@ function setSessionCookie(res: Response, token: string) {
     secure: ENV.isProduction,
     sameSite: "lax",
     path: "/",
-    maxAge: Math.floor(ONE_YEAR_MS / 1000),
+    maxAge: Math.floor(SESSION_MAX_AGE_MS / 1000),
   });
   res.setHeader("Set-Cookie", cookie);
+}
+
+export function serializeClearedSessionCookie(isProduction = ENV.isProduction): string {
+  return serializeCookie(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
@@ -56,8 +109,9 @@ router.post("/api/auth/register", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "E-Mail und Passwort sind erforderlich" });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({ error: "Passwort muss mindestens 8 Zeichen lang sein" });
+    const passwordError = passwordValidationError(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -85,7 +139,7 @@ router.post("/api/auth/register", async (req: Request, res: Response) => {
       phone: phone || null,
       passwordHash,
       loginMethod: "email",
-      trialStartedAt: new Date(),
+      trialStartedAt: null,
     });
 
     // Get created user
@@ -106,6 +160,7 @@ router.post("/api/auth/register", async (req: Request, res: Response) => {
       code,
       expires: Date.now() + 30 * 60 * 1000,
       name: displayName,
+      attempts: 0,
     });
 
     const template = getEmailConfirmationEmail(code, displayName);
@@ -145,17 +200,24 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await db.getUserByEmail(normalizedEmail);
+    const attemptKey = getLoginAttemptKey(req, normalizedEmail);
+    if (isLoginRateLimited(attemptKey)) {
+      return res.status(429).json({ error: "Zu viele fehlgeschlagene Anmeldeversuche. Bitte später erneut versuchen." });
+    }
 
+    const user = await db.getUserByEmail(normalizedEmail);
     if (!user || !user.passwordHash) {
+      recordFailedLogin(attemptKey);
       return res.status(401).json({ error: "Ungültige E-Mail oder Passwort" });
     }
 
     // Verify password
     const valid = compareSync(password, user.passwordHash);
     if (!valid) {
+      recordFailedLogin(attemptKey);
       return res.status(401).json({ error: "Ungültige E-Mail oder Passwort" });
     }
+    loginAttempts.delete(attemptKey);
 
     // Update last sign in
     await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
@@ -210,6 +272,12 @@ router.post("/api/auth/verify-email", async (req: Request, res: Response) => {
     }
 
     if (stored.code !== code) {
+      stored.attempts += 1;
+      if (stored.attempts >= MAX_CODE_ATTEMPTS) {
+        verificationCodes.delete(normalizedEmail);
+        return res.status(429).json({ error: "Zu viele Fehlversuche. Bitte einen neuen Code anfordern." });
+      }
+      verificationCodes.set(normalizedEmail, stored);
       return res.status(401).json({ error: "Ungültiger Code" });
     }
 
@@ -247,6 +315,7 @@ router.post("/api/auth/request-confirmation", async (req: Request, res: Response
       code,
       expires: Date.now() + 30 * 60 * 1000,
       name,
+      attempts: 0,
     });
 
     const template = getEmailConfirmationEmail(code, name);
@@ -288,6 +357,7 @@ router.post("/api/auth/request-reset", async (req: Request, res: Response) => {
       resetCodes.set(normalizedEmail, {
         code,
         expires: Date.now() + 10 * 60 * 1000,
+        attempts: 0,
       });
 
       const template = getPasswordResetEmail(code, user.name || undefined);
@@ -326,6 +396,12 @@ router.post("/api/auth/verify-reset-code", async (req: Request, res: Response) =
     }
 
     if (stored.code !== code) {
+      stored.attempts += 1;
+      if (stored.attempts >= MAX_CODE_ATTEMPTS) {
+        resetCodes.delete(normalizedEmail);
+        return res.status(429).json({ error: "Zu viele Fehlversuche. Bitte einen neuen Reset-Code anfordern." });
+      }
+      resetCodes.set(normalizedEmail, stored);
       return res.status(401).json({ error: "Ungültiger Code" });
     }
 
@@ -345,8 +421,9 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "E-Mail, Code und neues Passwort sind erforderlich" });
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: "Passwort muss mindestens 8 Zeichen lang sein" });
+    const passwordError = passwordValidationError(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -396,14 +473,7 @@ router.get("/api/auth/me", async (req: Request, res: Response) => {
 
 // ─── POST /api/auth/logout ───────────────────────────────────────────────────
 router.post("/api/auth/logout", (_req: Request, res: Response) => {
-  const cookie = serializeCookie(COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: ENV.isProduction,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
-  res.setHeader("Set-Cookie", cookie);
+  res.setHeader("Set-Cookie", serializeClearedSessionCookie());
   return res.json({ success: true });
 });
 

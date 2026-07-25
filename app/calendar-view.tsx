@@ -2,9 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
-  ScrollView,
   Pressable,
-  StyleSheet,
   FlatList,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -46,11 +44,7 @@ export default function CalendarViewScreen() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadProtocols();
-  }, []);
-
-  const loadProtocols = async () => {
+  async function loadProtocols() {
     try {
       const [protocolsData, projectsData] = await Promise.all([
         AsyncStorage.getItem("protocols"),
@@ -71,7 +65,13 @@ export default function CalendarViewScreen() {
         });
       setProtocols(enriched);
     } catch {}
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadProtocols();
+    });
+  }, []);
 
   // Group protocols by date
   const protocolsByDate = useMemo(() => {

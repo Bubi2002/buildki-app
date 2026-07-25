@@ -70,14 +70,14 @@ export default function AttendanceScreen() {
     }, [projectId])
   );
 
-  const loadRecords = async () => {
+  async function loadRecords() {
     try {
       const raw = await AsyncStorage.getItem(ATTENDANCE_KEY);
       const all: AttendanceRecord[] = raw ? JSON.parse(raw) : [];
       const filtered = projectId ? all.filter((r) => r.projectId === projectId) : all;
       setRecords(filtered.sort((a, b) => b.date.localeCompare(a.date)));
     } catch {}
-  };
+  }
 
   const getTodayRecord = (): AttendanceRecord | undefined => {
     return records.find((r) => r.date === today);

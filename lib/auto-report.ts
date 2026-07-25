@@ -90,10 +90,10 @@ export async function scheduleReportNotification(settings: AutoReportSettings): 
   if (!settings.enabled || settings.frequency === "off") return;
 
   // Request permissions
-  const { status } = await Notifications.getPermissionsAsync();
-  if (status !== "granted") {
-    const { status: newStatus } = await Notifications.requestPermissionsAsync();
-    if (newStatus !== "granted") return;
+  const { granted } = await Notifications.getPermissionsAsync();
+  if (!granted) {
+    const { granted: newlyGranted } = await Notifications.requestPermissionsAsync();
+    if (!newlyGranted) return;
   }
 
   if (settings.frequency === "daily") {

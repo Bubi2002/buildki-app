@@ -6,14 +6,13 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-} from "react-native";
+ Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { exportTasksAsCSV } from "@/lib/csv-export";
 import { useTranslation } from "@/lib/language-provider";
 import { timelineEngine } from "@/lib/timeline-engine";
@@ -44,17 +43,7 @@ export default function TasksScreen() {
   const [filter, setFilter] = useState<FilterType>("open");
   const [csvEnabled, setCsvEnabled] = useState(true);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAllTodos();
-      (async () => {
-        const { isFeatureEnabled } = require("@/lib/feature-toggles");
-        setCsvEnabled(await isFeatureEnabled("csvExport"));
-      })();
-    }, [])
-  );
-
-  const loadAllTodos = async () => {
+  async function loadAllTodos() {
     try {
       const protocols = JSON.parse(
         (await AsyncStorage.getItem("protocols")) || "[]"
@@ -88,7 +77,17 @@ export default function TasksScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAllTodos();
+      (async () => {
+        const { isFeatureEnabled } = require("@/lib/feature-toggles");
+        setCsvEnabled(await isFeatureEnabled("csvExport"));
+      })();
+    }, [])
+  );
 
   const toggleTodo = async (item: ProtocolTodo) => {
     if (Platform.OS !== "web") {

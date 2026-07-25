@@ -30,6 +30,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced, executeFullSync } from "@/lib/cloud-sync";
 import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
+import { PrivacyChoicesSection } from "@/components/privacy-choices-section";
+import { getConsentRequiredMessage, isConsentGiven } from "@/lib/privacy-consent";
 import {
   getBiometricStatus,
   isBiometricLockEnabled,
@@ -213,16 +215,18 @@ function AnnotationTemplatesSection({ colors }: { colors: any }) {
   const [newTemplate, setNewTemplate] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
+  async function loadTemplates() {
     try {
       const data = await AsyncStorage.getItem(ANNOTATION_STORAGE_KEY);
       if (data) setTemplates(JSON.parse(data));
     } catch { /* ignore */ }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadTemplates();
+    });
+  }, []);
 
   const saveTemplates = async (updated: string[]) => {
     setTemplates(updated);
@@ -402,11 +406,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
   const [minuteText, setMinuteText] = useState("00");
   const [permissionGranted, setPermissionGranted] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  async function loadSettings() {
     try {
       const data = await AsyncStorage.getItem("task-reminder-settings");
       if (data) {
@@ -424,7 +424,13 @@ function TaskReminderSection({ colors }: { colors: any }) {
         setPermissionGranted(status === "granted");
       }
     } catch { /* ignore */ }
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadSettings();
+    });
+  }, []);
 
   const toggleEnabled = async (val: boolean) => {
     setEnabled(val);
@@ -525,15 +531,17 @@ function FeatureTogglesSection({ colors }: { colors: any }) {
   const [toggles, setToggles] = useState<any[]>([]);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    loadToggles();
-  }, []);
-
-  const loadToggles = async () => {
+  async function loadToggles() {
     const { getFeatureToggles } = require("@/lib/feature-toggles");
     const t = await getFeatureToggles();
     setToggles([...t]);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadToggles();
+    });
+  }, []);
 
   const handleToggle = async (key: string, enabled: boolean) => {
     const { setFeatureEnabled } = require("@/lib/feature-toggles");
@@ -602,15 +610,17 @@ function BackupSection({ colors }: { colors: any }) {
   const [stats, setStats] = useState({ protocolCount: 0, projectCount: 0, totalSize: "0 KB" });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  async function loadStats() {
     const { getBackupStats } = require("@/lib/backup");
     const s = await getBackupStats();
     setStats(s);
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadStats();
+    });
+  }, []);
 
   const handleBackup = async () => {
     setLoading(true);
@@ -696,6 +706,10 @@ export default function SettingsScreen() {
   }, []);
 
   const toggleSync = async (val: boolean) => {
+    if (val && !(await isConsentGiven("cloudSync"))) {
+      Alert.alert("Cloud-Synchronisation deaktiviert", getConsentRequiredMessage("cloudSync"));
+      return;
+    }
     setSyncEnabledState(val);
     await setSyncEnabled(val);
     if (val && isAuthenticated) {
@@ -704,6 +718,10 @@ export default function SettingsScreen() {
   };
 
   const syncNow = async () => {
+    if (!(await isConsentGiven("cloudSync"))) {
+      Alert.alert("Cloud-Synchronisation deaktiviert", getConsentRequiredMessage("cloudSync"));
+      return;
+    }
     if (!isAuthenticated) {
       Alert.alert(t('alert_login_erforderlich'), t('msg_bitte_melde_dich_an_um'));
       return;
@@ -738,7 +756,7 @@ export default function SettingsScreen() {
       const totalConflicts = result.conflicts.defects + result.conflicts.projects;
       const totalSynced = unsynced.length + totalPushed + totalPulled;
       Alert.alert('Sync abgeschlossen', `${totalSynced} Element(e) synchronisiert (${totalConflicts} Konflikte gel\u00f6st).`);
-    } catch (error) {
+    } catch  {
       Alert.alert(t('alert_sync_fehler'), t('msg_die_synchronisation_konnte_nicht_abgeschlossen'));
     } finally {
       setSyncing(false);
@@ -758,14 +776,14 @@ export default function SettingsScreen() {
     }, [])
   );
 
-  const loadCustomTemplates = async () => {
+  async function loadCustomTemplates() {
     try {
       const stored = await AsyncStorage.getItem("custom-templates");
       if (stored) setCustomTemplates(JSON.parse(stored));
     } catch (error) {
       console.error("Error loading custom templates:", error);
     }
-  };
+  }
 
   const deleteCustomTemplate = async (id: string) => {
     try {
@@ -780,7 +798,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const loadSettings = async () => {
+  async function loadSettings() {
     try {
       const stored = await AsyncStorage.getItem("protokoll-settings");
       if (stored) {
@@ -789,9 +807,9 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error("Error loading settings:", error);
     }
-  };
+  }
 
-  const loadCompanySettings = async () => {
+  async function loadCompanySettings() {
     try {
       const stored = await AsyncStorage.getItem("company-settings");
       if (stored) {
@@ -800,7 +818,7 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error("Error loading company settings:", error);
     }
-  };
+  }
 
   const saveSettings = async () => {
     try {
@@ -821,7 +839,7 @@ export default function SettingsScreen() {
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (error) {
+    } catch  {
       Alert.alert(t('alert_fehler'), t('msg_einstellungen_konnten_nicht_gespeichert_werden'));
     }
   };
@@ -928,20 +946,20 @@ export default function SettingsScreen() {
     loadSpeakerProfiles();
   }, []);
 
-  const loadTeamContacts = async () => {
+  async function loadTeamContacts() {
     const contacts = await getTeamContacts();
     setTeamContacts(contacts);
-  };
+  }
 
-  const loadSpeakerProfiles = async () => {
+  async function loadSpeakerProfiles() {
     const profiles = await getSpeakerProfiles();
     setSpeakerProfiles(profiles);
-  };
+  }
 
-  const loadVoiceProfiles = async () => {
+  async function loadVoiceProfiles() {
     const profiles = await getVoiceProfiles();
     setVoiceProfiles(profiles);
-  };
+  }
 
 
 
@@ -1759,7 +1777,7 @@ return (
                     } else if (code && state) {
                       router.push({ pathname: '/oauth/callback', params: { code, state } });
                     }
-                  } catch (e) {
+                  } catch  {
                     // Try parsing as deep link
                     const params = resultUrl.split('?')[1];
                     if (params) {
@@ -2147,6 +2165,12 @@ return (
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Rechtliches & Datenschutz
           </Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
+            Optionale Verarbeitungen sind standardmäßig aus und jederzeit widerrufbar.
+          </Text>
+          <PrivacyChoicesSection colors={colors} />
+          <View style={{ height: 12 }} />
+
           <Pressable
             onPress={() => router.push("/legal?section=datenschutz" as any)}
             style={({ pressed }) => [{
@@ -2159,7 +2183,7 @@ return (
               <MaterialIcons name="privacy-tip" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Datenschutzerkl\u00e4rung</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Datenschutzerklärung</Text>
               <Text style={{ fontSize: 12, color: colors.muted }}>DSGVO, Datenverarbeitung, Ihre Rechte</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
@@ -2177,7 +2201,7 @@ return (
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>KI-Hinweis</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Transparenz zur KI-Nutzung gem\u00e4\u00df EU AI Act</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Transparenz zur KI-Nutzung gemäß EU AI Act</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -2207,11 +2231,11 @@ return (
             }]}
           >
             <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.error + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="download" size={20} color={colors.error} />
+              <MaterialIcons name="delete-forever" size={20} color={colors.error} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Meine Daten (DSGVO)</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Datenexport, L\u00f6schung, Auskunft</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Meine Daten & Konto löschen</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Konto endgültig löschen, Datenexport, Auskunft</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>

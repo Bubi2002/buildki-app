@@ -11,29 +11,24 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Keyboard,
-} from "react-native";
+ Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useTranslation } from "@/lib/language-provider";
 import {
   Checklist,
   ChecklistItem,
   ChecklistResult,
-  ChecklistItemResult,
-  BUILT_IN_CHECKLISTS,
   getChecklists,
   saveCustomChecklist,
-  deleteCustomChecklist,
   getChecklistResults,
   saveChecklistResult,
   deleteChecklistResult,
   getChecklistCompletionRate,
   saveModifiedBuiltInChecklist,
-  getModifiedChecklistItems,
 } from "@/lib/checklist-store";
 
 export default function ChecklistsScreen() {
@@ -63,12 +58,12 @@ export default function ChecklistsScreen() {
     }, [projectId])
   );
 
-  const loadData = async () => {
+  async function loadData() {
     const allChecklists = await getChecklists();
     setChecklists(allChecklists);
     const allResults = await getChecklistResults(projectId || undefined);
     setResults(allResults);
-  };
+  }
 
   const startChecklist = (checklist: Checklist) => {
     const result: ChecklistResult = {

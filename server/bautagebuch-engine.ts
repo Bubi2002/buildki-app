@@ -17,15 +17,15 @@ export interface BautagebuchInput {
     humidity: number;
     windSpeed: number;
   };
-  attendance: Array<{
+  attendance: {
     name: string;
     firma: string;
     gewerk: string;
     arrivalTime: string;
     departureTime: string;
     notes?: string;
-  }>;
-  defects: Array<{
+  }[];
+  defects: {
     title: string;
     description?: string;
     gewerk?: string;
@@ -37,13 +37,13 @@ export interface BautagebuchInput {
     photos?: string[];
     aiSummary?: string;
     positionCode?: string;
-  }>;
-  protocols: Array<{
+  }[];
+  protocols: {
     title: string;
     createdAt: string;
     transcription?: string;
     templateName?: string;
-  }>;
+  }[];
   activities?: string[]; // Manual notes from the day
   photos?: string[]; // General site photos
   previousDayNotes?: string; // Carry-over from yesterday
@@ -56,18 +56,18 @@ export interface BautagebuchOutput {
   weather: string;
   workingConditions: string;
   attendanceSummary: string;
-  attendanceByTrade: Array<{
+  attendanceByTrade: {
     trade: string;
     workers: number;
     firms: string[];
     hours: string;
-  }>;
-  workPerformed: Array<{
+  }[];
+  workPerformed: {
     trade: string;
     description: string;
     location?: string;
     progress?: string;
-  }>;
+  }[];
   defectsSummary: {
     newToday: number;
     resolvedToday: number;

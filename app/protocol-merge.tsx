@@ -31,11 +31,7 @@ export default function ProtocolMergeScreen() {
   const [includeTodos, setIncludeTodos] = useState(true);
   const [includeWeather, setIncludeWeather] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [projectId]);
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       const [projectsData, protocolsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
@@ -53,7 +49,13 @@ export default function ProtocolMergeScreen() {
       // Pre-select all
       setSelectedProtocols(new Set(projectProtocols.map((p) => p.id)));
     } catch {}
-  };
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      loadData();
+    });
+  }, [projectId]);
 
   const toggleProtocol = (protocolId: string) => {
     setSelectedProtocols((prev) => {
