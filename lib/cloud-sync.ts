@@ -5,6 +5,7 @@
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDefects, type Defect } from "@/lib/defect-store";
+import { clearDeletedProjectIds, getDeletedProjectIds } from "@/lib/project-context";
 
 const SYNC_KEY = "cloud-sync-enabled";
 const LAST_SYNC_KEY = "last-sync-timestamp";
@@ -169,12 +170,26 @@ export async function executeFullSync(trpcClient: any): Promise<SyncResult> {
   try {
     await setSyncStatus("syncing");
 
-    // 1. Get local data
+    // 1. Apply project tombstones before pushing the remaining local projects.
+    const deletedProjectIds = await getDeletedProjectIds();
+    if (deletedProjectIds.length > 0) {
+      const deletionResults = await Promise.allSettled(
+        deletedProjectIds.map((localId) => trpcClient.sync.deleteProject.mutate({ localId })),
+      );
+      const deletedSuccessfully = deletedProjectIds.filter((_, index) => deletionResults[index].status === "fulfilled");
+      const failedDeletions = deletionResults.filter((result) => result.status === "rejected");
+      await clearDeletedProjectIds(deletedSuccessfully);
+      failedDeletions.forEach((result) => {
+        if (result.status === "rejected") errors.push(`Projektlöschung: ${result.reason?.message || String(result.reason)}`);
+      });
+    }
+
+    // 2. Get local data
     const localDefects = await getDefects();
     const localProjectsRaw = await AsyncStorage.getItem("projects");
     const localProjects: any[] = localProjectsRaw ? JSON.parse(localProjectsRaw) : [];
 
-    // 2. Prepare payloads
+    // 3. Prepare payloads
     const defectPayloads = localDefects.map(defectToSyncPayload);
     const projectPayloads = localProjects.map((p: any) => ({
       localId: p.id || p.localId,
@@ -189,17 +204,17 @@ export async function executeFullSync(trpcClient: any): Promise<SyncResult> {
       updatedAt: p.updatedAt || new Date().toISOString(),
     }));
 
-    // 3. Get last sync time
+    // 4. Get last sync time
     const lastSyncAt = await getLastSyncTime();
 
-    // 4. Execute full sync via tRPC
+    // 5. Execute full sync via tRPC
     const result = await trpcClient.sync.fullSync.mutate({
       defects: defectPayloads,
       projects: projectPayloads,
       lastSyncAt: lastSyncAt || undefined,
     });
 
-    // 5. Merge pulled data into local stores
+    // 6. Merge pulled data into local stores
     if (result.pulled.defects.length > 0) {
       await mergeRemoteDefects(result.pulled.defects);
     }
@@ -207,7 +222,7 @@ export async function executeFullSync(trpcClient: any): Promise<SyncResult> {
       await mergeRemoteProjects(result.pulled.projects);
     }
 
-    // 6. Update sync timestamp
+    // 7. Update sync timestamp
     await setLastSyncTime(result.syncedAt);
     await setSyncStatus("synced");
     await clearSyncQueue();
@@ -295,11 +310,16 @@ async function mergeRemoteDefects(remoteDefects: any[]): Promise<void> {
 }
 
 async function mergeRemoteProjects(remoteProjects: any[]): Promise<void> {
-  const localRaw = await AsyncStorage.getItem("projects");
+  const [localRaw, deletedProjectIds] = await Promise.all([
+    AsyncStorage.getItem("projects"),
+    getDeletedProjectIds(),
+  ]);
   const localProjects: any[] = localRaw ? JSON.parse(localRaw) : [];
   const localMap = new Map(localProjects.map((p) => [p.id || p.localId, p]));
+  const deletedProjectIdSet = new Set(deletedProjectIds);
 
   for (const remote of remoteProjects) {
+    if (deletedProjectIdSet.has(remote.localId)) continue;
     const local = localMap.get(remote.localId);
     if (!local || new Date(remote.updatedAt) > new Date(local.updatedAt || "2000-01-01")) {
       localMap.set(remote.localId, {

@@ -282,6 +282,12 @@ export async function pullProjects(userId: number, since?: string) {
   }));
 }
 
+export async function deleteProject(userId: number, localId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(projects).where(and(eq(projects.localId, localId), eq(projects.userId, userId)));
+}
+
 // ─── Attachment Sync ──────────────────────────────────────────────────────────
 
 export async function uploadAttachment(

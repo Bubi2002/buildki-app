@@ -31,7 +31,7 @@ describe("Video upload gate", () => {
     expect(gate.actionLabel).toBe("Anmelden");
   });
 
-  it("blocks authenticated users while offline and preserves the selection", () => {
+  it("blocks authenticated users offline and describes the screen-lifetime selection honestly", () => {
     const gate = getVideoUploadGate({
       authLoading: false,
       isAuthenticated: true,
@@ -40,8 +40,9 @@ describe("Video upload gate", () => {
 
     expect(gate.allowed).toBe(false);
     expect(gate.reason).toBe("offline");
-    expect(gate.message).toContain("bleiben auf diesem Gerät");
-    expect(gate.message).toContain("wenn du online bist");
+    expect(gate.message).toContain("nur geöffnet");
+    expect(gate.message).toContain("auf diesem Bildschirm");
+    expect(gate.message).not.toContain("bleiben auf diesem Gerät");
     expect(gate.actionLabel).toBeUndefined();
   });
 

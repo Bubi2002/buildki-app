@@ -48,7 +48,7 @@ export function getVideoUploadGate({
       reason: "offline",
       title: "Keine Internetverbindung",
       message:
-        "Die ausgewählten Dateien bleiben auf diesem Gerät. Der Upload startet erst wieder, wenn du online bist.",
+        "Die Auswahl bleibt nur geöffnet, solange du auf diesem Bildschirm bleibst. Bleibe hier und starte die Verarbeitung erneut, sobald du online bist.",
     };
   }
 

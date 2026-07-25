@@ -16,7 +16,6 @@ import {
   Pressable,
   TextInput,
   Alert,
-  ActivityIndicator,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -28,30 +27,20 @@ import { useColors } from "@/hooks/use-colors";
 import {
   getCompanyInfo,
   saveCompanyInfo,
-  generateAndSharePdf,
   type CompanyInfo,
-  type ProfessionalPdfOptions,
 } from "@/lib/pdf-professional";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-type ExportType = "protocol" | "defects" | "diary" | "photos" | "report" | "attendance";
-
-interface ExportOption {
-  id: ExportType;
-  label: string;
-  description: string;
-  icon: string;
-  color: string;
-}
-
-const EXPORT_OPTIONS: ExportOption[] = [
-  { id: "protocol", label: "Protokoll-PDF", description: "Einzelnes Protokoll als professionelles PDF", icon: "description", color: "#1E88E5" },
-  { id: "defects", label: "Mängelbericht", description: "Alle Mängel mit Fotos und Status", icon: "warning", color: "#EF4444" },
-  { id: "diary", label: "Bautagebuch", description: "Tagesberichte als zusammenhängendes Dokument", icon: "menu-book", color: "#7B1FA2" },
-  { id: "photos", label: "Fotodokumentation", description: "Alle Fotos mit Beschriftung und Zuordnung", icon: "photo-library", color: "#43A047" },
-  { id: "report", label: "KI-Bericht", description: "Generierter Bericht als formatiertes PDF", icon: "auto-awesome", color: "#00B0FF" },
-  { id: "attendance", label: "Anwesenheitsliste", description: "Anwesenheitsdokumentation als Tabelle", icon: "people", color: "#FF9800" },
-];
+import {
+  getExportCenterAction,
+  EXPORT_CENTER_OPTIONS,
+  type ExportCenterType,
+} from "@/lib/export-center-options";
+import {
+  LAST_SELECTED_PROJECT_KEY,
+  PROJECTS_STORAGE_KEY,
+  resolveSelectedProject,
+  type ProjectContextItem,
+} from "@/lib/project-context";
 
 export default function ExportCenterScreen() {
   const router = useRouter();
@@ -63,10 +52,11 @@ export default function ExportCenterScreen() {
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editWebsite, setEditWebsite] = useState("");
-  const [isExporting, setIsExporting] = useState(false);
+  const [activeProject, setActiveProject] = useState<ProjectContextItem | null>(null);
 
   useEffect(() => {
     loadCompanyInfo();
+    loadActiveProject();
   }, []);
 
   const loadCompanyInfo = async () => {
@@ -78,6 +68,19 @@ export default function ExportCenterScreen() {
       setEditPhone(info.phone || "");
       setEditEmail(info.email || "");
       setEditWebsite(info.website || "");
+    }
+  };
+
+  const loadActiveProject = async () => {
+    try {
+      const [projectsRaw, selectedProjectId] = await Promise.all([
+        AsyncStorage.getItem(PROJECTS_STORAGE_KEY),
+        AsyncStorage.getItem(LAST_SELECTED_PROJECT_KEY),
+      ]);
+      const projects: ProjectContextItem[] = projectsRaw ? JSON.parse(projectsRaw) : [];
+      setActiveProject(resolveSelectedProject(projects, selectedProjectId));
+    } catch {
+      setActiveProject(null);
     }
   };
 
@@ -99,52 +102,31 @@ export default function ExportCenterScreen() {
     Alert.alert("Gespeichert", "Firmendaten wurden aktualisiert.");
   };
 
-  const handleExport = async (type: ExportType) => {
-    setIsExporting(true);
-    try {
-      // Get active project name
-      let projektName = "";
-      try {
-        const stored = await AsyncStorage.getItem("active_project");
-        if (stored) { const p = JSON.parse(stored); projektName = p.name || p.id || ""; }
-      } catch {}
+  const navigateToExportTarget = (type: ExportCenterType) => {
+    const action = getExportCenterAction(type, activeProject?.id);
 
-      const options: ProfessionalPdfOptions = {
-        title: getExportTitle(type),
-        datum: new Date().toLocaleDateString("de-DE"),
-        projekt: projektName || undefined,
-        companyInfo: companyInfo || undefined,
-        accentColor: EXPORT_OPTIONS.find(o => o.id === type)?.color || "#0a7ea4",
-        sections: [
-          {
-            title: "Übersicht",
-            content: `Dieser ${getExportTitle(type)} wurde mit protoKI erstellt.\n\nBitte wählen Sie ein spezifisches Protokoll oder Projekt aus, um einen vollständigen Export zu generieren.`,
-          },
-          {
-            title: "Hinweis",
-            content: "Für einen vollständigen Export navigieren Sie zum jeweiligen Protokoll oder Projekt und nutzen Sie die Export-Funktion dort.",
-          },
-        ],
-      };
-
-      await generateAndSharePdf(options);
-    } catch (error: any) {
-      Alert.alert("Export-Fehler", error.message || "Export fehlgeschlagen");
-    } finally {
-      setIsExporting(false);
+    if (action.kind === "unavailable") {
+      Alert.alert("Noch nicht verfügbar", action.reason);
+      return;
     }
-  };
 
-  const getExportTitle = (type: ExportType): string => {
-    switch (type) {
-      case "protocol": return "Protokoll";
-      case "defects": return "Mängelbericht";
-      case "diary": return "Bautagebuch";
-      case "photos": return "Fotodokumentation";
-      case "report": return "KI-Bericht";
-      case "attendance": return "Anwesenheitsliste";
-      default: return "Export";
+    const navigate = () => {
+      if (action.params) {
+        router.push({ pathname: action.pathname, params: action.params } as any);
+      } else {
+        router.push(action.pathname as any);
+      }
+    };
+
+    if (action.dialogTitle && action.dialogMessage) {
+      Alert.alert(action.dialogTitle, action.dialogMessage, [
+        { text: "Abbrechen", style: "cancel" },
+        { text: "Öffnen", onPress: navigate },
+      ]);
+      return;
     }
+
+    navigate();
   };
 
   return (
@@ -229,46 +211,76 @@ export default function ExportCenterScreen() {
           </View>
         )}
 
+        <View
+          style={[
+            styles.projectBadge,
+            {
+              backgroundColor: activeProject ? colors.primary + "15" : colors.warning + "15",
+              borderColor: activeProject ? colors.primary : colors.warning,
+            },
+          ]}
+        >
+          <MaterialIcons
+            name={activeProject ? "folder" : "folder-off"}
+            size={18}
+            color={activeProject ? colors.primary : colors.warning}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.projectBadgeLabel, { color: colors.muted }]}>AKTIVES PROJEKT</Text>
+            <Text style={[styles.projectBadgeName, { color: colors.foreground }]}>
+              {activeProject?.name || "Kein Projekt ausgewählt"}
+            </Text>
+          </View>
+        </View>
+
         {/* Export Options */}
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>
           Export-Optionen
         </Text>
 
-        {EXPORT_OPTIONS.map((option) => (
+        {EXPORT_CENTER_OPTIONS.map((option) => (
           <Pressable
             key={option.id}
-            onPress={() => handleExport(option.id)}
-            disabled={isExporting}
+            onPress={() => navigateToExportTarget(option.id)}
+            accessibilityState={{ disabled: !option.available }}
             style={({ pressed }) => [
               styles.exportCard,
-              { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
+              {
+                backgroundColor: colors.surface,
+                borderColor: option.available ? colors.border : colors.muted + "55",
+                opacity: pressed ? 0.8 : option.available ? 1 : 0.72,
+              },
             ]}
           >
             <View style={[styles.exportIcon, { backgroundColor: option.color + "15" }]}>
               <MaterialIcons name={option.icon as any} size={24} color={option.color} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.exportLabel, { color: colors.foreground }]}>{option.label}</Text>
+              <View style={styles.exportTitleRow}>
+                <Text style={[styles.exportLabel, { color: colors.foreground }]}>{option.label}</Text>
+                {!option.available && (
+                  <View style={[styles.unavailableBadge, { borderColor: colors.muted }]}>
+                    <Text style={[styles.unavailableBadgeText, { color: colors.muted }]}>NOCH NICHT VERFÜGBAR</Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.exportDesc, { color: colors.muted }]}>{option.description}</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            <MaterialIcons
+              name={option.available ? "chevron-right" : "info-outline"}
+              size={20}
+              color={colors.muted}
+            />
           </Pressable>
         ))}
 
         {/* Info */}
         <View style={[styles.infoBox, { backgroundColor: "rgba(0,176,255,0.05)", borderColor: "#00B0FF" }]}>
-          <MaterialIcons name="info-outline" size={18} color="#00B0FF" />
+          <MaterialIcons name="verified" size={18} color="#00B0FF" />
           <Text style={[styles.infoText, { color: colors.muted }]}>
-            Für projektspezifische Exporte navigieren Sie zum jeweiligen Protokoll und nutzen Sie den Export-Button dort. Hier können Sie allgemeine Einstellungen wie Firmendaten verwalten.
+            Aktive Karten führen ausschließlich zu Exporten mit realen Projekt- oder Protokolldaten. Nicht implementierte PDF-Typen sind eindeutig gekennzeichnet und erzeugen keine Platzhalterdateien mehr.
           </Text>
         </View>
-
-        {isExporting && (
-          <View style={styles.exportingOverlay}>
-            <ActivityIndicator size="small" color="#00B0FF" />
-            <Text style={[styles.exportingText, { color: colors.muted }]}>PDF wird erstellt...</Text>
-          </View>
-        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -314,6 +326,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
+  projectBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 0,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  projectBadgeLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  projectBadgeName: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 2,
+  },
   input: {
     borderWidth: 1,
     borderRadius: 0,
@@ -350,10 +381,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  exportTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 2,
+  },
   exportLabel: {
     fontSize: 15,
     fontWeight: "600",
-    marginBottom: 2,
+  },
+  unavailableBadge: {
+    borderWidth: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  unavailableBadgeText: {
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 0.4,
   },
   exportDesc: {
     fontSize: 12,
@@ -372,14 +419,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  exportingOverlay: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 16,
-  },
-  exportingText: {
-    fontSize: 13,
-  },
+
 });

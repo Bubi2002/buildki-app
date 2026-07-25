@@ -34,6 +34,10 @@ import { useColors } from "@/hooks/use-colors";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { trpc } from "@/lib/trpc";
 import { getVideoUploadGate } from "@/lib/video-upload-gate";
+import {
+  estimateDecodedBase64Bytes,
+  validateVideoSizeBytes,
+} from "@/lib/video-upload-validation";
 
 type VideoFile = {
   uri: string;
@@ -296,13 +300,26 @@ export default function VideoUploadScreen() {
     setStep("uploading");
     setProgress(10);
 
+    let sizeValidation = validateVideoSizeBytes(video.size);
+    if (sizeValidation.sizeBytes === null) {
+      const fileInfo = await FileSystem.getInfoAsync(video.uri);
+      const fileSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : null;
+      sizeValidation = validateVideoSizeBytes(fileSize);
+    }
+    if (!sizeValidation.allowed) {
+      throw new Error(sizeValidation.error);
+    }
+
     const base64 = await FileSystem.readAsStringAsync(video.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    const sizeMB = (base64.length * 0.75) / (1024 * 1024);
-    if (sizeMB > 50) {
-      throw new Error(`Video zu groß: ${sizeMB.toFixed(1)}MB (max 50MB)`);
+    // Fallback for providers that do not expose a file size before reading.
+    const decodedValidation = validateVideoSizeBytes(
+      estimateDecodedBase64Bytes(base64),
+    );
+    if (!decodedValidation.allowed) {
+      throw new Error(decodedValidation.error);
     }
 
     setProgress(30);
@@ -355,7 +372,9 @@ export default function VideoUploadScreen() {
         createdAt: new Date().toISOString(),
         status: "ready" as const,
         transcription: allTranscriptions,
+        protocol: allTranscriptions,
         projectId: activeProject!.id,
+        projectName: activeProject!.name,
         source: "video",
         documentType: docType,
         videoCount: queue.filter(i => i.status === "done").length,

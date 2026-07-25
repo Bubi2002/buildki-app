@@ -10,6 +10,7 @@ import { getOverdueDefects } from "@/lib/defect-pdf-export";
 import { progressEngine, type ProgressSnapshot } from "@/lib/progress-engine";
 import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeIcon, getEventTypeColor } from "@/lib/timeline-engine";
 import { getProjectStructure } from "@/lib/room-store";
+import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 
 type Project = {
   id: string;
@@ -129,14 +130,19 @@ export default function AIWorkbenchScreen() {
     try {
       const data = await AsyncStorage.getItem("projects");
       const parsed: Project[] = data ? JSON.parse(data) : [];
-      setProjects(parsed);
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
-      if (lastId) {
-        const found = parsed.find(p => p.id === lastId);
-        if (found) { setSelectedProject(found); return; }
+      const nextProject = resolveSelectedProject(parsed, lastId);
+      setProjects(parsed);
+      setSelectedProject(nextProject);
+      if (nextProject && nextProject.id !== lastId) {
+        await AsyncStorage.setItem("last-selected-project-id", nextProject.id);
+      } else if (!nextProject && lastId) {
+        await AsyncStorage.removeItem("last-selected-project-id");
       }
-      if (parsed.length > 0) setSelectedProject(parsed[0]);
-    } catch {}
+    } catch {
+      setProjects([]);
+      setSelectedProject(null);
+    }
   }, []);
 
   const loadLiveStats = useCallback(async (projectId?: string) => {
@@ -264,12 +270,44 @@ export default function AIWorkbenchScreen() {
     await AsyncStorage.setItem("last-selected-project-id", project.id);
   };
 
+  const confirmDeleteProject = (project: Project) => {
+    Alert.alert(
+      "Projekt löschen",
+      `„${project.name}“ wird aus der Projektliste entfernt. Zugeordnete Protokolle bleiben erhalten und werden unter „Ohne Projekt“ angezeigt.`,
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Projekt löschen",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await deleteProjectLocally<Project>(project.id);
+              setProjects(result.remainingProjects);
+              setSelectedProject(result.nextProject);
+              setShowProjectPicker(false);
+              await loadLiveStats(result.nextProject?.id);
+              Alert.alert(
+                "Projekt gelöscht",
+                result.detachedProtocolCount > 0
+                  ? `${result.detachedProtocolCount} Protokoll${result.detachedProtocolCount === 1 ? "" : "e"} bleibt erhalten und ist jetzt ohne Projektzuordnung.`
+                  : "Der Projekteintrag wurde entfernt.",
+              );
+            } catch {
+              Alert.alert("Fehler", "Das Projekt konnte nicht gelöscht werden.");
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const navigateModule = (route: string) => {
-    if (selectedProject) {
-      router.push(`${route}?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}` as any);
-    } else {
-      router.push(route as any);
+    if (!selectedProject) {
+      setShowProjectPicker(true);
+      Alert.alert("Projekt auswählen", "Bitte wähle oder erstelle zuerst ein Projekt.");
+      return;
     }
+    router.push(`${route}?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}` as any);
   };
 
   // ─── Phase Label ────────────────────────────────────────────────────────────
@@ -314,21 +352,32 @@ export default function AIWorkbenchScreen() {
               <Text style={styles.noProjects}>{t('keine_projekte' as any)}</Text>
             ) : (
               projects.map((project) => (
-                <Pressable
+                <View
                   key={project.id}
-                  onPress={() => selectProject(project)}
-                  style={({ pressed }) => [
-                    styles.projectItem,
+                  style={[
+                    styles.projectItemRow,
                     selectedProject?.id === project.id && styles.projectItemActive,
-                    { opacity: pressed ? 0.7 : 1 },
                   ]}
                 >
-                  <View style={[styles.projectItemDot, { backgroundColor: project.color }]} />
-                  <Text style={[
-                    styles.projectItemText,
-                    selectedProject?.id === project.id && styles.projectItemTextActive,
-                  ]} numberOfLines={1}>{project.name}</Text>
-                </Pressable>
+                  <Pressable
+                    onPress={() => selectProject(project)}
+                    style={({ pressed }) => [styles.projectItemSelection, { opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <View style={[styles.projectItemDot, { backgroundColor: project.color }]} />
+                    <Text style={[
+                      styles.projectItemText,
+                      selectedProject?.id === project.id && styles.projectItemTextActive,
+                    ]} numberOfLines={1}>{project.name}</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Projekt ${project.name} löschen`}
+                    onPress={() => confirmDeleteProject(project)}
+                    style={({ pressed }) => [styles.projectDeleteButton, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <MaterialIcons name="delete-outline" size={20} color="#F87171" />
+                  </Pressable>
+                </View>
               ))
             )}
             <Pressable
@@ -503,7 +552,7 @@ export default function AIWorkbenchScreen() {
         {/* ─── Neue Aufnahme starten ───────────────────────────────────── */}
         <View style={styles.quickActionsRow}>
           <Pressable
-            onPress={() => router.push('/(tabs)/record' as any)}
+            onPress={() => navigateModule('/(tabs)/record')}
             style={({ pressed }) => [styles.quickActionBtn, styles.quickActionPrimary, { opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="mic" size={22} color="#fff" />
@@ -649,6 +698,22 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 10,
     borderRadius: 0,
+  },
+  projectItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 0,
+  },
+  projectItemSelection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+  },
+  projectDeleteButton: {
+    padding: 10,
+    marginRight: 2,
   },
   projectItemActive: {
     backgroundColor: '#1E3A5F40',

@@ -20,6 +20,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { onJobUpdate } from "@/lib/background-processor";
 import { useTranslation } from "@/lib/language-provider";
+import { filterProtocolsByProject, isProtocolUnassigned, UNASSIGNED_PROJECT_ID } from "@/lib/project-context";
+import {
+  ensureProtocolTextFields,
+  getProtocolPreview,
+  getProtocolSearchText,
+  getProtocolText,
+} from "@/lib/protocol-compat";
 
 type Protocol = {
   id: string;
@@ -129,15 +136,19 @@ export default function ProtocolsScreen() {
     try {
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
       if (lastId) {
-        setActiveProjectId(lastId);
         const projectsStr = await AsyncStorage.getItem("projects");
         const projects = projectsStr ? JSON.parse(projectsStr) : [];
         const found = projects.find((p: any) => p.id === lastId);
-        setActiveProjectName(found ? found.name : null);
-      } else {
-        setActiveProjectId(null);
-        setActiveProjectName(null);
+        if (found) {
+          setActiveProjectId(lastId);
+          setActiveProjectName(found.name);
+          return;
+        }
+        await AsyncStorage.removeItem("last-selected-project-id");
       }
+      setActiveProjectId(null);
+      setActiveProjectName(null);
+      setShowAllProjects(true);
     } catch {
       setActiveProjectId(null);
       setActiveProjectName(null);
@@ -158,22 +169,40 @@ export default function ProtocolsScreen() {
     try {
       const stored = await AsyncStorage.getItem("protocols");
       if (stored) {
-        let parsed = JSON.parse(stored);
-        // Migration: Add projectName to protocols that have projectId but no projectName
-        const needsMigration = parsed.some((p: any) => p.projectId && !p.projectName);
-        if (needsMigration) {
+        const parsedValue = JSON.parse(stored);
+        const rawProtocols: any[] = Array.isArray(parsedValue) ? parsedValue : [];
+        let parsed: Protocol[] = rawProtocols.map((protocol) =>
+          ensureProtocolTextFields(protocol) as Protocol,
+        );
+
+        // Migration: Normalize missing legacy text fields and add projectName.
+        const needsTextMigration = rawProtocols.some(
+          (protocol) =>
+            typeof protocol?.protocol !== "string" ||
+            typeof protocol?.transcription !== "string",
+        );
+        const needsProjectMigration = parsed.some(
+          (protocol) => protocol.projectId && !protocol.projectName,
+        );
+
+        if (needsProjectMigration) {
           const projectsStr = await AsyncStorage.getItem("projects");
           const projects = projectsStr ? JSON.parse(projectsStr) : [];
-          parsed = parsed.map((p: any) => {
-            if (p.projectId && !p.projectName) {
-              const proj = projects.find((pr: any) => pr.id === p.projectId);
-              if (proj) return { ...p, projectName: proj.name };
+          parsed = parsed.map((protocol) => {
+            if (protocol.projectId && !protocol.projectName) {
+              const project = projects.find((candidate: any) => candidate.id === protocol.projectId);
+              if (project) return { ...protocol, projectName: project.name };
             }
-            return p;
+            return protocol;
           });
+        }
+
+        if (needsTextMigration || needsProjectMigration) {
           await AsyncStorage.setItem("protocols", JSON.stringify(parsed));
         }
         setProtocols(parsed);
+      } else {
+        setProtocols([]);
       }
     } catch (error) {
       console.error("Error loading protocols:", error);
@@ -341,7 +370,7 @@ export default function ProtocolsScreen() {
               onPress: async () => {
                 const combinedContent = selected.map((item, idx) => {
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
-                  return `---\n\n## Protokoll ${idx + 1} von ${selected.length}\n\n**Titel:** ${item.title}\n**Datum:** ${date}\n**Vorlage:** ${item.templateName || "Freies Protokoll"}\n\n${item.protocol}\n\n`;
+                  return `---\n\n## Protokoll ${idx + 1} von ${selected.length}\n\n**Titel:** ${item.title}\n**Datum:** ${date}\n**Vorlage:** ${item.templateName || "Freies Protokoll"}\n\n${getProtocolText(item)}\n\n`;
                 }).join("\n\n");
                 
                 const pdfUri = await generateProtocolPdf({
@@ -364,7 +393,7 @@ export default function ProtocolsScreen() {
                 const rows = selected.map((item) => {
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
                   const duration = Math.round(item.duration / 60);
-                  const content = item.protocol.replace(/[\n\r;]/g, " ").substring(0, 500);
+                  const content = getProtocolPreview(item, 500).replace(/[\n\r;]/g, " ");
                   return `"${item.title}";"${date}";"${item.templateName || "Freies Protokoll"}";${duration};"${content}"`;
                 }).join("\n");
                 const csv = header + rows;
@@ -438,10 +467,7 @@ export default function ProtocolsScreen() {
   const getDisplayedProtocols = (): Protocol[] => {
     let filtered = protocols;
 
-    // Filter by active project (unless showAllProjects is toggled)
-    if (activeProjectId && !showAllProjects) {
-      filtered = filtered.filter((p) => p.projectId === activeProjectId);
-    }
+    filtered = filterProtocolsByProject(filtered, projects, activeProjectId, showAllProjects);
 
     // Filter by category
     switch (filterBy) {
@@ -460,12 +486,10 @@ export default function ProtocolsScreen() {
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((p) =>
-        p.title.toLowerCase().includes(query) ||
-        p.protocol.toLowerCase().includes(query) ||
-        p.transcription.toLowerCase().includes(query) ||
-        (p.templateName && p.templateName.toLowerCase().includes(query)) ||
-        (p.tags && p.tags.some((t) => t.toLowerCase().includes(query)))
+      filtered = filtered.filter((protocol) =>
+        getProtocolSearchText(protocol).includes(query) ||
+        (protocol.templateName && protocol.templateName.toLowerCase().includes(query)) ||
+        (protocol.tags && protocol.tags.some((tag) => tag.toLowerCase().includes(query)))
       );
     }
 
@@ -630,7 +654,7 @@ export default function ProtocolsScreen() {
         style={[styles.cardPreview, { color: colors.muted }]}
         numberOfLines={2}
       >
-        {item.protocol.substring(0, 120)}
+        {getProtocolPreview(item, 120)}
       </Text>
 
       {/* Tags */}
@@ -698,6 +722,26 @@ export default function ProtocolsScreen() {
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Archivierte Protokolle erscheinen hier.
           </Text>
+        </>
+      ) : activeProjectId && !showAllProjects ? (
+        <>
+          <MaterialIcons name="folder-off" size={64} color={colors.border} />
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>In diesem Projekt noch kein Protokoll</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+            {activeProjectId === UNASSIGNED_PROJECT_ID
+              ? "Alle vorhandenen Protokolle sind einem Projekt zugeordnet."
+              : `Für „${activeProjectName || "dieses Projekt"}“ wurde noch kein Protokoll erstellt.`}
+          </Text>
+          <Pressable
+            onPress={() => {
+              setActiveProjectId(null);
+              setActiveProjectName(null);
+              setShowAllProjects(true);
+            }}
+            style={({ pressed }) => [styles.emptyAction, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.emptyActionText, { color: colors.primary }]}>Alle Protokolle anzeigen</Text>
+          </Pressable>
         </>
       ) : (
         <>
@@ -835,7 +879,6 @@ export default function ProtocolsScreen() {
                 setActiveProjectId(null);
                 setActiveProjectName(null);
                 setShowAllProjects(true);
-                AsyncStorage.removeItem("last-selected-project-id");
               }}
               style={({ pressed }) => [
                 styles.projectChip,
@@ -854,6 +897,37 @@ export default function ProtocolsScreen() {
                 </Text>
               </View>
             </Pressable>
+
+            {(() => {
+              const unassignedCount = protocols.filter(
+                (protocol) => !protocol.isArchived && isProtocolUnassigned(protocol, projects),
+              ).length;
+              if (unassignedCount === 0) return null;
+              const isActive = activeProjectId === UNASSIGNED_PROJECT_ID && !showAllProjects;
+              return (
+                <Pressable
+                  onPress={() => {
+                    setActiveProjectId(UNASSIGNED_PROJECT_ID);
+                    setActiveProjectName("Ohne Projekt");
+                    setShowAllProjects(false);
+                  }}
+                  style={({ pressed }) => [
+                    styles.projectChip,
+                    {
+                      backgroundColor: isActive ? colors.warning + "20" : colors.surface,
+                      borderColor: isActive ? colors.warning : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name="folder-off" size={14} color={isActive ? colors.warning : colors.muted} />
+                  <Text style={[styles.projectChipText, { color: isActive ? colors.warning : colors.foreground }]}>Ohne Projekt</Text>
+                  <View style={[styles.projectChipCount, { backgroundColor: isActive ? colors.warning + "20" : colors.border + "60" }]}>
+                    <Text style={[styles.projectChipCountText, { color: isActive ? colors.warning : colors.muted }]}>{unassignedCount}</Text>
+                  </View>
+                </Pressable>
+              );
+            })()}
 
             {/* Project chips */}
             {projects.map((project) => {
@@ -989,6 +1063,8 @@ const styles = StyleSheet.create({
   projectFilterBanner: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1 },
   projectFilterText: { fontSize: 13, fontWeight: "600", marginLeft: 6, flex: 1 },
   projectFilterToggle: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, borderWidth: 1 },
+  emptyAction: { marginTop: 18, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderRadius: 0 },
+  emptyActionText: { fontSize: 14, fontWeight: "700" },
   sortMenu: { marginTop: 8, borderRadius: 0, borderWidth: 1, overflow: "hidden" },
   sortOption: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   sortOptionText: { flex: 1, fontSize: 14 },

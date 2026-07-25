@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getProtocolText } from "@/lib/protocol-compat";
 
 /**
  * Helper: wrap a promise with a timeout to prevent hanging
@@ -245,7 +246,7 @@ function generatePdfHtml(
 
   // Convert protocol text to HTML (handle line breaks, bullet points, inline photo placeholders, and markdown tables)
   // First, pre-process the protocol text to group table rows into proper HTML tables
-  const lines = protocol.protocol.split("\n");
+  const lines = getProtocolText(protocol).split("\n");
   const processedLines: string[] = [];
   let i = 0;
   while (i < lines.length) {

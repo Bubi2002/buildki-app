@@ -476,6 +476,14 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
         return { projects: await pullProjects(ctx.user.id, input.since) };
       }),
 
+    deleteProject: protectedProcedure
+      .input(z.object({ localId: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const { deleteProject } = await import("./sync-service");
+        await deleteProject(ctx.user.id, input.localId);
+        return { success: true };
+      }),
+
     // ─── Attachment Upload ───────────────────────────────────────────────────
     uploadAttachment: protectedProcedure
       .input(z.object({

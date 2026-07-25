@@ -8,6 +8,8 @@ export type QueuedRecording = {
   fileUri: string;
   mimeType: string;
   templateId: string;
+  projectId: string;
+  projectName: string;
   photos: string[];
   duration: number;
   recordingMode: "audio" | "audio-photo";

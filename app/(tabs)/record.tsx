@@ -46,6 +46,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "@/lib/language-provider";
+import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 
 type RecordingMode = "audio-photo";
 
@@ -53,7 +54,7 @@ export default function RecordScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { quickAction } = useLocalSearchParams<{ quickAction?: string }>();
+  const { quickAction, projectId: routeProjectId } = useLocalSearchParams<{ quickAction?: string; projectId?: string }>();
   const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText , getFullTranscript, streamingActive } = useRealtimeTranscription();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
@@ -143,6 +144,8 @@ export default function RecordScreen() {
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(true);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const quickActionHandledRef = useRef(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDesc, setNewProjectDesc] = useState("");
@@ -193,7 +196,7 @@ export default function RecordScreen() {
     })();
   }, [selectedProject?.id]);
 
-  // Load projects and pre-select last used (but ALWAYS show picker)
+  // Load projects and reuse the same active project as the rest of the app.
   useEffect(() => {
     (async () => {
       try {
@@ -204,35 +207,45 @@ export default function RecordScreen() {
         ]);
         const allProjects: ProjectItem[] = JSON.parse(projectsData || "[]");
         const allProtocols: any[] = JSON.parse(protocolsData || "[]");
-        // Enrich projects with protocol count and last date
-        const enriched = allProjects.map((p) => {
-          const projectProtocols = allProtocols.filter((pr: any) => pr.projectId === p.id);
-          const lastProtocol = projectProtocols.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-          return { ...p, _protocolCount: projectProtocols.length, _lastDate: lastProtocol?.createdAt || null };
+        const enriched = allProjects.map((project) => {
+          const projectProtocols = allProtocols.filter((protocol: any) => protocol.projectId === project.id);
+          const lastProtocol = [...projectProtocols].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+          return { ...project, _protocolCount: projectProtocols.length, _lastDate: lastProtocol?.createdAt || null };
         });
+        const activeProject = resolveSelectedProject(enriched, routeProjectId || lastId);
         setProjects(enriched as any);
-        // Pre-select last used project but ALWAYS show picker
-        if (lastId) {
-          const found = enriched.find((p) => p.id === lastId);
-          if (found) setSelectedProject(found as any);
+        setSelectedProject(activeProject as any);
+        setShowProjectPicker(!activeProject);
+        if (activeProject && activeProject.id !== lastId) {
+          await AsyncStorage.setItem("last-selected-project-id", activeProject.id);
+        } else if (!activeProject && lastId) {
+          await AsyncStorage.removeItem("last-selected-project-id");
         }
-        // Always keep showProjectPicker = true
-      } catch {}
+      } catch {
+        setProjects([]);
+        setSelectedProject(null);
+        setShowProjectPicker(true);
+      } finally {
+        setProjectsLoaded(true);
+      }
     })();
-  }, []);
+  }, [routeProjectId]);
 
-  // Handle Quick Action from app shortcut
+  // Handle Quick Action only after a valid project context was restored.
   useEffect(() => {
-    if (!quickAction) return;
-    // Skip project picker and start recording immediately
+    if (!quickAction || !projectsLoaded || quickActionHandledRef.current) return;
+    if (!selectedProject) {
+      setShowProjectPicker(true);
+      return;
+    }
+    quickActionHandledRef.current = true;
     setShowProjectPicker(false);
     setMode("audio-photo");
-    // Auto-start recording after a short delay to let permissions settle
     const timer = setTimeout(() => {
       startRecording();
     }, 800);
     return () => clearTimeout(timer);
-  }, [quickAction]);
+  }, [quickAction, projectsLoaded, selectedProject?.id]);
 
   // Load recent protocols for quick access
   useEffect(() => {
@@ -440,10 +453,6 @@ export default function RecordScreen() {
     await AsyncStorage.setItem("last-selected-project-id", project.id);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
-  const selectWithoutProject = async () => {
-    setSelectedProject(null); setShowProjectPicker(false);
-    await AsyncStorage.removeItem("last-selected-project-id");
-  };
   const createAndSelectProject = async () => {
     if (!newProjectName.trim()) { Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein')); return; }
     try {
@@ -490,23 +499,29 @@ export default function RecordScreen() {
   };
 
   const deleteProject = async (projectId: string) => {
-    Alert.alert(t('alert_projekt_loeschen'), t('msg_dieses_projekt_und_alle_zugeordneten'), [
-      { text: t('btn_abbrechen'), style: "cancel" },
-      {
-        text: t('btn_endgueltig_loeschen'),
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const data = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
-            const updated = data.filter((p: any) => p.id !== projectId);
-            await AsyncStorage.setItem("projects", JSON.stringify(updated));
-            setProjects(updated);
-            if (selectedProject?.id === projectId) setSelectedProject(null);
-            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          } catch {}
+    const project = projects.find((item) => item.id === projectId);
+    Alert.alert(
+      t('alert_projekt_loeschen'),
+      `„${project?.name || "Projekt"}“ wird aus der Projektliste entfernt. Zugeordnete Protokolle bleiben erhalten und werden unter „Ohne Projekt“ angezeigt.`,
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        {
+          text: t('btn_endgueltig_loeschen'),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await deleteProjectLocally<ProjectItem>(projectId);
+              setProjects(result.remainingProjects);
+              setSelectedProject(result.nextProject);
+              setShowProjectPicker(!result.nextProject);
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_erstellt_werden'));
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const toggleFavorite = async (projectId: string) => {
@@ -1128,6 +1143,11 @@ export default function RecordScreen() {
 
   // --- UNIFIED RECORDING CONTROLS ---
   const startRecording = () => {
+    if (!selectedProject) {
+      Alert.alert("Projekt auswählen", "Bitte wähle oder erstelle zuerst ein Projekt. Jede Aufnahme wird einem Projekt zugeordnet.");
+      setShowProjectPicker(true);
+      return;
+    }
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     startListening();
     // Capture location and weather at recording start
@@ -1175,47 +1195,18 @@ export default function RecordScreen() {
     // then process in background. App is instantly usable again.
     
     try {
-      // Check internet connectivity
-      const online = await isOnline();
-      if (!online) {
-        // Save to offline queue with all metadata
-        await addToQueue({
-          id: Date.now().toString(),
-          fileUri,
-          mimeType,
-          templateId: selectedTemplate.id,
-          photos: capturedPhotos,
-          duration: recordingDuration,
-          recordingMode: mode,
-          createdAt: new Date().toISOString(),
-          markers,
-          location: recordingLocation ? {
-            latitude: recordingLocation.latitude,
-            longitude: recordingLocation.longitude,
-            address: recordingLocation.address,
-            city: recordingLocation.city,
-          } : null,
-          weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
-
-        });
-        setCapturedPhotos([]);
-        setPhotoTimestamps([]);
-        if (Platform.OS !== "web") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        }
-        alert("Kein Internet – Aufnahme wurde in der Warteschlange gespeichert und wird automatisch verarbeitet, sobald du wieder online bist.");
+      if (!selectedProject) {
+        setIsProcessing(false);
+        setProcessingSource(null);
+        setShowProjectPicker(true);
+        Alert.alert("Projekt auswählen", "Die Aufnahme kann erst verarbeitet werden, wenn ein Projekt ausgewählt ist.");
         return;
       }
 
-      // Generate protocol number if project has a prefix
-      let protocolNumber: string | null = null;
-      const activeProjectId = selectedProject?.id || null;
-      if (activeProjectId) {
-        protocolNumber = await getNextProtocolNumber(activeProjectId);
-      }
-
-      // Create placeholder protocol with status "processing"
+      const activeProject = selectedProject;
       const protocolId = Date.now().toString();
+      const createdAt = new Date().toISOString();
+      const protocolNumber = await getNextProtocolNumber(activeProject.id);
       const placeholderProtocol = {
         id: protocolId,
         title: "Wird verarbeitet...",
@@ -1230,7 +1221,7 @@ export default function RecordScreen() {
         markers,
         duration: recordingDuration,
         recordingMode: mode,
-        createdAt: new Date().toISOString(),
+        createdAt,
         calendarEventId: null as string | null,
         location: recordingLocation ? {
           latitude: recordingLocation.latitude,
@@ -1240,29 +1231,61 @@ export default function RecordScreen() {
         } : null,
         weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
         status: "processing" as const,
-        processingStep: "uploading" as string,
-        projectId: activeProjectId || undefined,
-        projectName: selectedProject?.name || undefined,
+        processingStep: "queued" as string,
+        projectId: activeProject.id,
+        projectName: activeProject.name,
         protocolNumber: protocolNumber || undefined,
         roomId: selectedRoom?.id || undefined,
         roomName: selectedRoom?.name || undefined,
         floorId: selectedFloor?.id || undefined,
         floorName: selectedFloor?.name || undefined,
-
       };
 
-      // Link to calendar event if available
       if (currentCalendarEvent && Platform.OS !== "web") {
         try {
-          await addNotesToEvent(currentCalendarEvent.id, `Protokoll wird verarbeitet...`);
+          await addNotesToEvent(currentCalendarEvent.id, "Protokoll wird verarbeitet...");
           placeholderProtocol.calendarEventId = currentCalendarEvent.id;
         } catch {}
       }
 
-      // Save placeholder immediately to AsyncStorage
       const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
       protocols.unshift(placeholderProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+
+      const online = await isOnline();
+      if (!online) {
+        await addToQueue({
+          id: protocolId,
+          fileUri,
+          mimeType,
+          templateId: selectedTemplate.id,
+          photos: capturedPhotos,
+          duration: recordingDuration,
+          recordingMode: mode,
+          createdAt,
+          markers,
+          projectId: activeProject.id,
+          projectName: activeProject.name,
+          location: recordingLocation ? {
+            latitude: recordingLocation.latitude,
+            longitude: recordingLocation.longitude,
+            address: recordingLocation.address,
+            city: recordingLocation.city,
+          } : null,
+          weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
+        });
+        setCapturedPhotos([]);
+        setPhotoTimestamps([]);
+        setPhotoVoiceNotes([]);
+        setIsProcessing(false);
+        setProcessingSource(null);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        }
+        alert("Kein Internet – das Protokoll ist im ausgewählten Projekt sichtbar und wird automatisch verarbeitet, sobald du wieder online bist.");
+        router.push("/(tabs)/protocols" as any);
+        return;
+      }
 
       // Clear recording state and navigate to protocols list
       setCapturedPhotos([]);
@@ -1412,7 +1435,7 @@ export default function RecordScreen() {
               ) : null}
               </View>
             </View>
-            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>{t('waehle_ein_projekt_oder')}</Text>
+            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>Jede Aufnahme wird dem ausgewählten Projekt zugeordnet.</Text>
           </View>
 
           {/* Summary Stats */}
@@ -1488,7 +1511,7 @@ export default function RecordScreen() {
           <FlatList
             data={filteredProjects}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingBottom: 140 }}
+            contentContainerStyle={{ paddingBottom: 24 }}
             ListHeaderComponent={
               <Pressable onPress={() => setShowCreateProject(true)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 0, borderWidth: 1.5, borderColor: colors.primary, borderStyle: "dashed", marginBottom: 14, gap: 12, opacity: pressed ? 0.7 : 1 }]}>
                 <View style={{ width: 44, height: 44, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
@@ -1595,12 +1618,6 @@ export default function RecordScreen() {
             }
           />
 
-          {/* Bottom Buttons */}
-          <View style={{ position: "absolute", bottom: 24, left: 20, right: 20, gap: 10 }}>
-            <Pressable onPress={selectWithoutProject} style={({ pressed }) => [{ paddingVertical: 14, borderRadius: 0, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1, backgroundColor: colors.background }]}>
-              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.muted }}>{t('project_without')}</Text>
-            </Pressable>
-          </View>
         </View>
 
         {/* Create Project Modal */}
