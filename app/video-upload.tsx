@@ -44,6 +44,11 @@ import {
   extractCandidateFramesFromSegments,
   type TranscriptSegment,
 } from "@/lib/video-evidence";
+import {
+  createVideoImportProtocolId,
+  getVideoImportCompletionDecision,
+  summarizeVideoImportResults,
+} from "@/lib/video-import-results";
 
 type VideoFile = {
   uri: string;
@@ -64,6 +69,7 @@ type QueueItem = {
   status: "pending" | "processing" | "done" | "error";
   transcription?: string;
   transcriptionSegments?: TranscriptSegment[];
+  detectedLanguage?: string;
   errorMessage?: string;
 };
 
@@ -104,9 +110,12 @@ export default function VideoUploadScreen() {
   const [selectedDocType, setSelectedDocType] = useState<DocType>("protokoll");
   const [errorMessage, setErrorMessage] = useState("");
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
-  const [completedCount, setCompletedCount] = useState(0);
+  const [createdProtocolId, setCreatedProtocolId] = useState<string | null>(null);
+  const [createdVideoCount, setCreatedVideoCount] = useState(0);
+  const [createdFailedCount, setCreatedFailedCount] = useState(0);
   const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
   const filePickerGuard = useRef(createAsyncInvocationGuard());
+  const queueSummary = summarizeVideoImportResults(queue);
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
@@ -272,8 +281,8 @@ export default function VideoUploadScreen() {
     );
   };
 
-  const processQueue = async () => {
-    if (queue.length === 0) return;
+  const processQueue = async (itemsToProcess: QueueItem[] = queue) => {
+    if (itemsToProcess.length === 0) return;
     const privacyChoices = await getPrivacyChoices();
     if (!privacyChoices.cloudSync || !privacyChoices.aiProcessing) {
       Alert.alert(
@@ -291,20 +300,70 @@ export default function VideoUploadScreen() {
       return;
     }
 
-    setCompletedCount(0);
-    for (let i = 0; i < queue.length; i++) {
-      if (queue[i].status === "done") continue;
+    setCreatedProtocolId(null);
+    setCreatedVideoCount(0);
+    setCreatedFailedCount(0);
+    setErrorMessage("");
+    setTranscription("");
+
+    let results = itemsToProcess.map((item) => ({ ...item }));
+    setQueue(results);
+
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].status === "done" && results[i].transcription?.trim()) continue;
       setCurrentIndex(i);
-      setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: "processing" } : item));
+      results = results.map((item, index) =>
+        index === i ? { ...item, status: "processing", errorMessage: undefined } : item,
+      );
+      setQueue([...results]);
       
       try {
-        await processSingleVideo(queue[i].video, i);
-        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: "done" } : item));
-        setCompletedCount(c => c + 1);
+        const processed = await processSingleVideo(results[i].video, i);
+        results = results.map((item, index) =>
+          index === i
+            ? {
+                ...item,
+                ...processed,
+                status: "done",
+                errorMessage: undefined,
+              }
+            : item,
+        );
       } catch (err: any) {
-        setQueue(prev => prev.map((item, idx) => idx === i ? { ...item, status: "error", errorMessage: err.message } : item));
+        results = results.map((item, index) =>
+          index === i
+            ? {
+                ...item,
+                status: "error",
+                transcription: undefined,
+                transcriptionSegments: undefined,
+                detectedLanguage: undefined,
+                errorMessage: err?.message || "Video konnte nicht verarbeitet werden.",
+              }
+            : item,
+        );
       }
+      setQueue([...results]);
     }
+
+    const completion = getVideoImportCompletionDecision(results);
+    const combinedTranscription = completion.successfulItems
+      .map(
+        (item) =>
+          `[${item.video.name}] (Sprache: ${item.detectedLanguage || "unbekannt"})\n${item.transcription!.trim()}`,
+      )
+      .join("\n\n---\n\n");
+
+    setQueue([...results]);
+    setTranscription(combinedTranscription);
+    setCurrentIndex(-1);
+
+    if (!completion.canFinalize) {
+      setErrorMessage(completion.errorMessage);
+      setStep("error");
+      return;
+    }
+
     setStep("choose_type");
   };
 
@@ -382,24 +441,30 @@ export default function VideoUploadScreen() {
             text: segment.text.trim(),
           }))
       : [];
-    const header = `[${video.name}] (Sprache: ${detectedLang})`;
-    setTranscription(prev => prev + (prev ? "\n\n---\n\n" : "") + `${header}\n${timestampedText}`);
-    setQueue(prev => prev.map((item) =>
-      item.video.uri === video.uri
-        ? { ...item, transcription: timestampedText, transcriptionSegments: segments }
-        : item,
-    ));
     setProgress(100);
+    return {
+      transcription: timestampedText,
+      transcriptionSegments: segments,
+      detectedLanguage: detectedLang,
+    };
   };
 
   const finalizeWithDocType = async (docType: DocType) => {
     setSelectedDocType(docType);
+    const completion = getVideoImportCompletionDecision(queue);
+    if (!completion.canFinalize || !activeProject) {
+      setErrorMessage(
+        completion.errorMessage || "Das aktive Projekt ist nicht mehr verfügbar. Bitte wählen Sie das Projekt erneut aus.",
+      );
+      setStep("error");
+      return;
+    }
     setStep("generating");
 
     try {
-      const allTranscriptions = queue
-        .filter(item => item.transcription)
-        .map(item => item.transcription)
+      const completedVideos = completion.successfulItems;
+      const allTranscriptions = completedVideos
+        .map((item) => item.transcription!.trim())
         .join("\n\n");
 
       const docTypeLabels: Record<DocType, string> = {
@@ -408,10 +473,7 @@ export default function VideoUploadScreen() {
         bautagebuch: "Bautagebuch-Eintrag",
       };
 
-      const protocolId = `video_${Date.now()}`;
-      const completedVideos = queue.filter(
-        (item) => item.status === "done" && item.transcription,
-      );
+      const protocolId = createVideoImportProtocolId();
       const generatedEvidenceIds: string[] = [];
       const maxFramesPerVideo = Math.max(
         1,
@@ -440,7 +502,7 @@ export default function VideoUploadScreen() {
 
       const protocol = {
         id: protocolId,
-        title: `${docTypeLabels[docType]}: ${queue[0]?.video.name.replace(/\.[^.]+$/, "") || "Video"}`,
+        title: `${docTypeLabels[docType]}: ${completedVideos[0].video.name.replace(/\.[^.]+$/, "") || "Video"}`,
         createdAt: new Date().toISOString(),
         status: "ready" as const,
         transcription: allTranscriptions,
@@ -467,10 +529,13 @@ export default function VideoUploadScreen() {
       protocols.unshift(protocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
+      setCreatedProtocolId(protocolId);
+      setCreatedVideoCount(completedVideos.length);
+      setCreatedFailedCount(completion.failedCount);
       setStep("done");
 
       if (Platform.OS !== "web") {
-        const Haptics = require("expo-haptics");
+        const Haptics = await import("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err: any) {
@@ -486,7 +551,28 @@ export default function VideoUploadScreen() {
     setProgress(0);
     setTranscription("");
     setErrorMessage("");
-    setCompletedCount(0);
+    setCreatedProtocolId(null);
+    setCreatedVideoCount(0);
+    setCreatedFailedCount(0);
+  };
+
+  const retryFailedVideos = () => {
+    const retryQueue: QueueItem[] = queue.map((item) =>
+      item.status === "error" || (item.status === "done" && !item.transcription?.trim())
+        ? {
+            ...item,
+            status: "pending",
+            transcription: undefined,
+            transcriptionSegments: undefined,
+            detectedLanguage: undefined,
+            errorMessage: undefined,
+          }
+        : item,
+    );
+    setStep("idle");
+    setErrorMessage("");
+    setProgress(0);
+    void processQueue(retryQueue);
   };
 
   const formatFileSize = (bytes?: number) => {
@@ -659,7 +745,7 @@ export default function VideoUploadScreen() {
 
             {/* Process Button */}
             <Pressable
-              onPress={processQueue}
+              onPress={() => void processQueue()}
               disabled={!uploadGate.allowed}
               accessibilityState={{ disabled: !uploadGate.allowed }}
               style={({ pressed }) => [
@@ -701,7 +787,9 @@ export default function VideoUploadScreen() {
             <MaterialIcons name="check-circle" size={36} color="#4ADE80" />
             <Text style={[styles.docTypeTitle, { color: colors.foreground }]}>Transkription abgeschlossen!</Text>
             <Text style={[styles.docTypeSubtitle, { color: colors.muted }]}>
-              Welches Dokument soll erstellt werden?
+              {queueSummary.failedCount > 0
+                ? `${queueSummary.successfulCount} von ${queueSummary.totalCount} Videos erfolgreich. ${queueSummary.failedCount} fehlgeschlagen. Welches Dokument soll aus den erfolgreichen Videos erstellt werden?`
+                : "Welches Dokument soll erstellt werden?"}
             </Text>
 
             <View style={styles.docTypeList}>
@@ -738,12 +826,18 @@ export default function VideoUploadScreen() {
         {step === "error" && (
           <View style={styles.errorSection}>
             <MaterialIcons name="error-outline" size={40} color="#F87171" />
-            <Text style={[styles.errorTitle, { color: colors.foreground }]}>Verarbeitung fehlgeschlagen</Text>
+            <Text style={[styles.errorTitle, { color: colors.foreground }]}>Kein Video verarbeitet</Text>
             <Text style={[styles.errorMessage, { color: colors.muted }]}>{errorMessage}</Text>
-            <Pressable onPress={reset} style={({ pressed }) => [styles.retryButton, { opacity: pressed ? 0.8 : 1 }]}>
-              <MaterialIcons name="refresh" size={18} color="#5DADE2" />
-              <Text style={styles.retryButtonText}>Erneut versuchen</Text>
-            </Pressable>
+            <View style={styles.errorActions}>
+              <Pressable onPress={retryFailedVideos} style={({ pressed }) => [styles.retryButton, { opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="refresh" size={18} color="#07131F" />
+                <Text style={styles.retryButtonText}>Erneut verarbeiten</Text>
+              </Pressable>
+              <Pressable onPress={reset} style={({ pressed }) => [styles.newSelectionButton, { opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="video-library" size={18} color="#5DADE2" />
+                <Text style={styles.newSelectionButtonText}>Neue Auswahl</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -753,7 +847,9 @@ export default function VideoUploadScreen() {
             <MaterialIcons name="check-circle" size={48} color="#4ADE80" />
             <Text style={[styles.doneTitle, { color: colors.foreground }]}>Protokoll erstellt!</Text>
             <Text style={[styles.doneText, { color: colors.muted }]}>
-              {queue.filter(i => i.status === "done").length} {queue.filter(i => i.status === "done").length === 1 ? "Video" : "Videos"} verarbeitet als {DOC_TYPES.find(d => d.key === selectedDocType)?.label}.
+              {createdFailedCount > 0
+                ? `${createdVideoCount} von ${createdVideoCount + createdFailedCount} Videos verarbeitet als ${DOC_TYPES.find(d => d.key === selectedDocType)?.label}.`
+                : `${createdVideoCount} ${createdVideoCount === 1 ? "Video" : "Videos"} verarbeitet als ${DOC_TYPES.find(d => d.key === selectedDocType)?.label}.`}
             </Text>
 
             {transcription.length > 0 && (
@@ -766,13 +862,15 @@ export default function VideoUploadScreen() {
             )}
 
             <View style={styles.doneActions}>
-              <Pressable
-                onPress={() => router.push("/(tabs)/protocols" as any)}
-                style={({ pressed }) => [styles.doneButton, styles.donePrimaryButton, { opacity: pressed ? 0.85 : 1 }]}
-              >
-                <MaterialIcons name="description" size={18} color="#fff" />
-                <Text style={styles.donePrimaryText}>Protokoll anzeigen</Text>
-              </Pressable>
+              {createdProtocolId && (
+                <Pressable
+                  onPress={() => router.push(`/protocol-detail?id=${createdProtocolId}` as any)}
+                  style={({ pressed }) => [styles.doneButton, styles.donePrimaryButton, { opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <MaterialIcons name="description" size={18} color="#fff" />
+                  <Text style={styles.donePrimaryText}>Protokoll anzeigen</Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={reset}
                 style={({ pressed }) => [styles.doneButton, styles.doneSecondaryButton, { opacity: pressed ? 0.85 : 1 }]}
@@ -837,8 +935,11 @@ const styles = StyleSheet.create({
   errorSection: { alignItems: "center", gap: 12, paddingVertical: 40 },
   errorTitle: { fontSize: 18, fontWeight: "700" },
   errorMessage: { fontSize: 14, textAlign: "center", maxWidth: 300 },
-  retryButton: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderWidth: 1, borderColor: "#1E3A5F", marginTop: 8 },
-  retryButtonText: { fontSize: 14, fontWeight: "600", color: "#5DADE2" },
+  errorActions: { width: "100%", gap: 10, marginTop: 8 },
+  retryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "#5DADE2" },
+  retryButtonText: { fontSize: 14, fontWeight: "700", color: "#07131F" },
+  newSelectionButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 14, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F1E30" },
+  newSelectionButtonText: { fontSize: 14, fontWeight: "700", color: "#5DADE2" },
   doneSection: { alignItems: "center", gap: 12, paddingVertical: 24 },
   doneTitle: { fontSize: 20, fontWeight: "700" },
   doneText: { fontSize: 14, textAlign: "center", maxWidth: 300 },

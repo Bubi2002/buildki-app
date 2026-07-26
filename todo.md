@@ -1089,3 +1089,15 @@
 - [x] P0-7: Rechtstexte vereinheitlicht (immobau-ka GmbH), Platzhalter entfernt, vollständiges Impressum
 - [x] P0-8: Console-Logs bereinigt (112 entfernt, nur Auth-Debug-Logs in _core beibehalten)
 - [x] P0-9: Tests repariert (7 passed, 1 skipped, 0 failed)
+
+## P0 Video-Import: falscher Erfolg bei null Videos (2026-07-26)
+
+- [x] Den Nutzerablauf reproduzieren, bei dem „Protokoll erstellt“ und zugleich „0 Videos verarbeitet“ erscheint.
+- [x] Datenfluss von Videoauswahl, Verarbeitung, Ergebnisaggregation und Navigation zum Erfolgszustand nachvollziehen.
+- [x] Erfolgsansicht nur zulassen, wenn mindestens ein Video erfolgreich verarbeitet und ein gültiges Protokoll erzeugt wurde.
+- [x] Zähler aus tatsächlich erfolgreichen Verarbeitungsergebnissen statt aus einem vorzeitig geleerten oder abweichenden Array ableiten.
+- [x] Für null erfolgreiche Videos einen verständlichen Fehlerzustand mit Wiederholen- und Zurück-zur-Auswahl-Aktion anzeigen.
+- [x] „Protokoll anzeigen“ bei fehlender Protokoll-ID beziehungsweise null erfolgreichen Videos ausblenden oder deaktivieren.
+- [x] Regressionstests für vollständigen Erfolg, Teilerfolg, vollständigen Fehler und leere Auswahl ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen.
+- [x] Fix und Prüfnachweise dokumentieren; keinen Build vor abgeschlossener Credential-Rotation starten.
