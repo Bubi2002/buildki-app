@@ -17,13 +17,24 @@
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true,
       "environment": "preview",
       "ios": {
         "buildConfiguration": "Release"
       },
       "android": {
         "buildType": "apk"
+      }
+    },
+    "releaseArtifact": {
+      "distribution": "store",
+      "autoIncrement": false,
+      "environment": "production",
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_ENV": "testflight"
       }
     },
     "testflight": {
