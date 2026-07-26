@@ -1101,3 +1101,15 @@
 - [x] Regressionstests für vollständigen Erfolg, Teilerfolg, vollständigen Fehler und leere Auswahl ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen.
 - [x] Fix und Prüfnachweise dokumentieren; keinen Build vor abgeschlossener Credential-Rotation starten.
+
+## Release 1.0.44 – interner iOS-Build
+
+- [x] Sämtliche uncommittierten Dateien der abgebrochenen E-Mail-Code-Untersuchung eindeutig inventarisieren und aus dem Release-Arbeitsbaum ausschließen.
+- [x] Den geprüften Stand aus den vorhandenen lokalen Commits einschließlich P0-Video-Import-Fix als Releasebasis herstellen.
+- [x] Aktuelle App-Version, iOS-Buildnummer, Android-Versioncode und EAS-Profile prüfen.
+- [x] Marketingversion konsistent auf `1.0.44` setzen und die nächste freie interne iOS-Buildnummer `11` festlegen.
+- [x] Releasekonfiguration auf verbotene TestFlight-/Store-Aktionen, unerwartete Secrets und ungewollte Funktionsänderungen prüfen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor auf exakt dem Buildstand ausführen.
+- [x] Versionsänderungen und Release-Nachweis kontrolliert committen, ohne Push.
+- [ ] Internen iOS-EAS-Build auslösen, ohne TestFlight-Upload oder App-Store-Einreichung.
+- [ ] Build-ID, Artefaktstatus und Prüfnachweise dokumentieren und in Dropbox archivieren.

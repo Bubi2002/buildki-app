@@ -17,6 +17,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "autoIncrement": true,
       "environment": "preview",
       "ios": {
         "buildConfiguration": "Release"
