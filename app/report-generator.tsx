@@ -25,6 +25,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
@@ -33,14 +34,29 @@ import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { trpc } from "@/lib/trpc";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import { getDefects } from "@/lib/defect-store";
+import {
+  formatEvidenceTimecode,
+  getEvidence,
+  isEvidenceDocumentReady,
+  saveEvidenceBatch,
+  type EvidenceItem,
+} from "@/lib/evidence-store";
+import {
+  createDocumentEvidenceSelection,
+  formatMeasurementForDocument,
+  type DocumentEvidenceSelection,
+} from "@/lib/document-evidence";
 
 type Step = "select" | "configure" | "generating" | "preview" | "edit";
 
 type PhotoRef = {
-  uri: string;
+  evidenceId: string;
   description: string;
   room?: string;
   trade?: string;
+  sourceLabel: string;
+  videoTimecode?: string;
+  measurements: string[];
 };
 
 export default function ReportGeneratorScreen() {
@@ -73,20 +89,58 @@ export default function ReportGeneratorScreen() {
   const [includeDefects, setIncludeDefects] = useState(true);
   const [includeAttendance, setIncludeAttendance] = useState(true);
   const [includePhotos, setIncludePhotos] = useState(true);
+  const [availableEvidence, setAvailableEvidence] = useState<EvidenceItem[]>([]);
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
+  const [documentEvidence, setDocumentEvidence] = useState<DocumentEvidenceSelection | null>(null);
 
   // tRPC mutation for report generation
   const generateReportMutation = trpc.analysis.generateReport.useMutation();
 
-  // Load floors/rooms for the project
+  async function loadProjectContext(projectId: string) {
+    try {
+      const [structure, defects] = await Promise.all([
+        getProjectStructure(projectId),
+        getDefects(projectId),
+      ]);
+      setProjectFloors(structure.floors);
+      setProjectRooms(structure.rooms);
+
+      await saveEvidenceBatch(
+        defects.flatMap((defect) =>
+          (defect.photos || []).map((uri, index) => ({
+            projectId,
+            defectId: defect.id,
+            protocolId: defect.protocolId,
+            sourceType: "photo" as const,
+            originalUri: uri,
+            findingText: defect.title,
+            room: defect.room || defect.location,
+            trade: defect.gewerk || defect.category,
+            capturedAt: defect.createdAt,
+            reviewStatus: "approved" as const,
+            legacySourceKey: `defect:${defect.id}:photo:${index}:${uri}`,
+          })),
+        ),
+      );
+      const readyEvidence = (await getEvidence(projectId))
+        .filter(isEvidenceDocumentReady)
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      setAvailableEvidence(readyEvidence);
+      setSelectedEvidenceIds(readyEvidence.slice(0, 20).map((item) => item.id));
+    } catch {
+      setProjectFloors([]);
+      setProjectRooms([]);
+      setAvailableEvidence([]);
+      setSelectedEvidenceIds([]);
+    }
+  }
+
+  // Load document context without synchronously updating state inside the effect.
   React.useEffect(() => {
     if (!params.projectId) return;
-    (async () => {
-      try {
-        const structure = await getProjectStructure(params.projectId!);
-        setProjectFloors(structure.floors);
-        setProjectRooms(structure.rooms);
-      } catch {}
-    })();
+    queueMicrotask(() => {
+      void loadProjectContext(params.projectId as string);
+    });
   }, [params.projectId]);
 
   /**
@@ -172,32 +226,34 @@ export default function ReportGeneratorScreen() {
         } catch {}
       }
 
-      // Step 3: Gather photo references
-      setGenerationStep("Fotodokumentation vorbereiten...");
+      // Step 3: Freeze the user-reviewed evidence selection for this document.
+      setGenerationStep("Belegauswahl vorbereiten...");
       setGenerationProgress(40);
 
       let photosJson: string | undefined;
-      if (includePhotos && params.projectId) {
+      let frozenEvidence: DocumentEvidenceSelection | null = null;
+      if (includePhotos && selectedEvidenceIds.length > 0) {
         try {
-          // Get photos from defects (Single Source of Truth)
-          const defects = await getDefects(params.projectId);
-          const photoRefs: PhotoRef[] = [];
-          for (const d of defects) {
-            if (d.photos?.length > 0) {
-              for (const photo of d.photos.slice(0, 2)) {
-                photoRefs.push({
-                  uri: photo,
-                  description: `${d.positionCode ? `[${d.positionCode}] ` : ""}${d.title}`,
-                  room: d.room || d.location,
-                  trade: d.gewerk || d.category,
-                });
-              }
-            }
-          }
+          frozenEvidence = await createDocumentEvidenceSelection(selectedEvidenceIds);
+          setDocumentEvidence(frozenEvidence);
+          const photoRefs: PhotoRef[] = frozenEvidence.snapshots.map((item) => ({
+            evidenceId: item.evidenceId,
+            description: item.findingText || "Visueller Beleg ohne Befundtext",
+            room: item.room,
+            trade: item.trade,
+            sourceLabel: item.sourceLabel,
+            videoTimecode: item.videoTimecode,
+            measurements: item.measurements.map(formatMeasurementForDocument),
+          }));
           if (photoRefs.length > 0) {
-            photosJson = JSON.stringify(photoRefs.slice(0, 20));
+            photosJson = JSON.stringify(photoRefs);
           }
-        } catch {}
+        } catch {
+          frozenEvidence = null;
+          setDocumentEvidence(null);
+        }
+      } else {
+        setDocumentEvidence(null);
       }
 
       // Step 4: Call server LLM for professional report
@@ -214,9 +270,14 @@ export default function ReportGeneratorScreen() {
         defectsJson,
         photosJson,
         attendeesJson,
-        additionalContext: params.protocolId
-          ? `Protokoll-ID: ${params.protocolId}`
-          : undefined,
+        additionalContext: [
+          params.protocolId ? `Protokoll-ID: ${params.protocolId}` : null,
+          photosJson
+            ? "Visuelle Belege dürfen ausschließlich über die bereitgestellten evidenceId-Werte referenziert werden. Keine freie oder geschätzte Bildzuordnung erzeugen."
+            : null,
+        ]
+          .filter(Boolean)
+          .join("\n") || undefined,
       });
 
       setGenerationStep("Formatierung abschließen...");
@@ -264,6 +325,36 @@ export default function ReportGeneratorScreen() {
     return report;
   };
 
+  const exportReportPdf = async () => {
+    if (!selectedType || !reportContent) return;
+    try {
+      const [{ generateProtocolPdf }, Sharing] = await Promise.all([
+        import("@/lib/pdf-generator"),
+        import("expo-sharing"),
+      ]);
+      const config = REPORT_TYPES.find((item) => item.id === selectedType);
+      const pdfUri = await generateProtocolPdf({
+        title: reportProjekt || config?.label || "Bericht",
+        projectName: reportProjekt || undefined,
+        protocol: reportContent,
+        templateId: selectedType,
+        templateName: config?.label || selectedType,
+        duration: 0,
+        createdAt: new Date().toISOString(),
+        evidenceIds: documentEvidence?.evidenceIds || [],
+        evidenceSnapshots: documentEvidence?.snapshots || [],
+      });
+      if (pdfUri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(pdfUri, {
+          mimeType: "application/pdf",
+          dialogTitle: `${reportProjekt || config?.label || "Bericht"} teilen`,
+        });
+      }
+    } catch {
+      Alert.alert("Fehler", "Der Bericht konnte nicht als PDF exportiert werden.");
+    }
+  };
+
   const saveReport = async () => {
     // Save to AsyncStorage for later PDF export
     try {
@@ -274,6 +365,9 @@ export default function ReportGeneratorScreen() {
         projectId: params.projectId,
         projectName: reportProjekt,
         datum: reportDatum,
+        evidenceIds: documentEvidence?.evidenceIds || [],
+        evidenceSnapshots: documentEvidence?.snapshots || [],
+        evidenceSelectionCreatedAt: documentEvidence?.createdAt,
         createdAt: new Date().toISOString(),
       };
       const existing = await AsyncStorage.getItem("saved_reports");
@@ -285,13 +379,21 @@ export default function ReportGeneratorScreen() {
         "Bericht gespeichert",
         "Der Bericht wurde erfolgreich gespeichert und kann als PDF exportiert werden.",
         [
-          { text: "PDF exportieren", onPress: () => router.push("/export" as any) },
+          { text: "PDF exportieren", onPress: () => { void exportReportPdf(); } },
           { text: "Fertig", onPress: () => router.back() },
         ]
       );
     } catch {
       Alert.alert("Fehler", "Bericht konnte nicht gespeichert werden.");
     }
+  };
+
+  const toggleEvidence = (evidenceId: string) => {
+    setSelectedEvidenceIds((current) =>
+      current.includes(evidenceId)
+        ? current.filter((id) => id !== evidenceId)
+        : [...current, evidenceId],
+    );
   };
 
   // ─── Step: Select Report Type ─────────────────────────────────────────────────
@@ -455,11 +557,97 @@ export default function ReportGeneratorScreen() {
                 color={includePhotos ? config.color : colors.muted}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Fotodokumentation</Text>
-                <Text style={[styles.optionDesc, { color: colors.muted }]}>Foto-Referenzen an passenden Stellen</Text>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Bild-, Video- und Messbelege</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>Nur ausdrücklich ausgewählte und geprüfte Belege übernehmen</Text>
               </View>
             </Pressable>
           </View>
+
+          {includePhotos && (
+            <View style={styles.evidenceSection}>
+              <View style={styles.evidenceHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>Belege auswählen</Text>
+                  <Text style={[styles.optionDesc, { color: colors.muted }]}>
+                    {selectedEvidenceIds.length} von {availableEvidence.length} Belegen ausgewählt
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() =>
+                    setSelectedEvidenceIds(
+                      selectedEvidenceIds.length === availableEvidence.length
+                        ? []
+                        : availableEvidence.map((item) => item.id),
+                    )
+                  }
+                  style={[styles.evidenceAction, { borderColor: colors.border }]}
+                >
+                  <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>
+                    {selectedEvidenceIds.length === availableEvidence.length ? "Keine" : "Alle"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {availableEvidence.length === 0 ? (
+                <View style={[styles.evidenceEmpty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <MaterialIcons name="image-not-supported" size={24} color={colors.muted} />
+                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>Noch keine freigegebenen Belege</Text>
+                  <Text style={[styles.optionDesc, { color: colors.muted, textAlign: "center" }]}>
+                    Fotos, Videostandbilder und Messungen werden nach Prüfung hier dokumentübergreifend angeboten.
+                  </Text>
+                  <Pressable onPress={() => router.push("/measure" as any)} style={[styles.evidenceAction, { borderColor: config.color }]}>
+                    <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>Messen öffnen</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.evidenceGrid}>
+                  {availableEvidence.map((item) => {
+                    const selected = selectedEvidenceIds.includes(item.id);
+                    const timecode = formatEvidenceTimecode(item.videoTimeSeconds);
+                    return (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => toggleEvidence(item.id)}
+                        style={[
+                          styles.evidenceCard,
+                          {
+                            borderColor: selected ? config.color : colors.border,
+                            backgroundColor: colors.surface,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={{ uri: item.previewUri || item.originalUri }}
+                          style={styles.evidenceImage}
+                          contentFit="cover"
+                        />
+                        <View style={[styles.evidenceCheck, { backgroundColor: selected ? config.color : "rgba(0,0,0,0.55)" }]}>
+                          <MaterialIcons name={selected ? "check" : "add"} size={15} color="#FFFFFF" />
+                        </View>
+                        <Text style={[styles.evidenceFinding, { color: colors.foreground }]} numberOfLines={3}>
+                          {item.findingText || "Beleg ohne Befundtext"}
+                        </Text>
+                        <View style={styles.evidenceMetaRow}>
+                          <MaterialIcons
+                            name={item.sourceType === "video_frame" ? "videocam" : item.measurements?.length ? "straighten" : "photo"}
+                            size={13}
+                            color={colors.muted}
+                          />
+                          <Text style={[styles.evidenceMeta, { color: colors.muted }]} numberOfLines={1}>
+                            {item.sourceType === "video_frame"
+                              ? `Video${timecode ? ` · ${timecode}` : ""}`
+                              : item.measurements?.length
+                                ? `${item.measurements.length} Messung${item.measurements.length === 1 ? "" : "en"}`
+                                : "Foto"}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Transcription Input */}
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
@@ -797,6 +985,69 @@ const styles = StyleSheet.create({
   optionDesc: {
     fontSize: 11,
     marginTop: 1,
+  },
+  evidenceSection: {
+    marginTop: 14,
+  },
+  evidenceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  evidenceAction: {
+    minHeight: 34,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  evidenceEmpty: {
+    borderWidth: 1,
+    padding: 16,
+    alignItems: "center",
+    gap: 6,
+  },
+  evidenceGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  evidenceCard: {
+    width: "48%" as any,
+    borderWidth: 2,
+    padding: 7,
+    position: "relative",
+  },
+  evidenceImage: {
+    width: "100%",
+    height: 104,
+    backgroundColor: "#111827",
+  },
+  evidenceCheck: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  evidenceFinding: {
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 16,
+    marginTop: 7,
+  },
+  evidenceMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 5,
+  },
+  evidenceMeta: {
+    flex: 1,
+    fontSize: 10,
   },
   sectionsPreview: {
     borderWidth: 1,

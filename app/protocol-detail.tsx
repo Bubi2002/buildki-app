@@ -41,6 +41,7 @@ import { getSpeakerName, updateSpeakerName } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
 import { sendActionItemsEmail } from "@/lib/email-actions";
 import { useTranslation } from "@/lib/language-provider";
+import { migrateLegacyProtocolPhotos } from "@/lib/evidence-store";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 function getLanguages(t: (key: any) => string) { return [
@@ -76,6 +77,17 @@ type Protocol = {
   templateName?: string;
   templateId?: string;
   photos?: string[];
+  photoTimestamps?: number[];
+  photoCaptions?: string[];
+  evidenceIds?: string[];
+  videoSources?: {
+    uri: string;
+    name: string;
+    mimeType: string;
+    duration?: number;
+    source: "gallery" | "camera" | "file";
+    transcriptionSegments?: { start: number; end: number; text: string }[];
+  }[];
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
@@ -107,6 +119,7 @@ type GeneratedVersion = {
   text: string;
   createdAt: string;
   todos?: TodoItem[];
+  evidenceIds?: string[];
 };
 
 export default function ProtocolDetailScreen() {
@@ -242,7 +255,23 @@ export default function ProtocolDetailScreen() {
       const protocols = JSON.parse(
         (await AsyncStorage.getItem("protocols")) || "[]"
       );
-      const found = protocols.find((p: Protocol) => p.id === id);
+      let found = protocols.find((p: Protocol) => p.id === id);
+      if (found?.photos?.length && !found.evidenceIds?.length) {
+        const migrated = await migrateLegacyProtocolPhotos({
+          projectId: found.projectId || "default",
+          protocolId: found.id,
+          photos: found.photos,
+          photoTimestamps: found.photoTimestamps,
+          photoCaptions: found.photoCaptions,
+          capturedAt: found.createdAt,
+        });
+        found = { ...found, evidenceIds: migrated.map((item) => item.id) };
+        const protocolIndex = protocols.findIndex((item: Protocol) => item.id === found?.id);
+        if (protocolIndex >= 0) {
+          protocols[protocolIndex] = found;
+          await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        }
+      }
       setProtocol(found || null);
       if (found?.todos) {
         setTodos(found.todos);
@@ -796,6 +825,7 @@ export default function ProtocolDetailScreen() {
         templateName: result.templateName,
         text: result.protocol,
         todos: versionTodos,
+        evidenceIds: [...(protocol.evidenceIds || [])],
         createdAt: new Date().toISOString(),
       };
       const updatedVersions = [...versions, newVersion];
@@ -1053,8 +1083,9 @@ export default function ProtocolDetailScreen() {
         title: protocol.title,
         protocol: pdfText,
         templateName: pdfTemplateName,
-        templateId: protocol.templateId,
+        templateId: activeVersion?.templateId || protocol.templateId,
         photos: protocol.photos,
+        evidenceIds: activeVersion?.evidenceIds || protocol.evidenceIds,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
         transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
         photoCaptions: (protocol as any).photoCaptions || undefined,
@@ -1076,8 +1107,9 @@ export default function ProtocolDetailScreen() {
           title: protocol.title,
           protocol: pdfText,
           templateName: pdfTemplateName,
-          templateId: protocol.templateId,
+          templateId: activeVersion?.templateId || protocol.templateId,
           photos: protocol.photos,
+          evidenceIds: activeVersion?.evidenceIds || protocol.evidenceIds,
           photoTimestamps: (protocol as any).photoTimestamps || undefined,
           transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
           photoCaptions: (protocol as any).photoCaptions || undefined,
@@ -1236,13 +1268,15 @@ export default function ProtocolDetailScreen() {
 
     setIsSendingWhatsApp(true);
     try {
-      // Generate PDF first
-            const pdfUri = await generateProtocolPdf({
+      // Generate the currently selected document version with its stable evidence selection.
+      const activeVersion = activeVersionId ? versions.find((version) => version.id === activeVersionId) : null;
+      const pdfUri = await generateProtocolPdf({
         title: protocol.title,
-        protocol: protocol.protocol,
-        templateName: protocol.templateName,
-        templateId: protocol.templateId,
+        protocol: activeVersion?.text || protocol.protocol,
+        templateName: activeVersion?.templateName || protocol.templateName,
+        templateId: activeVersion?.templateId || protocol.templateId,
         photos: protocol.photos,
+        evidenceIds: activeVersion?.evidenceIds || protocol.evidenceIds,
         photoTimestamps: (protocol as any).photoTimestamps || undefined,
         transcriptionSegments: (protocol as any).transcriptionSegments || undefined,
         photoCaptions: (protocol as any).photoCaptions || undefined,
@@ -2916,6 +2950,30 @@ export default function ProtocolDetailScreen() {
               </View>
               <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{t('generiere_eine_neue_version')}</Text>
               <ScrollView showsVerticalScrollIndicator={false}>
+                <Pressable
+                  onPress={() => {
+                    setShowRegenerateModal(false);
+                    router.push({
+                      pathname: "/evidence-manager",
+                      params: {
+                        protocolId: protocol?.id || "",
+                        projectId: protocol?.projectId || "",
+                      },
+                    } as any);
+                  }}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <View style={{ width: 38, height: 38, backgroundColor: "#00ACC118", alignItems: "center", justifyContent: "center" }}>
+                    <MaterialIcons name="collections" size={21} color="#00ACC1" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: colors.foreground }}>Belege für alle Varianten</Text>
+                    <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+                      {(protocol?.evidenceIds || []).length} ausgewählt · Fotos, Videostandbilder und Messungen
+                    </Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                </Pressable>
                 {/* Auto-Detect Button */}
                 <Pressable
                   onPress={detectDocumentType}

@@ -4,6 +4,11 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProtocolText } from "@/lib/protocol-compat";
+import {
+  createDocumentEvidenceSelection,
+  formatMeasurementForDocument,
+  type DocumentEvidenceSnapshot,
+} from "@/lib/document-evidence";
 
 /**
  * Helper: wrap a promise with a timeout to prevent hanging
@@ -62,6 +67,8 @@ type PdfProtocol = {
   photoTimestamps?: number[]; // seconds since recording start for each photo
   transcriptionSegments?: { start: number; end: number; text: string }[]; // Whisper segments with timing
   photoCaptions?: string[]; // pre-computed captions per photo (fallback if segments unavailable)
+  evidenceIds?: string[];
+  evidenceSnapshots?: DocumentEvidenceSnapshot[];
   todos?: TodoItem[];
   duration: number;
   createdAt: string;
@@ -94,6 +101,40 @@ type PdfProtocol = {
     completionRate: number;
   }[];
 };
+
+function escapeHtml(value?: string): string {
+  return (value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatEvidenceSource(snapshot: DocumentEvidenceSnapshot): string {
+  const parts = [snapshot.sourceLabel];
+  if (snapshot.videoTimecode) parts.push(`Zeitcode ${snapshot.videoTimecode}`);
+  if (snapshot.sourceFilename) parts.push(snapshot.sourceFilename);
+  return parts.filter(Boolean).join(" · ");
+}
+
+function formatMeasurementMethod(method: DocumentEvidenceSnapshot["measurements"][number]["method"]): string {
+  const labels = {
+    manual_on_site: "Vor-Ort-Messung",
+    reference_scale: "Kalibriertes Referenzmaß",
+    ar: "AR-Messung",
+    lidar: "LiDAR-Messung",
+    plan_scale: "Planmaßstab",
+    image_estimate: "Bildbasierte Schätzung",
+  } as const;
+  return labels[method];
+}
+
+async function resolveEvidenceSnapshots(protocol: PdfProtocol): Promise<DocumentEvidenceSnapshot[]> {
+  if (protocol.evidenceSnapshots?.length) return protocol.evidenceSnapshots;
+  if (!protocol.evidenceIds?.length) return [];
+  return (await createDocumentEvidenceSelection(protocol.evidenceIds)).snapshots;
+}
 
 type CompanySettings = {
   companyName?: string;
@@ -163,10 +204,11 @@ interface LayoutOptions {
   photoSize?: "klein" | "mittel" | "gro\u00df";
 }
 
-function generatePdfHtml(
+export function generatePdfHtml(
   protocol: PdfProtocol,
   company: CompanySettings,
   photoDataUris: string[],
+  evidenceDataUris: string[],
   planImageBase64?: string | null,
   accentColor?: string,
   pdfTemplate: PdfTemplate = "standard",
@@ -203,6 +245,53 @@ function generatePdfHtml(
   const durationMins = Math.floor(protocol.duration / 60);
   const durationSecs = protocol.duration % 60;
   const durationStr = `${durationMins}:${durationSecs.toString().padStart(2, "0")} Min.`;
+  const evidenceSnapshots = protocol.evidenceSnapshots || [];
+
+  const evidenceHtml = evidenceSnapshots.length > 0
+    ? `
+      <section class="document-chapter evidence-section">
+        <h2>Visuelle Belege und Messungen</h2>
+        ${evidenceSnapshots
+          .map((snapshot, index) => {
+            const dataUri = evidenceDataUris[index];
+            const finding = escapeHtml(snapshot.findingText || "Beleg ohne Befundtext");
+            const source = escapeHtml(formatEvidenceSource(snapshot));
+            const measurements = snapshot.measurements || [];
+            if (!dataUri) {
+              return `
+                <article class="evidence-block evidence-block-missing">
+                  <p class="evidence-finding"><strong>Abbildung ${index + 1}: Visueller Nachweis konnte nicht geladen werden.</strong></p>
+                  <p class="evidence-source"><strong>${source}</strong></p>
+                </article>`;
+            }
+            const wmContent = watermarkText || `${date}${protocol.projectName ? ` | ${protocol.projectName}` : ""}`;
+            const watermarkOverlay = photoWatermark
+              ? `<div class="evidence-watermark"><strong>${escapeHtml(wmContent)}</strong></div>`
+              : "";
+            const measurementsHtml = measurements.length > 0
+              ? `<div class="evidence-measurements">
+                  ${measurements
+                    .map((measurement) => `
+                      <p><strong>Messung: ${escapeHtml(formatMeasurementForDocument(measurement))}</strong></p>
+                      <p><strong>Methode: ${escapeHtml(formatMeasurementMethod(measurement.method))}${measurement.note ? ` · ${escapeHtml(measurement.note)}` : ""}</strong></p>`)
+                    .join("")}
+                </div>`
+              : "";
+            return `
+              <article class="evidence-block" data-evidence-id="${escapeHtml(snapshot.evidenceId)}">
+                <p class="evidence-finding"><strong>${finding}</strong></p>
+                <div class="evidence-image-wrap">
+                  <img src="${dataUri}" class="evidence-image" />
+                  ${watermarkOverlay}
+                </div>
+                <p class="evidence-number"><strong>Abbildung ${index + 1}</strong></p>
+                <p class="evidence-source"><strong>${source}</strong></p>
+                ${measurementsHtml}
+              </article>`;
+          })
+          .join("")}
+      </section>`
+    : "";
 
   const logoHtml = company.logoBase64
     ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 180px; object-fit: contain; display: block;" />`
@@ -395,7 +484,7 @@ function generatePdfHtml(
         return `<h3 style="margin-top: 18px; margin-bottom: 8px; color: #111; font-size: 14px; font-weight: 600;">${trimmed.substring(3)}</h3>`;
       }
       if (trimmed.startsWith("# ")) {
-        return `<div style="margin-top: 28px; margin-bottom: 14px; border-bottom: 2px solid #333; padding-bottom: 6px;"><h2 style="margin: 0; color: #111; font-size: 18px; font-weight: 700;">${trimmed.substring(2)}</h2></div>`;
+        return `<section class="document-chapter"><h2>${trimmed.substring(2)}</h2></section>`;
       }
       if (trimmed === "") return "<br/>";
       // Handle **bold** inline
@@ -435,7 +524,7 @@ function generatePdfHtml(
     .filter(i => !inlinePlacedPhotos.has(i)); // exclude those already inline
 
   const photosHtml =
-    remainingPhotoIndices.length > 0
+    evidenceSnapshots.length === 0 && remainingPhotoIndices.length > 0
       ? `
     <div style="page-break-before: auto; margin-top: 24px;">
       <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
@@ -542,6 +631,78 @@ function generatePdfHtml(
     }
     .section-block {
       page-break-inside: avoid;
+    }
+    .document-chapter {
+      break-before: page;
+      page-break-before: always;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    .document-chapter > h2 {
+      margin: 0 0 14px 0;
+      padding-bottom: 7px;
+      border-bottom: 2px solid #333;
+      color: #111;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .evidence-section {
+      break-before: page;
+      page-break-before: always;
+    }
+    .evidence-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin: 0 0 20px 0;
+      padding: 12px;
+      border: 1px solid #d8dde3;
+      background: #fff;
+    }
+    .evidence-block-missing {
+      border-color: #b91c1c;
+      background: #fff5f5;
+    }
+    .evidence-finding {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #111;
+    }
+    .evidence-image-wrap {
+      position: relative;
+      width: 100%;
+      text-align: center;
+    }
+    .evidence-image {
+      display: block;
+      width: 100%;
+      max-width: 520px;
+      max-height: 360px;
+      margin: 0 auto;
+      object-fit: contain;
+      page-break-inside: avoid;
+    }
+    .evidence-watermark {
+      position: absolute;
+      left: 8px;
+      bottom: 8px;
+      padding: 3px 7px;
+      background: rgba(0,0,0,0.62);
+      color: #fff;
+      font-size: 8px;
+    }
+    .evidence-number,
+    .evidence-source,
+    .evidence-measurements p {
+      margin: 5px 0 0 0;
+      color: #333;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .evidence-measurements {
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid #e5e7eb;
     }
     tr {
       page-break-inside: avoid;
@@ -676,6 +837,8 @@ function generatePdfHtml(
       margin: 10px 0;
     }
     .gutachten-chapter {
+      break-before: page;
+      page-break-before: always;
       font-size: 16px;
       font-weight: 700;
       color: #1A237E;
@@ -692,8 +855,8 @@ function generatePdfHtml(
     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
       <div>
         ${logoHtml}
-        <h1 style="font-size: 24px; font-weight: 800; color: #1A237E; margin: 8px 0 4px 0;">Gutachterliche Bewertung</h1>
-        <p style="font-size: 11px; color: #666; margin: 0;">Erstellt mit BuildKI</p>
+        <h1 style="font-size: 24px; font-weight: 800; color: #1A237E; margin: 8px 0 4px 0;">${escapeHtml(protocol.projectName || "Projekt")}</h1>
+        <p style="font-size: 11px; color: #666; margin: 0;"><strong>${escapeHtml(protocol.templateName || "Gutachterliche Bewertung")}</strong></p>
       </div>
       <div style="text-align: right;">
         ${companyInfoHtml}
@@ -704,8 +867,8 @@ function generatePdfHtml(
   <div class="header">
     <div class="header-left">
       ${logoHtml}
-      <h1 class="doc-title">${protocol.templateName || "Protokoll"}</h1>
-      <p class="doc-subtitle">Erstellt mit BuildKI</p>
+      <h1 class="doc-title">${escapeHtml(protocol.projectName || "Projekt")}</h1>
+      <p class="doc-subtitle"><strong>${escapeHtml(protocol.templateName || "Protokoll")}</strong></p>
     </div>
     <div class="header-right">
       ${companyInfoHtml}
@@ -733,8 +896,8 @@ function generatePdfHtml(
       <td>${protocol.templateName || "Freies Protokoll"}</td>
     </tr>
     ${
-      photoDataUris.length > 0
-        ? `<tr><td>Anh\u00e4nge</td><td>${photoDataUris.length} Foto${photoDataUris.length !== 1 ? "s" : ""}</td></tr>`
+      evidenceSnapshots.length > 0 || photoDataUris.length > 0
+        ? `<tr><td>Anh\u00e4nge</td><td>${evidenceSnapshots.length || photoDataUris.length} Beleg${(evidenceSnapshots.length || photoDataUris.length) !== 1 ? "e" : ""}</td></tr>`
         : ""
     }
     ${
@@ -777,6 +940,8 @@ function generatePdfHtml(
   <div class="content">
     ${protocolHtml}
   </div>
+
+  ${evidenceHtml}
 
   ${planHtml}
 
@@ -852,14 +1017,19 @@ function generatePdfHtml(
  */
 export async function generateProtocolHtmlPreview(protocol: PdfProtocol): Promise<string> {
   const company = await loadCompanySettings();
+  const evidenceSnapshots = await resolveEvidenceSnapshots(protocol);
+  const resolvedProtocol: PdfProtocol = { ...protocol, evidenceSnapshots };
   const photoDataUris: string[] = [];
   if (protocol.photos && protocol.photos.length > 0) {
     for (const photoUri of protocol.photos) {
       const dataUri = await fileToBase64DataUri(photoUri);
-      if (dataUri) {
-        photoDataUris.push(dataUri);
-      }
+      photoDataUris.push(dataUri || "");
     }
+  }
+  const evidenceDataUris: string[] = [];
+  for (const snapshot of evidenceSnapshots) {
+    const dataUri = await fileToBase64DataUri(snapshot.mediaUri);
+    evidenceDataUris.push(dataUri || "");
   }
   let planImageBase64: string | null = null;
   if (protocol.planData?.planImageUri) {
@@ -875,12 +1045,14 @@ export async function generateProtocolHtmlPreview(protocol: PdfProtocol): Promis
       if (branding.pdfTemplate) pdfTemplate = branding.pdfTemplate;
     }
   } catch {}
-  return generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate);
+  return generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate);
 }
 
 export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string> {
   // Load company settings
   const company = await loadCompanySettings();
+  const evidenceSnapshots = await resolveEvidenceSnapshots(protocol);
+  const resolvedProtocol: PdfProtocol = { ...protocol, evidenceSnapshots };
 
   // Convert photos to base64 data URIs
   const photoDataUris: string[] = [];
@@ -924,6 +1096,18 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     }
   }
 
+  // Convert stable document evidence while preserving one output slot per snapshot.
+  const evidenceDataUris: string[] = [];
+  for (let index = 0; index < evidenceSnapshots.length; index++) {
+    const snapshot = evidenceSnapshots[index];
+    const compressedUri = await compressPhotoForPdf(snapshot.mediaUri);
+    let dataUri = await fileToBase64DataUri(compressedUri || snapshot.mediaUri);
+    if (!dataUri && compressedUri !== snapshot.mediaUri) {
+      dataUri = await fileToBase64DataUri(snapshot.mediaUri);
+    }
+    evidenceDataUris.push(dataUri || "");
+  }
+
   // Convert plan image to base64 if available
   let planImageBase64: string | null = null;
   if (protocol.planData?.planImageUri) {
@@ -961,7 +1145,7 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   } catch {}
 
   // Generate HTML
-  const html = generatePdfHtml(protocol, company, photoDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize });
+  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize });
 
   // Generate cover page if enabled
   let coverPageHtml = "";
@@ -981,7 +1165,7 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
           console.warn("[PDF-Gen] Logo conversion failed or timed out, skipping logo");
         }
       }
-      coverPageHtml = generateCoverPage(fullBranding, protocol, logoBase64);
+      coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64);
     } catch (e) {
       console.warn("[PDF-Gen] Cover page generation failed:", e);
     }

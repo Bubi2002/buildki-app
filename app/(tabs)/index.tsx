@@ -98,6 +98,7 @@ const TOOLS: ToolItem[] = [
   { key: "aufgaben", label: "Aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
   { key: "raeume", label: "Räume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
   { key: "grundriss", label: "Grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
+  { key: "messen", label: "Messen", icon: "straighten", color: "#00ACC1", route: "/measure" },
   { key: "tagebuch", label: "Bautagebuch", icon: "menu-book", color: "#66BB6A", route: "/bautagebuch" },
   { key: "checklisten", label: "Checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
   { key: "fotos", label: "Fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },

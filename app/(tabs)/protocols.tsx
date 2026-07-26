@@ -29,6 +29,14 @@ import {
   getProtocolText,
 } from "@/lib/protocol-compat";
 
+type GeneratedProtocolVersion = {
+  id: string;
+  templateId: string;
+  templateName: string;
+  text: string;
+  evidenceIds?: string[];
+};
+
 type Protocol = {
   id: string;
   title: string;
@@ -48,7 +56,18 @@ type Protocol = {
   protocolNumber?: string;
   photos?: string[];
   projectName?: string;
+  evidenceIds?: string[];
+  generatedVersions?: GeneratedProtocolVersion[];
+  activeVersionId?: string;
+  photoTimestamps?: number[];
+  transcriptionSegments?: { start: number; end: number; text: string }[];
+  photoCaptions?: string[];
 };
+
+function getActiveExportVersion(protocol: Protocol): GeneratedProtocolVersion | undefined {
+  if (!protocol.activeVersionId) return undefined;
+  return protocol.generatedVersions?.find((version) => version.id === protocol.activeVersionId);
+}
 
 type ProjectItem = {
   id: string;
@@ -324,14 +343,17 @@ export default function ProtocolsScreen() {
       if (selected.length === 1) {
         // Single protocol - export directly
         const item = selected[0];
+        const activeVersion = getActiveExportVersion(item);
         const pdfUri = await generateProtocolPdf({
           title: item.title,
           createdAt: item.createdAt,
           duration: item.duration,
-          templateName: item.templateName || "Freies Protokoll",
-          templateId: item.templateId,
-          protocol: item.protocol,
+          templateName: activeVersion?.templateName || item.templateName || "Freies Protokoll",
+          templateId: activeVersion?.templateId || item.templateId,
+          protocol: activeVersion?.text || item.protocol,
           photos: item.photos,
+          evidenceIds: activeVersion?.evidenceIds || item.evidenceIds,
+          projectName: item.projectName,
         });
         if (pdfUri && await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(pdfUri);
@@ -347,14 +369,17 @@ export default function ProtocolsScreen() {
               onPress: async () => {
                 const pdfUris: string[] = [];
                 for (const item of selected) {
+                  const activeVersion = getActiveExportVersion(item);
                   const pdfUri = await generateProtocolPdf({
                     title: item.title,
                     createdAt: item.createdAt,
                     duration: item.duration,
-                    templateName: item.templateName || "Freies Protokoll",
-                    templateId: item.templateId,
-                    protocol: item.protocol,
+                    templateName: activeVersion?.templateName || item.templateName || "Freies Protokoll",
+                    templateId: activeVersion?.templateId || item.templateId,
+                    protocol: activeVersion?.text || item.protocol,
                     photos: item.photos,
+                    evidenceIds: activeVersion?.evidenceIds || item.evidenceIds,
+                    projectName: item.projectName,
                   });
                   if (pdfUri) pdfUris.push(pdfUri);
                 }
@@ -370,9 +395,14 @@ export default function ProtocolsScreen() {
               text: t('btn_gesamtdokument'),
               onPress: async () => {
                 const combinedContent = selected.map((item, idx) => {
+                  const activeVersion = getActiveExportVersion(item);
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
-                  return `---\n\n## Protokoll ${idx + 1} von ${selected.length}\n\n**Titel:** ${item.title}\n**Datum:** ${date}\n**Vorlage:** ${item.templateName || "Freies Protokoll"}\n\n${getProtocolText(item)}\n\n`;
+                  return `---\n\n## Protokoll ${idx + 1} von ${selected.length}\n\n**Titel:** ${item.title}\n**Datum:** ${date}\n**Vorlage:** ${activeVersion?.templateName || item.templateName || "Freies Protokoll"}\n\n${activeVersion?.text || getProtocolText(item)}\n\n`;
                 }).join("\n\n");
+                const combinedEvidenceIds = Array.from(new Set(selected.flatMap((item) => {
+                  const activeVersion = getActiveExportVersion(item);
+                  return activeVersion?.evidenceIds || item.evidenceIds || [];
+                })));
                 
                 const pdfUri = await generateProtocolPdf({
                   title: `Batch-Export (${selected.length} Protokolle)`,
@@ -380,6 +410,8 @@ export default function ProtocolsScreen() {
                   duration: selected.reduce((sum, p) => sum + p.duration, 0),
                   templateName: "Batch-Export",
                   protocol: combinedContent,
+                  evidenceIds: combinedEvidenceIds,
+                  projectName: activeProjectName || "Mehrere Projekte",
                 });
                 if (pdfUri && await Sharing.isAvailableAsync()) {
                   await Sharing.shareAsync(pdfUri);
@@ -520,16 +552,19 @@ export default function ProtocolsScreen() {
   const shareProtocol = async (item: Protocol) => {
     try {
       const { generateProtocolPdf } = await import("@/lib/pdf-generator");
+      const activeVersion = getActiveExportVersion(item);
       const pdfUri = await generateProtocolPdf({
         title: item.title,
         createdAt: item.createdAt,
         duration: item.duration,
-        templateName: item.templateName || "Freies Protokoll",
-        templateId: item.templateId,
-        protocol: item.protocol,
+        templateName: activeVersion?.templateName || item.templateName || "Freies Protokoll",
+        templateId: activeVersion?.templateId || item.templateId,
+        protocol: activeVersion?.text || item.protocol,
         photos: item.photos,
-        photoTimestamps: (item as any).photoTimestamps || undefined,
-        transcriptionSegments: (item as any).transcriptionSegments || undefined,
+        evidenceIds: activeVersion?.evidenceIds || item.evidenceIds,
+        photoTimestamps: item.photoTimestamps,
+        transcriptionSegments: item.transcriptionSegments,
+        photoCaptions: item.photoCaptions,
         projectName: item.projectName,
         protocolNumber: item.protocolNumber,
       });

@@ -77,7 +77,7 @@ const REPORT_STRUCTURED_SCHEMA = {
           completedWork: { type: "array" as const, items: { type: "string" as const }, description: "Abgeschlossene Arbeiten" },
           openIssues: { type: "array" as const, items: { type: "string" as const }, description: "Offene Punkte/Mängel" },
           nextSteps: { type: "array" as const, items: { type: "string" as const }, description: "Nächste Schritte" },
-          photoRefs: { type: "array" as const, items: { type: "string" as const }, description: "Foto-Referenzen (z.B. 'Foto 1', 'Foto 3')" },
+          photoRefs: { type: "array" as const, items: { type: "string" as const }, description: "Ausschließlich bereitgestellte stabile evidenceId-Werte; keine freien Fotonummern" },
         },
         required: ["trade", "status", "completedWork", "openIssues", "nextSteps", "photoRefs"] as const,
         additionalProperties: false as const,
@@ -180,9 +180,15 @@ export async function generateProfessionalReport(input: GenerateReportInput): Pr
   if (photosJson) {
     try {
       const photos = JSON.parse(photosJson);
-      contextBlock += `\nFOTOS (${photos.length} Stück): Referenziert als Foto 1, Foto 2, etc.\n`;
-      photos.slice(0, 10).forEach((p: any, i: number) => {
-        contextBlock += `Foto ${i + 1}: ${p.description || p.room || "Baustellenfoto"}\n`;
+      contextBlock += `\nGEPRÜFTE VISUELLE BELEGE (${photos.length}):\n`;
+      photos.slice(0, 20).forEach((p: any) => {
+        contextBlock += `- evidenceId=${p.evidenceId}: ${p.description || "Beleg ohne Befundtext"}`;
+        if (p.sourceLabel) contextBlock += ` | Quelle: ${p.sourceLabel}`;
+        if (p.videoTimecode) contextBlock += ` | Zeitcode: ${p.videoTimecode}`;
+        if (Array.isArray(p.measurements) && p.measurements.length > 0) {
+          contextBlock += ` | Messungen: ${p.measurements.join(", ")}`;
+        }
+        contextBlock += "\n";
       });
     } catch {}
   }
@@ -214,7 +220,9 @@ STRUKTUR-ANFORDERUNGEN:
 - Innerhalb jedes Gewerks: Fortschritt → Mängel → Nächste Schritte
 - Jeder Mangel muss einem Gewerk UND einem Ort zugeordnet sein
 - Verwende präzise Ortsangaben: Geschoss + Raum + Bauteil (z.B. "2. OG, Wohnung 2.3, Badezimmer, Vorwandinstallation")
-- Referenziere Fotos direkt im Fließtext (z.B. "...Rissbildung erkennbar (siehe Foto 3)")
+- Verwende visuelle Belege nur, wenn deren Befundtext die Aussage direkt stützt
+- Trage ausschließlich bereitgestellte evidenceId-Werte in photoRefs beziehungsweise photoRef ein
+- Erfinde keine Bildnummer, keine evidenceId und keine Zuordnung; Belegverweise gehören nicht in freien Fließtext
 - Bei Fristen: Immer konkretes Datum nennen, nicht "bald" oder "zeitnah"
 - Verantwortliche immer mit Firma nennen (z.B. "Fa. Müller GmbH")
 
@@ -245,9 +253,10 @@ WICHTIG:
 2. Ordne jeden Mangel einem Gewerk und einem konkreten Ort zu
 3. Benenne Abhängigkeiten zwischen Gewerken für die kommende Woche
 4. Setze realistische Fristen (mind. 3 Werktage für Nachbesserung)
-5. Referenziere vorhandene Fotos an den passenden Textstellen
-6. Formuliere Entscheidungen als klare Anweisungen mit Verantwortlichem
-7. Wenn Informationen fehlen: weglassen oder "n.V." schreiben, NICHT erfinden
+5. Verwende ausschließlich bereitgestellte evidenceId-Werte in den strukturierten photoRefs-/photoRef-Feldern
+6. Ein Beleg darf nur einem Punkt zugeordnet werden, wenn sein bereitgestellter Befundtext diesen Punkt direkt stützt
+7. Formuliere Entscheidungen als klare Anweisungen mit Verantwortlichem
+8. Wenn Informationen fehlen: weglassen oder "n.V." schreiben, NICHT erfinden
 
 Erstelle den Bericht als strukturiertes JSON.`;
 
@@ -284,7 +293,28 @@ Erstelle den Bericht als strukturiertes JSON.`;
       }
     }
 
-    // Format structured data into professional Markdown
+    // Drop every model-generated reference that is not part of the reviewed selection.
+    let allowedEvidenceIds = new Set<string>();
+    if (photosJson) {
+      try {
+        const evidence = JSON.parse(photosJson);
+        allowedEvidenceIds = new Set(
+          Array.isArray(evidence)
+            ? evidence.map((item: any) => item.evidenceId).filter((id: unknown): id is string => typeof id === "string")
+            : [],
+        );
+      } catch {}
+    }
+    parsed.tradeSections = parsed.tradeSections.map((section) => ({
+      ...section,
+      photoRefs: section.photoRefs.filter((id) => allowedEvidenceIds.has(id)),
+    }));
+    parsed.defectSummary.items = parsed.defectSummary.items.map((item) => ({
+      ...item,
+      photoRef: item.photoRef && allowedEvidenceIds.has(item.photoRef) ? item.photoRef : undefined,
+    }));
+
+    // Format structured data into professional Markdown.
     return formatReportMarkdown(parsed, reportType, photosJson);
   } catch  {
     // Fallback: return a basic template if LLM fails
@@ -297,6 +327,17 @@ Erstelle den Bericht als strukturiertes JSON.`;
  */
 function formatReportMarkdown(report: StructuredReport, reportType: string, photosJson?: string): string {
   let md = "";
+  const evidenceNumberById = new Map<string, number>();
+  if (photosJson) {
+    try {
+      const evidence = JSON.parse(photosJson);
+      if (Array.isArray(evidence)) {
+        evidence.forEach((item: any, index: number) => {
+          if (typeof item.evidenceId === "string") evidenceNumberById.set(item.evidenceId, index + 1);
+        });
+      }
+    } catch {}
+  }
 
   // Title Block
   md += `# ${report.title}\n\n`;
@@ -354,7 +395,11 @@ function formatReportMarkdown(report: StructuredReport, reportType: string, phot
       }
 
       if (section.photoRefs.length > 0) {
-        md += `*Fotodokumentation: ${section.photoRefs.join(", ")}*\n\n`;
+        const refs = section.photoRefs
+          .map((id) => evidenceNumberById.get(id))
+          .filter((number): number is number => number != null)
+          .map((number) => `Abbildung ${number}`);
+        if (refs.length > 0) md += `**Visuelle Belege: ${refs.join(", ")}**\n\n`;
       }
 
       md += `---\n\n`;
@@ -375,7 +420,8 @@ function formatReportMarkdown(report: StructuredReport, reportType: string, phot
       md += `| Nr. | Mangel | Gewerk | Ort | Schwere | Status |\n|-----|--------|--------|-----|---------|--------|\n`;
       for (let i = 0; i < report.defectSummary.items.length; i++) {
         const d = report.defectSummary.items[i];
-        const photoNote = d.photoRef ? ` (${d.photoRef})` : "";
+        const evidenceNumber = d.photoRef ? evidenceNumberById.get(d.photoRef) : undefined;
+        const photoNote = evidenceNumber ? ` (Abbildung ${evidenceNumber})` : "";
         md += `| ${i + 1} | ${d.title}${photoNote} | ${d.trade} | ${d.location} | ${d.severity} | ${d.status} |\n`;
       }
       md += `\n`;
@@ -410,20 +456,8 @@ function formatReportMarkdown(report: StructuredReport, reportType: string, phot
     md += `\n`;
   }
 
-  // Photo Section (if photos provided)
-  if (photosJson) {
-    try {
-      const photos = JSON.parse(photosJson);
-      if (photos.length > 0) {
-        md += `## Fotodokumentation\n\n`;
-        md += `| Nr. | Beschreibung | Zuordnung |\n|-----|-------------|------------|\n`;
-        photos.slice(0, 20).forEach((p: any, i: number) => {
-          md += `| Foto ${i + 1} | ${p.description || "Baustellenfoto"} | ${p.room || p.trade || "Allgemein"} |\n`;
-        });
-        md += `\n`;
-      }
-    } catch {}
-  }
+  // The actual image, source, timecode and measurements are rendered by the PDF evidence blocks.
+  // Markdown contains only validated Abbildung references, never a text-only pseudo-evidence section.
 
   // Dependencies between trades (derived from nextActions)
   const dependencies = report.nextActions.filter(a => 

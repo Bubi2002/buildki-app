@@ -40,6 +40,10 @@ import {
 } from "@/lib/video-upload-validation";
 import { createAsyncInvocationGuard } from "@/lib/async-invocation-guard";
 import { getPrivacyChoices } from "@/lib/privacy-consent";
+import {
+  extractCandidateFramesFromSegments,
+  type TranscriptSegment,
+} from "@/lib/video-evidence";
 
 type VideoFile = {
   uri: string;
@@ -59,6 +63,7 @@ type QueueItem = {
   video: VideoFile;
   status: "pending" | "processing" | "done" | "error";
   transcription?: string;
+  transcriptionSegments?: TranscriptSegment[];
   errorMessage?: string;
 };
 
@@ -363,10 +368,26 @@ export default function VideoUploadScreen() {
     setProgress(80);
     const timestampedText = formatTranscriptionWithTimestamps(transcribeResult);
     const detectedLang = transcribeResult.language || "unbekannt";
+    const segments: TranscriptSegment[] = Array.isArray(transcribeResult.segments)
+      ? transcribeResult.segments
+          .filter(
+            (segment: any) =>
+              Number.isFinite(segment?.start) &&
+              Number.isFinite(segment?.end) &&
+              typeof segment?.text === "string",
+          )
+          .map((segment: any) => ({
+            start: Math.max(0, Number(segment.start)),
+            end: Math.max(Number(segment.start), Number(segment.end)),
+            text: segment.text.trim(),
+          }))
+      : [];
     const header = `[${video.name}] (Sprache: ${detectedLang})`;
     setTranscription(prev => prev + (prev ? "\n\n---\n\n" : "") + `${header}\n${timestampedText}`);
-    setQueue(prev => prev.map((item) => 
-      item.video.uri === video.uri ? { ...item, transcription: timestampedText } : item
+    setQueue(prev => prev.map((item) =>
+      item.video.uri === video.uri
+        ? { ...item, transcription: timestampedText, transcriptionSegments: segments }
+        : item,
     ));
     setProgress(100);
   };
@@ -388,6 +409,35 @@ export default function VideoUploadScreen() {
       };
 
       const protocolId = `video_${Date.now()}`;
+      const completedVideos = queue.filter(
+        (item) => item.status === "done" && item.transcription,
+      );
+      const generatedEvidenceIds: string[] = [];
+      const maxFramesPerVideo = Math.max(
+        1,
+        Math.floor(12 / Math.max(1, completedVideos.length)),
+      );
+
+      for (const item of completedVideos) {
+        if (!item.video.mimeType.startsWith("video/") || !item.transcriptionSegments?.length) {
+          continue;
+        }
+        try {
+          const frames = await extractCandidateFramesFromSegments({
+            projectId: activeProject!.id,
+            protocolId,
+            videoUri: item.video.uri,
+            sourceVideoName: item.video.name,
+            segments: item.transcriptionSegments,
+            maximum: maxFramesPerVideo,
+          });
+          generatedEvidenceIds.push(...frames.map((frame) => frame.id));
+        } catch {
+          // The protocol remains usable. Missing frames stay visibly absent instead
+          // of being replaced by an unrelated image.
+        }
+      }
+
       const protocol = {
         id: protocolId,
         title: `${docTypeLabels[docType]}: ${queue[0]?.video.name.replace(/\.[^.]+$/, "") || "Video"}`,
@@ -399,8 +449,17 @@ export default function VideoUploadScreen() {
         projectName: activeProject!.name,
         source: "video",
         documentType: docType,
-        videoCount: queue.filter(i => i.status === "done").length,
-        videoFilenames: queue.filter(i => i.status === "done").map(i => i.video.name),
+        videoCount: completedVideos.length,
+        videoFilenames: completedVideos.map((item) => item.video.name),
+        videoSources: completedVideos.map((item) => ({
+          uri: item.video.uri,
+          name: item.video.name,
+          mimeType: item.video.mimeType,
+          duration: item.video.duration,
+          source: item.video.source,
+          transcriptionSegments: item.transcriptionSegments || [],
+        })),
+        evidenceIds: generatedEvidenceIds,
       };
 
       const existingData = await AsyncStorage.getItem("protocols");
