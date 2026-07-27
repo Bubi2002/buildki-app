@@ -1112,4 +1112,4 @@
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor auf exakt dem Buildstand ausführen.
 - [x] Versionsänderungen und Release-Nachweis kontrolliert committen, ohne Push.
 - [x] Signiertes iOS-EAS-Releaseartefakt `1.0.44 (11)` auslösen, ohne TestFlight-Upload oder App-Store-Einreichung.
-- [ ] Build-ID, Artefaktstatus und Prüfnachweise dokumentieren und in Dropbox archivieren.
+- [x] Build-ID, Artefaktstatus und Prüfnachweise dokumentieren und in Dropbox archivieren.
