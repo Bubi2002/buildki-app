@@ -1125,5 +1125,5 @@
 - [x] Große Grundriss- und Fotodateien speicherschonend laden und unnötige Neuberechnungen beziehungsweise Re-Renders vermeiden.
 - [x] Regressionstests für Textdekodierung, Transformbegrenzung, Markierungskoordinaten und Foto-Viewer-Zustände ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen.
-- [ ] Fix dokumentieren, kontrolliert committen und erst nach bestandenen Gates Build `1.0.44 (12)` ohne Upload erstellen.
+- [x] Fix dokumentieren, kontrolliert committen und erst nach bestandenen Gates Build `1.0.44 (12)` ohne Upload erstellen.
 - [x] Build 11 und den bestehenden Dropbox-Releaseordner unverändert lassen; während dieser Fehlerbehebung keinen EAS-Submit, TestFlight-Upload oder App-Store-Schritt ausführen.
