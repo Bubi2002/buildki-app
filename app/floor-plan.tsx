@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,13 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
+  ActivityIndicator,
+  InteractionManager,
 } from "react-native";
+import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
+import { FullscreenPhotoViewer } from "@/components/fullscreen-photo-viewer";
+import { ZoomableCanvas } from "@/components/zoomable-canvas";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -33,7 +38,10 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
+import { decodeUnicodeEscapes } from "@/lib/display-text";
+import { persistFloorPlanMedia } from "@/lib/floor-plan-media";
 import { useTranslation } from "@/lib/language-provider";
+import type { Point } from "@/lib/zoom-transform";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -75,26 +83,76 @@ export default function FloorPlanScreen() {
   const [imageSize, setImageSize] = useState({ width: 1, height: 1 });
   const [viewMode, setViewMode] = useState<"plan" | "list">("plan");
   const [filterType, setFilterType] = useState<PlanPin["type"] | "all">("all");
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [planInteractionActive, setPlanInteractionActive] = useState(false);
+  const [zoomResetKey, setZoomResetKey] = useState(0);
+  const [photoViewer, setPhotoViewer] = useState<{
+    photos: string[];
+    title: string;
+    initialIndex: number;
+  } | null>(null);
+  const mountedRef = useRef(true);
+  const plansLoadRequestRef = useRef(0);
+  const loadRequestRef = useRef(0);
+  const selectedPlanRef = useRef<FloorPlan | null>(null);
 
-  async function selectPlan(plan: FloorPlan) {
-    setSelectedPlan(plan);
-    const loadedPins = await getPlanPins(plan.id);
-    setPins(loadedPins);
-    setImageSize({ width: plan.width, height: plan.height });
-  }
+  useEffect(() => {
+    selectedPlanRef.current = selectedPlan;
+  }, [selectedPlan]);
 
-  async function loadPlans() {
-    const loaded = await getFloorPlans(projectId);
-    setPlans(loaded);
-    if (loaded.length > 0 && !selectedPlan) {
-      await selectPlan(loaded[0]);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    plansLoadRequestRef.current += 1;
+    loadRequestRef.current += 1;
+  }, []);
+
+  const selectPlan = useCallback(async (plan: FloorPlan) => {
+    const requestId = ++loadRequestRef.current;
+    setLoadingPlanId(plan.id);
+    try {
+      const loadedPins = await getPlanPins(plan.id);
+      if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+      selectedPlanRef.current = plan;
+      setSelectedPlan(plan);
+      setPins(loadedPins);
+      setImageSize({ width: Math.max(1, plan.width), height: Math.max(1, plan.height) });
+      setPendingPin(null);
+      setZoomResetKey((value) => value + 1);
+    } finally {
+      if (mountedRef.current && requestId === loadRequestRef.current) setLoadingPlanId(null);
     }
-  }
+  }, []);
+
+  const loadPlans = useCallback(async () => {
+    const requestId = ++plansLoadRequestRef.current;
+    const loaded = await getFloorPlans(projectId);
+    if (!mountedRef.current || requestId !== plansLoadRequestRef.current) return;
+    setPlans(loaded);
+    const currentId = selectedPlanRef.current?.id;
+    const nextPlan = loaded.find((plan) => plan.id === currentId) || loaded[0];
+    if (nextPlan) {
+      await selectPlan(nextPlan);
+    } else {
+      selectedPlanRef.current = null;
+      setSelectedPlan(null);
+      setPins([]);
+    }
+  }, [projectId, selectPlan]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void loadPlans();
+  }, [loadPlans]);
 
   useFocusEffect(
     useCallback(() => {
-      loadPlans();
-    }, [projectId])
+      mountedRef.current = true;
+      void loadPlans();
+      return () => {
+        plansLoadRequestRef.current += 1;
+        loadRequestRef.current += 1;
+      };
+    }, [loadPlans])
   );
 
   const addPlan = async () => {
@@ -105,7 +163,7 @@ export default function FloorPlanScreen() {
         onPress: async () => {
           const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.9,
+            quality: 1,
           });
           if (!result.canceled && result.assets[0]) {
             setPendingPlanAsset(result.assets[0]);
@@ -136,43 +194,50 @@ export default function FloorPlanScreen() {
   const savePlanWithName = async () => {
     if (!pendingPlanAsset) return;
     const asset = pendingPlanAsset;
+    const planId = `plan-${Date.now()}`;
+    const optimized = await persistFloorPlanMedia({
+      sourceUri: asset.uri,
+      projectId,
+      ownerId: planId,
+      width: asset.width,
+      height: asset.height,
+      kind: "plan",
+    });
     const newPlan: FloorPlan = {
-      id: `plan-${Date.now()}`,
+      id: planId,
       projectId,
       name: newPlanName.trim() || `Plan ${plans.length + 1}`,
-      imageUri: asset.uri,
-      width: asset.width || 1000,
-      height: asset.height || 1000,
+      imageUri: optimized.uri,
+      width: optimized.width || asset.width || 1000,
+      height: optimized.height || asset.height || 1000,
       createdAt: new Date().toISOString(),
     };
     await saveFloorPlan(newPlan);
     setShowPlanNameModal(false);
     setPendingPlanAsset(null);
     setNewPlanName("");
-    await loadPlans();
-    selectPlan(newPlan);
+    setPlans((current) => [...current.filter((plan) => plan.id !== newPlan.id), newPlan]);
+    await selectPlan(newPlan);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handlePlanPress = (event: any) => {
+  const handlePlanTap = (point: Point) => {
     if (!selectedPlan) return;
-    const { locationX, locationY } = event.nativeEvent;
-    const cw = SCREEN_WIDTH - 32;
-    const ar = imageSize.width / imageSize.height;
-    const ch = Math.min(cw / ar, SCREEN_HEIGHT * 0.5);
-
-    const x = locationX / cw;
-    const y = locationY / ch;
-
-    if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
-      setPendingPin({ x, y });
-      setPinLabel("");
-      setPinDescription("");
-      setPinType("note");
-      setShowPinModal(true);
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+    const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
+      const distance = Math.hypot(pin.x - point.x, pin.y - point.y);
+      return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
+    }, null);
+    if (nearestPin && nearestPin.distance <= 0.045) {
+      setShowPinDetail(nearestPin.pin);
+      return;
+    }
+    setPendingPin(point);
+    setPinLabel("");
+    setPinDescription("");
+    setPinType("note");
+    setShowPinModal(true);
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   };
 
@@ -196,7 +261,7 @@ export default function FloorPlanScreen() {
     };
 
     await savePlanPin(newPin);
-    setPins([...pins, newPin]);
+    setPins((current) => [...current, newPin]);
     setShowPinModal(false);
     setPendingPin(null);
     setPinLabel("");
@@ -212,7 +277,7 @@ export default function FloorPlanScreen() {
         style: "destructive",
         onPress: async () => {
           await deletePlanPin(pinId);
-          setPins(pins.filter((p) => p.id !== pinId));
+          setPins((current) => current.filter((p) => p.id !== pinId));
           setShowPinDetail(null);
           if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         },
@@ -252,38 +317,57 @@ export default function FloorPlanScreen() {
     { type: "protocol", label: "Protokoll", icon: "description", color: PIN_COLORS.protocol },
   ];
 
-  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
-  const [galleryTitle, setGalleryTitle] = useState("");
-
   const addPhotoToPin = async (pin: PlanPin) => {
+    setShowPinDetail(null);
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve());
+    });
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 0.8,
+      quality: 1,
     });
     if (!result.canceled && result.assets.length > 0) {
-      const newPhotos = result.assets.map(a => a.uri);
+      const newPhotos: string[] = [];
+      for (const [index, asset] of result.assets.entries()) {
+        const persisted = await persistFloorPlanMedia({
+          sourceUri: asset.uri,
+          projectId,
+          ownerId: `${pin.id}-${(pin.photos?.length || 0) + index}`,
+          width: asset.width,
+          height: asset.height,
+          kind: "photo",
+        });
+        newPhotos.push(persisted.uri);
+      }
       const updatedPin: PlanPin = {
         ...pin,
         photos: [...(pin.photos || []), ...newPhotos],
       };
       await savePlanPin(updatedPin);
-      setPins(pins.map(p => p.id === pin.id ? updatedPin : p));
+      setPins((current) => current.map((item) => item.id === pin.id ? updatedPin : item));
       setShowPinDetail(updatedPin);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      setShowPinDetail(pin);
     }
   };
 
-  const viewPinPhotos = (pin: PlanPin) => {
+  const viewPinPhotos = (pin: PlanPin, initialIndex = 0) => {
     const photos = pin.photos || (pin.photoUri ? [pin.photoUri] : []);
     if (photos.length === 0) {
       Alert.alert(t('gallery_no_photos'), t('msg_marker_keine_fotos'));
       return;
     }
-    setGalleryPhotos(photos);
-    setGalleryTitle(pin.label);
-    setShowPhotoGallery(true);
+    setShowPinDetail(null);
+    InteractionManager.runAfterInteractions(() => {
+      if (!mountedRef.current) return;
+      setPhotoViewer({
+        photos,
+        title: decodeUnicodeEscapes(pin.label),
+        initialIndex: Math.min(Math.max(0, initialIndex), photos.length - 1),
+      });
+    });
   };
 
   return (
@@ -296,7 +380,7 @@ export default function FloorPlanScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]}>{t('grundrisse')}</Text>
           {selectedPlan && (
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{selectedPlan.name}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{decodeUnicodeEscapes(selectedPlan.name)}</Text>
           )}
         </View>
         <View style={{ flexDirection: "row", gap: 4 }}>
@@ -335,7 +419,7 @@ export default function FloorPlanScreen() {
             >
               <MaterialIcons name="layers" size={14} color={selectedPlan?.id === plan.id ? colors.primary : colors.muted} />
               <Text style={[styles.planTabText, { color: selectedPlan?.id === plan.id ? colors.primary : colors.foreground }]}>
-                {plan.name}
+                {decodeUnicodeEscapes(plan.name)}
               </Text>
             </Pressable>
           ))}
@@ -375,53 +459,85 @@ export default function FloorPlanScreen() {
       {/* Main Content */}
       {selectedPlan ? (
         viewMode === "plan" ? (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16 }}
+            scrollEnabled={!planInteractionActive}
+          >
             {/* Plan Image with Pins */}
             <View style={[styles.planImageContainer, { borderColor: colors.border }]}>
-              <Pressable onPress={handlePlanPress}>
-                <RNImage
+              <ZoomableCanvas
+                key={`${selectedPlan.id}-${zoomResetKey}`}
+                width={containerWidth}
+                height={containerHeight}
+                maxScale={4}
+                onSingleTap={handlePlanTap}
+                onInteractionChange={setPlanInteractionActive}
+                testID="floor-plan-zoom-stage"
+              >
+                <View style={{ width: containerWidth, height: containerHeight }}>
+                <Image
                   source={{ uri: selectedPlan.imageUri }}
                   style={{ width: containerWidth, height: containerHeight }}
-                  resizeMode="stretch"
+                  contentFit="fill"
+                  cachePolicy="memory-disk"
+                  recyclingKey={`floor-plan-${selectedPlan.id}`}
+                  onLoadStart={() => setLoadingPlanId(selectedPlan.id)}
+                  onLoad={() => setLoadingPlanId(null)}
+                  onError={() => setLoadingPlanId(null)}
                 />
                 {/* Render Pins */}
-                {filteredPins.map((pin) => (
-                  <Pressable
-                    key={pin.id}
-                    onPress={() => setShowPinDetail(pin)}
-                    onLongPress={() => removePin(pin.id)}
-                    style={[
-                      styles.pin,
-                      {
-                        left: pin.x * containerWidth - 14,
-                        top: pin.y * containerHeight - 32,
-                      },
-                    ]}
-                  >
-                    {/* Pin marker SVG-style */}
-                    <View style={[styles.pinMarker, { backgroundColor: pin.color }]}>
-                      <MaterialIcons name={PIN_ICONS[pin.type] as any} size={14} color="#FFF" />
+                <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                  {filteredPins.map((pin) => (
+                    <View
+                      key={pin.id}
+                      style={[
+                        styles.pin,
+                        {
+                          left: pin.x * containerWidth - 14,
+                          top: pin.y * containerHeight - 32,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.pinMarker, { backgroundColor: pin.color }]}>
+                        <MaterialIcons name={PIN_ICONS[pin.type] as any} size={14} color="#FFF" />
+                      </View>
+                      <View style={[styles.pinTail, { borderTopColor: pin.color }]} />
                     </View>
-                    <View style={[styles.pinTail, { borderTopColor: pin.color }]} />
-                  </Pressable>
-                ))}
-                {/* Pending Pin */}
-                {pendingPin && (
-                  <View
-                    style={[
-                      styles.pin,
-                      {
-                        left: pendingPin.x * containerWidth - 14,
-                        top: pendingPin.y * containerHeight - 32,
-                      },
-                    ]}
-                  >
-                    <View style={[styles.pinMarker, { backgroundColor: "#9E9E9E" }]}>
-                      <MaterialIcons name="add" size={14} color="#FFF" />
+                  ))}
+                  {pendingPin && (
+                    <View
+                      style={[
+                        styles.pin,
+                        {
+                          left: pendingPin.x * containerWidth - 14,
+                          top: pendingPin.y * containerHeight - 32,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.pinMarker, { backgroundColor: "#9E9E9E" }]}>
+                        <MaterialIcons name="add" size={14} color="#FFF" />
+                      </View>
+                      <View style={[styles.pinTail, { borderTopColor: "#9E9E9E" }]} />
                     </View>
-                    <View style={[styles.pinTail, { borderTopColor: "#9E9E9E" }]} />
-                  </View>
-                )}
+                  )}
+                </View>
+                </View>
+              </ZoomableCanvas>
+              {loadingPlanId === selectedPlan.id ? (
+                <View pointerEvents="none" style={styles.planLoadingOverlay}>
+                  <ActivityIndicator color="#FFFFFF" />
+                  <Text style={styles.planLoadingText}>Grundriss wird geladen …</Text>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={() => setZoomResetKey((value) => value + 1)}
+                accessibilityRole="button"
+                accessibilityLabel="Grundrisszoom zurücksetzen"
+                style={({ pressed }) => [styles.resetZoomButton, pressed && { opacity: 0.65 }]}
+              >
+                <MaterialIcons name="fit-screen" size={18} color="#FFFFFF" />
+                <Text style={styles.resetZoomText}>Ansicht</Text>
               </Pressable>
             </View>
 
@@ -429,7 +545,7 @@ export default function FloorPlanScreen() {
             <View style={[styles.instructionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <MaterialIcons name="touch-app" size={18} color={colors.primary} />
               <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 8, flex: 1 }}>
-                Tippe auf den Plan um eine Markierung zu setzen. Tippe auf einen Pin für Details.
+                Zwei Finger zum Zoomen · Ziehen zum Verschieben · Doppeltipp zum Vergrößern · Tippen für Markierung oder Pin-Details.
               </Text>
             </View>
 
@@ -449,9 +565,9 @@ export default function FloorPlanScreen() {
                       <MaterialIcons name={PIN_ICONS[pin.type] as any} size={12} color="#FFF" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{pin.label}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{decodeUnicodeEscapes(pin.label)}</Text>
                       {pin.description && (
-                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{pin.description}</Text>
+                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }} numberOfLines={1}>{decodeUnicodeEscapes(pin.description)}</Text>
                       )}
                     </View>
                     <Text style={{ fontSize: 10, color: colors.muted }}>
@@ -484,9 +600,9 @@ export default function FloorPlanScreen() {
                   <MaterialIcons name={PIN_ICONS[pin.type] as any} size={18} color="#FFF" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{pin.label}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{decodeUnicodeEscapes(pin.label)}</Text>
                   {pin.description && (
-                    <Text style={{ fontSize: 12, color: colors.muted, marginTop: 3 }} numberOfLines={2}>{pin.description}</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted, marginTop: 3 }} numberOfLines={2}>{decodeUnicodeEscapes(pin.description)}</Text>
                   )}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
                     <Text style={{ fontSize: 10, color: colors.muted, backgroundColor: colors.background, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
@@ -643,7 +759,12 @@ export default function FloorPlanScreen() {
       </Modal>
 
       {/* Pin Detail Modal */}
-      <Modal visible={!!showPinDetail} transparent animationType="slide">
+      <Modal
+        visible={!!showPinDetail}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPinDetail(null)}
+      >
         <Pressable style={styles.modalOverlay} onPress={() => setShowPinDetail(null)}>
           <Pressable style={[styles.detailModalContent, { backgroundColor: colors.background }]} onPress={() => {}}>
             <View style={styles.modalHandle} />
@@ -654,15 +775,15 @@ export default function FloorPlanScreen() {
                     <MaterialIcons name={PIN_ICONS[showPinDetail.type] as any} size={22} color="#FFF" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{showPinDetail.label}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{decodeUnicodeEscapes(showPinDetail.label)}</Text>
                     <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                      {pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label} • {new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                      {decodeUnicodeEscapes(`${pinTypeOptions.find((o) => o.type === showPinDetail.type)?.label || ""} • ${new Date(showPinDetail.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}`)}
                     </Text>
                   </View>
                 </View>
                 {showPinDetail.description && (
                   <View style={[styles.detailDescBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>{showPinDetail.description}</Text>
+                    <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>{decodeUnicodeEscapes(showPinDetail.description)}</Text>
                   </View>
                 )}
 
@@ -682,8 +803,19 @@ export default function FloorPlanScreen() {
                     {/* Photo thumbnails */}
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                       {(showPinDetail.photos || (showPinDetail.photoUri ? [showPinDetail.photoUri] : [])).slice(0, 5).map((uri, idx) => (
-                        <Pressable key={idx} onPress={() => viewPinPhotos(showPinDetail)}>
-                          <RNImage source={{ uri }} style={{ width: 60, height: 60, borderRadius: 0, marginRight: 6 }} />
+                        <Pressable
+                          key={`${uri}-${idx}`}
+                          onPress={() => viewPinPhotos(showPinDetail, idx)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Foto ${idx + 1} groß anzeigen`}
+                        >
+                          <Image
+                            source={{ uri }}
+                            style={{ width: 60, height: 60, borderRadius: 0, marginRight: 6 }}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            recyclingKey={`pin-photo-${showPinDetail.id}-${idx}`}
+                          />
                         </Pressable>
                       ))}
                       {(showPinDetail.photos?.length || 0) > 5 && (
@@ -701,7 +833,7 @@ export default function FloorPlanScreen() {
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('fotos_hinzufu00fcgen')}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{decodeUnicodeEscapes(t('fotos_hinzufuegen'))}</Text>
                 </Pressable>
 
                 <View style={[styles.detailCoords, { backgroundColor: colors.surface }]}>
@@ -715,7 +847,7 @@ export default function FloorPlanScreen() {
                   style={({ pressed }) => [styles.deleteBtn, { borderColor: colors.error }, pressed && { opacity: 0.7 }]}
                 >
                   <MaterialIcons name="delete-outline" size={18} color={colors.error} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>{t('markierung_lu00f6schen')}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.error, marginLeft: 8 }}>{decodeUnicodeEscapes(t('alert_markierung_loeschen'))}</Text>
                 </Pressable>
               </>
             )}
@@ -723,36 +855,16 @@ export default function FloorPlanScreen() {
         </Pressable>
       </Modal>
 
-      {/* Photo Gallery Modal - shows photos linked to a pin */}
-      <Modal visible={showPhotoGallery} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", paddingTop: 60, paddingHorizontal: 16, paddingBottom: 12 }}>
-            <Pressable onPress={() => setShowPhotoGallery(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.6 : 1 }]}>
-              <MaterialIcons name="close" size={24} color="#FFF" />
-            </Pressable>
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: "#FFF", textAlign: "center" }}>{galleryTitle}</Text>
-            <View style={{ width: 40 }} />
-          </View>
-          <FlatList
-            data={galleryPhotos}
-            keyExtractor={(_, idx) => `photo-${idx}`}
-            numColumns={2}
-            contentContainerStyle={{ padding: 8 }}
-            renderItem={({ item: uri, index }) => (
-              <View style={{ flex: 1, padding: 4 }}>
-                <RNImage source={{ uri }} style={{ width: "100%", aspectRatio: 1, borderRadius: 0 }} resizeMode="cover" />
-                <Text style={{ fontSize: 10, color: "#AAA", textAlign: "center", marginTop: 4 }}>Foto {index + 1}</Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={{ alignItems: "center", paddingTop: 80 }}>
-                <MaterialIcons name="photo-library" size={48} color="#666" />
-                <Text style={{ fontSize: 14, color: "#888", marginTop: 12 }}>{t('keine_fotos_vorhanden')}</Text>
-              </View>
-            }
-          />
-        </View>
-      </Modal>
+      {photoViewer ? (
+        <FullscreenPhotoViewer
+          key={`${photoViewer.title}-${photoViewer.initialIndex}-${photoViewer.photos.join("|")}`}
+          visible
+          photos={photoViewer.photos}
+          initialIndex={photoViewer.initialIndex}
+          title={photoViewer.title}
+          onClose={() => setPhotoViewer(null)}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
@@ -806,6 +918,45 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     overflow: "hidden",
     borderWidth: 1,
+    position: "relative",
+    backgroundColor: "#061421",
+  },
+  planLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "rgba(2, 10, 19, 0.58)",
+    zIndex: 30,
+  },
+  planLoadingText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  resetZoomButton: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    minHeight: 40,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(4, 19, 32, 0.9)",
+    borderWidth: 1,
+    borderColor: "#58B7EF",
+    zIndex: 40,
+  },
+  resetZoomText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
   },
   pin: {
     position: "absolute",

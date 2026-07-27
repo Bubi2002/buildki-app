@@ -17,7 +17,9 @@ describe("Visible compliance copy", () => {
 
     expect(settings).toContain("Datenschutzerklärung");
     expect(settings).toContain("Transparenz zur KI-Nutzung gemäß EU AI Act");
-    expect(floorPlan).toContain("} • {new Date(showPinDetail.createdAt)");
+    expect(floorPlan).toContain("decodeUnicodeEscapes(showPinDetail.label)");
+    expect(floorPlan).toContain("decodeUnicodeEscapes(showPinDetail.description)");
+    expect(floorPlan).toContain("decodeUnicodeEscapes(`${pinTypeOptions.find");
     expect(pdfBranding).toContain("– für Standard leer lassen");
     expect(projectDetail).toContain("Mängel erledigt");
     expect(i18n).toContain("'Empfänger wählen'");

@@ -1113,3 +1113,17 @@
 - [x] Versionsänderungen und Release-Nachweis kontrolliert committen, ohne Push.
 - [x] Signiertes iOS-EAS-Releaseartefakt `1.0.44 (11)` auslösen, ohne TestFlight-Upload oder App-Store-Einreichung.
 - [x] Build-ID, Artefaktstatus und Prüfnachweise dokumentieren und in Dropbox archivieren.
+
+## P0 Grundrisse: Freeze, Schreibfehler, Planzoom und Fotoansicht (2026-07-27)
+
+- [x] Den gemeldeten Grundriss- und Markierungsablauf mit mehreren Sekunden Laufzeit reproduzieren und Freeze-Auslöser messen.
+- [x] Sichtbare Unicode-Escape-Sequenzen wie `\\u2022`, `\\u00fc` und `\\u00f6` an Quelle und Anzeige dauerhaft korrigieren.
+- [x] Render-, Timer-, Listener-, Gesture- und Bildspeicherzustände auf Endlosschleifen, Überregistrierung und Speicherwachstum prüfen.
+- [x] Grundriss mit begrenztem Pinch-Zoom, Verschieben, Doppeltipp-Zoom und zuverlässigem Zurücksetzen erweitern.
+- [x] Markierungspositionen bei jeder Zoom- und Pan-Stufe korrekt auf dem Grundriss verankern.
+- [x] Foto-Thumbnails antippbar machen und in einer bildschirmfüllenden Ansicht mit Zoom, Pan und sicherem Schließen öffnen.
+- [x] Große Grundriss- und Fotodateien speicherschonend laden und unnötige Neuberechnungen beziehungsweise Re-Renders vermeiden.
+- [x] Regressionstests für Textdekodierung, Transformbegrenzung, Markierungskoordinaten und Foto-Viewer-Zustände ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen.
+- [ ] Fix dokumentieren, kontrolliert committen und erst nach bestandenen Gates Build `1.0.44 (12)` ohne Upload erstellen.
+- [x] Build 11 und den bestehenden Dropbox-Releaseordner unverändert lassen; während dieser Fehlerbehebung keinen EAS-Submit, TestFlight-Upload oder App-Store-Schritt ausführen.
