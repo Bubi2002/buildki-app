@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, typ
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocales } from "expo-localization";
 import { translations, type Language, type TranslationKey } from "@/lib/i18n";
+import { decodeUnicodeEscapes } from "@/lib/display-text";
 
 const LANGUAGE_KEY = "app_language";
 const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr"];
@@ -28,7 +29,7 @@ type LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType>({
   language: "de",
   setLanguage: async () => {},
-  t: (key) => translations.de[key] || key,
+  t: (key) => decodeUnicodeEscapes(translations.de[key] || key),
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -52,7 +53,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: TranslationKey): string => {
-      return (translations[language] as any)?.[key] || (translations.de as any)[key] || key;
+      return decodeUnicodeEscapes(
+        (translations[language] as any)?.[key] || (translations.de as any)[key] || key,
+      );
     },
     [language]
   );

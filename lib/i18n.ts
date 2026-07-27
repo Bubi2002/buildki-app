@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { decodeUnicodeEscapes } from "./display-text";
 export type Language = "de" | "en" | "fr";
 export type TranslationKey = keyof typeof translations.de;
 const LANGUAGE_KEY = "app_language";
@@ -452,8 +453,17 @@ export const translations = {
     protocol_title: 'Protokolltitel',
     buildki_support: 'BuildKI Support',
     protokoll: 'Protokoll',
+    protokoll_hinzufuegen: 'Protokoll hinzufügen',
     protokoll_nicht_gefunden: 'Protokoll nicht gefunden',
     protokoll_zuordnen: 'Protokoll zuordnen',
+    neues_protokoll_erstellen: 'Neues Protokoll erstellen',
+    protokoll_aus_projekt_waehlen: 'Vorhandenes Protokoll aus diesem Projekt auswählen oder ein neues erstellen.',
+    keine_protokolle_im_projekt: 'In diesem Projekt sind noch keine Protokolle vorhanden.',
+    verknuepftes_protokoll: 'Verknüpftes Protokoll',
+    markierung_bearbeiten: 'Markierung bearbeiten',
+    protokolltext_bearbeiten: 'Titel und Protokolltext dieser Markierung bearbeiten',
+    markierungstext_bearbeiten: 'Titel und Beschreibung dieser Markierung bearbeiten',
+    protokolltext_optional: 'Protokolltext (optional)',
     protokolle_gesamt: 'Protokolle gesamt',
     protokolle_in_timeline_anzeigen: 'Protokolle in Timeline anzeigen',
     protokolle_letzte_7_tage: 'Protokolle (letzte 7 Tage)',
@@ -1599,8 +1609,17 @@ export const translations = {
     protocol_title: 'Protokolltitel',
     buildki_support: 'BuildKI Support',
     protokoll: 'Protocol',
-    protokoll_nicht_gefunden: 'Protokoll nicht gefunden',
-    protokoll_zuordnen: 'Protokoll zuordnen',
+    protokoll_hinzufuegen: 'Add protocol',
+    protokoll_nicht_gefunden: 'Protocol not found',
+    protokoll_zuordnen: 'Link another protocol',
+    neues_protokoll_erstellen: 'Create new protocol',
+    protokoll_aus_projekt_waehlen: 'Select an existing protocol from this project or create a new one.',
+    keine_protokolle_im_projekt: 'There are no protocols in this project yet.',
+    verknuepftes_protokoll: 'Linked protocol',
+    markierung_bearbeiten: 'Edit marker',
+    protokolltext_bearbeiten: 'Edit this marker’s title and protocol text',
+    markierungstext_bearbeiten: 'Edit this marker’s title and description',
+    protokolltext_optional: 'Protocol text (optional)',
     protokolle_gesamt: 'Protokolle gesamt',
     protokolle_in_timeline_anzeigen: 'View protocols in timeline',
     protokolle_letzte_7_tage: 'Protokolle (letzte 7 Tage)',
@@ -2745,8 +2764,17 @@ export const translations = {
     protocol_title: 'Protokolltitel',
     buildki_support: 'BuildKI Support',
     protokoll: 'Protocole',
-    protokoll_nicht_gefunden: 'Protokoll nicht gefunden',
-    protokoll_zuordnen: 'Protokoll zuordnen',
+    protokoll_hinzufuegen: 'Ajouter un protocole',
+    protokoll_nicht_gefunden: 'Protocole introuvable',
+    protokoll_zuordnen: 'Associer un autre protocole',
+    neues_protokoll_erstellen: 'Créer un nouveau protocole',
+    protokoll_aus_projekt_waehlen: 'Sélectionnez un protocole existant de ce projet ou créez-en un nouveau.',
+    keine_protokolle_im_projekt: 'Ce projet ne contient encore aucun protocole.',
+    verknuepftes_protokoll: 'Protocole associé',
+    markierung_bearbeiten: 'Modifier le repère',
+    protokolltext_bearbeiten: 'Modifier le titre et le texte du protocole de ce repère',
+    markierungstext_bearbeiten: 'Modifier le titre et la description de ce repère',
+    protokolltext_optional: 'Texte du protocole (facultatif)',
     protokolle_gesamt: 'Protokolle gesamt',
     protokolle_in_timeline_anzeigen: 'Voir les protocoles en chronologie',
     protokolle_letzte_7_tage: 'Protokolle (letzte 7 Tage)',
@@ -3444,7 +3472,7 @@ export const translations = {
   },
 } as const;
 export function t(key: TranslationKey, lang: Language = "de"): string {
-  return (translations[lang] as any)?.[key] || (translations.de as any)[key] || key;
+  return decodeUnicodeEscapes((translations[lang] as any)?.[key] || (translations.de as any)[key] || key);
 }
 const LANG_STORAGE_KEY = "app_language";
 export async function getLanguage(): Promise<Language> {

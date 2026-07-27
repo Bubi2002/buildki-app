@@ -1127,3 +1127,14 @@
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen.
 - [x] Fix dokumentieren, kontrolliert committen und erst nach bestandenen Gates Build `1.0.44 (12)` ohne Upload erstellen.
 - [x] Build 11 und den bestehenden Dropbox-Releaseordner unverändert lassen; während dieser Fehlerbehebung keinen EAS-Submit, TestFlight-Upload oder App-Store-Schritt ausführen.
+
+## P0 Grundrisse: Protokoll-Pin bearbeiten und sichtbare Textfehler (2026-07-27)
+
+- [x] Den vom Nutzer gezeigten Protokoll-Pin-Ablauf reproduzieren und bestätigen, warum im Detailblatt nur „Fotos hinzufügen“ statt einer Protokollbearbeitung angeboten wird.
+- [x] Für Protokoll-Pins eine eindeutige Aktion zum Bearbeiten von Titel und Protokolltext ergänzen und Änderungen zuverlässig im bestehenden Pin-Store speichern.
+- [x] „Fotos hinzufügen“ als optionale Zusatzfunktion beibehalten, aber klar von der eigentlichen Protokollbearbeitung trennen.
+- [x] Sichtbare Unicode-Escapes wie `\\u2022`, `\\u00fc` und `\\u00f6` auch für bereits gespeicherte Pin-Daten beim Rendern dekodieren.
+- [x] Die Beschriftungen „Protokoll • Datum“, „Fotos hinzufügen“ und „Markierung löschen“ orthografisch korrekt und ohne Escape-Reste darstellen.
+- [x] Regressionstests für Bearbeiten, Speichern, erneutes Öffnen und Dekodieren vorhandener Protokoll-Pins ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen und den Ablauf visuell prüfen.
+- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.

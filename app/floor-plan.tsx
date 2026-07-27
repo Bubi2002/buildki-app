@@ -19,6 +19,7 @@ import {
   InteractionManager,
 } from "react-native";
 import { Image } from "expo-image";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { FullscreenPhotoViewer } from "@/components/fullscreen-photo-viewer";
 import { ZoomableCanvas } from "@/components/zoomable-canvas";
@@ -40,6 +41,12 @@ import {
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 import { persistFloorPlanMedia } from "@/lib/floor-plan-media";
+import {
+  linkPlanPinToProtocol,
+  parseProjectProtocolReferences,
+  updatePlanPinText,
+  type FloorPlanProtocolReference,
+} from "@/lib/floor-plan-pin-actions";
 import { useTranslation } from "@/lib/language-provider";
 import type { Point } from "@/lib/zoom-transform";
 
@@ -91,6 +98,12 @@ export default function FloorPlanScreen() {
     title: string;
     initialIndex: number;
   } | null>(null);
+  const [editingPin, setEditingPin] = useState<PlanPin | null>(null);
+  const [editPinLabel, setEditPinLabel] = useState("");
+  const [editPinDescription, setEditPinDescription] = useState("");
+  const [protocolPickerPin, setProtocolPickerPin] = useState<PlanPin | null>(null);
+  const [protocolOptions, setProtocolOptions] = useState<FloorPlanProtocolReference[]>([]);
+  const [loadingProtocols, setLoadingProtocols] = useState(false);
   const mountedRef = useRef(true);
   const plansLoadRequestRef = useRef(0);
   const loadRequestRef = useRef(0);
@@ -316,6 +329,81 @@ export default function FloorPlanScreen() {
     { type: "photo", label: "Foto", icon: "photo-camera", color: PIN_COLORS.photo },
     { type: "protocol", label: "Protokoll", icon: "description", color: PIN_COLORS.protocol },
   ];
+
+  const beginPinEdit = async (pin: PlanPin) => {
+    setShowPinDetail(null);
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve());
+    });
+    setEditPinLabel(decodeUnicodeEscapes(pin.label));
+    setEditPinDescription(decodeUnicodeEscapes(pin.description || ""));
+    setEditingPin(pin);
+  };
+
+  const cancelPinEdit = () => {
+    const pin = editingPin;
+    Keyboard.dismiss();
+    setEditingPin(null);
+    if (pin) setShowPinDetail(pin);
+  };
+
+  const saveEditedPin = async () => {
+    if (!editingPin || !editPinLabel.trim()) {
+      Alert.alert(t('hinweis'), t('msg_bitte_gib_eine_bezeichnung_ein'));
+      return;
+    }
+
+    const updatedPin = updatePlanPinText(editingPin, editPinLabel, editPinDescription);
+    await savePlanPin(updatedPin);
+    setPins((current) => current.map((pin) => pin.id === updatedPin.id ? updatedPin : pin));
+    Keyboard.dismiss();
+    setEditingPin(null);
+    setShowPinDetail(updatedPin);
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const showProtocolsForPin = async (pin: PlanPin) => {
+    setShowPinDetail(null);
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve());
+    });
+    setProtocolPickerPin(pin);
+    setLoadingProtocols(true);
+    try {
+      const stored = await AsyncStorage.getItem("protocols");
+      setProtocolOptions(parseProjectProtocolReferences(stored, pin.projectId));
+    } finally {
+      setLoadingProtocols(false);
+    }
+  };
+
+  const linkProtocolToPin = async (protocol: FloorPlanProtocolReference) => {
+    if (!protocolPickerPin) return;
+    const updatedPin = linkPlanPinToProtocol(protocolPickerPin, protocol);
+    await savePlanPin(updatedPin);
+    setPins((current) => current.map((pin) => pin.id === updatedPin.id ? updatedPin : pin));
+    setProtocolPickerPin(null);
+    setShowPinDetail(updatedPin);
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const createProtocolForPin = (pin: PlanPin) => {
+    setShowPinDetail(null);
+    setProtocolPickerPin(null);
+    router.push(
+      `/(tabs)/record?projectId=${encodeURIComponent(pin.projectId)}&planPinId=${encodeURIComponent(pin.id)}` as any,
+    );
+  };
+
+  const openLinkedProtocol = (pin: PlanPin) => {
+    if (!pin.protocolId) return;
+    setShowPinDetail(null);
+    router.push(`/protocol-detail?id=${encodeURIComponent(pin.protocolId)}` as any);
+  };
 
   const addPhotoToPin = async (pin: PlanPin) => {
     setShowPinDetail(null);
@@ -787,6 +875,48 @@ export default function FloorPlanScreen() {
                   </View>
                 )}
 
+                {showPinDetail.type === "protocol" && (
+                  <View style={{ marginBottom: 12, gap: 8 }}>
+                    {showPinDetail.protocolId && (
+                      <View style={[styles.protocolLinkStatus, { backgroundColor: PIN_COLORS.protocol + "12", borderColor: PIN_COLORS.protocol + "50" }]}>
+                        <MaterialIcons name="description" size={18} color={PIN_COLORS.protocol} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted }}>{t('verknuepftes_protokoll')}</Text>
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground }} numberOfLines={2}>
+                            {decodeUnicodeEscapes(showPinDetail.protocolTitle || showPinDetail.label)}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                    <Pressable
+                      onPress={() => showPinDetail.protocolId ? openLinkedProtocol(showPinDetail) : showProtocolsForPin(showPinDetail)}
+                      style={({ pressed }) => [styles.primaryDetailAction, { backgroundColor: PIN_COLORS.protocol, opacity: pressed ? 0.8 : 1 }]}
+                    >
+                      <MaterialIcons name={showPinDetail.protocolId ? "open-in-new" : "post-add"} size={19} color="#FFF" />
+                      <Text style={styles.primaryDetailActionText}>
+                        {showPinDetail.protocolId ? t('zum_protokoll') : t('protokoll_hinzufuegen')}
+                      </Text>
+                    </Pressable>
+                    {showPinDetail.protocolId && (
+                      <Pressable
+                        onPress={() => showProtocolsForPin(showPinDetail)}
+                        style={({ pressed }) => [styles.secondaryDetailAction, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                      >
+                        <MaterialIcons name="swap-horiz" size={18} color={colors.primary} />
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('protokoll_zuordnen')}</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+
+                <Pressable
+                  onPress={() => beginPinEdit(showPinDetail)}
+                  style={({ pressed }) => [styles.secondaryDetailAction, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="edit" size={18} color={colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('markierung_bearbeiten')}</Text>
+                </Pressable>
+
                 {/* Photos linked to this pin */}
                 {((showPinDetail.photos && showPinDetail.photos.length > 0) || showPinDetail.photoUri) && (
                   <View style={{ marginBottom: 12 }}>
@@ -851,6 +981,133 @@ export default function FloorPlanScreen() {
                 </Pressable>
               </>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Existing pin edit modal */}
+      <Modal
+        visible={!!editingPin}
+        transparent
+        animationType="slide"
+        onRequestClose={cancelPinEdit}
+      >
+        <TouchableWithoutFeedback onPress={cancelPinEdit}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "flex-end" }}>
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                  <View style={styles.modalHandle} />
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('markierung_bearbeiten')}</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
+                    {editingPin?.type === "protocol" ? t('protokolltext_bearbeiten') : t('markierungstext_bearbeiten')}
+                  </Text>
+                  <TextInput
+                    style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                    placeholder={t('bezeichnung')}
+                    placeholderTextColor={colors.muted}
+                    value={editPinLabel}
+                    onChangeText={setEditPinLabel}
+                    returnKeyType="next"
+                  />
+                  <TextInput
+                    style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                    placeholder={editingPin?.type === "protocol" ? t('protokolltext_optional') : t('beschreibung_optional')}
+                    placeholderTextColor={colors.muted}
+                    value={editPinDescription}
+                    onChangeText={setEditPinDescription}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      onPress={cancelPinEdit}
+                      style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+                    >
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={saveEditedPin}
+                      style={({ pressed }) => [styles.saveBtn, { backgroundColor: editingPin?.color || colors.primary }, pressed && { opacity: 0.85 }]}
+                    >
+                      <MaterialIcons name="check" size={18} color="#FFF" />
+                      <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF", marginLeft: 6 }}>{t('save')}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Protocol selection modal */}
+      <Modal
+        visible={!!protocolPickerPin}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setProtocolPickerPin(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setProtocolPickerPin(null)}>
+          <Pressable style={[styles.detailModalContent, { backgroundColor: colors.background, maxHeight: "82%" }]} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('protokoll_hinzufuegen')}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>{t('protokoll_aus_projekt_waehlen')}</Text>
+
+            {loadingProtocols ? (
+              <View style={{ minHeight: 120, alignItems: "center", justifyContent: "center" }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                {protocolOptions.map((protocol) => (
+                  <Pressable
+                    key={protocol.id}
+                    onPress={() => linkProtocolToPin(protocol)}
+                    style={({ pressed }) => [styles.protocolOption, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <View style={[styles.protocolOptionIcon, { backgroundColor: PIN_COLORS.protocol + "18" }]}>
+                      <MaterialIcons name="description" size={20} color={PIN_COLORS.protocol} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }} numberOfLines={2}>
+                        {decodeUnicodeEscapes(protocol.title)}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.muted, marginTop: 3 }}>
+                        {[
+                          protocol.protocolNumber,
+                          protocol.createdAt ? new Date(protocol.createdAt).toLocaleDateString("de-DE") : null,
+                        ].filter(Boolean).join(" • ")}
+                      </Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                  </Pressable>
+                ))}
+                {protocolOptions.length === 0 && (
+                  <View style={[styles.protocolEmptyState, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <MaterialIcons name="description" size={30} color={colors.muted} />
+                    <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center", lineHeight: 19 }}>{t('keine_protokolle_im_projekt')}</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {protocolPickerPin && (
+              <Pressable
+                onPress={() => createProtocolForPin(protocolPickerPin)}
+                style={({ pressed }) => [styles.primaryDetailAction, { backgroundColor: PIN_COLORS.protocol, marginTop: 12, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <MaterialIcons name="add" size={20} color="#FFF" />
+                <Text style={styles.primaryDetailActionText}>{t('neues_protokoll_erstellen')}</Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => setProtocolPickerPin(null)}
+              style={({ pressed }) => [styles.cancelStandalone, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>{t('cancel')}</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1108,6 +1365,75 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     borderWidth: 1,
     marginBottom: 12,
+  },
+  protocolLinkStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 0,
+    borderWidth: 1,
+  },
+  primaryDetailAction: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 0,
+  },
+  primaryDetailActionText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  secondaryDetailAction: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 0,
+    borderWidth: 1,
+  },
+  protocolOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 0,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  protocolOptionIcon: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 0,
+  },
+  protocolEmptyState: {
+    minHeight: 120,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: 20,
+    borderRadius: 0,
+    borderWidth: 1,
+  },
+  cancelStandalone: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 0,
+    borderWidth: 1,
+    marginTop: 10,
   },
   detailCoords: {
     flexDirection: "row",

@@ -1,5 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  linkPlanPinToProtocol,
+  normalizePlanPinText,
+  type FloorPlanProtocolReference,
+} from "./floor-plan-pin-actions";
+
 const FLOOR_PLANS_KEY = "floor-plans";
 const PLAN_PINS_KEY = "plan-pins";
 
@@ -25,6 +31,7 @@ export type PlanPin = {
   photoUri?: string;
   photos?: string[]; // multiple photos linked to this pin
   protocolId?: string;
+  protocolTitle?: string;
   defectId?: string;
   color: string;
   createdAt: string;
@@ -62,7 +69,11 @@ export async function deleteFloorPlan(planId: string): Promise<void> {
 export async function getPlanPins(planId?: string): Promise<PlanPin[]> {
   try {
     const raw = await AsyncStorage.getItem(PLAN_PINS_KEY);
-    const pins: PlanPin[] = raw ? JSON.parse(raw) : [];
+    const parsed: PlanPin[] = raw ? JSON.parse(raw) : [];
+    const pins = parsed.map(normalizePlanPinText);
+    if (pins.some((pin, index) => pin !== parsed[index])) {
+      await AsyncStorage.setItem(PLAN_PINS_KEY, JSON.stringify(pins));
+    }
     if (planId) return pins.filter((p) => p.planId === planId);
     return pins;
   } catch {
@@ -72,10 +83,25 @@ export async function getPlanPins(planId?: string): Promise<PlanPin[]> {
 
 export async function savePlanPin(pin: PlanPin): Promise<void> {
   const pins = await getPlanPins();
-  const idx = pins.findIndex((p) => p.id === pin.id);
-  if (idx >= 0) pins[idx] = pin;
-  else pins.push(pin);
+  const normalizedPin = normalizePlanPinText(pin);
+  const idx = pins.findIndex((p) => p.id === normalizedPin.id);
+  if (idx >= 0) pins[idx] = normalizedPin;
+  else pins.push(normalizedPin);
   await AsyncStorage.setItem(PLAN_PINS_KEY, JSON.stringify(pins));
+}
+
+export async function linkStoredPlanPinToProtocol(
+  pinId: string,
+  protocol: Pick<FloorPlanProtocolReference, "id" | "title">,
+): Promise<PlanPin | null> {
+  const pins = await getPlanPins();
+  const index = pins.findIndex((pin) => pin.id === pinId);
+  if (index < 0) return null;
+
+  const updatedPin = linkPlanPinToProtocol(pins[index], protocol);
+  pins[index] = updatedPin;
+  await AsyncStorage.setItem(PLAN_PINS_KEY, JSON.stringify(pins));
+  return updatedPin;
 }
 
 export async function deletePlanPin(pinId: string): Promise<void> {

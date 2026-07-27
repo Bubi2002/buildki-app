@@ -46,6 +46,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "@/lib/language-provider";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { getPrivacyChoices } from "@/lib/privacy-consent";
+import { linkStoredPlanPinToProtocol } from "@/lib/floor-plan-store";
 
 type RecordingMode = "audio-photo";
 
@@ -53,7 +54,11 @@ export default function RecordScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { quickAction, projectId: routeProjectId } = useLocalSearchParams<{ quickAction?: string; projectId?: string }>();
+  const {
+    quickAction,
+    projectId: routeProjectId,
+    planPinId: routePlanPinId,
+  } = useLocalSearchParams<{ quickAction?: string; projectId?: string; planPinId?: string }>();
   const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText , getFullTranscript, streamingActive } = useRealtimeTranscription();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
@@ -1291,6 +1296,12 @@ export default function RecordScreen() {
       const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
       protocols.unshift(placeholderProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      if (routePlanPinId) {
+        await linkStoredPlanPinToProtocol(routePlanPinId, {
+          id: placeholderProtocol.id,
+          title: placeholderProtocol.title || placeholderProtocol.templateName || t('protokoll'),
+        });
+      }
 
       if (!canProcessWithServer) {
         setCapturedPhotos([]);
@@ -1404,6 +1415,12 @@ export default function RecordScreen() {
     try {
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      if (routePlanPinId) {
+        await linkStoredPlanPinToProtocol(routePlanPinId, {
+          id: newProtocol.id,
+          title: newProtocol.title || newProtocol.templateName || t('protokoll'),
+        });
+      }
 
       // Auto-send if enabled
       try {
