@@ -1162,3 +1162,17 @@
 - [x] Regressionstests für Fristdatum, Sprachnotiz-Zustände, Nachprüfungs-Persistenz, Listenfilter und Unicode-Copy ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen sowie den vollständigen Mängelablauf visuell prüfen.
 - [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+
+## P0 KI-Bericht: Quellenbindung, klare Vorschau und echter PDF-Export (2026-07-29)
+
+- [x] Den vom Nutzer gezeigten Bericht mit sichtbaren Markdown-Trennstrichen, nicht belegtem Boden-/Flieseninhalt und unvollständigem HTML-Export reproduzieren.
+- [x] Den vollständigen Datenfluss von Nutzereingabe und Projektdaten über den KI-Prompt bis zum gespeicherten Bericht dokumentieren und jede verwendete Quelle eindeutig begrenzen.
+- [x] Nicht belegte Ergänzungen verhindern: Der Bericht darf ausschließlich explizite Nutzereingaben und tatsächlich vorhandene ausgewählte Projektdaten wiedergeben.
+- [x] Bei fehlenden Angaben neutral „nicht angegeben“ verwenden und keine Gewerke, Mängel, Maßnahmen, Verantwortlichen oder Fristen erfinden.
+- [x] Die Berichtsvorschau von roh gerendertem Markdown auf klar strukturierte Überschriften, Karten, Listen und responsive Tabellen ohne sichtbare `|---|`-Zeilen umstellen.
+- [x] Bearbeiten und Speichern so erhalten, dass die strukturierte Vorschau nach Nutzeränderungen denselben Inhalt vollständig und ohne Layoutverschiebung darstellt.
+- [x] Den Export als echte PDF-Datei mit Projektname als Titel, Datum, vollständigem Bericht, Seitenumbrüchen und druckbarer Kopf-/Fußzone implementieren.
+- [x] Sicherstellen, dass Teilen/Öffnen die erzeugte `.pdf`-Datei mit MIME-Typ `application/pdf` verwendet und keine HTML-Datei oder leere Kurzansicht weitergibt.
+- [x] Regressionstests für Quellenbindung, Halluzinationssperre, Markdown-Strukturierung, vollständigen PDF-Inhalt, Dateiendung und MIME-Typ ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie Vorschau und erzeugtes PDF visuell und artefaktbasiert prüfen.
+- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.

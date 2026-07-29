@@ -29,11 +29,12 @@ import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
+import { ReportMarkdownPreview } from "@/components/report-markdown-preview";
 import { useColors } from "@/hooks/use-colors";
 import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { trpc } from "@/lib/trpc";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
-import { getDefects } from "@/lib/defect-store";
+import { getDefects, type Defect } from "@/lib/defect-store";
 import {
   formatEvidenceTimecode,
   getEvidence,
@@ -46,6 +47,13 @@ import {
   formatMeasurementForDocument,
   type DocumentEvidenceSelection,
 } from "@/lib/document-evidence";
+import {
+  buildSourceBoundReport,
+  buildStrictSourceContract,
+  findUnsupportedReportClaims,
+  type ReportDefectSource,
+  type ReportSourceSnapshot,
+} from "@/lib/report-source-guard";
 
 type Step = "select" | "configure" | "generating" | "preview" | "edit";
 
@@ -75,7 +83,7 @@ export default function ReportGeneratorScreen() {
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [transcription, setTranscription] = useState(params.transcription || "");
   const [reportContent, setReportContent] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState("");
   const [generationProgress, setGenerationProgress] = useState(0);
 
@@ -86,12 +94,15 @@ export default function ReportGeneratorScreen() {
   const [reportRoom, setReportRoom] = useState(params.roomName || "");
   const [projectFloors, setProjectFloors] = useState<Floor[]>([]);
   const [projectRooms, setProjectRooms] = useState<Room[]>([]);
-  const [includeDefects, setIncludeDefects] = useState(true);
-  const [includeAttendance, setIncludeAttendance] = useState(true);
-  const [includePhotos, setIncludePhotos] = useState(true);
+  const [includeDefects, setIncludeDefects] = useState(false);
+  const [includeAttendance, setIncludeAttendance] = useState(false);
+  const [includePhotos, setIncludePhotos] = useState(false);
+  const [availableDefects, setAvailableDefects] = useState<Defect[]>([]);
+  const [selectedDefectIds, setSelectedDefectIds] = useState<string[]>([]);
   const [availableEvidence, setAvailableEvidence] = useState<EvidenceItem[]>([]);
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
   const [documentEvidence, setDocumentEvidence] = useState<DocumentEvidenceSelection | null>(null);
+  const [sourceGuardMessage, setSourceGuardMessage] = useState("");
 
   // tRPC mutation for report generation
   const generateReportMutation = trpc.analysis.generateReport.useMutation();
@@ -104,6 +115,8 @@ export default function ReportGeneratorScreen() {
       ]);
       setProjectFloors(structure.floors);
       setProjectRooms(structure.rooms);
+      setAvailableDefects(defects);
+      setSelectedDefectIds([]);
 
       await saveEvidenceBatch(
         defects.flatMap((defect) =>
@@ -126,10 +139,12 @@ export default function ReportGeneratorScreen() {
         .filter(isEvidenceDocumentReady)
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
       setAvailableEvidence(readyEvidence);
-      setSelectedEvidenceIds(readyEvidence.slice(0, 20).map((item) => item.id));
+      setSelectedEvidenceIds([]);
     } catch {
       setProjectFloors([]);
       setProjectRooms([]);
+      setAvailableDefects([]);
+      setSelectedDefectIds([]);
       setAvailableEvidence([]);
       setSelectedEvidenceIds([]);
     }
@@ -158,47 +173,47 @@ export default function ReportGeneratorScreen() {
     setStep("generating");
     setIsGenerating(true);
     setGenerationProgress(0);
+    setSourceGuardMessage("");
+
+    const reportConfig = REPORT_TYPES.find((item) => item.id === selectedType)!;
+    let sourceSnapshot: ReportSourceSnapshot = {
+      reportLabel: reportConfig.label,
+      transcription: transcription.trim(),
+      projectName: reportProjekt || undefined,
+      datum: reportDatum,
+      floor: reportFloor || undefined,
+      room: reportRoom || undefined,
+      selectedDefects: [],
+      attendees: [],
+      evidence: [],
+    };
+    let unselectedDefects: ReportDefectSource[] = [];
 
     try {
       // Step 1: Gather defect data
       setGenerationStep("Projektdaten sammeln...");
       setGenerationProgress(10);
 
-      let defectsJson: string | undefined;
-      if (includeDefects && params.projectId) {
-        try {
-          const defects = await getDefects(params.projectId);
-          if (defects.length > 0) {
-            defectsJson = JSON.stringify(
-              defects.map((d) => ({
-                id: d.id,
-                title: d.title,
-                status: d.status,
-                priority: d.priority,
-                location: d.location,
-                gewerk: d.gewerk || d.category,
-                description: d.description,
-                dueDate: d.dueDate,
-                assignee: d.assignee,
-                assigneeFirma: d.assigneeFirma,
-                positionCode: d.positionCode,
-                followUpDate: d.followUpDate,
-                followUpResult: d.followUpResult,
-                aiSummary: d.aiSummary,
-                room: d.room,
-                floor: d.floor,
-                source: d.source,
-                matterportModelId: d.matterportModelId,
-                matterportFloorName: d.matterportFloorName,
-                matterportRoomName: d.matterportRoomName,
-                hasSignatures: (d.signatures?.length || 0) > 0,
-                photoCount: d.photos?.length || 0,
-                createdAt: d.createdAt,
-              }))
-            );
-          }
-        } catch {}
-      }
+      const defectSources: ReportDefectSource[] = availableDefects.map((defect) => ({
+        id: defect.id,
+        title: defect.title,
+        description: defect.description,
+        status: defect.status,
+        priority: defect.priority,
+        location: defect.location || defect.room,
+        trade: defect.gewerk || defect.category,
+        dueDate: defect.dueDate,
+        assignee: defect.assignee,
+        assigneeCompany: defect.assigneeFirma,
+      }));
+      const selectedDefects = includeDefects
+        ? defectSources.filter((defect) => selectedDefectIds.includes(defect.id))
+        : [];
+      unselectedDefects = defectSources.filter((defect) => !selectedDefectIds.includes(defect.id));
+      sourceSnapshot = { ...sourceSnapshot, selectedDefects };
+      const defectsJson = selectedDefects.length > 0
+        ? JSON.stringify(selectedDefects.map((defect) => ({ ...defect, gewerk: defect.trade, assigneeFirma: defect.assigneeCompany })))
+        : undefined;
 
       // Step 2: Gather attendance data
       setGenerationStep("Anwesenheitsdaten laden...");
@@ -214,13 +229,13 @@ export default function ReportGeneratorScreen() {
             const today = new Date().toISOString().slice(0, 10);
             const todayRecord = records.find((r: any) => r.date === today) || records[records.length - 1];
             if (todayRecord?.workers?.length > 0) {
-              attendeesJson = JSON.stringify(
-                todayRecord.workers.map((w: any) => ({
+              const attendees = todayRecord.workers.map((w: any) => ({
                   name: w.name,
                   company: w.firma,
                   role: w.gewerk,
-                }))
-              );
+                }));
+              sourceSnapshot = { ...sourceSnapshot, attendees };
+              attendeesJson = JSON.stringify(attendees);
             }
           }
         } catch {}
@@ -246,6 +261,7 @@ export default function ReportGeneratorScreen() {
             measurements: item.measurements.map(formatMeasurementForDocument),
           }));
           if (photoRefs.length > 0) {
+            sourceSnapshot = { ...sourceSnapshot, evidence: photoRefs };
             photosJson = JSON.stringify(photoRefs);
           }
         } catch {
@@ -272,6 +288,7 @@ export default function ReportGeneratorScreen() {
         attendeesJson,
         additionalContext: [
           params.protocolId ? `Protokoll-ID: ${params.protocolId}` : null,
+          buildStrictSourceContract(sourceSnapshot),
           photosJson
             ? "Visuelle Belege dürfen ausschließlich über die bereitgestellten evidenceId-Werte referenziert werden. Keine freie oder geschätzte Bildzuordnung erzeugen."
             : null,
@@ -284,45 +301,28 @@ export default function ReportGeneratorScreen() {
       setGenerationProgress(90);
 
       if (result.content) {
-        setReportContent(result.content);
+        const unsupportedClaims = findUnsupportedReportClaims(result.content, sourceSnapshot, unselectedDefects);
+        if (unsupportedClaims.length > 0) {
+          setReportContent(buildSourceBoundReport(sourceSnapshot));
+          setSourceGuardMessage(`Nicht belegte KI-Ergänzungen wurden entfernt: ${unsupportedClaims.join("; ")}`);
+        } else {
+          setReportContent(result.content);
+          setSourceGuardMessage("Quellenprüfung bestanden: Der Bericht verwendet nur die bestätigten Eingaben und ausgewählten Projektdaten.");
+        }
       } else {
-        setReportContent(generateFallbackReport(selectedType));
+        setReportContent(buildSourceBoundReport(sourceSnapshot));
+        setSourceGuardMessage("Die KI-Antwort war leer. Es wurde stattdessen ein ausschließlich aus bestätigten Quellen aufgebauter Bericht erstellt.");
       }
 
       setGenerationProgress(100);
       setStep("preview");
     } catch  {
-      // Fallback to local template
-      setReportContent(generateFallbackReport(selectedType));
+      setReportContent(buildSourceBoundReport(sourceSnapshot));
+      setSourceGuardMessage("Die KI-Generierung war nicht verfügbar. Der Bericht wurde ohne freie Ergänzungen direkt aus den bestätigten Quellen erstellt.");
       setStep("preview");
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const generateFallbackReport = (type: ReportType): string => {
-    const config = REPORT_TYPES.find((r) => r.id === type)!;
-    const date = reportDatum || new Date().toLocaleDateString("de-DE");
-    const project = reportProjekt || "[Projektname]";
-
-    let report = `# ${config.label}\n\n`;
-    report += `| | |\n|---|---|\n`;
-    report += `| **Projekt** | ${project} |\n`;
-    report += `| **Datum** | ${date} |\n\n`;
-    report += `---\n\n`;
-
-    for (const section of config.sections) {
-      report += `## ${section}\n\n`;
-      report += `[Bitte ergänzen]\n\n`;
-    }
-
-    report += `---\n\n`;
-    report += `## Originaltranskription\n\n`;
-    report += `> ${transcription.slice(0, 500)}${transcription.length > 500 ? "..." : ""}\n\n`;
-    report += `---\n\n`;
-    report += `*Erstellt mit protoKI am ${date}*\n`;
-
-    return report;
   };
 
   const exportReportPdf = async () => {
@@ -530,7 +530,7 @@ export default function ReportGeneratorScreen() {
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.optionLabel, { color: colors.foreground }]}>Mängeldaten</Text>
-                <Text style={[styles.optionDesc, { color: colors.muted }]}>Aktuelle Mängel aus dem Projekt einbeziehen</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>Nur einzeln ausgewählte Projektmängel einbeziehen</Text>
               </View>
             </Pressable>
             <Pressable
@@ -544,7 +544,7 @@ export default function ReportGeneratorScreen() {
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.optionLabel, { color: colors.foreground }]}>Anwesenheitsliste</Text>
-                <Text style={[styles.optionDesc, { color: colors.muted }]}>Heutige Anwesenheit als Teilnehmer</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>Nur nach ausdrücklicher Aktivierung als Teilnehmer übernehmen</Text>
               </View>
             </Pressable>
             <Pressable
@@ -562,6 +562,57 @@ export default function ReportGeneratorScreen() {
               </View>
             </Pressable>
           </View>
+
+          <View style={[styles.sourceNotice, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }]}>
+            <MaterialIcons name="verified-user" size={22} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sourceNoticeTitle, { color: colors.foreground }]}>Quellengebundener Bericht</Text>
+              <Text style={[styles.optionDesc, { color: colors.muted }]}>Standardmäßig wird ausschließlich Ihre Eingabe verwendet. Projektdaten erscheinen erst nach Aktivierung und Auswahl.</Text>
+            </View>
+          </View>
+
+          {includeDefects && (
+            <View style={styles.defectSourceSection}>
+              <View style={styles.evidenceHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>Mängel auswählen</Text>
+                  <Text style={[styles.optionDesc, { color: colors.muted }]}>{selectedDefectIds.length} von {availableDefects.length} Mängeln ausgewählt</Text>
+                </View>
+                <Pressable
+                  onPress={() => setSelectedDefectIds(selectedDefectIds.length === availableDefects.length ? [] : availableDefects.map((defect) => defect.id))}
+                  style={[styles.evidenceAction, { borderColor: colors.border }]}
+                >
+                  <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>{selectedDefectIds.length === availableDefects.length ? "Keine" : "Alle"}</Text>
+                </Pressable>
+              </View>
+
+              {availableDefects.length === 0 ? (
+                <View style={[styles.evidenceEmpty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <MaterialIcons name="fact-check" size={24} color={colors.muted} />
+                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>Keine Projektmängel vorhanden</Text>
+                </View>
+              ) : (
+                <View style={styles.defectSourceList}>
+                  {availableDefects.map((defect) => {
+                    const selected = selectedDefectIds.includes(defect.id);
+                    return (
+                      <Pressable
+                        key={defect.id}
+                        onPress={() => setSelectedDefectIds((current) => current.includes(defect.id) ? current.filter((id) => id !== defect.id) : [...current, defect.id])}
+                        style={[styles.defectSourceCard, { borderColor: selected ? config.color : colors.border, backgroundColor: colors.surface }]}
+                      >
+                        <MaterialIcons name={selected ? "check-box" : "check-box-outline-blank"} size={21} color={selected ? config.color : colors.muted} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.optionLabel, { color: colors.foreground }]}>{defect.title}</Text>
+                          <Text style={[styles.optionDesc, { color: colors.muted }]}>{[defect.gewerk || defect.category, defect.location || defect.room, defect.status].filter(Boolean).join(" · ")}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
 
           {includePhotos && (
             <View style={styles.evidenceSection}>
@@ -772,65 +823,16 @@ export default function ReportGeneratorScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-        {/* Simple Markdown rendering */}
-        {reportContent.split("\n").map((line, i) => {
-          if (line.startsWith("# ")) {
-            return <Text key={i} style={[styles.mdH1, { color: colors.foreground }]}>{line.slice(2)}</Text>;
-          }
-          if (line.startsWith("## ")) {
-            return <Text key={i} style={[styles.mdH2, { color: colors.foreground }]}>{line.slice(3)}</Text>;
-          }
-          if (line.startsWith("### ")) {
-            return <Text key={i} style={[styles.mdH3, { color: colors.foreground }]}>{line.slice(4)}</Text>;
-          }
-          if (line.startsWith("---")) {
-            return <View key={i} style={[styles.mdHr, { backgroundColor: colors.border }]} />;
-          }
-          if (line.startsWith("| ") && line.includes("|")) {
-            // Table row
-            const cells = line.split("|").filter(Boolean).map((c) => c.trim());
-            if (cells.every((c) => c.match(/^[-:]+$/))) return null; // separator row
-            return (
-              <View key={i} style={styles.mdTableRow}>
-                {cells.map((cell, ci) => (
-                  <Text key={ci} style={[styles.mdTableCell, { color: colors.foreground, borderColor: colors.border }]} numberOfLines={2}>
-                    {cell.replace(/\*\*/g, "")}
-                  </Text>
-                ))}
-              </View>
-            );
-          }
-          if (line.startsWith("- ") || line.startsWith("* ")) {
-            return (
-              <View key={i} style={styles.mdListItem}>
-                <Text style={{ color: colors.muted }}>•</Text>
-                <Text style={[styles.mdText, { color: colors.foreground, flex: 1 }]}>{line.slice(2).replace(/\*\*/g, "")}</Text>
-              </View>
-            );
-          }
-          if (line.startsWith("> ")) {
-            return (
-              <View key={i} style={[styles.mdBlockquote, { borderLeftColor: colors.primary || "#00B0FF" }]}>
-                <Text style={[styles.mdText, { color: colors.muted, fontStyle: "italic" }]}>{line.slice(2)}</Text>
-              </View>
-            );
-          }
-          if (line.match(/^\d+\. /)) {
-            return (
-              <View key={i} style={styles.mdListItem}>
-                <Text style={{ color: colors.muted, width: 20 }}>{line.match(/^\d+/)![0]}.</Text>
-                <Text style={[styles.mdText, { color: colors.foreground, flex: 1 }]}>{line.replace(/^\d+\. /, "").replace(/\*\*/g, "")}</Text>
-              </View>
-            );
-          }
-          if (line.startsWith("*") && line.endsWith("*")) {
-            return <Text key={i} style={[styles.mdText, { color: colors.muted, fontStyle: "italic", marginBottom: 4 }]}>{line.replace(/\*/g, "")}</Text>;
-          }
-          if (line.trim() === "") {
-            return <View key={i} style={{ height: 8 }} />;
-          }
-          return <Text key={i} style={[styles.mdText, { color: colors.foreground }]}>{line.replace(/\*\*/g, "")}</Text>;
-        })}
+        {sourceGuardMessage ? (
+          <View style={[styles.sourceNotice, { borderColor: colors.success, backgroundColor: colors.success + "10", marginTop: 0, marginBottom: 14 }]}>
+            <MaterialIcons name="verified" size={22} color={colors.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sourceNoticeTitle, { color: colors.foreground }]}>Quellenprüfung</Text>
+              <Text style={[styles.optionDesc, { color: colors.muted }]}>{sourceGuardMessage}</Text>
+            </View>
+          </View>
+        ) : null}
+        <ReportMarkdownPreview markdown={reportContent} />
       </ScrollView>
     </View>
   );
@@ -985,6 +987,34 @@ const styles = StyleSheet.create({
   optionDesc: {
     fontSize: 11,
     marginTop: 1,
+  },
+  sourceNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 11,
+    borderWidth: 1,
+    padding: 13,
+    marginTop: 12,
+  },
+  sourceNoticeTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 3,
+  },
+  defectSourceSection: {
+    marginTop: 14,
+  },
+  defectSourceList: {
+    gap: 8,
+  },
+  defectSourceCard: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   evidenceSection: {
     marginTop: 14,

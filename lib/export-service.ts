@@ -38,6 +38,16 @@ export interface ExportResult {
   error?: string;
 }
 
+type SavedReportExport = {
+  id: string;
+  type?: string;
+  content: string;
+  projectId?: string;
+  projectName?: string;
+  datum?: string;
+  createdAt: string;
+};
+
 // ─── Export Service ──────────────────────────────────────────────────────────
 
 class ExportService {
@@ -97,10 +107,12 @@ class ExportService {
     defects: Defect[];
     tasks: any[];
     knowledge: ProjectKnowledgeEntry[];
+    reports: SavedReportExport[];
   }> {
     let defects: Defect[] = [];
     let tasks: any[] = [];
     let knowledge: ProjectKnowledgeEntry[] = [];
+    let reports: SavedReportExport[] = [];
 
     if (options.scope === "defects" || options.scope === "full") {
       const allDefects = await getDefects();
@@ -136,7 +148,21 @@ class ExportService {
       }
     }
 
-    return { defects, tasks, knowledge };
+    if (options.scope === "analysis" || options.scope === "full") {
+      try {
+        const reportsJson = await AsyncStorage.getItem("saved_reports") || "[]";
+        const savedReports = JSON.parse(reportsJson);
+        reports = Array.isArray(savedReports)
+          ? savedReports
+              .filter((report: SavedReportExport) => report.projectId === options.projectId && typeof report.content === "string" && report.content.trim())
+              .sort((left: SavedReportExport, right: SavedReportExport) => right.createdAt.localeCompare(left.createdAt))
+          : [];
+      } catch {
+        reports = [];
+      }
+    }
+
+    return { defects, tasks, knowledge, reports };
   }
 
   // ─── CSV Export ─────────────────────────────────────────────────────────────
@@ -261,67 +287,110 @@ class ExportService {
     return { success: true, filePath, fileName, mimeType: "application/vnd.ms-excel" };
   }
 
-  // ─── PDF Export (generates HTML for sharing) ───────────────────────────────
+  // ─── PDF Export ─────────────────────────────────────────────────────────────
 
   private async exportPDF(
-    data: { defects: Defect[]; tasks: any[]; knowledge: ProjectKnowledgeEntry[] },
+    data: { defects: Defect[]; tasks: any[]; knowledge: ProjectKnowledgeEntry[]; reports: SavedReportExport[] },
     options: ExportOptions
   ): Promise<ExportResult> {
     const now = new Date();
     const dateStr = now.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const value = (input: unknown): string => {
+      const text = typeof input === "string" || typeof input === "number" ? String(input).trim() : "";
+      return (text || "nicht angegeben").replace(/\|/g, "–").replace(/\r?\n+/g, " ");
+    };
+    const sections: string[] = [];
 
-    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; color: #1a1a1a; font-size: 12px; }
-h1 { font-size: 18px; border-bottom: 2px solid #0EA5E9; padding-bottom: 8px; }
-h2 { font-size: 14px; color: #0EA5E9; margin-top: 20px; }
-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 11px; }
-th { background: #f0f4f8; font-weight: 600; }
-.meta { color: #666; font-size: 11px; margin-bottom: 16px; }
-.badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-.badge-offen { background: #FEE2E2; color: #DC2626; }
-.badge-hoch { background: #FEF3C7; color: #D97706; }
-.badge-erledigt { background: #D1FAE5; color: #059669; }
-@media print { body { padding: 0; } }
-</style></head><body>`;
-
-    html += `<h1>${options.projectName} – Export</h1>`;
-    html += `<p class="meta">Erstellt am ${dateStr} | Umfang: ${this.getScopeLabel(options.scope)}</p>`;
+    if (data.reports.length > 0) {
+      sections.push("# Gespeicherte KI-Berichte");
+      data.reports.forEach((report, index) => {
+        sections.push(
+          `## ${value(report.type || "Bericht")} · ${value(report.datum || new Date(report.createdAt).toLocaleDateString("de-DE"))}`,
+          report.content.trim(),
+        );
+        if (index < data.reports.length - 1) sections.push("---");
+      });
+    }
 
     if (data.defects.length > 0) {
-      html += `<h2>Mängel (${data.defects.length})</h2>`;
-      html += `<table><tr><th>Titel</th><th>Status</th><th>Priorität</th><th>Kategorie</th><th>Ort</th><th>Erstellt</th></tr>`;
-      for (const d of data.defects) {
-        html += `<tr><td>${d.title}</td><td><span class="badge badge-${d.status}">${d.status}</span></td><td>${d.priority}</td><td>${d.category}</td><td>${d.location || "-"}</td><td>${new Date(d.createdAt).toLocaleDateString("de-DE")}</td></tr>`;
-      }
-      html += `</table>`;
+      sections.push(`# Mängel (${data.defects.length})`);
+      data.defects.forEach((defect, index) => {
+        sections.push(
+          `## ${index + 1}. ${value(defect.title)}`,
+          "| Feld | Angabe |",
+          "|---|---|",
+          `| Status | ${value(defect.status)} |`,
+          `| Priorität | ${value(defect.priority)} |`,
+          `| Kategorie / Gewerk | ${value(defect.gewerk || defect.category)} |`,
+          `| Ort | ${value(defect.location || defect.room)} |`,
+          `| Frist | ${value(defect.dueDate)} |`,
+          `| Verantwortlich | ${value(defect.assigneeFirma || defect.assignee)} |`,
+          `| Erstellt | ${new Date(defect.createdAt).toLocaleDateString("de-DE")} |`,
+        );
+        if (defect.description?.trim()) sections.push(`**Beschreibung:** ${defect.description.trim()}`);
+      });
     }
 
     if (data.tasks.length > 0) {
-      html += `<h2>Aufgaben (${data.tasks.length})</h2>`;
-      html += `<table><tr><th>Titel</th><th>Status</th><th>Priorität</th><th>Gewerk</th><th>Frist</th></tr>`;
-      for (const t of data.tasks) {
-        html += `<tr><td>${t.title}</td><td>${t.status}</td><td>${t.priority}</td><td>${t.trade || "-"}</td><td>${t.deadline || "-"}</td></tr>`;
-      }
-      html += `</table>`;
+      sections.push(`# Aufgaben (${data.tasks.length})`);
+      data.tasks.forEach((task, index) => {
+        sections.push(
+          `## ${index + 1}. ${value(task.title)}`,
+          "| Feld | Angabe |",
+          "|---|---|",
+          `| Status | ${value(task.status)} |`,
+          `| Priorität | ${value(task.priority)} |`,
+          `| Gewerk | ${value(task.trade)} |`,
+          `| Verantwortlich | ${value(task.assignee)} |`,
+          `| Frist | ${value(task.deadline)} |`,
+        );
+        if (task.description?.trim()) sections.push(`**Beschreibung:** ${task.description.trim()}`);
+      });
     }
 
     if (data.knowledge.length > 0) {
-      html += `<h2>Wissensbasis-Einträge (${data.knowledge.length})</h2>`;
-      html += `<table><tr><th>Typ</th><th>Inhalt</th><th>Quelle</th><th>Datum</th></tr>`;
-      for (const k of data.knowledge.slice(0, 50)) {
-        html += `<tr><td>${k.type}</td><td>${k.content.slice(0, 100)}${k.content.length > 100 ? "..." : ""}</td><td>${k.source}</td><td>${new Date(k.timestamp).toLocaleDateString("de-DE")}</td></tr>`;
-      }
-      html += `</table>`;
+      sections.push(`# Wissensbasis (${data.knowledge.length})`);
+      data.knowledge.forEach((entry, index) => {
+        sections.push(
+          `## ${index + 1}. ${value(entry.type)}`,
+          "| Feld | Angabe |",
+          "|---|---|",
+          `| Quelle | ${value(entry.source)} |`,
+          `| Datum | ${new Date(entry.timestamp).toLocaleDateString("de-DE")} |`,
+          "",
+          entry.content.trim(),
+        );
+      });
     }
 
-    html += `</body></html>`;
+    if (sections.length === 0) {
+      sections.push("# Projektbericht", "", "Für den gewählten Zeitraum und Umfang liegen keine exportierbaren Daten vor.");
+    }
 
-    const fileName = `${options.projectName.replace(/\s+/g, "_")}_Export_${new Date().toISOString().slice(0, 10)}.html`;
-    const filePath = `${FileSystem.documentDirectory}${fileName}`;
-    await FileSystem.writeAsStringAsync(filePath, html, { encoding: FileSystem.EncodingType.UTF8 });
+    sections.push(
+      "# Exportinformationen",
+      "",
+      "| Feld | Angabe |",
+      "|---|---|",
+      `| Projekt | ${value(options.projectName)} |`,
+      `| Exportdatum | ${dateStr} |`,
+      `| Umfang | ${this.getScopeLabel(options.scope)} |`,
+      "| Dateiformat | PDF |",
+    );
 
-    return { success: true, filePath, fileName, mimeType: "text/html" };
+    const { generateProtocolPdf } = await import("@/lib/pdf-generator");
+    const filePath = await generateProtocolPdf({
+      title: options.projectName,
+      projectName: options.projectName,
+      protocol: sections.join("\n\n"),
+      templateId: "project-export",
+      templateName: `${this.getScopeLabel(options.scope)} Export`,
+      duration: 0,
+      createdAt: now.toISOString(),
+    });
+    const fileName = decodeURIComponent(filePath.split("/").pop() || `${options.projectName}_Export_${now.toISOString().slice(0, 10)}.pdf`);
+
+    return { success: true, filePath, fileName, mimeType: "application/pdf" };
   }
 
   // ─── Utilities ─────────────────────────────────────────────────────────────

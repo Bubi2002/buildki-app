@@ -34,7 +34,7 @@ export default function ExportScreen() {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("pdf");
   const [selectedScope, setSelectedScope] = useState<ExportScope>("full");
   const [isExporting, setIsExporting] = useState(false);
-  const [exportResult, setExportResult] = useState<{ success: boolean; fileName?: string; filePath?: string } | null>(null);
+  const [exportResult, setExportResult] = useState<{ success: boolean; fileName?: string; filePath?: string; mimeType?: string } | null>(null);
 
   const formats = exportService.getFormats();
   const scopes = exportService.getScopes();
@@ -59,7 +59,7 @@ export default function ExportScreen() {
         void loadActiveProject();
       }
     });
-  }, []);
+  }, [params.projectId, params.projectName]);
 
   const handleExport = async () => {
     if (!activeProject) {
@@ -82,8 +82,8 @@ export default function ExportScreen() {
 
       if (result.success && result.filePath) {
         if (Platform.OS !== "web") {
-          const Haptics = require("expo-haptics");
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          const Haptics = await import("expo-haptics");
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } else {
         Alert.alert("Export fehlgeschlagen", result.error || "Unbekannter Fehler");
@@ -100,7 +100,10 @@ export default function ExportScreen() {
     try {
       const available = await Sharing.isAvailableAsync();
       if (available) {
-        await Sharing.shareAsync(exportResult.filePath);
+        await Sharing.shareAsync(exportResult.filePath, {
+          mimeType: exportResult.mimeType,
+          dialogTitle: `${exportResult.fileName || "Export"} teilen`,
+        });
       } else {
         Alert.alert("Teilen nicht verfügbar", "Auf diesem Gerät ist die Teilen-Funktion nicht verfügbar.");
       }
