@@ -1138,3 +1138,13 @@
 - [x] Regressionstests für Bearbeiten, Speichern, erneutes Öffnen und Dekodieren vorhandener Protokoll-Pins ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen und den Ablauf visuell prüfen.
 - [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+
+## P0 Preise: Unicode-Escapes und sichtbare Schreibfehler (2026-07-27)
+
+- [x] Den vom Nutzer gezeigten Preis-/Abo-Bildschirm reproduzieren und alle roh sichtbaren Sequenzen vollständig inventarisieren.
+- [x] „Tarif wählen“, „Jährlich“, Euro-Zeichen, „gegenüber“, „kündbar“, Gedankenstrich, „Kündigung möglich“ und „über Stripe“ korrekt darstellen.
+- [x] Den tatsächlichen Preis-Renderpfad so normalisieren, dass sowohl direkte Copy als auch Übersetzungswerte keine sichtbaren `\\u...`-Sequenzen ausgeben.
+- [x] Preis-, Währungs- und Abo-Texte in allen unterstützten Sprachen auf verbleibende Unicode-Escapes prüfen.
+- [x] Regressionstests für Umlaute, Euro-Zeichen, Gedankenstrich und die vollständige deutsche Preis-Copy ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen und die Preis-Seite visuell prüfen.
+- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.

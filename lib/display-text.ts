@@ -1,4 +1,4 @@
-const UNICODE_ESCAPE_PATTERN = /\\u\{([0-9a-fA-F]{1,6})\}|\\u([0-9a-fA-F]{4})/g;
+const UNICODE_ESCAPE_PATTERN = /\\+u\{([0-9a-fA-F]{1,6})\}|\\+u([0-9a-fA-F]{4})/g;
 
 export function decodeUnicodeEscapes(value: string): string {
   let decoded = value;
