@@ -1161,4 +1161,4 @@
 - [x] Sichtbare Escape-Copy wie `STATUS \\u00E4NDERN` zentral als „STATUS ÄNDERN“ darstellen und den gesamten Mängelpfad auf weitere rohe Sequenzen prüfen.
 - [x] Regressionstests für Fristdatum, Sprachnotiz-Zustände, Nachprüfungs-Persistenz, Listenfilter und Unicode-Copy ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen sowie den vollständigen Mängelablauf visuell prüfen.
-- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+- [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
