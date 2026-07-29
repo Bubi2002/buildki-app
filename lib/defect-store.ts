@@ -42,6 +42,12 @@ export type DefectSignature = {
   signedAt: string;
 };
 
+export type DefectVoiceNote = {
+  uri: string;
+  durationMillis: number;
+  recordedAt: string;
+};
+
 export type MatterportPosition = {
   x: number;
   y: number;
@@ -80,6 +86,8 @@ export type Defect = {
   positionCode?: string;
   /** Date of follow-up inspection */
   followUpDate?: string;
+  /** Optional note for the follow-up inspection */
+  followUpNote?: string;
   /** Result of follow-up inspection */
   followUpResult?: "behoben" | "nachbesserung" | null;
   protocolId?: string;
@@ -111,6 +119,10 @@ export type Defect = {
   aiSummary?: string;
   /** Voice note URI (audio recording describing the defect) */
   voiceNoteUri?: string;
+  /** Voice note duration for display and playback controls */
+  voiceNoteDurationMillis?: number;
+  /** Creation timestamp of the current voice note */
+  voiceNoteRecordedAt?: string;
   // ─── Signatures (directly on defect for Abnahme/Übergabe) ──────────────────
   /** Digital signatures attached to this defect (AG/AN/Zeuge/Prüfer) */
   signatures?: DefectSignature[];
@@ -384,13 +396,24 @@ export async function setAiSummary(defectId: string, summary: string): Promise<D
 /**
  * Attach a voice note URI to a defect
  */
-export async function setVoiceNote(defectId: string, uri: string): Promise<Defect | null> {
+export async function setVoiceNote(defectId: string, voiceNote: DefectVoiceNote | null): Promise<Defect | null> {
   const defects = await getDefects();
   const defect = defects.find((d) => d.id === defectId);
   if (!defect) return null;
 
-  const updated: Defect = { ...defect, voiceNoteUri: uri };
+  const updated: Defect = {
+    ...defect,
+    voiceNoteUri: voiceNote?.uri,
+    voiceNoteDurationMillis: voiceNote?.durationMillis,
+    voiceNoteRecordedAt: voiceNote?.recordedAt,
+  };
   await saveDefect(updated);
+  await addHistoryEntry(
+    defectId,
+    "edited",
+    voiceNote ? undefined : "Sprachnotiz vorhanden",
+    voiceNote ? "Sprachnotiz aufgenommen" : "Sprachnotiz entfernt",
+  );
   return updated;
 }
 

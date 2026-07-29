@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Modal,
   ScrollView,
   Platform,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -19,6 +21,8 @@ import { getDefects, updateDefectStatus, type Defect } from "@/lib/defect-store"
 import { requestReinspection } from "@/lib/defect-comments";
 import { scheduleFollowUpForDefect, sendImmediateNotification } from "@/lib/notification-service";
 import { addHistoryEntry } from "@/lib/defect-store";
+import { DateOnlyPicker } from "@/components/date-only-picker";
+import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
 
 type FollowUpFilter = "alle" | "heute" | "ueberfaellig" | "kommend";
 
@@ -32,12 +36,14 @@ export default function FollowUpScreen() {
   const [filter, setFilter] = useState<FollowUpFilter>("alle");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
-  const [selectedDays, setSelectedDays] = useState<number>(3);
+  const [selectedFollowUpDate, setSelectedFollowUpDate] = useState(() => addDaysToDateOnly(todayDateOnly(), 3));
+  const [followUpNote, setFollowUpNote] = useState("");
+  const routeDefectHandledRef = useRef("");
 
   useFocusEffect(
     useCallback(() => {
       loadFollowUps();
-    }, [projectId])
+    }, [projectId, params.defectId])
   );
 
   async function loadFollowUps() {
@@ -49,6 +55,20 @@ export default function FollowUpScreen() {
       d.status !== "geschlossen"
     );
     setDefects(followUpDefects);
+
+    const requestedDefectId = typeof params.defectId === "string" ? params.defectId : "";
+    if (requestedDefectId && routeDefectHandledRef.current !== requestedDefectId) {
+      routeDefectHandledRef.current = requestedDefectId;
+      const requestedDefect = allDefects.find((defect) => defect.id === requestedDefectId);
+      if (requestedDefect && requestedDefect.status !== "erledigt" && requestedDefect.status !== "geschlossen") {
+        setSelectedDefect(requestedDefect);
+        setSelectedFollowUpDate(requestedDefect.followUpDate || addDaysToDateOnly(todayDateOnly(), 3));
+        setFollowUpNote(requestedDefect.followUpNote || "");
+        setShowDatePicker(true);
+      } else if (requestedDefect) {
+        Alert.alert("Nachprüfung nicht erforderlich", "Für erledigte oder geschlossene Mängel kann kein neuer Nachprüfungstermin geplant werden.");
+      }
+    }
   }
 
   const now = new Date();
@@ -75,13 +95,14 @@ export default function FollowUpScreen() {
     upcoming: defects.filter(d => d.followUpDate && d.followUpDate > today).length,
   };
 
-  const scheduleFollowUp = async (defect: Defect, days: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    const isoDate = date.toISOString().split("T")[0];
+  const scheduleFollowUp = async (defect: Defect, isoDate: string) => {
+    if (!isDateOnOrAfter(isoDate, todayDateOnly())) {
+      Alert.alert("Termin prüfen", "Bitte wähle ein heutiges oder zukünftiges Nachprüfungsdatum.");
+      return;
+    }
 
     // Set follow-up date and change status to "pruefung"
-    await requestReinspection(defect.id, isoDate);
+    await requestReinspection(defect.id, isoDate, followUpNote);
 
     // Schedule push notification
     await scheduleFollowUpForDefect(
@@ -92,7 +113,13 @@ export default function FollowUpScreen() {
     );
 
     // Record in history
-    await addHistoryEntry(defect.id, "status_changed", defect.status, "pruefung", `Nachprüfung geplant: ${formatDate(isoDate)}`);
+    await addHistoryEntry(
+      defect.id,
+      "status_changed",
+      defect.status,
+      "pruefung",
+      `Nachprüfung geplant: ${formatDateOnly(isoDate)}${followUpNote.trim() ? ` · ${followUpNote.trim()}` : ""}`,
+    );
 
     // Immediate confirmation
     if (Platform.OS !== "web") {
@@ -105,7 +132,7 @@ export default function FollowUpScreen() {
 
     Alert.alert(
       "Nachprüfung geplant",
-      `Nachprüfung für "${defect.title}" am ${formatDate(isoDate)} eingeplant. Du erhältst eine Erinnerung am Vortag.`,
+      `Nachprüfung für "${defect.title}" am ${formatDateOnly(isoDate)} eingeplant. Du erhältst eine Erinnerung am Vortag.`,
       [{ text: "OK" }]
     );
   };
@@ -143,6 +170,8 @@ export default function FollowUpScreen() {
 
   const rescheduleFollowUp = (defect: Defect) => {
     setSelectedDefect(defect);
+    setSelectedFollowUpDate(defect.followUpDate || addDaysToDateOnly(todayDateOnly(), 3));
+    setFollowUpNote(defect.followUpNote || "");
     setShowDatePicker(true);
   };
 
@@ -217,7 +246,7 @@ export default function FollowUpScreen() {
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push(`/defects?projectId=${item.projectId}` as any)}
+            onPress={() => router.push(`/defects?projectId=${item.projectId}&defectId=${item.id}` as any)}
             style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="open-in-new" size={16} color="#8FA3B8" />
@@ -321,6 +350,13 @@ export default function FollowUpScreen() {
                   ? "Setze Nachprüfungstermine bei offenen Mängeln"
                   : `Keine ${filter === "ueberfaellig" ? "überfälligen" : filter === "heute" ? "heutigen" : "kommenden"} Nachprüfungen`}
               </Text>
+              <Pressable
+                onPress={() => router.push(`/defects?projectId=${projectId}` as any)}
+                style={({ pressed }) => [styles.emptyAction, pressed && { opacity: 0.7 }]}
+              >
+                <MaterialIcons name="report-problem" size={17} color="#5DADE2" />
+                <Text style={styles.emptyActionText}>Offenen Mangel auswählen</Text>
+              </Pressable>
             </View>
           }
         />
@@ -329,7 +365,9 @@ export default function FollowUpScreen() {
       {/* Date Picker Modal */}
       <Modal visible={showDatePicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView style={styles.modalKeyboardAvoider} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.modalContent}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={styles.modalTitle}>Nachprüfungstermin</Text>
             {selectedDefect && (
               <Text style={styles.modalSubtitle} numberOfLines={2}>
@@ -341,34 +379,31 @@ export default function FollowUpScreen() {
             <View style={styles.dateOptions}>
               {[
                 { days: 1, label: "Morgen" },
-                { days: 2, label: "In 2 Tagen" },
                 { days: 3, label: "In 3 Tagen" },
-                { days: 5, label: "In 5 Tagen" },
                 { days: 7, label: "In 1 Woche" },
                 { days: 14, label: "In 2 Wochen" },
-                { days: 21, label: "In 3 Wochen" },
                 { days: 30, label: "In 1 Monat" },
               ].map((opt) => {
-                const date = new Date();
-                date.setDate(date.getDate() + opt.days);
+                const dateValue = addDaysToDateOnly(todayDateOnly(), opt.days);
+                const date = new Date(`${dateValue}T12:00:00`);
                 return (
                   <Pressable
                     key={opt.days}
-                    onPress={() => setSelectedDays(opt.days)}
+                    onPress={() => setSelectedFollowUpDate(dateValue)}
                     style={[
                       styles.dateOption,
-                      selectedDays === opt.days && styles.dateOptionActive,
+                      selectedFollowUpDate === dateValue && styles.dateOptionActive,
                     ]}
                   >
                     <Text style={[
                       styles.dateOptionLabel,
-                      selectedDays === opt.days && styles.dateOptionLabelActive,
+                      selectedFollowUpDate === dateValue && styles.dateOptionLabelActive,
                     ]}>
                       {opt.label}
                     </Text>
                     <Text style={[
                       styles.dateOptionDate,
-                      selectedDays === opt.days && { color: "#5DADE2" },
+                      selectedFollowUpDate === dateValue && { color: "#5DADE2" },
                     ]}>
                       {date.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}
                     </Text>
@@ -376,6 +411,26 @@ export default function FollowUpScreen() {
                 );
               })}
             </View>
+
+            <DateOnlyPicker
+              value={selectedFollowUpDate}
+              onChange={setSelectedFollowUpDate}
+              minimumDate={todayDateOnly()}
+              label="Genaues Nachprüfungsdatum"
+              allowClear={false}
+              testID="follow-up-date-picker"
+            />
+
+            <Text style={styles.sectionLabel}>Notiz zur Nachprüfung (optional)</Text>
+            <TextInput
+              value={followUpNote}
+              onChangeText={setFollowUpNote}
+              placeholder="Zum Beispiel: Fugen und Abdichtung erneut kontrollieren"
+              placeholderTextColor="#6F8296"
+              multiline
+              numberOfLines={3}
+              style={styles.noteInput}
+            />
 
             <View style={styles.modalInfo}>
               <MaterialIcons name="notifications-active" size={16} color="#5DADE2" />
@@ -392,14 +447,16 @@ export default function FollowUpScreen() {
                 <Text style={styles.cancelBtnText}>Abbrechen</Text>
               </Pressable>
               <Pressable
-                onPress={() => selectedDefect && scheduleFollowUp(selectedDefect, selectedDays)}
+                onPress={() => selectedDefect && scheduleFollowUp(selectedDefect, selectedFollowUpDate)}
                 style={({ pressed }) => [styles.confirmBtn, { opacity: pressed ? 0.8 : 1 }]}
               >
                 <MaterialIcons name="event-available" size={18} color="#fff" />
                 <Text style={styles.confirmBtnText}>Termin setzen</Text>
               </Pressable>
             </View>
+            </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </ScreenContainer>
@@ -571,11 +628,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 260,
   },
+  emptyAction: {
+    minHeight: 44,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#5DADE250",
+    backgroundColor: "#5DADE210",
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  emptyActionText: {
+    color: "#5DADE2",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "flex-end",
+  },
+  modalKeyboardAvoider: {
+    width: "100%",
+    maxHeight: "92%",
   },
   modalContent: {
     backgroundColor: "#0F1E30",
@@ -650,6 +728,18 @@ const styles = StyleSheet.create({
     color: "#5DADE2",
     flex: 1,
     lineHeight: 18,
+  },
+  noteInput: {
+    minHeight: 84,
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    color: "#F0F4F8",
+    backgroundColor: "#0B1622",
+    padding: 12,
+    textAlignVertical: "top",
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
   },
   modalButtons: {
     flexDirection: "row",

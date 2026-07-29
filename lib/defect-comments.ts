@@ -78,7 +78,7 @@ export async function setFollowUpDate(defectId: string, date: string): Promise<D
 /**
  * Request re-inspection (sets status to "pruefung" and follow-up date)
  */
-export async function requestReinspection(defectId: string, followUpDate: string): Promise<Defect | null> {
+export async function requestReinspection(defectId: string, followUpDate: string, followUpNote?: string): Promise<Defect | null> {
   const defects = await getDefects();
   const defect = defects.find((d) => d.id === defectId);
   if (!defect) return null;
@@ -87,6 +87,7 @@ export async function requestReinspection(defectId: string, followUpDate: string
     ...defect,
     status: "pruefung",
     followUpDate,
+    followUpNote: followUpNote?.trim() || undefined,
   };
   await saveDefect(updated);
   return updated;

@@ -1148,3 +1148,17 @@
 - [x] Regressionstests für Umlaute, Euro-Zeichen, Gedankenstrich und die vollständige deutsche Preis-Copy ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen und die Preis-Seite visuell prüfen.
 - [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+
+## P0 Mängel: Exakte Frist, Sprachnotiz und Nachprüfung (2026-07-29)
+
+- [x] Den vom Nutzer gezeigten Ablauf von Mangelerstellung, Mängeldetail und Nachprüfungsübersicht reproduzieren und die Weiterleitungsschleife exakt zuordnen.
+- [x] Neben 7/14/30/60 Tagen eine frei wählbare exakte Frist mit Kalenderauswahl, sichtbarer Datumsvorschau und plausibler Validierung ergänzen.
+- [x] Das frei gewählte Fristdatum im bestehenden Mängelmodell speichern und nach erneutem Öffnen sowie in Listen und Details unverändert anzeigen.
+- [x] Die bisherige Sprachnotiz-Hinweismeldung durch eine echte Aufnahme direkt am Mangel ersetzen, einschließlich Pause/Fortsetzen, Abschlussbestätigung, Wiedergabe und Löschen.
+- [x] Mikrofonberechtigung, Aufnahmeabbruch und Fehlerzustände verständlich behandeln, ohne den Nutzer in den Protokoll-Tab umzuleiten.
+- [x] „Nachprüfung planen“ direkt am offenen Mangel mit exaktem Termin und optionaler Notiz ermöglichen und dauerhaft speichern.
+- [x] Die Nachprüfungsübersicht aus denselben gespeicherten Terminen speisen, den zugehörigen Mangel öffnen lassen und die bestehende Navigationsschleife entfernen.
+- [x] Sichtbare Escape-Copy wie `STATUS \\u00E4NDERN` zentral als „STATUS ÄNDERN“ darstellen und den gesamten Mängelpfad auf weitere rohe Sequenzen prüfen.
+- [x] Regressionstests für Fristdatum, Sprachnotiz-Zustände, Nachprüfungs-Persistenz, Listenfilter und Unicode-Copy ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor nach dem Fix ausführen sowie den vollständigen Mängelablauf visuell prüfen.
+- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.

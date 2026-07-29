@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -34,10 +34,19 @@ import {
   getDefectHistory,
   formatHistoryEntry,
   addDefectSignature,
+  setVoiceNote,
   type DefectHistoryEntry,
   type DefectSignature,
 } from "@/lib/defect-store";
-import { requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from "expo-audio";
 import { SignaturePad } from "@/components/signature-pad";
 import { TradePicker } from "@/components/trade-picker";
 import { GEWERKE , generateDefectPdfHtml } from "@/lib/defect-pdf-export";
@@ -46,12 +55,19 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { useTranslation } from "@/lib/language-provider";
 import { generatePositionCode } from "@/lib/position-numbering";
+import { DateOnlyPicker } from "@/components/date-only-picker";
+import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
+import {
+  formatVoiceNoteDuration,
+  persistDefectVoiceNote,
+  removePersistedDefectVoiceNote,
+} from "@/lib/defect-voice-note";
 
 export default function DefectsScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams<{ projectId?: string }>();
+  const params = useLocalSearchParams<{ projectId?: string; defectId?: string }>();
   const projectId = params.projectId || "";
 
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -76,12 +92,29 @@ export default function DefectsScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [signatureRole, setSignatureRole] = useState<string>("Auftraggeber");
+  const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const defectVoiceRecorderState = useAudioRecorderState(defectVoiceRecorder, 250);
+  const defectVoicePlayer = useAudioPlayer(selectedDefect?.voiceNoteUri || null);
+  const defectVoicePlayerStatus = useAudioPlayerStatus(defectVoicePlayer);
+  const [voiceNoteMode, setVoiceNoteMode] = useState<"idle" | "recording" | "paused" | "saving">("idle");
+  const [showVoiceNoteFinish, setShowVoiceNoteFinish] = useState(false);
+  const voiceNoteDefectIdRef = useRef<string | null>(null);
+  const routeDefectHandledRef = useRef("");
 
   useFocusEffect(
     useCallback(() => {
-      loadDefects();
+      loadDefects().then(async (loaded) => {
+        const requestedDefectId = typeof params.defectId === "string" ? params.defectId : "";
+        if (!requestedDefectId || routeDefectHandledRef.current === requestedDefectId) return;
+        const requestedDefect = loaded.find((defect) => defect.id === requestedDefectId);
+        if (!requestedDefect) return;
+        routeDefectHandledRef.current = requestedDefectId;
+        setSelectedDefect(requestedDefect);
+        setDefectHistoryEntries(await getDefectHistory(requestedDefect.id));
+        setShowDetailModal(true);
+      });
       loadRoomStructure();
-    }, [projectId])
+    }, [projectId, params.defectId])
   );
 
   async function loadRoomStructure() {
@@ -98,6 +131,7 @@ export default function DefectsScreen() {
   async function loadDefects() {
     const loaded = await getDefects(projectId || undefined);
     setDefects(loaded);
+    return loaded;
   }
 
   const filteredDefects = defects.filter((d) => {
@@ -147,6 +181,10 @@ export default function DefectsScreen() {
 
   const createDefect = async () => {
     if (!newTitle.trim()) return;
+    if (newDueDate && !isDateOnOrAfter(newDueDate, todayDateOnly())) {
+      Alert.alert("Frist prüfen", "Bitte wähle ein heutiges oder zukünftiges Fristdatum.");
+      return;
+    }
 
     const defect: Defect & { gewerk?: string; dueDate?: string; assignee?: string } = {
       id: `defect-${Date.now()}`,
@@ -257,6 +295,175 @@ export default function DefectsScreen() {
     const history = await getDefectHistory(defect.id);
     setDefectHistoryEntries(history);
     setShowDetailModal(true);
+  };
+
+  const resetVoiceAudioMode = async () => {
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+    } catch (error) {
+      console.warn("Defect voice-note audio reset failed:", error);
+    }
+  };
+
+  const startDefectVoiceNote = async () => {
+    if (!selectedDefect || voiceNoteMode !== "idle") return;
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Sprachnotiz",
+        "Die Aufnahme ist in der Webvorschau nicht verfügbar. Auf iPhone und Android wird sie direkt am Mangel gespeichert.",
+      );
+      return;
+    }
+
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Mikrofonzugriff benötigt",
+          "Bitte erlaube den Mikrofonzugriff in den Systemeinstellungen, um eine Sprachnotiz am Mangel aufzunehmen.",
+        );
+        return;
+      }
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await defectVoiceRecorder.prepareToRecordAsync();
+      defectVoiceRecorder.record();
+      voiceNoteDefectIdRef.current = selectedDefect.id;
+      setVoiceNoteMode("recording");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      await resetVoiceAudioMode();
+      setVoiceNoteMode("idle");
+      Alert.alert("Aufnahme nicht möglich", "Die Sprachnotiz konnte nicht gestartet werden. Bitte versuche es erneut.");
+      console.warn("Defect voice-note start failed:", error);
+    }
+  };
+
+  const pauseDefectVoiceNote = () => {
+    try {
+      defectVoiceRecorder.pause();
+      setVoiceNoteMode("paused");
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.warn("Defect voice-note pause failed:", error);
+    }
+  };
+
+  const resumeDefectVoiceNote = () => {
+    try {
+      defectVoiceRecorder.record();
+      setVoiceNoteMode("recording");
+      setShowVoiceNoteFinish(false);
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.warn("Defect voice-note resume failed:", error);
+    }
+  };
+
+  const requestFinishDefectVoiceNote = () => {
+    if (voiceNoteMode === "recording") pauseDefectVoiceNote();
+    setShowVoiceNoteFinish(true);
+  };
+
+  const closeDefectDetail = () => {
+    if (voiceNoteMode === "recording" || voiceNoteMode === "paused") {
+      requestFinishDefectVoiceNote();
+      return;
+    }
+    if (voiceNoteMode === "saving") return;
+    setShowDetailModal(false);
+  };
+
+  const stopDefectVoiceRecorder = async (): Promise<string | null> => {
+    try {
+      const stopPromise = defectVoiceRecorder.stop();
+      const timeout = new Promise<void>((_, reject) => setTimeout(() => reject(new Error("stop timeout")), 4000));
+      try {
+        await Promise.race([stopPromise, timeout]);
+      } catch (error) {
+        console.warn("Defect voice-note stop race:", error);
+      }
+      return defectVoiceRecorder.uri || defectVoiceRecorder.getStatus().url;
+    } catch (error) {
+      console.warn("Defect voice-note stop failed:", error);
+      return defectVoiceRecorder.uri || null;
+    } finally {
+      await resetVoiceAudioMode();
+    }
+  };
+
+  const saveDefectVoiceNote = async () => {
+    const defectId = voiceNoteDefectIdRef.current;
+    const durationMillis = defectVoiceRecorderState.durationMillis;
+    if (!defectId) return;
+    setShowVoiceNoteFinish(false);
+    setVoiceNoteMode("saving");
+
+    const sourceUri = await stopDefectVoiceRecorder();
+    if (!sourceUri) {
+      setVoiceNoteMode("idle");
+      Alert.alert("Sprachnotiz nicht gespeichert", "Für die Aufnahme wurde keine Audiodatei erzeugt. Bitte nimm sie erneut auf.");
+      return;
+    }
+
+    try {
+      const permanentUri = await persistDefectVoiceNote(sourceUri, defectId);
+      const updated = await setVoiceNote(defectId, {
+        uri: permanentUri,
+        durationMillis,
+        recordedAt: new Date().toISOString(),
+      });
+      if (updated) setSelectedDefect(updated);
+      await loadDefects();
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      Alert.alert("Speichern fehlgeschlagen", "Die Sprachnotiz konnte nicht dauerhaft am Mangel gespeichert werden.");
+      console.warn("Defect voice-note persistence failed:", error);
+    } finally {
+      voiceNoteDefectIdRef.current = null;
+      setVoiceNoteMode("idle");
+    }
+  };
+
+  const discardDefectVoiceNote = async () => {
+    setShowVoiceNoteFinish(false);
+    setVoiceNoteMode("saving");
+    const temporaryUri = await stopDefectVoiceRecorder();
+    await removePersistedDefectVoiceNote(temporaryUri || undefined);
+    voiceNoteDefectIdRef.current = null;
+    setVoiceNoteMode("idle");
+  };
+
+  const toggleDefectVoicePlayback = async () => {
+    if (defectVoicePlayerStatus.playing) {
+      defectVoicePlayer.pause();
+      return;
+    }
+    if (
+      defectVoicePlayerStatus.duration > 0 &&
+      defectVoicePlayerStatus.currentTime >= defectVoicePlayerStatus.duration - 0.2
+    ) {
+      await defectVoicePlayer.seekTo(0);
+    }
+    defectVoicePlayer.play();
+  };
+
+  const deleteDefectVoiceNote = () => {
+    if (!selectedDefect?.voiceNoteUri) return;
+    Alert.alert("Sprachnotiz löschen", "Möchtest du die gespeicherte Sprachnotiz dieses Mangels wirklich löschen?", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Löschen",
+        style: "destructive",
+        onPress: async () => {
+          const uri = selectedDefect.voiceNoteUri;
+          defectVoicePlayer.pause();
+          const updated = await setVoiceNote(selectedDefect.id, null);
+          await removePersistedDefectVoiceNote(uri);
+          if (updated) setSelectedDefect(updated);
+          await loadDefects();
+        },
+      },
+    ]);
   };
 
   const renderDefect = ({ item }: { item: Defect }) => (
@@ -396,14 +603,14 @@ export default function DefectsScreen() {
       />
 
       {/* Detail Modal with History */}
-      <Modal visible={showDetailModal} transparent animationType="slide">
+      <Modal visible={showDetailModal} transparent animationType="slide" onRequestClose={closeDefectDetail}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             {selectedDefect && (
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>{selectedDefect.title}</Text>
-                  <Pressable onPress={() => setShowDetailModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+                  <Pressable onPress={closeDefectDetail} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
                     <MaterialIcons name="close" size={24} color={colors.muted} />
                   </Pressable>
                 </View>
@@ -605,30 +812,72 @@ export default function DefectsScreen() {
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Sprachnotiz</Text>
                   {selectedDefect.voiceNoteUri ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}>
-                      <MaterialIcons name="mic" size={18} color={colors.primary} />
-                      <Text style={{ fontSize: 13, color: colors.foreground, flex: 1 }}>Sprachnotiz vorhanden</Text>
+                    <View style={[styles.voiceNoteCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
                       <Pressable
-                        onPress={async () => {
-                          const updated = { ...selectedDefect, voiceNoteUri: undefined, updatedAt: new Date().toISOString() };
-                          await saveDefect(updated);
-                          setSelectedDefect(updated);
-                          await loadDefects();
-                        }}
-                        style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}
+                        onPress={toggleDefectVoicePlayback}
+                        style={({ pressed }) => [
+                          styles.voiceNotePlayButton,
+                          { backgroundColor: colors.primary + "18", borderColor: colors.primary + "50" },
+                          pressed && { opacity: 0.7 },
+                        ]}
                       >
-                        <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+                        <MaterialIcons name={defectVoicePlayerStatus.playing ? "pause" : "play-arrow"} size={22} color={colors.primary} />
                       </Pressable>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: "600" }}>
+                          {defectVoicePlayerStatus.playing ? "Sprachnotiz wird abgespielt" : "Sprachnotiz abspielen"}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+                          {formatVoiceNoteDuration((defectVoicePlayerStatus.currentTime || 0) * 1000)} / {formatVoiceNoteDuration(selectedDefect.voiceNoteDurationMillis || (defectVoicePlayerStatus.duration || 0) * 1000)}
+                        </Text>
+                      </View>
+                      <Pressable onPress={deleteDefectVoiceNote} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 8 }]}>
+                        <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                      </Pressable>
+                    </View>
+                  ) : voiceNoteMode !== "idle" ? (
+                    <View
+                      style={[
+                        styles.voiceRecordingCard,
+                        {
+                          borderColor: voiceNoteMode === "recording" ? colors.error : colors.warning,
+                          backgroundColor: colors.background,
+                        },
+                      ]}
+                    >
+                      <View style={styles.voiceRecordingHeader}>
+                        <View style={[styles.voiceRecordingDot, { backgroundColor: voiceNoteMode === "recording" ? colors.error : colors.warning }]} />
+                        <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "700", flex: 1 }}>
+                          {voiceNoteMode === "saving" ? "Sprachnotiz wird gespeichert …" : voiceNoteMode === "paused" ? "Aufnahme pausiert" : "Aufnahme läuft"}
+                        </Text>
+                        <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
+                          {formatVoiceNoteDuration(defectVoiceRecorderState.durationMillis)}
+                        </Text>
+                      </View>
+                      {voiceNoteMode !== "saving" ? (
+                        <View style={styles.voiceRecordingActions}>
+                          <Pressable
+                            onPress={voiceNoteMode === "recording" ? pauseDefectVoiceNote : resumeDefectVoiceNote}
+                            style={({ pressed }) => [styles.voiceSecondaryButton, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+                          >
+                            <MaterialIcons name={voiceNoteMode === "recording" ? "pause" : "mic"} size={17} color={colors.primary} />
+                            <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
+                              {voiceNoteMode === "recording" ? "Pausieren" : "Fortsetzen"}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={requestFinishDefectVoiceNote}
+                            style={({ pressed }) => [styles.voicePrimaryButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}
+                          >
+                            <MaterialIcons name="stop" size={17} color="#FFFFFF" />
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>Aufnahme abschließen</Text>
+                          </Pressable>
+                        </View>
+                      ) : null}
                     </View>
                   ) : (
                     <Pressable
-                      onPress={async () => {
-                        if (Platform.OS === "web") { Alert.alert("Nicht verf\u00fcgbar", "Sprachaufnahme nur auf dem Ger\u00e4t m\u00f6glich."); return; }
-                        const perm = await requestRecordingPermissionsAsync();
-                        if (!perm.granted) { Alert.alert("Berechtigung", "Mikrofonzugriff wird ben\u00f6tigt."); return; }
-                        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-                        Alert.alert("Sprachnotiz", "Mikrofon bereit. Nutze die Aufnahme-Funktion im Protokoll-Tab f\u00fcr vollst\u00e4ndige Aufnahmen.");
-                      }}
+                      onPress={startDefectVoiceNote}
                       style={({ pressed }) => [{
                         flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
                         paddingVertical: 10, borderWidth: 1, borderColor: colors.primary + "40",
@@ -681,6 +930,7 @@ export default function DefectsScreen() {
                 {selectedDefect.pinId && (
                   <Pressable
                     onPress={() => {
+                      if (voiceNoteMode !== "idle") { requestFinishDefectVoiceNote(); return; }
                       setShowDetailModal(false);
                       router.push(`/matterport-viewer?modelId=&projectId=${selectedDefect.projectId}&navigateToDefect=${selectedDefect.id}` as any);
                     }}
@@ -699,6 +949,7 @@ export default function DefectsScreen() {
                 {/* Nachprüfung Button */}
                 <Pressable
                   onPress={() => {
+                    if (voiceNoteMode !== "idle") { requestFinishDefectVoiceNote(); return; }
                     setShowDetailModal(false);
                     router.push(`/follow-up?projectId=${selectedDefect.projectId}&defectId=${selectedDefect.id}` as any);
                   }}
@@ -771,6 +1022,36 @@ export default function DefectsScreen() {
               }}
               onCancel={() => setShowSignaturePad(false)}
             />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showVoiceNoteFinish} transparent animationType="fade">
+        <View style={styles.voiceConfirmOverlay}>
+          <View style={[styles.voiceConfirmCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialIcons name="pause-circle" size={34} color={colors.primary} />
+            <Text style={[styles.voiceConfirmTitle, { color: colors.foreground }]}>Aufnahme pausiert</Text>
+            <Text style={[styles.voiceConfirmText, { color: colors.muted }]}>Möchtest du die Sprachnotiz speichern, fortsetzen oder verwerfen?</Text>
+            <Text style={{ color: colors.primary, fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"], marginBottom: 14 }}>
+              {formatVoiceNoteDuration(defectVoiceRecorderState.durationMillis)}
+            </Text>
+            <Pressable
+              onPress={saveDefectVoiceNote}
+              style={({ pressed }) => [styles.voiceConfirmPrimary, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}
+            >
+              <MaterialIcons name="save" size={18} color="#FFFFFF" />
+              <Text style={styles.voiceConfirmPrimaryText}>Sprachnotiz speichern</Text>
+            </Pressable>
+            <Pressable
+              onPress={resumeDefectVoiceNote}
+              style={({ pressed }) => [styles.voiceConfirmSecondary, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+            >
+              <MaterialIcons name="mic" size={18} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>Aufnahme fortsetzen</Text>
+            </Pressable>
+            <Pressable onPress={discardDefectVoiceNote} style={({ pressed }) => [styles.voiceConfirmDiscard, pressed && { opacity: 0.65 }]}>
+              <Text style={{ color: colors.error, fontSize: 12, fontWeight: "700" }}>Aufnahme verwerfen</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -955,9 +1236,7 @@ export default function DefectsScreen() {
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('frist_optional')}</Text>
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
               {[7, 14, 30, 60].map((days) => {
-                const d = new Date();
-                d.setDate(d.getDate() + days);
-                const iso = d.toISOString().split("T")[0];
+                const iso = addDaysToDateOnly(todayDateOnly(), days);
                 return (
                   <Pressable
                     key={days}
@@ -975,9 +1254,16 @@ export default function DefectsScreen() {
                 );
               })}
             </View>
+            <DateOnlyPicker
+              value={newDueDate}
+              onChange={setNewDueDate}
+              minimumDate={todayDateOnly()}
+              label="Genaues Fristdatum"
+              testID="defect-due-date-picker"
+            />
             {newDueDate ? (
               <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 12, marginTop: -8 }}>
-                Frist: {new Date(newDueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                Frist: {formatDateOnly(newDueDate)}
               </Text>
             ) : null}
 
@@ -1043,6 +1329,22 @@ const styles = StyleSheet.create({
   defectTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
   defectMeta: { fontSize: 12, marginTop: 3 },
   defectDesc: { fontSize: 13, marginTop: 4 },
+  voiceNoteCard: { borderWidth: 1, minHeight: 64, flexDirection: "row", alignItems: "center", gap: 10, padding: 10 },
+  voiceNotePlayButton: { width: 42, height: 42, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  voiceRecordingCard: { borderWidth: 1, padding: 12 },
+  voiceRecordingHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  voiceRecordingDot: { width: 9, height: 9, borderRadius: 5 },
+  voiceRecordingActions: { flexDirection: "row", gap: 8, marginTop: 12 },
+  voiceSecondaryButton: { flex: 1, minHeight: 42, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  voicePrimaryButton: { flex: 1.4, minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  voiceConfirmOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: 24 },
+  voiceConfirmCard: { width: "100%", maxWidth: 420, borderWidth: 1, padding: 22, alignItems: "center" },
+  voiceConfirmTitle: { fontSize: 20, fontWeight: "800", marginTop: 10 },
+  voiceConfirmText: { fontSize: 14, lineHeight: 20, textAlign: "center", marginTop: 8, marginBottom: 10 },
+  voiceConfirmPrimary: { width: "100%", minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  voiceConfirmPrimaryText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  voiceConfirmSecondary: { width: "100%", minHeight: 46, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 },
+  voiceConfirmDiscard: { minHeight: 42, justifyContent: "center", paddingHorizontal: 16, marginTop: 4 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
