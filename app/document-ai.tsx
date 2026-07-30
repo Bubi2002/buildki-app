@@ -6,7 +6,7 @@
  * Ergebnisse fließen in den Knowledge Layer.
  */
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,15 +15,23 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 
+import { DocumentAnalysisDetail } from "@/components/document-analysis-detail";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { documentAI, type DocumentAnalysisResult } from "@/lib/document-ai";
+import {
+  DocumentAnalysisError,
+  documentAI,
+  type DocumentAnalysisResult,
+} from "@/lib/document-ai";
 import type { DocumentEntity, DocumentCategory } from "@/shared/entities";
 import { trpc } from "@/lib/trpc";
 
@@ -33,41 +41,48 @@ export default function DocumentAIScreen() {
 
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
   const [documents, setDocuments] = useState<DocumentEntity[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisPhase, setAnalysisPhase] = useState<"idle" | "preparing" | "uploading" | "extracting" | "analyzing">("idle");
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [currentResult, setCurrentResult] = useState<DocumentAnalysisResult | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
 
   const analysisMutation = trpc.analysis.analyzePhoto.useMutation();
+  const uploadPhotoMutation = trpc.analysis.uploadPhoto.useMutation();
+  const isAnalyzing = analysisPhase !== "idle";
+  const analyzePhoto = analysisMutation.mutateAsync;
 
-  useEffect(() => {
-    loadActiveProject();
-    // Inject mutation into service
-    documentAI.setAnalyzeMutation(async (input: any) => {
-      return await analysisMutation.mutateAsync(input);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (activeProject) loadDocuments();
-  }, [activeProject]);
-
-  async function loadActiveProject() {
-    try {
-      const projectsJson = await AsyncStorage.getItem("projects");
-      const lastId = await AsyncStorage.getItem("last-selected-project-id");
-      if (projectsJson && lastId) {
-        const projects = JSON.parse(projectsJson);
-        const project = projects.find((p: any) => p.id === lastId);
-        if (project) setActiveProject({ id: project.id, name: project.name });
-      }
-    } catch {}
-  }
-
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async () => {
     if (!activeProject) return;
     const docs = await documentAI.getDocuments(activeProject.id);
     setDocuments(docs);
-  }
+  }, [activeProject]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const projectsJson = await AsyncStorage.getItem("projects");
+        const lastId = await AsyncStorage.getItem("last-selected-project-id");
+        if (!projectsJson || !lastId || cancelled) return;
+        const projects = JSON.parse(projectsJson);
+        const project = projects.find((candidate: any) => candidate.id === lastId);
+        if (!project || cancelled) return;
+        const selectedProject = { id: project.id, name: project.name };
+        const docs = await documentAI.getDocuments(selectedProject.id);
+        if (cancelled) return;
+        setActiveProject(selectedProject);
+        setDocuments(docs);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    documentAI.setAnalyzeMutation(async (input: any) => await analyzePhoto(input));
+  }, [analyzePhoto]);
 
   const handlePickDocument = async () => {
     if (!activeProject) {
@@ -90,9 +105,32 @@ export default function DocumentAIScreen() {
 
       const file = result.assets[0];
       const fileType = documentAI.detectFileType(file.name);
+      if (fileType === "other") {
+        Alert.alert("Format nicht unterstützt", "Bitte eine PDF-, DOCX-, XLSX-, CSV- oder Bilddatei auswählen.");
+        return;
+      }
 
-      setIsAnalyzing(true);
+      setAnalysisPhase("preparing");
+      setAnalysisError(null);
       setShowResult(false);
+      setCurrentResult(null);
+
+      let remoteUri: string | undefined;
+      if (fileType === "image") {
+        setAnalysisPhase("uploading");
+        const base64 = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const uploaded = await uploadPhotoMutation.mutateAsync({
+          base64,
+          mimeType: file.mimeType || "image/jpeg",
+          filename: file.name,
+        });
+        remoteUri = uploaded.url;
+        setAnalysisPhase("analyzing");
+      } else {
+        setAnalysisPhase("extracting");
+      }
 
       const analysisResult = await documentAI.analyzeDocument({
         projectId: activeProject.id,
@@ -100,15 +138,59 @@ export default function DocumentAIScreen() {
         fileUri: file.uri,
         fileName: file.name,
         fileType,
+        fileSize: file.size,
+        remoteUri,
       });
 
       setCurrentResult(analysisResult);
       setShowResult(true);
       await loadDocuments();
-    } catch  {
-      Alert.alert("Fehler", "Dokument konnte nicht analysiert werden.");
+    } catch (error) {
+      const message = error instanceof DocumentAnalysisError
+        ? error.userMessage
+        : error instanceof Error
+          ? error.message
+          : "Das Dokument konnte nicht analysiert werden.";
+      setAnalysisError(message);
+      Alert.alert("Analyse nicht möglich", message);
     } finally {
-      setIsAnalyzing(false);
+      setAnalysisPhase("idle");
+    }
+  };
+
+  const getAnalysisPhaseLabel = (): string => {
+    if (analysisPhase === "preparing") return "Dokument wird vorbereitet...";
+    if (analysisPhase === "uploading") return "Bild wird sicher hochgeladen...";
+    if (analysisPhase === "extracting") return "Dokumenttext wird ausgelesen...";
+    if (analysisPhase === "analyzing") return "Inhalt wird ausgewertet...";
+    return "Dokument hochladen & analysieren";
+  };
+
+  const handleOpenOriginalFile = async (result: DocumentAnalysisResult) => {
+    if (!result.fileUri) {
+      Alert.alert("Datei nicht verfügbar", "Die ursprüngliche Datei ist nicht mehr im Gerätespeicher vorhanden.");
+      return;
+    }
+    const mimeType = result.fileType === "pdf"
+      ? "application/pdf"
+      : result.fileType === "docx"
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : result.fileType === "xlsx"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : result.fileType === "image"
+            ? "image/*"
+            : "application/octet-stream";
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.fileUri, {
+          mimeType,
+          dialogTitle: `Originaldatei öffnen: ${result.fileName}`,
+        });
+      } else {
+        await Linking.openURL(result.fileUri);
+      }
+    } catch {
+      Alert.alert("Datei nicht verfügbar", "Die ursprüngliche Datei konnte nicht geöffnet werden. Bitte erneut hochladen.");
     }
   };
 
@@ -141,10 +223,18 @@ export default function DocumentAIScreen() {
   const renderDocument = ({ item }: { item: DocumentEntity }) => (
     <Pressable
       onPress={async () => {
-        const result = await documentAI.getAnalysisResult(item.id);
-        if (result) {
+        setOpeningDocumentId(item.id);
+        setAnalysisError(null);
+        try {
+          const result = await documentAI.getAnalysisResult(item.id);
+          if (!result) {
+            setAnalysisError(`Für „${item.fileName}“ ist kein vollständiges Analyseergebnis gespeichert.`);
+            return;
+          }
           setCurrentResult(result);
           setShowResult(true);
+        } finally {
+          setOpeningDocumentId(null);
         }
       }}
       style={({ pressed }) => [
@@ -173,115 +263,13 @@ export default function DocumentAIScreen() {
           )}
         </View>
       </View>
-      <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+      {openingDocumentId === item.id ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+      )}
     </Pressable>
   );
-
-  const renderResultSection = () => {
-    if (!currentResult) return null;
-
-    return (
-      <View style={[styles.resultContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.resultHeader}>
-          <MaterialIcons name="analytics" size={20} color="#10B981" />
-          <Text style={[styles.resultTitle, { color: colors.foreground }]}>Analyse-Ergebnis</Text>
-          <Pressable onPress={() => setShowResult(false)}>
-            <MaterialIcons name="close" size={20} color={colors.muted} />
-          </Pressable>
-        </View>
-
-        {/* Summary */}
-        {currentResult.summary && (
-          <Text style={[styles.resultSummary, { color: colors.foreground }]}>
-            {currentResult.summary}
-          </Text>
-        )}
-
-        {/* Extracted data badges */}
-        <View style={styles.resultBadges}>
-          {currentResult.rooms.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#14B8A615" }]}>
-              <MaterialIcons name="meeting-room" size={12} color="#14B8A6" />
-              <Text style={[styles.badgeText, { color: "#14B8A6" }]}>
-                {currentResult.rooms.length} Räume
-              </Text>
-            </View>
-          )}
-          {currentResult.trades.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#F59E0B15" }]}>
-              <MaterialIcons name="construction" size={12} color="#F59E0B" />
-              <Text style={[styles.badgeText, { color: "#F59E0B" }]}>
-                {currentResult.trades.length} Gewerke
-              </Text>
-            </View>
-          )}
-          {currentResult.persons.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#06B6D415" }]}>
-              <MaterialIcons name="people" size={12} color="#06B6D4" />
-              <Text style={[styles.badgeText, { color: "#06B6D4" }]}>
-                {currentResult.persons.length} Personen
-              </Text>
-            </View>
-          )}
-          {currentResult.appointments.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#8B5CF615" }]}>
-              <MaterialIcons name="event" size={12} color="#8B5CF6" />
-              <Text style={[styles.badgeText, { color: "#8B5CF6" }]}>
-                {currentResult.appointments.length} Termine
-              </Text>
-            </View>
-          )}
-          {currentResult.tasks.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#3B82F615" }]}>
-              <MaterialIcons name="task-alt" size={12} color="#3B82F6" />
-              <Text style={[styles.badgeText, { color: "#3B82F6" }]}>
-                {currentResult.tasks.length} Aufgaben
-              </Text>
-            </View>
-          )}
-          {currentResult.defects.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#EF444415" }]}>
-              <MaterialIcons name="warning" size={12} color="#EF4444" />
-              <Text style={[styles.badgeText, { color: "#EF4444" }]}>
-                {currentResult.defects.length} Mängel
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Confidence */}
-        <View style={styles.confidenceRow}>
-          <Text style={[styles.confidenceLabel, { color: colors.muted }]}>Confidence:</Text>
-          <Text style={[styles.confidenceValue, { color: "#10B981" }]}>
-            {currentResult.overallConfidence}%
-          </Text>
-          <Text style={[styles.processingTime, { color: colors.muted }]}>
-            {(currentResult.processingTime / 1000).toFixed(1)}s
-          </Text>
-        </View>
-
-        {/* Extracted rooms list */}
-        {currentResult.rooms.length > 0 && (
-          <View style={styles.extractedSection}>
-            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Räume</Text>
-            <Text style={[styles.sectionContent, { color: colors.muted }]}>
-              {currentResult.rooms.join(", ")}
-            </Text>
-          </View>
-        )}
-
-        {/* Extracted trades list */}
-        {currentResult.trades.length > 0 && (
-          <View style={styles.extractedSection}>
-            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Gewerke</Text>
-            <Text style={[styles.sectionContent, { color: colors.muted }]}>
-              {currentResult.trades.join(", ")}
-            </Text>
-          </View>
-        )}
-      </View>
-    );
-  };
 
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
@@ -314,7 +302,7 @@ export default function DocumentAIScreen() {
             <MaterialIcons name="upload-file" size={24} color={colors.primary} />
           )}
           <Text style={[styles.uploadText, { color: isAnalyzing ? colors.muted : colors.primary }]}>
-            {isAnalyzing ? "Dokument wird analysiert..." : "Dokument hochladen & analysieren"}
+            {getAnalysisPhaseLabel()}
           </Text>
           <Text style={[styles.uploadHint, { color: colors.muted }]}>
             PDF, DOCX, XLSX, Bilder
@@ -322,8 +310,25 @@ export default function DocumentAIScreen() {
         </Pressable>
       </View>
 
-      {/* Result */}
-      {showResult && renderResultSection()}
+      {analysisError && (
+        <View style={[styles.errorCard, { borderColor: "#EF4444", backgroundColor: "#EF444412" }]}>
+          <MaterialIcons name="error-outline" size={20} color="#EF4444" />
+          <View style={styles.errorCopy}>
+            <Text style={[styles.errorTitle, { color: colors.foreground }]}>Analyse nicht abgeschlossen</Text>
+            <Text style={[styles.errorMessage, { color: colors.muted }]}>{analysisError}</Text>
+          </View>
+          <Pressable onPress={() => setAnalysisError(null)} accessibilityLabel="Fehlerhinweis schließen">
+            <MaterialIcons name="close" size={18} color={colors.muted} />
+          </Pressable>
+        </View>
+      )}
+
+      <DocumentAnalysisDetail
+        result={currentResult}
+        visible={showResult}
+        onClose={() => setShowResult(false)}
+        onOpenFile={handleOpenOriginalFile}
+      />
 
       {/* Document List */}
       <View style={styles.listSection}>
@@ -371,33 +376,18 @@ const styles = StyleSheet.create({
   },
   uploadText: { fontSize: 14, fontWeight: "600" },
   uploadHint: { fontSize: 11 },
-  resultContainer: {
+  errorCard: {
     marginHorizontal: 16,
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: 1,
     marginBottom: 12,
-  },
-  resultHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  resultTitle: { flex: 1, fontSize: 14, fontWeight: "700" },
-  resultSummary: { fontSize: 12, lineHeight: 18, marginBottom: 10 },
-  resultBadges: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
-  badge: {
+    borderWidth: 1,
+    padding: 12,
     flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+    alignItems: "flex-start",
+    gap: 10,
   },
-  badgeText: { fontSize: 11, fontWeight: "600" },
-  confidenceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-  confidenceLabel: { fontSize: 11 },
-  confidenceValue: { fontSize: 12, fontWeight: "700" },
-  processingTime: { fontSize: 10, marginLeft: "auto" },
-  extractedSection: { marginTop: 8 },
-  sectionLabel: { fontSize: 11, fontWeight: "700", marginBottom: 2 },
-  sectionContent: { fontSize: 11, lineHeight: 16 },
+  errorCopy: { flex: 1, gap: 3 },
+  errorTitle: { fontSize: 13, fontWeight: "700" },
+  errorMessage: { fontSize: 12, lineHeight: 17 },
   listSection: { flex: 1, paddingHorizontal: 16 },
   listTitle: { fontSize: 14, fontWeight: "700", marginBottom: 10 },
   emptyState: { alignItems: "center", paddingTop: 30, gap: 8 },

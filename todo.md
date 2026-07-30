@@ -1176,3 +1176,17 @@
 - [x] Regressionstests für Quellenbindung, Halluzinationssperre, Markdown-Strukturierung, vollständigen PDF-Inhalt, Dateiendung und MIME-Typ ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie Vorschau und erzeugtes PDF visuell und artefaktbasiert prüfen.
 - [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+
+## P0 Document AI: Echte Analyse und nutzbare Ergebnisdetails (2026-07-29)
+
+- [x] Den vom Nutzer gezeigten PDF-Ablauf reproduzieren und klären, warum trotz „Analyse abgeschlossen“ nur pauschale 50 % und kein nutzbares Ergebnis erscheinen.
+- [x] Upload, Dateizugriff, PDF-/Office-/Bildtextextraktion, KI-Aufruf, Persistenz und Detailnavigation vollständig nachverfolgen.
+- [x] Platzhalter- oder Simulationspfade entfernen: „abgeschlossen“ darf nur nach tatsächlich erfolgreicher Extraktion und Auswertung gesetzt werden.
+- [x] Leere, bildbasierte, verschlüsselte, beschädigte und nicht unterstützte Dokumente mit klaren, handlungsorientierten Fehlerzuständen behandeln.
+- [x] Analysefortschritt und Confidence aus realen Ergebnissen ableiten; keine feste oder erfundene 50-%-Anzeige verwenden.
+- [x] Ein vollständiges Ergebnis mit Zusammenfassung, Dokumenttyp, extrahierten Kerndaten, Auffälligkeiten, Fristen und Quellenhinweisen anzeigen.
+- [x] Den Dokumentlisteneintrag und den Pfeil zuverlässig mit einer öffnenden Detailansicht verdrahten; Schließen und erneutes Öffnen müssen funktionieren.
+- [x] Den ursprünglichen Dateinamen erhalten und die zugehörige Datei in der Detailansicht sichtbar beziehungsweise öffnbar machen.
+- [x] Regressionstests für reale Erfolgsdaten, leere Extraktion, Analysefehler, Persistenz, Detailnavigation und Confidence ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie den vollständigen Document-AI-Ablauf visuell prüfen.
+- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
