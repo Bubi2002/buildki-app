@@ -1233,3 +1233,15 @@
 - [x] TypeScript, ESLint, vollständige Vitest-Suite, Expo Doctor und `git diff --check` ausführen.
 - [x] Die Darstellung mit einer schmalen iPhone-Webansicht visuell prüfen und den Nachweis sichern.
 - [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+
+## P0 Protokollvorlagen: Import, Auswahl und eigener Editor (2026-07-31)
+
+- [x] Den Nutzerfall reproduzieren: Importierte Vorlage erscheint in den Einstellungen, fehlt aber in der Aufnahme-/Protokollauswahl.
+- [x] Speicher-IDs, Datenmodelle und Ladepfade von Standard-, importierten und selbst erstellten Vorlagen vollständig vergleichen.
+- [x] Einen kanonischen Vorlagen-Store mit rückwärtskompatibler Normalisierung vorhandener importierter Daten herstellen.
+- [x] Importierte und selbst erstellte Vorlagen in Aufnahme und Protokollerstellung anzeigen, auswählbar machen und dauerhaft anwenden.
+- [x] „Eigene Vorlage erstellen“ als vollständig sichtbaren, tastatur- und safe-area-festen Editor mit Validierung, Speichern, Bearbeiten und Abbrechen reparieren.
+- [x] Regressionstests für Import, Normalisierung, Erstellen, Bearbeiten, Auswahl, Anwendung und erneutes Laden ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite, Expo Doctor und `git diff --check` ausführen.
+- [x] Import-, Erstell-, Auswahl- und Aufnahmefluss auf schmaler iPhone-Breite visuell prüfen und Nachweise sichern.
+- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { importProtocolTemplates } from "./protocol-template-store";
 
 const MARKETPLACE_KEY = "template-marketplace";
 const SHARED_TEMPLATES_KEY = "shared-templates";
@@ -116,15 +117,13 @@ export async function getMarketplaceTemplates(): Promise<MarketplaceTemplate[]> 
 }
 
 export async function importTemplate(template: MarketplaceTemplate): Promise<void> {
-  const stored = await AsyncStorage.getItem("custom-templates");
-  const templates = stored ? JSON.parse(stored) : [];
   const imported = {
     ...template,
     id: `imported-${Date.now()}`,
     createdAt: new Date().toISOString(),
+    source: "marketplace" as const,
   };
-  templates.push(imported);
-  await AsyncStorage.setItem("custom-templates", JSON.stringify(templates));
+  await importProtocolTemplates([imported]);
   // Update download count
   const marketplace = await getMarketplaceTemplates();
   const idx = marketplace.findIndex(t => t.id === template.id);

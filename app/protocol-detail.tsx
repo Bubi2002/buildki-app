@@ -42,6 +42,11 @@ import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } fr
 import { sendActionItemsEmail } from "@/lib/email-actions";
 import { useTranslation } from "@/lib/language-provider";
 import { migrateLegacyProtocolPhotos } from "@/lib/evidence-store";
+import {
+  getAllProtocolTemplates,
+  getCustomTemplateGenerationInput,
+} from "@/lib/protocol-template-store";
+import type { ProtocolTemplate } from "@/shared/templates";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 function getLanguages(t: (key: any) => string) { return [
@@ -174,7 +179,7 @@ export default function ProtocolDetailScreen() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [versions, setVersions] = useState<GeneratedVersion[]>([]);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
-  const [availableTemplates, setAvailableTemplates] = useState<{id: string; name: string; icon: string; description: string}[]>([]);
+  const [availableTemplates, setAvailableTemplates] = useState<ProtocolTemplate[]>([]);
   // Speaker Identification
   const [speakerSegments, setSpeakerSegments] = useState<SpeakerSegment[]>([]);
   const [isIdentifyingSpeakers, setIsIdentifyingSpeakers] = useState(false);
@@ -224,9 +229,7 @@ export default function ProtocolDetailScreen() {
   }, [id]);
 
   async function loadTemplates() {
-    const { getAllTemplates } = require("@/shared/templates");
-    const templates = await getAllTemplates();
-    setAvailableTemplates(templates.map((t: any) => ({ id: t.id, name: t.name, icon: t.icon, description: t.description })));
+    setAvailableTemplates(await getAllProtocolTemplates());
   }
 
   // Auto-refresh while protocol is still processing in background
@@ -806,9 +809,14 @@ export default function ProtocolDetailScreen() {
     setIsRegenerating(true);
     setShowRegenerateModal(false);
     try {
+      const selectedTemplate = availableTemplates.find((template) => template.id === templateId);
+      const customTemplateInput = selectedTemplate
+        ? getCustomTemplateGenerationInput(selectedTemplate)
+        : {};
       const result = await protocolMutation.mutateAsync({
         transcription: protocol.transcription,
         templateId,
+        ...customTemplateInput,
       });
       // Extract todos for this version
       let versionTodos: TodoItem[] = [];

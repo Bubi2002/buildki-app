@@ -258,11 +258,11 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
       const data = await response.json();
       return data.result?.data?.json || data.result?.data || data;
     },
-    generateProtocol: async (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[]) => {
+    generateProtocol: async (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[], customSystemPrompt?: string, customTemplateName?: string) => {
       const response = await fetch(`${apiBaseUrl}/api/trpc/voice.generateProtocol`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ json: { transcription, templateId, style, format, recordingDate, markers, photoCount, photoTimestamps } }),
+        body: JSON.stringify({ json: { transcription, templateId, style, format, recordingDate, markers, photoCount, photoTimestamps, customSystemPrompt, customTemplateName } }),
       });
       if (!response.ok) throw new Error(`Protocol generation failed: ${response.status}`);
       const data = await response.json();
@@ -286,6 +286,8 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
     fileUri: item.fileUri,
     mimeType: item.mimeType,
     templateId: item.templateId,
+    templateSystemPrompt: item.templateSystemPrompt,
+    templateName: item.templateName,
     style: "professional",
     format: "detailed",
     createdAt: item.createdAt,

@@ -7,15 +7,20 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
-
-const CUSTOM_TEMPLATES_KEY = "custom-templates";
+import { TEMPLATE_CATEGORIES, type TemplateCategory } from "@/shared/templates";
+import {
+  loadCustomProtocolTemplates,
+  upsertCustomProtocolTemplate,
+  type StoredProtocolTemplate,
+} from "@/lib/protocol-template-store";
 
 const AVAILABLE_ICONS = [
   "description",
@@ -35,16 +40,6 @@ const AVAILABLE_ICONS = [
   "playlist-add-check",
 ];
 
-type CustomTemplate = {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  systemPrompt: string;
-  isCustom: true;
-  createdAt: string;
-};
-
 export default function TemplateEditorScreen() {
   const { t } = useTranslation();
   const colors = useColors();
@@ -54,32 +49,31 @@ export default function TemplateEditorScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("description");
+  const [category, setCategory] = useState<TemplateCategory>("allgemein");
+  const [loadedTemplate, setLoadedTemplate] = useState<StoredProtocolTemplate | null>(null);
   const [sections, setSections] = useState<{name: string; type: "text" | "checkbox" | "list" | "date" | "number"}[]>([{name: "", type: "text"}]);
   const [showPreview, setShowPreview] = useState(false);
-  const [outputFormat, setOutputFormat] = useState<"markdown" | "structured">("markdown");
   const [showIconPicker, setShowIconPicker] = useState(false);
 
   async function loadTemplate(id: string) {
     try {
-      const stored = await AsyncStorage.getItem(CUSTOM_TEMPLATES_KEY);
-      if (stored) {
-        const templates: CustomTemplate[] = JSON.parse(stored);
-        const template = templates.find((t) => t.id === id);
-        if (template) {
-          setName(template.name);
-          setDescription(template.description);
-          setIcon(template.icon);
-          // Parse sections from systemPrompt
-          const sectionMatches = template.systemPrompt.match(/\d+\.\s\*\*(.+?)\*\*/g);
-            const fieldTypes = template.systemPrompt.match(/\[(.+?)\]/g);
-          if (sectionMatches) {
-            setSections(sectionMatches.map((m: string, i: number) => ({
-              name: m.replace(/\d+\.\s\*\*|\*\*/g, "").replace(/\s*\[.*?\]/g, "").trim(),
-              type: (fieldTypes && fieldTypes[i] ? fieldTypes[i].replace(/[\[\]]/g, "") : "text") as any
-            })));
-          } else {
-            setSections([{name: "", type: "text"}]);
-          }
+      const templates = await loadCustomProtocolTemplates();
+      const template = templates.find((item) => item.id === id);
+      if (template) {
+        setLoadedTemplate(template);
+        setName(template.name);
+        setDescription(template.description);
+        setIcon(template.icon);
+        setCategory(template.category);
+        const sectionMatches = template.systemPrompt.match(/\d+\.\s\*\*(.+?)\*\*/g);
+        const fieldTypes = template.systemPrompt.match(/\[(.+?)\]/g);
+        if (sectionMatches) {
+          setSections(sectionMatches.map((match: string, index: number) => ({
+            name: match.replace(/\d+\.\s\*\*|\*\*/g, "").replace(/\s*\[.*?\]/g, "").trim(),
+            type: (fieldTypes && fieldTypes[index] ? fieldTypes[index].replace(/[\[\]]/g, "") : "text") as "text" | "checkbox" | "list" | "date" | "number",
+          })));
+        } else {
+          setSections([{ name: "", type: "text" }]);
         }
       }
     } catch (error) {
@@ -143,31 +137,18 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
     }
 
     try {
-      const stored = await AsyncStorage.getItem(CUSTOM_TEMPLATES_KEY);
-      const templates: CustomTemplate[] = stored ? JSON.parse(stored) : [];
-
-      const template: CustomTemplate = {
+      await upsertCustomProtocolTemplate({
+        ...(loadedTemplate || {}),
         id: params.editId || `custom-${Date.now()}`,
         name: name.trim(),
         icon,
         description: description.trim() || `Benutzerdefinierte Vorlage: ${name.trim()}`,
+        category,
         systemPrompt: buildSystemPrompt(),
         isCustom: true,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (params.editId) {
-        const index = templates.findIndex((t) => t.id === params.editId);
-        if (index !== -1) {
-          templates[index] = template;
-        } else {
-          templates.push(template);
-        }
-      } else {
-        templates.push(template);
-      }
-
-      await AsyncStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
+        source: loadedTemplate?.source || "custom",
+        createdAt: loadedTemplate?.createdAt || new Date().toISOString(),
+      });
       Alert.alert(t('alert_gespeichert'), t('msg_deine_vorlage_wurde_erfolgreich_gespeichert'), [
         { text: t('ok'), onPress: () => router.back() },
       ]);
@@ -201,11 +182,17 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
         </Pressable>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        >
         {/* Name */}
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
@@ -288,6 +275,35 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
           )}
         </View>
 
+        {/* Category */}
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Kategorie</Text>
+          <View style={styles.categoryGrid}>
+            {TEMPLATE_CATEGORIES.map((item) => {
+              const selected = category === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => setCategory(item.id)}
+                  style={({ pressed }) => [
+                    styles.categoryButton,
+                    {
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: selected ? colors.primary + "18" : colors.surface,
+                      opacity: pressed ? 0.68 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name={item.icon as any} size={18} color={selected ? colors.primary : colors.muted} />
+                  <Text style={[styles.categoryText, { color: selected ? colors.primary : colors.foreground }]}>
+                    {item.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Sections */}
         <View style={styles.field}>
           <View style={styles.sectionHeader}>
@@ -302,7 +318,7 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
           {sections.map((section, index) => (
             <View key={index} style={styles.sectionRow}>
               <Text style={[styles.sectionNumber, { color: colors.primary }]}>
-                {index + 1}.
+                {`${index + 1}.`}
               </Text>
               <TextInput
                 style={[styles.sectionInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
@@ -348,13 +364,17 @@ Schreibe sachlich und präzise. Antworte ausschließlich mit dem fertigen Protok
           </View>
         )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoiding: {
+    flex: 1,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -393,6 +413,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     marginBottom: 8,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryButton: {
+    width: "48%",
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  categoryText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "600",
   },
   input: {
     borderWidth: 1,

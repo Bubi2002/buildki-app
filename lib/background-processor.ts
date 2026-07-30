@@ -69,6 +69,8 @@ export interface PendingJob {
   fileUri: string;
   mimeType: string;
   templateId: string;
+  templateSystemPrompt?: string;
+  templateName?: string;
   style: string;
   format: string;
   createdAt: string;
@@ -213,7 +215,7 @@ async function autoSendPdfIfEnabled(protocolId: string) {
 export async function startBackgroundProcessing(job: PendingJob, apiClient: {
   upload: (base64: string, mimeType: string, filename: string) => Promise<{ url: string }>;
   transcribe: (audioUrl: string, language: string) => Promise<{ text: string; segments?: { start: number; end: number; text: string }[] }>;
-  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[]) => Promise<{ protocol: string }>;
+  generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[], customSystemPrompt?: string, customTemplateName?: string) => Promise<{ protocol: string }>;
   extractTodos: (transcription: string, protocolText: string) => Promise<{ todos: { task: string; assignee: string; priority: string; deadline: string }[] }>;
 }) {
   activeJobs.set(job.protocolId, job);
@@ -303,6 +305,8 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         job.markers,
         job.photos?.length || 0,
         job.photoTimestamps,
+        job.templateSystemPrompt,
+        job.templateName,
       ),
       "Protocol generation",
       job.protocolId,

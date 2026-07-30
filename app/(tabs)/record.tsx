@@ -13,6 +13,7 @@ import {
   TextInput,
   Alert,
   Animated,
+  KeyboardAvoidingView,
 } from "react-native";
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,7 +24,7 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRealtimeTranscription } from "@/lib/realtime-transcription";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useIsFocused } from "expo-router/react-navigation";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -48,6 +49,13 @@ import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-cont
 import { getPrivacyChoices } from "@/lib/privacy-consent";
 import { linkStoredPlanPinToProtocol } from "@/lib/floor-plan-store";
 import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
+import {
+  getCustomTemplateGenerationInput,
+  importProtocolTemplates,
+  loadCustomProtocolTemplates,
+  removeCustomProtocolTemplate,
+  upsertCustomProtocolTemplate,
+} from "@/lib/protocol-template-store";
 
 type RecordingMode = "audio-photo";
 
@@ -278,10 +286,37 @@ export default function RecordScreen() {
     })();
   }, []);
 
-  // Load default template from settings
-  useEffect(() => {
-    loadDefaultTemplate();
-  }, []);
+  // Reload normalized custom/imported templates whenever the recording tab gains focus.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void (async () => {
+        try {
+          const [templates, lastUsedId, settingsStr] = await Promise.all([
+            loadCustomProtocolTemplates(),
+            AsyncStorage.getItem("last-used-template-id"),
+            AsyncStorage.getItem("protokoll-settings"),
+          ]);
+          if (!active) return;
+
+          setCustomTemplates(templates);
+          const settings = settingsStr ? JSON.parse(settingsStr) : {};
+          const preferredId = lastUsedId || settings.templateId;
+          const allAvailable = [...PROTOCOL_TEMPLATES, ...templates];
+          const preferred = allAvailable.find((template) => template.id === preferredId);
+          setSelectedTemplate(preferred || PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
+        } catch {
+          if (active) {
+            setCustomTemplates([]);
+            setSelectedTemplate(PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
+          }
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   // Network monitoring for offline indicator
   useEffect(() => {
@@ -305,28 +340,6 @@ export default function RecordScreen() {
     })();
   }, []);
 
-  async function loadDefaultTemplate() {
-    try {
-      // First try last-used template
-      const lastUsedId = await AsyncStorage.getItem("last-used-template-id");
-      if (lastUsedId) {
-        const template = PROTOCOL_TEMPLATES.find((t) => t.id === lastUsedId);
-        if (template) { setSelectedTemplate(template); return; }
-      }
-      // Fallback to settings default
-      const settingsStr = await AsyncStorage.getItem("protokoll-settings");
-      if (settingsStr) {
-        const settings = JSON.parse(settingsStr);
-        if (settings.templateId) {
-          const template = PROTOCOL_TEMPLATES.find((t) => t.id === settings.templateId);
-          if (template) setSelectedTemplate(template);
-        }
-      }
-    } catch  {
-      // Use default
-    }
-  }
-
   // Save last-used template when it changes
   const selectTemplate = (template: ProtocolTemplate) => {
     setSelectedTemplate(template);
@@ -335,16 +348,6 @@ export default function RecordScreen() {
     AsyncStorage.setItem("last-used-template-id", template.id);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
-
-  // Load custom templates from storage
-  useEffect(() => {
-    (async () => {
-      try {
-        const stored = await AsyncStorage.getItem("custom-templates");
-        if (stored) setCustomTemplates(JSON.parse(stored));
-      } catch {}
-    })();
-  }, []);
 
   const allTemplates = useMemo(() => [...PROTOCOL_TEMPLATES, ...customTemplates], [customTemplates]);
 
@@ -376,30 +379,32 @@ export default function RecordScreen() {
       Alert.alert(t('alert_fehler'), t('msg_name_und_prompt_sind_erforderlich'));
       return;
     }
-    const newTemplate: ProtocolTemplate = {
+    const newTemplate = {
       id: `custom-${Date.now()}`,
       name: newTemplateName.trim(),
       icon: "auto-awesome",
       description: newTemplateDesc.trim() || "Benutzerdefinierte Vorlage",
       category: newTemplateCategory,
       systemPrompt: newTemplatePrompt.trim(),
+      isCustom: true as const,
+      source: "custom" as const,
+      createdAt: new Date().toISOString(),
     };
-    const updated = [...customTemplates, newTemplate];
+    const savedTemplate = await upsertCustomProtocolTemplate(newTemplate);
+    const updated = await loadCustomProtocolTemplates();
     setCustomTemplates(updated);
-    await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
     setShowCreateTemplate(false);
     setNewTemplateName("");
     setNewTemplateDesc("");
     setNewTemplatePrompt("");
     setNewTemplateCategory("allgemein");
-    selectTemplate(newTemplate);
+    selectTemplate(savedTemplate);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const deleteCustomTemplate = async (templateId: string) => {
-    const updated = customTemplates.filter(t => t.id !== templateId);
+    const updated = await removeCustomProtocolTemplate(templateId);
     setCustomTemplates(updated);
-    await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
     if (selectedTemplate.id === templateId) {
       setSelectedTemplate(PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
     }
@@ -431,25 +436,29 @@ export default function RecordScreen() {
       if (result.canceled || !result.assets?.[0]) return;
       const content = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: FileSystem.EncodingType.UTF8 });
       const imported = JSON.parse(content);
-      if (!Array.isArray(imported)) {
+      const importedItems = Array.isArray(imported)
+        ? imported
+        : Array.isArray(imported?.templates)
+          ? imported.templates
+          : [];
+      if (importedItems.length === 0) {
         Alert.alert(t('alert_fehler'), t('msg_ungueltiges_dateiformat'));
         return;
       }
-      // Validate and add IDs
-      const validTemplates = imported.filter((t: any) => t.name && t.systemPrompt).map((t: any) => ({
+      const validTemplates = importedItems.filter((t: any) => t.name && t.systemPrompt).map((t: any) => ({
         ...t,
         id: t.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         icon: t.icon || "auto-awesome",
         category: t.category || "allgemein",
         description: t.description || "Importierte Vorlage",
+        source: "import" as const,
       }));
       if (validTemplates.length === 0) {
         Alert.alert(t('alert_fehler'), t('msg_keine_gueltigen_vorlagen_in_der'));
         return;
       }
-      const merged = [...customTemplates, ...validTemplates];
+      const merged = await importProtocolTemplates(validTemplates);
       setCustomTemplates(merged);
-      await AsyncStorage.setItem("custom-templates", JSON.stringify(merged));
       Alert.alert(t('alert_importiert'), `${validTemplates.length} Vorlage(n) erfolgreich importiert.`);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch  {
@@ -1245,6 +1254,7 @@ export default function RecordScreen() {
       }
 
       const activeProject = selectedProject;
+      const customTemplateInput = getCustomTemplateGenerationInput(selectedTemplate);
       const privacyChoices = await getPrivacyChoices();
       const canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync;
       const protocolId = Date.now().toString();
@@ -1325,6 +1335,8 @@ export default function RecordScreen() {
           fileUri,
           mimeType,
           templateId: selectedTemplate.id,
+          templateSystemPrompt: customTemplateInput.customSystemPrompt,
+          templateName: customTemplateInput.customTemplateName,
           photos: capturedPhotos,
           duration: recordingDuration,
           recordingMode: mode,
@@ -1379,6 +1391,8 @@ export default function RecordScreen() {
           fileUri,
           mimeType,
           templateId: selectedTemplate.id,
+          templateSystemPrompt: customTemplateInput.customSystemPrompt,
+          templateName: customTemplateInput.customTemplateName,
           style: settings.style || "formal",
           format: settings.format || "bullets",
           createdAt: placeholderProtocol.createdAt,
@@ -1392,8 +1406,8 @@ export default function RecordScreen() {
             uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),
           transcribe: (audioUrl: string, language: string) =>
             transcribeMutation.mutateAsync({ audioUrl, language }),
-          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: { time: number; label: string }[], photoCount?: number, jobPhotoTimestamps?: number[]) =>
-            protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount, photoTimestamps: jobPhotoTimestamps }),
+          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: { time: number; label: string }[], photoCount?: number, jobPhotoTimestamps?: number[], customSystemPrompt?: string, customTemplateName?: string) =>
+            protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount, photoTimestamps: jobPhotoTimestamps, customSystemPrompt, customTemplateName }),
           extractTodos: (transcription: string, protocolText: string) =>
             todosMutation.mutateAsync({ transcription, protocolText }),
         }
@@ -2753,16 +2767,26 @@ export default function RecordScreen() {
 
       {/* Create Custom Template Modal */}
       <Modal visible={showCreateTemplate} animationType="slide" transparent>
-        <View style={styles.templateModalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.templateModalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={insets.top}
+        >
           <Pressable style={styles.templateModalDismiss} onPress={() => setShowCreateTemplate(false)} />
-          <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
+          <View style={[styles.templateModalContent, styles.templateEditorModalContent, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 16) }]}>
             <View style={styles.templateSheetHeader}>
               <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>{t('eigene_vorlage')}</Text>
               <Pressable onPress={() => setShowCreateTemplate(false)}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
               </Pressable>
             </View>
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.templateEditorScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            >
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, marginTop: 8 }}>{t('name')}</Text>
               <TextInput
                 style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15, color: colors.foreground, backgroundColor: colors.surface, marginBottom: 12 }}
@@ -2890,7 +2914,7 @@ export default function RecordScreen() {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Template Library Modal */}
@@ -3243,6 +3267,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
     maxHeight: "75%",
+  },
+  templateEditorModalContent: {
+    height: "84%",
+    maxHeight: "84%",
+  },
+  templateEditorScrollContent: {
+    paddingBottom: 32,
   },
   templateSearchContainer: {
     flexDirection: "row",

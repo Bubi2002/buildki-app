@@ -76,6 +76,8 @@ export const appRouter = router({
         z.object({
           transcription: z.string(),
           templateId: z.string().optional(),
+          customSystemPrompt: z.string().trim().min(1).max(12000).optional(),
+          customTemplateName: z.string().trim().min(1).max(160).optional(),
           style: z.enum(["formal", "informal"]).optional(),
           format: z.enum(["bullets", "paragraphs"]).optional(),
           recordingDate: z.string().optional(),
@@ -105,7 +107,11 @@ export const appRouter = router({
         const chapterOverride = hasChapters
           ? `\n\nWICHTIG - KAPITEL-OVERRIDE: Der Benutzer hat während der Aufnahme eigene Kapitelüberschriften gesetzt. Diese Kapitel haben ABSOLUTE PRIORITÄT über jede andere Gliederung. Ignoriere die oben genannte Struktur-Vorgabe und verwende STATTDESSEN die vom Benutzer gesprochenen Kapitel als Hauptgliederung. Jedes Kapitel MUSS als Markdown-Überschrift mit '# Kapitelname' (Raute + Leerzeichen + exakter Name) geschrieben werden. Ordne den Inhalt den Kapiteln zu, basierend auf dem Zeitpunkt der Kapitelmarker in der Aufnahme.`
           : "";
-        const systemPrompt = `${template.systemPrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.${chapterOverride}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
+        const templatePrompt = input.customSystemPrompt || template.systemPrompt;
+        const customTemplateNote = input.customTemplateName
+          ? `\n- Gewählte benutzerdefinierte Vorlage: "${input.customTemplateName}".`
+          : "";
+        const systemPrompt = `${templatePrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}${customTemplateNote}\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.${chapterOverride}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
 
         // Build user message with recording context
         let userMessage = "";
@@ -182,7 +188,7 @@ export const appRouter = router({
         const protocolText =
           (response.choices?.[0]?.message?.content as string) || "Protokoll konnte nicht erstellt werden.";
 
-        return { protocol: protocolText, templateName: template.name };
+        return { protocol: protocolText, templateName: input.customTemplateName || template.name };
       }),
 
     extractTodos: aiProcedure

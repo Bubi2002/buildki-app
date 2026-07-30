@@ -33,6 +33,10 @@ import { trpc } from "@/lib/trpc";
 import { PrivacyChoicesSection } from "@/components/privacy-choices-section";
 import { getConsentRequiredMessage, isConsentGiven } from "@/lib/privacy-consent";
 import {
+  loadCustomProtocolTemplates,
+  removeCustomProtocolTemplate,
+} from "@/lib/protocol-template-store";
+import {
   getBiometricStatus,
   isBiometricLockEnabled,
   setBiometricLockEnabled,
@@ -778,20 +782,21 @@ export default function SettingsScreen() {
 
   async function loadCustomTemplates() {
     try {
-      const stored = await AsyncStorage.getItem("custom-templates");
-      if (stored) setCustomTemplates(JSON.parse(stored));
+      setCustomTemplates(await loadCustomProtocolTemplates());
     } catch (error) {
       console.error("Error loading custom templates:", error);
+      setCustomTemplates([]);
     }
   }
 
   const deleteCustomTemplate = async (id: string) => {
     try {
-      const updated = customTemplates.filter((t) => t.id !== id);
-      await AsyncStorage.setItem("custom-templates", JSON.stringify(updated));
+      const updated = await removeCustomProtocolTemplate(id);
       setCustomTemplates(updated);
       if (settings.templateId === id) {
-        updateSetting("templateId", "freitext");
+        const updatedSettings = { ...settings, templateId: "freitext" };
+        setSettings(updatedSettings);
+        await AsyncStorage.setItem("protokoll-settings", JSON.stringify(updatedSettings));
       }
     } catch (error) {
       console.error("Error deleting template:", error);
