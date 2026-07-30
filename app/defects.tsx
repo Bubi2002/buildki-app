@@ -38,6 +38,7 @@ import {
   type DefectHistoryEntry,
   type DefectSignature,
 } from "@/lib/defect-store";
+import { syncStoredProtocolDefects } from "@/lib/protocol-defect-sync";
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -129,6 +130,7 @@ export default function DefectsScreen() {
   }
 
   async function loadDefects() {
+    if (projectId) await syncStoredProtocolDefects(projectId);
     const loaded = await getDefects(projectId || undefined);
     setDefects(loaded);
     return loaded;

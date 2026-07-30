@@ -27,7 +27,7 @@ export type DefectHistoryEntry = {
   note?: string;
 };
 
-export type DefectSource = "manual" | "ki_analysis" | "matterport" | "checklist";
+export type DefectSource = "manual" | "ki_analysis" | "speech" | "matterport" | "checklist";
 
 export type DefectComment = {
   id: string;
@@ -151,28 +151,42 @@ export async function getDefects(projectId?: string): Promise<Defect[]> {
   }
 }
 
+let defectWriteQueue: Promise<void> = Promise.resolve();
+
+async function withDefectWriteLock<T>(operation: () => Promise<T>): Promise<T> {
+  const next = defectWriteQueue.then(operation, operation);
+  defectWriteQueue = next.then(() => undefined, () => undefined);
+  return next;
+}
+
 export async function saveDefect(defect: Defect): Promise<void> {
-  const defects = await getDefects();
-  const idx = defects.findIndex((d) => d.id === defect.id);
-  const isNew = idx < 0;
-  if (idx >= 0) defects[idx] = { ...defect, updatedAt: new Date().toISOString() };
-  else defects.push(defect);
-  await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(defects));
+  let isNew = false;
+  const storedDefect = await withDefectWriteLock(async () => {
+    const raw = await AsyncStorage.getItem(DEFECTS_KEY);
+    const defects: Defect[] = raw ? JSON.parse(raw) : [];
+    const idx = defects.findIndex((d) => d.id === defect.id);
+    isNew = idx < 0;
+    const stored = idx >= 0 ? { ...defect, updatedAt: new Date().toISOString() } : defect;
+    if (idx >= 0) defects[idx] = stored;
+    else defects.push(stored);
+    await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(defects));
+    return stored;
+  });
 
   // Timeline event
   try {
     await timelineEngine.emit({
-      projectId: defect.projectId || "default",
+      projectId: storedDefect.projectId || "default",
       eventType: isNew ? "defect_created" : "defect_updated",
-      source: (defect.source === "ki_analysis" ? "photo" : "user") as any,
+      source: (storedDefect.source === "ki_analysis" ? "photo" : storedDefect.source === "speech" ? "speech" : "user") as any,
       title: isNew ? "Mangel erstellt" : "Mangel aktualisiert",
-      description: defect.title,
-      entityId: defect.id,
+      description: storedDefect.title,
+      entityId: storedDefect.id,
       entityType: "defect",
-      roomName: defect.location,
-      confidence: defect.confidence,
-      tags: ["defect", defect.priority],
-      priority: defect.priority === "hoch" ? "high" : defect.priority === "mittel" ? "medium" : "low",
+      roomName: storedDefect.location,
+      confidence: storedDefect.confidence,
+      tags: ["defect", storedDefect.priority],
+      priority: storedDefect.priority === "hoch" ? "high" : storedDefect.priority === "mittel" ? "medium" : "low",
     });
   } catch {}
 }

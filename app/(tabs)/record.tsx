@@ -47,6 +47,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { getPrivacyChoices } from "@/lib/privacy-consent";
 import { linkStoredPlanPinToProtocol } from "@/lib/floor-plan-store";
+import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
 
 type RecordingMode = "audio-photo";
 
@@ -1415,6 +1416,7 @@ export default function RecordScreen() {
     try {
       protocols.unshift(newProtocol);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      await syncProtocolDefects(newProtocol);
       if (routePlanPinId) {
         await linkStoredPlanPinToProtocol(routePlanPinId, {
           id: newProtocol.id,

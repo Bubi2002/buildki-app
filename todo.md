@@ -1211,3 +1211,16 @@
 - [x] Regressionstests für entfernte Kacheln, Rastervertrag, Projektladen, aktives Projekt und echten Leerzustand ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie Werkzeugraster und Fortschritt visuell end-to-end prüfen.
 - [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+
+## P0 Protokolle: Gesprochene Mängel vollständig übernehmen und zählen (2026-07-30)
+
+- [x] Den Nutzerfall mit zwei Protokollen und mindestens je einem gesprochenen Mangel reproduzieren und Datenstände in Protokoll, Analyseergebnis, Mängel-Store und Übersicht vergleichen.
+- [x] Prüfen, ob der zweite Mangel bei Transkription, KI-Extraktion, Protokollspeicherung, Mängelerzeugung oder Projektfilterung verloren geht.
+- [x] Die Duplikaterkennung auf stabile fachliche Merkmale begrenzen, damit unterschiedliche Mängel aus verschiedenen Protokollen nicht fälschlich zusammengeführt werden.
+- [x] Für jeden extrahierten Mangel die korrekte `projectId`, `protocolId`, Quelle und eindeutige ID dauerhaft speichern.
+- [x] Mehrere Mängel aus einem Protokoll und Mängel aus mehreren Protokollen idempotent übernehmen, ohne echte Einträge zu verlieren oder bei erneutem Öffnen zu duplizieren.
+- [x] Übersicht, Mängelliste und Protokolldetail aus demselben kanonischen Mängel-Store und Projektfilter speisen.
+- [x] Bereits vorhandene gespeicherte Protokollmängel beim Laden sicher nachführen, falls die frühere Übernahme unvollständig war.
+- [x] Regressionstests für zwei Protokolle, mehrere Mängel, echte Duplikate, unterschiedliche gleichnamige Mängel und projektbezogene Zählung ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie die Übersicht mit kontrollierten Zwei-Protokoll-Daten visuell prüfen.
+- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.

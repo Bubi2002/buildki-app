@@ -12,6 +12,7 @@ import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeColo
 import { getProjectStructure } from "@/lib/room-store";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { filterDashboardItemsByProject, normalizeDashboardProjectId } from "@/lib/dashboard-project-context";
+import { syncStoredProtocolDefects } from "@/lib/protocol-defect-sync";
 
 type Project = {
   id: string;
@@ -177,6 +178,7 @@ export default function AIWorkbenchScreen() {
       });
 
       // 3. Defects
+      await syncStoredProtocolDefects(activeProjectId);
       const allDefects = await getDefects(activeProjectId);
       const defectStats = getDefectStats(allDefects);
       const overdueDefects = getOverdueDefects(allDefects);

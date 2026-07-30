@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { timelineEngine } from "@/lib/timeline-engine";
+import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -346,6 +347,11 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         processingError: undefined,
       };
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      try {
+        await syncProtocolDefects(protocols[idx]);
+      } catch (defectSyncError) {
+        console.warn("[BG-Processor] Protocol defect sync failed (non-critical):", defectSyncError);
+      }
     }
     
     notifyListeners(job.protocolId, "done");
