@@ -1210,4 +1210,4 @@
 - [x] Bestehende aktive Projekte zuverlässig laden, Projektwechsel berücksichtigen und einen echten Leerzustand nur ohne vorhandene Projekte anzeigen.
 - [x] Regressionstests für entfernte Kacheln, Rastervertrag, Projektladen, aktives Projekt und echten Leerzustand ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie Werkzeugraster und Fortschritt visuell end-to-end prüfen.
-- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+- [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
