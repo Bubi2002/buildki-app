@@ -1189,4 +1189,4 @@
 - [x] Den ursprünglichen Dateinamen erhalten und die zugehörige Datei in der Detailansicht sichtbar beziehungsweise öffnbar machen.
 - [x] Regressionstests für reale Erfolgsdaten, leere Extraktion, Analysefehler, Persistenz, Detailnavigation und Confidence ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie den vollständigen Document-AI-Ablauf visuell prüfen.
-- [ ] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+- [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
