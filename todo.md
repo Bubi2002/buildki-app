@@ -1190,3 +1190,12 @@
 - [x] Regressionstests für reale Erfolgsdaten, leere Extraktion, Analysefehler, Persistenz, Detailnavigation und Confidence ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie den vollständigen Document-AI-Ablauf visuell prüfen.
 - [x] Fix dokumentieren und lokal committen; ohne ausdrückliche Nutzeranforderung keinen neuen EAS-/TestFlight-/App-Store-Build starten.
+
+## Abschlussworkflow: gesammelte Bugfix-Version (2026-07-30)
+
+- [x] Zwischenstände und einzelne Bugfix-Nachweise nicht mehr automatisch sofort in Dropbox ablegen.
+- [ ] Weitere gemeldete Bugs jeweils beheben, vollständig testen und als nachvollziehbare lokale Commits sichern.
+- [ ] Ein fortlaufendes kumulatives Änderungsprotokoll aller seit Build 12 behobenen Fehler pflegen.
+- [ ] Erst nach dem ausdrücklichen Befehl „Jetzt Abschlussversion in Dropbox“ den neuesten Gesamtstand erneut vollständig prüfen.
+- [ ] Bei diesem Abschluss eine gemeinsame Versionskopie, kumulative Nachweise und alle gewünschten Artefakte einmalig im BuildKI-Dropbox-Projektordner archivieren.
+- [ ] Einen neuen EAS-/TestFlight-/App-Store-Build nur erstellen, wenn der Nutzer dies beim Abschluss ausdrücklich mit anfordert.
