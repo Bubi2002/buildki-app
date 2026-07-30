@@ -1244,4 +1244,4 @@
 - [x] Regressionstests für Import, Normalisierung, Erstellen, Bearbeiten, Auswahl, Anwendung und erneutes Laden ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite, Expo Doctor und `git diff --check` ausführen.
 - [x] Import-, Erstell-, Auswahl- und Aufnahmefluss auf schmaler iPhone-Breite visuell prüfen und Nachweise sichern.
-- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+- [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
