@@ -2,14 +2,20 @@
  * protoKI – Baufortschritt Screen
  * Visualisiert den automatisch berechneten Baufortschritt.
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   StyleSheet, RefreshControl,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import {
+  LAST_SELECTED_PROJECT_KEY,
+  PROJECTS_STORAGE_KEY,
+  resolveSelectedProject,
+  type ProjectContextItem,
+} from "@/lib/project-context";
 import { progressEngine, type ProgressSnapshot, type RoomProgress, type TradeProgress } from "@/lib/progress-engine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -18,34 +24,69 @@ type ViewTab = "overview" | "rooms" | "trades";
 export default function ProgressScreen() {
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams<{ projectId?: string | string[] }>();
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ViewTab>("overview");
   const [projectId, setProjectId] = useState("");
+  const [projectName, setProjectName] = useState("");
 
-  async function calculate(pid: string) {
+  const calculate = useCallback(async (pid: string) => {
     setLoading(true);
     try { setSnapshot(await progressEngine.calculateProgress(pid)); }
-    catch (e) { console.error(e); }
+    catch (e) {
+      console.error(e);
+      setSnapshot(null);
+    }
     finally { setLoading(false); }
-  }
+  }, []);
 
-  async function loadProject() {
-    const pid = await AsyncStorage.getItem("buildki_active_project");
-    if (pid) { setProjectId(pid); await calculate(pid); }
-    else setLoading(false);
-  }
+  const loadProject = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [projectsRaw, lastSelectedId] = await Promise.all([
+        AsyncStorage.getItem(PROJECTS_STORAGE_KEY),
+        AsyncStorage.getItem(LAST_SELECTED_PROJECT_KEY),
+      ]);
+      const projects: ProjectContextItem[] = projectsRaw ? JSON.parse(projectsRaw) : [];
+      const routeProjectId = Array.isArray(params.projectId) ? params.projectId[0] : params.projectId;
+      const selectedProject = resolveSelectedProject(projects, routeProjectId || lastSelectedId);
 
-  useEffect(() => { void Promise.resolve().then(() => {
-    void loadProject();
-  }); }, []);
+      if (!selectedProject) {
+        setProjectId("");
+        setProjectName("");
+        setSnapshot(null);
+        setLoading(false);
+        return;
+      }
+
+      setProjectId(selectedProject.id);
+      setProjectName(selectedProject.name);
+      if (selectedProject.id !== lastSelectedId) {
+        await AsyncStorage.setItem(LAST_SELECTED_PROJECT_KEY, selectedProject.id);
+      }
+      await calculate(selectedProject.id);
+    } catch (error) {
+      console.error("Fortschrittsprojekt konnte nicht geladen werden:", error);
+      setProjectId("");
+      setProjectName("");
+      setSnapshot(null);
+      setLoading(false);
+    }
+  }, [calculate, params.projectId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadProject();
+    }, [loadProject]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (projectId) await calculate(projectId);
     setRefreshing(false);
-  }, [projectId]);
+  }, [calculate, projectId]);
 
   const statusColor = (s: string) => s === "completed" ? colors.success : s === "in_progress" ? colors.primary : s === "blocked" ? colors.error : colors.muted;
   const statusLabel = (s: string) => s === "completed" ? "Fertig" : s === "in_progress" ? "In Arbeit" : s === "blocked" ? "Blockiert" : "Offen";
@@ -59,7 +100,13 @@ export default function ProgressScreen() {
 
   if (!projectId) return (
     <ScreenContainer className="p-6">
-      <View style={styles.centered}><Text style={[styles.emptyTitle, { color: colors.foreground }]}>Kein Projekt aktiv</Text></View>
+      <View style={styles.centered}>
+        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Kein Projekt vorhanden</Text>
+        <Text style={[styles.emptyText, { color: colors.muted }]}>Lege zuerst ein Projekt an oder wähle eines in der Werkzeugübersicht.</Text>
+        <TouchableOpacity style={[styles.emptyAction, { borderColor: colors.primary }]} onPress={() => router.push("/(tabs)/projects" as any)}>
+          <Text style={[styles.emptyActionText, { color: colors.primary }]}>Projekte öffnen</Text>
+        </TouchableOpacity>
+      </View>
     </ScreenContainer>
   );
 
@@ -105,7 +152,10 @@ export default function ProgressScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}><Text style={{ color: colors.primary }}>← Zurück</Text></TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Baufortschritt</Text>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.title, { color: colors.foreground }]}>Baufortschritt</Text>
+            <Text style={[styles.projectName, { color: colors.muted }]} numberOfLines={1}>{projectName}</Text>
+          </View>
         </View>
 
         {/* Overall */}
@@ -176,8 +226,13 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, fontSize: 14 },
   emptyTitle: { fontSize: 18, fontWeight: "700" },
+  emptyText: { maxWidth: 300, marginTop: 8, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  emptyAction: { marginTop: 18, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 12 },
+  emptyActionText: { fontSize: 14, fontWeight: "700" },
   header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
+  headerCopy: { flex: 1 },
   title: { fontSize: 20, fontWeight: "700" },
+  projectName: { marginTop: 2, fontSize: 12 },
   overallCard: { borderRadius: 0, borderWidth: 1, padding: 20, alignItems: "center", marginBottom: 16 },
   overallPercent: { fontSize: 40, fontWeight: "800" },
   overallPhase: { fontSize: 14, fontWeight: "600", marginTop: 4 },

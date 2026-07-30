@@ -1199,3 +1199,15 @@
 - [ ] Erst nach dem ausdrücklichen Befehl „Jetzt Abschlussversion in Dropbox“ den neuesten Gesamtstand erneut vollständig prüfen.
 - [ ] Bei diesem Abschluss eine gemeinsame Versionskopie, kumulative Nachweise und alle gewünschten Artefakte einmalig im BuildKI-Dropbox-Projektordner archivieren.
 - [ ] Einen neuen EAS-/TestFlight-/App-Store-Build nur erstellen, wenn der Nutzer dies beim Abschluss ausdrücklich mit anfordert.
+
+## P0 Werkzeuge: Rasterbereinigung und Fortschritt (2026-07-30)
+
+- [x] Die vom Nutzer markierten Werkzeugkacheln „Statistik“, „Cloud“ und „Export“ aus der Werkzeugübersicht entfernen.
+- [x] Routen, Importe und tote Navigationseinträge der drei entfernten Kacheln prüfen, ohne weiterhin genutzte interne Export- oder Synchronisationsfunktionen zu beschädigen.
+- [x] Das Werkzeugraster nach dem Entfernen ohne Lücken, Einzelkachel in der letzten Zeile oder verschobene Reihen responsiv neu anordnen.
+- [x] Den Fortschrittsablauf reproduzieren und klären, warum trotz vorhandener Projekte „keine aktiven Projekte“ gemeldet wird.
+- [x] Fortschritt mit demselben kanonischen Projektstore und derselben aktiven Projektauswahl wie Übersicht und übrige Werkzeuge verbinden.
+- [x] Bestehende aktive Projekte zuverlässig laden, Projektwechsel berücksichtigen und einen echten Leerzustand nur ohne vorhandene Projekte anzeigen.
+- [x] Regressionstests für entfernte Kacheln, Rastervertrag, Projektladen, aktives Projekt und echten Leerzustand ergänzen.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie Werkzeugraster und Fortschritt visuell end-to-end prüfen.
+- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.

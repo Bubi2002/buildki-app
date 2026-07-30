@@ -109,16 +109,13 @@ const TOOLS: ToolItem[] = [
   { key: "anwesenheit", label: "Anwesenheit", icon: "how-to-reg", color: "#00897B", route: "/attendance" },
   { key: "kalender", label: "Kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
   { key: "fortschritt", label: "Fortschritt", icon: "trending-up", color: "#4CAF50", route: "/progress" },
-  { key: "export", label: "Export", icon: "ios-share", color: "#43A047", route: "/export-center" },
   { key: "ki_bericht", label: "KI-Bericht", icon: "auto-awesome", color: "#7B1FA2", route: "/report-generator" },
   { key: "maengel_export", label: "Mängel-PDF", icon: "picture-as-pdf", color: "#EF4444", route: "/defect-export" },
   { key: "vergleich", label: "Vergleich", icon: "compare", color: "#5C6BC0", route: "/comparison" },
   { key: "bericht", label: "Bericht", icon: "summarize", color: "#795548", route: "/protocol-merge" },
-  { key: "cloud", label: "Cloud", icon: "cloud-download", color: "#607D8B", route: "/cloud-import" },
   { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
   { key: "dokument_ai", label: "Dokument-KI", icon: "smart-toy", color: "#FF6F00", route: "/document-ai" },
   { key: "brain", label: "Brain", icon: "psychology", color: "#E040FB", route: "/ai-assistant" },
-  { key: "statistik", label: "Statistik", icon: "bar-chart", color: "#26A69A", route: "/dashboard-stats" },
 ];
 
 export default function AIWorkbenchScreen() {
