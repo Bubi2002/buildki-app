@@ -1223,4 +1223,4 @@
 - [x] Bereits vorhandene gespeicherte Protokollmängel beim Laden sicher nachführen, falls die frühere Übernahme unvollständig war.
 - [x] Regressionstests für zwei Protokolle, mehrere Mängel, echte Duplikate, unterschiedliche gleichnamige Mängel und projektbezogene Zählung ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie die Übersicht mit kontrollierten Zwei-Protokoll-Daten visuell prüfen.
-- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+- [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
