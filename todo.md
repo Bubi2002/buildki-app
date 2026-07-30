@@ -1224,3 +1224,12 @@
 - [x] Regressionstests für zwei Protokolle, mehrere Mängel, echte Duplikate, unterschiedliche gleichnamige Mängel und projektbezogene Zählung ergänzen.
 - [x] TypeScript, ESLint, vollständige Vitest-Suite und Expo Doctor ausführen sowie die Übersicht mit kontrollierten Zwei-Protokoll-Daten visuell prüfen.
 - [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+
+## P0 Dashboard: Startaufnahme-Button auf schmalen iPhones (2026-07-30)
+
+- [x] Die sichtbare Beschriftung „Neue Aufnahme starten“ auf „Neue Aufnahme“ kürzen.
+- [x] Die Schaltfläche gegen einzeiligen Textüberlauf auf schmalen iPhone-Breiten absichern.
+- [x] Einen Regressionstest für die gekürzte sichtbare Beschriftung ergänzen beziehungsweise aktualisieren.
+- [x] TypeScript, ESLint, vollständige Vitest-Suite, Expo Doctor und `git diff --check` ausführen.
+- [x] Die Darstellung mit einer schmalen iPhone-Webansicht visuell prüfen und den Nachweis sichern.
+- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.

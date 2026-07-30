@@ -580,14 +580,21 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
-        {/* ─── Neue Aufnahme starten ───────────────────────────────────── */}
+        {/* ─── Neue Aufnahme ───────────────────────────────────────────── */}
         <View style={styles.quickActionsRow}>
           <Pressable
             onPress={() => navigateModule('/(tabs)/record')}
             style={({ pressed }) => [styles.quickActionBtn, styles.quickActionPrimary, { opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="mic" size={22} color="#fff" />
-            <Text style={styles.quickActionPrimaryText}>{t('neue_aufnahme_starten')}</Text>
+            <Text
+              style={styles.quickActionPrimaryText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+            >
+              {t('neue_aufnahme')}
+            </Text>
           </Pressable>
           <Pressable
             onPress={async () => {
@@ -1015,6 +1022,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: 'center',
   },
   quickActionSecondary: {
     backgroundColor: '#0F1E30',
