@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocales } from "expo-localization";
 import { translations, type Language, type TranslationKey } from "@/lib/i18n";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 
 const LANGUAGE_KEY = "app_language";
-const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr"];
+const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr", "es", "ro", "pl"];
 
 function detectDeviceLanguage(): Language {
   try {
@@ -47,8 +47,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setLanguage = useCallback(async (lang: Language) => {
-    setLang(lang);
-    await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+    if (SUPPORTED_LANGUAGES.includes(lang)) {
+      setLang(lang);
+      await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+    }
   }, []);
 
   const t = useCallback(
@@ -70,3 +72,5 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 export function useTranslation() {
   return useContext(LanguageContext);
 }
+
+export { SUPPORTED_LANGUAGES };

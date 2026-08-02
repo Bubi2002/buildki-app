@@ -1245,3 +1245,17 @@
 - [x] TypeScript, ESLint, vollständige Vitest-Suite, Expo Doctor und `git diff --check` ausführen.
 - [x] Import-, Erstell-, Auswahl- und Aufnahmefluss auf schmaler iPhone-Breite visuell prüfen und Nachweise sichern.
 - [x] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
+
+## P0 Internationalisierung: Alle Seiten, Tools und Baustellensprachen (2026-07-31)
+
+- [ ] Alle sichtbaren Texte in Seiten, Tools, Dialogen, Karten, Navigationen, Leerzuständen, Fehlermeldungen und Hilfebereichen appweit inventarisieren.
+- [ ] Feste deutsche und gemischtsprachige UI-Texte in den zentralen Übersetzungskatalog überführen und den Sprachwechsel ohne Neustart zuverlässig anwenden.
+- [ ] Sichtbare Unicode-Escapes und fehlerhaft dekodierte Umlaute appweit beseitigen und durch Build-/Regressionstests sperren.
+- [ ] Englische und französische Übersetzungen für sämtliche verwendeten UI-Schlüssel vollständig und fachlich konsistent vervollständigen.
+- [ ] Rumänisch, Polnisch, Türkisch, Ukrainisch, Russisch, Bulgarisch und Kroatisch als zusätzliche auswählbare App-Sprachen ergänzen.
+- [ ] Für alle zusätzlichen Sprachen vollständige Übersetzungskataloge ohne stillen deutschen Fallback bereitstellen.
+- [ ] App-Sprache und Sprache der KI-generierten Protokolle weiterhin getrennt und verständlich konfigurierbar halten.
+- [ ] Automatische Abdeckungstests für fehlende Schlüssel, deutsche Resttexte, ungültige Fallbacks und Unicode-Escapes ergänzen.
+- [ ] TypeScript, ESLint, vollständige Vitest-Suite, Expo Doctor und `git diff --check` ausführen.
+- [ ] Englisch, Rumänisch und weitere Sprachstichproben auf schmaler iPhone-Breite über Einstellungen, Aufnahme, Übersicht, Werkzeuge und repräsentative Dialoge visuell prüfen.
+- [ ] Fix lokal committen und das kumulative Änderungsprotokoll fortschreiben; gemäß Sammelmodus noch nicht in Dropbox ablegen.
