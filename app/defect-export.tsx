@@ -21,23 +21,25 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { generateAndSharePdf, generateQrCodeBase64, type ProfessionalPdfOptions, type PdfSection, getCompanyInfo } from "@/lib/pdf-professional";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STATUS_LABELS: Record<DefectStatus, string> = {
-  offen: "Offen",
-  zugewiesen: "Zugewiesen",
-  in_bearbeitung: "In Bearbeitung",
-  nachbesserung: "Nachbesserung",
-  pruefung: "Prüfung",
-  erledigt: "Erledigt",
-  abgelehnt: "Abgelehnt",
-  geschlossen: "Geschlossen",
+const STATUS_LABEL_KEYS: Record<DefectStatus, string> = {
+  offen: "defect_export_status_offen",
+  zugewiesen: "defect_export_status_zugewiesen",
+  in_bearbeitung: "defect_export_status_in_bearbeitung",
+  nachbesserung: "defect_export_status_nachbesserung",
+  pruefung: "defect_export_status_pruefung",
+  erledigt: "defect_export_status_erledigt",
+  abgelehnt: "defect_export_status_abgelehnt",
+  geschlossen: "defect_export_status_geschlossen",
 };
 
 export default function DefectExportScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const colors = useColors();
   const params = useLocalSearchParams<{ projectId?: string }>();
 
@@ -70,7 +72,7 @@ export default function DefectExportScreen() {
 
   const handleExport = async () => {
     if (filteredDefects.length === 0) {
-      Alert.alert("Keine Mängel", "Es gibt keine Mängel mit den ausgewählten Filtern.");
+      Alert.alert(t('defect_export_keine_maengel' as any), t('defect_export_keine_maengel_filter' as any));
       return;
     }
 
@@ -82,32 +84,32 @@ export default function DefectExportScreen() {
       const sections: PdfSection[] = [];
 
       // Summary section
-      const statusCounts = Object.entries(STATUS_LABELS).map(([status, label]) => {
+      const statusCounts = Object.entries(STATUS_LABEL_KEYS).map(([status, labelKey]) => {
         const count = filteredDefects.filter(d => d.status === status).length;
-        return [label, count.toString()];
+        return [t(labelKey as any), count.toString()];
       }).filter(([, count]) => parseInt(count) > 0);
 
       sections.push({
-        title: "Zusammenfassung",
-        content: `Insgesamt **${filteredDefects.length} Mängel** in diesem Bericht.`,
+        title: t('defect_export_zusammenfassung' as any),
+        content: `${t('defect_export_insgesamt' as any)} **${filteredDefects.length} ${t('defect_export_maengel' as any)}** ${t('defect_export_in_bericht' as any)}`,
         table: {
-          headers: ["Status", "Anzahl"],
+          headers: [t('defect_export_status' as any), t('defect_export_anzahl' as any)],
           rows: statusCounts as string[][],
         },
       });
 
       // Individual defects
       for (const defect of filteredDefects) {
-        let content = `**Status:** ${STATUS_LABELS[defect.status]}\n`;
-        content += `**Priorität:** ${defect.priority === "hoch" ? "Hoch" : defect.priority === "mittel" ? "Mittel" : "Niedrig"}\n`;
-        if (defect.location) content += `**Ort:** ${defect.location}\n`;
-        if (defect.gewerk) content += `**Gewerk:** ${defect.gewerk}\n`;
-        if (defect.assignee) content += `**Zuständig:** ${defect.assignee}\n`;
-        if (defect.followUpDate) content += `**Frist:** ${defect.followUpDate}\n`;
+        let content = `**${t('defect_export_label_status' as any)}** ${t(STATUS_LABEL_KEYS[defect.status] as any)}\n`;
+        content += `**${t('defect_export_label_prioritaet' as any)}** ${defect.priority === "hoch" ? t('defect_export_prio_hoch' as any) : defect.priority === "mittel" ? t('defect_export_prio_mittel' as any) : t('defect_export_prio_niedrig' as any)}\n`;
+        if (defect.location) content += `**${t('defect_export_label_ort' as any)}** ${defect.location}\n`;
+        if (defect.gewerk) content += `**${t('defect_export_label_gewerk' as any)}** ${defect.gewerk}\n`;
+        if (defect.assignee) content += `**${t('defect_export_label_zustaendig' as any)}** ${defect.assignee}\n`;
+        if (defect.followUpDate) content += `**${t('defect_export_label_frist' as any)}** ${defect.followUpDate}\n`;
         content += `\n${defect.description}`;
 
         if (includeComments && defect.comments && defect.comments.length > 0) {
-          content += `\n\n**Kommentare:**\n`;
+          content += `\n\n**${t('defect_export_label_kommentare' as any)}**\n`;
           for (const comment of defect.comments) {
             content += `- ${comment.text} (${new Date(comment.createdAt).toLocaleDateString("de-DE")})\n`;
           }
@@ -136,22 +138,22 @@ export default function DefectExportScreen() {
       } catch {}
 
       const options: ProfessionalPdfOptions = {
-        title: "Mängelbericht",
-        subtitle: params.projectId ? `Projekt: ${params.projectId}` : undefined,
-        reportType: "Mängelbericht",
+        title: t('defect_export_maengelbericht' as any),
+        subtitle: params.projectId ? `${t('defect_export_projekt' as any)}: ${params.projectId}` : undefined,
+        reportType: t('defect_export_maengelbericht' as any),
         datum: new Date().toLocaleDateString("de-DE"),
         sections,
         companyInfo: companyInfo || undefined,
         accentColor: "#EF4444",
         includeTableOfContents: filteredDefects.length > 5,
         qrCodeBase64: qrCodeBase64 || undefined,
-        qrCodeLabel: "Digitalen Mängelbericht öffnen",
+        qrCodeLabel: t('defect_export_qr_label' as any),
         matterportLink,
       };
 
       await generateAndSharePdf(options);
     } catch (error: any) {
-      Alert.alert("Export-Fehler", error.message || "Export fehlgeschlagen");
+      Alert.alert(t('defect_export_fehler' as any), error.message || t('defect_export_fehlgeschlagen' as any));
     } finally {
       setIsExporting(false);
     }
@@ -164,7 +166,7 @@ export default function DefectExportScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mängel exportieren</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('defect_export_maengel_exportieren' as any)}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -173,24 +175,24 @@ export default function DefectExportScreen() {
         <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: "#EF4444" }]}>{defects.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Gesamt</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('defect_export_gesamt' as any)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: "#00B0FF" }]}>{filteredDefects.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Ausgewählt</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('defect_export_ausgewaehlt' as any)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: "#43A047" }]}>
               {defects.filter(d => d.status === "erledigt" || d.status === "geschlossen").length}
             </Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Erledigt</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('defect_export_status_erledigt' as any)}</Text>
           </View>
         </View>
 
         {/* Status Filter */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Status-Filter</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('defect_export_status_filter' as any)}</Text>
         <View style={styles.filterGrid}>
-          {(Object.entries(STATUS_LABELS) as [DefectStatus, string][]).map(([status, label]) => {
+          {(Object.entries(STATUS_LABEL_KEYS) as [DefectStatus, string][]).map(([status, labelKey]) => {
             const isSelected = selectedStatuses.includes(status);
             const count = defects.filter(d => d.status === status).length;
             return (
@@ -211,7 +213,7 @@ export default function DefectExportScreen() {
                   color={isSelected ? "#00B0FF" : colors.muted}
                 />
                 <Text style={[styles.filterLabel, { color: isSelected ? "#00B0FF" : colors.foreground }]}>
-                  {label} ({count})
+                  {t(labelKey as any)} ({count})
                 </Text>
               </Pressable>
             );
@@ -219,7 +221,7 @@ export default function DefectExportScreen() {
         </View>
 
         {/* Options */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>Optionen</Text>
+        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>{t('defect_export_optionen' as any)}</Text>
         <Pressable
           onPress={() => setIncludePhotos(!includePhotos)}
           style={[styles.optionRow, { borderColor: colors.border }]}
@@ -229,7 +231,7 @@ export default function DefectExportScreen() {
             size={20}
             color={includePhotos ? "#00B0FF" : colors.muted}
           />
-          <Text style={[styles.optionLabel, { color: colors.foreground }]}>Fotos einbinden</Text>
+          <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('defect_export_fotos_einbinden' as any)}</Text>
         </Pressable>
         <Pressable
           onPress={() => setIncludeComments(!includeComments)}
@@ -240,7 +242,7 @@ export default function DefectExportScreen() {
             size={20}
             color={includeComments ? "#00B0FF" : colors.muted}
           />
-          <Text style={[styles.optionLabel, { color: colors.foreground }]}>Kommentare einbinden</Text>
+          <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('defect_export_kommentare_einbinden' as any)}</Text>
         </Pressable>
 
         {/* Export Button */}
@@ -258,7 +260,7 @@ export default function DefectExportScreen() {
             <MaterialIcons name="picture-as-pdf" size={20} color="#fff" />
           )}
           <Text style={styles.exportBtnText}>
-            {isExporting ? "Wird exportiert..." : `${filteredDefects.length} Mängel als PDF exportieren`}
+            {isExporting ? t('defect_export_wird_exportiert' as any) : `${filteredDefects.length} ${t('defect_export_maengel' as any)} ${t('defect_export_als_pdf' as any)}`}
           </Text>
         </Pressable>
 

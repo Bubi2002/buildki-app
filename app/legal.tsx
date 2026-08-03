@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { DataRightsSection } from "@/components/data-rights-section";
 import { ScreenContainer } from "@/components/screen-container";
+import { useTranslation } from "@/lib/language-provider";
 import {
   LEGAL_BUSINESS_MODEL,
   LEGAL_CONTACT_EMAIL,
@@ -26,17 +27,18 @@ type LegalSection =
   | "lizenzen"
   | "dsgvo-export";
 
-const SECTIONS: { key: LegalSection; title: string }[] = [
-  { key: "datenschutz", title: "Datenschutz" },
-  { key: "impressum", title: "Impressum" },
-  { key: "agb", title: "Nutzungsbedingungen" },
-  { key: "ki-hinweis", title: "KI-Hinweis" },
-  { key: "lizenzen", title: "Lizenzen" },
-  { key: "dsgvo-export", title: "Meine Daten" },
+const SECTIONS: { key: LegalSection; titleKey: string }[] = [
+  { key: "datenschutz", titleKey: "legal_tab_datenschutz" },
+  { key: "impressum", titleKey: "legal_tab_impressum" },
+  { key: "agb", titleKey: "legal_tab_nutzungsbedingungen" },
+  { key: "ki-hinweis", titleKey: "legal_tab_ki_hinweis" },
+  { key: "lizenzen", titleKey: "legal_tab_lizenzen" },
+  { key: "dsgvo-export", titleKey: "legal_tab_meine_daten" },
 ];
 
 export default function LegalScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ section?: string }>();
   const [activeSection, setActiveSection] = useState<LegalSection>(
     (params.section as LegalSection) || "datenschutz",
@@ -46,9 +48,9 @@ export default function LegalScreen() {
     <ScreenContainer className="p-0">
       <View className="flex-row items-center px-4 py-3 border-b border-border">
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.6}>
-          <Text className="text-primary text-base">← Zurück</Text>
+          <Text className="text-primary text-base">{t('legal_zurueck')}</Text>
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-foreground ml-4">Rechtliches</Text>
+        <Text className="text-lg font-bold text-foreground ml-4">{t('legal_rechtliches')}</Text>
       </View>
 
       <ScrollView
@@ -75,7 +77,7 @@ export default function LegalScreen() {
               key={section.key}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
-              accessibilityLabel={section.title}
+              accessibilityLabel={t(section.titleKey as any)}
               onPress={() => setActiveSection(section.key)}
               activeOpacity={0.65}
               style={{
@@ -95,7 +97,7 @@ export default function LegalScreen() {
                   fontWeight: "700",
                 }}
               >
-                {section.title}
+                {t(section.titleKey as any)}
               </Text>
             </TouchableOpacity>
           );
@@ -124,111 +126,113 @@ export default function LegalScreen() {
 }
 
 function DraftBanner() {
+  const { t } = useTranslation();
   return (
     <View className="border border-error bg-error/10 p-4 mb-5">
       <Text className="text-error text-sm font-bold mb-2">
-        NICHT VERÖFFENTLICHUNGSFÄHIG
+        {t('legal_nicht_veroeffentlichungsfaehig')}
       </Text>
       <Text className="text-foreground text-sm leading-5">{LEGAL_DRAFT_NOTICE}</Text>
-      <Text className="text-muted text-xs mt-2">Entwurfsversion: {LEGAL_DRAFT_VERSION}</Text>
+      <Text className="text-muted text-xs mt-2">{t('legal_entwurfsversion')}{LEGAL_DRAFT_VERSION}</Text>
     </View>
   );
 }
 
 function DatenschutzContent() {
+  const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">Datenschutz-Prüfentwurf</Text>
+      <Text className="text-xl font-bold text-foreground">{t('legal_datenschutz_pruefentwurf')}</Text>
 
-      <Section title="1. Verantwortlicher">
-        <OpenLine label="Name/Firma" value={LEGAL_PROVIDER.legalName} />
-        <OpenLine label="Rechtsform" value={LEGAL_PROVIDER.legalForm} />
-        <OpenLine label="Anschrift" value={`${LEGAL_PROVIDER.streetAddress}, ${LEGAL_PROVIDER.postalCodeAndCity}`} />
-        <OpenLine label="Vertretung" value={LEGAL_PROVIDER.representative} />
-        <P>E-Mail: {LEGAL_CONTACT_EMAIL}</P>
-        <OpenLine label="Datenschutzbeauftragter" value={LEGAL_PROVIDER.dataProtectionOfficer} />
+      <Section title={t('legal_ds_1_verantwortlicher')}>
+        <OpenLine label={t('legal_name_firma')} value={LEGAL_PROVIDER.legalName} />
+        <OpenLine label={t('legal_rechtsform')} value={LEGAL_PROVIDER.legalForm} />
+        <OpenLine label={t('legal_anschrift')} value={`${LEGAL_PROVIDER.streetAddress}, ${LEGAL_PROVIDER.postalCodeAndCity}`} />
+        <OpenLine label={t('legal_vertretung')} value={LEGAL_PROVIDER.representative} />
+        <P>{t('legal_email_label')}{LEGAL_CONTACT_EMAIL}</P>
+        <OpenLine label={t('legal_datenschutzbeauftragter')} value={LEGAL_PROVIDER.dataProtectionOfficer} />
         <P>
-          Bis zur verbindlichen Betreiberbestätigung dient {LEGAL_CONTACT_EMAIL} ausschließlich als allgemeiner Datenschutzkontakt; eine förmliche Bestellung eines Datenschutzbeauftragten wird nicht behauptet.
+          {`${t('legal_ds_dpo_notice_prefix')}${LEGAL_CONTACT_EMAIL}${t('legal_ds_dpo_notice_suffix')}`}
         </P>
       </Section>
 
-      <Section title="2. Betroffene Personen und Datenkategorien">
-        <Bullet text="Kontoinhaber: E-Mail-Adresse, Name, Benutzer-ID, Login-, Verifikations- und Sitzungsdaten" />
-        <Bullet text="Projektbeteiligte und Kontakte: Namen, Firmen, Rollen, E-Mail-Adressen und Telefonnummern" />
-        <Bullet text="Beschäftigte und Auftragnehmer: Anwesenheit, Arbeitszeiten, Tätigkeiten, Aufgaben, Verantwortlichkeiten und Status" />
-        <Bullet text="Baustellendaten: Projekte, Räume, Mängel, Protokolle, Termine, Standorte, Wetter- und Matterport-Bezüge" />
-        <Bullet text="Nutzerinhalte: Audio, Video, Fotos, Anhänge, Transkripte, Notizen, Exporte und KI-Ergebnisse" />
-        <Bullet text="Betriebsdaten: Audit-, Sicherheits-, Fehler-, Geräte-, Push- und Synchronisationsinformationen" />
-        <Bullet text="Abrechnungsdaten nur bei tatsächlich aktiviertem, zulässigem Zahlungsmodell" />
+      <Section title={t('legal_ds_2_betroffene')}>
+        <Bullet text={t('legal_ds_kat_kontoinhaber')} />
+        <Bullet text={t('legal_ds_kat_projektbeteiligte')} />
+        <Bullet text={t('legal_ds_kat_beschaeftigte')} />
+        <Bullet text={t('legal_ds_kat_baustellendaten')} />
+        <Bullet text={t('legal_ds_kat_nutzerinhalte')} />
+        <Bullet text={t('legal_ds_kat_betriebsdaten')} />
+        <Bullet text={t('legal_ds_kat_abrechnungsdaten')} />
       </Section>
 
-      <Section title="3. Zwecke und vorläufige Rechtsgrundlagen">
-        <Bullet text={`Kontoregistrierung, Authentifizierung und Bereitstellung der gewünschten Appfunktionen: endgültiges B2B/B2C-Modell und konkrete Rechtsgrundlage – ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text="Projekt-, Protokoll-, Aufgaben- und Mängelverwaltung: Vertrag beziehungsweise dokumentiertes berechtigtes Interesse, abhängig von Verantwortungsrolle und Kundenvertrag" />
-        <Bullet text="Optionale KI-, Standort-, Cloud- und Drittanbieterfunktionen: nur nach zweckbezogener Aktivierung und transparenter Information; konkrete Rechtsgrundlage ist funktionsbezogen zu dokumentieren" />
-        <Bullet text="Sicherheit, Missbrauchsabwehr und notwendige Protokollierung: berechtigtes Interesse beziehungsweise gesetzliche Pflicht, nach dokumentierter Interessenabwägung" />
-        <Bullet text="Gesetzliche Aufbewahrung und Rechtsverteidigung: nur soweit konkret erforderlich" />
+      <Section title={t('legal_ds_3_zwecke')}>
+        <Bullet text={`${t('legal_ds_zweck_registrierung')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={t('legal_ds_zweck_verwaltung')} />
+        <Bullet text={t('legal_ds_zweck_optionale')} />
+        <Bullet text={t('legal_ds_zweck_sicherheit')} />
+        <Bullet text={t('legal_ds_zweck_aufbewahrung')} />
       </Section>
 
-      <Section title="4. Lokale und serverseitige Verarbeitung">
+      <Section title={t('legal_ds_4_lokale')}>
         <P>
-          BuildKI speichert einen Teil der Projekte, Einstellungen, Medienverweise und Einwilligungsinformationen lokal auf dem Gerät. Bei Konto-, Cloud-, Synchronisations-, Upload-, E-Mail-, KI-, Zahlungs-, Dropbox-, Matterport-, Wetter- oder Pushfunktionen werden Daten zusätzlich an BuildKI-Server oder externe Anbieter übertragen. Eine Deinstallation löscht daher nicht automatisch alle Daten.
+          {t('legal_ds_lokale_text')}
         </P>
       </Section>
 
-      <Section title="5. Empfänger und Dienstleister">
-        <Bullet text={`BuildKI-Backend, Datenbank und Objektspeicher – Vertragspartner, Region, AVV, Transfergrundlage und Löschfrist: ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text={`KI-/Transkriptions-/Analyseanbieter (technischer Forge-Endpunkt) – Rechtsträger, Modelle, Region, AVV, SCC und Löschfrist: ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text={`E-Mail-Versand (technisch Strato SMTP) – Vertrag, Region, AVV und Löschfrist: ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text={`Stripe nur bei künftig rechtlich und Apple-konform aktiviertem Zahlungsmodell – Vertrags-/Transferangaben: ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text={`Dropbox und Matterport nur bei freiwilliger Verbindung durch den Nutzer – Vertrags-/Transferangaben: ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text={`Apple/Expo für Betriebssystem-, Push-, TestFlight- und Storeprozesse – konkrete Produktivkonfiguration: ${LEGAL_DRAFT_MARKER}`} />
-        <Bullet text="Open-Meteo für Wetterabfragen; zu übertragen sind nur die hierfür notwendigen Standort-/Zeitparameter" />
+      <Section title={t('legal_ds_5_empfaenger')}>
+        <Bullet text={`${t('legal_ds_empf_backend')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`${t('legal_ds_empf_ki')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`${t('legal_ds_empf_email')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`${t('legal_ds_empf_stripe')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`${t('legal_ds_empf_dropbox')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={`${t('legal_ds_empf_apple')}${LEGAL_DRAFT_MARKER}`} />
+        <Bullet text={t('legal_ds_empf_openmeteo')} />
       </Section>
 
-      <Section title="6. Drittlandübermittlungen">
+      <Section title={t('legal_ds_6_drittland')}>
         <P>
-          Ob und welche Anbieter Daten außerhalb EU/EWR verarbeiten, welche Angemessenheitsbeschlüsse, Standardvertragsklauseln oder zusätzlichen Maßnahmen gelten, ist je Produktivvertrag zu bestätigen.
-        </P>
-        <OpenValue />
-      </Section>
-
-      <Section title="7. Speicherdauer und Löschkonzept">
-        <P>
-          Verbindliche Fristen für Konten, Projekte, Audio, Video, Fotos, Transkripte, KI-Anfragen, Objektspeicher, Auditdaten, Sicherheitslogs, Zahlungsunterlagen und Backups sind noch nicht beschlossen.
+          {t('legal_ds_drittland_text')}
         </P>
         <OpenValue />
+      </Section>
+
+      <Section title={t('legal_ds_7_speicherdauer')}>
         <P>
-          Daten werden im Prüfentwurf nicht mit einer erfundenen pauschalen 30-Tage-Frist beschrieben. Gesetzliche Aufbewahrung und technische Backupzyklen müssen je Datenkategorie dokumentiert werden.
+          {t('legal_ds_speicher_text1')}
+        </P>
+        <OpenValue />
+        <P>
+          {t('legal_ds_speicher_text2')}
         </P>
       </Section>
 
-      <Section title="8. Audio, Video, Fotos und Beschäftigtendaten">
+      <Section title={t('legal_ds_8_audio')}>
         <P>
-          Nutzer müssen vor nichtöffentlichen Audio-/Videoaufnahmen alle betroffenen Personen informieren und eine geeignete Rechtsgrundlage sicherstellen. Personenfotos, Anwesenheit, Arbeitszeit, Standort und Aufgaben können Beschäftigten- oder Drittdaten betreffen. Unternehmen müssen Erforderlichkeit, Informationspflichten, mögliche Betriebsratsmitbestimmung und erforderliche Vereinbarungen eigenständig prüfen.
+          {t('legal_ds_audio_text')}
         </P>
       </Section>
 
-      <Section title="9. Ihre Rechte">
-        <Bullet text="Auskunft und Kopie der personenbezogenen Daten" />
-        <Bullet text="Berichtigung unrichtiger Daten" />
-        <Bullet text="Löschung oder Einschränkung, soweit keine vorrangige Pflicht entgegensteht" />
-        <Bullet text="Datenübertragbarkeit, soweit anwendbar" />
-        <Bullet text="Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen" />
-        <Bullet text="Widerruf einer Einwilligung für die Zukunft" />
-        <Bullet text="Beschwerde bei einer zuständigen Datenschutzaufsichtsbehörde" />
-        <P>Kontakt für Anfragen: {LEGAL_CONTACT_EMAIL}</P>
+      <Section title={t('legal_ds_9_rechte')}>
+        <Bullet text={t('legal_ds_recht_auskunft')} />
+        <Bullet text={t('legal_ds_recht_berichtigung')} />
+        <Bullet text={t('legal_ds_recht_loeschung')} />
+        <Bullet text={t('legal_ds_recht_uebertragbarkeit')} />
+        <Bullet text={t('legal_ds_recht_widerspruch')} />
+        <Bullet text={t('legal_ds_recht_widerruf')} />
+        <Bullet text={t('legal_ds_recht_beschwerde')} />
+        <P>{t('legal_ds_kontakt_anfragen')}{LEGAL_CONTACT_EMAIL}</P>
       </Section>
 
-      <Section title="10. Endgerätespeicherung und Tracking">
+      <Section title={t('legal_ds_10_tracking')}>
         <P>
-          Für den ausdrücklich gewünschten Appbetrieb notwendige lokale Speicherungen werden transparent dokumentiert. Ein Analytics-, Werbe-, Profiling- oder Tracking-SDK ist im geprüften Quellstand nicht nachgewiesen und wird nicht behauptet. Eine spätere Einführung erfordert eine erneute TDDDG-/DSGVO-Prüfung vor Aktivierung.
+          {t('legal_ds_tracking_text')}
         </P>
       </Section>
 
-      <Section title="11. Aktualität und Veröffentlichungssperre">
+      <Section title={t('legal_ds_11_aktualitaet')}>
         <P>
-          Dieser Text ist ein technischer Prüfentwurf. Er darf erst nach Betreiberbestätigung, Dienstleister-/Transferprüfung, Löschkonzept, finaler Zahlungsentscheidung und anwaltlicher Prüfung veröffentlicht werden.
+          {t('legal_ds_aktualitaet_text')}
         </P>
       </Section>
     </View>
@@ -236,33 +240,34 @@ function DatenschutzContent() {
 }
 
 function ImpressumContent() {
+  const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">Impressum-Prüfentwurf</Text>
-      <Section title="Angaben gemäß § 5 DDG">
-        <OpenLine label="Name/Firma" value={LEGAL_PROVIDER.legalName} />
-        <OpenLine label="Rechtsform" value={LEGAL_PROVIDER.legalForm} />
-        <OpenLine label="Ladungsfähige Anschrift" value={`${LEGAL_PROVIDER.streetAddress}, ${LEGAL_PROVIDER.postalCodeAndCity}`} />
-        <OpenLine label="Vertretungsberechtigter" value={LEGAL_PROVIDER.representative} />
-        <P>E-Mail: {LEGAL_CONTACT_EMAIL}</P>
-        <OpenLine label="Telefon/weitere schnelle Kontaktmöglichkeit" value={LEGAL_PROVIDER.phone} />
+      <Text className="text-xl font-bold text-foreground">{t('legal_impressum_pruefentwurf')}</Text>
+      <Section title={t('legal_imp_angaben')}>
+        <OpenLine label={t('legal_name_firma')} value={LEGAL_PROVIDER.legalName} />
+        <OpenLine label={t('legal_rechtsform')} value={LEGAL_PROVIDER.legalForm} />
+        <OpenLine label={t('legal_imp_ladungsfaehige_anschrift')} value={`${LEGAL_PROVIDER.streetAddress}, ${LEGAL_PROVIDER.postalCodeAndCity}`} />
+        <OpenLine label={t('legal_imp_vertretungsberechtigter')} value={LEGAL_PROVIDER.representative} />
+        <P>{t('legal_email_label')}{LEGAL_CONTACT_EMAIL}</P>
+        <OpenLine label={t('legal_imp_telefon')} value={LEGAL_PROVIDER.phone} />
       </Section>
 
-      <Section title="Register und Identifikationsnummern">
-        <OpenLine label="Registergericht" value={LEGAL_PROVIDER.registerCourt} />
-        <OpenLine label="Registernummer" value={LEGAL_PROVIDER.registerNumber} />
-        <OpenLine label="USt-IdNr. oder Wirtschafts-IdNr." value={LEGAL_PROVIDER.vatOrBusinessId} />
-        <P>Eine interne Steuernummer und Bankverbindung werden im Impressum nicht veröffentlicht.</P>
+      <Section title={t('legal_imp_register')}>
+        <OpenLine label={t('legal_imp_registergericht')} value={LEGAL_PROVIDER.registerCourt} />
+        <OpenLine label={t('legal_imp_registernummer')} value={LEGAL_PROVIDER.registerNumber} />
+        <OpenLine label={t('legal_imp_ustid')} value={LEGAL_PROVIDER.vatOrBusinessId} />
+        <P>{t('legal_imp_steuernummer_text')}</P>
       </Section>
 
-      <Section title="Inhaltliche Verantwortung und Support">
-        <OpenLine label="Inhaltlich verantwortlich" value={LEGAL_PROVIDER.representative} />
-        <P>Support und Datenschutzkontakt: {LEGAL_CONTACT_EMAIL}</P>
+      <Section title={t('legal_imp_verantwortung')}>
+        <OpenLine label={t('legal_imp_inhaltlich_verantwortlich')} value={LEGAL_PROVIDER.representative} />
+        <P>{t('legal_imp_support_kontakt')}{LEGAL_CONTACT_EMAIL}</P>
       </Section>
 
-      <Section title="KI-Hinweis">
+      <Section title={t('legal_imp_ki_hinweis')}>
         <P>
-          KI-generierte Inhalte sind Arbeitshilfen, können fehlerhaft sein und müssen vor Freigabe, Versand oder Verwendung fachlich geprüft werden. Sie ersetzen keine rechtliche, technische oder sicherheitsrelevante Fachentscheidung.
+          {t('legal_imp_ki_text')}
         </P>
       </Section>
     </View>
@@ -270,67 +275,68 @@ function ImpressumContent() {
 }
 
 function AGBContent() {
+  const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">Nutzungsbedingungen – Prüfentwurf</Text>
+      <Text className="text-xl font-bold text-foreground">{t('legal_agb_pruefentwurf')}</Text>
 
-      <Section title="1. Anbieter, Zielgruppe und Vertragsschluss">
-        <OpenLine label="Vertragspartner/Anbieter" value={LEGAL_PROVIDER.legalName} />
-        <OpenLine label="B2B-, B2C- oder gemischtes Modell" value={LEGAL_BUSINESS_MODEL.audience} />
+      <Section title={t('legal_agb_1_anbieter')}>
+        <OpenLine label={t('legal_agb_vertragspartner')} value={LEGAL_PROVIDER.legalName} />
+        <OpenLine label={t('legal_agb_modell')} value={LEGAL_BUSINESS_MODEL.audience} />
         <P>
-          Die Registrierung allein darf erst dann als Vertragsschluss bezeichnet werden, wenn Anbieter, Zielgruppe, Leistungsumfang, Tarif und Annahmeprozess verbindlich festgelegt sind.
+          {t('legal_agb_1_text')}
         </P>
       </Section>
 
-      <Section title="2. Leistungsumfang">
+      <Section title={t('legal_agb_2_leistungsumfang')}>
         <P>
-          BuildKI unterstützt projektbezogene Baudokumentation, Protokolle, Aufgaben, Mängel, Fotos, Videos und Exporte sowie optionale Cloud-, KI- und Dropbox-Funktionen. Verfügbarkeit und Leistungsumfang richten sich nach der tatsächlich freigeschalteten Konfiguration. Nicht nachgewiesene SLAs, automatische Synchronisationsgarantien oder unbegrenzte Funktionen werden nicht zugesagt.
+          {t('legal_agb_2_text1')}
         </P>
         <P>
-          Die Matterport-Integration ist im Prüfentwurf technisch gesperrt. Commercial Partner Terms, zulässige Monetarisierung und App-Store-Verteilung, DPA-Rollen, Transfers, Löschung, Endnutzerbedingungen sowie mandantensichere Account-/Modellzuordnung: {LEGAL_DRAFT_MARKER}
-        </P>
-      </Section>
-
-      <Section title="3. KI-Funktionen">
-        <P>
-          Transkripte, Zusammenfassungen, Berichte, Aufgaben, Übersetzungen und sonstige Vorschläge können automatisiert beziehungsweise KI-gestützt erzeugt werden. Der Nutzer muss Ergebnisse vor fachlicher oder rechtlicher Verwendung prüfen. BuildKI trifft keine autonome verbindliche Bau-, Sicherheits-, Personal- oder Rechtsentscheidung.
+          {`${t('legal_agb_2_text2')}${LEGAL_DRAFT_MARKER}`}
         </P>
       </Section>
 
-      <Section title="4. Preise, Testphase und Zahlung">
-        <OpenLine label="Monatspreis" value={LEGAL_BUSINESS_MODEL.monthlyPrice} />
-        <OpenLine label="Jahrespreis" value={LEGAL_BUSINESS_MODEL.yearlyPrice} />
-        <OpenLine label="Testphase" value={LEGAL_BUSINESS_MODEL.trialTerms} />
-        <OpenLine label="Zahlungsarchitektur" value={LEGAL_BUSINESS_MODEL.paymentArchitecture} />
+      <Section title={t('legal_agb_3_ki')}>
         <P>
-          Bis zur Apple- und vertragsrechtlichen Entscheidung darf kein ungeklärter externer Kauf digitaler Premiumfunktionen aus der iOS-App angeboten werden.
+          {t('legal_agb_3_text')}
         </P>
       </Section>
 
-      <Section title="5. Nutzungs- und Kundenpflichten">
-        <Bullet text="Zugangsdaten schützen und unbefugte Nutzung melden" />
-        <Bullet text="Nur rechtmäßig erhobene Projekt-, Personen-, Audio-, Bild- und Beschäftigtendaten verarbeiten" />
-        <Bullet text="Vor nichtöffentlichen Aufnahmen alle Betroffenen informieren und erforderliche Zustimmungen/Rechtsgrundlagen sicherstellen" />
-        <Bullet text="KI-Ausgaben vor Freigabe, Versand oder Verwendung prüfen" />
-        <Bullet text="Betriebsrats-, Beschäftigtendatenschutz-, Geheimhaltungs- und Kundenpflichten beachten" />
+      <Section title={t('legal_agb_4_preise')}>
+        <OpenLine label={t('legal_agb_monatspreis')} value={LEGAL_BUSINESS_MODEL.monthlyPrice} />
+        <OpenLine label={t('legal_agb_jahrespreis')} value={LEGAL_BUSINESS_MODEL.yearlyPrice} />
+        <OpenLine label={t('legal_agb_testphase')} value={LEGAL_BUSINESS_MODEL.trialTerms} />
+        <OpenLine label={t('legal_agb_zahlungsarchitektur')} value={LEGAL_BUSINESS_MODEL.paymentArchitecture} />
+        <P>
+          {t('legal_agb_4_text')}
+        </P>
       </Section>
 
-      <Section title="6. Auftragsverarbeitung und Unterauftragnehmer">
+      <Section title={t('legal_agb_5_pflichten')}>
+        <Bullet text={t('legal_agb_pflicht_zugangsdaten')} />
+        <Bullet text={t('legal_agb_pflicht_daten')} />
+        <Bullet text={t('legal_agb_pflicht_aufnahmen')} />
+        <Bullet text={t('legal_agb_pflicht_ki')} />
+        <Bullet text={t('legal_agb_pflicht_betriebsrat')} />
+      </Section>
+
+      <Section title={t('legal_agb_6_auftrag')}>
         <P>
-          Ob der BuildKI-Anbieter für Kundendaten als Auftragsverarbeiter handelt, welche AVV, TOM, Unterauftragnehmer, Regionen und Transfermechanismen gelten, ist vor Produktivbetrieb vertraglich festzulegen.
+          {t('legal_agb_6_text')}
         </P>
         <OpenValue />
       </Section>
 
-      <Section title="7. Laufzeit, Kündigung und Daten nach Vertragsende">
-        <OpenLine label="Laufzeit/Kündigung" value={LEGAL_BUSINESS_MODEL.cancellationTerms} />
-        <OpenLine label="Exportfrist nach Vertragsende" value={LEGAL_DRAFT_MARKER} />
-        <OpenLine label="Löschung/gesetzliche Aufbewahrung" value={LEGAL_DRAFT_MARKER} />
+      <Section title={t('legal_agb_7_laufzeit')}>
+        <OpenLine label={t('legal_agb_laufzeit_kuendigung')} value={LEGAL_BUSINESS_MODEL.cancellationTerms} />
+        <OpenLine label={t('legal_agb_exportfrist')} value={LEGAL_DRAFT_MARKER} />
+        <OpenLine label={t('legal_agb_loeschung')} value={LEGAL_DRAFT_MARKER} />
       </Section>
 
-      <Section title="8. Haftung, Gewährleistung und Rechtswahl">
+      <Section title={t('legal_agb_8_haftung')}>
         <P>
-          Gewährleistungs-, Haftungs-, Gerichtsstands-, AGB-Änderungs- und Übertragungsklauseln werden in diesem Prüfentwurf nicht als verbindlich dargestellt. Sie müssen nach Zielgruppe und Geschäftsmodell von einer qualifizierten Rechtsberatung formuliert werden.
+          {t('legal_agb_8_text')}
         </P>
         <OpenValue />
       </Section>
@@ -339,41 +345,42 @@ function AGBContent() {
 }
 
 function KIHinweisContent() {
+  const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">Transparenz zu KI-Funktionen</Text>
+      <Text className="text-xl font-bold text-foreground">{t('legal_ki_transparenz')}</Text>
 
       <View className="bg-warning/10 border border-warning/30 p-4">
-        <Text className="text-sm font-bold text-foreground mb-2">Menschliche Prüfung erforderlich</Text>
+        <Text className="text-sm font-bold text-foreground mb-2">{t('legal_ki_menschliche_pruefung')}</Text>
         <Text className="text-sm text-foreground leading-5">
-          BuildKI nutzt KI-gestützte Verarbeitung. Ergebnisse können unvollständig, missverständlich oder falsch sein und dürfen nicht ungeprüft als verbindliche Bau-, Sicherheits-, Personal- oder Rechtsentscheidung verwendet werden.
+          {t('legal_ki_menschliche_text')}
         </Text>
       </View>
 
-      <Section title="KI-gestützte Funktionen im geprüften Quellstand">
-        <Bullet text="Audio-/Video-Transkription und Sprecherzuordnung" />
-        <Bullet text="Protokollstrukturierung, Zusammenfassung und Aufgabenextraktion" />
-        <Bullet text="Agenda, Übersetzung, Dokument-, Foto- und Berichtsanalysen" />
-        <Bullet text="Bautagebuch-, Support- und Formulierungshilfen" />
+      <Section title={t('legal_ki_funktionen_titel')}>
+        <Bullet text={t('legal_ki_funktion_transkription')} />
+        <Bullet text={t('legal_ki_funktion_protokoll')} />
+        <Bullet text={t('legal_ki_funktion_agenda')} />
+        <Bullet text={t('legal_ki_funktion_bautagebuch')} />
       </Section>
 
-      <Section title="Übermittelte Inhalte">
+      <Section title={t('legal_ki_uebermittelte')}>
         <P>
-          Je Funktion können Transkripte, Projektnamen, Protokolle, Aufgaben, Dokumente, Fotos, Anhänge und Nutzereingaben an einen serverseitig angebundenen KI-/Forge-Endpunkt übertragen werden. Eine vollständige Anonymisierung findet im geprüften Stand nicht zuverlässig statt.
+          {t('legal_ki_uebermittelte_text')}
         </P>
-        <OpenLine label="Vertragspartner, Modell, Region, AVV, SCC und Löschfrist" value={LEGAL_DRAFT_MARKER} />
+        <OpenLine label={t('legal_ki_vertragspartner_label')} value={LEGAL_DRAFT_MARKER} />
       </Section>
 
-      <Section title="Steuerung und Verantwortung">
-        <Bullet text="Optionale KI-Verarbeitung muss vor Nutzung aktiv freigegeben und später wieder deaktivierbar sein" />
-        <Bullet text="Ohne Freigabe dürfen keine neuen Inhalte für KI-Zwecke übertragen werden" />
-        <Bullet text="Automatisch erzeugte Inhalte müssen als KI-gestützt erkennbar bleiben" />
-        <Bullet text="Nutzer prüfen, korrigieren und bestätigen Ergebnisse vor Weitergabe" />
+      <Section title={t('legal_ki_steuerung')}>
+        <Bullet text={t('legal_ki_steuerung_freigabe')} />
+        <Bullet text={t('legal_ki_steuerung_ohne')} />
+        <Bullet text={t('legal_ki_steuerung_erkennbar')} />
+        <Bullet text={t('legal_ki_steuerung_pruefen')} />
       </Section>
 
-      <Section title="KI-Kompetenz und Organisation">
+      <Section title={t('legal_ki_kompetenz')}>
         <P>
-          Betreiber und Geschäftskunden müssen Personen, die KI-Funktionen konfigurieren, bedienen oder bewerten, angemessen schulen. Ein organisatorischer Schulungs- und Freigabenachweis ist vor Veröffentlichung zu erstellen.
+          {t('legal_ki_kompetenz_text')}
         </P>
       </Section>
     </View>
@@ -381,11 +388,12 @@ function KIHinweisContent() {
 }
 
 function LizenzenContent() {
+  const { t } = useTranslation();
   return (
     <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">Open-Source-Hinweise – Prüfstand</Text>
+      <Text className="text-xl font-bold text-foreground">{t('legal_lizenzen_titel')}</Text>
       <P>
-        Die folgende Liste ist ein Auszug. Vor Veröffentlichung muss ein automatisiert erzeugtes vollständiges Third-Party-Notices-Dokument mit Paketversionen, Lizenztexten und erforderlichen Hinweisen eingebunden werden.
+        {t('legal_lizenzen_text')}
       </P>
       <LicenseItem name="React / React Native" license="MIT" />
       <LicenseItem name="Expo / Expo Router" license="MIT" />
@@ -395,7 +403,7 @@ function LizenzenContent() {
       <LicenseItem name="tRPC" license="MIT" />
       <LicenseItem name="Drizzle ORM" license="Apache-2.0" />
       <LicenseItem name="Zod" license="MIT" />
-      <OpenLine label="Vollständige Lizenzprüfung" value={LEGAL_DRAFT_MARKER} />
+      <OpenLine label={t('legal_lizenzen_vollstaendige')} value={LEGAL_DRAFT_MARKER} />
     </View>
   );
 }

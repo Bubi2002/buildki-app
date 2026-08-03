@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { useTranslation } from "@/lib/language-provider";
 
 export function NetworkBanner() {
+  const { t } = useTranslation();
   const colors = useColors();
   const { isConnected, pendingSyncCount, isSyncing, lastSyncedAt, triggerSync } = useNetworkStatus();
   const [showBanner, setShowBanner] = useState(false);
@@ -43,15 +45,15 @@ export function NetworkBanner() {
   if (!showBanner) return null;
 
   const formatLastSync = (dateStr: string | null) => {
-    if (!dateStr) return "Noch nie";
+    if (!dateStr) return t('network_banner_noch_nie' as any);
     const d = new Date(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return "Gerade eben";
-    if (diffMin < 60) return `Vor ${diffMin} Min.`;
+    if (diffMin < 1) return t('network_banner_gerade_eben' as any);
+    if (diffMin < 60) return `${t('network_banner_vor' as any)} ${diffMin} ${t('network_banner_min' as any)}`;
     const diffH = Math.floor(diffMin / 60);
-    if (diffH < 24) return `Vor ${diffH} Std.`;
+    if (diffH < 24) return `${t('network_banner_vor' as any)} ${diffH} ${t('network_banner_std' as any)}`;
     return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   };
 
@@ -90,10 +92,10 @@ export function NetworkBanner() {
           ]}
         >
           {!isConnected
-            ? "Offline \u2013 \u00c4nderungen werden lokal gespeichert"
+            ? t('network_banner_offline_msg' as any)
             : isSyncing
-            ? `Synchronisiere ${pendingSyncCount} \u00c4nderung${pendingSyncCount !== 1 ? "en" : ""}...`
-            : "Verbunden \u2013 Alles synchronisiert"}
+            ? `${t('network_banner_synchronisiere' as any)} ${pendingSyncCount} ${pendingSyncCount === 1 ? t('network_banner_aenderung' as any) : t('network_banner_aenderungen' as any)}...`
+            : t('network_banner_verbunden_msg' as any)}
         </Text>
         {pendingSyncCount > 0 && (
           <View style={{ backgroundColor: !isConnected ? colors.error + "30" : colors.warning + "30", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 }}>
@@ -111,25 +113,25 @@ export function NetworkBanner() {
       {showDetails && (
         <View style={[styles.detailsPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.muted }]}>Status</Text>
+            <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('network_banner_status' as any)}</Text>
             <Text style={[styles.detailValue, { color: isConnected ? colors.success : colors.error }]}>
-              {isConnected ? "Verbunden" : "Offline"}
+              {isConnected ? t('network_banner_verbunden' as any) : t('network_banner_offline' as any)}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.muted }]}>Warteschlange</Text>
+            <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('network_banner_warteschlange' as any)}</Text>
             <Text style={[styles.detailValue, { color: colors.foreground }]}>
-              {pendingSyncCount} {pendingSyncCount === 1 ? "\u00c4nderung" : "\u00c4nderungen"}
+              {pendingSyncCount} {pendingSyncCount === 1 ? t('network_banner_aenderung' as any) : t('network_banner_aenderungen' as any)}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.muted }]}>Letzte Sync</Text>
+            <Text style={[styles.detailLabel, { color: colors.muted }]}>{t('network_banner_letzte_sync' as any)}</Text>
             <Text style={[styles.detailValue, { color: colors.foreground }]}>
               {formatLastSync(lastSyncedAt)}
             </Text>
           </View>
           <Text style={{ fontSize: 11, color: colors.muted, marginTop: 8, fontStyle: "italic" }}>
-            Alle Daten werden automatisch synchronisiert sobald eine Verbindung besteht.
+            {t('network_banner_auto_sync_hinweis' as any)}
           </Text>
         </View>
       )}

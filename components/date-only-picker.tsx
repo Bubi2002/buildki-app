@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   formatDateOnly,
   isDateOnOrAfter,
@@ -20,7 +21,15 @@ type DateOnlyPickerProps = {
   testID?: string;
 };
 
-const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const WEEKDAY_KEYS = [
+  "date_only_picker_weekday_mo",
+  "date_only_picker_weekday_di",
+  "date_only_picker_weekday_mi",
+  "date_only_picker_weekday_do",
+  "date_only_picker_weekday_fr",
+  "date_only_picker_weekday_sa",
+  "date_only_picker_weekday_so",
+];
 
 function monthStart(value: string): string {
   const date = parseDateOnly(value) || parseDateOnly(todayDateOnly())!;
@@ -30,12 +39,14 @@ function monthStart(value: string): string {
 export function DateOnlyPicker({
   value,
   onChange,
-  label = "Genaues Datum",
+  label,
   minimumDate = todayDateOnly(),
   allowClear = true,
   testID,
 }: DateOnlyPickerProps) {
+  const { t } = useTranslation();
   const colors = useColors();
+  const displayLabel = label ?? t('date_only_picker_genaues_datum' as any);
   const [expanded, setExpanded] = useState(false);
   const [cursor, setCursor] = useState(() => monthStart(value || minimumDate));
   const [manualValue, setManualValue] = useState(value ? formatDateOnly(value) : "");
@@ -72,11 +83,11 @@ export function DateOnlyPicker({
   const applyManualDate = () => {
     const parsed = parseGermanDateInput(manualValue);
     if (!parsed) {
-      setManualError("Bitte ein gültiges Datum als TT.MM.JJJJ eingeben.");
+      setManualError(t('date_only_picker_ungueltiges_datum' as any));
       return;
     }
     if (!isDateOnOrAfter(parsed, minimumDate)) {
-      setManualError("Das Datum darf nicht in der Vergangenheit liegen.");
+      setManualError(t('date_only_picker_datum_vergangenheit' as any));
       return;
     }
     chooseDate(parsed);
@@ -84,7 +95,7 @@ export function DateOnlyPicker({
 
   return (
     <View testID={testID} style={styles.wrapper}>
-      <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
+      <Text style={[styles.label, { color: colors.muted }]}>{displayLabel}</Text>
       <Pressable
         onPress={() => {
           setManualError("");
@@ -95,7 +106,7 @@ export function DateOnlyPicker({
           setExpanded((current) => !current);
         }}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value ? formatDateOnly(value) : "nicht gesetzt"}`}
+        accessibilityLabel={`${displayLabel}: ${value ? formatDateOnly(value) : t('date_only_picker_nicht_gesetzt' as any)}`}
         style={({ pressed }) => [
           styles.trigger,
           { borderColor: expanded || value ? colors.primary : colors.border, backgroundColor: colors.background },
@@ -104,7 +115,7 @@ export function DateOnlyPicker({
       >
         <MaterialIcons name="calendar-month" size={20} color={value ? colors.primary : colors.muted} />
         <Text style={[styles.triggerText, { color: value ? colors.foreground : colors.muted }]}>
-          {value ? formatDateOnly(value) : "Datum wählen oder eingeben"}
+          {value ? formatDateOnly(value) : t('date_only_picker_datum_waehlen' as any)}
         </Text>
         <MaterialIcons name={expanded ? "expand-less" : "expand-more"} size={20} color={colors.muted} />
       </Pressable>
@@ -128,8 +139,8 @@ export function DateOnlyPicker({
           </View>
 
           <View style={styles.weekRow}>
-            {WEEKDAYS.map((weekday) => (
-              <Text key={weekday} style={[styles.weekday, { color: colors.muted }]}>{weekday}</Text>
+            {WEEKDAY_KEYS.map((weekdayKey) => (
+              <Text key={weekdayKey} style={[styles.weekday, { color: colors.muted }]}>{t(weekdayKey as any)}</Text>
             ))}
           </View>
 
@@ -158,20 +169,20 @@ export function DateOnlyPicker({
             })}
           </View>
 
-          <Text style={[styles.manualLabel, { color: colors.muted }]}>Oder Datum direkt eingeben</Text>
+          <Text style={[styles.manualLabel, { color: colors.muted }]}>{t('date_only_picker_oder_direkt' as any)}</Text>
           <View style={styles.manualRow}>
             <TextInput
               value={manualValue}
               onChangeText={(text) => { setManualValue(text); setManualError(""); }}
               onSubmitEditing={applyManualDate}
-              placeholder="TT.MM.JJJJ"
+              placeholder={t('date_only_picker_format_placeholder' as any)}
               placeholderTextColor={colors.muted}
               keyboardType="numbers-and-punctuation"
               returnKeyType="done"
               style={[styles.manualInput, { color: colors.foreground, borderColor: manualError ? colors.error : colors.border }]}
             />
             <Pressable onPress={applyManualDate} style={({ pressed }) => [styles.applyButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}>
-              <Text style={styles.applyText}>Übernehmen</Text>
+              <Text style={styles.applyText}>{t('date_only_picker_uebernehmen' as any)}</Text>
             </Pressable>
           </View>
           {manualError ? <Text style={[styles.errorText, { color: colors.error }]}>{manualError}</Text> : null}
@@ -182,7 +193,7 @@ export function DateOnlyPicker({
               style={({ pressed }) => [styles.clearButton, { borderColor: colors.border }, pressed && { opacity: 0.65 }]}
             >
               <MaterialIcons name="event-busy" size={16} color={colors.muted} />
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>Datum entfernen</Text>
+              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>{t('date_only_picker_datum_entfernen' as any)}</Text>
             </Pressable>
           ) : null}
         </View>

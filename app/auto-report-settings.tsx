@@ -53,7 +53,7 @@ export default function AutoReportSettingsScreen() {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(t('alert_gespeichert'), settings.enabled
         ? `${t('automatischer')} ${settings.frequency === "daily" ? t('tagesbericht') : t('wochenbericht')} ${t('aktiviert_um')} ${String(settings.time.hour).padStart(2, "0")}:${String(settings.time.minute).padStart(2, "0")} ${t('uhr')}.`
-        : "Automatischer Bericht deaktiviert."
+        : t('auto_report_settings_deaktiviert' as any)
       );
     } catch {
       Alert.alert(t('alert_fehler'), t('msg_einstellungen_konnten_nicht_gespeichert_werden'));
@@ -86,7 +86,7 @@ export default function AutoReportSettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t('automatischer_gesamtbericht')}</Text>
               <Text style={[styles.cardDesc, { color: colors.muted }]}>
-                Generiert automatisch einen PDF-Bericht aller Protokolle eines Zeitraums
+                {t('auto_report_settings_card_desc' as any)}
               </Text>
             </View>
             <Switch
@@ -249,7 +249,7 @@ export default function AutoReportSettingsScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <MaterialIcons name="history" size={18} color={colors.muted} />
                   <Text style={{ fontSize: 13, color: colors.muted }}>
-                    Letzter Bericht: {new Date(lastRun).toLocaleString("de-DE")}
+                    {t('auto_report_settings_letzter_bericht' as any)} {new Date(lastRun).toLocaleString("de-DE")}
                   </Text>
                 </View>
               </View>
@@ -261,7 +261,7 @@ export default function AutoReportSettingsScreen() {
         <View style={[styles.infoBox, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
           <MaterialIcons name="info-outline" size={18} color={colors.primary} />
           <Text style={{ fontSize: 12, color: colors.primary, flex: 1, marginLeft: 8, lineHeight: 18 }}>
-            Der Bericht wird als Push-Benachrichtigung angekündigt. Beim Öffnen der App wird er automatisch generiert und kann direkt geteilt werden.
+            {t('auto_report_settings_info' as any)}
           </Text>
         </View>
       </ScrollView>

@@ -27,6 +27,7 @@ import * as Sharing from "expo-sharing";
 import { DocumentAnalysisDetail } from "@/components/document-analysis-detail";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   DocumentAnalysisError,
   documentAI,
@@ -36,6 +37,7 @@ import type { DocumentEntity, DocumentCategory } from "@/shared/entities";
 import { trpc } from "@/lib/trpc";
 
 export default function DocumentAIScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
 
@@ -86,7 +88,7 @@ export default function DocumentAIScreen() {
 
   const handlePickDocument = async () => {
     if (!activeProject) {
-      Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt aus.");
+      Alert.alert(t('document_ai_kein_projekt' as any), t('document_ai_bitte_projekt' as any));
       return;
     }
 
@@ -106,7 +108,7 @@ export default function DocumentAIScreen() {
       const file = result.assets[0];
       const fileType = documentAI.detectFileType(file.name);
       if (fileType === "other") {
-        Alert.alert("Format nicht unterstützt", "Bitte eine PDF-, DOCX-, XLSX-, CSV- oder Bilddatei auswählen.");
+        Alert.alert(t('document_ai_format_nicht_unterstuetzt' as any), t('document_ai_format_hinweis' as any));
         return;
       }
 
@@ -150,25 +152,25 @@ export default function DocumentAIScreen() {
         ? error.userMessage
         : error instanceof Error
           ? error.message
-          : "Das Dokument konnte nicht analysiert werden.";
+          : t('document_ai_analyse_fehler_fallback' as any);
       setAnalysisError(message);
-      Alert.alert("Analyse nicht möglich", message);
+      Alert.alert(t('document_ai_analyse_nicht_moeglich' as any), message);
     } finally {
       setAnalysisPhase("idle");
     }
   };
 
   const getAnalysisPhaseLabel = (): string => {
-    if (analysisPhase === "preparing") return "Dokument wird vorbereitet...";
-    if (analysisPhase === "uploading") return "Bild wird sicher hochgeladen...";
-    if (analysisPhase === "extracting") return "Dokumenttext wird ausgelesen...";
-    if (analysisPhase === "analyzing") return "Inhalt wird ausgewertet...";
-    return "Dokument hochladen & analysieren";
+    if (analysisPhase === "preparing") return t('document_ai_phase_vorbereiten' as any);
+    if (analysisPhase === "uploading") return t('document_ai_phase_hochladen' as any);
+    if (analysisPhase === "extracting") return t('document_ai_phase_auslesen' as any);
+    if (analysisPhase === "analyzing") return t('document_ai_phase_auswerten' as any);
+    return t('document_ai_upload_analysieren' as any);
   };
 
   const handleOpenOriginalFile = async (result: DocumentAnalysisResult) => {
     if (!result.fileUri) {
-      Alert.alert("Datei nicht verfügbar", "Die ursprüngliche Datei ist nicht mehr im Gerätespeicher vorhanden.");
+      Alert.alert(t('document_ai_datei_nicht_verfuegbar' as any), t('document_ai_datei_nicht_im_speicher' as any));
       return;
     }
     const mimeType = result.fileType === "pdf"
@@ -184,28 +186,28 @@ export default function DocumentAIScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(result.fileUri, {
           mimeType,
-          dialogTitle: `Originaldatei öffnen: ${result.fileName}`,
+          dialogTitle: `${t('document_ai_originaldatei_oeffnen' as any)}: ${result.fileName}`,
         });
       } else {
         await Linking.openURL(result.fileUri);
       }
     } catch {
-      Alert.alert("Datei nicht verfügbar", "Die ursprüngliche Datei konnte nicht geöffnet werden. Bitte erneut hochladen.");
+      Alert.alert(t('document_ai_datei_nicht_verfuegbar' as any), t('document_ai_datei_nicht_geoeffnet' as any));
     }
   };
 
   const getCategoryLabel = (category: DocumentCategory): string => {
     const labels: Record<DocumentCategory, string> = {
-      plan: "Plan",
-      contract: "Vertrag",
-      specification: "Leistungsverzeichnis",
-      protocol: "Protokoll",
-      invoice: "Rechnung",
-      correspondence: "Korrespondenz",
-      permit: "Genehmigung",
-      certificate: "Zertifikat",
-      photo_documentation: "Fotodokumentation",
-      other: "Sonstiges",
+      plan: t('document_ai_cat_plan' as any),
+      contract: t('document_ai_cat_vertrag' as any),
+      specification: t('document_ai_cat_leistungsverzeichnis' as any),
+      protocol: t('document_ai_cat_protokoll' as any),
+      invoice: t('document_ai_cat_rechnung' as any),
+      correspondence: t('document_ai_cat_korrespondenz' as any),
+      permit: t('document_ai_cat_genehmigung' as any),
+      certificate: t('document_ai_cat_zertifikat' as any),
+      photo_documentation: t('document_ai_cat_fotodokumentation' as any),
+      other: t('document_ai_cat_sonstiges' as any),
     };
     return labels[category] || category;
   };
@@ -228,7 +230,7 @@ export default function DocumentAIScreen() {
         try {
           const result = await documentAI.getAnalysisResult(item.id);
           if (!result) {
-            setAnalysisError(`Für „${item.fileName}“ ist kein vollständiges Analyseergebnis gespeichert.`);
+            setAnalysisError(`${t('document_ai_fuer' as any)} „${item.fileName}” ${t('document_ai_kein_ergebnis_body' as any)}`);
             return;
           }
           setCurrentResult(result);
@@ -258,7 +260,7 @@ export default function DocumentAIScreen() {
           </Text>
           {item.extractedEntities && item.extractedEntities.length > 0 && (
             <Text style={[styles.docEntities, { color: "#10B981" }]}>
-              {item.extractedEntities.length} Entitäten
+              {item.extractedEntities.length} {t('document_ai_entitaeten' as any)}
             </Text>
           )}
         </View>
@@ -305,7 +307,7 @@ export default function DocumentAIScreen() {
             {getAnalysisPhaseLabel()}
           </Text>
           <Text style={[styles.uploadHint, { color: colors.muted }]}>
-            PDF, DOCX, XLSX, Bilder
+            {t('document_ai_upload_hint' as any)}
           </Text>
         </Pressable>
       </View>
@@ -314,10 +316,10 @@ export default function DocumentAIScreen() {
         <View style={[styles.errorCard, { borderColor: "#EF4444", backgroundColor: "#EF444412" }]}>
           <MaterialIcons name="error-outline" size={20} color="#EF4444" />
           <View style={styles.errorCopy}>
-            <Text style={[styles.errorTitle, { color: colors.foreground }]}>Analyse nicht abgeschlossen</Text>
+            <Text style={[styles.errorTitle, { color: colors.foreground }]}>{t('document_ai_analyse_nicht_abgeschlossen' as any)}</Text>
             <Text style={[styles.errorMessage, { color: colors.muted }]}>{analysisError}</Text>
           </View>
-          <Pressable onPress={() => setAnalysisError(null)} accessibilityLabel="Fehlerhinweis schließen">
+          <Pressable onPress={() => setAnalysisError(null)} accessibilityLabel={t('document_ai_fehlerhinweis_schliessen' as any)}>
             <MaterialIcons name="close" size={18} color={colors.muted} />
           </Pressable>
         </View>
@@ -333,13 +335,13 @@ export default function DocumentAIScreen() {
       {/* Document List */}
       <View style={styles.listSection}>
         <Text style={[styles.listTitle, { color: colors.foreground }]}>
-          Analysierte Dokumente ({documents.length})
+          {t('document_ai_analysierte_dokumente' as any)} ({documents.length})
         </Text>
         {documents.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialIcons name="folder-open" size={36} color={colors.muted} />
             <Text style={[styles.emptyText, { color: colors.muted }]}>
-              Noch keine Dokumente analysiert
+              {t('document_ai_keine_dokumente' as any)}
             </Text>
           </View>
         ) : (

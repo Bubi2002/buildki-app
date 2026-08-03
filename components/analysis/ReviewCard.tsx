@@ -8,6 +8,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 interface ReviewCardProps {
   /** Typ der Elemente (z.B. "Mängel", "Aufgaben") */
@@ -33,6 +34,7 @@ export function ReviewCard({
   onDismissAll,
 }: ReviewCardProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   const pendingCount = totalCount - adoptedCount - dismissedCount;
   const allProcessed = pendingCount === 0;
 
@@ -41,10 +43,10 @@ export function ReviewCard({
       <View style={styles.header}>
         <MaterialIcons name="rate-review" size={20} color={colors.primary} />
         <Text style={[styles.title, { color: colors.foreground }]}>
-          {itemType} prüfen
+          {itemType} {t('ReviewCard_pruefen')}
         </Text>
         <Text style={[styles.count, { color: colors.muted }]}>
-          {totalCount} erkannt
+          {totalCount} {t('ReviewCard_erkannt')}
         </Text>
       </View>
 
@@ -54,7 +56,7 @@ export function ReviewCard({
           <View style={styles.progressItem}>
             <MaterialIcons name="check-circle" size={14} color={colors.success} />
             <Text style={[styles.progressText, { color: colors.success }]}>
-              {adoptedCount} übernommen
+              {adoptedCount} {t('ReviewCard_uebernommen')}
             </Text>
           </View>
         )}
@@ -62,7 +64,7 @@ export function ReviewCard({
           <View style={styles.progressItem}>
             <MaterialIcons name="cancel" size={14} color={colors.muted} />
             <Text style={[styles.progressText, { color: colors.muted }]}>
-              {dismissedCount} abgelehnt
+              {dismissedCount} {t('ReviewCard_abgelehnt')}
             </Text>
           </View>
         )}
@@ -70,7 +72,7 @@ export function ReviewCard({
           <View style={styles.progressItem}>
             <MaterialIcons name="pending" size={14} color={colors.warning} />
             <Text style={[styles.progressText, { color: colors.warning }]}>
-              {pendingCount} offen
+              {pendingCount} {t('ReviewCard_offen')}
             </Text>
           </View>
         )}
@@ -87,7 +89,7 @@ export function ReviewCard({
             ]}
           >
             <MaterialIcons name="done-all" size={16} color="#FFF" />
-            <Text style={styles.actionText}>Alle übernehmen</Text>
+            <Text style={styles.actionText}>{t('ReviewCard_alle_uebernehmen')}</Text>
           </Pressable>
           <Pressable
             onPress={onDismissAll}
@@ -96,7 +98,7 @@ export function ReviewCard({
               { borderColor: colors.border, transform: [{ scale: pressed ? 0.97 : 1 }] },
             ]}
           >
-            <Text style={[styles.dismissText, { color: colors.muted }]}>Alle ablehnen</Text>
+            <Text style={[styles.dismissText, { color: colors.muted }]}>{t('ReviewCard_alle_ablehnen')}</Text>
           </Pressable>
         </View>
       )}
@@ -106,7 +108,7 @@ export function ReviewCard({
         <View style={[styles.doneMessage, { backgroundColor: colors.success + "10" }]}>
           <MaterialIcons name="check-circle" size={16} color={colors.success} />
           <Text style={[styles.doneText, { color: colors.success }]}>
-            Alle {itemType} wurden geprüft
+            {t('ReviewCard_alle')} {itemType} {t('ReviewCard_wurden_geprueft')}
           </Text>
         </View>
       )}

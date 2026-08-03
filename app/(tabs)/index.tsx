@@ -84,39 +84,39 @@ const createEmptyLiveStats = (): LiveStats => ({
 
 interface ToolItem {
   key: string;
-  label: string;
+  labelKey: string;
   icon: string;
   color: string;
   route: string;
 }
 
 const TOOLS: ToolItem[] = [
-  { key: "video_import", label: "Video", icon: "videocam", color: "#00BCD4", route: "/video-upload" },
-  { key: "ki_analyse", label: "KI-Analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
-  { key: "ki_assistent", label: "KI-Assistent", icon: "assistant", color: "#00C853", route: "/protocol-assistant" },
-  { key: "maengel", label: "Mängel", icon: "warning", color: "#FF9800", route: "/defects" },
-  { key: "nachpruefung", label: "Nachprüfung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
-  { key: "aufgaben", label: "Aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
-  { key: "raeume", label: "Räume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
-  { key: "grundriss", label: "Grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
-  { key: "messen", label: "Messen", icon: "straighten", color: "#00ACC1", route: "/measure" },
-  { key: "tagebuch", label: "Bautagebuch", icon: "menu-book", color: "#66BB6A", route: "/bautagebuch" },
-  { key: "checklisten", label: "Checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
-  { key: "fotos", label: "Fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },
-  { key: "notizen", label: "Notizen", icon: "edit-note", color: "#78909C", route: "/quick-note" },
-  { key: "timeline", label: "Timeline", icon: "timeline", color: "#009688", route: "/smart-timeline" },
-  { key: "zeiterfassung", label: "Zeiterfassung", icon: "timer", color: "#FF5722", route: "/time-tracking" },
-  { key: "team", label: "Team", icon: "groups", color: "#5C6BC0", route: "/team" },
-  { key: "anwesenheit", label: "Anwesenheit", icon: "how-to-reg", color: "#00897B", route: "/attendance" },
-  { key: "kalender", label: "Kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
-  { key: "fortschritt", label: "Fortschritt", icon: "trending-up", color: "#4CAF50", route: "/progress" },
-  { key: "ki_bericht", label: "KI-Bericht", icon: "auto-awesome", color: "#7B1FA2", route: "/report-generator" },
-  { key: "maengel_export", label: "Mängel-PDF", icon: "picture-as-pdf", color: "#EF4444", route: "/defect-export" },
-  { key: "vergleich", label: "Vergleich", icon: "compare", color: "#5C6BC0", route: "/comparison" },
-  { key: "bericht", label: "Bericht", icon: "summarize", color: "#795548", route: "/protocol-merge" },
-  { key: "matterport", label: "Matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
-  { key: "dokument_ai", label: "Dokument-KI", icon: "smart-toy", color: "#FF6F00", route: "/document-ai" },
-  { key: "brain", label: "Brain", icon: "psychology", color: "#E040FB", route: "/ai-assistant" },
+  { key: "video_import", labelKey: "index_tool_video", icon: "videocam", color: "#00BCD4", route: "/video-upload" },
+  { key: "ki_analyse", labelKey: "index_tool_ki_analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
+  { key: "ki_assistent", labelKey: "index_tool_ki_assistent", icon: "assistant", color: "#00C853", route: "/protocol-assistant" },
+  { key: "maengel", labelKey: "index_tool_maengel", icon: "warning", color: "#FF9800", route: "/defects" },
+  { key: "nachpruefung", labelKey: "index_tool_nachpruefung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
+  { key: "aufgaben", labelKey: "index_tool_aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
+  { key: "raeume", labelKey: "index_tool_raeume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
+  { key: "grundriss", labelKey: "index_tool_grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
+  { key: "messen", labelKey: "index_tool_messen", icon: "straighten", color: "#00ACC1", route: "/measure" },
+  { key: "tagebuch", labelKey: "index_tool_bautagebuch", icon: "menu-book", color: "#66BB6A", route: "/bautagebuch" },
+  { key: "checklisten", labelKey: "index_tool_checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
+  { key: "fotos", labelKey: "index_tool_fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },
+  { key: "notizen", labelKey: "index_tool_notizen", icon: "edit-note", color: "#78909C", route: "/quick-note" },
+  { key: "timeline", labelKey: "index_tool_timeline", icon: "timeline", color: "#009688", route: "/smart-timeline" },
+  { key: "zeiterfassung", labelKey: "index_tool_zeiterfassung", icon: "timer", color: "#FF5722", route: "/time-tracking" },
+  { key: "team", labelKey: "index_tool_team", icon: "groups", color: "#5C6BC0", route: "/team" },
+  { key: "anwesenheit", labelKey: "index_tool_anwesenheit", icon: "how-to-reg", color: "#00897B", route: "/attendance" },
+  { key: "kalender", labelKey: "index_tool_kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
+  { key: "fortschritt", labelKey: "index_tool_fortschritt", icon: "trending-up", color: "#4CAF50", route: "/progress" },
+  { key: "ki_bericht", labelKey: "index_tool_ki_bericht", icon: "auto-awesome", color: "#7B1FA2", route: "/report-generator" },
+  { key: "maengel_export", labelKey: "index_tool_maengel_pdf", icon: "picture-as-pdf", color: "#EF4444", route: "/defect-export" },
+  { key: "vergleich", labelKey: "index_tool_vergleich", icon: "compare", color: "#5C6BC0", route: "/comparison" },
+  { key: "bericht", labelKey: "index_tool_bericht", icon: "summarize", color: "#795548", route: "/protocol-merge" },
+  { key: "matterport", labelKey: "index_tool_matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
+  { key: "dokument_ai", labelKey: "index_tool_dokument_ki", icon: "smart-toy", color: "#FF6F00", route: "/document-ai" },
+  { key: "brain", labelKey: "index_tool_brain", icon: "psychology", color: "#E040FB", route: "/ai-assistant" },
 ];
 
 export default function AIWorkbenchScreen() {
@@ -277,12 +277,12 @@ export default function AIWorkbenchScreen() {
 
   const confirmDeleteProject = (project: Project) => {
     Alert.alert(
-      "Projekt löschen",
-      `„${project.name}“ wird aus der Projektliste entfernt. Zugeordnete Protokolle bleiben erhalten und werden unter „Ohne Projekt“ angezeigt.`,
+      t('index_projekt_loeschen' as any),
+      `„${project.name}” ${t('index_projekt_entfernen_body' as any)}`,
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('index_abbrechen' as any), style: "cancel" },
         {
-          text: "Projekt löschen",
+          text: t('index_projekt_loeschen' as any),
           style: "destructive",
           onPress: async () => {
             try {
@@ -292,13 +292,13 @@ export default function AIWorkbenchScreen() {
               setShowProjectPicker(false);
               await loadLiveStats(result.nextProject?.id);
               Alert.alert(
-                "Projekt gelöscht",
+                t('index_projekt_geloescht' as any),
                 result.detachedProtocolCount > 0
-                  ? `${result.detachedProtocolCount} Protokoll${result.detachedProtocolCount === 1 ? "" : "e"} bleibt erhalten und ist jetzt ohne Projektzuordnung.`
-                  : "Der Projekteintrag wurde entfernt.",
+                  ? `${result.detachedProtocolCount} ${result.detachedProtocolCount === 1 ? t('index_protokoll_erhalten_sg' as any) : t('index_protokoll_erhalten_pl' as any)}`
+                  : t('index_projekteintrag_entfernt' as any),
               );
             } catch {
-              Alert.alert("Fehler", "Das Projekt konnte nicht gelöscht werden.");
+              Alert.alert(t('index_fehler' as any), t('index_projekt_nicht_geloescht' as any));
             }
           },
         },
@@ -309,7 +309,7 @@ export default function AIWorkbenchScreen() {
   const navigateModule = (route: string) => {
     if (!selectedProject) {
       setShowProjectPicker(true);
-      Alert.alert("Projekt auswählen", "Bitte wähle oder erstelle zuerst ein Projekt.");
+      Alert.alert(t('index_projekt_auswaehlen' as any), t('index_bitte_projekt_erstellen' as any));
       return;
     }
     router.push(`${route}?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}` as any);
@@ -317,12 +317,12 @@ export default function AIWorkbenchScreen() {
 
   // ─── Phase Label ────────────────────────────────────────────────────────────
   const phaseLabels: Record<string, string> = {
-    rohbau: "Rohbau",
-    ausbau_1: "Ausbau 1",
-    ausbau_2: "Ausbau 2",
-    ausbau_3: "Ausbau 3",
-    fertigstellung: "Fertigstellung",
-    abnahme: "Abnahme",
+    rohbau: t('index_phase_rohbau' as any),
+    ausbau_1: t('index_phase_ausbau_1' as any),
+    ausbau_2: t('index_phase_ausbau_2' as any),
+    ausbau_3: t('index_phase_ausbau_3' as any),
+    fertigstellung: t('index_phase_fertigstellung' as any),
+    abnahme: t('index_phase_abnahme' as any),
   };
 
   return (
@@ -337,7 +337,7 @@ export default function AIWorkbenchScreen() {
         <View style={styles.projectSelector}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Projekt auswählen"
+            accessibilityLabel={t('index_projekt_auswaehlen' as any)}
             onPress={() => setShowProjectPicker(!showProjectPicker)}
             style={({ pressed }) => [styles.projectSelectorToggle, { opacity: pressed ? 0.8 : 1 }]}
           >
@@ -355,8 +355,8 @@ export default function AIWorkbenchScreen() {
           {selectedProject ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Aktives Projekt ${selectedProject.name} löschen`}
-              accessibilityHint="Öffnet eine Sicherheitsabfrage vor dem Löschen"
+              accessibilityLabel={`${t('index_a11y_aktives_projekt_prefix' as any)}${selectedProject.name}${t('index_a11y_loeschen_suffix' as any)}`}
+              accessibilityHint={t('index_a11y_delete_hint' as any)}
               hitSlop={8}
               onPress={() => confirmDeleteProject(selectedProject)}
               style={({ pressed }) => [styles.activeProjectDeleteButton, { opacity: pressed ? 0.6 : 1 }]}
@@ -392,7 +392,7 @@ export default function AIWorkbenchScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Projekt ${project.name} löschen`}
+                    accessibilityLabel={`${t('index_a11y_projekt_prefix' as any)}${project.name}${t('index_a11y_loeschen_suffix' as any)}`}
                     onPress={() => confirmDeleteProject(project)}
                     style={({ pressed }) => [styles.projectDeleteButton, { opacity: pressed ? 0.6 : 1 }]}
                   >
@@ -413,7 +413,7 @@ export default function AIWorkbenchScreen() {
 
         {/* ─── Live Stats Overview ────────────────────────────────────────── */}
         <View style={styles.statsSection}>
-          <Text style={styles.statsSectionTitle}>ÜBERSICHT</Text>
+          <Text style={styles.statsSectionTitle}>{t('index_uebersicht' as any)}</Text>
 
           {selectedProject ? (
             <>
@@ -425,7 +425,7 @@ export default function AIWorkbenchScreen() {
               <View style={styles.progressHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <MaterialIcons name="trending-up" size={18} color="#4CAF50" />
-                  <Text style={styles.progressLabel}>Baufortschritt</Text>
+                  <Text style={styles.progressLabel}>{t('index_baufortschritt' as any)}</Text>
                 </View>
                 <Text style={styles.progressPercent}>{stats.overallProgress}%</Text>
               </View>
@@ -433,7 +433,7 @@ export default function AIWorkbenchScreen() {
                 <View style={[styles.progressBarFill, { width: `${Math.min(stats.overallProgress, 100)}%` }]} />
               </View>
               {stats.progressPhase ? (
-                <Text style={styles.progressPhase}>Phase: {phaseLabels[stats.progressPhase] || stats.progressPhase}</Text>
+                <Text style={styles.progressPhase}>{t('index_phase_label' as any)} {phaseLabels[stats.progressPhase] || stats.progressPhase}</Text>
               ) : null}
               </Pressable>
 
@@ -442,22 +442,22 @@ export default function AIWorkbenchScreen() {
             <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="warning" size={20} color="#F87171" />
               <Text style={styles.statValue}>{stats.openDefects}</Text>
-              <Text style={styles.statLabel}>Offen</Text>
+              <Text style={styles.statLabel}>{t('index_offen' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="build" size={20} color="#FBBF24" />
               <Text style={styles.statValue}>{stats.inProgressDefects}</Text>
-              <Text style={styles.statLabel}>In Arbeit</Text>
+              <Text style={styles.statLabel}>{t('index_in_arbeit' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="schedule" size={20} color="#FB7185" />
               <Text style={styles.statValue}>{stats.overdueDefects}</Text>
-              <Text style={styles.statLabel}>Überfällig</Text>
+              <Text style={styles.statLabel}>{t('index_ueberfaellig' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => navigateModule("/defects")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="check-circle" size={20} color="#4ADE80" />
               <Text style={styles.statValue}>{stats.resolvedDefects}</Text>
-              <Text style={styles.statLabel}>Erledigt</Text>
+              <Text style={styles.statLabel}>{t('index_erledigt' as any)}</Text>
             </Pressable>
           </View>
 
@@ -466,22 +466,22 @@ export default function AIWorkbenchScreen() {
             <Pressable onPress={() => router.push("/(tabs)/protocols" as any)} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="description" size={20} color="#5DADE2" />
               <Text style={styles.statValue}>{stats.totalProtocols}</Text>
-              <Text style={styles.statLabel}>Protokolle</Text>
+              <Text style={styles.statLabel}>{t('index_protokolle' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => router.push("/(tabs)/protocols" as any)} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="trending-up" size={20} color="#A78BFA" />
               <Text style={styles.statValue}>{stats.thisWeekProtocols}</Text>
-              <Text style={styles.statLabel}>Diese Woche</Text>
+              <Text style={styles.statLabel}>{t('index_diese_woche' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => navigateModule("/attendance")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="groups" size={20} color="#00897B" />
               <Text style={styles.statValue}>{stats.todayAttendance}</Text>
-              <Text style={styles.statLabel}>Heute vor Ort</Text>
+              <Text style={styles.statLabel}>{t('index_heute_vor_ort' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="layers" size={20} color="#5C6BC0" />
               <Text style={styles.statValue}>{stats.roomsCompleted}/{stats.roomsTotal}</Text>
-              <Text style={styles.statLabel}>Räume fertig</Text>
+              <Text style={styles.statLabel}>{t('index_raeume_fertig' as any)}</Text>
             </Pressable>
           </View>
 
@@ -495,7 +495,7 @@ export default function AIWorkbenchScreen() {
                 >
                   <MaterialIcons name="priority-high" size={16} color="#F87171" />
                   <Text style={styles.alertText}>
-                    {stats.highPriorityDefects} {stats.highPriorityDefects === 1 ? "Mangel" : "Mängel"} mit hoher Priorität
+                    {stats.highPriorityDefects} {stats.highPriorityDefects === 1 ? t('index_mangel' as any) : t('index_maengel' as any)} {t('index_mit_hoher_prioritaet' as any)}
                   </Text>
                   <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
                 </Pressable>
@@ -507,7 +507,7 @@ export default function AIWorkbenchScreen() {
                 >
                   <MaterialIcons name="event-busy" size={16} color="#FB7185" />
                   <Text style={styles.alertText}>
-                    {stats.overdueDefects} {stats.overdueDefects === 1 ? "Mangel" : "Mängel"} überfällig
+                    {stats.overdueDefects} {stats.overdueDefects === 1 ? t('index_mangel' as any) : t('index_maengel' as any)} {t('index_ueberfaellig_lc' as any)}
                   </Text>
                   <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
                 </Pressable>
@@ -519,7 +519,7 @@ export default function AIWorkbenchScreen() {
                 >
                   <MaterialIcons name="event-repeat" size={16} color="#A78BFA" />
                   <Text style={styles.alertText}>
-                    {stats.pendingFollowUps} Nachprüfung{stats.pendingFollowUps !== 1 ? "en" : ""} ausstehend
+                    {stats.pendingFollowUps} {stats.pendingFollowUps === 1 ? t('index_nachpruefung_ausstehend_sg' as any) : t('index_nachpruefung_ausstehend_pl' as any)}
                   </Text>
                   <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
                 </Pressable>
@@ -532,13 +532,13 @@ export default function AIWorkbenchScreen() {
                 <View style={styles.tasksSummary}>
                   <View style={styles.tasksHeader}>
                     <MaterialIcons name="task-alt" size={16} color="#5DADE2" />
-                    <Text style={styles.tasksTitle}>Aufgaben</Text>
+                    <Text style={styles.tasksTitle}>{t('index_aufgaben' as any)}</Text>
                   </View>
                   <View style={styles.tasksBar}>
                     <View style={[styles.tasksBarFill, { width: `${stats.openTasks + stats.completedTasks > 0 ? (stats.completedTasks / (stats.openTasks + stats.completedTasks)) * 100 : 0}%` }]} />
                   </View>
                   <Text style={styles.tasksText}>
-                    {stats.completedTasks} erledigt / {stats.openTasks} offen
+                    {stats.completedTasks} {t('index_tasks_erledigt' as any)} / {stats.openTasks} {t('index_tasks_offen' as any)}
                   </Text>
                 </View>
               )}
@@ -546,9 +546,9 @@ export default function AIWorkbenchScreen() {
           ) : (
             <View style={styles.noProjectOverview} accessibilityRole="summary">
               <MaterialIcons name="folder-off" size={30} color="#8FA3B8" />
-              <Text style={styles.noProjectOverviewTitle}>Keine Projektdaten</Text>
+              <Text style={styles.noProjectOverviewTitle}>{t('index_keine_projektdaten' as any)}</Text>
               <Text style={styles.noProjectOverviewText}>
-                Erstelle oder wähle zuerst ein Projekt. Alte Aufgaben, Mängel und Protokolle werden hier nicht projektübergreifend angezeigt.
+                {t('index_keine_projektdaten_text' as any)}
               </Text>
             </View>
           )}
@@ -558,9 +558,9 @@ export default function AIWorkbenchScreen() {
         {selectedProject && stats.recentEvents.length > 0 && (
           <View style={styles.activitySection}>
             <View style={styles.activityHeader}>
-              <Text style={styles.activityTitle}>LETZTE AKTIVITÄTEN</Text>
+              <Text style={styles.activityTitle}>{t('index_letzte_aktivitaeten' as any)}</Text>
               <Pressable onPress={() => navigateModule("/smart-timeline")} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={styles.activityMore}>Alle anzeigen</Text>
+                <Text style={styles.activityMore}>{t('index_alle_anzeigen' as any)}</Text>
               </Pressable>
             </View>
             {stats.recentEvents.map((event) => (
@@ -573,7 +573,7 @@ export default function AIWorkbenchScreen() {
                   </Text>
                 </View>
                 <Text style={styles.activityTime}>
-                  {formatRelativeTime(event.timestamp)}
+                  {formatRelativeTime(event.timestamp, t)}
                 </Text>
               </View>
             ))}
@@ -605,7 +605,7 @@ export default function AIWorkbenchScreen() {
                   const sorted = [...protocols].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                   router.push(`/protocol-detail?id=${sorted[0].id}` as any);
                 } else {
-                  Alert.alert("Keine Protokolle", "Es gibt noch keine Protokolle.");
+                  Alert.alert(t('index_keine_protokolle' as any), t('index_keine_protokolle_text' as any));
                 }
               } catch { }
             }}
@@ -623,26 +623,26 @@ export default function AIWorkbenchScreen() {
             style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="menu-book" size={20} color="#5DADE2" />
-            <Text style={styles.helpBtnText}>Anleitung</Text>
+            <Text style={styles.helpBtnText}>{t('index_anleitung' as any)}</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/support-chat' as any)}
             style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="support-agent" size={20} color="#A78BFA" />
-            <Text style={styles.helpBtnText}>KI-Support</Text>
+            <Text style={styles.helpBtnText}>{t('index_ki_support' as any)}</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/subscription' as any)}
             style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="credit-card" size={20} color="#4ADE80" />
-            <Text style={styles.helpBtnText}>Abo</Text>
+            <Text style={styles.helpBtnText}>{t('index_abo' as any)}</Text>
           </Pressable>
         </View>
 
         {/* ─── TOOLS Grid (3 columns) ─────────────────────────────────────── */}
-        <Text style={styles.toolsSectionTitle}>TOOLS</Text>
+        <Text style={styles.toolsSectionTitle}>{t('index_tools' as any)}</Text>
 
         <View style={styles.toolGrid}>
           {TOOLS.map((tool) => (
@@ -652,7 +652,7 @@ export default function AIWorkbenchScreen() {
               style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
-              <Text style={styles.toolLabel} numberOfLines={1}>{tool.label}</Text>
+              <Text style={styles.toolLabel} numberOfLines={1}>{t(tool.labelKey as any)}</Text>
             </Pressable>
           ))}
         </View>
@@ -663,17 +663,17 @@ export default function AIWorkbenchScreen() {
 }
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
-function formatRelativeTime(timestamp: string): string {
+function formatRelativeTime(timestamp: string, t: (key: any) => string): string {
   const now = Date.now();
   const then = new Date(timestamp).getTime();
   const diff = now - then;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "Jetzt";
-  if (minutes < 60) return `${minutes} Min`;
+  if (minutes < 1) return t('index_time_now');
+  if (minutes < 60) return `${minutes} ${t('index_time_min')}`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} Std`;
+  if (hours < 24) return `${hours} ${t('index_time_std')}`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} T`;
+  if (days < 7) return `${days} ${t('index_time_tag')}`;
   return new Date(timestamp).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 }
 

@@ -112,7 +112,7 @@ export default function TasksScreen() {
             projectId,
             eventType: !item.done ? "task_completed" : "task_updated",
             source: "user",
-            title: !item.done ? "Aufgabe erledigt" : "Aufgabe wieder geöffnet",
+            title: !item.done ? t('tasks_event_aufgabe_erledigt' as any) : t('tasks_event_aufgabe_geoeffnet' as any),
             description: item.task,
             entityId: item.protocolId,
             entityType: "task",
@@ -222,7 +222,7 @@ export default function TasksScreen() {
                 ]}
               >
                 {item.priority === "hoch"
-                  ? "\u26a0\ufe0f Hoch"
+                  ? t('tasks_prioritaet_hoch' as any)
                   : item.priority === "mittel"
                   ? t('prioritaet_mittel')
                   : t('prioritaet_niedrig')}
@@ -264,7 +264,7 @@ export default function TasksScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          Aufgaben
+          {t('tasks_aufgaben' as any)}
         </Text>
         {csvEnabled && <Pressable onPress={exportTasksAsCSV} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}>
           <MaterialIcons name="file-download" size={22} color={colors.primary} />
@@ -284,7 +284,7 @@ export default function TasksScreen() {
             {doneCount}
           </Text>
           <Text style={[styles.statLabel, { color: colors.muted }]}>
-            Erledigt
+            {t('tasks_erledigt' as any)}
           </Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
@@ -328,13 +328,13 @@ export default function TasksScreen() {
           />
           <Text style={[styles.emptyText, { color: colors.muted }]}>
             {filter === "open"
-              ? "Keine offenen Aufgaben"
+              ? t('tasks_keine_offenen' as any)
               : filter === "done"
-              ? "Noch keine erledigten Aufgaben"
-              : "Noch keine Aufgaben vorhanden"}
+              ? t('tasks_keine_erledigten' as any)
+              : t('tasks_keine_aufgaben' as any)}
           </Text>
           <Text style={[styles.emptyHint, { color: colors.muted }]}>
-            Aufgaben werden automatisch aus deinen Protokollen extrahiert.
+            {t('tasks_extrahiert_hinweis' as any)}
           </Text>
         </View>
       ) : (
