@@ -74,7 +74,8 @@ export default function FollowUpScreen() {
   }
 
   const now = new Date();
-  const today = now.toISOString().split("T")[0];
+  // Local date to match how followUpDate is stored (avoids an off-by-one near midnight)
+  const today = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-${now.getDate().toString().padStart(2, "0")}`;
 
   const filteredDefects = defects.filter(d => {
     if (filter === "alle") return true;
