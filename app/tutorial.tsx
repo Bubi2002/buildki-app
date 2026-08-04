@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 interface TutorialSection {
   id: string;
@@ -22,128 +23,130 @@ interface TutorialSection {
   steps: string[];
 }
 
+// Titles and steps are stored as translation keys, resolved with t() at render time.
 const TUTORIAL_SECTIONS: TutorialSection[] = [
   {
     id: "start",
     icon: "play-circle-outline",
-    title: "Erste Schritte",
+    title: "tutorial_start_title",
     steps: [
-      "Projekt anlegen: Tippe auf 'Neues Projekt' und gib Name, Adresse und Beschreibung ein.",
-      "Projekt auswählen: Wähle dein aktives Projekt im Dropdown oben auf dem Tools-Tab.",
-      "Alle Aufnahmen und Protokolle werden dem aktiven Projekt zugeordnet.",
+      "tutorial_start_s1",
+      "tutorial_start_s2",
+      "tutorial_start_s3",
     ],
   },
   {
     id: "aufnahme",
     icon: "mic",
-    title: "Audio-Aufnahme",
+    title: "tutorial_aufnahme_title",
     steps: [
-      "Wechsle zum Aufnahme-Tab (2. Tab).",
-      "Drücke den roten Aufnahme-Button.",
-      "Sprich frei – beschreibe Baufortschritt, Mängel, Anwesende.",
-      "Setze Gewerk-Marker (z.B. 'Rohbau', 'Elektro') für bessere Strukturierung.",
-      "Mache Fotos während der Aufnahme – sie werden dem Protokoll zugeordnet.",
-      "Drücke Stopp – die KI erstellt automatisch ein professionelles Protokoll.",
+      "tutorial_aufnahme_s1",
+      "tutorial_aufnahme_s2",
+      "tutorial_aufnahme_s3",
+      "tutorial_aufnahme_s4",
+      "tutorial_aufnahme_s5",
+      "tutorial_aufnahme_s6",
     ],
   },
   {
     id: "video",
     icon: "videocam",
-    title: "Video-Import",
+    title: "tutorial_video_title",
     steps: [
-      "Öffne Tools → Video-Import.",
-      "Wähle eine Quelle: Galerie, Dateien/Downloads oder Kamera.",
-      "Du kannst auch mehrere Videos gleichzeitig auswählen (Batch-Import).",
-      "Videos aus WhatsApp: Öffne das Video in WhatsApp → Teilen → BuildKI.",
-      "Nach dem Upload wird die Audiospur automatisch transkribiert.",
-      "Wähle den Dokumenttyp: Besprechungsprotokoll, Zusammenfassung oder Bautagebuch.",
+      "tutorial_video_s1",
+      "tutorial_video_s2",
+      "tutorial_video_s3",
+      "tutorial_video_s4",
+      "tutorial_video_s5",
+      "tutorial_video_s6",
     ],
   },
   {
     id: "foto",
     icon: "camera-alt",
-    title: "Foto-Analyse",
+    title: "tutorial_foto_title",
     steps: [
-      "Öffne Tools → Foto-Analyse.",
-      "Fotografiere einen Bereich oder wähle ein Foto aus der Galerie.",
-      "Die KI analysiert das Bild und erkennt automatisch Mängel.",
-      "Übernimm erkannte Mängel oder füge eigene hinzu.",
-      "Exportiere das Ergebnis als PDF mit allen Mängeln.",
+      "tutorial_foto_s1",
+      "tutorial_foto_s2",
+      "tutorial_foto_s3",
+      "tutorial_foto_s4",
+      "tutorial_foto_s5",
     ],
   },
   {
     id: "maengel",
     icon: "warning",
-    title: "Mängelmanagement",
+    title: "tutorial_maengel_title",
     steps: [
-      "Öffne Tools → Mängelliste.",
-      "Erstelle einen neuen Mangel mit Foto, Beschreibung und Schweregrad.",
-      "Weise einen Verantwortlichen zu und setze eine Frist.",
-      "Verfolge den Status: Offen → In Bearbeitung → Nachprüfung → Erledigt.",
-      "Bei überfälligen Mängeln erhältst du eine Push-Benachrichtigung.",
-      "Exportiere die Mängelliste als PDF für Subunternehmer.",
+      "tutorial_maengel_s1",
+      "tutorial_maengel_s2",
+      "tutorial_maengel_s3",
+      "tutorial_maengel_s4",
+      "tutorial_maengel_s5",
+      "tutorial_maengel_s6",
     ],
   },
   {
     id: "matterport",
     icon: "3d-rotation",
-    title: "Matterport 3D-Modell",
+    title: "tutorial_matterport_title",
     steps: [
-      "Öffne Tools → Matterport.",
-      "Dein 3D-Modell wird automatisch geladen.",
-      "Navigiere durch die Räume und setze Pins an Mängelstellen.",
-      "Pins werden automatisch mit dem Mängelmanagement verknüpft.",
-      "Im PDF-Export erscheint ein Link zum 3D-Modell mit QR-Code.",
+      "tutorial_matterport_s1",
+      "tutorial_matterport_s2",
+      "tutorial_matterport_s3",
+      "tutorial_matterport_s4",
+      "tutorial_matterport_s5",
     ],
   },
   {
     id: "pdf",
     icon: "picture-as-pdf",
-    title: "PDF-Export",
+    title: "tutorial_pdf_title",
     steps: [
-      "Öffne ein Protokoll und tippe auf 'Exportieren'.",
-      "Wähle den Berichtstyp: Protokoll, Bautagesbericht, Abnahme oder Mängelliste.",
-      "Das PDF enthält: Firmenlogo, Fotos, QR-Code und Matterport-Link.",
-      "Teile das PDF per E-Mail, WhatsApp oder speichere es lokal.",
+      "tutorial_pdf_s1",
+      "tutorial_pdf_s2",
+      "tutorial_pdf_s3",
+      "tutorial_pdf_s4",
     ],
   },
   {
     id: "ki-assistent",
     icon: "psychology",
-    title: "KI-Baustellenassistent",
+    title: "tutorial_ki_title",
     steps: [
-      "Nach jedem Protokoll analysiert die KI automatisch den Inhalt.",
-      "Du erhältst Hinweise auf: fehlende Gewerke, fehlende Fotos, offene Prüfungen.",
-      "Öffne den Assistenten über Tools → KI-Assistent.",
-      "Die Empfehlungen helfen, nichts zu vergessen und die Dokumentation vollständig zu halten.",
+      "tutorial_ki_s1",
+      "tutorial_ki_s2",
+      "tutorial_ki_s3",
+      "tutorial_ki_s4",
     ],
   },
   {
     id: "offline",
     icon: "cloud-off",
-    title: "Offline-Modus",
+    title: "tutorial_offline_title",
     steps: [
-      "BuildKI funktioniert auch ohne Internet.",
-      "Aufnahmen und Fotos werden lokal gespeichert.",
-      "Sobald du wieder online bist, wird alles automatisch synchronisiert.",
-      "Der Sync-Status wird in den Einstellungen angezeigt.",
+      "tutorial_offline_s1",
+      "tutorial_offline_s2",
+      "tutorial_offline_s3",
+      "tutorial_offline_s4",
     ],
   },
   {
     id: "abo",
     icon: "credit-card",
-    title: "Abonnement & Abrechnung",
+    title: "tutorial_abo_title",
     steps: [
-      "Im Compliance-Prüfentwurf ist kein Kauf- oder Demo-Abonnement aktiviert.",
-      "Tarife, Steuern, Laufzeit und Zielgruppe sind vor Veröffentlichung verbindlich festzulegen.",
-      "Für digitale iOS-Funktionen ist StoreKit/In-App Purchase der Standardprüfpfad.",
-      "Den aktuellen Entscheidungsvorbehalt findest du unter Einstellungen → Abonnement.",
+      "tutorial_abo_s1",
+      "tutorial_abo_s2",
+      "tutorial_abo_s3",
+      "tutorial_abo_s4",
     ],
   },
 ];
 
 export default function TutorialScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const [expandedSection, setExpandedSection] = useState<string | null>("start");
 
@@ -158,7 +161,7 @@ export default function TutorialScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Bedienungsanleitung</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('tutorial_header_title' as any)}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -166,9 +169,9 @@ export default function TutorialScreen() {
         {/* Intro */}
         <View style={[styles.introCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
           <MaterialIcons name="menu-book" size={28} color={colors.primary} />
-          <Text style={[styles.introTitle, { color: colors.foreground }]}>Willkommen bei BuildKI</Text>
+          <Text style={[styles.introTitle, { color: colors.foreground }]}>{t('tutorial_welcome' as any)}</Text>
           <Text style={[styles.introText, { color: colors.muted }]}>
-            Die intelligente Baustellendokumentation. Tippe auf einen Abschnitt, um die Schritt-für-Schritt-Anleitung zu sehen.
+            {t('tutorial_intro_text' as any)}
           </Text>
         </View>
 
@@ -180,7 +183,7 @@ export default function TutorialScreen() {
               style={styles.sectionHeader}
             >
               <MaterialIcons name={section.icon as any} size={22} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.title}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t(section.title as any)}</Text>
               <MaterialIcons
                 name={expandedSection === section.id ? "expand-less" : "expand-more"}
                 size={24}
@@ -195,7 +198,7 @@ export default function TutorialScreen() {
                     <View style={[styles.stepNumber, { backgroundColor: colors.primary }]}>
                       <Text style={styles.stepNumberText}>{index + 1}</Text>
                     </View>
-                    <Text style={[styles.stepText, { color: colors.foreground }]}>{step}</Text>
+                    <Text style={[styles.stepText, { color: colors.foreground }]}>{t(step as any)}</Text>
                   </View>
                 ))}
               </View>
@@ -206,14 +209,14 @@ export default function TutorialScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.muted }]}>
-            Weitere Fragen? Nutze den KI-Support-Chat oder schreibe an info@iserloh.net
+            {t('tutorial_footer_text' as any)}
           </Text>
           <TouchableOpacity
             onPress={() => router.push("/support-chat")}
             style={[styles.supportBtn, { backgroundColor: colors.primary }]}
           >
             <MaterialIcons name="support-agent" size={18} color="#fff" />
-            <Text style={styles.supportBtnText}>KI-Support öffnen</Text>
+            <Text style={styles.supportBtnText}>{t('tutorial_support_open' as any)}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

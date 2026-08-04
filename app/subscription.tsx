@@ -4,23 +4,25 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { LEGAL_DRAFT_MARKER } from "@/lib/legal-draft";
+import { useTranslation } from "@/lib/language-provider";
 
 const OPEN_DECISIONS = [
-  "Vertrieb ausschließlich an Unternehmen oder auch an Verbraucher",
-  "Tarife, Steuern, Vertragslaufzeit, Verlängerung und Kündigungsfristen",
-  "Vertragspartner, Rechnungssteller und Zahlungsdienstleister",
-  "Apple StoreKit/IAP, qualifiziertes B2B-/Enterprise-Modell oder zulässiger EU-Alternativkauf",
-  "Widerruf, Erstattung, Kündigung und gegebenenfalls Kündigungsschaltfläche",
+  "subscription_decision_1",
+  "subscription_decision_2",
+  "subscription_decision_3",
+  "subscription_decision_4",
+  "subscription_decision_5",
 ];
 
 const ARCHITECTURE_GUIDANCE = [
-  "Digitale Funktionen, die in der iOS-App an einzelne Nutzer verkauft werden, sollen standardmäßig über StoreKit/In-App Purchase angeboten werden.",
-  "Direkter B2B-Vertrieb außerhalb der App kommt nur nach bestätigter Unternehmensausrichtung und Prüfung der einschlägigen Apple-Ausnahme in Betracht.",
-  "Stripe darf erst nach festgelegtem Geschäftsmodell, Anbieter-/AVV-/Transferprüfung und Apple-konformer Vertriebsentscheidung aktiviert werden.",
-  "Externe EU-Kaufangebote sind kein einfacher Browserlink, sondern benötigen gegebenenfalls Entitlements, Systemhinweise, Reporting sowie eigene Steuer-, Kündigungs- und Erstattungsprozesse.",
+  "subscription_guidance_1",
+  "subscription_guidance_2",
+  "subscription_guidance_3",
+  "subscription_guidance_4",
 ];
 
 export default function SubscriptionScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
 
@@ -31,11 +33,11 @@ export default function SubscriptionScreen() {
           onPress={() => router.back()}
           style={styles.backBtn}
           accessibilityRole="button"
-          accessibilityLabel="Zurück"
+          accessibilityLabel={t('subscription_a11y_back' as any)}
         >
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Abonnement & Abrechnung</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('subscription_header_title' as any)}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -43,10 +45,9 @@ export default function SubscriptionScreen() {
         <View style={styles.holdCard} accessibilityRole="summary">
           <MaterialIcons name="lock-outline" size={30} color="#F59E0B" />
           <View style={styles.holdCopy}>
-            <Text style={styles.holdTitle}>Kaufabschluss gesperrt</Text>
+            <Text style={styles.holdTitle}>{t('subscription_hold_title' as any)}</Text>
             <Text style={styles.holdText}>
-              Dieser uncommittierte Compliance-Prüfentwurf enthält bewusst keinen Demo-Kauf,
-              keinen Preis und keinen externen Checkout. Es wird kein Abonnement aktiviert.
+              {t('subscription_hold_text' as any)}
             </Text>
           </View>
         </View>
@@ -54,29 +55,28 @@ export default function SubscriptionScreen() {
         <View style={styles.openCard}>
           <Text style={styles.openLabel}>{LEGAL_DRAFT_MARKER}</Text>
           <Text style={styles.openText}>
-            Die folgenden Betreiber- und Vertragsentscheidungen müssen vor einer Veröffentlichung
-            verbindlich festgelegt und anwaltlich geprüft werden.
+            {t('subscription_open_text' as any)}
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Offene Geschäftsmodellentscheidungen</Text>
+        <Text style={styles.sectionTitle}>{t('subscription_section_decisions' as any)}</Text>
         <View style={styles.listCard}>
           {OPEN_DECISIONS.map((item, index) => (
             <View key={item} style={[styles.row, index > 0 && styles.rowBorder]}>
               <View style={styles.numberBox}>
                 <Text style={styles.numberText}>{index + 1}</Text>
               </View>
-              <Text style={styles.rowText}>{item}</Text>
+              <Text style={styles.rowText}>{t(item as any)}</Text>
             </View>
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Technische Empfehlung für iOS</Text>
+        <Text style={styles.sectionTitle}>{t('subscription_section_ios' as any)}</Text>
         <View style={styles.listCard}>
           {ARCHITECTURE_GUIDANCE.map((item, index) => (
             <View key={item} style={[styles.row, index > 0 && styles.rowBorder]}>
               <MaterialIcons name="verified-user" size={20} color="#5DADE2" />
-              <Text style={styles.rowText}>{item}</Text>
+              <Text style={styles.rowText}>{t(item as any)}</Text>
             </View>
           ))}
         </View>
@@ -84,8 +84,7 @@ export default function SubscriptionScreen() {
         <View style={styles.protectionCard}>
           <MaterialIcons name="shield" size={22} color="#4ADE80" />
           <Text style={styles.protectionText}>
-            Bestehende Kernfunktionen bleiben im Prüfentwurf testbar. Nur der rechtlich und
-            vertraglich ungeklärte Erwerbs- und Demo-Freischaltpfad ist deaktiviert.
+            {t('subscription_protection_text' as any)}
           </Text>
         </View>
 
@@ -93,14 +92,14 @@ export default function SubscriptionScreen() {
           style={styles.legalButton}
           onPress={() => router.push("/legal" as never)}
           accessibilityRole="button"
-          accessibilityLabel="Rechtliche Hinweise öffnen"
+          accessibilityLabel={t('subscription_a11y_legal' as any)}
         >
           <MaterialIcons name="gavel" size={20} color="#5DADE2" />
-          <Text style={styles.legalButtonText}>Rechtliche Hinweise öffnen</Text>
+          <Text style={styles.legalButtonText}>{t('subscription_legal_button' as any)}</Text>
         </TouchableOpacity>
 
         <Text style={styles.footerText}>
-          Nicht veröffentlichungsfähig. Kein Checkout, keine Belastung, keine Vertragszusage.
+          {t('subscription_footer_text' as any)}
         </Text>
       </ScrollView>
     </ScreenContainer>

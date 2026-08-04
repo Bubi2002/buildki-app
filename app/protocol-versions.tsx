@@ -20,7 +20,7 @@ export default function ProtocolVersionsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ protocolId?: string; protocolTitle?: string }>();
   const protocolId = params.protocolId || "";
-  const protocolTitle = params.protocolTitle || "Protokoll";
+  const protocolTitle = params.protocolTitle || t('protokoll');
 
   const [versions, setVersions] = useState<ProtocolVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<ProtocolVersion | null>(null);
@@ -84,7 +84,7 @@ export default function ProtocolVersionsScreen() {
                 router.back();
               }
             } catch (e: any) {
-              Alert.alert(t('alert_fehler'), e?.message || "Wiederherstellung fehlgeschlagen.");
+              Alert.alert(t('alert_fehler'), e?.message || t('protocol_versions_restore_failed' as any));
             }
           },
         },
@@ -109,7 +109,7 @@ export default function ProtocolVersionsScreen() {
           <MaterialIcons name="history" size={48} color={colors.muted} />
           <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('keine_versionen')}</Text>
           <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>
-            Versionen werden automatisch beim Bearbeiten und Generieren erstellt.
+            {t('protocol_versions_empty_subtitle' as any)}
           </Text>
         </View>
       ) : (
@@ -206,7 +206,7 @@ export default function ProtocolVersionsScreen() {
               <>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>
-                    Vergleich: V{selectedVersion.version} → Aktuell
+                    {t('protocol_versions_compare' as any)}: V{selectedVersion.version} → {t('aktuell')}
                   </Text>
                   <Pressable onPress={() => { setShowDiff(false); setSelectedVersion(null); }} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
                     <MaterialIcons name="close" size={24} color={colors.muted} />

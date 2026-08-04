@@ -92,7 +92,7 @@ export default function DefectsScreen() {
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
-  const [signatureRole, setSignatureRole] = useState<string>("Auftraggeber");
+  const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
   const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const defectVoiceRecorderState = useAudioRecorderState(defectVoiceRecorder, 250);
   const defectVoicePlayer = useAudioPlayer(selectedDefect?.voiceNoteUri || null);
@@ -162,7 +162,7 @@ export default function DefectsScreen() {
   const addNewDefectLibraryPhotos = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t('alert_berechtigung'), "Zugriff auf die Fotomediathek wird benötigt.");
+      Alert.alert(t('alert_berechtigung'), t('defects_fotomediathek_zugriff' as any));
       return;
     }
 
@@ -184,7 +184,7 @@ export default function DefectsScreen() {
   const createDefect = async () => {
     if (!newTitle.trim()) return;
     if (newDueDate && !isDateOnOrAfter(newDueDate, todayDateOnly())) {
-      Alert.alert("Frist prüfen", "Bitte wähle ein heutiges oder zukünftiges Fristdatum.");
+      Alert.alert(t('defects_frist_pruefen_titel' as any), t('defects_frist_pruefen_msg' as any));
       return;
     }
 
@@ -276,14 +276,14 @@ export default function DefectsScreen() {
     geschlossen: "#607D8B",
   };
   const statusLabels: Record<DefectStatus, string> = {
-    offen: "Offen",
-    zugewiesen: "Zugewiesen",
-    in_bearbeitung: "In Arbeit",
-    nachbesserung: "Nachbesserung",
-    pruefung: "Pr\u00fcfung",
-    erledigt: "Erledigt",
-    abgelehnt: "Abgelehnt",
-    geschlossen: "Geschlossen",
+    offen: t('defects_status_offen' as any),
+    zugewiesen: t('defects_status_zugewiesen' as any),
+    in_bearbeitung: t('defects_status_in_bearbeitung' as any),
+    nachbesserung: t('defects_status_nachbesserung' as any),
+    pruefung: t('defects_status_pruefung' as any),
+    erledigt: t('defects_status_erledigt' as any),
+    abgelehnt: t('defects_status_abgelehnt' as any),
+    geschlossen: t('defects_status_geschlossen' as any),
   };
 
   const priorityIcons: Record<DefectPriority, string> = {
@@ -311,8 +311,8 @@ export default function DefectsScreen() {
     if (!selectedDefect || voiceNoteMode !== "idle") return;
     if (Platform.OS === "web") {
       Alert.alert(
-        "Sprachnotiz",
-        "Die Aufnahme ist in der Webvorschau nicht verfügbar. Auf iPhone und Android wird sie direkt am Mangel gespeichert.",
+        t('defects_sprachnotiz' as any),
+        t('defects_web_aufnahme_nicht_verfuegbar' as any),
       );
       return;
     }
@@ -321,8 +321,8 @@ export default function DefectsScreen() {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
-          "Mikrofonzugriff benötigt",
-          "Bitte erlaube den Mikrofonzugriff in den Systemeinstellungen, um eine Sprachnotiz am Mangel aufzunehmen.",
+          t('defects_mikrofonzugriff_titel' as any),
+          t('defects_mikrofonzugriff_msg' as any),
         );
         return;
       }
@@ -335,7 +335,7 @@ export default function DefectsScreen() {
     } catch (error) {
       await resetVoiceAudioMode();
       setVoiceNoteMode("idle");
-      Alert.alert("Aufnahme nicht möglich", "Die Sprachnotiz konnte nicht gestartet werden. Bitte versuche es erneut.");
+      Alert.alert(t('defects_aufnahme_nicht_moeglich_titel' as any), t('defects_aufnahme_nicht_moeglich_msg' as any));
       console.warn("Defect voice-note start failed:", error);
     }
   };
@@ -403,7 +403,7 @@ export default function DefectsScreen() {
     const sourceUri = await stopDefectVoiceRecorder();
     if (!sourceUri) {
       setVoiceNoteMode("idle");
-      Alert.alert("Sprachnotiz nicht gespeichert", "Für die Aufnahme wurde keine Audiodatei erzeugt. Bitte nimm sie erneut auf.");
+      Alert.alert(t('defects_sprachnotiz_nicht_gespeichert_titel' as any), t('defects_sprachnotiz_nicht_gespeichert_msg' as any));
       return;
     }
 
@@ -418,7 +418,7 @@ export default function DefectsScreen() {
       await loadDefects();
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      Alert.alert("Speichern fehlgeschlagen", "Die Sprachnotiz konnte nicht dauerhaft am Mangel gespeichert werden.");
+      Alert.alert(t('defects_speichern_fehlgeschlagen_titel' as any), t('defects_sprachnotiz_persistenz_msg' as any));
       console.warn("Defect voice-note persistence failed:", error);
     } finally {
       voiceNoteDefectIdRef.current = null;
@@ -451,10 +451,10 @@ export default function DefectsScreen() {
 
   const deleteDefectVoiceNote = () => {
     if (!selectedDefect?.voiceNoteUri) return;
-    Alert.alert("Sprachnotiz löschen", "Möchtest du die gespeicherte Sprachnotiz dieses Mangels wirklich löschen?", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('defects_sprachnotiz_loeschen_titel' as any), t('defects_sprachnotiz_loeschen_msg' as any), [
+      { text: t('btn_abbrechen'), style: "cancel" },
       {
-        text: "Löschen",
+        text: t('btn_loeschen'),
         style: "destructive",
         onPress: async () => {
           const uri = selectedDefect.voiceNoteUri;
@@ -514,7 +514,7 @@ export default function DefectsScreen() {
                 await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
               }
             } catch (e: any) {
-              Alert.alert(t('alert_fehler'), e?.message || "PDF-Export fehlgeschlagen");
+              Alert.alert(t('alert_fehler'), e?.message || t('defects_pdf_export_fehlgeschlagen' as any));
             }
           }}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
@@ -555,7 +555,7 @@ export default function DefectsScreen() {
             ]}
           >
             <Text style={[styles.filterText, { color: filter === f ? colors.primary : colors.muted }]}>
-              {f === "alle" ? "Alle" : statusLabels[f]}
+              {f === "alle" ? t('defects_alle' as any) : statusLabels[f]}
             </Text>
           </Pressable>
         ))}
@@ -620,7 +620,7 @@ export default function DefectsScreen() {
                 {/* Position Code */}
                 {selectedDefect.positionCode && (
                   <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary, marginBottom: 8, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
-                    Position: {selectedDefect.positionCode}
+                    {t('defects_position' as any)}: {selectedDefect.positionCode}
                   </Text>
                 )}
                 {/* Status + Priority */}
@@ -661,7 +661,7 @@ export default function DefectsScreen() {
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error + "12" : colors.warning + "12" }}>
                       <MaterialIcons name="event" size={14} color={new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning} />
                       <Text style={{ fontSize: 12, color: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning, fontWeight: "500" }}>
-                        Frist: {new Date((selectedDefect as any).dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        {t('defects_frist' as any)}: {new Date((selectedDefect as any).dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
                       </Text>
                     </View>
                   ) : null}
@@ -675,7 +675,7 @@ export default function DefectsScreen() {
 
                 {/* Photos Section */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Fotos ({selectedDefect.photos.length})</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('defects_fotos' as any)} ({selectedDefect.photos.length})</Text>
                   
                   {selectedDefect.photos.length > 0 && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
@@ -812,7 +812,7 @@ export default function DefectsScreen() {
 
                 {/* Voice Note Section */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Sprachnotiz</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('defects_sprachnotiz' as any)}</Text>
                   {selectedDefect.voiceNoteUri ? (
                     <View style={[styles.voiceNoteCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
                       <Pressable
@@ -827,7 +827,7 @@ export default function DefectsScreen() {
                       </Pressable>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: "600" }}>
-                          {defectVoicePlayerStatus.playing ? "Sprachnotiz wird abgespielt" : "Sprachnotiz abspielen"}
+                          {defectVoicePlayerStatus.playing ? t('defects_sprachnotiz_wird_abgespielt' as any) : t('defects_sprachnotiz_abspielen' as any)}
                         </Text>
                         <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
                           {formatVoiceNoteDuration((defectVoicePlayerStatus.currentTime || 0) * 1000)} / {formatVoiceNoteDuration(selectedDefect.voiceNoteDurationMillis || (defectVoicePlayerStatus.duration || 0) * 1000)}
@@ -850,7 +850,7 @@ export default function DefectsScreen() {
                       <View style={styles.voiceRecordingHeader}>
                         <View style={[styles.voiceRecordingDot, { backgroundColor: voiceNoteMode === "recording" ? colors.error : colors.warning }]} />
                         <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "700", flex: 1 }}>
-                          {voiceNoteMode === "saving" ? "Sprachnotiz wird gespeichert …" : voiceNoteMode === "paused" ? "Aufnahme pausiert" : "Aufnahme läuft"}
+                          {voiceNoteMode === "saving" ? t('defects_sprachnotiz_wird_gespeichert' as any) : voiceNoteMode === "paused" ? t('defects_aufnahme_pausiert' as any) : t('defects_aufnahme_laeuft' as any)}
                         </Text>
                         <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
                           {formatVoiceNoteDuration(defectVoiceRecorderState.durationMillis)}
@@ -864,7 +864,7 @@ export default function DefectsScreen() {
                           >
                             <MaterialIcons name={voiceNoteMode === "recording" ? "pause" : "mic"} size={17} color={colors.primary} />
                             <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
-                              {voiceNoteMode === "recording" ? "Pausieren" : "Fortsetzen"}
+                              {voiceNoteMode === "recording" ? t('defects_pausieren' as any) : t('defects_fortsetzen' as any)}
                             </Text>
                           </Pressable>
                           <Pressable
@@ -872,7 +872,7 @@ export default function DefectsScreen() {
                             style={({ pressed }) => [styles.voicePrimaryButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}
                           >
                             <MaterialIcons name="stop" size={17} color="#FFFFFF" />
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>Aufnahme abschließen</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>{t('defects_aufnahme_abschliessen' as any)}</Text>
                           </Pressable>
                         </View>
                       ) : null}
@@ -887,13 +887,13 @@ export default function DefectsScreen() {
                       }]}
                     >
                       <MaterialIcons name="mic" size={18} color={colors.primary} />
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Sprachnotiz aufnehmen</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('defects_sprachnotiz_aufnehmen' as any)}</Text>
                     </Pressable>
                   )}
                 </View>
                 {/* Signatures Section */}
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Unterschriften ({selectedDefect.signatures?.length || 0})</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('defects_unterschriften' as any)} ({selectedDefect.signatures?.length || 0})</Text>
                   {selectedDefect.signatures && selectedDefect.signatures.length > 0 && (
                     <View style={{ marginBottom: 8 }}>
                       {selectedDefect.signatures.map((sig, idx) => (
@@ -906,7 +906,7 @@ export default function DefectsScreen() {
                     </View>
                   )}
                   <View style={{ flexDirection: "row", gap: 6 }}>
-                    {["Auftraggeber", "Auftragnehmer", "Zeuge", "Pr\u00fcfer"].map((role) => (
+                    {[t('defects_rolle_auftraggeber' as any), t('defects_rolle_auftragnehmer' as any), t('defects_rolle_zeuge' as any), t('defects_rolle_pruefer' as any)].map((role) => (
                       <Pressable
                         key={role}
                         onPress={() => { setSignatureRole(role); setShowSignaturePad(true); }}
@@ -924,7 +924,7 @@ export default function DefectsScreen() {
                 {/* KI-Zusammenfassung */}
                 {selectedDefect.aiSummary && (
                   <View style={{ marginBottom: 16, padding: 10, backgroundColor: colors.primary + "08", borderLeftWidth: 3, borderLeftColor: colors.primary }}>
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginBottom: 4 }}>KI-Zusammenfassung</Text>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginBottom: 4 }}>{t('defects_ki_zusammenfassung' as any)}</Text>
                     <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 18 }}>{selectedDefect.aiSummary}</Text>
                   </View>
                 )}
@@ -944,7 +944,7 @@ export default function DefectsScreen() {
                     }]}
                   >
                     <MaterialIcons name="view-in-ar" size={18} color="#00B0FF" />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#00B0FF" }}>Im 3D-Modell anzeigen</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#00B0FF" }}>{t('defects_im_3d_modell_anzeigen' as any)}</Text>
                   </Pressable>
                 )}
 
@@ -965,8 +965,8 @@ export default function DefectsScreen() {
                   <MaterialIcons name="event-repeat" size={18} color="#A78BFA" />
                   <Text style={{ fontSize: 14, fontWeight: "600", color: "#A78BFA" }}>
                     {selectedDefect.followUpDate
-                      ? `Nachprüfung: ${new Date(selectedDefect.followUpDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}`
-                      : "Nachprüfung planen"}
+                      ? t('defects_nachpruefung_geplant_am' as any).replace('{date}', new Date(selectedDefect.followUpDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }))
+                      : t('defects_nachpruefung_planen' as any)}
                   </Text>
                 </Pressable>
 
@@ -996,7 +996,7 @@ export default function DefectsScreen() {
                 </View>
 
                 <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center" }}>
-                  Erstellt: {new Date(selectedDefect.createdAt).toLocaleString("de-DE")}
+                  {t('defects_erstellt' as any)}: {new Date(selectedDefect.createdAt).toLocaleString("de-DE")}
                 </Text>
               </ScrollView>
             )}
@@ -1008,7 +1008,7 @@ export default function DefectsScreen() {
       <Modal visible={showSignaturePad} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Unterschrift: {signatureRole}</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('defects_unterschrift' as any)}: {signatureRole}</Text>
             <SignaturePad
               onSave={async (paths) => {
                 if (selectedDefect && paths.length > 0) {
@@ -1032,8 +1032,8 @@ export default function DefectsScreen() {
         <View style={styles.voiceConfirmOverlay}>
           <View style={[styles.voiceConfirmCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <MaterialIcons name="pause-circle" size={34} color={colors.primary} />
-            <Text style={[styles.voiceConfirmTitle, { color: colors.foreground }]}>Aufnahme pausiert</Text>
-            <Text style={[styles.voiceConfirmText, { color: colors.muted }]}>Möchtest du die Sprachnotiz speichern, fortsetzen oder verwerfen?</Text>
+            <Text style={[styles.voiceConfirmTitle, { color: colors.foreground }]}>{t('defects_aufnahme_pausiert' as any)}</Text>
+            <Text style={[styles.voiceConfirmText, { color: colors.muted }]}>{t('defects_sprachnotiz_finish_frage' as any)}</Text>
             <Text style={{ color: colors.primary, fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"], marginBottom: 14 }}>
               {formatVoiceNoteDuration(defectVoiceRecorderState.durationMillis)}
             </Text>
@@ -1042,17 +1042,17 @@ export default function DefectsScreen() {
               style={({ pressed }) => [styles.voiceConfirmPrimary, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}
             >
               <MaterialIcons name="save" size={18} color="#FFFFFF" />
-              <Text style={styles.voiceConfirmPrimaryText}>Sprachnotiz speichern</Text>
+              <Text style={styles.voiceConfirmPrimaryText}>{t('defects_sprachnotiz_speichern' as any)}</Text>
             </Pressable>
             <Pressable
               onPress={resumeDefectVoiceNote}
               style={({ pressed }) => [styles.voiceConfirmSecondary, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
             >
               <MaterialIcons name="mic" size={18} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>Aufnahme fortsetzen</Text>
+              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>{t('defects_aufnahme_fortsetzen' as any)}</Text>
             </Pressable>
             <Pressable onPress={discardDefectVoiceNote} style={({ pressed }) => [styles.voiceConfirmDiscard, pressed && { opacity: 0.65 }]}>
-              <Text style={{ color: colors.error, fontSize: 12, fontWeight: "700" }}>Aufnahme verwerfen</Text>
+              <Text style={{ color: colors.error, fontSize: 12, fontWeight: "700" }}>{t('defects_aufnahme_verwerfen' as any)}</Text>
             </Pressable>
           </View>
         </View>
@@ -1095,7 +1095,7 @@ export default function DefectsScreen() {
                 />
 
                 {/* Fotos direkt beim Erfassen */}
-                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Fotos ({newPhotos.length})</Text>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('defects_fotos' as any)} ({newPhotos.length})</Text>
                 {newPhotos.length > 0 && (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.newPhotoPreviewScroll}>
                     {newPhotos.map((photo, index) => (
@@ -1104,7 +1104,7 @@ export default function DefectsScreen() {
                         <Pressable
                           onPress={() => removeNewDefectPhoto(index)}
                           accessibilityRole="button"
-                          accessibilityLabel={`Foto ${index + 1} entfernen`}
+                          accessibilityLabel={t('defects_foto_n_entfernen' as any).replace('{n}', String(index + 1))}
                           style={({ pressed }) => [styles.newPhotoRemoveButton, pressed && { opacity: 0.7 }]}
                         >
                           <MaterialIcons name="close" size={16} color="#FFFFFF" />
@@ -1117,25 +1117,25 @@ export default function DefectsScreen() {
                   <Pressable
                     onPress={addNewDefectCameraPhoto}
                     accessibilityRole="button"
-                    accessibilityLabel="Foto mit der Kamera aufnehmen"
+                    accessibilityLabel={t('defects_foto_kamera_aufnehmen' as any)}
                     style={({ pressed }) => [styles.newPhotoActionButton, { borderColor: colors.primary }, pressed && { opacity: 0.7 }]}
                   >
                     <MaterialIcons name="camera-alt" size={20} color={colors.primary} />
-                    <Text style={[styles.newPhotoActionText, { color: colors.primary }]}>Kamera</Text>
+                    <Text style={[styles.newPhotoActionText, { color: colors.primary }]}>{t('kamera')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={addNewDefectLibraryPhotos}
                     accessibilityRole="button"
-                    accessibilityLabel="Fotos aus der Galerie auswählen"
+                    accessibilityLabel={t('defects_fotos_galerie_auswaehlen' as any)}
                     style={({ pressed }) => [styles.newPhotoActionButton, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
                   >
                     <MaterialIcons name="photo-library" size={20} color={colors.muted} />
-                    <Text style={[styles.newPhotoActionText, { color: colors.muted }]}>Galerie</Text>
+                    <Text style={[styles.newPhotoActionText, { color: colors.muted }]}>{t('galerie')}</Text>
                   </Pressable>
                 </View>
 
                 {/* Geschoss / Raum Picker */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Geschoss</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('defects_geschoss' as any)}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {floors.length > 0 ? floors.sort((a,b) => a.number - b.number).map((f) => (
                 <Pressable
@@ -1152,12 +1152,12 @@ export default function DefectsScreen() {
                   </Text>
                 </Pressable>
               )) : (
-                <Text style={{ fontSize: 12, color: colors.muted, paddingVertical: 8 }}>Keine Geschosse angelegt – Freitext nutzen:</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, paddingVertical: 8 }}>{t('defects_keine_geschosse' as any)}</Text>
               )}
             </ScrollView>
             {newFloorId && rooms.filter(r => r.floorId === newFloorId).length > 0 && (
               <>
-                <Text style={[styles.sectionLabel, { color: colors.muted }]}>Raum</Text>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('defects_raum' as any)}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
                   {rooms.filter(r => r.floorId === newFloorId).map((r) => (
                     <Pressable
@@ -1179,7 +1179,7 @@ export default function DefectsScreen() {
             )}
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder={floors.length > 0 ? "Zusätzliche Ortsbeschreibung (optional)" : t('ortraum_zb_eg_flur')}
+              placeholder={floors.length > 0 ? t('defects_zusaetzliche_ortsbeschreibung' as any) : t('ortraum_zb_eg_flur')}
               placeholderTextColor={colors.muted}
               value={newLocation}
               onChangeText={setNewLocation}
@@ -1211,7 +1211,7 @@ export default function DefectsScreen() {
               value={newGewerk}
               onChange={setNewGewerk}
               allowEmpty={false}
-              accessibilityLabel="Gewerk für den neuen Mangel auswählen"
+              accessibilityLabel={t('defects_gewerk_auswaehlen' as any)}
             />
 
             {/* Category */}
@@ -1250,7 +1250,7 @@ export default function DefectsScreen() {
                     ]}
                   >
                     <Text style={[styles.categoryText, { color: newDueDate === iso ? colors.primary : colors.muted }]}>
-                      {days} Tage
+                      {days} {t('defects_tage' as any)}
                     </Text>
                   </Pressable>
                 );
@@ -1260,12 +1260,12 @@ export default function DefectsScreen() {
               value={newDueDate}
               onChange={setNewDueDate}
               minimumDate={todayDateOnly()}
-              label="Genaues Fristdatum"
+              label={t('defects_genaues_fristdatum' as any)}
               testID="defect-due-date-picker"
             />
             {newDueDate ? (
               <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 12, marginTop: -8 }}>
-                Frist: {formatDateOnly(newDueDate)}
+                {t('defects_frist' as any)}: {formatDateOnly(newDueDate)}
               </Text>
             ) : null}
 

@@ -9,6 +9,7 @@ import {
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Svg, { Path } from "react-native-svg";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -20,6 +21,7 @@ type SignaturePadProps = {
 
 export function SignaturePad({ onSave, onCancel, initialPaths }: SignaturePadProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [paths, setPaths] = useState<string[]>(initialPaths || []);
   const [currentPath, setCurrentPath] = useState<string>("");
   const padWidth = SCREEN_WIDTH - 48;
@@ -54,10 +56,10 @@ export function SignaturePad({ onSave, onCancel, initialPaths }: SignaturePadPro
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.title, { color: colors.foreground }]}>
-        Unterschrift
+        {t('signature_pad_title' as any)}
       </Text>
       <Text style={[styles.subtitle, { color: colors.muted }]}>
-        Bitte hier unterschreiben
+        {t('signature_pad_subtitle' as any)}
       </Text>
 
       <GestureDetector gesture={panGesture}>
@@ -89,7 +91,7 @@ export function SignaturePad({ onSave, onCancel, initialPaths }: SignaturePadPro
           {!hasSignature && (
             <View style={styles.placeholder}>
               <Text style={[styles.placeholderText, { color: colors.muted }]}>
-                ✍️ Hier unterschreiben
+                {t('signature_pad_placeholder' as any)}
               </Text>
             </View>
           )}
@@ -107,7 +109,7 @@ export function SignaturePad({ onSave, onCancel, initialPaths }: SignaturePadPro
             { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
           ]}
         >
-          <Text style={[styles.btnText, { color: colors.foreground }]}>Löschen</Text>
+          <Text style={[styles.btnText, { color: colors.foreground }]}>{t('signature_pad_clear' as any)}</Text>
         </Pressable>
         <Pressable
           onPress={onCancel}
@@ -116,7 +118,7 @@ export function SignaturePad({ onSave, onCancel, initialPaths }: SignaturePadPro
             { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
           ]}
         >
-          <Text style={[styles.btnText, { color: colors.muted }]}>Abbrechen</Text>
+          <Text style={[styles.btnText, { color: colors.muted }]}>{t('signature_pad_cancel' as any)}</Text>
         </Pressable>
         <Pressable
           onPress={handleSave}
@@ -126,7 +128,7 @@ export function SignaturePad({ onSave, onCancel, initialPaths }: SignaturePadPro
             { backgroundColor: hasSignature ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 },
           ]}
         >
-          <Text style={[styles.btnText, { color: "#FFF" }]}>Speichern</Text>
+          <Text style={[styles.btnText, { color: "#FFF" }]}>{t('signature_pad_save' as any)}</Text>
         </Pressable>
       </View>
     </View>

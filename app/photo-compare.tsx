@@ -85,7 +85,7 @@ export default function PhotoCompareScreen() {
 
       const newPair: ComparisonPair = {
         id: Date.now().toString(),
-        label: `Vergleich ${comparisons.length + 1}`,
+        label: t('photo_compare_vergleich_n' as any).replace('{n}', String(comparisons.length + 1)),
         beforeUri: result.assets[0].uri,
         afterUri: null,
         beforeDate: new Date().toISOString(),
@@ -219,12 +219,12 @@ export default function PhotoCompareScreen() {
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>{t('vollansicht')}</Text>
             <View style={{ gap: 12 }}>
               <View>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.error, marginBottom: 4 }}>Vorher – {formatDate(selectedPair.beforeDate)}</Text>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.error, marginBottom: 4 }}>{t('vorher')} – {formatDate(selectedPair.beforeDate)}</Text>
                 <Image source={{ uri: selectedPair.beforeUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 0 }} contentFit="contain" />
               </View>
               {selectedPair.afterUri && (
                 <View>
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: colors.success, marginBottom: 4 }}>Nachher – {formatDate(selectedPair.afterDate!)}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: colors.success, marginBottom: 4 }}>{t('nachher')} – {formatDate(selectedPair.afterDate!)}</Text>
                   <Image source={{ uri: selectedPair.afterUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 0 }} contentFit="contain" />
                 </View>
               )}
@@ -259,7 +259,7 @@ export default function PhotoCompareScreen() {
             <MaterialIcons name="compare" size={64} color={colors.muted} />
             <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginTop: 16 }}>{t('keine_vergleiche')}</Text>
             <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginTop: 8 }}>
-              Erstelle einen Vorher/Nachher-Vergleich um den Baufortschritt zu dokumentieren.
+              {t('photo_compare_leer_hinweis' as any)}
             </Text>
             <Pressable
               onPress={createNewComparison}
@@ -304,14 +304,14 @@ export default function PhotoCompareScreen() {
                 <View style={{ flex: 1, justifyContent: "center" }}>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{pair.label}</Text>
                   <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
-                    {formatDate(pair.beforeDate)}{pair.afterDate ? ` → ${formatDate(pair.afterDate)}` : " – Nachher fehlt"}
+                    {formatDate(pair.beforeDate)}{pair.afterDate ? ` → ${formatDate(pair.afterDate)}` : t('photo_compare_nachher_fehlt' as any)}
                   </Text>
                   {!pair.afterUri && (
                     <Pressable
                       onPress={() => addAfterPhoto(pair)}
                       style={({ pressed }) => [{ marginTop: 4, opacity: pressed ? 0.6 : 1 }]}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.primary }}>+ Nachher-Foto hinzufügen</Text>
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.primary }}>{t('photo_compare_nachher_foto_hinzufuegen' as any)}</Text>
                     </Pressable>
                   )}
                 </View>

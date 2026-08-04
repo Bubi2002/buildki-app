@@ -22,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   timelineEngine,
   type TimelineEvent,
@@ -36,6 +37,7 @@ type FilterTab = "all" | "defects" | "tasks" | "photos" | "documents" | "reports
 
 export default function SmartTimelineScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
 
@@ -112,12 +114,12 @@ export default function SmartTimelineScreen() {
   }, [activeProject, activeFilter, searchQuery]);
 
   const filterTabs: { id: FilterTab; label: string; icon: string }[] = [
-    { id: "all", label: "Alle", icon: "timeline" },
-    { id: "defects", label: "Mängel", icon: "warning" },
-    { id: "tasks", label: "Aufgaben", icon: "task-alt" },
-    { id: "photos", label: "Fotos", icon: "photo-camera" },
-    { id: "documents", label: "Dokumente", icon: "description" },
-    { id: "reports", label: "Berichte", icon: "summarize" },
+    { id: "all", label: t('smart_timeline_filter_all' as any), icon: "timeline" },
+    { id: "defects", label: t('smart_timeline_filter_defects' as any), icon: "warning" },
+    { id: "tasks", label: t('smart_timeline_filter_tasks' as any), icon: "task-alt" },
+    { id: "photos", label: t('smart_timeline_filter_photos' as any), icon: "photo-camera" },
+    { id: "documents", label: t('smart_timeline_filter_documents' as any), icon: "description" },
+    { id: "reports", label: t('smart_timeline_filter_reports' as any), icon: "summarize" },
   ];
 
   const formatTime = (timestamp: string): string => {
@@ -131,8 +133,8 @@ export default function SmartTimelineScreen() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) return "Heute";
-    if (date.toDateString() === yesterday.toDateString()) return "Gestern";
+    if (date.toDateString() === today.toDateString()) return t('smart_timeline_today' as any);
+    if (date.toDateString() === yesterday.toDateString()) return t('smart_timeline_yesterday' as any);
     return date.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
   };
 
@@ -211,7 +213,7 @@ export default function SmartTimelineScreen() {
       <View style={styles.dayHeader}>
         <View style={[styles.dayBadge, { backgroundColor: colors.primary + "15" }]}>
           <Text style={[styles.dayLabel, { color: colors.primary }]}>{item.label}</Text>
-          <Text style={[styles.dayCount, { color: colors.muted }]}>{item.events.length} Ereignisse</Text>
+          <Text style={[styles.dayCount, { color: colors.muted }]}>{item.events.length} {t('smart_timeline_events_word' as any)}</Text>
         </View>
       </View>
       {item.events.map((event, idx) => renderEvent(event, idx === item.events.length - 1))}
@@ -234,19 +236,19 @@ export default function SmartTimelineScreen() {
         <View style={[styles.statsBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.totalEvents}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Gesamt</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('smart_timeline_stat_total' as any)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: "#EF4444" }]}>{stats.eventsByType["defect_created"] || 0}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Mängel</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('smart_timeline_filter_defects' as any)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: "#3B82F6" }]}>{stats.eventsByType["task_created"] || 0}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Aufgaben</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('smart_timeline_filter_tasks' as any)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statNumber, { color: "#EC4899" }]}>{stats.eventsByType["photo_analyzed"] || 0}</Text>
-            <Text style={[styles.statLabel, { color: colors.muted }]}>Analysen</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>{t('smart_timeline_stat_analyses' as any)}</Text>
           </View>
         </View>
       )}
@@ -256,7 +258,7 @@ export default function SmartTimelineScreen() {
         <View style={[styles.searchInput, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <MaterialIcons name="search" size={18} color={colors.muted} />
           <TextInput
-            placeholder="Timeline durchsuchen..."
+            placeholder={t('smart_timeline_search_placeholder' as any)}
             placeholderTextColor={colors.muted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -306,9 +308,9 @@ export default function SmartTimelineScreen() {
       ) : events.length === 0 ? (
         <View style={styles.center}>
           <MaterialIcons name="timeline" size={48} color={colors.muted} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Noch keine Ereignisse</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('smart_timeline_empty_title' as any)}</Text>
           <Text style={[styles.emptyText, { color: colors.muted }]}>
-            Die Timeline füllt sich automatisch durch Fotoanalysen, Aufnahmen, Dokumente und andere Aktivitäten.
+            {t('smart_timeline_empty_text' as any)}
           </Text>
         </View>
       ) : (

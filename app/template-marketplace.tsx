@@ -65,7 +65,7 @@ export default function TemplateMarketplaceScreen() {
   const handleImport = async (template: MarketplaceTemplate) => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await importTemplate(template);
-    Alert.alert(t('alert_importiert_ex'), `"${template.name}" wurde zu deinen Vorlagen hinzugefügt.`);
+    Alert.alert(t('alert_importiert_ex'), `"${template.name}"${t('template_marketplace_added_to_templates' as any)}`);
     loadTemplates();
   };
 
@@ -201,11 +201,11 @@ export default function TemplateMarketplaceScreen() {
                       <MaterialIcons name={selectedTemplate.icon as any} size={32} color={colors.primary} />
                     </View>
                     <View style={styles.metaInfo}>
-                      <Text style={[styles.metaAuthor, { color: colors.muted }]}>von {selectedTemplate.author}</Text>
+                      <Text style={[styles.metaAuthor, { color: colors.muted }]}>{t('template_marketplace_by' as any)} {selectedTemplate.author}</Text>
                       <View style={styles.metaRow}>
                         <MaterialIcons name="star" size={16} color="#F59E0B" />
                         <Text style={{ color: colors.foreground, fontWeight: "600" }}>{selectedTemplate.rating.toFixed(1)}</Text>
-                        <Text style={{ color: colors.muted, marginLeft: 12 }}>{selectedTemplate.downloads} Downloads</Text>
+                        <Text style={{ color: colors.muted, marginLeft: 12 }}>{selectedTemplate.downloads} {t('template_marketplace_downloads' as any)}</Text>
                       </View>
                     </View>
                   </View>

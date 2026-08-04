@@ -34,7 +34,7 @@ function getFaqItems(t: (key: any) => string) { return [
     answer: t('faq_a_aufnahme_starten'),
   },
   {
-    question: "Wie exportiere ich ein PDF?",
+    question: t('support_chat_q_pdf_export' as any),
     answer: t('faq_a_pdf_export'),
   },
   {
@@ -42,8 +42,8 @@ function getFaqItems(t: (key: any) => string) { return [
     answer: t('faq_a_fotos_aufnahme'),
   },
   {
-    question: "Wie funktioniert die Offline-Synchronisation?",
-    answer: "Aufnahmen werden lokal gespeichert, wenn keine Internetverbindung besteht. Sobald du wieder online bist, werden sie automatisch verarbeitet. Der Status wird in der Protokoll-Liste angezeigt.",
+    question: t('support_chat_q_offline_sync' as any),
+    answer: t('support_chat_a_offline_sync' as any),
   },
   {
     question: t('faq_q_markierungen'),
@@ -66,12 +66,12 @@ function getFaqItems(t: (key: any) => string) { return [
     answer: t('faq_a_offline'),
   },
   {
-    question: "Was kostet BuildKI?",
-    answer: "Tarife, Steuern, Laufzeit und Zahlungsarchitektur sind im Compliance-Prüfentwurf noch nicht festgelegt. In der App ist kein Kauf- oder Demo-Abonnement aktiviert. OFFEN – VOR VERÖFFENTLICHUNG ZU ERGÄNZEN.",
+    question: t('support_chat_q_cost' as any),
+    answer: t('support_chat_a_cost' as any),
   },
   {
-    question: "Wie importiere ich ein Video aus WhatsApp?",
-    answer: "Du hast zwei M\u00f6glichkeiten: 1) \u00d6ffne Tools \u2192 Video-Import und w\u00e4hle das Video aus der Galerie. 2) Teile das Video direkt aus WhatsApp \u00fcber die iOS-Teilen-Funktion an BuildKI.",
+    question: t('support_chat_q_whatsapp_video' as any),
+    answer: t('support_chat_a_whatsapp_video' as any),
   },
 ]; }
 
@@ -124,7 +124,7 @@ export default function SupportChatScreen() {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuche es erneut oder schaue in die FAQ-Sektion.",
+        content: t('support_chat_error' as any),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -194,7 +194,7 @@ export default function SupportChatScreen() {
         </View>
         <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>{t('buildki_support')}</Text>
         <Text style={[styles.welcomeSubtitle, { color: colors.muted }]}>
-          Wie kann ich dir helfen? Stelle eine Frage oder wähle ein Thema aus.
+          {t('support_chat_welcome_subtitle' as any)}
         </Text>
       </View>
 

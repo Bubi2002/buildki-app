@@ -17,9 +17,11 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { apiCall } from "@/lib/_core/api";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ email?: string; name?: string }>();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export default function VerifyEmailScreen() {
 
   const handleVerify = async () => {
     if (code.length !== 6) {
-      Alert.alert("Fehler", "Bitte gib den 6-stelligen Code ein.");
+      Alert.alert(t('verify_email_error_title' as any), t('verify_email_code_required' as any));
       return;
     }
 
@@ -66,12 +68,12 @@ export default function VerifyEmailScreen() {
         body: JSON.stringify({ email: email.toLowerCase(), code }),
       });
       Alert.alert(
-        "E-Mail bestätigt!",
-        "Ihre E-Mail-Adresse wurde bestätigt. Sie können die Kontoeinrichtung jetzt fortsetzen.",
-        [{ text: "Weiter", onPress: () => router.replace("/onboarding-profile" as any) }],
+        t('verify_email_confirmed_title' as any),
+        t('verify_email_confirmed_message' as any),
+        [{ text: t('verify_email_continue' as any), onPress: () => router.replace("/onboarding-profile" as any) }],
       );
     } catch (e: any) {
-      Alert.alert("Fehler", e?.message || "Ungültiger Code.");
+      Alert.alert(t('verify_email_error_title' as any), e?.message || t('verify_email_invalid_code' as any));
     } finally {
       setLoading(false);
     }
@@ -88,11 +90,11 @@ export default function VerifyEmailScreen() {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>E-Mail bestätigen</Text>
+        <Text style={styles.title}>{t('verify_email_title' as any)}</Text>
         <Text style={styles.subtitle}>
-          Wir haben einen 6-stelligen Code an{"\n"}
+          {t('verify_email_subtitle_prefix' as any)}{"\n"}
           <Text style={styles.emailHighlight}>{email}</Text>
-          {"\n"}gesendet.
+          {"\n"}{t('verify_email_subtitle_suffix' as any)}
         </Text>
 
         {/* Code Input */}
@@ -123,7 +125,7 @@ export default function VerifyEmailScreen() {
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.verifyBtnText}>Bestätigen</Text>
+            <Text style={styles.verifyBtnText}>{t('verify_email_confirm_button' as any)}</Text>
           )}
         </TouchableOpacity>
 
@@ -131,11 +133,11 @@ export default function VerifyEmailScreen() {
         <View style={styles.resendSection}>
           {resendCooldown > 0 ? (
             <Text style={styles.cooldownText}>
-              Erneut senden in {resendCooldown}s
+              {t('verify_email_resend_in' as any)} {resendCooldown}s
             </Text>
           ) : (
             <TouchableOpacity onPress={requestConfirmation}>
-              <Text style={styles.resendLink}>Code erneut senden</Text>
+              <Text style={styles.resendLink}>{t('verify_email_resend_link' as any)}</Text>
             </TouchableOpacity>
           )}
         </View>

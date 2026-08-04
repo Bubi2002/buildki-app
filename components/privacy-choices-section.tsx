@@ -4,6 +4,7 @@ import { Alert, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/lib/language-provider";
 import {
   DEFAULT_PRIVACY_CHOICES,
   getPrivacyChoices,
@@ -33,32 +34,33 @@ const ITEMS: {
 }[] = [
   {
     purpose: "aiProcessing",
-    label: "KI und Transkription",
-    description: "Audio, Video, Texte, Fotos oder Dokumente nur nach Aktivierung an Server/KI senden.",
+    label: "privacy_choices_section_ai_label",
+    description: "privacy_choices_section_ai_desc",
     icon: "psychology",
   },
   {
     purpose: "cloudSync",
-    label: "Cloud-Synchronisation",
-    description: "Projekte und Anhänge kontobezogen über Geräte synchronisieren.",
+    label: "privacy_choices_section_cloud_label",
+    description: "privacy_choices_section_cloud_desc",
     icon: "cloud-sync",
   },
   {
     purpose: "gpsTracking",
-    label: "Standort für konkrete Funktionen",
-    description: "OS-Berechtigung erst bei tatsächlicher Wetter-, Aufnahme- oder Verortungsfunktion anfragen.",
+    label: "privacy_choices_section_gps_label",
+    description: "privacy_choices_section_gps_desc",
     icon: "location-on",
   },
 ];
 
 export function PrivacyChoicesSection({ colors }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const [choices, setChoices] = useState<PrivacyChoices>({
     ...DEFAULT_PRIVACY_CHOICES,
   });
   const [busyPurpose, setBusyPurpose] = useState<OptionalPurpose | null>(null);
-  const [status, setStatus] = useState("Nur lokal gespeichert");
+  const [status, setStatus] = useState(t('privacy_choices_section_nur_lokal' as any));
 
   const remoteQuery = trpc.privacy.getChoices.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -75,7 +77,7 @@ export function PrivacyChoicesSection({ colors }: Props) {
     const remoteChoices = remoteQuery.data.choices;
     void Promise.resolve().then(() => {
       setChoices(remoteChoices);
-      setStatus("Kontobezogener Nachweis synchronisiert");
+      setStatus(t('privacy_choices_section_nachweis_synchronisiert' as any));
     });
     saveConsent(remoteChoices, "server-sync").catch(() => undefined);
   }, [isAuthenticated, remoteQuery.data]);
@@ -103,9 +105,9 @@ export function PrivacyChoicesSection({ colors }: Props) {
           choices: next,
           source: "settings",
         });
-        setStatus("Kontobezogener Nachweis synchronisiert");
+        setStatus(t('privacy_choices_section_nachweis_synchronisiert' as any));
       } else {
-        setStatus("Lokal gespeichert – Kontosynchronisation nach Anmeldung");
+        setStatus(t('privacy_choices_section_lokal_gespeichert' as any));
       }
       await applyRuntimeState(next);
     } catch  {
@@ -113,8 +115,8 @@ export function PrivacyChoicesSection({ colors }: Props) {
       await saveConsent(previous, "settings-rollback");
       await applyRuntimeState(previous);
       Alert.alert(
-        "Datenschutzoption nicht geändert",
-        "Der Nachweis konnte nicht sicher gespeichert werden. Die bisherige Einstellung bleibt aktiv.",
+        t('privacy_choices_section_option_nicht_geaendert' as any),
+        t('privacy_choices_section_option_nicht_geaendert_msg' as any),
       );
     } finally {
       setBusyPurpose(null);
@@ -132,7 +134,7 @@ export function PrivacyChoicesSection({ colors }: Props) {
         }}
       >
         <Text style={{ color: colors.error, fontWeight: "800", fontSize: 12 }}>
-          COMPLIANCE-PRÜFENTWURF – NICHT VERÖFFENTLICHEN
+          {t('privacy_choices_section_compliance_hinweis' as any)}
         </Text>
       </View>
 
@@ -144,7 +146,7 @@ export function PrivacyChoicesSection({ colors }: Props) {
             key={item.purpose}
             accessibilityRole="switch"
             accessibilityState={{ checked: enabled, disabled: Boolean(busyPurpose) }}
-            accessibilityLabel={item.label}
+            accessibilityLabel={t(item.label as any)}
             disabled={Boolean(busyPurpose)}
             onPress={() => toggle(item.purpose)}
             style={({ pressed }) => ({
@@ -164,10 +166,10 @@ export function PrivacyChoicesSection({ colors }: Props) {
             />
             <View style={{ flex: 1, marginHorizontal: 12 }}>
               <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "700" }}>
-                {item.label}
+                {t(item.label as any)}
               </Text>
               <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 }}>
-                {item.description}
+                {t(item.description as any)}
               </Text>
             </View>
             <View
@@ -196,7 +198,7 @@ export function PrivacyChoicesSection({ colors }: Props) {
 
       <Text style={{ color: colors.muted, fontSize: 11 }}>{status}</Text>
       <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 16 }}>
-        Widerruf wirkt für neue Verarbeitungen. Bereits rechtmäßig verarbeitete Daten werden nicht automatisch gelöscht; nutzen Sie dafür „Meine Daten“ oder eine Datenschutzanfrage.
+        {t('privacy_choices_section_widerruf_hinweis' as any)}
       </Text>
 
       <Pressable
@@ -213,7 +215,7 @@ export function PrivacyChoicesSection({ colors }: Props) {
       >
         <MaterialIcons name="manage-accounts" size={20} color={colors.primary} />
         <Text style={{ color: colors.foreground, fontWeight: "600", marginLeft: 10, flex: 1 }}>
-          Export, Löschung und Datenschutzanfragen
+          {t('privacy_choices_section_export_loeschung' as any)}
         </Text>
         <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
       </Pressable>

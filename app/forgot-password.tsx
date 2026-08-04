@@ -19,10 +19,12 @@ import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { apiCall } from "@/lib/_core/api";
+import { useTranslation } from "@/lib/language-provider";
 
 type Step = "email" | "code" | "newPassword";
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -34,7 +36,7 @@ export default function ForgotPasswordScreen() {
 
   const handleRequestReset = async () => {
     if (!email.trim()) {
-      Alert.alert("Fehler", "Bitte gib deine E-Mail-Adresse ein.");
+      Alert.alert(t('error'), t('forgot_password_enter_email' as any));
       return;
     }
 
@@ -44,10 +46,10 @@ export default function ForgotPasswordScreen() {
         method: "POST",
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
-      Alert.alert("Code gesendet", "Falls ein Konto existiert, wurde ein Reset-Code an deine E-Mail gesendet.");
+      Alert.alert(t('forgot_password_code_sent_title' as any), t('forgot_password_code_sent_msg' as any));
       setStep("code");
     } catch (e: any) {
-      Alert.alert("Fehler", e?.message || "Etwas ist schiefgelaufen.");
+      Alert.alert(t('error'), e?.message || t('forgot_password_something_wrong' as any));
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,7 @@ export default function ForgotPasswordScreen() {
 
   const handleVerifyCode = async () => {
     if (code.length !== 6) {
-      Alert.alert("Fehler", "Bitte gib den 6-stelligen Code ein.");
+      Alert.alert(t('error'), t('forgot_password_enter_6digit' as any));
       return;
     }
 
@@ -67,7 +69,7 @@ export default function ForgotPasswordScreen() {
       });
       setStep("newPassword");
     } catch (e: any) {
-      Alert.alert("Fehler", e?.message || "Ungültiger Code.");
+      Alert.alert(t('error'), e?.message || t('forgot_password_invalid_code' as any));
     } finally {
       setLoading(false);
     }
@@ -75,11 +77,11 @@ export default function ForgotPasswordScreen() {
 
   const handleSetNewPassword = async () => {
     if (newPassword.length < 12) {
-      Alert.alert("Fehler", "Das Passwort muss mindestens 12 Zeichen lang sein.");
+      Alert.alert(t('error'), t('forgot_password_min_length' as any));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert("Fehler", "Die Passwörter stimmen nicht überein.");
+      Alert.alert(t('error'), t('forgot_password_mismatch' as any));
       return;
     }
 
@@ -95,12 +97,12 @@ export default function ForgotPasswordScreen() {
       });
 
       Alert.alert(
-        "Passwort geändert",
-        "Dein Passwort wurde erfolgreich zurückgesetzt. Du kannst dich jetzt anmelden.",
-        [{ text: "Zum Login", onPress: () => router.replace("/login" as any) }],
+        t('forgot_password_changed_title' as any),
+        t('forgot_password_changed_msg' as any),
+        [{ text: t('forgot_password_to_login' as any), onPress: () => router.replace("/login" as any) }],
       );
     } catch (e: any) {
-      Alert.alert("Fehler", e?.message || "Passwort konnte nicht geändert werden.");
+      Alert.alert(t('error'), e?.message || t('forgot_password_change_failed' as any));
     } finally {
       setLoading(false);
     }
@@ -133,14 +135,14 @@ export default function ForgotPasswordScreen() {
               />
             </View>
             <Text style={styles.title}>
-              {step === "email" && "Passwort zurücksetzen"}
-              {step === "code" && "Code eingeben"}
-              {step === "newPassword" && "Neues Passwort"}
+              {step === "email" && t('forgot_password_title_email' as any)}
+              {step === "code" && t('forgot_password_title_code' as any)}
+              {step === "newPassword" && t('forgot_password_title_new' as any)}
             </Text>
             <Text style={styles.subtitle}>
-              {step === "email" && "Gib deine E-Mail-Adresse ein und wir senden dir einen Reset-Code."}
-              {step === "code" && "Gib den 6-stelligen Code ein, den wir an deine E-Mail gesendet haben."}
-              {step === "newPassword" && "Wähle ein neues Passwort mit mindestens 12 Zeichen."}
+              {step === "email" && t('forgot_password_sub_email' as any)}
+              {step === "code" && t('forgot_password_sub_code' as any)}
+              {step === "newPassword" && t('forgot_password_sub_new' as any)}
             </Text>
           </View>
 
@@ -148,12 +150,12 @@ export default function ForgotPasswordScreen() {
           {step === "email" && (
             <View style={styles.formSection}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>E-Mail-Adresse</Text>
+                <Text style={styles.label}>{t('forgot_password_email_label' as any)}</Text>
                 <View style={styles.inputContainer}>
                   <MaterialIcons name="email" size={20} color="#5A6B7E" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="name@firma.de"
+                    placeholder={t('forgot_password_email_placeholder' as any)}
                     placeholderTextColor="#4A5568"
                     value={email}
                     onChangeText={setEmail}
@@ -175,7 +177,7 @@ export default function ForgotPasswordScreen() {
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Code senden</Text>
+                  <Text style={styles.primaryBtnText}>{t('forgot_password_send_code' as any)}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -185,7 +187,7 @@ export default function ForgotPasswordScreen() {
           {step === "code" && (
             <View style={styles.formSection}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>6-stelliger Code</Text>
+                <Text style={styles.label}>{t('forgot_password_code_label' as any)}</Text>
                 <View style={styles.inputContainer}>
                   <MaterialIcons name="pin" size={20} color="#5A6B7E" style={styles.inputIcon} />
                   <TextInput
@@ -211,12 +213,12 @@ export default function ForgotPasswordScreen() {
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Code bestätigen</Text>
+                  <Text style={styles.primaryBtnText}>{t('forgot_password_confirm_code' as any)}</Text>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleRequestReset} style={styles.resendBtn}>
-                <Text style={styles.resendText}>Code erneut senden</Text>
+                <Text style={styles.resendText}>{t('forgot_password_resend_code' as any)}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -225,12 +227,12 @@ export default function ForgotPasswordScreen() {
           {step === "newPassword" && (
             <View style={styles.formSection}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Neues Passwort</Text>
+                <Text style={styles.label}>{t('forgot_password_new_label' as any)}</Text>
                 <View style={styles.inputContainer}>
                   <MaterialIcons name="lock" size={20} color="#5A6B7E" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Mindestens 12 Zeichen"
+                    placeholder={t('forgot_password_min_chars' as any)}
                     placeholderTextColor="#4A5568"
                     value={newPassword}
                     onChangeText={setNewPassword}
@@ -244,12 +246,12 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Passwort bestätigen</Text>
+                <Text style={styles.label}>{t('forgot_password_confirm_label' as any)}</Text>
                 <View style={styles.inputContainer}>
                   <MaterialIcons name="lock-outline" size={20} color="#5A6B7E" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Passwort wiederholen"
+                    placeholder={t('forgot_password_repeat' as any)}
                     placeholderTextColor="#4A5568"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -269,7 +271,7 @@ export default function ForgotPasswordScreen() {
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Passwort speichern</Text>
+                  <Text style={styles.primaryBtnText}>{t('forgot_password_save' as any)}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -278,7 +280,7 @@ export default function ForgotPasswordScreen() {
           {/* Back to Login */}
           <View style={styles.bottomRow}>
             <TouchableOpacity onPress={() => router.replace("/login" as any)}>
-              <Text style={styles.linkText}>← Zurück zum Login</Text>
+              <Text style={styles.linkText}>{t('forgot_password_back_login' as any)}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

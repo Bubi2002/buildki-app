@@ -31,6 +31,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { ReportMarkdownPreview } from "@/components/report-markdown-preview";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { trpc } from "@/lib/trpc";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
@@ -70,6 +71,7 @@ type PhotoRef = {
 export default function ReportGeneratorScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     protocolId?: string;
     transcription?: string;
@@ -166,7 +168,7 @@ export default function ReportGeneratorScreen() {
    */
   const generateReport = async () => {
     if (!selectedType || !transcription.trim()) {
-      Alert.alert("Fehler", "Bitte Berichtstyp und Transkription angeben.");
+      Alert.alert(t('report_generator_fehler' as any), t('report_generator_berichtstyp_transkription' as any));
       return;
     }
 
@@ -191,7 +193,7 @@ export default function ReportGeneratorScreen() {
 
     try {
       // Step 1: Gather defect data
-      setGenerationStep("Projektdaten sammeln...");
+      setGenerationStep(t('report_generator_step_projektdaten' as any));
       setGenerationProgress(10);
 
       const defectSources: ReportDefectSource[] = availableDefects.map((defect) => ({
@@ -216,7 +218,7 @@ export default function ReportGeneratorScreen() {
         : undefined;
 
       // Step 2: Gather attendance data
-      setGenerationStep("Anwesenheitsdaten laden...");
+      setGenerationStep(t('report_generator_step_anwesenheit' as any));
       setGenerationProgress(25);
 
       let attendeesJson: string | undefined;
@@ -242,7 +244,7 @@ export default function ReportGeneratorScreen() {
       }
 
       // Step 3: Freeze the user-reviewed evidence selection for this document.
-      setGenerationStep("Belegauswahl vorbereiten...");
+      setGenerationStep(t('report_generator_step_belegauswahl' as any));
       setGenerationProgress(40);
 
       let photosJson: string | undefined;
@@ -253,7 +255,7 @@ export default function ReportGeneratorScreen() {
           setDocumentEvidence(frozenEvidence);
           const photoRefs: PhotoRef[] = frozenEvidence.snapshots.map((item) => ({
             evidenceId: item.evidenceId,
-            description: item.findingText || "Visueller Beleg ohne Befundtext",
+            description: item.findingText || t('report_generator_visueller_beleg' as any),
             room: item.room,
             trade: item.trade,
             sourceLabel: item.sourceLabel,
@@ -273,7 +275,7 @@ export default function ReportGeneratorScreen() {
       }
 
       // Step 4: Call server LLM for professional report
-      setGenerationStep("KI generiert professionellen Bericht...");
+      setGenerationStep(t('report_generator_step_ki_generiert' as any));
       setGenerationProgress(60);
 
       const result = await generateReportMutation.mutateAsync({
@@ -297,28 +299,28 @@ export default function ReportGeneratorScreen() {
           .join("\n") || undefined,
       });
 
-      setGenerationStep("Formatierung abschließen...");
+      setGenerationStep(t('report_generator_step_formatierung' as any));
       setGenerationProgress(90);
 
       if (result.content) {
         const unsupportedClaims = findUnsupportedReportClaims(result.content, sourceSnapshot, unselectedDefects);
         if (unsupportedClaims.length > 0) {
           setReportContent(buildSourceBoundReport(sourceSnapshot));
-          setSourceGuardMessage(`Nicht belegte KI-Ergänzungen wurden entfernt: ${unsupportedClaims.join("; ")}`);
+          setSourceGuardMessage(t('report_generator_unbelegte_entfernt' as any).replace('{claims}', unsupportedClaims.join("; ")));
         } else {
           setReportContent(result.content);
-          setSourceGuardMessage("Quellenprüfung bestanden: Der Bericht verwendet nur die bestätigten Eingaben und ausgewählten Projektdaten.");
+          setSourceGuardMessage(t('report_generator_quellenpruefung_bestanden' as any));
         }
       } else {
         setReportContent(buildSourceBoundReport(sourceSnapshot));
-        setSourceGuardMessage("Die KI-Antwort war leer. Es wurde stattdessen ein ausschließlich aus bestätigten Quellen aufgebauter Bericht erstellt.");
+        setSourceGuardMessage(t('report_generator_ki_antwort_leer' as any));
       }
 
       setGenerationProgress(100);
       setStep("preview");
     } catch  {
       setReportContent(buildSourceBoundReport(sourceSnapshot));
-      setSourceGuardMessage("Die KI-Generierung war nicht verfügbar. Der Bericht wurde ohne freie Ergänzungen direkt aus den bestätigten Quellen erstellt.");
+      setSourceGuardMessage(t('report_generator_ki_nicht_verfuegbar' as any));
       setStep("preview");
     } finally {
       setIsGenerating(false);
@@ -334,7 +336,7 @@ export default function ReportGeneratorScreen() {
       ]);
       const config = REPORT_TYPES.find((item) => item.id === selectedType);
       const pdfUri = await generateProtocolPdf({
-        title: reportProjekt || config?.label || "Bericht",
+        title: reportProjekt || config?.label || t('report_generator_bericht' as any),
         projectName: reportProjekt || undefined,
         protocol: reportContent,
         templateId: selectedType,
@@ -347,11 +349,11 @@ export default function ReportGeneratorScreen() {
       if (pdfUri && await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(pdfUri, {
           mimeType: "application/pdf",
-          dialogTitle: `${reportProjekt || config?.label || "Bericht"} teilen`,
+          dialogTitle: `${reportProjekt || config?.label || t('report_generator_bericht' as any)} ${t('report_generator_teilen' as any)}`,
         });
       }
     } catch {
-      Alert.alert("Fehler", "Der Bericht konnte nicht als PDF exportiert werden.");
+      Alert.alert(t('report_generator_fehler' as any), t('report_generator_pdf_export_fehler' as any));
     }
   };
 
@@ -376,15 +378,15 @@ export default function ReportGeneratorScreen() {
       await AsyncStorage.setItem("saved_reports", JSON.stringify(reports.slice(0, 50)));
 
       Alert.alert(
-        "Bericht gespeichert",
-        "Der Bericht wurde erfolgreich gespeichert und kann als PDF exportiert werden.",
+        t('report_generator_bericht_gespeichert' as any),
+        t('report_generator_bericht_gespeichert_msg' as any),
         [
-          { text: "PDF exportieren", onPress: () => { void exportReportPdf(); } },
-          { text: "Fertig", onPress: () => router.back() },
+          { text: t('report_generator_pdf_exportieren' as any), onPress: () => { void exportReportPdf(); } },
+          { text: t('report_generator_fertig' as any), onPress: () => router.back() },
         ]
       );
     } catch {
-      Alert.alert("Fehler", "Bericht konnte nicht gespeichert werden.");
+      Alert.alert(t('report_generator_fehler' as any), t('report_generator_bericht_speichern_fehler' as any));
     }
   };
 
@@ -400,10 +402,10 @@ export default function ReportGeneratorScreen() {
   const renderSelectStep = () => (
     <ScrollView contentContainerStyle={{ padding: 16 }}>
       <Text style={[styles.stepTitle, { color: colors.foreground }]}>
-        Berichtstyp wählen
+        {t('report_generator_berichtstyp_waehlen' as any)}
       </Text>
       <Text style={[styles.stepSubtitle, { color: colors.muted }]}>
-        Wählen Sie den passenden Berichtstyp für Ihre Dokumentation.
+        {t('report_generator_berichtstyp_subtitle' as any)}
       </Text>
 
       <View style={styles.typeGrid}>
@@ -458,27 +460,27 @@ export default function ReportGeneratorScreen() {
           </View>
 
           {/* Metadata */}
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Datum</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('report_generator_datum' as any)}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
             value={reportDatum}
             onChangeText={setReportDatum}
-            placeholder="TT.MM.JJJJ"
+            placeholder={t('report_generator_datum_placeholder' as any)}
             placeholderTextColor={colors.muted}
           />
 
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Projekt</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('report_generator_projekt' as any)}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
             value={reportProjekt}
             onChangeText={setReportProjekt}
-            placeholder="Projektname..."
+            placeholder={t('report_generator_projektname_placeholder' as any)}
             placeholderTextColor={colors.muted}
           />
 
           {projectFloors.length > 0 && (
             <>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Geschoss</Text>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('report_generator_geschoss' as any)}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {projectFloors.map((f) => (
@@ -497,7 +499,7 @@ export default function ReportGeneratorScreen() {
 
           {projectRooms.length > 0 && (
             <>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Raum</Text>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('report_generator_raum' as any)}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   {projectRooms
@@ -517,7 +519,7 @@ export default function ReportGeneratorScreen() {
           )}
 
           {/* Data Integration Options */}
-          <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 16 }]}>Datenquellen einbeziehen</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 16 }]}>{t('report_generator_datenquellen' as any)}</Text>
           <View style={[styles.optionsContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable
               onPress={() => setIncludeDefects(!includeDefects)}
@@ -529,8 +531,8 @@ export default function ReportGeneratorScreen() {
                 color={includeDefects ? config.color : colors.muted}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Mängeldaten</Text>
-                <Text style={[styles.optionDesc, { color: colors.muted }]}>Nur einzeln ausgewählte Projektmängel einbeziehen</Text>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('report_generator_maengeldaten' as any)}</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>{t('report_generator_maengeldaten_desc' as any)}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -543,8 +545,8 @@ export default function ReportGeneratorScreen() {
                 color={includeAttendance ? config.color : colors.muted}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Anwesenheitsliste</Text>
-                <Text style={[styles.optionDesc, { color: colors.muted }]}>Nur nach ausdrücklicher Aktivierung als Teilnehmer übernehmen</Text>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('report_generator_anwesenheitsliste' as any)}</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>{t('report_generator_anwesenheitsliste_desc' as any)}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -557,8 +559,8 @@ export default function ReportGeneratorScreen() {
                 color={includePhotos ? config.color : colors.muted}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.optionLabel, { color: colors.foreground }]}>Bild-, Video- und Messbelege</Text>
-                <Text style={[styles.optionDesc, { color: colors.muted }]}>Nur ausdrücklich ausgewählte und geprüfte Belege übernehmen</Text>
+                <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('report_generator_belege' as any)}</Text>
+                <Text style={[styles.optionDesc, { color: colors.muted }]}>{t('report_generator_belege_desc' as any)}</Text>
               </View>
             </Pressable>
           </View>
@@ -566,8 +568,8 @@ export default function ReportGeneratorScreen() {
           <View style={[styles.sourceNotice, { borderColor: colors.primary, backgroundColor: colors.primary + "10" }]}>
             <MaterialIcons name="verified-user" size={22} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.sourceNoticeTitle, { color: colors.foreground }]}>Quellengebundener Bericht</Text>
-              <Text style={[styles.optionDesc, { color: colors.muted }]}>Standardmäßig wird ausschließlich Ihre Eingabe verwendet. Projektdaten erscheinen erst nach Aktivierung und Auswahl.</Text>
+              <Text style={[styles.sourceNoticeTitle, { color: colors.foreground }]}>{t('report_generator_quellengebunden' as any)}</Text>
+              <Text style={[styles.optionDesc, { color: colors.muted }]}>{t('report_generator_quellengebunden_desc' as any)}</Text>
             </View>
           </View>
 
@@ -575,21 +577,21 @@ export default function ReportGeneratorScreen() {
             <View style={styles.defectSourceSection}>
               <View style={styles.evidenceHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>Mängel auswählen</Text>
-                  <Text style={[styles.optionDesc, { color: colors.muted }]}>{selectedDefectIds.length} von {availableDefects.length} Mängeln ausgewählt</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>{t('report_generator_maengel_auswaehlen' as any)}</Text>
+                  <Text style={[styles.optionDesc, { color: colors.muted }]}>{t('report_generator_x_von_y_maengel' as any).replace('{selected}', String(selectedDefectIds.length)).replace('{total}', String(availableDefects.length))}</Text>
                 </View>
                 <Pressable
                   onPress={() => setSelectedDefectIds(selectedDefectIds.length === availableDefects.length ? [] : availableDefects.map((defect) => defect.id))}
                   style={[styles.evidenceAction, { borderColor: colors.border }]}
                 >
-                  <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>{selectedDefectIds.length === availableDefects.length ? "Keine" : "Alle"}</Text>
+                  <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>{selectedDefectIds.length === availableDefects.length ? t('report_generator_keine' as any) : t('report_generator_alle' as any)}</Text>
                 </Pressable>
               </View>
 
               {availableDefects.length === 0 ? (
                 <View style={[styles.evidenceEmpty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   <MaterialIcons name="fact-check" size={24} color={colors.muted} />
-                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>Keine Projektmängel vorhanden</Text>
+                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('report_generator_keine_projektmaengel' as any)}</Text>
                 </View>
               ) : (
                 <View style={styles.defectSourceList}>
@@ -618,9 +620,9 @@ export default function ReportGeneratorScreen() {
             <View style={styles.evidenceSection}>
               <View style={styles.evidenceHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>Belege auswählen</Text>
+                  <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 0 }]}>{t('report_generator_belege_auswaehlen' as any)}</Text>
                   <Text style={[styles.optionDesc, { color: colors.muted }]}>
-                    {selectedEvidenceIds.length} von {availableEvidence.length} Belegen ausgewählt
+                    {t('report_generator_x_von_y_belege' as any).replace('{selected}', String(selectedEvidenceIds.length)).replace('{total}', String(availableEvidence.length))}
                   </Text>
                 </View>
                 <Pressable
@@ -634,7 +636,7 @@ export default function ReportGeneratorScreen() {
                   style={[styles.evidenceAction, { borderColor: colors.border }]}
                 >
                   <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>
-                    {selectedEvidenceIds.length === availableEvidence.length ? "Keine" : "Alle"}
+                    {selectedEvidenceIds.length === availableEvidence.length ? t('report_generator_keine' as any) : t('report_generator_alle' as any)}
                   </Text>
                 </Pressable>
               </View>
@@ -642,12 +644,12 @@ export default function ReportGeneratorScreen() {
               {availableEvidence.length === 0 ? (
                 <View style={[styles.evidenceEmpty, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   <MaterialIcons name="image-not-supported" size={24} color={colors.muted} />
-                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>Noch keine freigegebenen Belege</Text>
+                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>{t('report_generator_keine_freigegebenen_belege' as any)}</Text>
                   <Text style={[styles.optionDesc, { color: colors.muted, textAlign: "center" }]}>
-                    Fotos, Videostandbilder und Messungen werden nach Prüfung hier dokumentübergreifend angeboten.
+                    {t('report_generator_belege_empty_desc' as any)}
                   </Text>
                   <Pressable onPress={() => router.push("/measure" as any)} style={[styles.evidenceAction, { borderColor: config.color }]}>
-                    <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>Messen öffnen</Text>
+                    <Text style={{ color: config.color, fontSize: 12, fontWeight: "700" }}>{t('report_generator_messen_oeffnen' as any)}</Text>
                   </Pressable>
                 </View>
               ) : (
@@ -676,7 +678,7 @@ export default function ReportGeneratorScreen() {
                           <MaterialIcons name={selected ? "check" : "add"} size={15} color="#FFFFFF" />
                         </View>
                         <Text style={[styles.evidenceFinding, { color: colors.foreground }]} numberOfLines={3}>
-                          {item.findingText || "Beleg ohne Befundtext"}
+                          {item.findingText || t('report_generator_beleg_ohne_befundtext' as any)}
                         </Text>
                         <View style={styles.evidenceMetaRow}>
                           <MaterialIcons
@@ -686,10 +688,10 @@ export default function ReportGeneratorScreen() {
                           />
                           <Text style={[styles.evidenceMeta, { color: colors.muted }]} numberOfLines={1}>
                             {item.sourceType === "video_frame"
-                              ? `Video${timecode ? ` · ${timecode}` : ""}`
+                              ? `${t('report_generator_video' as any)}${timecode ? ` · ${timecode}` : ""}`
                               : item.measurements?.length
-                                ? `${item.measurements.length} Messung${item.measurements.length === 1 ? "" : "en"}`
-                                : "Foto"}
+                                ? `${item.measurements.length} ${item.measurements.length === 1 ? t('report_generator_messung' as any) : t('report_generator_messungen' as any)}`
+                                : t('report_generator_foto' as any)}
                           </Text>
                         </View>
                       </Pressable>
@@ -702,13 +704,13 @@ export default function ReportGeneratorScreen() {
 
           {/* Transcription Input */}
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            Transkription / Notizen
+            {t('report_generator_transkription_notizen' as any)}
           </Text>
           <TextInput
             style={[styles.input, styles.inputLarge, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
             value={transcription}
             onChangeText={setTranscription}
-            placeholder="Text eingeben oder aus Aufnahme übernehmen..."
+            placeholder={t('report_generator_transkription_placeholder' as any)}
             placeholderTextColor={colors.muted}
             multiline
             textAlignVertical="top"
@@ -716,10 +718,10 @@ export default function ReportGeneratorScreen() {
 
           {/* Sections Preview */}
           <Text style={[styles.fieldLabel, { color: colors.foreground, marginTop: 8 }]}>
-            Berichts-Abschnitte (KI-generiert)
+            {t('report_generator_berichts_abschnitte' as any)}
           </Text>
           <View style={[styles.sectionsPreview, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {["Zusammenfassung", "Fortschritt nach Gewerken", "Mängelübersicht", "Nächste Maßnahmen", "Fotodokumentation"].map((section, i) => (
+            {[t('report_generator_zusammenfassung' as any), t('report_generator_fortschritt_nach_gewerken' as any), t('report_generator_maengeluebersicht' as any), t('report_generator_naechste_massnahmen' as any), t('report_generator_fotodokumentation' as any)].map((section, i) => (
               <View key={i} style={styles.sectionItem}>
                 <MaterialIcons name="auto-awesome" size={14} color={config.color} />
                 <Text style={[styles.sectionName, { color: colors.foreground }]}>{section}</Text>
@@ -737,7 +739,7 @@ export default function ReportGeneratorScreen() {
             ]}
           >
             <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-            <Text style={styles.generateBtnText}>Professionellen Bericht generieren</Text>
+            <Text style={styles.generateBtnText}>{t('report_generator_bericht_generieren' as any)}</Text>
           </Pressable>
 
           <Pressable
@@ -745,7 +747,7 @@ export default function ReportGeneratorScreen() {
             style={({ pressed }) => [styles.backLink, { opacity: pressed ? 0.6 : 1 }]}
           >
             <MaterialIcons name="arrow-back" size={16} color={colors.muted} />
-            <Text style={[styles.backLinkText, { color: colors.muted }]}>Anderen Typ wählen</Text>
+            <Text style={[styles.backLinkText, { color: colors.muted }]}>{t('report_generator_anderen_typ' as any)}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -755,17 +757,17 @@ export default function ReportGeneratorScreen() {
   // ─── Step: Generating ─────────────────────────────────────────────────────────
   const renderGeneratingStep = () => {
     const steps = [
-      { label: "Projektdaten sammeln", threshold: 10 },
-      { label: "Anwesenheit & Fotos laden", threshold: 30 },
-      { label: "KI-Analyse & Strukturierung", threshold: 60 },
-      { label: "Professionelle Formatierung", threshold: 90 },
+      { label: t('report_generator_projektdaten_sammeln' as any), threshold: 10 },
+      { label: t('report_generator_anwesenheit_fotos_laden' as any), threshold: 30 },
+      { label: t('report_generator_ki_analyse_strukturierung' as any), threshold: 60 },
+      { label: t('report_generator_professionelle_formatierung' as any), threshold: 90 },
     ];
 
     return (
       <View style={styles.generatingContainer}>
         <ActivityIndicator size="large" color="#00B0FF" />
         <Text style={[styles.generatingTitle, { color: colors.foreground }]}>
-          Professioneller Bericht wird erstellt...
+          {t('report_generator_bericht_wird_erstellt' as any)}
         </Text>
         <Text style={[styles.generatingStep, { color: colors.muted }]}>
           {generationStep}
@@ -803,21 +805,21 @@ export default function ReportGeneratorScreen() {
   const renderPreviewStep = () => (
     <View style={{ flex: 1 }}>
       <View style={[styles.editHeader, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.editTitle, { color: colors.foreground }]}>Bericht-Vorschau</Text>
+        <Text style={[styles.editTitle, { color: colors.foreground }]}>{t('report_generator_bericht_vorschau' as any)}</Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable
             onPress={() => setStep("edit")}
             style={({ pressed }) => [styles.editBtn, { borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="edit" size={16} color={colors.foreground} />
-            <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "500" }}>Bearbeiten</Text>
+            <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "500" }}>{t('report_generator_bearbeiten' as any)}</Text>
           </Pressable>
           <Pressable
             onPress={saveReport}
             style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="check" size={16} color="#fff" />
-            <Text style={styles.saveBtnText}>Speichern</Text>
+            <Text style={styles.saveBtnText}>{t('report_generator_speichern' as any)}</Text>
           </Pressable>
         </View>
       </View>
@@ -827,7 +829,7 @@ export default function ReportGeneratorScreen() {
           <View style={[styles.sourceNotice, { borderColor: colors.success, backgroundColor: colors.success + "10", marginTop: 0, marginBottom: 14 }]}>
             <MaterialIcons name="verified" size={22} color={colors.success} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.sourceNoticeTitle, { color: colors.foreground }]}>Quellenprüfung</Text>
+              <Text style={[styles.sourceNoticeTitle, { color: colors.foreground }]}>{t('report_generator_quellenpruefung' as any)}</Text>
               <Text style={[styles.optionDesc, { color: colors.muted }]}>{sourceGuardMessage}</Text>
             </View>
           </View>
@@ -844,14 +846,14 @@ export default function ReportGeneratorScreen() {
         <View style={[styles.editHeader, { borderBottomColor: colors.border }]}>
           <Pressable onPress={() => setStep("preview")} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, flexDirection: "row", alignItems: "center", gap: 4 })}>
             <MaterialIcons name="arrow-back" size={18} color={colors.foreground} />
-            <Text style={{ color: colors.foreground, fontSize: 14 }}>Vorschau</Text>
+            <Text style={{ color: colors.foreground, fontSize: 14 }}>{t('report_generator_vorschau' as any)}</Text>
           </Pressable>
           <Pressable
             onPress={saveReport}
             style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="check" size={16} color="#fff" />
-            <Text style={styles.saveBtnText}>Speichern</Text>
+            <Text style={styles.saveBtnText}>{t('report_generator_speichern' as any)}</Text>
           </Pressable>
         </View>
 
@@ -884,7 +886,7 @@ export default function ReportGeneratorScreen() {
         >
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>KI-Bericht</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('report_generator_ki_bericht' as any)}</Text>
         <View style={{ width: 24 }} />
       </View>
 

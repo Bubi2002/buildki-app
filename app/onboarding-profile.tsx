@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
+import { useTranslation } from "@/lib/language-provider";
 
 const PROFILE_KEY = "@buildki_user_profile";
 const ONBOARDING_PROFILE_COMPLETE_KEY = "@buildki_onboarding_profile_complete";
@@ -34,6 +35,7 @@ interface UserProfile {
 }
 
 export default function OnboardingProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -52,17 +54,17 @@ export default function OnboardingProfileScreen() {
     const newErrors: typeof errors = {};
 
     if (!firstName.trim()) {
-      newErrors.firstName = "Vorname ist erforderlich";
+      newErrors.firstName = t('onboarding_profile_vorname_erforderlich' as any);
     }
 
     if (!lastName.trim()) {
-      newErrors.lastName = "Nachname ist erforderlich";
+      newErrors.lastName = t('onboarding_profile_nachname_erforderlich' as any);
     }
 
     if (!phone.trim()) {
-      newErrors.phone = "Handynummer ist erforderlich";
+      newErrors.phone = t('onboarding_profile_handynummer_erforderlich' as any);
     } else if (!validatePhone(phone.trim())) {
-      newErrors.phone = "Bitte gib eine gültige Telefonnummer ein";
+      newErrors.phone = t('onboarding_profile_telefon_ungueltig' as any);
     }
 
     setErrors(newErrors);
@@ -95,7 +97,7 @@ export default function OnboardingProfileScreen() {
         router.replace("/onboarding" as any);
       }
     } catch  {
-      Alert.alert("Fehler", "Profil konnte nicht gespeichert werden. Bitte versuche es erneut.");
+      Alert.alert(t('onboarding_profile_fehler' as any), t('onboarding_profile_speichern_fehlgeschlagen' as any));
     } finally {
       setLoading(false);
     }
@@ -118,9 +120,9 @@ export default function OnboardingProfileScreen() {
               <View style={styles.stepLine} />
               <View style={styles.stepDotInactive} />
             </View>
-            <Text style={styles.headerTitle}>Profil vervollständigen</Text>
+            <Text style={styles.headerTitle}>{t('onboarding_profile_titel' as any)}</Text>
             <Text style={styles.headerSubtitle}>
-              Noch ein kurzer Schritt, dann kann es losgehen.
+              {t('onboarding_profile_untertitel' as any)}
             </Text>
           </View>
 
@@ -128,12 +130,12 @@ export default function OnboardingProfileScreen() {
           <View style={styles.formSection}>
             {/* First Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Vorname *</Text>
+              <Text style={styles.label}>{t('onboarding_profile_label_vorname' as any)}</Text>
               <View style={[styles.inputContainer, errors.firstName ? styles.inputError : null]}>
                 <MaterialIcons name="person" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Max"
+                  placeholder={t('onboarding_profile_ph_vorname' as any)}
                   placeholderTextColor="#4A5568"
                   value={firstName}
                   onChangeText={(text) => { setFirstName(text); setErrors((e) => ({ ...e, firstName: undefined })); }}
@@ -147,12 +149,12 @@ export default function OnboardingProfileScreen() {
 
             {/* Last Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nachname *</Text>
+              <Text style={styles.label}>{t('onboarding_profile_label_nachname' as any)}</Text>
               <View style={[styles.inputContainer, errors.lastName ? styles.inputError : null]}>
                 <MaterialIcons name="person-outline" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Mustermann"
+                  placeholder={t('onboarding_profile_ph_nachname' as any)}
                   placeholderTextColor="#4A5568"
                   value={lastName}
                   onChangeText={(text) => { setLastName(text); setErrors((e) => ({ ...e, lastName: undefined })); }}
@@ -166,7 +168,7 @@ export default function OnboardingProfileScreen() {
 
             {/* Phone */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Handynummer *</Text>
+              <Text style={styles.label}>{t('onboarding_profile_label_handynummer' as any)}</Text>
               <View style={[styles.inputContainer, errors.phone ? styles.inputError : null]}>
                 <MaterialIcons name="phone-iphone" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
@@ -182,18 +184,18 @@ export default function OnboardingProfileScreen() {
               </View>
               {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
               <Text style={styles.hintText}>
-                Für Support und Fristerinnerungen
+                {t('onboarding_profile_hint_telefon' as any)}
               </Text>
             </View>
 
             {/* Company (optional) */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Unternehmen <Text style={styles.optionalBadge}>(optional)</Text></Text>
+              <Text style={styles.label}>{t('onboarding_profile_label_unternehmen' as any)} <Text style={styles.optionalBadge}>{t('onboarding_profile_optional' as any)}</Text></Text>
               <View style={styles.inputContainer}>
                 <MaterialIcons name="business" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Musterbau GmbH"
+                  placeholder={t('onboarding_profile_ph_unternehmen' as any)}
                   placeholderTextColor="#4A5568"
                   value={company}
                   onChangeText={setCompany}
@@ -215,7 +217,7 @@ export default function OnboardingProfileScreen() {
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <>
-                  <Text style={styles.submitBtnText}>Weiter</Text>
+                  <Text style={styles.submitBtnText}>{t('onboarding_profile_weiter' as any)}</Text>
                   <MaterialIcons name="arrow-forward" size={20} color="#FFF" />
                 </>
               )}
@@ -223,8 +225,7 @@ export default function OnboardingProfileScreen() {
 
             {/* Privacy Note */}
             <Text style={styles.privacyNote}>
-              Deine Daten werden vertraulich behandelt und nicht an Dritte weitergegeben.
-              Mehr dazu in unserer Datenschutzerklärung.
+              {t('onboarding_profile_datenschutz_hinweis' as any)}
             </Text>
           </View>
         </ScrollView>

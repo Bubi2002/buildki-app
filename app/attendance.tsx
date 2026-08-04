@@ -86,7 +86,7 @@ export default function AttendanceScreen() {
   const addWorker = async () => {
     Keyboard.dismiss();
     if (!workerName.trim()) {
-      Alert.alert("Fehler", "Name ist erforderlich");
+      Alert.alert(t('attendance_error_title' as any), t('attendance_name_required' as any));
       return;
     }
 
@@ -172,7 +172,7 @@ export default function AttendanceScreen() {
             </Text>
             {isToday && (
               <View style={[styles.todayBadge, { backgroundColor: colors.primary + "20" }]}>
-                <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>HEUTE</Text>
+                <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>{t('attendance_today_badge' as any)}</Text>
               </View>
             )}
           </View>
@@ -191,7 +191,7 @@ export default function AttendanceScreen() {
             ))}
             {item.workers.length > 3 && (
               <Text style={{ fontSize: 11, color: colors.muted, fontStyle: "italic" }}>
-                +{item.workers.length - 3} weitere
+                +{item.workers.length - 3} {t('attendance_more_suffix' as any)}
               </Text>
             )}
           </View>
@@ -206,7 +206,7 @@ export default function AttendanceScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Anwesenheit</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('attendance_title' as any)}</Text>
         <Pressable onPress={() => setShowAddModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="person-add" size={24} color={colors.primary} />
         </Pressable>
@@ -216,9 +216,9 @@ export default function AttendanceScreen() {
       <View style={[styles.summaryCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
         <MaterialIcons name="groups" size={28} color={colors.primary} />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>Heute auf der Baustelle</Text>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{t('attendance_today_on_site' as any)}</Text>
           <Text style={{ fontSize: 13, color: colors.muted }}>
-            {totalWorkersToday} {totalWorkersToday === 1 ? "Person" : "Personen"} erfasst
+            {totalWorkersToday} {totalWorkersToday === 1 ? t('attendance_person' as any) : t('attendance_personen' as any)} {t('attendance_recorded_suffix' as any)}
           </Text>
         </View>
         <Pressable
@@ -239,10 +239,10 @@ export default function AttendanceScreen() {
           <View style={styles.emptyState}>
             <MaterialIcons name="people-outline" size={48} color={colors.muted} />
             <Text style={{ fontSize: 15, color: colors.muted, marginTop: 12 }}>
-              Noch keine Anwesenheit erfasst
+              {t('attendance_empty_title' as any)}
             </Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
-              Tippen Sie +, um Personen hinzuzufügen
+              {t('attendance_empty_hint' as any)}
             </Text>
           </View>
         }
@@ -264,7 +264,7 @@ export default function AttendanceScreen() {
                 </View>
 
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 12 }}>
-                  {selectedRecord.workers.length} Personen
+                  {selectedRecord.workers.length} {t('attendance_personen' as any)}
                 </Text>
 
                 {selectedRecord.workers.map((w) => (
@@ -281,9 +281,9 @@ export default function AttendanceScreen() {
                     </View>
                     <Pressable
                       onPress={() => {
-                        Alert.alert("Entfernen", `${w.name} entfernen?`, [
-                          { text: "Abbrechen", style: "cancel" },
-                          { text: "Entfernen", style: "destructive", onPress: () => removeWorker(selectedRecord.id, w.id) },
+                        Alert.alert(t('attendance_remove_title' as any), `${w.name} ${t('attendance_remove_worker_q' as any)}`, [
+                          { text: t('attendance_cancel' as any), style: "cancel" },
+                          { text: t('attendance_remove_title' as any), style: "destructive", onPress: () => removeWorker(selectedRecord.id, w.id) },
                         ]);
                       }}
                       style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 8 }]}
@@ -302,11 +302,11 @@ export default function AttendanceScreen() {
       <Modal visible={showAddModal} transparent animationType="slide">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Person erfassen</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('attendance_add_person_title' as any)}</Text>
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Name *"
+              placeholder={t('attendance_name_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={workerName}
               onChangeText={setWorkerName}
@@ -317,7 +317,7 @@ export default function AttendanceScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Firma"
+              placeholder={t('attendance_firma_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={workerFirma}
               onChangeText={setWorkerFirma}
@@ -328,13 +328,13 @@ export default function AttendanceScreen() {
             <TradePicker
               value={workerGewerk}
               onChange={setWorkerGewerk}
-              placeholder="Gewerk auswählen (optional)"
-              accessibilityLabel="Gewerk der Person auswählen"
+              placeholder={t('attendance_trade_placeholder' as any)}
+              accessibilityLabel={t('attendance_trade_a11y' as any)}
             />
 
             <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>Ankunft</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{t('attendance_arrival' as any)}</Text>
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background, marginBottom: 0 }]}
                   placeholder="07:00"
@@ -347,7 +347,7 @@ export default function AttendanceScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>Abgang</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{t('attendance_departure' as any)}</Text>
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background, marginBottom: 0 }]}
                   placeholder="16:00"
@@ -363,7 +363,7 @@ export default function AttendanceScreen() {
 
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="Notizen (optional)"
+              placeholder={t('attendance_notes_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={workerNotes}
               onChangeText={setWorkerNotes}
@@ -376,13 +376,13 @@ export default function AttendanceScreen() {
                 onPress={() => { Keyboard.dismiss(); setShowAddModal(false); }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={{ fontSize: 15, color: colors.muted }}>Abbrechen</Text>
+                <Text style={{ fontSize: 15, color: colors.muted }}>{t('attendance_cancel' as any)}</Text>
               </Pressable>
               <Pressable
                 onPress={addWorker}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Erfassen</Text>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>{t('attendance_capture' as any)}</Text>
               </Pressable>
             </View>
           </View>

@@ -21,6 +21,7 @@ import { captureRef } from "react-native-view-shot";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   createEvidenceItem,
   createEvidenceMeasurement,
@@ -45,39 +46,39 @@ const METHODS: {
 }[] = [
   {
     value: "manual_on_site",
-    label: "Vor Ort",
+    label: "measure_method_manual_on_site_label",
     accuracy: "verified",
-    description: "Mit einem Messgerät vor Ort erfasster Wert.",
+    description: "measure_method_manual_on_site_desc",
   },
   {
     value: "reference_scale",
-    label: "Referenzmaß",
+    label: "measure_method_reference_scale_label",
     accuracy: "calibrated",
-    description: "Bildmessung mit sichtbarem, bekanntem Referenzmaß.",
+    description: "measure_method_reference_scale_desc",
   },
   {
     value: "ar",
-    label: "AR",
+    label: "measure_method_ar_label",
     accuracy: "calibrated",
-    description: "Kamerabasierte AR-Messung; geräteabhängige Toleranz angeben.",
+    description: "measure_method_ar_desc",
   },
   {
     value: "lidar",
-    label: "LiDAR",
+    label: "measure_method_lidar_label",
     accuracy: "calibrated",
-    description: "Tiefensensorbasierte Messung; Gerätemodell und Toleranz dokumentieren.",
+    description: "measure_method_lidar_desc",
   },
   {
     value: "plan_scale",
-    label: "Planmaßstab",
+    label: "measure_method_plan_scale_label",
     accuracy: "calibrated",
-    description: "Aus einem verifizierten Planmaßstab abgeleiteter Wert.",
+    description: "measure_method_plan_scale_desc",
   },
   {
     value: "image_estimate",
-    label: "Schätzung",
+    label: "measure_method_image_estimate_label",
     accuracy: "estimated",
-    description: "Nicht kalibrierte Bild-/Videomessung; kein exakter Nachweis.",
+    description: "measure_method_image_estimate_desc",
   },
 ];
 
@@ -88,6 +89,7 @@ type ProjectRef = { id: string; name: string };
 type Point = { x: number; y: number };
 
 export default function MeasureScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const canvasRef = useRef<View>(null);
@@ -140,7 +142,7 @@ export default function MeasureScreen() {
 
   async function addPhoto(source: "camera" | "library") {
     if (!project) {
-      Alert.alert("Kein Projekt", "Bitte wählen Sie zuerst ein Projekt im Werkzeuge-Tab aus.");
+      Alert.alert(t('measure_alert_kein_projekt_title' as any), t('measure_alert_kein_projekt_msg' as any));
       return;
     }
 
@@ -149,7 +151,7 @@ export default function MeasureScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
-      Alert.alert("Berechtigung", "Für den Messbeleg wird Zugriff auf Kamera beziehungsweise Fotos benötigt.");
+      Alert.alert(t('measure_alert_berechtigung_title' as any), t('measure_alert_berechtigung_msg' as any));
       return;
     }
 
@@ -177,8 +179,8 @@ export default function MeasureScreen() {
           : "review_required",
       mediaQualityNote:
         Math.min(asset.width || 0, asset.height || 0) >= 720
-          ? "Bild erfüllt die Mindestauflösung für die Dokumentvorschau."
-          : "Bild vor Dokumentverwendung auf Schärfe und Lesbarkeit prüfen.",
+          ? t('measure_media_quality_suitable' as any)
+          : t('measure_media_quality_review' as any),
       reviewStatus: "pending",
     });
     await saveEvidence(item);
@@ -198,7 +200,7 @@ export default function MeasureScreen() {
 
   async function ensureMeasurementDirectory() {
     if (!FileSystem.documentDirectory) {
-      throw new Error("Lokale Messbelegablage ist auf diesem Gerät nicht verfügbar.");
+      throw new Error(t('measure_error_directory_unavailable' as any));
     }
     const info = await FileSystem.getInfoAsync(MEASUREMENT_DIRECTORY);
     if (!info.exists) {
@@ -210,19 +212,19 @@ export default function MeasureScreen() {
 
   async function saveMeasurement() {
     if (!selectedEvidence || !startPoint || !endPoint) {
-      Alert.alert("Messstrecke fehlt", "Bitte zeichnen Sie zuerst eine Messstrecke auf dem Belegbild ein.");
+      Alert.alert(t('measure_alert_messstrecke_title' as any), t('measure_alert_messstrecke_msg' as any));
       return;
     }
     const numericValue = Number(value.replace(",", "."));
     if (!Number.isFinite(numericValue) || numericValue <= 0) {
-      Alert.alert("Messwert fehlt", "Bitte geben Sie einen gültigen Messwert größer als null ein.");
+      Alert.alert(t('measure_alert_messwert_title' as any), t('measure_alert_messwert_msg' as any));
       return;
     }
     const numericTolerance = tolerance.trim()
       ? Number(tolerance.replace(",", "."))
       : undefined;
     if (numericTolerance != null && (!Number.isFinite(numericTolerance) || numericTolerance < 0)) {
-      Alert.alert("Toleranz ungültig", "Die Toleranz muss eine nichtnegative Zahl sein.");
+      Alert.alert(t('measure_alert_toleranz_title' as any), t('measure_alert_toleranz_msg' as any));
       return;
     }
 
@@ -258,16 +260,16 @@ export default function MeasureScreen() {
         reviewStatus: "approved",
         measurements: [...(selectedEvidence.measurements || []), measurement],
       });
-      if (!updated) throw new Error("Beleg konnte nicht aktualisiert werden.");
+      if (!updated) throw new Error(t('measure_error_update_failed' as any));
       setSelectedEvidence(updated);
       setEvidence((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       Alert.alert(
-        "Messbeleg gespeichert",
+        t('measure_alert_saved_title' as any),
         selectedMethod.accuracy === "estimated"
-          ? "Der Beleg wurde als Schätzung gespeichert und wird in Dokumenten entsprechend gekennzeichnet."
-          : "Messwert, Methode, Toleranz und Belegbild wurden gemeinsam gespeichert.",
+          ? t('measure_alert_saved_estimate' as any)
+          : t('measure_alert_saved_full' as any),
       );
       setStartPoint(null);
       setEndPoint(null);
@@ -276,8 +278,8 @@ export default function MeasureScreen() {
       setNote("");
     } catch (error) {
       Alert.alert(
-        "Speichern fehlgeschlagen",
-        error instanceof Error ? error.message : "Der Messbeleg konnte nicht gespeichert werden.",
+        t('measure_alert_save_failed_title' as any),
+        error instanceof Error ? error.message : t('measure_alert_save_failed_msg' as any),
       );
     } finally {
       setIsSaving(false);
@@ -285,19 +287,19 @@ export default function MeasureScreen() {
   }
 
   const measurementLabel = value.trim()
-    ? `${value.replace(".", ",")} ${unit}${selectedMethod.accuracy === "estimated" ? " (Schätzung)" : ""}`
-    : "Messwert";
+    ? `${value.replace(".", ",")} ${unit}${selectedMethod.accuracy === "estimated" ? t('measure_label_estimate_suffix' as any) : ""}`
+    : t('measure_label_messwert' as any);
 
   return (
     <ScreenContainer className="p-0">
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} accessibilityLabel="Messen schließen">
+        <Pressable onPress={() => router.back()} accessibilityLabel={t('measure_a11y_close' as any)}>
           <MaterialIcons name="arrow-back" size={26} color={colors.foreground} />
         </Pressable>
         <View style={styles.headerText}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Messen</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t('measure_title' as any)}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]} numberOfLines={1}>
-            {project?.name || "Bitte Projekt wählen"}
+            {project?.name || t('measure_project_placeholder' as any)}
           </Text>
         </View>
         <MaterialIcons name="straighten" size={26} color="#00ACC1" />
@@ -306,20 +308,20 @@ export default function MeasureScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {!project ? (
           <View style={[styles.notice, { borderColor: colors.warning }]}>
-            <Text style={[styles.noticeTitle, { color: colors.foreground }]}>Kein Projekt ausgewählt</Text>
-            <Text style={[styles.noticeText, { color: colors.muted }]}>Wählen Sie im Werkzeuge-Tab zuerst ein Projekt aus.</Text>
+            <Text style={[styles.noticeTitle, { color: colors.foreground }]}>{t('measure_no_project_title' as any)}</Text>
+            <Text style={[styles.noticeText, { color: colors.muted }]}>{t('measure_no_project_text' as any)}</Text>
           </View>
         ) : (
           <>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Beleg auswählen</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_section_select_record' as any)}</Text>
             <View style={styles.sourceButtons}>
               <Pressable style={[styles.sourceButton, { borderColor: colors.border }]} onPress={() => void addPhoto("camera")}>
                 <MaterialIcons name="photo-camera" size={22} color="#00ACC1" />
-                <Text style={[styles.sourceButtonText, { color: colors.foreground }]}>Foto aufnehmen</Text>
+                <Text style={[styles.sourceButtonText, { color: colors.foreground }]}>{t('measure_take_photo' as any)}</Text>
               </Pressable>
               <Pressable style={[styles.sourceButton, { borderColor: colors.border }]} onPress={() => void addPhoto("library")}>
                 <MaterialIcons name="photo-library" size={22} color="#00ACC1" />
-                <Text style={[styles.sourceButtonText, { color: colors.foreground }]}>Aus Belegen/Fotos</Text>
+                <Text style={[styles.sourceButtonText, { color: colors.foreground }]}>{t('measure_from_records' as any)}</Text>
               </Pressable>
             </View>
 
@@ -339,7 +341,7 @@ export default function MeasureScreen() {
                   >
                     <Image source={{ uri: item.previewUri || item.originalUri }} style={styles.evidenceImage} contentFit="cover" />
                     <Text style={[styles.evidenceCaption, { color: colors.foreground }]} numberOfLines={2}>
-                      {item.findingText || (item.sourceType === "video_frame" ? "Videostandbild" : "Foto")}
+                      {item.findingText || (item.sourceType === "video_frame" ? t('measure_video_frame' as any) : t('measure_photo' as any))}
                     </Text>
                   </Pressable>
                 ))}
@@ -348,8 +350,8 @@ export default function MeasureScreen() {
 
             {selectedEvidence && (
               <>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Messstrecke einzeichnen</Text>
-                <Text style={[styles.helpText, { color: colors.muted }]}>Ziehen Sie eine Linie zwischen den beiden Messpunkten. Der eingegebene Wert stammt aus der gewählten Messmethode, nicht aus der Pixellänge allein.</Text>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_section_draw_line' as any)}</Text>
+                <Text style={[styles.helpText, { color: colors.muted }]}>{t('measure_help_text' as any)}</Text>
                 <GestureDetector gesture={drawingGesture}>
                   <View ref={canvasRef} collapsable={false} style={styles.canvas}>
                     <Image
@@ -373,11 +375,11 @@ export default function MeasureScreen() {
                   </View>
                 </GestureDetector>
 
-                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Befundtext für Dokumente</Text>
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_finding_label' as any)}</Text>
                 <TextInput
                   value={findingText}
                   onChangeText={setFindingText}
-                  placeholder="Zum Beispiel: Türbreite unterschreitet die Herstellervorgabe."
+                  placeholder={t('measure_finding_placeholder' as any)}
                   placeholderTextColor={colors.muted}
                   multiline
                   style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
@@ -385,7 +387,7 @@ export default function MeasureScreen() {
 
                 <View style={styles.valueRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Messwert</Text>
+                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_value' as any)}</Text>
                     <TextInput
                       value={value}
                       onChangeText={setValue}
@@ -396,7 +398,7 @@ export default function MeasureScreen() {
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Einheit</Text>
+                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_unit' as any)}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.chipRow}>
                         {UNITS.map((item) => (
@@ -409,31 +411,31 @@ export default function MeasureScreen() {
                   </View>
                 </View>
 
-                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Messmethode</Text>
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_method' as any)}</Text>
                 <View style={styles.methodGrid}>
                   {METHODS.map((item) => (
                     <Pressable key={item.value} onPress={() => setMethod(item.value)} style={[styles.methodCard, { borderColor: method === item.value ? "#00ACC1" : colors.border, backgroundColor: method === item.value ? "#00ACC118" : colors.surface }]}>
-                      <Text style={[styles.methodLabel, { color: method === item.value ? "#00ACC1" : colors.foreground }]}>{item.label}</Text>
-                      <Text style={[styles.methodDescription, { color: colors.muted }]}>{item.description}</Text>
+                      <Text style={[styles.methodLabel, { color: method === item.value ? "#00ACC1" : colors.foreground }]}>{t(item.label as any)}</Text>
+                      <Text style={[styles.methodDescription, { color: colors.muted }]}>{t(item.description as any)}</Text>
                     </Pressable>
                   ))}
                 </View>
 
-                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Toleranz (optional)</Text>
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_tolerance' as any)}</Text>
                 <TextInput
                   value={tolerance}
                   onChangeText={setTolerance}
                   keyboardType="decimal-pad"
-                  placeholder="Zum Beispiel 2"
+                  placeholder={t('measure_tolerance_placeholder' as any)}
                   placeholderTextColor={colors.muted}
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
                 />
 
-                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Messhinweis (optional)</Text>
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_note' as any)}</Text>
                 <TextInput
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Messgerät, Referenzmaß oder Randbedingungen"
+                  placeholder={t('measure_note_placeholder' as any)}
                   placeholderTextColor={colors.muted}
                   multiline
                   style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
@@ -443,8 +445,8 @@ export default function MeasureScreen() {
                   <MaterialIcons name={selectedMethod.accuracy === "estimated" ? "warning-amber" : "verified"} size={22} color={selectedMethod.accuracy === "estimated" ? colors.warning : "#00ACC1"} />
                   <Text style={[styles.qualityText, { color: colors.foreground }]}>
                     {selectedMethod.accuracy === "estimated"
-                      ? "Diese Messung wird in jedem Dokument deutlich als Schätzung gekennzeichnet."
-                      : `Qualitätsklasse: ${selectedMethod.accuracy === "verified" ? "verifiziert" : "kalibriert"}. Die angegebene Toleranz wird mit ausgegeben.`}
+                      ? t('measure_quality_estimate' as any)
+                      : `${t('measure_quality_prefix' as any)}${selectedMethod.accuracy === "verified" ? t('measure_quality_verified' as any) : t('measure_quality_calibrated' as any)}${t('measure_quality_suffix' as any)}`}
                   </Text>
                 </View>
 
@@ -454,7 +456,7 @@ export default function MeasureScreen() {
                   style={({ pressed }) => [styles.saveButton, { opacity: isSaving ? 0.5 : pressed ? 0.8 : 1 }]}
                 >
                   <MaterialIcons name="save" size={22} color="#FFFFFF" />
-                  <Text style={styles.saveButtonText}>{isSaving ? "Speichert…" : "Messbeleg speichern"}</Text>
+                  <Text style={styles.saveButtonText}>{isSaving ? t('measure_saving' as any) : t('measure_save_record' as any)}</Text>
                 </Pressable>
               </>
             )}

@@ -23,6 +23,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
+import { useTranslation } from "@/lib/language-provider";
 import {
   type Floor,
   type Room,
@@ -36,10 +37,10 @@ import {
 } from "@/lib/room-store";
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
-  nicht_begonnen: "Nicht begonnen",
-  in_arbeit: "In Arbeit",
-  fertig: "Fertig",
-  abgenommen: "Abgenommen",
+  nicht_begonnen: "rooms_status_nicht_begonnen",
+  in_arbeit: "rooms_status_in_arbeit",
+  fertig: "rooms_status_fertig",
+  abgenommen: "rooms_status_abgenommen",
 };
 
 const ROOM_STATUS_COLORS: Record<string, string> = {
@@ -50,6 +51,7 @@ const ROOM_STATUS_COLORS: Record<string, string> = {
 };
 
 export default function RoomsScreen() {
+  const { t } = useTranslation();
   const { projectId, projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
   const router = useRouter();
   const [floors, setFloors] = useState<Floor[]>([]);
@@ -110,11 +112,11 @@ export default function RoomsScreen() {
   const handleDeleteFloor = (floor: Floor) => {
     const floorRooms = rooms.filter(r => r.floorId === floor.id);
     Alert.alert(
-      "Geschoss löschen",
-      `"${floor.name}" und ${floorRooms.length} Räume löschen?`,
+      t('rooms_delete_floor_title' as any),
+      `"${floor.name}" ${t('rooms_delete_floor_connector' as any)} ${floorRooms.length} ${t('rooms_delete_floor_suffix' as any)}`,
       [
-        { text: "Abbrechen", style: "cancel" },
-        { text: "Löschen", style: "destructive", onPress: async () => {
+        { text: t('rooms_cancel' as any), style: "cancel" },
+        { text: t('rooms_delete' as any), style: "destructive", onPress: async () => {
           await deleteFloor(projectId!, floor.id);
           loadData();
         }},
@@ -124,11 +126,11 @@ export default function RoomsScreen() {
 
   const handleDeleteRoom = (room: Room) => {
     Alert.alert(
-      "Raum löschen",
-      `"${room.name}" löschen?`,
+      t('rooms_delete_room_title' as any),
+      `"${room.name}" ${t('rooms_delete_room_q' as any)}`,
       [
-        { text: "Abbrechen", style: "cancel" },
-        { text: "Löschen", style: "destructive", onPress: async () => {
+        { text: t('rooms_cancel' as any), style: "cancel" },
+        { text: t('rooms_delete' as any), style: "destructive", onPress: async () => {
           await deleteRoom(projectId!, room.id);
           loadData();
         }},
@@ -159,15 +161,15 @@ export default function RoomsScreen() {
             <MaterialIcons name="arrow-back" size={24} color="#F0F4F8" />
           </Pressable>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.title}>Räume & Geschosse</Text>
-            <Text style={styles.subtitle}>{projectName || "Projekt"}</Text>
+            <Text style={styles.title}>{t('rooms_title' as any)}</Text>
+            <Text style={styles.subtitle}>{projectName || t('rooms_project_fallback' as any)}</Text>
           </View>
           <Pressable
             onPress={() => setShowAddFloor(true)}
             style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="add" size={18} color="#5DADE2" />
-            <Text style={styles.addBtnText}>Geschoss</Text>
+            <Text style={styles.addBtnText}>{t('rooms_floor' as any)}</Text>
           </Pressable>
         </View>
 
@@ -175,15 +177,15 @@ export default function RoomsScreen() {
         <View style={styles.summary}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{floors.length}</Text>
-            <Text style={styles.summaryLabel}>Geschosse</Text>
+            <Text style={styles.summaryLabel}>{t('rooms_floors' as any)}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{totalRooms}</Text>
-            <Text style={styles.summaryLabel}>Räume</Text>
+            <Text style={styles.summaryLabel}>{t('rooms_rooms' as any)}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{completedRooms}/{totalRooms}</Text>
-            <Text style={styles.summaryLabel}>Fertig</Text>
+            <Text style={styles.summaryLabel}>{t('rooms_summary_done' as any)}</Text>
           </View>
         </View>
 
@@ -207,7 +209,7 @@ export default function RoomsScreen() {
                   color="#8FA3B8"
                 />
                 <Text style={styles.floorName}>{floor.name}</Text>
-                <Text style={styles.floorCount}>{floorRooms.length} Räume</Text>
+                <Text style={styles.floorCount}>{floorRooms.length} {t('rooms_rooms' as any)}</Text>
                 {floorRooms.length > 0 && (
                   <Text style={styles.floorProgress}>{floorDone}/{floorRooms.length}</Text>
                 )}
@@ -232,7 +234,7 @@ export default function RoomsScreen() {
                         </View>
                       </View>
                       <Text style={[styles.roomStatusText, { color: ROOM_STATUS_COLORS[room.status || "nicht_begonnen"] }]}>
-                        {ROOM_STATUS_LABELS[room.status || "nicht_begonnen"]}
+                        {t(ROOM_STATUS_LABELS[room.status || "nicht_begonnen"] as any)}
                       </Text>
                     </Pressable>
                   ))}
@@ -243,7 +245,7 @@ export default function RoomsScreen() {
                     style={({ pressed }) => [styles.addRoomBtn, { opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="add" size={16} color="#5DADE2" />
-                    <Text style={styles.addRoomBtnText}>Raum hinzufügen</Text>
+                    <Text style={styles.addRoomBtnText}>{t('rooms_add_room' as any)}</Text>
                   </Pressable>
                 </View>
               )}
@@ -254,8 +256,8 @@ export default function RoomsScreen() {
         {floors.length === 0 && (
           <View style={styles.empty}>
             <MaterialIcons name="apartment" size={48} color="#4A5568" />
-            <Text style={styles.emptyText}>Noch keine Geschosse angelegt</Text>
-            <Text style={styles.emptyHint}>Tippe oben auf &quot;+ Geschoss&quot; um zu beginnen</Text>
+            <Text style={styles.emptyText}>{t('rooms_empty_title' as any)}</Text>
+            <Text style={styles.emptyHint}>{t('rooms_empty_hint' as any)}</Text>
           </View>
         )}
       </ScrollView>
@@ -264,10 +266,10 @@ export default function RoomsScreen() {
       <Modal visible={showAddFloor} transparent animationType="fade">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Geschoss hinzufügen</Text>
+            <Text style={styles.modalTitle}>{t('rooms_add_floor_title' as any)}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Name (z.B. EG, 1. OG, UG)"
+              placeholder={t('rooms_floor_name_placeholder' as any)}
               placeholderTextColor="#6B7280"
               value={newFloorName}
               onChangeText={setNewFloorName}
@@ -277,7 +279,7 @@ export default function RoomsScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Nummer (Sortierung, z.B. 0, 1, 2)"
+              placeholder={t('rooms_floor_number_placeholder' as any)}
               placeholderTextColor="#6B7280"
               value={newFloorNumber}
               onChangeText={setNewFloorNumber}
@@ -287,10 +289,10 @@ export default function RoomsScreen() {
             />
             <View style={styles.modalActions}>
               <Pressable onPress={() => { Keyboard.dismiss(); setShowAddFloor(false); }} style={({ pressed }) => [styles.modalBtn, { opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={styles.modalBtnCancel}>Abbrechen</Text>
+                <Text style={styles.modalBtnCancel}>{t('rooms_cancel' as any)}</Text>
               </Pressable>
               <Pressable onPress={handleAddFloor} style={({ pressed }) => [styles.modalBtn, styles.modalBtnPrimary, { opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={styles.modalBtnPrimaryText}>Hinzufügen</Text>
+                <Text style={styles.modalBtnPrimaryText}>{t('rooms_add' as any)}</Text>
               </Pressable>
             </View>
           </View>
@@ -301,10 +303,10 @@ export default function RoomsScreen() {
       <Modal visible={showAddRoom} transparent animationType="fade">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Raum hinzufügen</Text>
+            <Text style={styles.modalTitle}>{t('rooms_add_room' as any)}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Name (z.B. Bad, Küche, Flur)"
+              placeholder={t('rooms_room_name_placeholder' as any)}
               placeholderTextColor="#6B7280"
               value={newRoomName}
               onChangeText={setNewRoomName}
@@ -314,7 +316,7 @@ export default function RoomsScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Nummer (z.B. EG 03) – optional"
+              placeholder={t('rooms_room_number_placeholder' as any)}
               placeholderTextColor="#6B7280"
               value={newRoomNumber}
               onChangeText={setNewRoomNumber}
@@ -324,15 +326,15 @@ export default function RoomsScreen() {
             <TradePicker
               value={newRoomTrade}
               onChange={setNewRoomTrade}
-              placeholder="Gewerk auswählen (optional)"
-              accessibilityLabel="Gewerk für den Raum auswählen"
+              placeholder={t('rooms_room_trade_placeholder' as any)}
+              accessibilityLabel={t('rooms_room_trade_a11y' as any)}
             />
             <View style={styles.modalActions}>
               <Pressable onPress={() => { Keyboard.dismiss(); setShowAddRoom(false); }} style={({ pressed }) => [styles.modalBtn, { opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={styles.modalBtnCancel}>Abbrechen</Text>
+                <Text style={styles.modalBtnCancel}>{t('rooms_cancel' as any)}</Text>
               </Pressable>
               <Pressable onPress={handleAddRoom} style={({ pressed }) => [styles.modalBtn, styles.modalBtnPrimary, { opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={styles.modalBtnPrimaryText}>Hinzufügen</Text>
+                <Text style={styles.modalBtnPrimaryText}>{t('rooms_add' as any)}</Text>
               </Pressable>
             </View>
           </View>

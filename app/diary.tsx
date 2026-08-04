@@ -131,7 +131,15 @@ export default function DiaryScreen() {
 
   const formatDate = (dateStr: string): string => {
     const d = new Date(dateStr + "T00:00:00");
-    const days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+    const days = [
+      t('diary_day_sun' as any),
+      t('diary_day_mon' as any),
+      t('diary_day_tue' as any),
+      t('diary_day_wed' as any),
+      t('diary_day_thu' as any),
+      t('diary_day_fri' as any),
+      t('diary_day_sat' as any),
+    ];
     return `${days[d.getDay()]}, ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   };
 
@@ -178,7 +186,7 @@ export default function DiaryScreen() {
         )}
         <View style={styles.entryStat}>
           <MaterialIcons name="list" size={14} color={colors.muted} />
-          <Text style={[styles.entryStatText, { color: colors.muted }]}>{item.trades?.length || item.activities.length} Gewerke</Text>
+          <Text style={[styles.entryStatText, { color: colors.muted }]}>{item.trades?.length || item.activities.length} {t('diary_gewerke' as any)}</Text>
         </View>
       </View>
 
@@ -206,7 +214,7 @@ export default function DiaryScreen() {
       <View style={[styles.summaryCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
         <MaterialIcons name="auto-stories" size={24} color={colors.primary} />
         <View style={styles.summaryText}>
-          <Text style={[styles.summaryTitle, { color: colors.foreground }]}>{entries.length} Einträge</Text>
+          <Text style={[styles.summaryTitle, { color: colors.foreground }]}>{entries.length} {t('diary_entries_label' as any)}</Text>
           <Text style={[styles.summarySubtitle, { color: colors.muted }]}>
             {entries.length > 0 ? t('letzter_eintrag').replace('{date}', formatDate(entries[0]?.date)) : t('noch_keine_eintraege')}
           </Text>
@@ -224,7 +232,7 @@ export default function DiaryScreen() {
             <MaterialIcons name="menu-book" size={48} color={colors.muted} />
             <Text style={[styles.emptyText, { color: colors.muted }]}>{t('noch_keine_eintraege')}</Text>
             <Text style={[styles.emptySubtext, { color: colors.muted }]}>
-              Erstelle tägliche Bautagebuch-Einträge oder lass sie automatisch aus Protokollen generieren
+              {t('diary_empty_subtext' as any)}
             </Text>
           </View>
         }
@@ -243,25 +251,25 @@ export default function DiaryScreen() {
 
                   {selectedEntry.weather && (
                     <Text style={[styles.detailSection, { color: colors.muted }]}>
-                      Wetter: {selectedEntry.weather.description}, {selectedEntry.weather.temperature}°C
+                      {t('diary_weather_prefix' as any)}{selectedEntry.weather.description}, {selectedEntry.weather.temperature}°C
                     </Text>
                   )}
 
                   {selectedEntry.workersOnSite != null && (
                     <Text style={[styles.detailSection, { color: colors.muted }]}>
-                      Arbeiter vor Ort: {selectedEntry.workersOnSite}
+                      {t('diary_workers_prefix' as any)}{selectedEntry.workersOnSite}
                     </Text>
                   )}
 
                   {selectedEntry.workHours && (
                     <Text style={[styles.detailSection, { color: colors.muted }]}>
-                      Arbeitszeit: {selectedEntry.workHours.from} – {selectedEntry.workHours.to}
+                      {t('diary_worktime_prefix' as any)}{selectedEntry.workHours.from} – {selectedEntry.workHours.to}
                     </Text>
                   )}
 
                   {selectedEntry.trades && selectedEntry.trades.length > 0 && (
                     <View style={styles.detailBlock}>
-                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>Gewerke</Text>
+                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>{t('diary_gewerke' as any)}</Text>
                       {selectedEntry.trades.map((trade) => (
                         <Text key={trade} style={[styles.detailItem, { color: colors.muted }]}>• {trade}</Text>
                       ))}
@@ -270,7 +278,7 @@ export default function DiaryScreen() {
 
                   {selectedEntry.activities.length > 0 && (
                     <View style={styles.detailBlock}>
-                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>Tätigkeitsdetails</Text>
+                      <Text style={[styles.detailLabel, { color: colors.foreground }]}>{t('diary_activity_details' as any)}</Text>
                       {selectedEntry.activities.map((a, i) => (
                         <Text key={i} style={[styles.detailItem, { color: colors.muted }]}>• {a}</Text>
                       ))}
@@ -376,13 +384,13 @@ export default function DiaryScreen() {
               </View>
             </View>
 
-            <Text style={[styles.formLabel, { color: colors.muted }]}>Gewerke</Text>
+            <Text style={[styles.formLabel, { color: colors.muted }]}>{t('diary_gewerke' as any)}</Text>
             <TradePicker
               value={tradeToAdd}
               onChange={addSelectedTrade}
-              placeholder="Gewerk hinzufügen"
+              placeholder={t('diary_add_trade' as any)}
               allowEmpty={false}
-              accessibilityLabel="Gewerk zum Tagebuch hinzufügen"
+              accessibilityLabel={t('diary_add_trade_a11y' as any)}
             />
             {selectedTrades.length > 0 && (
               <FlatList
@@ -405,10 +413,10 @@ export default function DiaryScreen() {
               />
             )}
 
-            <Text style={[styles.formLabel, { color: colors.muted }]}>Tätigkeitsdetails (optional, eine pro Zeile)</Text>
+            <Text style={[styles.formLabel, { color: colors.muted }]}>{t('diary_activity_details_hint' as any)}</Text>
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="z.B. Obergeschoss nivelliert"
+              placeholder={t('diary_activities_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={activities}
               onChangeText={setActivities}
@@ -420,7 +428,7 @@ export default function DiaryScreen() {
             <Text style={[styles.formLabel, { color: colors.muted }]}>{t('lieferungen_eine_pro_zeile')}</Text>
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="z.B. 5m³ Beton&#10;Fenster Lieferung"
+              placeholder={t('diary_deliveries_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={deliveries}
               onChangeText={setDeliveries}
@@ -432,7 +440,7 @@ export default function DiaryScreen() {
             <Text style={[styles.formLabel, { color: colors.muted }]}>{t('vorkommnisse')}</Text>
             <TextInput
               style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              placeholder="z.B. Wasserrohrbruch Keller"
+              placeholder={t('diary_incidents_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={incidents}
               onChangeText={setIncidents}
@@ -475,8 +483,8 @@ export default function DiaryScreen() {
       {Platform.OS === "ios" && (
         <InputAccessoryView nativeID={DIARY_INPUT_ACCESSORY_ID}>
           <View style={[styles.keyboardAccessory, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Pressable onPress={Keyboard.dismiss} accessibilityRole="button" accessibilityLabel="Tastatur schließen" style={styles.keyboardDoneButton}>
-              <Text style={[styles.keyboardDoneText, { color: colors.primary }]}>Fertig</Text>
+            <Pressable onPress={Keyboard.dismiss} accessibilityRole="button" accessibilityLabel={t('diary_close_keyboard' as any)} style={styles.keyboardDoneButton}>
+              <Text style={[styles.keyboardDoneText, { color: colors.primary }]}>{t('diary_done' as any)}</Text>
             </Pressable>
           </View>
         </InputAccessoryView>

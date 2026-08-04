@@ -8,6 +8,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { useColors } from "@/hooks/use-colors";
 import type { DocumentAnalysisResult } from "@/lib/document-ai";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
+import { useTranslation } from "@/lib/language-provider";
 
 interface DocumentAnalysisDetailProps {
   result: DocumentAnalysisResult | null;
@@ -34,7 +35,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function EmptyValue() {
   const colors = useColors();
-  return <Text style={[styles.emptyValue, { color: colors.muted }]}>Keine Angaben erkannt</Text>;
+  const { t } = useTranslation();
+  return <Text style={[styles.emptyValue, { color: colors.muted }]}>{t('document_analysis_detail_keine_angaben_erkannt' as any)}</Text>;
 }
 
 function TagList({ values }: { values: string[] }) {
@@ -70,17 +72,18 @@ function DataCard({ title, lines, accent = "#5CB8E6" }: { title: string; lines: 
 
 export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }: DocumentAnalysisDetailProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   if (!result) return null;
 
   const extractionLabel = result.extraction.method === "native_pdf_text"
-    ? "PDF-Textebene"
+    ? t('document_analysis_detail_pdf_textebene' as any)
     : result.extraction.method === "docx_xml"
-      ? "DOCX-Inhalt"
+      ? t('document_analysis_detail_docx_inhalt' as any)
       : result.extraction.method === "xlsx_xml"
-        ? "XLSX-Tabellen"
+        ? t('document_analysis_detail_xlsx_tabellen' as any)
         : result.extraction.method === "plain_text"
-          ? "Textdatei"
-          : "Bildanalyse";
+          ? t('document_analysis_detail_textdatei' as any)
+          : t('document_analysis_detail_bildanalyse' as any);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -88,9 +91,9 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerCopy}>
             <Text style={[styles.headerEyebrow, { color: colors.primary }]}>DOCUMENT AI</Text>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>Analyse-Ergebnis</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>{t('document_analysis_detail_analyse_ergebnis' as any)}</Text>
           </View>
-          <Pressable onPress={onClose} style={[styles.closeButton, { borderColor: colors.border }]} accessibilityLabel="Analyse schließen">
+          <Pressable onPress={onClose} style={[styles.closeButton, { borderColor: colors.border }]} accessibilityLabel={t('document_analysis_detail_analyse_schliessen' as any)}>
             <MaterialIcons name="close" size={24} color={colors.foreground} />
           </Pressable>
         </View>
@@ -104,23 +107,23 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
               <Text style={[styles.fileName, { color: colors.foreground }]}>{result.fileName}</Text>
               <Text style={[styles.fileMeta, { color: colors.muted }]}>
                 {result.fileType.toUpperCase()} · {extractionLabel}
-                {result.extraction.pageCount ? ` · ${result.extraction.pageCount} Seiten` : ""}
+                {result.extraction.pageCount ? ` · ${result.extraction.pageCount} ${t('document_analysis_detail_seiten' as any)}` : ""}
               </Text>
-              <Text style={[styles.fileMeta, { color: colors.muted }]}>Analysiert: {formatDate(result.analyzedAt)}</Text>
+              <Text style={[styles.fileMeta, { color: colors.muted }]}>{t('document_analysis_detail_analysiert' as any)}{formatDate(result.analyzedAt)}</Text>
             </View>
             <Pressable onPress={() => onOpenFile(result)} style={[styles.openFileButton, { borderColor: colors.primary }]}>
               <MaterialIcons name="open-in-new" size={18} color={colors.primary} />
-              <Text style={[styles.openFileText, { color: colors.primary }]}>Datei</Text>
+              <Text style={[styles.openFileText, { color: colors.primary }]}>{t('document_analysis_detail_datei' as any)}</Text>
             </Pressable>
           </View>
 
           <View style={[styles.statusCard, { borderColor: "#10B981", backgroundColor: "#10B98112" }]}>
             <MaterialIcons name="verified" size={22} color="#10B981" />
             <View style={styles.statusCopy}>
-              <Text style={[styles.statusTitle, { color: colors.foreground }]}>Analyse tatsächlich abgeschlossen</Text>
+              <Text style={[styles.statusTitle, { color: colors.foreground }]}>{t('document_analysis_detail_analyse_abgeschlossen' as any)}</Text>
               <Text style={[styles.statusMeta, { color: colors.muted }]}>
-                Confidence {result.overallConfidence}% · {(result.processingTime / 1000).toFixed(1)} Sekunden
-                {result.extraction.textLength ? ` · ${result.extraction.textLength.toLocaleString("de-DE")} Zeichen` : ""}
+                Confidence {result.overallConfidence}% · {(result.processingTime / 1000).toFixed(1)} {t('document_analysis_detail_sekunden' as any)}
+                {result.extraction.textLength ? ` · ${result.extraction.textLength.toLocaleString("de-DE")} ${t('document_analysis_detail_zeichen' as any)}` : ""}
               </Text>
             </View>
           </View>
@@ -136,54 +139,54 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             </View>
           )}
 
-          <Section title="Zusammenfassung">
+          <Section title={t('document_analysis_detail_zusammenfassung' as any)}>
             <Text style={[styles.summary, { color: colors.foreground }]}>{decodeUnicodeEscapes(result.summary)}</Text>
           </Section>
 
           <View style={styles.twoColumns}>
             <View style={styles.column}>
-              <Section title="Räume / Bereiche"><TagList values={result.rooms} /></Section>
+              <Section title={t('document_analysis_detail_raeume_bereiche' as any)}><TagList values={result.rooms} /></Section>
             </View>
             <View style={styles.column}>
-              <Section title="Gewerke"><TagList values={result.trades} /></Section>
+              <Section title={t('document_analysis_detail_gewerke' as any)}><TagList values={result.trades} /></Section>
             </View>
           </View>
 
-          <Section title={`Auffälligkeiten und Mängel (${result.defects.length})`}>
+          <Section title={`${t('document_analysis_detail_auffaelligkeiten_maengel' as any)} (${result.defects.length})`}>
             {result.defects.length === 0 ? <EmptyValue /> : result.defects.map((defect, index) => (
               <DataCard
                 key={`${defect.title}-${index}`}
                 title={defect.title}
                 accent="#EF4444"
-                lines={[defect.description || "", defect.location ? `Ort: ${defect.location}` : "", defect.trade ? `Gewerk: ${defect.trade}` : "", defect.severity ? `Bewertung: ${defect.severity}` : ""]}
+                lines={[defect.description || "", defect.location ? `${t('document_analysis_detail_ort' as any)}${defect.location}` : "", defect.trade ? `${t('document_analysis_detail_gewerk' as any)}${defect.trade}` : "", defect.severity ? `${t('document_analysis_detail_bewertung' as any)}${defect.severity}` : ""]}
               />
             ))}
           </Section>
 
-          <Section title={`Aufgaben und Maßnahmen (${result.tasks.length})`}>
+          <Section title={`${t('document_analysis_detail_aufgaben_massnahmen' as any)} (${result.tasks.length})`}>
             {result.tasks.length === 0 ? <EmptyValue /> : result.tasks.map((task, index) => (
               <DataCard
                 key={`${task.title}-${index}`}
                 title={task.title}
                 accent="#3B82F6"
-                lines={[task.description || "", task.trade ? `Gewerk: ${task.trade}` : "", task.deadline ? `Frist: ${task.deadline}` : "", task.assignedTo ? `Verantwortlich: ${task.assignedTo}` : ""]}
+                lines={[task.description || "", task.trade ? `${t('document_analysis_detail_gewerk' as any)}${task.trade}` : "", task.deadline ? `${t('document_analysis_detail_frist' as any)}${task.deadline}` : "", task.assignedTo ? `${t('document_analysis_detail_verantwortlich' as any)}${task.assignedTo}` : ""]}
               />
             ))}
           </Section>
 
-          <Section title={`Termine und Fristen (${result.appointments.length})`}>
+          <Section title={`${t('document_analysis_detail_termine_fristen' as any)} (${result.appointments.length})`}>
             {result.appointments.length === 0 ? <EmptyValue /> : result.appointments.map((appointment, index) => (
               <DataCard
                 key={`${appointment.title}-${index}`}
                 title={appointment.title}
                 accent="#8B5CF6"
-                lines={[`Datum: ${appointment.date}${appointment.time ? ` · ${appointment.time}` : ""}`, appointment.location ? `Ort: ${appointment.location}` : ""]}
+                lines={[`${t('document_analysis_detail_datum' as any)}${appointment.date}${appointment.time ? ` · ${appointment.time}` : ""}`, appointment.location ? `${t('document_analysis_detail_ort' as any)}${appointment.location}` : ""]}
               />
             ))}
           </Section>
 
           {(result.persons.length > 0 || result.companies.length > 0) && (
-            <Section title="Ansprechpartner und Firmen">
+            <Section title={t('document_analysis_detail_ansprechpartner_firmen' as any)}>
               {result.persons.map((person, index) => (
                 <DataCard key={`${person.name}-${index}`} title={person.name} lines={[person.role || "", person.company || ""]} accent="#06B6D4" />
               ))}
@@ -194,7 +197,7 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
           )}
 
           {(result.quantities.length > 0 || result.references.length > 0) && (
-            <Section title="Mengen und Referenzen">
+            <Section title={t('document_analysis_detail_mengen_referenzen' as any)}>
               {result.quantities.map((quantity, index) => (
                 <DataCard key={`${quantity.item}-${index}`} title={quantity.item} lines={[`${quantity.amount} ${quantity.unit}`]} accent="#F59E0B" />
               ))}
@@ -204,7 +207,7 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             </Section>
           )}
 
-          <Section title="Quellenstellen aus dem Dokument">
+          <Section title={t('document_analysis_detail_quellenstellen' as any)}>
             {result.sourceExcerpts.length === 0 ? <EmptyValue /> : result.sourceExcerpts.map((excerpt, index) => (
               <View key={`${excerpt}-${index}`} style={[styles.excerpt, { borderLeftColor: colors.primary, backgroundColor: colors.surface }]}>
                 <Text style={[styles.excerptNumber, { color: colors.primary }]}>{String(index + 1).padStart(2, "0")}</Text>

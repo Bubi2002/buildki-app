@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 type TagEditorProps = {
@@ -11,6 +12,7 @@ type TagEditorProps = {
 
 export function TagEditor({ tags, onTagsChange, suggestions = [] }: TagEditorProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState("");
 
   const addTag = (tag: string) => {
@@ -50,7 +52,7 @@ export function TagEditor({ tags, onTagsChange, suggestions = [] }: TagEditorPro
           value={inputValue}
           onChangeText={setInputValue}
           onSubmitEditing={() => addTag(inputValue)}
-          placeholder="Tag hinzufügen..."
+          placeholder={t('tag_editor_tag_hinzufuegen' as any)}
           placeholderTextColor={colors.muted}
           style={[styles.input, { color: colors.foreground }]}
           returnKeyType="done"

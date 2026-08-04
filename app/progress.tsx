@@ -10,6 +10,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   LAST_SELECTED_PROJECT_KEY,
   PROJECTS_STORAGE_KEY,
@@ -23,6 +24,7 @@ type ViewTab = "overview" | "rooms" | "trades";
 
 export default function ProgressScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string | string[] }>();
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null);
@@ -89,22 +91,22 @@ export default function ProgressScreen() {
   }, [calculate, projectId]);
 
   const statusColor = (s: string) => s === "completed" ? colors.success : s === "in_progress" ? colors.primary : s === "blocked" ? colors.error : colors.muted;
-  const statusLabel = (s: string) => s === "completed" ? "Fertig" : s === "in_progress" ? "In Arbeit" : s === "blocked" ? "Blockiert" : "Offen";
-  const phaseLabel = (p: string) => ({ rohbau: "Rohbau", ausbau_1: "Ausbau 1", ausbau_2: "Ausbau 2", ausbau_3: "Ausbau 3", fertigstellung: "Fertigstellung", abnahme: "Abnahme", unknown: "–" }[p] || p);
+  const statusLabel = (s: string) => s === "completed" ? t('progress_status_completed' as any) : s === "in_progress" ? t('progress_status_in_progress' as any) : s === "blocked" ? t('progress_status_blocked' as any) : t('progress_status_open' as any);
+  const phaseLabel = (p: string) => ({ rohbau: t('progress_phase_rohbau' as any), ausbau_1: t('progress_phase_ausbau_1' as any), ausbau_2: t('progress_phase_ausbau_2' as any), ausbau_3: t('progress_phase_ausbau_3' as any), fertigstellung: t('progress_phase_fertigstellung' as any), abnahme: t('progress_phase_abnahme' as any), unknown: "–" }[p] || p);
 
   if (loading) return (
     <ScreenContainer className="p-6">
-      <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /><Text style={[styles.loadingText, { color: colors.muted }]}>Fortschritt wird berechnet...</Text></View>
+      <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /><Text style={[styles.loadingText, { color: colors.muted }]}>{t('progress_calculating' as any)}</Text></View>
     </ScreenContainer>
   );
 
   if (!projectId) return (
     <ScreenContainer className="p-6">
       <View style={styles.centered}>
-        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Kein Projekt vorhanden</Text>
-        <Text style={[styles.emptyText, { color: colors.muted }]}>Lege zuerst ein Projekt an oder wähle eines in der Werkzeugübersicht.</Text>
+        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('progress_no_project_title' as any)}</Text>
+        <Text style={[styles.emptyText, { color: colors.muted }]}>{t('progress_no_project_text' as any)}</Text>
         <TouchableOpacity style={[styles.emptyAction, { borderColor: colors.primary }]} onPress={() => router.push("/(tabs)/projects" as any)}>
-          <Text style={[styles.emptyActionText, { color: colors.primary }]}>Projekte öffnen</Text>
+          <Text style={[styles.emptyActionText, { color: colors.primary }]}>{t('progress_open_projects' as any)}</Text>
         </TouchableOpacity>
       </View>
     </ScreenContainer>
@@ -122,7 +124,7 @@ export default function ProgressScreen() {
         <View style={[styles.barFill, { width: `${item.percent}%`, backgroundColor: statusColor(item.status) }]} />
       </View>
       <View style={styles.cardRow}>
-        <Text style={[styles.meta, { color: colors.muted }]}>{item.openDefects} Mängel · {item.openTasks} Aufgaben</Text>
+        <Text style={[styles.meta, { color: colors.muted }]}>{item.openDefects} {t('progress_defects_word' as any)} · {item.openTasks} {t('progress_tasks_word' as any)}</Text>
         <Text style={[styles.percent, { color: colors.foreground }]}>{item.percent}%</Text>
       </View>
     </View>
@@ -140,7 +142,7 @@ export default function ProgressScreen() {
         <View style={[styles.barFill, { width: `${item.percent}%`, backgroundColor: statusColor(item.status) }]} />
       </View>
       <View style={styles.cardRow}>
-        <Text style={[styles.meta, { color: colors.muted }]}>{item.completedTasks}/{item.totalTasks} Aufgaben · {item.openDefects} Mängel</Text>
+        <Text style={[styles.meta, { color: colors.muted }]}>{item.completedTasks}/{item.totalTasks} {t('progress_tasks_word' as any)} · {item.openDefects} {t('progress_defects_word' as any)}</Text>
         <Text style={[styles.percent, { color: colors.foreground }]}>{item.percent}%</Text>
       </View>
     </View>
@@ -151,9 +153,9 @@ export default function ProgressScreen() {
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}><Text style={{ color: colors.primary }}>← Zurück</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()}><Text style={{ color: colors.primary }}>{t('progress_back' as any)}</Text></TouchableOpacity>
           <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: colors.foreground }]}>Baufortschritt</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>{t('progress_title' as any)}</Text>
             <Text style={[styles.projectName, { color: colors.muted }]} numberOfLines={1}>{projectName}</Text>
           </View>
         </View>
@@ -163,16 +165,16 @@ export default function ProgressScreen() {
           <View style={[styles.overallCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.overallPercent, { color: colors.primary }]}>{snapshot.overallPercent}%</Text>
             <Text style={[styles.overallPhase, { color: colors.foreground }]}>{phaseLabel(snapshot.phase)}</Text>
-            <Text style={[styles.overallMeta, { color: colors.muted }]}>Konfidenz: {snapshot.confidence}% · {snapshot.dataPoints} Datenpunkte</Text>
+            <Text style={[styles.overallMeta, { color: colors.muted }]}>{t('progress_confidence' as any)}: {snapshot.confidence}% · {snapshot.dataPoints} {t('progress_datapoints' as any)}</Text>
           </View>
         )}
 
         {/* Tabs */}
         <View style={[styles.tabBar, { borderColor: colors.border }]}>
-          {(["overview", "rooms", "trades"] as ViewTab[]).map(t => (
-            <TouchableOpacity key={t} style={[styles.tab, activeTab === t && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => setActiveTab(t)}>
-              <Text style={[styles.tabText, { color: activeTab === t ? colors.primary : colors.muted }]}>
-                {t === "overview" ? "Übersicht" : t === "rooms" ? "Räume" : "Gewerke"}
+          {(["overview", "rooms", "trades"] as ViewTab[]).map(tab => (
+            <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]} onPress={() => setActiveTab(tab)}>
+              <Text style={[styles.tabText, { color: activeTab === tab ? colors.primary : colors.muted }]}>
+                {tab === "overview" ? t('progress_tab_overview' as any) : tab === "rooms" ? t('progress_tab_rooms' as any) : t('progress_tab_trades' as any)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -181,7 +183,7 @@ export default function ProgressScreen() {
         {/* Content */}
         {snapshot && activeTab === "overview" && (
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Geschosse</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('progress_floors' as any)}</Text>
             {snapshot.floorProgress.map((fp, i) => (
               <View key={i} style={[styles.floorRow, { borderColor: colors.border }]}>
                 <Text style={[styles.floorName, { color: colors.foreground }]}>{fp.floor}</Text>
@@ -195,9 +197,9 @@ export default function ProgressScreen() {
             ))}
             <View style={styles.statsRow}>
               {[
-                { n: snapshot.roomProgress.length, l: "Räume", c: colors.primary },
-                { n: snapshot.roomProgress.filter(r => r.status === "completed").length, l: "Fertig", c: colors.success },
-                { n: snapshot.roomProgress.filter(r => r.status === "blocked").length, l: "Blockiert", c: colors.error },
+                { n: snapshot.roomProgress.length, l: t('progress_tab_rooms' as any), c: colors.primary },
+                { n: snapshot.roomProgress.filter(r => r.status === "completed").length, l: t('progress_status_completed' as any), c: colors.success },
+                { n: snapshot.roomProgress.filter(r => r.status === "blocked").length, l: t('progress_status_blocked' as any), c: colors.error },
               ].map((s, i) => (
                 <View key={i} style={[styles.stat, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.statNum, { color: s.c }]}>{s.n}</Text>
@@ -215,7 +217,7 @@ export default function ProgressScreen() {
         )}
 
         <TouchableOpacity style={[styles.recalcBtn, { backgroundColor: colors.primary }]} onPress={onRefresh}>
-          <Text style={[styles.recalcText, { color: colors.background }]}>Neu berechnen</Text>
+          <Text style={[styles.recalcText, { color: colors.background }]}>{t('progress_recalculate' as any)}</Text>
         </TouchableOpacity>
       </ScrollView>
     </ScreenContainer>

@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   formatEvidenceTimecode,
   getEvidence,
@@ -25,6 +26,7 @@ import {
 
 export default function EvidenceManagerScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ protocolId?: string; projectId?: string }>();
   const [items, setItems] = useState<EvidenceItem[]>([]);
@@ -39,12 +41,12 @@ export default function EvidenceManagerScreen() {
       const protocol = protocols.find((item: any) => item.id === params.protocolId);
       const projectId = params.projectId || protocol?.projectId;
       if (!protocol || !projectId) {
-        throw new Error("Protokoll oder Projekt konnte nicht ermittelt werden.");
+        throw new Error(t('evidence_manager_protocol_project_error' as any));
       }
       const evidence = (await getEvidence(projectId))
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
       const readyEvidence = evidence.filter(isEvidenceDocumentReady);
-      setProtocolTitle(protocol.title || "Dokument");
+      setProtocolTitle(protocol.title || t('evidence_manager_document' as any));
       setItems(evidence);
       setSelectedIds(
         Array.isArray(protocol.evidenceIds)
@@ -53,13 +55,13 @@ export default function EvidenceManagerScreen() {
       );
     } catch (error) {
       Alert.alert(
-        "Belege nicht verfügbar",
-        error instanceof Error ? error.message : "Die Belegauswahl konnte nicht geladen werden.",
+        t('evidence_manager_receipts_unavailable' as any),
+        error instanceof Error ? error.message : t('evidence_manager_load_failed' as any),
       );
     } finally {
       setLoading(false);
     }
-  }, [params.projectId, params.protocolId]);
+  }, [params.projectId, params.protocolId, t]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -81,17 +83,17 @@ export default function EvidenceManagerScreen() {
 
   async function approveEvidence(item: EvidenceItem) {
     if (!item.findingText?.trim()) {
-      Alert.alert("Befundtext erforderlich", "Bitte erfassen Sie vor der Freigabe einen eindeutigen Befundtext am Beleg.");
+      Alert.alert(t('evidence_manager_finding_required' as any), t('evidence_manager_finding_required_msg' as any));
       return;
     }
     if (item.mediaQuality === "insufficient") {
-      Alert.alert("Bildqualität unzureichend", "Dieser Beleg kann nicht freigegeben werden. Bitte erzeugen Sie ein neues, schärferes Standbild oder Foto.");
+      Alert.alert(t('evidence_manager_quality_insufficient' as any), t('evidence_manager_quality_insufficient_msg' as any));
       return;
     }
     const updated = await updateEvidence(item.id, {
       reviewStatus: "approved",
       mediaQuality: "suitable",
-      reviewNote: "Vom Nutzer visuell geprüft und für Dokumente freigegeben.",
+      reviewNote: t('evidence_manager_review_note' as any),
     });
     if (!updated) return;
     setItems((current) => current.map((candidate) => candidate.id === updated.id ? updated : candidate));
@@ -104,7 +106,7 @@ export default function EvidenceManagerScreen() {
     try {
       const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
       const protocolIndex = protocols.findIndex((item: any) => item.id === params.protocolId);
-      if (protocolIndex < 0) throw new Error("Protokoll wurde nicht gefunden.");
+      if (protocolIndex < 0) throw new Error(t('evidence_manager_protocol_not_found' as any));
       protocols[protocolIndex] = {
         ...protocols[protocolIndex],
         evidenceIds: selectedIds,
@@ -112,14 +114,14 @@ export default function EvidenceManagerScreen() {
       };
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
       Alert.alert(
-        "Belegauswahl gespeichert",
-        `${selectedIds.length} Beleg${selectedIds.length === 1 ? "" : "e"} werden in allen neu erzeugten Dokumentvarianten dieses Protokolls verwendet.`,
-        [{ text: "Fertig", onPress: () => router.back() }],
+        t('evidence_manager_selection_saved' as any),
+        `${selectedIds.length} ${selectedIds.length === 1 ? t('evidence_manager_receipt_one' as any) : t('evidence_manager_receipt_many' as any)} ${t('evidence_manager_used_in_variants' as any)}`,
+        [{ text: t('evidence_manager_done' as any), onPress: () => router.back() }],
       );
     } catch (error) {
       Alert.alert(
-        "Speichern fehlgeschlagen",
-        error instanceof Error ? error.message : "Die Belegauswahl konnte nicht gespeichert werden.",
+        t('evidence_manager_save_failed' as any),
+        error instanceof Error ? error.message : t('evidence_manager_save_failed_msg' as any),
       );
     } finally {
       setSaving(false);
@@ -129,17 +131,17 @@ export default function EvidenceManagerScreen() {
   return (
     <ScreenContainer className="p-0">
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} accessibilityLabel="Belegauswahl schließen">
+        <Pressable onPress={() => router.back()} accessibilityLabel={t('evidence_manager_close_selection' as any)}>
           <MaterialIcons name="arrow-back" size={26} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Belege auswählen</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t('evidence_manager_select_receipts' as any)}</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]} numberOfLines={1}>
-            {protocolTitle || "Dokument"}
+            {protocolTitle || t('evidence_manager_document' as any)}
           </Text>
         </View>
         <Pressable onPress={() => void saveSelection()} disabled={saving} style={[styles.saveHeader, { opacity: saving ? 0.5 : 1 }]}>
-          <Text style={styles.saveHeaderText}>Speichern</Text>
+          <Text style={styles.saveHeaderText}>{t('evidence_manager_save' as any)}</Text>
         </Pressable>
       </View>
 
@@ -152,9 +154,9 @@ export default function EvidenceManagerScreen() {
           <View style={[styles.explanation, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <MaterialIcons name="verified" size={24} color="#00ACC1" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.explanationTitle, { color: colors.foreground }]}>Dokumentübergreifende Belegauswahl</Text>
+              <Text style={[styles.explanationTitle, { color: colors.foreground }]}>{t('evidence_manager_cross_document_title' as any)}</Text>
               <Text style={[styles.explanationText, { color: colors.muted }]}>
-                Ausgewählte Fotos, Videostandbilder und Messungen bleiben mit ihrem Befund, Zeitcode und Quellenmedium verknüpft. Nicht ausgewählte Belege werden nicht in neue Dokumentversionen übernommen.
+                {t('evidence_manager_cross_document_text' as any)}
               </Text>
             </View>
           </View>
@@ -165,21 +167,21 @@ export default function EvidenceManagerScreen() {
               style={[styles.actionButton, { borderColor: colors.border }]}
             >
               <MaterialIcons name={selectedIds.length === readyItems.length ? "deselect" : "select-all"} size={18} color="#00ACC1" />
-              <Text style={[styles.actionText, { color: colors.foreground }]}>{selectedIds.length === readyItems.length ? "Keine" : "Alle freigegebenen"}</Text>
+              <Text style={[styles.actionText, { color: colors.foreground }]}>{selectedIds.length === readyItems.length ? t('evidence_manager_none' as any) : t('evidence_manager_all_approved' as any)}</Text>
             </Pressable>
             <Pressable onPress={() => router.push("/measure" as any)} style={[styles.actionButton, { borderColor: colors.border }]}>
               <MaterialIcons name="straighten" size={18} color="#00ACC1" />
-              <Text style={[styles.actionText, { color: colors.foreground }]}>Messen</Text>
+              <Text style={[styles.actionText, { color: colors.foreground }]}>{t('evidence_manager_measure' as any)}</Text>
             </Pressable>
           </View>
 
-          <Text style={[styles.count, { color: colors.muted }]}>{selectedIds.length} von {readyItems.length} freigegebenen Belegen ausgewählt · {items.length - readyItems.length} in Prüfung</Text>
+          <Text style={[styles.count, { color: colors.muted }]}>{selectedIds.length} {t('evidence_manager_of' as any)} {readyItems.length} {t('evidence_manager_selected_of_approved' as any)} {items.length - readyItems.length} {t('evidence_manager_in_review' as any)}</Text>
 
           {items.length === 0 ? (
             <View style={[styles.empty, { borderColor: colors.border }]}>
               <MaterialIcons name="image-not-supported" size={34} color={colors.muted} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Keine freigegebenen Belege</Text>
-              <Text style={[styles.emptyText, { color: colors.muted }]}>Erstellen oder prüfen Sie zunächst Fotos, Videostandbilder oder Messbelege.</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('evidence_manager_no_approved_receipts' as any)}</Text>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>{t('evidence_manager_empty_text' as any)}</Text>
             </View>
           ) : (
             <View style={styles.grid}>
@@ -205,14 +207,14 @@ export default function EvidenceManagerScreen() {
                       <MaterialIcons name={selected ? "check" : ready ? "add" : "hourglass-top"} size={16} color="#FFFFFF" />
                     </View>
                     <Text style={[styles.finding, { color: colors.foreground }]} numberOfLines={3}>
-                      {item.findingText || "Beleg ohne Befundtext"}
+                      {item.findingText || t('evidence_manager_no_finding_text' as any)}
                     </Text>
                     <Text style={[styles.meta, { color: colors.muted }]} numberOfLines={2}>
                       {item.sourceType === "video_frame"
-                        ? `Video${timecode ? ` · ${timecode}` : ""}`
+                        ? `${t('evidence_manager_video' as any)}${timecode ? ` · ${timecode}` : ""}`
                         : item.measurements?.length
-                          ? `${item.measurements.length} Messung${item.measurements.length === 1 ? "" : "en"}`
-                          : "Foto"}
+                          ? `${item.measurements.length} ${item.measurements.length === 1 ? t('evidence_manager_measurement_one' as any) : t('evidence_manager_measurement_many' as any)}`
+                          : t('evidence_manager_photo' as any)}
                     </Text>
                     {!ready && item.reviewStatus !== "rejected" && (
                       <Pressable
@@ -220,7 +222,7 @@ export default function EvidenceManagerScreen() {
                         style={styles.approveButton}
                       >
                         <MaterialIcons name="verified" size={15} color="#FFFFFF" />
-                        <Text style={styles.approveButtonText}>Prüfen & freigeben</Text>
+                        <Text style={styles.approveButtonText}>{t('evidence_manager_review_release' as any)}</Text>
                       </Pressable>
                     )}
                   </Pressable>

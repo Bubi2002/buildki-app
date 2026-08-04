@@ -62,7 +62,7 @@ export default function PdfBrandingScreen() {
       if (isAvailable) {
         await Sharing.shareAsync(filePath, {
           mimeType: "application/json",
-          dialogTitle: "PDF-Branding exportieren",
+          dialogTitle: t('pdf_branding_export_dialog_title' as any),
         });
       }
     } catch  {
@@ -242,7 +242,7 @@ export default function PdfBrandingScreen() {
           <TextInput
             value={branding.headerText}
             onChangeText={(v) => updateField("headerText", v)}
-            placeholder="z.B. Baustellenprotokoll - Vertraulich"
+            placeholder={t('pdf_branding_headertext_placeholder' as any)}
             placeholderTextColor={colors.muted}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           />
@@ -251,7 +251,7 @@ export default function PdfBrandingScreen() {
           <TextInput
             value={branding.footerText}
             onChangeText={(v) => updateField("footerText", v)}
-            placeholder="z.B. Erstellt mit BuildKI"
+            placeholder={t('pdf_branding_footertext_placeholder' as any)}
             placeholderTextColor={colors.muted}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           />
@@ -355,7 +355,7 @@ export default function PdfBrandingScreen() {
                     <MaterialIcons name="business" size={20} color={colors.muted} />
                   </View>
                 )}
-                <Text style={{ fontSize: 10, color: colors.muted, marginBottom: 4 }}>{branding.companyName || "Firmenname"}</Text>
+                <Text style={{ fontSize: 10, color: colors.muted, marginBottom: 4 }}>{branding.companyName || t('firmenname')}</Text>
                 <View style={{ width: 60, height: 2, backgroundColor: branding.accentColor || colors.primary, marginVertical: 6, borderRadius: 1 }} />
                 <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, textAlign: "center" }}>{t('baustellenbericht')}</Text>
                 <Text style={{ fontSize: 10, color: colors.muted, marginTop: 4 }}>{t('project_name')}</Text>
@@ -387,7 +387,7 @@ export default function PdfBrandingScreen() {
                 placeholderTextColor={colors.muted}
                 style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
               />
-              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>z. B. &quot;Vertraulich&quot; oder &quot;Entwurf&quot; – für Standard leer lassen</Text>
+              <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{t('pdf_branding_wasserzeichen_hint' as any)}</Text>
             </View>
           )}
         </View>
@@ -400,7 +400,7 @@ export default function PdfBrandingScreen() {
           <TextInput
             value={branding.defaultEmailAddress || ""}
             onChangeText={(v) => updateField("defaultEmailAddress", v)}
-            placeholder="z.B. info@firma.de, bauleiter@firma.de"
+            placeholder={t('pdf_branding_email_addresses_placeholder' as any)}
             placeholderTextColor={colors.muted}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -422,20 +422,20 @@ export default function PdfBrandingScreen() {
             />
           </View>
 
-          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 16 }]}>E-Mail-Betreff (Platzhalter: {'{vorlage}'}, {'{titel}'}, {'{datum}'}, {'{projekt}'})</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 16 }]}>{t('pdf_branding_email_betreff_hint' as any)}</Text>
           <TextInput
             value={branding.emailSubjectTemplate || ""}
             onChangeText={(v) => updateField("emailSubjectTemplate", v)}
-            placeholder="z.B. {vorlage} - {titel}"
+            placeholder={t('pdf_branding_email_betreff_placeholder' as any)}
             placeholderTextColor={colors.muted}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           />
 
-          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>E-Mail-Text (Platzhalter: {'{vorlage}'}, {'{titel}'}, {'{datum}'}, {'{projekt}'})</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>{t('pdf_branding_email_text_hint' as any)}</Text>
           <TextInput
             value={branding.emailBodyTemplate || ""}
             onChangeText={(v) => updateField("emailBodyTemplate", v)}
-            placeholder={'Anbei das Protokoll "{titel}" vom {datum}.\n\nMit freundlichen Gr\u00fc\u00dfen'}
+            placeholder={t('pdf_branding_email_text_placeholder' as any)}
             placeholderTextColor={colors.muted}
             multiline
             numberOfLines={4}
@@ -446,7 +446,7 @@ export default function PdfBrandingScreen() {
           <TextInput
             value={branding.emailCc || ""}
             onChangeText={(v) => updateField("emailCc", v)}
-            placeholder="z.B. bauleiter@firma.de"
+            placeholder={t('pdf_branding_cc_placeholder' as any)}
             placeholderTextColor={colors.muted}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -457,7 +457,7 @@ export default function PdfBrandingScreen() {
           <TextInput
             value={branding.emailBcc || ""}
             onChangeText={(v) => updateField("emailBcc", v)}
-            placeholder="z.B. archiv@firma.de"
+            placeholder={t('pdf_branding_bcc_placeholder' as any)}
             placeholderTextColor={colors.muted}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -471,11 +471,11 @@ export default function PdfBrandingScreen() {
           <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('schema_fuer_den_pdfdateinamen')}</Text>
 
           {([
-            { key: "project_date_nr" as FilenameSchema, label: "Projekt_Datum_Nr", example: "Baustelle_2026-06-15_BST-004" },
-            { key: "nr_project_date" as FilenameSchema, label: "Nr_Projekt_Datum", example: "BST-004_Baustelle_2026-06-15" },
-            { key: "date_project_nr" as FilenameSchema, label: "Datum_Projekt_Nr", example: "2026-06-15_Baustelle_BST-004" },
-            { key: "project_nr" as FilenameSchema, label: "Projekt_Nr", example: "Baustelle_BST-004" },
-            { key: "date_nr" as FilenameSchema, label: "Datum_Nr", example: "2026-06-15_BST-004" },
+            { key: "project_date_nr" as FilenameSchema, label: t('pdf_branding_schema_project_date_nr' as any), example: "Baustelle_2026-06-15_BST-004" },
+            { key: "nr_project_date" as FilenameSchema, label: t('pdf_branding_schema_nr_project_date' as any), example: "BST-004_Baustelle_2026-06-15" },
+            { key: "date_project_nr" as FilenameSchema, label: t('pdf_branding_schema_date_project_nr' as any), example: "2026-06-15_Baustelle_BST-004" },
+            { key: "project_nr" as FilenameSchema, label: t('pdf_branding_schema_project_nr' as any), example: "Baustelle_BST-004" },
+            { key: "date_nr" as FilenameSchema, label: t('pdf_branding_schema_date_nr' as any), example: "2026-06-15_BST-004" },
           ]).map((schema) => (
             <Pressable
               key={schema.key}
@@ -513,7 +513,7 @@ export default function PdfBrandingScreen() {
             { key: "standard" as PdfTemplate, label: t('pdf_standard'), desc: t('pdf_standard_desc'), icon: "description" as const },
             { key: "compact" as PdfTemplate, label: t('pdf_kompakt'), desc: t('pdf_kompakt_desc'), icon: "compress" as const },
             { key: "detailed" as PdfTemplate, label: t('pdf_detailliert'), desc: t('pdf_detailliert_desc'), icon: "article" as const },
-            { key: "no_photos" as PdfTemplate, label: "Ohne Fotos", desc: "Nur Text, Aufgaben und Metadaten – kein Bildmaterial", icon: "text-snippet" as const },
+            { key: "no_photos" as PdfTemplate, label: t('pdf_branding_ohne_fotos' as any), desc: t('pdf_branding_ohne_fotos_desc' as any), icon: "text-snippet" as const },
           ]).map((template) => (
             <Pressable
               key={template.key}
@@ -631,10 +631,10 @@ export default function PdfBrandingScreen() {
           {/* Header Preview */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
             {branding.logoUri && <View style={{ width: 30, height: 20, backgroundColor: "#e5e7eb", borderRadius: 3 }} />}
-            <Text style={{ fontSize: 11, fontWeight: "700", color: "#1a1a1a" }}>{branding.companyName || "Firmenname"}</Text>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: "#1a1a1a" }}>{branding.companyName || t('firmenname')}</Text>
           </View>
           {(branding.headerText || branding.showProjectName) && (
-            <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText || "Projekt"}</Text>
+            <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText || t('pdf_branding_projekt_fallback' as any)}</Text>
           )}
           <View style={{ height: 2, backgroundColor: branding.accentColor, marginVertical: 8, borderRadius: 0 }} />
           {/* Content placeholder */}
@@ -646,7 +646,7 @@ export default function PdfBrandingScreen() {
           {/* Footer Preview */}
           <View style={{ height: 1, backgroundColor: "#e5e7eb", marginBottom: 6 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 8, color: "#999" }}>{branding.footerText || "Erstellt mit BuildKI"}</Text>
+            <Text style={{ fontSize: 8, color: "#999" }}>{branding.footerText || t('pdf_branding_erstellt_mit_buildki' as any)}</Text>
             <Text style={{ fontSize: 8, color: "#999" }}>
               {branding.showDate ? "15.06.2026" : ""}{branding.showDate && branding.showPageNumbers ? " | " : ""}{branding.showPageNumbers ? "Seite 1 / 3" : ""}
             </Text>

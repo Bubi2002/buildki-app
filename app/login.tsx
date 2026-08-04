@@ -20,8 +20,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import * as Auth from "@/lib/_core/auth";
 import { apiCall } from "@/lib/_core/api";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +32,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      Alert.alert("Fehler", "Bitte E-Mail und Passwort eingeben.");
+      Alert.alert(t('login_error_title' as any), t('login_error_email_password_required' as any));
       return;
     }
 
@@ -72,8 +74,8 @@ export default function LoginScreen() {
         router.replace("/(tabs)" as any);
       }
     } catch (e: any) {
-      const msg = e?.message || "Anmeldung fehlgeschlagen. Bitte prüfe deine Zugangsdaten.";
-      Alert.alert("Fehler", msg);
+      const msg = e?.message || t('login_error_failed' as any);
+      Alert.alert(t('login_error_title' as any), msg);
     } finally {
       setLoading(false);
     }
@@ -95,18 +97,18 @@ export default function LoginScreen() {
               <MaterialIcons name="architecture" size={40} color="#5DADE2" />
             </View>
             <Text style={styles.brandTitle}>BuildKI</Text>
-            <Text style={styles.brandSubtitle}>Willkommen zurück</Text>
+            <Text style={styles.brandSubtitle}>{t('login_welcome_back' as any)}</Text>
           </View>
 
           {/* Form */}
           <View style={styles.formSection}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>E-Mail-Adresse</Text>
+              <Text style={styles.label}>{t('login_email_label' as any)}</Text>
               <View style={styles.inputContainer}>
                 <MaterialIcons name="email" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="name@firma.de"
+                  placeholder={t('login_email_placeholder' as any)}
                   placeholderTextColor="#4A5568"
                   value={email}
                   onChangeText={setEmail}
@@ -119,12 +121,12 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Passwort</Text>
+              <Text style={styles.label}>{t('login_password_label' as any)}</Text>
               <View style={styles.inputContainer}>
                 <MaterialIcons name="lock" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Passwort eingeben"
+                  placeholder={t('login_password_placeholder' as any)}
                   placeholderTextColor="#4A5568"
                   value={password}
                   onChangeText={setPassword}
@@ -147,7 +149,7 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.loginBtnText}>Anmelden</Text>
+                <Text style={styles.loginBtnText}>{t('login_sign_in' as any)}</Text>
               )}
             </TouchableOpacity>
 
@@ -155,13 +157,13 @@ export default function LoginScreen() {
               onPress={() => router.push("/forgot-password" as any)}
               style={{ alignItems: "center", marginTop: 12 }}
             >
-              <Text style={styles.registerLink}>Passwort vergessen?</Text>
+              <Text style={styles.registerLink}>{t('login_forgot_password' as any)}</Text>
             </TouchableOpacity>
 
             <View style={styles.registerRow}>
-              <Text style={styles.registerText}>Noch kein Konto? </Text>
+              <Text style={styles.registerText}>{t('login_no_account' as any)}</Text>
               <TouchableOpacity onPress={() => router.push("/register" as any)}>
-                <Text style={styles.registerLink}>Jetzt registrieren</Text>
+                <Text style={styles.registerLink}>{t('login_register_now' as any)}</Text>
               </TouchableOpacity>
             </View>
           </View>

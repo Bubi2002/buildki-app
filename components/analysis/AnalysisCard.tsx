@@ -8,6 +8,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 export interface AnalysisData {
   id: string;
@@ -31,6 +32,7 @@ interface AnalysisCardProps {
 
 export function AnalysisCard({ analysis, projectName }: AnalysisCardProps) {
   const colors = useColors();
+  const { t } = useTranslation();
 
   const formatTimestamp = (ts: string) => {
     try {
@@ -53,11 +55,11 @@ export function AnalysisCard({ analysis, projectName }: AnalysisCardProps) {
 
   const getSourceLabel = (source: string): string => {
     switch (source) {
-      case "photo": return "Foto-Analyse";
+      case "photo": return t('AnalysisCard_foto_analyse' as any);
       case "matterport": return "Matterport";
-      case "ifc": return "IFC-Modell";
-      case "document": return "Dokument";
-      default: return "KI-Analyse";
+      case "ifc": return t('AnalysisCard_ifc_modell' as any);
+      case "document": return t('AnalysisCard_dokument' as any);
+      default: return t('AnalysisCard_ki_analyse' as any);
     }
   };
 
@@ -90,24 +92,24 @@ export function AnalysisCard({ analysis, projectName }: AnalysisCardProps) {
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Text style={[styles.statValue, { color: colors.primary }]}>{analysis.progressPercent}%</Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>Fortschritt</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t('AnalysisCard_fortschritt' as any)}</Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
           <Text style={[styles.statValue, { color: colors.error }]}>{analysis.defectCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>Mängel</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t('maengel')}</Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
           <Text style={[styles.statValue, { color: colors.warning }]}>{analysis.taskCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.muted }]}>Aufgaben</Text>
+          <Text style={[styles.statLabel, { color: colors.muted }]}>{t('AnalysisCard_aufgaben' as any)}</Text>
         </View>
       </View>
 
       {/* Observations */}
       {analysis.observations.length > 0 && (
         <View style={styles.observations}>
-          <Text style={[styles.observationsTitle, { color: colors.muted }]}>Beobachtungen:</Text>
+          <Text style={[styles.observationsTitle, { color: colors.muted }]}>{t('AnalysisCard_beobachtungen' as any)}</Text>
           {analysis.observations.slice(0, 3).map((obs, i) => (
             <View key={i} style={styles.observationItem}>
               <Text style={[styles.bullet, { color: colors.primary }]}>•</Text>
@@ -116,7 +118,7 @@ export function AnalysisCard({ analysis, projectName }: AnalysisCardProps) {
           ))}
           {analysis.observations.length > 3 && (
             <Text style={[styles.moreText, { color: colors.muted }]}>
-              +{analysis.observations.length - 3} weitere
+              +{analysis.observations.length - 3} {t('AnalysisCard_weitere' as any)}
             </Text>
           )}
         </View>

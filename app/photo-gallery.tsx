@@ -89,7 +89,7 @@ export default function PhotoGalleryScreen() {
             uri,
             source: "protocol",
             protocolId: protocol.id,
-            protocolTitle: protocol.title || "Ohne Titel",
+            protocolTitle: protocol.title || t('photo_gallery_untitled' as any),
             date: protocol.createdAt,
             index,
           });
@@ -101,7 +101,7 @@ export default function PhotoGalleryScreen() {
           id: photo.id,
           uri: photo.uri,
           source: photo.source,
-          protocolTitle: photo.description || "Direktes Projektfoto",
+          protocolTitle: photo.description || t('photo_gallery_direct_project_photo' as any),
           date: photo.createdAt,
           directPhoto: photo,
         });
@@ -110,7 +110,7 @@ export default function PhotoGalleryScreen() {
       allPhotos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setPhotos(allPhotos);
     } catch {
-      Alert.alert("Fehler", "Die Projektfotos konnten nicht geladen werden.");
+      Alert.alert(t('photo_gallery_error_title' as any), t('photo_gallery_load_failed' as any));
     }
   }
 
@@ -119,10 +119,10 @@ export default function PhotoGalleryScreen() {
     source: DirectProjectPhotoSource,
   ) => {
     if (!projectId) {
-      Alert.alert("Kein Projekt", "Bitte zuerst ein Projekt auswählen.");
+      Alert.alert(t('photo_gallery_no_project_title' as any), t('photo_gallery_no_project_select' as any));
       return;
     }
-    const projectName = project?.name || "Projekt";
+    const projectName = project?.name || t('photo_gallery_project_fallback' as any);
     for (const asset of assets) {
       await persistDirectProjectPhoto({
         projectId,
@@ -144,7 +144,7 @@ export default function PhotoGalleryScreen() {
       try {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert("Kamerazugriff erforderlich", "Bitte den Kamerazugriff für BuildKI in den iPhone-Einstellungen erlauben.");
+          Alert.alert(t('photo_gallery_camera_permission_title' as any), t('photo_gallery_camera_permission_msg' as any));
           return;
         }
         const result = await ImagePicker.launchCameraAsync({
@@ -169,7 +169,7 @@ export default function PhotoGalleryScreen() {
       try {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert("Fotozugriff erforderlich", "Bitte den Fotozugriff für BuildKI in den iPhone-Einstellungen erlauben.");
+          Alert.alert(t('photo_gallery_photo_permission_title' as any), t('photo_gallery_photo_permission_msg' as any));
           return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -208,7 +208,7 @@ export default function PhotoGalleryScreen() {
     if (updated) {
       setSelectedPhoto({
         ...selectedPhoto,
-        protocolTitle: updated.description || "Direktes Projektfoto",
+        protocolTitle: updated.description || t('photo_gallery_direct_project_photo' as any),
         directPhoto: updated,
       });
       await loadPhotos();
@@ -221,12 +221,12 @@ export default function PhotoGalleryScreen() {
   const confirmDelete = () => {
     if (!selectedPhoto?.directPhoto) return;
     Alert.alert(
-      "Projektfoto löschen",
-      "Dieses direkt gespeicherte Projektfoto wird vom Gerät entfernt. Protokollfotos bleiben unverändert.",
+      t('photo_gallery_delete_photo_title' as any),
+      t('photo_gallery_delete_photo_msg' as any),
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('photo_gallery_cancel' as any), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('photo_gallery_delete' as any),
           style: "destructive",
           onPress: async () => {
             await deleteDirectProjectPhoto(selectedPhoto.id);
@@ -240,15 +240,15 @@ export default function PhotoGalleryScreen() {
 
   const exportProjectPhotos = () => {
     if (photos.length === 0) {
-      Alert.alert("Keine Fotos", "Bitte zuerst ein Projektfoto aufnehmen oder importieren.");
+      Alert.alert(t('photo_gallery_no_photos_title' as any), t('photo_gallery_no_photos_msg' as any));
       return;
     }
     router.push({
       pathname: "/cloud-photo-export",
       params: {
         photos: JSON.stringify(photos.map((photo) => photo.uri)),
-        protocolTitle: "Projektfotos",
-        projectName: project?.name || "Projekt",
+        protocolTitle: t('photo_gallery_project_photos_title' as any),
+        projectName: project?.name || t('photo_gallery_project_fallback' as any),
         protocolDate: new Date().toISOString().split("T")[0],
       },
     } as any);
@@ -302,7 +302,7 @@ export default function PhotoGalleryScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Zurück"
+            accessibilityLabel={t('photo_gallery_back' as any)}
             onPress={() => router.back()}
             style={({ pressed }) => [{ marginRight: 12, opacity: pressed ? 0.5 : 1 }]}
           >
@@ -310,11 +310,11 @@ export default function PhotoGalleryScreen() {
           </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t("gallery_title")}</Text>
-            <Text style={{ fontSize: 13, color: colors.muted }}>{project?.name || "Projekt"} · {photos.length} Fotos</Text>
+            <Text style={{ fontSize: 13, color: colors.muted }}>{project?.name || t('photo_gallery_project_fallback' as any)} · {photos.length} {t('photo_gallery_photos_label' as any)}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Alle Projektfotos exportieren"
+            accessibilityLabel={t('photo_gallery_export_all' as any)}
             disabled={photos.length === 0}
             onPress={exportProjectPhotos}
             style={({ pressed }) => [{
@@ -335,7 +335,7 @@ export default function PhotoGalleryScreen() {
         <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: 12 }}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Foto direkt mit der Kamera aufnehmen"
+            accessibilityLabel={t('photo_gallery_capture_a11y' as any)}
             disabled={isImporting || !projectId}
             onPress={capturePhoto}
             style={({ pressed }) => [{
@@ -353,11 +353,11 @@ export default function PhotoGalleryScreen() {
             }]}
           >
             <MaterialIcons name="photo-camera" size={20} color="#FFFFFF" />
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>FOTO AUFNEHMEN</Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>{t('photo_gallery_capture_btn' as any)}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Fotos aus der Galerie hinzufügen"
+            accessibilityLabel={t('photo_gallery_import_a11y' as any)}
             disabled={isImporting || !projectId}
             onPress={importPhotos}
             style={({ pressed }) => [{
@@ -379,7 +379,7 @@ export default function PhotoGalleryScreen() {
             ) : (
               <MaterialIcons name="photo-library" size={20} color={colors.primary} />
             )}
-            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "800" }}>GALERIE</Text>
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "800" }}>{t('photo_gallery_gallery_btn' as any)}</Text>
           </Pressable>
         </View>
 
@@ -419,7 +419,7 @@ export default function PhotoGalleryScreen() {
               <MaterialIcons name="photo-library" size={64} color={colors.border} />
               <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginTop: 16 }}>{t("gallery_no_photos")}</Text>
               <Text style={{ fontSize: 14, color: colors.muted, marginTop: 6, textAlign: "center" }}>
-                {filterMonth ? "Keine Fotos in diesem Monat." : "Nehmen Sie direkt ein Projektfoto auf oder wählen Sie vorhandene Bilder aus der Galerie."}
+                {filterMonth ? t('photo_gallery_empty_month' as any) : t('photo_gallery_empty_hint' as any)}
               </Text>
             </View>
           )}
@@ -462,7 +462,7 @@ export default function PhotoGalleryScreen() {
           >
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Foto schließen"
+              accessibilityLabel={t('photo_gallery_close_photo' as any)}
               onPress={closePhoto}
               style={({ pressed }) => [{ position: "absolute", top: 56, right: 20, zIndex: 10, width: 44, height: 44, borderRadius: 0, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 }]}
             >
@@ -487,18 +487,18 @@ export default function PhotoGalleryScreen() {
                     {new Date(selectedPhoto.date).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </Text>
                   <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, marginTop: 4 }}>
-                    {selectedPhoto.source === "protocol" ? "Quelle: Protokollaufnahme" : selectedPhoto.source === "camera" ? "Quelle: Direkte Kameraaufnahme" : "Quelle: Galerieimport"}
+                    {selectedPhoto.source === "protocol" ? t('photo_gallery_source_protocol' as any) : selectedPhoto.source === "camera" ? t('photo_gallery_source_camera' as any) : t('photo_gallery_source_library' as any)}
                   </Text>
 
                   {selectedPhoto.directPhoto && (
                     <View style={{ marginTop: 18, gap: 10 }}>
                       <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }} numberOfLines={1}>
-                        Originaldatei: {selectedPhoto.directPhoto.originalFileName}
+                        {t('photo_gallery_original_file' as any)}{selectedPhoto.directPhoto.originalFileName}
                       </Text>
                       <TextInput
                         value={description}
                         onChangeText={setDescription}
-                        placeholder="Beschreibung (optional)"
+                        placeholder={t('photo_gallery_description_placeholder' as any)}
                         placeholderTextColor="rgba(255,255,255,0.45)"
                         multiline
                         style={{ minHeight: 76, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 0, color: "#FFFFFF", padding: 12, textAlignVertical: "top" }}
@@ -506,13 +506,13 @@ export default function PhotoGalleryScreen() {
                       <TradePicker
                         value={trade}
                         onChange={setTrade}
-                        placeholder="Gewerk auswählen (optional)"
-                        accessibilityLabel="Gewerk für das Projektfoto auswählen"
+                        placeholder={t('photo_gallery_trade_placeholder' as any)}
+                        accessibilityLabel={t('photo_gallery_trade_a11y' as any)}
                       />
                       <TextInput
                         value={location}
                         onChangeText={setLocation}
-                        placeholder="Ort oder Raum (optional)"
+                        placeholder={t('photo_gallery_location_placeholder' as any)}
                         placeholderTextColor="rgba(255,255,255,0.45)"
                         returnKeyType="done"
                         style={{ minHeight: 48, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 0, color: "#FFFFFF", paddingHorizontal: 12 }}
@@ -520,19 +520,19 @@ export default function PhotoGalleryScreen() {
                       <View style={{ flexDirection: "row", gap: 10 }}>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel="Projektfoto löschen"
+                          accessibilityLabel={t('photo_gallery_delete_photo_title' as any)}
                           onPress={confirmDelete}
                           style={({ pressed }) => [{ flex: 1, minHeight: 48, borderWidth: 1, borderColor: "#EF4444", borderRadius: 0, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}
                         >
-                          <Text style={{ color: "#EF4444", fontSize: 13, fontWeight: "800" }}>LÖSCHEN</Text>
+                          <Text style={{ color: "#EF4444", fontSize: 13, fontWeight: "800" }}>{t('photo_gallery_delete_btn' as any)}</Text>
                         </Pressable>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel="Fotodaten speichern"
+                          accessibilityLabel={t('photo_gallery_save_a11y' as any)}
                           onPress={saveMetadata}
                           style={({ pressed }) => [{ flex: 2, minHeight: 48, backgroundColor: colors.primary, borderRadius: 0, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.75 : 1 }]}
                         >
-                          <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>DATEN SPEICHERN</Text>
+                          <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>{t('photo_gallery_save_btn' as any)}</Text>
                         </Pressable>
                       </View>
                     </View>

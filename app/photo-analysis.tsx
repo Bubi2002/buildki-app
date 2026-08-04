@@ -29,6 +29,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
 
 // Reusable analysis components
@@ -102,6 +103,7 @@ interface AnalysisResult {
 
 export default function PhotoAnalysisScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ autoPhotos?: string; projectId?: string; roomName?: string }>();
 
@@ -132,8 +134,8 @@ export default function PhotoAnalysisScreen() {
   });
 
   const showUndoToast = (savedId: string, type: "defect" | "task", title: string) => {
-    const label = type === "defect" ? "Mangel" : "Aufgabe";
-    setUndoToast({ visible: true, message: `${label} \u00fcbernommen`, itemId: savedId, itemType: type });
+    const label = type === "defect" ? t('photo_analysis_defect_label' as any) : t('photo_analysis_task_label' as any);
+    setUndoToast({ visible: true, message: `${label} ${t('photo_analysis_adopted_suffix' as any)}`, itemId: savedId, itemType: type });
   };
 
   const handleUndo = async () => {
@@ -186,7 +188,7 @@ export default function PhotoAnalysisScreen() {
   const pickPhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Berechtigung erforderlich", "Bitte erlaube den Zugriff auf die Fotobibliothek.");
+      Alert.alert(t('photo_analysis_permission_required' as any), t('photo_analysis_permission_library' as any));
       return;
     }
 
@@ -215,7 +217,7 @@ export default function PhotoAnalysisScreen() {
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Berechtigung erforderlich", "Bitte erlaube den Zugriff auf die Kamera.");
+      Alert.alert(t('photo_analysis_permission_required' as any), t('photo_analysis_permission_camera' as any));
       return;
     }
 
@@ -309,7 +311,7 @@ export default function PhotoAnalysisScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch  {
-      Alert.alert("Fehler", "Mangel konnte nicht gespeichert werden.");
+      Alert.alert(t('photo_analysis_error_title' as any), t('photo_analysis_defect_save_failed' as any));
     }
   };
 
@@ -348,7 +350,7 @@ export default function PhotoAnalysisScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch  {
-      Alert.alert("Fehler", "Aufgabe konnte nicht gespeichert werden.");
+      Alert.alert(t('photo_analysis_error_title' as any), t('photo_analysis_task_save_failed' as any));
     }
   };
 
@@ -405,7 +407,7 @@ export default function PhotoAnalysisScreen() {
 
   const handleAddManualDefect = () => {
     if (!manualTitle.trim()) {
-      Alert.alert("Fehler", "Bitte einen Titel eingeben.");
+      Alert.alert(t('photo_analysis_error_title' as any), t('photo_analysis_enter_title' as any));
       return;
     }
     const newDefect = {
@@ -431,10 +433,10 @@ export default function PhotoAnalysisScreen() {
 
   const getSeverityLabel = (severity: string): string => {
     switch (severity) {
-      case "critical": return "Kritisch";
-      case "major": return "Schwer";
-      case "minor": return "Leicht";
-      case "cosmetic": return "Kosmetisch";
+      case "critical": return t('photo_analysis_severity_critical' as any);
+      case "major": return t('photo_analysis_severity_major' as any);
+      case "minor": return t('photo_analysis_severity_minor' as any);
+      case "cosmetic": return t('photo_analysis_severity_cosmetic' as any);
       default: return severity;
     }
   };
@@ -459,13 +461,13 @@ export default function PhotoAnalysisScreen() {
 
       // Summary section
       sections.push({
-        title: "Analyseergebnis",
+        title: t('photo_analysis_pdf_result_title' as any),
         content: [
-          `**Projekt:** ${activeProject?.name || "Unbekannt"}`,
-          roomName ? `**Raum:** ${roomName}` : "",
-          `**Datum:** ${new Date().toLocaleDateString("de-DE")}`,
-          `**Fotos analysiert:** ${photos.length}`,
-          result ? `**Baufortschritt:** ${result.progress.overallPercent}%` : "",
+          `**${t('photo_analysis_pdf_label_project' as any)}:** ${activeProject?.name || t('photo_analysis_pdf_unknown' as any)}`,
+          roomName ? `**${t('photo_analysis_pdf_label_room' as any)}:** ${roomName}` : "",
+          `**${t('photo_analysis_pdf_label_date' as any)}:** ${new Date().toLocaleDateString("de-DE")}`,
+          `**${t('photo_analysis_pdf_label_photos_analyzed' as any)}:** ${photos.length}`,
+          result ? `**${t('photo_analysis_pdf_label_progress' as any)}:** ${result.progress.overallPercent}%` : "",
           result ? `\n${result.summary}` : "",
         ].filter(Boolean).join("\n"),
       });
@@ -473,15 +475,15 @@ export default function PhotoAnalysisScreen() {
       // KI-detected defects
       if (result && result.defects.length > 0) {
         sections.push({
-          title: "KI-erkannte Mängel",
-          content: `Insgesamt **${result.defects.length} Mängel** durch KI-Analyse erkannt.`,
+          title: t('photo_analysis_pdf_ai_defects_title' as any),
+          content: `${t('photo_analysis_pdf_total' as any)} **${result.defects.length} ${t('photo_analysis_pdf_defects_word' as any)}** ${t('photo_analysis_pdf_by_ai_recognized' as any)}`,
         });
         for (const defect of result.defects) {
-          let content = `**Schweregrad:** ${getSeverityLabel(defect.severity)}\n`;
-          if (defect.trade) content += `**Gewerk:** ${defect.trade}\n`;
-          if (defect.location) content += `**Ort:** ${defect.location}\n`;
+          let content = `**${t('photo_analysis_pdf_label_severity' as any)}:** ${getSeverityLabel(defect.severity)}\n`;
+          if (defect.trade) content += `**${t('photo_analysis_pdf_label_trade' as any)}:** ${defect.trade}\n`;
+          if (defect.location) content += `**${t('photo_analysis_pdf_label_location' as any)}:** ${defect.location}\n`;
           content += `\n${defect.description}`;
-          if (defect.suggestedAction) content += `\n\n**Maßnahme:** ${defect.suggestedAction}`;
+          if (defect.suggestedAction) content += `\n\n**${t('photo_analysis_pdf_label_action' as any)}:** ${defect.suggestedAction}`;
           sections.push({ title: defect.title, content });
         }
       }
@@ -489,11 +491,11 @@ export default function PhotoAnalysisScreen() {
       // Manual defects
       if (manualDefects.length > 0) {
         sections.push({
-          title: "Manuell erfasste Mängel",
-          content: `Insgesamt **${manualDefects.length} Mängel** manuell hinzugefügt.`,
+          title: t('photo_analysis_pdf_manual_defects_title' as any),
+          content: `${t('photo_analysis_pdf_total' as any)} **${manualDefects.length} ${t('photo_analysis_pdf_defects_word' as any)}** ${t('photo_analysis_pdf_manually_added' as any)}`,
         });
         for (const defect of manualDefects) {
-          let content = `**Schweregrad:** ${getSeverityLabel(defect.severity)}\n`;
+          let content = `**${t('photo_analysis_pdf_label_severity' as any)}:** ${getSeverityLabel(defect.severity)}\n`;
           content += `\n${defect.description}`;
           sections.push({ title: defect.title, content });
         }
@@ -502,22 +504,22 @@ export default function PhotoAnalysisScreen() {
       // Tasks
       if (result && result.tasks.length > 0) {
         sections.push({
-          title: "Aufgaben",
-          content: `Insgesamt **${result.tasks.length} Aufgaben** erkannt.`,
+          title: t('photo_analysis_pdf_tasks_title' as any),
+          content: `${t('photo_analysis_pdf_total' as any)} **${result.tasks.length} ${t('photo_analysis_pdf_tasks_word' as any)}** ${t('photo_analysis_pdf_recognized' as any)}`,
         });
         for (const task of result.tasks) {
-          let content = `**Priorität:** ${task.priority}\n`;
-          if (task.trade) content += `**Gewerk:** ${task.trade}\n`;
-          if (task.estimatedDuration) content += `**Geschätzte Dauer:** ${task.estimatedDuration}\n`;
+          let content = `**${t('photo_analysis_pdf_label_priority' as any)}:** ${task.priority}\n`;
+          if (task.trade) content += `**${t('photo_analysis_pdf_label_trade' as any)}:** ${task.trade}\n`;
+          if (task.estimatedDuration) content += `**${t('photo_analysis_pdf_label_duration' as any)}:** ${task.estimatedDuration}\n`;
           content += `\n${task.description}`;
           sections.push({ title: task.title, content });
         }
       }
 
       const options: ProfessionalPdfOptions = {
-        title: activeProject?.name || "Bildanalyse-Bericht",
-        subtitle: roomName ? `Raum: ${roomName}` : "KI-Bildanalyse",
-        reportType: "Bildanalyse-Bericht",
+        title: activeProject?.name || t('photo_analysis_pdf_report_title' as any),
+        subtitle: roomName ? `${t('photo_analysis_pdf_label_room' as any)}: ${roomName}` : t('photo_analysis_pdf_subtitle_default' as any),
+        reportType: t('photo_analysis_pdf_report_title' as any),
         datum: new Date().toLocaleDateString("de-DE"),
         sections,
         companyInfo: companyInfo || undefined,
@@ -527,7 +529,7 @@ export default function PhotoAnalysisScreen() {
 
       await generateAndSharePdf(options);
     } catch (error: any) {
-      Alert.alert("Export-Fehler", error.message || "PDF-Export fehlgeschlagen");
+      Alert.alert(t('photo_analysis_export_error_title' as any), error.message || t('photo_analysis_pdf_export_failed' as any));
     } finally {
       setIsExportingPdf(false);
     }
@@ -537,11 +539,11 @@ export default function PhotoAnalysisScreen() {
 
   const runAnalysis = async () => {
     if (photos.length === 0) {
-      Alert.alert("Keine Fotos", "Bitte wähle mindestens ein Foto aus.");
+      Alert.alert(t('photo_analysis_no_photos_title' as any), t('photo_analysis_no_photos_message' as any));
       return;
     }
     if (!activeProject) {
-      Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt im Tools-Tab aus.");
+      Alert.alert(t('photo_analysis_no_project_title' as any), t('photo_analysis_no_project_message' as any));
       return;
     }
 
@@ -595,8 +597,8 @@ export default function PhotoAnalysisScreen() {
 
     } catch (error: any) {
       Alert.alert(
-        "Analyse fehlgeschlagen",
-        error.message || "Die KI-Analyse konnte nicht durchgeführt werden. Bitte versuche es erneut."
+        t('photo_analysis_analysis_failed_title' as any),
+        error.message || t('photo_analysis_analysis_failed_message' as any)
       );
     } finally {
       setIsAnalyzing(false);
@@ -611,7 +613,7 @@ export default function PhotoAnalysisScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>KI-Bildanalyse</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('photo_analysis_header_title' as any)}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -628,9 +630,9 @@ export default function PhotoAnalysisScreen() {
 
         {/* Photo Selection */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fotos auswählen</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('photo_analysis_select_photos' as any)}</Text>
           <Text style={[styles.sectionHint, { color: colors.muted }]}>
-            Bis zu 5 Baustellenfotos für die KI-Analyse
+            {t('photo_analysis_select_photos_hint' as any)}
           </Text>
 
           {/* Photo Grid */}
@@ -661,7 +663,7 @@ export default function PhotoAnalysisScreen() {
                 ]}
               >
                 <MaterialIcons name="photo-library" size={22} color={colors.primary} />
-                <Text style={[styles.addPhotoText, { color: colors.foreground }]}>Galerie</Text>
+                <Text style={[styles.addPhotoText, { color: colors.foreground }]}>{t('photo_analysis_gallery' as any)}</Text>
               </Pressable>
               <Pressable
                 onPress={takePhoto}
@@ -671,7 +673,7 @@ export default function PhotoAnalysisScreen() {
                 ]}
               >
                 <MaterialIcons name="camera-alt" size={22} color={colors.primary} />
-                <Text style={[styles.addPhotoText, { color: colors.foreground }]}>Kamera</Text>
+                <Text style={[styles.addPhotoText, { color: colors.foreground }]}>{t('photo_analysis_camera' as any)}</Text>
               </Pressable>
             </View>
           )}
@@ -692,12 +694,12 @@ export default function PhotoAnalysisScreen() {
           {isAnalyzing ? (
             <>
               <ActivityIndicator size="small" color="#FFF" />
-              <Text style={styles.analyzeButtonText}>Analysiere...</Text>
+              <Text style={styles.analyzeButtonText}>{t('photo_analysis_analyzing' as any)}</Text>
             </>
           ) : (
             <>
               <MaterialIcons name="auto-awesome" size={20} color="#FFF" />
-              <Text style={styles.analyzeButtonText}>KI-Analyse starten</Text>
+              <Text style={styles.analyzeButtonText}>{t('photo_analysis_start_analysis' as any)}</Text>
             </>
           )}
         </Pressable>
@@ -723,14 +725,14 @@ export default function PhotoAnalysisScreen() {
             {/* Progress Card */}
             <ProgressCard
               progress={result.progress as ProgressData}
-              source="Foto"
+              source={t('photo_analysis_source_photo' as any)}
             />
 
             {/* ─── Defects Section ─────────────────────────────────────────── */}
             {result.defects.length > 0 && (
               <View style={styles.adoptionSection}>
                 <ReviewCard
-                  itemType="Mängel"
+                  itemType={t('photo_analysis_item_defects' as any)}
                   totalCount={result.defects.length}
                   adoptedCount={adoptedDefects.size}
                   dismissedCount={dismissedDefects.size}
@@ -755,7 +757,7 @@ export default function PhotoAnalysisScreen() {
             {result.tasks.length > 0 && (
               <View style={styles.adoptionSection}>
                 <ReviewCard
-                  itemType="Aufgaben"
+                  itemType={t('photo_analysis_item_tasks' as any)}
                   totalCount={result.tasks.length}
                   adoptedCount={adoptedTasks.size}
                   dismissedCount={dismissedTasks.size}
@@ -781,7 +783,7 @@ export default function PhotoAnalysisScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <MaterialIcons name="edit-note" size={20} color={colors.foreground} />
-                  <Text style={[styles.manualSectionTitle, { color: colors.foreground }]}>Eigene Mängel</Text>
+                  <Text style={[styles.manualSectionTitle, { color: colors.foreground }]}>{t('photo_analysis_own_defects' as any)}</Text>
                 </View>
                 <Pressable
                   onPress={() => setShowManualEntry(!showManualEntry)}
@@ -789,7 +791,7 @@ export default function PhotoAnalysisScreen() {
                 >
                   <MaterialIcons name={showManualEntry ? "close" : "add"} size={18} color="#FFF" />
                   <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>
-                    {showManualEntry ? "Abbrechen" : "Hinzufügen"}
+                    {showManualEntry ? t('photo_analysis_cancel' as any) : t('photo_analysis_add' as any)}
                   </Text>
                 </Pressable>
               </View>
@@ -799,7 +801,7 @@ export default function PhotoAnalysisScreen() {
                   <TextInput
                     value={manualTitle}
                     onChangeText={setManualTitle}
-                    placeholder="Mangel-Titel *"
+                    placeholder={t('photo_analysis_defect_title_placeholder' as any)}
                     placeholderTextColor={colors.muted}
                     style={[styles.manualInput, { color: colors.foreground, borderColor: colors.border }]}
                     returnKeyType="next"
@@ -807,7 +809,7 @@ export default function PhotoAnalysisScreen() {
                   <TextInput
                     value={manualDescription}
                     onChangeText={setManualDescription}
-                    placeholder="Beschreibung (optional)"
+                    placeholder={t('photo_analysis_description_placeholder' as any)}
                     placeholderTextColor={colors.muted}
                     style={[styles.manualInput, styles.manualTextArea, { color: colors.foreground, borderColor: colors.border }]}
                     multiline
@@ -834,7 +836,7 @@ export default function PhotoAnalysisScreen() {
                     style={({ pressed }) => [styles.saveManualBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                   >
                     <MaterialIcons name="check" size={18} color="#FFF" />
-                    <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>Mangel speichern</Text>
+                    <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>{t('photo_analysis_save_defect' as any)}</Text>
                   </Pressable>
                 </View>
               )}
@@ -858,7 +860,7 @@ export default function PhotoAnalysisScreen() {
 
               {manualDefects.length === 0 && !showManualEntry && (
                 <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 8 }}>
-                  Keine manuellen Mängel hinzugefügt
+                  {t('photo_analysis_no_manual_defects' as any)}
                 </Text>
               )}
             </View>
@@ -875,12 +877,12 @@ export default function PhotoAnalysisScreen() {
               {isExportingPdf ? (
                 <>
                   <ActivityIndicator size="small" color="#FFF" />
-                  <Text style={styles.exportButtonText}>PDF wird erstellt...</Text>
+                  <Text style={styles.exportButtonText}>{t('photo_analysis_pdf_creating' as any)}</Text>
                 </>
               ) : (
                 <>
                   <MaterialIcons name="picture-as-pdf" size={22} color="#FFF" />
-                  <Text style={styles.exportButtonText}>Als PDF exportieren</Text>
+                  <Text style={styles.exportButtonText}>{t('photo_analysis_export_pdf' as any)}</Text>
                 </>
               )}
             </Pressable>

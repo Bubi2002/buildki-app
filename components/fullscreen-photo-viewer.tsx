@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 
 import { ZoomableCanvas } from "@/components/zoomable-canvas";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
+import { useTranslation } from "@/lib/language-provider";
 
 type FullscreenPhotoViewerProps = {
   visible: boolean;
@@ -21,6 +22,7 @@ export function FullscreenPhotoViewer({
   title,
   onClose,
 }: FullscreenPhotoViewerProps) {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(() => (
     Math.min(Math.max(0, initialIndex), Math.max(0, photos.length - 1))
@@ -49,19 +51,19 @@ export function FullscreenPhotoViewer({
           <Pressable
             onPress={onClose}
             accessibilityRole="button"
-            accessibilityLabel="Fotoansicht schließen"
+            accessibilityLabel={t('fullscreen_photo_viewer_close_photo_view' as any)}
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
           >
             <MaterialIcons name="close" size={28} color="#FFFFFF" />
           </Pressable>
           <View style={styles.titleGroup}>
             <Text style={styles.title} numberOfLines={1}>{decodeUnicodeEscapes(title)}</Text>
-            <Text style={styles.counter}>Foto {activeIndex + 1} von {photos.length}</Text>
+            <Text style={styles.counter}>{t('fullscreen_photo_viewer_photo' as any)} {activeIndex + 1} {t('fullscreen_photo_viewer_of' as any)} {photos.length}</Text>
           </View>
           <Pressable
             onPress={() => setResetKey((value) => value + 1)}
             accessibilityRole="button"
-            accessibilityLabel="Fotozoom zurücksetzen"
+            accessibilityLabel={t('fullscreen_photo_viewer_reset_zoom' as any)}
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
           >
             <MaterialIcons name="fit-screen" size={24} color="#FFFFFF" />
@@ -92,7 +94,7 @@ export function FullscreenPhotoViewer({
           ) : null}
           {loading && uri ? (
             <View pointerEvents="none" style={styles.loadingBadge}>
-              <Text style={styles.loadingText}>Foto wird geladen …</Text>
+              <Text style={styles.loadingText}>{t('fullscreen_photo_viewer_loading' as any)}</Text>
             </View>
           ) : null}
         </View>
@@ -102,21 +104,21 @@ export function FullscreenPhotoViewer({
             disabled={activeIndex <= 0}
             onPress={() => showPhoto(activeIndex - 1)}
             accessibilityRole="button"
-            accessibilityLabel="Vorheriges Foto"
+            accessibilityLabel={t('fullscreen_photo_viewer_prev_photo' as any)}
             style={({ pressed }) => [styles.navButton, activeIndex <= 0 && styles.disabled, pressed && styles.pressed]}
           >
             <MaterialIcons name="chevron-left" size={24} color="#FFFFFF" />
-            <Text style={styles.navText}>Zurück</Text>
+            <Text style={styles.navText}>{t('fullscreen_photo_viewer_back' as any)}</Text>
           </Pressable>
-          <Text style={styles.hint}>Zwei Finger zum Zoomen · Doppeltipp zum Vergrößern</Text>
+          <Text style={styles.hint}>{t('fullscreen_photo_viewer_zoom_hint' as any)}</Text>
           <Pressable
             disabled={activeIndex >= photos.length - 1}
             onPress={() => showPhoto(activeIndex + 1)}
             accessibilityRole="button"
-            accessibilityLabel="Nächstes Foto"
+            accessibilityLabel={t('fullscreen_photo_viewer_next_photo' as any)}
             style={({ pressed }) => [styles.navButton, activeIndex >= photos.length - 1 && styles.disabled, pressed && styles.pressed]}
           >
-            <Text style={styles.navText}>Weiter</Text>
+            <Text style={styles.navText}>{t('fullscreen_photo_viewer_next' as any)}</Text>
             <MaterialIcons name="chevron-right" size={24} color="#FFFFFF" />
           </Pressable>
         </View>

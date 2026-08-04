@@ -31,6 +31,7 @@ import { getWeatherForLocation, type WeatherData } from "@/lib/weather-service";
 import { getCurrentLocation } from "@/lib/location-service";
 import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 type BautagebuchEntry = {
   id: string;
@@ -48,6 +49,7 @@ type BautagebuchEntry = {
 const BAUTAGEBUCH_KEY = "bautagebuch_entries";
 
 export default function BautagebuchScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [entries, setEntries] = useState<BautagebuchEntry[]>([]);
@@ -200,7 +202,7 @@ export default function BautagebuchScreen() {
       setManualNotes("");
       setShowNoteInput(false);
     } catch (error: any) {
-      Alert.alert("Fehler", `Bautagebuch konnte nicht erstellt werden: ${error.message}`);
+      Alert.alert(t('alert_fehler'), `${t('bautagebuch_generate_error' as any)}${error.message}`);
     } finally {
       setGenerating(false);
     }
@@ -211,19 +213,19 @@ export default function BautagebuchScreen() {
     try {
       await Share.share({
         message: entry.fullReport,
-        title: `Bautagebuch ${entry.date}`,
+        title: `${t('bautagebuch')} ${entry.date}`,
       });
     } catch {}
   };
 
   const handleDelete = (entry: BautagebuchEntry) => {
     Alert.alert(
-      "Löschen",
-      `Bautagebuch vom ${new Date(entry.date).toLocaleDateString("de-DE")} wirklich löschen?`,
+      t('btn_loeschen'),
+      `${t('bautagebuch_delete_confirm_a' as any)}${new Date(entry.date).toLocaleDateString("de-DE")}${t('bautagebuch_delete_confirm_b' as any)}`,
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Löschen",
+          text: t('btn_loeschen'),
           style: "destructive",
           onPress: async () => {
             const updated = entries.filter(e => e.id !== entry.id);
@@ -259,7 +261,7 @@ export default function BautagebuchScreen() {
           <View className="flex-row gap-3 mb-4">
             {selectedEntry.weather && (
               <View className="flex-1 bg-surface rounded-xl p-3">
-                <Text className="text-xs text-muted">Wetter</Text>
+                <Text className="text-xs text-muted">{t('weather_title')}</Text>
                 <Text className="text-sm font-medium text-foreground" numberOfLines={1}>
                   {selectedEntry.weather}
                 </Text>
@@ -268,11 +270,11 @@ export default function BautagebuchScreen() {
           </View>
           <View className="flex-row gap-3 mb-4">
             <View className="flex-1 bg-surface rounded-xl p-3 items-center">
-              <Text className="text-xs text-muted">Anwesend</Text>
+              <Text className="text-xs text-muted">{t('bautagebuch_present' as any)}</Text>
               <Text className="text-lg font-bold text-foreground">{selectedEntry.attendanceCount || 0}</Text>
             </View>
             <View className="flex-1 bg-surface rounded-xl p-3 items-center">
-              <Text className="text-xs text-muted">Offene Mängel</Text>
+              <Text className="text-xs text-muted">{t('offene_maengel')}</Text>
               <Text className="text-lg font-bold text-error">{selectedEntry.defectsCount || 0}</Text>
             </View>
           </View>
@@ -295,8 +297,8 @@ export default function BautagebuchScreen() {
     <ScreenContainer className="p-4">
       <View className="flex-row items-center justify-between mb-4">
         <View>
-          <Text className="text-2xl font-bold text-foreground">Bautagebuch</Text>
-          <Text className="text-sm text-muted">KI-generierte Tagesberichte</Text>
+          <Text className="text-2xl font-bold text-foreground">{t('bautagebuch')}</Text>
+          <Text className="text-sm text-muted">{t('bautagebuch_subtitle' as any)}</Text>
         </View>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -320,11 +322,11 @@ export default function BautagebuchScreen() {
             <MaterialIcons name="auto-awesome" size={20} color={colors.background} />
           )}
           <Text className="text-background font-bold text-base">
-            {generating ? "Wird erstellt..." : "Tagesbericht erstellen"}
+            {generating ? t('bautagebuch_generating' as any) : t('bautagebuch_generate' as any)}
           </Text>
         </View>
         <Text className="text-background text-xs text-center mt-1 opacity-80">
-          Wetter + Anwesenheit + Mängel + Protokolle automatisch zusammenführen
+          {t('bautagebuch_generate_hint' as any)}
         </Text>
       </TouchableOpacity>
 
@@ -334,7 +336,7 @@ export default function BautagebuchScreen() {
         className="flex-row items-center gap-2 mb-3"
       >
         <MaterialIcons name={showNoteInput ? "expand-less" : "add"} size={18} color={colors.primary} />
-        <Text className="text-sm text-primary font-medium">Manuelle Notizen hinzufügen</Text>
+        <Text className="text-sm text-primary font-medium">{t('bautagebuch_add_notes' as any)}</Text>
       </TouchableOpacity>
 
       {showNoteInput && (
@@ -342,7 +344,7 @@ export default function BautagebuchScreen() {
           <TextInput
             value={manualNotes}
             onChangeText={setManualNotes}
-            placeholder="Zusätzliche Notizen für den Tagesbericht (z.B. Lieferungen, Entscheidungen, Vorkommnisse)..."
+            placeholder={t('bautagebuch_notes_placeholder' as any)}
             placeholderTextColor={colors.muted}
             multiline
             numberOfLines={4}
@@ -358,8 +360,8 @@ export default function BautagebuchScreen() {
           <View className="items-center py-12">
             <MaterialIcons name="description" size={48} color={colors.border} />
             <Text className="text-muted text-center mt-3">
-              Noch keine Tagesberichte erstellt.{"\n"}
-              Tippe oben auf &quot;Tagesbericht erstellen&quot;.
+              {t('bautagebuch_empty_line1' as any)}{"\n"}
+              {t('bautagebuch_empty_line2' as any)}
             </Text>
           </View>
         ) : (
@@ -387,13 +389,13 @@ export default function BautagebuchScreen() {
                 <View className="flex-row items-center gap-3">
                   {entry.attendanceCount != null && (
                     <View className="items-center">
-                      <Text className="text-xs text-muted">Pers.</Text>
+                      <Text className="text-xs text-muted">{t('bautagebuch_persons_short' as any)}</Text>
                       <Text className="text-sm font-bold text-foreground">{entry.attendanceCount}</Text>
                     </View>
                   )}
                   {entry.defectsCount != null && (
                     <View className="items-center">
-                      <Text className="text-xs text-muted">Mängel</Text>
+                      <Text className="text-xs text-muted">{t('maengel')}</Text>
                       <Text className="text-sm font-bold text-error">{entry.defectsCount}</Text>
                     </View>
                   )}

@@ -37,11 +37,12 @@ type ImportAction = {
   multiple: boolean;
 };
 
+// title/subtitle hold translation KEYs, resolved with t() at render.
 const IMPORT_ACTIONS: ImportAction[] = [
   {
     id: "plan",
-    title: "Grundriss / Plan",
-    subtitle: "JPG, PNG, PDF – für Planmarkierungen",
+    title: "cloud_import_plan_title",
+    subtitle: "cloud_import_plan_subtitle",
     icon: "map",
     color: "#2196F3",
     category: "plan",
@@ -49,8 +50,8 @@ const IMPORT_ACTIONS: ImportAction[] = [
   },
   {
     id: "photos",
-    title: "Fotos importieren",
-    subtitle: "Bilder aus Cloud-Speicher laden",
+    title: "cloud_import_photos_title",
+    subtitle: "cloud_import_photos_subtitle",
     icon: "photo-library",
     color: "#4CAF50",
     category: "photo",
@@ -58,8 +59,8 @@ const IMPORT_ACTIONS: ImportAction[] = [
   },
   {
     id: "documents",
-    title: "Dokumente",
-    subtitle: "PDF, Word, Textdateien",
+    title: "cloud_import_documents_title",
+    subtitle: "cloud_import_documents_subtitle",
     icon: "description",
     color: "#FF9800",
     category: "document",
@@ -67,8 +68,8 @@ const IMPORT_ACTIONS: ImportAction[] = [
   },
   {
     id: "all",
-    title: "Alle Dateien",
-    subtitle: "Beliebige Dateien importieren",
+    title: "cloud_import_all_title",
+    subtitle: "cloud_import_all_subtitle",
     icon: "folder-open",
     color: "#9C27B0",
     category: "all",
@@ -119,8 +120,8 @@ export default function CloudImportScreen() {
         }
 
         Alert.alert(
-          "Import erfolgreich",
-          `${files.length} ${files.length === 1 ? "Datei" : "Dateien"} importiert.`,
+          t('cloud_import_import_erfolgreich' as any),
+          `${files.length} ${files.length === 1 ? t('cloud_import_datei' as any) : t('cloud_import_dateien' as any)} ${t('cloud_import_importiert' as any)}`,
           [{ text: t('ok') }]
         );
       }
@@ -204,16 +205,16 @@ export default function CloudImportScreen() {
                 </View>
               </View>
               <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: "600", marginTop: 10 }}>
-                Dateien aus Cloud-Speichern importieren
+                {t('cloud_import_dateien_aus_cloud' as any)}
               </Text>
               <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4, lineHeight: 18 }}>
-                Greife auf Dropbox, Google Drive, iCloud Drive und OneDrive zu. Die Dateien werden automatisch in dein Projekt kopiert.
+                {t('cloud_import_cloud_zugriff_hint' as any)}
               </Text>
             </View>
 
             {/* Import Actions */}
             <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginTop: 20, marginBottom: 12 }}>
-              Was möchtest du importieren?
+              {t('cloud_import_was_importieren' as any)}
             </Text>
 
             {filteredActions.map((action) => (
@@ -236,8 +237,8 @@ export default function CloudImportScreen() {
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{action.title}</Text>
-                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{action.subtitle}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t(action.title as any)}</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t(action.subtitle as any)}</Text>
                 </View>
                 <MaterialIcons name="cloud-download" size={20} color={colors.muted} />
               </Pressable>
@@ -247,7 +248,7 @@ export default function CloudImportScreen() {
             {importedFiles.length > 0 && (
               <View style={{ marginTop: 24 }}>
                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>
-                  Importierte Dateien ({importedFiles.length})
+                  {t('cloud_import_importierte_dateien' as any)} ({importedFiles.length})
                 </Text>
                 {importedFiles.map((file) => (
                   <View key={file.id} style={[styles.fileItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -281,8 +282,7 @@ export default function CloudImportScreen() {
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={{ fontSize: 12, fontWeight: "600", color: colors.foreground }}>{t('tipp')}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2, lineHeight: 16 }}>
-                  Stelle sicher, dass die Cloud-Apps (Dropbox, Google Drive, OneDrive) auf deinem Gerät installiert sind. 
-                  Sie erscheinen dann automatisch als Speicherort im Datei-Picker.
+                  {t('cloud_import_tipp_text' as any)}
                 </Text>
               </View>
             </View>

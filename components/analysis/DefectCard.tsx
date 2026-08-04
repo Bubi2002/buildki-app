@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 export interface DefectData {
   id: string;
@@ -45,6 +46,7 @@ export function DefectCard({
   showActions = true,
 }: DefectCardProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [scaleAnim] = useState(() => new Animated.Value(1));
   const [checkOpacity] = useState(() => new Animated.Value(0));
   const prevAdopted = useRef(isAdopted);
@@ -75,10 +77,10 @@ export function DefectCard({
 
   const getSeverityLabel = (severity: string) => {
     switch (severity) {
-      case "critical": return "Kritisch";
-      case "major": return "Schwer";
-      case "minor": return "Leicht";
-      case "cosmetic": return "Kosmetisch";
+      case "critical": return t('DefectCard_severity_critical' as any);
+      case "major": return t('DefectCard_severity_major' as any);
+      case "minor": return t('DefectCard_severity_minor' as any);
+      case "cosmetic": return t('DefectCard_severity_cosmetic' as any);
       default: return severity;
     }
   };
@@ -103,12 +105,12 @@ export function DefectCard({
           </Text>
         </View>
         <Text style={[styles.confidence, { color: colors.muted }]}>
-          {Math.round(defect.confidence * 100)}% Konfidenz
+          {Math.round(defect.confidence * 100)}% {t('DefectCard_confidence' as any)}
         </Text>
         {isAdopted && (
           <Animated.View style={[styles.adoptedBadge, { backgroundColor: colors.success + "20", opacity: checkOpacity }]}>
             <MaterialIcons name="check-circle" size={14} color={colors.success} />
-            <Text style={[styles.adoptedText, { color: colors.success }]}>Übernommen</Text>
+            <Text style={[styles.adoptedText, { color: colors.success }]}>{t('DefectCard_adopted' as any)}</Text>
           </Animated.View>
         )}
       </View>
@@ -148,7 +150,7 @@ export function DefectCard({
             ]}
           >
             <MaterialIcons name="add-task" size={16} color="#FFF" />
-            <Text style={styles.adoptButtonText}>In Mängelliste übernehmen</Text>
+            <Text style={styles.adoptButtonText}>{t('DefectCard_adopt_button' as any)}</Text>
           </Pressable>
           <Pressable
             onPress={() => onDismiss?.(defect)}

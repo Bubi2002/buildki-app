@@ -674,7 +674,7 @@ export default function ProtocolDetailScreen() {
       );
     } catch (e: any) {
       console.error("Import contacts error:", e);
-      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
+      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || t('protocol_detail_unknown_error' as any)}`);
     }
   };
 
@@ -1042,7 +1042,7 @@ export default function ProtocolDetailScreen() {
       }
     });
     
-    return detected.length > 0 ? detected : [{ title: "Gesamtes Protokoll", startLine: 0, preview: text.substring(0, 80) }];
+    return detected.length > 0 ? detected : [{ title: t('protocol_detail_entire_protocol' as any), startLine: 0, preview: text.substring(0, 80) }];
   })();
 
   // === FEATURE: Voice Note Playback Simulation ===
@@ -1308,7 +1308,7 @@ export default function ProtocolDetailScreen() {
       if (isAvailable) {
         await Sharing.shareAsync(pdfUri, {
           mimeType: "application/pdf",
-          dialogTitle: "Protokoll-PDF per WhatsApp senden",
+          dialogTitle: t('protocol_detail_share_whatsapp_title' as any),
           UTI: "com.adobe.pdf",
         });
       } else {
@@ -1676,14 +1676,14 @@ export default function ProtocolDetailScreen() {
               <ActivityIndicator size="small" color="#FF9800" />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#E65100" }}>
-                  Wird im Hintergrund verarbeitet...
+                  {t('protocol_detail_processing_background' as any)}
                 </Text>
                 <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 2 }}>
-                  {protocol.processingStep === "uploading" && "Audio wird hochgeladen..."}
+                  {protocol.processingStep === "uploading" && t('protocol_detail_step_uploading' as any)}
                   {protocol.processingStep === "transcribing" && t('spracherkennung_laeuft')}
-                  {protocol.processingStep === "generating" && "Protokoll wird erstellt..."}
-                  {protocol.processingStep === "extracting-todos" && "Aufgaben werden extrahiert..."}
-                  {protocol.processingStep === "failed" && `Fehler: ${protocol.processingError || t('unbekannt')}`}
+                  {protocol.processingStep === "generating" && t('protocol_detail_step_generating' as any)}
+                  {protocol.processingStep === "extracting-todos" && t('protocol_detail_step_extracting' as any)}
+                  {protocol.processingStep === "failed" && `${t('protocol_detail_error_prefix' as any)}: ${protocol.processingError || t('unbekannt')}`}
                   {!protocol.processingStep && t('verarbeitung_laeuft')}
                 </Text>
                 {protocol.processingStep === "failed" && (
@@ -1691,7 +1691,7 @@ export default function ProtocolDetailScreen() {
                     <Text style={{ fontSize: 11, color: "#E65100" }}>
                       {(protocol.processingError || "").includes("Network") || (protocol.processingError || "").includes("network")
                         ? t('tipp_internetverbindung')
-                        : "Tipp: Versuche es erneut mit dem Audio-Modus."}
+                        : t('protocol_detail_tip_audio_mode' as any)}
                     </Text>
                     <Pressable
                       onPress={() => router.push("/(tabs)" as any)}
@@ -1750,7 +1750,7 @@ export default function ProtocolDetailScreen() {
                 color={colors.primary} 
               />
               <Text style={[styles.metaText, { color: colors.primary, fontWeight: "500" }]}>
-                {protocol.recordingMode === "audio-photo" ? "Audio + Fotos" : "Audio-Aufnahme"}
+                {protocol.recordingMode === "audio-photo" ? t('protocol_detail_mode_audio_photo' as any) : t('protocol_detail_mode_audio' as any)}
               </Text>
             </View>
           )}
@@ -1776,10 +1776,10 @@ export default function ProtocolDetailScreen() {
           )}
           <View style={styles.pdfBannerText}>
             <Text style={[styles.pdfBannerTitle, { color: colors.foreground }]}>
-              {isExporting ? "PDF wird erstellt..." : "Als PDF exportieren"}
+              {isExporting ? t('protocol_detail_pdf_creating' as any) : t('protocol_detail_export_pdf' as any)}
             </Text>
             <Text style={[styles.pdfBannerSubtitle, { color: colors.muted }]}>
-              Professionelles Dokument mit Logo & Fotos
+              {t('protocol_detail_pdf_subtitle' as any)}
             </Text>
           </View>
           {!isExporting && (
@@ -1908,7 +1908,7 @@ export default function ProtocolDetailScreen() {
                         style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
                       >
                         <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 18 }} numberOfLines={4}>
-                          {currentCaption || "Tippen zum Bearbeiten"}
+                          {currentCaption || t('protocol_detail_tap_to_edit' as any)}
                         </Text>
                       </Pressable>
                       {/* Voice note indicator */}
@@ -2174,7 +2174,7 @@ export default function ProtocolDetailScreen() {
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0, backgroundColor: isEditing ? colors.success + "12" : colors.surface, borderWidth: 1, borderColor: isEditing ? colors.success : colors.border, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name={isEditing ? "check" : "edit"} size={15} color={isEditing ? colors.success : colors.muted} />
-                <Text style={{ fontSize: 13, fontWeight: "500", color: isEditing ? colors.success : colors.muted }}>{isEditing ? "Speichern" : "Bearbeiten"}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: isEditing ? colors.success : colors.muted }}>{isEditing ? t('protocol_detail_save' as any) : t('protocol_detail_edit' as any)}</Text>
               </Pressable>
             </View>
           </View>
@@ -2975,9 +2975,9 @@ export default function ProtocolDetailScreen() {
                     <MaterialIcons name="collections" size={21} color="#00ACC1" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "800", color: colors.foreground }}>Belege für alle Varianten</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: colors.foreground }}>{t('protocol_detail_evidence_all_variants' as any)}</Text>
                     <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
-                      {(protocol?.evidenceIds || []).length} ausgewählt · Fotos, Videostandbilder und Messungen
+                      {(protocol?.evidenceIds || []).length} {t('protocol_detail_evidence_selected_suffix' as any)}
                     </Text>
                   </View>
                   <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
@@ -3098,7 +3098,7 @@ export default function ProtocolDetailScreen() {
               {/* Add Contact Button */}
               {!showAddContact ? (
                 <Pressable onPress={() => setShowAddContact(true)} style={{ marginTop: 8, paddingVertical: 6 }}>
-                  <Text style={{ fontSize: 12, color: "#0a7ea4" }}>+ Neuen Kontakt speichern</Text>
+                  <Text style={{ fontSize: 12, color: "#0a7ea4" }}>{t('protocol_detail_save_new_contact' as any)}</Text>
                 </Pressable>
               ) : (
                 <View style={{ marginTop: 8, padding: 10, backgroundColor: "#f5f5f5", borderRadius: 0 }}>
@@ -3140,7 +3140,7 @@ export default function ProtocolDetailScreen() {
                 {isSendingEmail ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>📧 E-Mail senden</Text>
+                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>{t('protocol_detail_send_email' as any)}</Text>
                 )}
               </Pressable>
             </View>

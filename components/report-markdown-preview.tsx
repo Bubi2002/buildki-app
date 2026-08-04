@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { parseReportMarkdown } from "@/lib/report-markdown-parser";
 
 function InlineText({ text, color }: { text: string; color: string }) {
@@ -22,6 +23,7 @@ function InlineText({ text, color }: { text: string; color: string }) {
 
 export function ReportMarkdownPreview({ markdown }: { markdown: string }) {
   const colors = useColors();
+  const { t } = useTranslation();
   const blocks = parseReportMarkdown(markdown);
 
   return (
@@ -61,8 +63,8 @@ export function ReportMarkdownPreview({ markdown }: { markdown: string }) {
             <View key={blockIndex} style={[styles.keyValueTable, { borderColor: colors.border }]}>
               {block.rows.map((row, rowIndex) => (
                 <View key={rowIndex} style={[styles.keyValueRow, rowIndex > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
-                  <Text style={[styles.keyValueLabel, { color: colors.muted }]}>{row[0] || "Angabe"}</Text>
-                  <Text style={[styles.keyValueValue, { color: colors.foreground }]}>{row[1] || "nicht angegeben"}</Text>
+                  <Text style={[styles.keyValueLabel, { color: colors.muted }]}>{row[0] || t('report_markdown_preview_angabe' as any)}</Text>
+                  <Text style={[styles.keyValueValue, { color: colors.foreground }]}>{row[1] || t('report_markdown_preview_nicht_angegeben' as any)}</Text>
                 </View>
               ))}
             </View>
@@ -76,7 +78,7 @@ export function ReportMarkdownPreview({ markdown }: { markdown: string }) {
                   {block.headers.map((header, cellIndex) => (
                     <View key={cellIndex} style={styles.recordField}>
                       <Text style={[styles.recordLabel, { color: colors.muted }]}>{header}</Text>
-                      <Text style={[styles.recordValue, { color: colors.foreground }]}>{row[cellIndex] || "nicht angegeben"}</Text>
+                      <Text style={[styles.recordValue, { color: colors.foreground }]}>{row[cellIndex] || t('report_markdown_preview_nicht_angegeben' as any)}</Text>
                     </View>
                   ))}
                 </View>

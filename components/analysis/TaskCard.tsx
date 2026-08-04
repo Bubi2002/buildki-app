@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 export interface TaskData {
   id: string;
@@ -39,6 +40,7 @@ export function TaskCard({
   showActions = true,
 }: TaskCardProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [scaleAnim] = useState(() => new Animated.Value(1));
   const [checkOpacity] = useState(() => new Animated.Value(0));
   const prevAdopted = useRef(isAdopted);
@@ -67,9 +69,9 @@ export function TaskCard({
 
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
-      case "high": return "Hoch";
-      case "medium": return "Mittel";
-      case "low": return "Niedrig";
+      case "high": return t('TaskCard_priority_high' as any);
+      case "medium": return t('TaskCard_priority_medium' as any);
+      case "low": return t('TaskCard_priority_low' as any);
       default: return priority;
     }
   };
@@ -118,7 +120,7 @@ export function TaskCard({
         <View style={styles.deadlineRow}>
           <MaterialIcons name="event" size={12} color={colors.warning} />
           <Text style={[styles.deadlineText, { color: colors.warning }]}>
-            Fällig: {task.deadline}
+            {t('TaskCard_due' as any)}{task.deadline}
           </Text>
         </View>
       )}
@@ -133,7 +135,7 @@ export function TaskCard({
             ]}
           >
             <MaterialIcons name="playlist-add" size={16} color="#FFF" />
-            <Text style={styles.adoptButtonText}>Als Aufgabe anlegen</Text>
+            <Text style={styles.adoptButtonText}>{t('TaskCard_add_as_task' as any)}</Text>
           </Pressable>
           <Pressable
             onPress={() => onDismiss?.(task)}

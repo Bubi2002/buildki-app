@@ -383,7 +383,7 @@ export default function RecordScreen() {
       id: `custom-${Date.now()}`,
       name: newTemplateName.trim(),
       icon: "auto-awesome",
-      description: newTemplateDesc.trim() || "Benutzerdefinierte Vorlage",
+      description: newTemplateDesc.trim() || t('record_custom_template_desc' as any),
       category: newTemplateCategory,
       systemPrompt: newTemplatePrompt.trim(),
       isCustom: true as const,
@@ -420,7 +420,7 @@ export default function RecordScreen() {
       const fileUri = `${FileSystem.cacheDirectory}meine-vorlagen.json`;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType: "application/json", dialogTitle: "Vorlagen exportieren" });
+        await Sharing.shareAsync(fileUri, { mimeType: "application/json", dialogTitle: t('record_export_templates_dialog' as any) });
       } else {
         Alert.alert(t('export'), t('msg_teilen_ist_auf_diesem_geraet'));
       }
@@ -445,12 +445,13 @@ export default function RecordScreen() {
         Alert.alert(t('alert_fehler'), t('msg_ungueltiges_dateiformat'));
         return;
       }
+      const importedTemplateDesc = t('record_imported_template_desc' as any);
       const validTemplates = importedItems.filter((t: any) => t.name && t.systemPrompt).map((t: any) => ({
         ...t,
         id: t.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         icon: t.icon || "auto-awesome",
         category: t.category || "allgemein",
-        description: t.description || "Importierte Vorlage",
+        description: t.description || importedTemplateDesc,
         source: "import" as const,
       }));
       if (validTemplates.length === 0) {
@@ -459,7 +460,7 @@ export default function RecordScreen() {
       }
       const merged = await importProtocolTemplates(validTemplates);
       setCustomTemplates(merged);
-      Alert.alert(t('alert_importiert'), `${validTemplates.length} Vorlage(n) erfolgreich importiert.`);
+      Alert.alert(t('alert_importiert'), `${validTemplates.length}${t('record_templates_imported_count' as any)}`);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch  {
       Alert.alert(t('alert_fehler'), t('msg_import_fehlgeschlagen_bitte_eine_gueltige'));
@@ -521,7 +522,7 @@ export default function RecordScreen() {
     const project = projects.find((item) => item.id === projectId);
     Alert.alert(
       t('alert_projekt_loeschen'),
-      `„${project?.name || "Projekt"}“ wird aus der Projektliste entfernt. Zugeordnete Protokolle bleiben erhalten und werden unter „Ohne Projekt“ angezeigt.`,
+      `„${project?.name || t('record_project_fallback' as any)}“ ${t('record_delete_project_msg' as any)}`,
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {
@@ -594,7 +595,7 @@ export default function RecordScreen() {
       await AsyncStorage.setItem("projects", JSON.stringify(data));
       setProjects(data);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(t('alert_dupliziert'), `Projekt \"${duplicated.name}\" wurde erstellt.`);
+      Alert.alert(t('alert_dupliziert'), `${t('record_project_fallback' as any)} \"${duplicated.name}\"${t('record_project_created_suffix' as any)}`);
     } catch { Alert.alert(t('alert_fehler'), t('msg_projekt_konnte_nicht_dupliziert_werden')); }
   };
 
@@ -1074,7 +1075,7 @@ export default function RecordScreen() {
       setIsRecording(false);
       setIsPaused(false);
       stopTimer();
-      alert("Aufnahme konnte nicht gestartet werden. Bitte versuche es erneut.");
+      alert(t('record_start_failed' as any));
     }
   };
 
@@ -1139,7 +1140,7 @@ export default function RecordScreen() {
       await processRecording(uri, "audio/m4a");
     } else {
       console.error("No recording URI available after stop");
-      alert("Die Aufnahme konnte nicht gespeichert werden. Bitte versuche es erneut.");
+      alert(t('record_save_failed' as any));
     }
   };
 
@@ -1191,8 +1192,8 @@ export default function RecordScreen() {
   function startRecording() {
     if (!selectedProject) {
       Alert.alert(
-        "Projekt auswählen",
-        "Bitte wähle oder erstelle zuerst ein Projekt. Jede Aufnahme wird einem Projekt zugeordnet.",
+        t('record_select_project_title' as any),
+        t('record_select_project_msg' as any),
       );
       setShowProjectPicker(true);
       return;
@@ -1200,9 +1201,9 @@ export default function RecordScreen() {
 
     Alert.alert(
       "Personen vor Aufnahme informieren",
-      "Bestätigen Sie für diese Aufnahme, dass alle betroffenen Personen über Zweck, Empfänger und mögliche KI-/Cloud-Verarbeitung informiert wurden und eine geeignete Rechtsgrundlage beziehungsweise erforderliche Zustimmung vorliegt. Ohne KI-/Cloud-Freigabe wird nur eine lokale Rohaufnahme gespeichert.",
+      t('record_inform_persons_msg' as any),
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
           text: "Bestätigt – Aufnahme starten",
           onPress: () => beginRecordingAfterNotice(),
@@ -1249,7 +1250,7 @@ export default function RecordScreen() {
         setIsProcessing(false);
         setProcessingSource(null);
         setShowProjectPicker(true);
-        Alert.alert("Projekt auswählen", "Die Aufnahme kann erst verarbeitet werden, wenn ein Projekt ausgewählt ist.");
+        Alert.alert(t('record_select_project_title' as any), t('record_process_needs_project' as any));
         return;
       }
 
@@ -1263,7 +1264,7 @@ export default function RecordScreen() {
       const placeholderProtocol = {
         id: protocolId,
         title: canProcessWithServer
-          ? "Wird verarbeitet..."
+          ? t('record_processing')
           : "Lokale Aufnahme – Verarbeitung deaktiviert",
         transcription: "",
         protocol: "",
@@ -1299,7 +1300,7 @@ export default function RecordScreen() {
 
       if (currentCalendarEvent && Platform.OS !== "web") {
         try {
-          await addNotesToEvent(currentCalendarEvent.id, "Protokoll wird verarbeitet...");
+          await addNotesToEvent(currentCalendarEvent.id, t('record_calendar_processing_note' as any));
           placeholderProtocol.calendarEventId = currentCalendarEvent.id;
         } catch {}
       }
@@ -1321,8 +1322,8 @@ export default function RecordScreen() {
         setIsProcessing(false);
         setProcessingSource(null);
         Alert.alert(
-          "Lokal gespeichert",
-          "Die Rohaufnahme wurde im ausgewählten Projekt gespeichert. Es wurden keine Daten an Cloud- oder KI-Dienste übertragen. Für Transkription und Protokollerstellung müssen KI und Cloud in den Datenschutzoptionen aktiviert werden.",
+          t('record_saved_locally_title' as any),
+          t('record_saved_locally_msg' as any),
         );
         router.push("/(tabs)/protocols" as any);
         return;
@@ -1360,7 +1361,7 @@ export default function RecordScreen() {
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
-        alert("Kein Internet – das Protokoll ist im ausgewählten Projekt sichtbar. Die Verarbeitung startet bei Verbindung nur, solange Cloud- und KI-Freigabe aktiv bleiben.");
+        alert(t('record_offline_saved' as any));
         router.push("/(tabs)/protocols" as any);
         return;
       }
@@ -1418,7 +1419,7 @@ export default function RecordScreen() {
       setProcessingSource(null);
       const errMsg = error?.message || String(error);
       console.error("Processing setup error:", errMsg);
-      alert(`Fehler beim Starten der Verarbeitung: ${errMsg.substring(0, 100)}`);
+      alert(`${t('record_processing_start_error' as any)}${errMsg.substring(0, 100)}`);
     }
   };
 
@@ -1500,7 +1501,7 @@ export default function RecordScreen() {
     } catch (error) {
       setIsProcessing(false);
       console.error("Processing error:", error);
-      alert("Fehler bei der Verarbeitung. Bitte versuche es erneut.");
+      alert(t('record_processing_error' as any));
     }
   };
 
@@ -1522,7 +1523,7 @@ export default function RecordScreen() {
               ) : null}
               </View>
             </View>
-            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>Jede Aufnahme wird dem ausgewählten Projekt zugeordnet.</Text>
+            <Text style={{ fontSize: 14, color: colors.muted, marginLeft: 46 }}>{t('record_each_recording_assigned' as any)}</Text>
           </View>
 
           {/* Summary Stats */}
@@ -1699,7 +1700,7 @@ export default function RecordScreen() {
                 <View style={{ width: 80, height: 80, borderRadius: 0, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                   <MaterialIcons name={showArchived ? "inventory" : "folder-open"} size={40} color={colors.border} />
                 </View>
-                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>{showArchived ? "Kein archiviertes Projekt" : (projectSearch ? "Keine Treffer" : "Noch keine Projekte")}</Text>
+                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>{showArchived ? t('record_no_archived_project' as any) : (projectSearch ? t('record_no_matches' as any) : t('record_no_projects_yet' as any))}</Text>
                 <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center", paddingHorizontal: 20 }}>{showArchived ? t('archivierte_projekte_hier') : (projectSearch ? t('anderer_suchbegriff') : t('erstes_projekt_erstellen'))}</Text>
               </View>
             }
@@ -1788,10 +1789,10 @@ export default function RecordScreen() {
       <ScreenContainer className="flex-1 items-center justify-center p-6">
         <MaterialIcons name="no-photography" size={64} color={colors.muted} style={{ marginBottom: 16 }} />
         <Text className="text-2xl font-bold text-foreground text-center mb-4">
-          Berechtigungen erforderlich
+          {t('record_permissions_required' as any)}
         </Text>
         <Text className="text-base text-muted text-center mb-8">
-          Baudikt benötigt Zugriff auf Kamera und Mikrofon, um Fotos aufzunehmen und Protokolle zu erstellen.
+          {t('record_permissions_needed_msg' as any)}
         </Text>
         {canAskAgain ? (
           <Pressable
@@ -1824,7 +1825,7 @@ export default function RecordScreen() {
               <Text style={styles.permissionButtonText}>{t('einstellungen_oeffnen')}</Text>
             </Pressable>
             <Text className="text-sm text-muted text-center mt-4">
-              Berechtigungen wurden verweigert. Bitte aktiviere Kamera und Mikrofon in den Geräteeinstellungen.
+              {t('record_permissions_denied_msg' as any)}
             </Text>
           </>
         )}
@@ -1834,8 +1835,8 @@ export default function RecordScreen() {
 
   // Processing state with step-by-step progress
   if (isProcessing) {
-    const sourceLabel = processingSource === "audio" 
-      ? "✅ Audio erfolgreich aufgenommen" 
+    const sourceLabel = processingSource === "audio"
+      ? t('record_audio_recorded' as any)
       : null;
 
     const steps = [
@@ -1855,10 +1856,10 @@ export default function RecordScreen() {
           
           {/* Title */}
           <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground, marginTop: 24, textAlign: "center" }}>
-            Verarbeitung...
+            {t('record_processing_title' as any)}
           </Text>
           <Text style={{ fontSize: 14, color: colors.muted, marginTop: 6, textAlign: "center" }}>
-            {selectedTemplate.name} wird erstellt
+            {selectedTemplate.name} {t('record_being_created' as any)}
           </Text>
 
           {/* Step progress */}
@@ -1933,7 +1934,7 @@ export default function RecordScreen() {
           {/* Photos info */}
           {capturedPhotos.length > 0 && (
             <Text style={{ fontSize: 13, color: colors.muted, marginTop: 12, textAlign: "center" }}>
-              {capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""} werden angehängt
+              {capturedPhotos.length} {capturedPhotos.length !== 1 ? t('record_photos_plural' as any) : t('record_photo_singular' as any)} {t('record_will_be_attached' as any)}
             </Text>
           )}
         </View>
@@ -1961,19 +1962,19 @@ export default function RecordScreen() {
 
           {newProtocol.todos && newProtocol.todos.length > 0 && (
             <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>Aufgaben ({newProtocol.todos.length})</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 8 }}>{t('record_tasks' as any)} ({newProtocol.todos.length})</Text>
               {newProtocol.todos.slice(0, 5).map((t: any, i: number) => (
                 <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.priority === "hoch" ? "#E53935" : t.priority === "mittel" ? "#FF9800" : colors.muted }} />
                   <Text style={{ fontSize: 13, color: colors.foreground, flex: 1 }} numberOfLines={1}>{t.task}</Text>
                 </View>
               ))}
-              {newProtocol.todos.length > 5 && <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>+{newProtocol.todos.length - 5} weitere</Text>}
+              {newProtocol.todos.length > 5 && <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>+{newProtocol.todos.length - 5} {t('record_more' as any)}</Text>}
             </View>
           )}
 
           {newProtocol.photos && newProtocol.photos.length > 0 && (
-            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{newProtocol.photos.length} Foto(s) angehängt</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>{newProtocol.photos.length} {t('record_photos_attached' as any)}</Text>
           )}
         </ScrollView>
 
@@ -2089,7 +2090,7 @@ export default function RecordScreen() {
             {/* Camera flip */}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Kamera wechseln"
+              accessibilityLabel={t('record_switch_camera' as any)}
               onPress={() => {
                 setCameraFacing((previous) => {
                   const next = previous === "back" ? "front" : "back";
@@ -2105,7 +2106,7 @@ export default function RecordScreen() {
             {/* Grid toggle */}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={showGrid ? "Kameraraster ausschalten" : "Kameraraster einschalten"}
+              accessibilityLabel={showGrid ? t('record_grid_off' as any) : t('record_grid_on' as any)}
               onPress={() => {
                 setShowGrid(previous => !previous);
                 if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -2119,8 +2120,8 @@ export default function RecordScreen() {
           {/* Photo flash / continuous light. One tap from AUTO enables the torch. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={flashMode === "on" ? "Dauerlicht eingeschaltet" : flashMode === "auto" ? "Fotoblitz automatisch, Dauerlicht einschalten" : "Dauerlicht ausgeschaltet"}
-            accessibilityHint="Wechselt zwischen Automatik, Dauerlicht und Aus"
+            accessibilityLabel={flashMode === "on" ? t('record_light_on_label' as any) : flashMode === "auto" ? t('record_light_auto_label' as any) : t('record_light_off_label' as any)}
+            accessibilityHint={t('record_flash_hint' as any)}
             disabled={cameraFacing === "front"}
             onPress={() => {
               const modes: ("auto" | "on" | "off")[] = ["auto", "on", "off"];
@@ -2149,14 +2150,14 @@ export default function RecordScreen() {
               color={flashMode === "off" || cameraFacing === "front" ? "rgba(255,255,255,0.65)" : "#FFD700"}
             />
             <Text style={{ color: flashMode === "on" ? "#FFD700" : "#FFFFFF", fontSize: 10, fontWeight: "800" }}>
-              {cameraFacing === "front" ? "NICHT VERFÜGBAR" : flashMode === "on" ? "LICHT EIN" : flashMode === "auto" ? "AUTO" : "LICHT AUS"}
+              {cameraFacing === "front" ? t('record_flash_unavailable' as any) : flashMode === "on" ? t('record_flash_on' as any) : flashMode === "auto" ? t('record_flash_auto' as any) : t('record_flash_off' as any)}
             </Text>
           </Pressable>
 
           {/* Photo timer */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={photoTimer > 0 ? `Fototimer ${photoTimer} Sekunden` : "Fototimer aus"}
+            accessibilityLabel={photoTimer > 0 ? `${t('record_phototimer' as any)} ${photoTimer} ${t('record_seconds' as any)}` : t('record_phototimer_off' as any)}
             onPress={() => {
               const timers: (0 | 3 | 5 | 10)[] = [0, 3, 5, 10];
               const index = timers.indexOf(photoTimer);
@@ -2178,7 +2179,7 @@ export default function RecordScreen() {
           >
             <MaterialIcons name="timer" size={18} color={photoTimer > 0 ? "#FFD700" : "rgba(255,255,255,0.65)"} />
             <Text style={{ fontSize: 10, color: photoTimer > 0 ? "#FFD700" : "#FFFFFF", fontWeight: "800" }}>
-              {photoTimer > 0 ? `${photoTimer} SEK.` : "TIMER AUS"}
+              {photoTimer > 0 ? `${photoTimer} ${t('record_sec_abbr' as any)}` : t('record_timer_off' as any)}
             </Text>
           </Pressable>
         </View>
@@ -2325,7 +2326,7 @@ export default function RecordScreen() {
             <View style={[styles.templateModalContent, { backgroundColor: colors.background }]}>
               <View style={styles.templateSheetHeader}>
                 <Text style={[styles.templateSheetTitle, { color: colors.foreground }]}>
-                  Vorlage wählen
+                  {t('record_select_template' as any)}
                 </Text>
                 <Pressable onPress={() => { setShowTemplateSelector(false); setTemplateSearch(""); }}>
                   <MaterialIcons name="close" size={24} color={colors.muted} />
@@ -2578,7 +2579,7 @@ export default function RecordScreen() {
           <Text style={styles.hintText}>
             {isRecording
               ? ""
-              : "Tippe zum Aufnehmen"}
+              : t('record_tap_to_record' as any)}
           </Text>
         </View>
       </View>
@@ -2588,7 +2589,7 @@ export default function RecordScreen() {
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12 }}>
             <View>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length} Foto{capturedPhotos.length !== 1 ? "s" : ""}</Text>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#FFFFFF" }}>{capturedPhotos.length} {capturedPhotos.length !== 1 ? t('record_photos_plural' as any) : t('record_photo_singular' as any)}</Text>
               <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{t('lang_druecken_zum_loeschen')}</Text>
             </View>
             <Pressable onPress={() => setShowPhotoGallery(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.7 : 1 }]}>
@@ -2724,11 +2725,11 @@ export default function RecordScreen() {
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", padding: 24 }}>
           <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 20 }}>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('fotonotiz')}</Text>
-            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>Beschreibung oder Anmerkung zu Foto #{annotatingPhotoIndex !== null ? annotatingPhotoIndex + 1 : ""}</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>{t('record_annotation_desc' as any)}{annotatingPhotoIndex !== null ? annotatingPhotoIndex + 1 : ""}</Text>
             <TextInput
               value={annotationText}
               onChangeText={setAnnotationText}
-              placeholder="z.B. Riss an der Decke, ca. 30cm"
+              placeholder={t('record_annotation_placeholder' as any)}
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={3}
@@ -2999,7 +3000,7 @@ export default function RecordScreen() {
             </View>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 8, textAlign: "center" }}>{t('aufnahme_beenden')}</Text>
             <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 20, lineHeight: 20 }}>
-              Möchtest du die Aufnahme abschließen und das Protokoll erstellen, oder möchtest du weiter aufnehmen?
+              {t('record_stop_confirm_msg' as any)}
             </Text>
             <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
               <Pressable
@@ -3084,7 +3085,7 @@ export default function RecordScreen() {
               </Pressable>
               {!chapterListening && (
                 <Pressable
-                  onPress={() => confirmChapter(chapterInput || `Kapitel ${markers.filter(m => m.label.startsWith("KAPITEL:")).length + 1}`)}
+                  onPress={() => confirmChapter(chapterInput || `${t('record_chapter' as any)} ${markers.filter(m => m.label.startsWith("KAPITEL:")).length + 1}`)}
                   style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: chapterInput.trim() ? "#FF9800" : "#FF980080", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('kapitel_setzen')}</Text>

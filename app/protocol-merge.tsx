@@ -90,7 +90,7 @@ export default function ProtocolMergeScreen() {
         Alert.alert(t('alert_fehler'), t('msg_gesamtbericht_konnte_nicht_erstellt_werden'));
       }
     } catch (e: any) {
-      Alert.alert(t('alert_fehler'), e.message || "Unbekannter Fehler");
+      Alert.alert(t('alert_fehler'), e.message || t('protocol_merge_unbekannter_fehler' as any));
     } finally {
       setIsExporting(false);
     }
@@ -152,7 +152,7 @@ export default function ProtocolMergeScreen() {
         {/* Selection Controls */}
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, flex: 1 }}>
-            {selectedProtocols.size}/{protocols.length} ausgewählt
+            {selectedProtocols.size}/{protocols.length} {t('protocol_merge_ausgewaehlt' as any)}
           </Text>
           <Pressable onPress={selectToday} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "10", opacity: pressed ? 0.6 : 1, marginRight: 8 }]}>
             <Text style={{ fontSize: 11, fontWeight: "600", color: colors.primary }}>{t('heute')}</Text>
@@ -196,7 +196,7 @@ export default function ProtocolMergeScreen() {
                       </Text>
                       <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
                         {new Date(protocol.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-                        {protocol.photos && protocol.photos.length > 0 ? ` · ${protocol.photos.length} Fotos` : ""}
+                        {protocol.photos && protocol.photos.length > 0 ? ` · ${protocol.photos.length} ${t('protocol_merge_fotos' as any)}` : ""}
                       </Text>
                     </View>
                   </Pressable>
@@ -209,7 +209,7 @@ export default function ProtocolMergeScreen() {
               <MaterialIcons name="merge-type" size={48} color={colors.border} />
               <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('protocol_no_protocols')}</Text>
               <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>
-                Dieses Projekt hat noch keine fertigen Protokolle zum Zusammenführen.
+                {t('protocol_merge_keine_fertigen_protokolle' as any)}
               </Text>
             </View>
           )}

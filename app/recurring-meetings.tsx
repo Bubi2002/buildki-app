@@ -45,7 +45,7 @@ export default function RecurringMeetingsScreen() {
   const [timeMinute, setTimeMinute] = useState(0);
   const [duration, setDuration] = useState(30);
   const [participants, setParticipants] = useState("");
-  const [templateName, setTemplateName] = useState("Besprechungsprotokoll");
+  const [templateName, setTemplateName] = useState(t('besprechungsprotokoll'));
   const [notes, setNotes] = useState("");
 
   const loadMeetings = async () => {
@@ -160,7 +160,7 @@ export default function RecurringMeetingsScreen() {
           <View style={{ alignItems: "center", paddingTop: 60 }}>
             <MaterialIcons name="event-repeat" size={48} color={colors.muted} />
             <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('keine_wiederkehrenden_meetings')}</Text>
-            <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>Erstellen Sie ein wiederkehrendes Meeting, um automatisch Protokolle vorzubereiten.</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4, textAlign: "center" }}>{t('recurring_meetings_empty_subtitle' as any)}</Text>
           </View>
         ) : (
           meetings.map((meeting) => {

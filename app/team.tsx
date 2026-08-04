@@ -77,7 +77,7 @@ export default function TeamScreen() {
       const inviteMessage = t('einladung_nachricht').replace('{name}', newName.trim()).replace('{role}', getRoleLabel(newRole));
 
       if (newEmail.trim()) {
-        const subject = encodeURIComponent("Einladung zum BuildKI-Team");
+        const subject = encodeURIComponent(t('team_invite_subject' as any));
         const body = encodeURIComponent(inviteMessage);
         const mailUrl = `mailto:${newEmail.trim()}?subject=${subject}&body=${body}`;
         try {
@@ -110,7 +110,7 @@ export default function TeamScreen() {
   };
 
   const removeMember = (memberId: string, name: string) => {
-    Alert.alert(t('alert_teammitglied_entfernen'), `${name} wirklich aus dem Team entfernen?`, [
+    Alert.alert(t('alert_teammitglied_entfernen'), t('team_remove_confirm' as any).replace('{name}', name), [
       { text: t('btn_abbrechen'), style: "cancel" },
       {
         text: t('btn_entfernen'),
@@ -133,17 +133,17 @@ export default function TeamScreen() {
 
     if (member.email) {
       options.push({
-        text: `E-Mail: ${member.email}`,
+        text: `${t('team_contact_email_prefix' as any)}${member.email}`,
         onPress: () => Linking.openURL(`mailto:${member.email}`),
       });
     }
     if (member.phone) {
       options.push({
-        text: `Anrufen: ${member.phone}`,
+        text: `${t('team_contact_call_prefix' as any)}${member.phone}`,
         onPress: () => Linking.openURL(`tel:${member.phone}`),
       });
       options.push({
-        text: `SMS: ${member.phone}`,
+        text: `${t('team_contact_sms_prefix' as any)}${member.phone}`,
         onPress: () => {
           const url = Platform.OS === "ios" ? `sms:${member.phone}` : `sms:${member.phone}`;
           Linking.openURL(url);
@@ -204,12 +204,12 @@ export default function TeamScreen() {
       <View style={[styles.statsCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
         <MaterialIcons name="groups" size={24} color={colors.primary} />
         <View style={styles.statsText}>
-          <Text style={[styles.statsTitle, { color: colors.foreground }]}>{members.length} Mitglieder</Text>
+          <Text style={[styles.statsTitle, { color: colors.foreground }]}>{members.length} {t('team_members_word' as any)}</Text>
           <Text style={[styles.statsSubtitle, { color: colors.muted }]}>
             {TEAM_ROLES.map((r) => {
               const count = members.filter((m) => m.role === r.key).length;
               return count > 0 ? `${count} ${r.label}` : null;
-            }).filter(Boolean).join(", ") || "Noch keine Mitglieder"}
+            }).filter(Boolean).join(", ") || t('team_no_members' as any)}
           </Text>
         </View>
       </View>
@@ -225,7 +225,7 @@ export default function TeamScreen() {
             <MaterialIcons name="group-add" size={48} color={colors.muted} />
             <Text style={[styles.emptyText, { color: colors.muted }]}>{t('noch_keine_teammitglieder')}</Text>
             <Text style={[styles.emptySubtext, { color: colors.muted }]}>
-              Tippe auf das + Symbol oben rechts um Teammitglieder hinzuzufügen
+              {t('team_empty_hint' as any)}
             </Text>
             <Pressable
               onPress={() => setShowCreateModal(true)}
@@ -267,7 +267,7 @@ export default function TeamScreen() {
                 <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('email')}</Text>
                 <TextInput
                   style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  placeholder="name@firma.de"
+                  placeholder={t('team_email_placeholder' as any)}
                   placeholderTextColor={colors.muted + "80"}
                   value={newEmail}
                   onChangeText={setNewEmail}
@@ -341,7 +341,7 @@ export default function TeamScreen() {
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 4, marginBottom: 4 }}>
                   <MaterialIcons name="info-outline" size={14} color={colors.muted} style={{ marginTop: 2 }} />
                   <Text style={{ fontSize: 12, color: colors.muted, flex: 1, lineHeight: 18 }}>
-                    Die Person wird zum Team hinzugefügt und kann per E-Mail oder Nummer eingeladen werden, um gemeinsam in der App zu arbeiten.
+                    {t('team_invite_info' as any)}
                   </Text>
                 </View>
               </ScrollView>

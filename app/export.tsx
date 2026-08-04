@@ -23,10 +23,12 @@ import * as Sharing from "expo-sharing";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { exportService, type ExportFormat, type ExportScope } from "@/lib/export-service";
 
 export default function ExportScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
 
@@ -63,7 +65,7 @@ export default function ExportScreen() {
 
   const handleExport = async () => {
     if (!activeProject) {
-      Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt aus.");
+      Alert.alert(t('export_no_project_title' as any), t('export_no_project_msg' as any));
       return;
     }
 
@@ -86,10 +88,10 @@ export default function ExportScreen() {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } else {
-        Alert.alert("Export fehlgeschlagen", result.error || "Unbekannter Fehler");
+        Alert.alert(t('export_failed_title' as any), result.error || t('export_unknown_error' as any));
       }
     } catch (error: any) {
-      Alert.alert("Fehler", error.message || "Export konnte nicht erstellt werden.");
+      Alert.alert(t('export_error_title' as any), error.message || t('export_create_failed' as any));
     } finally {
       setIsExporting(false);
     }
@@ -102,13 +104,13 @@ export default function ExportScreen() {
       if (available) {
         await Sharing.shareAsync(exportResult.filePath, {
           mimeType: exportResult.mimeType,
-          dialogTitle: `${exportResult.fileName || "Export"} teilen`,
+          dialogTitle: `${exportResult.fileName || t('export_export_fallback' as any)} ${t('export_share_word' as any)}`,
         });
       } else {
-        Alert.alert("Teilen nicht verfügbar", "Auf diesem Gerät ist die Teilen-Funktion nicht verfügbar.");
+        Alert.alert(t('export_share_unavailable_title' as any), t('export_share_unavailable_msg' as any));
       }
     } catch  {
-      Alert.alert("Fehler", "Datei konnte nicht geteilt werden.");
+      Alert.alert(t('export_error_title' as any), t('export_share_failed' as any));
     }
   };
 
@@ -118,7 +120,7 @@ export default function ExportScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Export</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('export_title' as any)}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -133,7 +135,7 @@ export default function ExportScreen() {
 
         {/* Format Selection */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Format</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('export_format' as any)}</Text>
           <View style={styles.optionGrid}>
             {formats.map(format => (
               <Pressable
@@ -165,7 +167,7 @@ export default function ExportScreen() {
 
         {/* Scope Selection */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Umfang</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('export_scope' as any)}</Text>
           <View style={styles.scopeList}>
             {scopes.map(scope => (
               <Pressable
@@ -210,7 +212,7 @@ export default function ExportScreen() {
             <MaterialIcons name="file-download" size={20} color="#FFF" />
           )}
           <Text style={styles.exportButtonText}>
-            {isExporting ? "Exportiere..." : `Als ${formats.find(f => f.id === selectedFormat)?.label} exportieren`}
+            {isExporting ? t('export_exporting' as any) : `${t('export_as_prefix' as any)} ${formats.find(f => f.id === selectedFormat)?.label}`}
           </Text>
         </Pressable>
 
@@ -219,7 +221,7 @@ export default function ExportScreen() {
           <View style={[styles.resultCard, { backgroundColor: colors.success + "15", borderColor: colors.success }]}>
             <View style={styles.resultHeader}>
               <MaterialIcons name="check-circle" size={20} color={colors.success} />
-              <Text style={[styles.resultTitle, { color: colors.success }]}>Export erfolgreich</Text>
+              <Text style={[styles.resultTitle, { color: colors.success }]}>{t('export_success' as any)}</Text>
             </View>
             <Text style={[styles.resultFile, { color: colors.foreground }]}>{exportResult.fileName}</Text>
             <Pressable
@@ -227,7 +229,7 @@ export default function ExportScreen() {
               style={({ pressed }) => [styles.shareButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="share" size={16} color="#FFF" />
-              <Text style={styles.shareButtonText}>Teilen</Text>
+              <Text style={styles.shareButtonText}>{t('export_share_button' as any)}</Text>
             </Pressable>
           </View>
         )}

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { TRADES, formatTradeLabel } from "@/lib/trades";
 
 const ITEM_HEIGHT = 52;
@@ -32,16 +33,19 @@ type TradePickerProps = {
 export function TradePicker({
   value,
   onChange,
-  placeholder = "Gewerk auswählen",
+  placeholder,
   allowEmpty = true,
-  accessibilityLabel = "Gewerk auswählen",
+  accessibilityLabel,
 }: TradePickerProps) {
   const colors = useColors();
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('trade_picker_select' as any);
+  const resolvedAccessibilityLabel = accessibilityLabel ?? t('trade_picker_select' as any);
   const listRef = useRef<FlatList<TradeOption>>(null);
   const [visible, setVisible] = useState(false);
   const options = useMemo<TradeOption[]>(
-    () => (allowEmpty ? [{ nr: 0, name: "Kein Gewerk" }, ...TRADES] : [...TRADES]),
-    [allowEmpty],
+    () => (allowEmpty ? [{ nr: 0, name: t('trade_picker_no_trade' as any) }, ...TRADES] : [...TRADES]),
+    [allowEmpty, t],
   );
   const selectedIndex = Math.max(0, options.findIndex((trade) => trade.name === value));
   const [draftIndex, setDraftIndex] = useState(selectedIndex);
@@ -83,8 +87,8 @@ export function TradePicker({
       <Pressable
         onPress={openPicker}
         accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityHint="Öffnet ein nummeriertes Scrollrad mit allen Gewerken"
+        accessibilityLabel={resolvedAccessibilityLabel}
+        accessibilityHint={t('trade_picker_hint' as any)}
         style={({ pressed }) => [
           styles.trigger,
           { borderColor: colors.border, backgroundColor: colors.background },
@@ -92,21 +96,21 @@ export function TradePicker({
         ]}
       >
         <Text style={[styles.triggerText, { color: value ? colors.foreground : colors.muted }]} numberOfLines={1}>
-          {value ? formatTradeLabel(value) : placeholder}
+          {value ? formatTradeLabel(value) : resolvedPlaceholder}
         </Text>
         <MaterialIcons name="unfold-more" size={22} color={colors.primary} />
       </Pressable>
 
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
         <View style={styles.overlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setVisible(false)} accessibilityLabel="Gewerkeauswahl schließen" />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setVisible(false)} accessibilityLabel={t('trade_picker_close_selection' as any)} />
           <View style={[styles.dialog, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.header}>
               <View>
-                <Text style={[styles.title, { color: colors.foreground }]}>Gewerk auswählen</Text>
-                <Text style={[styles.subtitle, { color: colors.muted }]}>Scrollen oder Zeile antippen</Text>
+                <Text style={[styles.title, { color: colors.foreground }]}>{t('trade_picker_select' as any)}</Text>
+                <Text style={[styles.subtitle, { color: colors.muted }]}>{t('trade_picker_subtitle' as any)}</Text>
               </View>
-              <Pressable onPress={() => setVisible(false)} accessibilityRole="button" accessibilityLabel="Schließen" style={styles.iconButton}>
+              <Pressable onPress={() => setVisible(false)} accessibilityRole="button" accessibilityLabel={t('trade_picker_close' as any)} style={styles.iconButton}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
               </Pressable>
             </View>
@@ -152,13 +156,13 @@ export function TradePicker({
                 onPress={() => setVisible(false)}
                 style={({ pressed }) => [styles.actionButton, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >
-                <Text style={[styles.actionText, { color: colors.muted }]}>Abbrechen</Text>
+                <Text style={[styles.actionText, { color: colors.muted }]}>{t('trade_picker_cancel' as any)}</Text>
               </Pressable>
               <Pressable
                 onPress={confirmSelection}
                 style={({ pressed }) => [styles.actionButton, { borderColor: colors.primary, backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
               >
-                <Text style={[styles.actionText, { color: "#FFFFFF" }]}>Übernehmen</Text>
+                <Text style={[styles.actionText, { color: "#FFFFFF" }]}>{t('trade_picker_apply' as any)}</Text>
               </Pressable>
             </View>
           </View>

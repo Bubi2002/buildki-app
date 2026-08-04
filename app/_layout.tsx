@@ -17,7 +17,7 @@ import {
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
-import { LanguageProvider } from "@/lib/language-provider";
+import { LanguageProvider, useTranslation } from "@/lib/language-provider";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import {
   authenticate,
@@ -50,6 +50,7 @@ function BiometricLockOverlay({
   onUnlock: () => void;
   biometricLabel: string;
 }) {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
 
   const handleAuthenticate = async () => {
@@ -58,7 +59,7 @@ function BiometricLockOverlay({
     if (result.success) {
       onUnlock();
     } else if (result.error !== 'cancelled') {
-      setError(result.error || 'Authentifizierung fehlgeschlagen');
+      setError(result.error || t('_layout_auth_failed' as any));
     }
   };
 
@@ -85,10 +86,10 @@ function BiometricLockOverlay({
       <View style={{ alignItems: 'center', padding: 32 }}>
         <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
         <Text style={{ fontSize: 22, fontWeight: '700', color: '#ffffff', marginBottom: 8 }}>
-          BuildKI gesperrt
+          {t('_layout_app_locked' as any)}
         </Text>
         <Text style={{ fontSize: 15, color: '#9ca3af', textAlign: 'center', marginBottom: 32 }}>
-          Bitte authentifiziere dich mit {biometricLabel}, um fortzufahren.
+          {t('_layout_authenticate_prompt_prefix' as any)}{biometricLabel}{t('_layout_authenticate_prompt_suffix' as any)}
         </Text>
         {error && (
           <Text style={{ fontSize: 14, color: '#ef4444', marginBottom: 16, textAlign: 'center' }}>
@@ -105,12 +106,58 @@ function BiometricLockOverlay({
           }}
         >
           <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
-            Entsperren
+            {t('_layout_unlock' as any)}
           </Text>
         </TouchableOpacity>
       </View>
     </View>
   );
+}
+
+function QuickActionsSetup() {
+  const { t } = useTranslation();
+  const quickRouter = useQuickRouter();
+
+  function handleQuickAction(action: QuickActions.Action) {
+    if (action.id === "quick_record_audio" || action.id === "quick_record_photo") {
+      // Navigate to recording tab with mode parameter
+      quickRouter.replace({
+        pathname: "/(tabs)",
+        params: { quickAction: action.id },
+      });
+    }
+  }
+
+  // Setup Quick Actions (iOS 3D Touch / Android App Shortcuts)
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    QuickActions.setItems([
+      {
+        id: "quick_record_audio",
+        title: t('_layout_quick_audio_title' as any),
+        subtitle: t('_layout_quick_audio_subtitle' as any),
+        icon: "audio",
+      },
+      {
+        id: "quick_record_photo",
+        title: t('_layout_quick_photo_title' as any),
+        subtitle: t('_layout_quick_photo_subtitle' as any),
+        icon: "capturePhoto",
+      },
+    ]);
+
+    // Handle quick action if app was launched from one
+    if (QuickActions.initial) {
+      handleQuickAction(QuickActions.initial);
+    }
+
+    const subscription = QuickActions.addListener((action) => {
+      handleQuickAction(action);
+    });
+    return () => subscription.remove();
+  }, [t]);
+
+  return null;
 }
 
 export default function RootLayout() {
@@ -124,8 +171,6 @@ export default function RootLayout() {
   const [offlineModeEnabled, setOfflineModeEnabled] = useState(true);
   const [showConsent, setShowConsent] = useState(false);
   const backgroundTimeRef = useRef<number | null>(null);
-
-  const quickRouter = useQuickRouter();
 
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
@@ -162,45 +207,6 @@ export default function RootLayout() {
       const { initDailySummary } = require("@/lib/daily-summary");
       initDailySummary();
     }
-  }, []);
-
-  function handleQuickAction(action: QuickActions.Action) {
-    if (action.id === "quick_record_audio" || action.id === "quick_record_photo") {
-      // Navigate to recording tab with mode parameter
-      quickRouter.replace({
-        pathname: "/(tabs)",
-        params: { quickAction: action.id },
-      });
-    }
-  }
-
-  // Setup Quick Actions (iOS 3D Touch / Android App Shortcuts)
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-    QuickActions.setItems([
-      {
-        id: "quick_record_audio",
-        title: "Schnellaufnahme",
-        subtitle: "Sofort Sprache aufnehmen",
-        icon: "audio",
-      },
-      {
-        id: "quick_record_photo",
-        title: "Audio + Foto",
-        subtitle: "Aufnahme mit Kamera",
-        icon: "capturePhoto",
-      },
-    ]);
-
-    // Handle quick action if app was launched from one
-    if (QuickActions.initial) {
-      handleQuickAction(QuickActions.initial);
-    }
-
-    const subscription = QuickActions.addListener((action) => {
-      handleQuickAction(action);
-    });
-    return () => subscription.remove();
   }, []);
 
   // Biometric lock on app start
@@ -289,6 +295,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ShareIntentProvider>
       <LanguageProvider>
+      <QuickActionsSetup />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <Stack screenOptions={{ headerShown: false }}>

@@ -121,10 +121,10 @@ function BiometricLockSection({ colors }: { colors: any }) {
       return (
         <View style={biometricStyles.section}>
           <Text style={[biometricStyles.sectionTitle, { color: colors.foreground }]}>
-            Biometrische Sperre
+            {t('settings_biometric_lock_title' as any)}
           </Text>
           <Text style={[biometricStyles.sectionDescription, { color: colors.muted }]}>
-            Face ID / Fingerabdruck zum Entsperren der App
+            {t('settings_biometric_web_desc' as any)}
           </Text>
           <View style={[biometricStyles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <MaterialIcons name="fingerprint" size={24} color={colors.muted} />
@@ -147,10 +147,10 @@ function BiometricLockSection({ colors }: { colors: any }) {
   return (
     <View style={biometricStyles.section}>
       <Text style={[biometricStyles.sectionTitle, { color: colors.foreground }]}>
-        Biometrische Sperre
+        {t('settings_biometric_lock_title' as any)}
       </Text>
       <Text style={[biometricStyles.sectionDescription, { color: colors.muted }]}>
-        {label} zum Entsperren der App verwenden
+        {label} {t('settings_biometric_use_to_unlock' as any)}
       </Text>
 
       <Pressable
@@ -171,10 +171,10 @@ function BiometricLockSection({ colors }: { colors: any }) {
         />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={[biometricStyles.label, { color: colors.foreground }]}>
-            App-Sperre mit {label}
+            {t('settings_biometric_lock_with' as any)} {label}
           </Text>
           <Text style={{ fontSize: 12, color: colors.muted }}>
-            {enabled ? 'Aktiv – App wird beim Start gesperrt' : 'Tippe zum Aktivieren'}
+            {enabled ? t('settings_biometric_active' as any) : t('settings_tap_to_activate' as any)}
           </Text>
         </View>
         <View style={[biometricStyles.toggleTrack, { backgroundColor: enabled ? colors.primary : colors.border }]}>
@@ -252,10 +252,10 @@ function AnnotationTemplatesSection({ colors }: { colors: any }) {
   return (
     <View style={annotStyles.section}>
       <Text style={[annotStyles.sectionTitle, { color: colors.foreground }]}>
-        Annotations-Vorlagen
+        {t('settings_annotation_templates_title' as any)}
       </Text>
       <Text style={[annotStyles.sectionDescription, { color: colors.muted }]}>
-        Eigene Schnelltext-Vorlagen für die Foto-Annotation
+        {t('settings_annotation_templates_desc' as any)}
       </Text>
 
       {/* Existing templates */}
@@ -303,7 +303,7 @@ function AnnotationTemplatesSection({ colors }: { colors: any }) {
           style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
         >
           <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>
-            {isEditing ? 'Fertig' : 'Bearbeiten'}
+            {isEditing ? t('done') : t('edit')}
           </Text>
         </Pressable>
       )}
@@ -352,10 +352,10 @@ function WatermarkSection({ colors }: { colors: any }) {
   return (
     <View style={wmStyles.section}>
       <Text style={[wmStyles.sectionTitle, { color: colors.foreground }]}>
-        Wasserzeichen / Stempel
+        {t('settings_watermark_title' as any)}
       </Text>
       <Text style={[wmStyles.sectionDescription, { color: colors.muted }]}>
-        Firmenstempel als Wasserzeichen im PDF anzeigen
+        {t('settings_watermark_desc' as any)}
       </Text>
 
       <View style={[wmStyles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -376,13 +376,13 @@ function WatermarkSection({ colors }: { colors: any }) {
           <TextInput
             value={text}
             onChangeText={(v) => save(true, v)}
-            placeholder="z.B. Firmenname, VERTRAULICH, ENTWURF"
+            placeholder={t('settings_watermark_placeholder' as any)}
             placeholderTextColor={colors.muted}
             style={[wmStyles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
             returnKeyType="done"
           />
           <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
-            Tipp: Firmenname oder „VERTRAULICH“ als Stempel
+            {t('settings_watermark_tip' as any)}
           </Text>
         </View>
       )}
@@ -522,7 +522,7 @@ function TaskReminderSection({ colors }: { colors: any }) {
             <Text style={{ fontSize: 13, color: colors.muted, marginLeft: 8 }}>{t('uhr')}</Text>
           </View>
           {Platform.OS !== "web" && !permissionGranted && (
-            <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>⚠️ Benachrichtigungs-Berechtigung noch nicht erteilt</Text>
+            <Text style={{ fontSize: 11, color: colors.warning, marginTop: 8 }}>{t('settings_notif_permission_missing' as any)}</Text>
           )}
         </View>
       )}
@@ -570,7 +570,7 @@ function FeatureTogglesSection({ colors }: { colors: any }) {
       >
         <View>
           <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{t('features_verwalten')}</Text>
-          <Text style={{ fontSize: 13, color: colors.muted }}>{enabledCount} von {toggles.length} aktiv</Text>
+          <Text style={{ fontSize: 13, color: colors.muted }}>{enabledCount} {t('settings_of' as any)} {toggles.length} {t('settings_active_lower' as any)}</Text>
         </View>
         <MaterialIcons name={expanded ? "expand-less" : "expand-more"} size={24} color={colors.muted} />
       </Pressable>
@@ -651,7 +651,7 @@ function BackupSection({ colors }: { colors: any }) {
     <View style={{ marginBottom: 28 }}>
       <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>{t('datensicherung')}</Text>
       <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-        {stats.protocolCount} Protokolle, {stats.projectCount} Projekte ({stats.totalSize})
+        {stats.protocolCount} {t('settings_protocols' as any)}, {stats.projectCount} {t('settings_projects' as any)} ({stats.totalSize})
       </Text>
 
       <View style={{ flexDirection: "row", gap: 12 }}>
@@ -711,7 +711,7 @@ export default function SettingsScreen() {
 
   const toggleSync = async (val: boolean) => {
     if (val && !(await isConsentGiven("cloudSync"))) {
-      Alert.alert("Cloud-Synchronisation deaktiviert", getConsentRequiredMessage("cloudSync"));
+      Alert.alert(t('settings_cloud_sync_disabled' as any), getConsentRequiredMessage("cloudSync"));
       return;
     }
     setSyncEnabledState(val);
@@ -723,7 +723,7 @@ export default function SettingsScreen() {
 
   const syncNow = async () => {
     if (!(await isConsentGiven("cloudSync"))) {
-      Alert.alert("Cloud-Synchronisation deaktiviert", getConsentRequiredMessage("cloudSync"));
+      Alert.alert(t('settings_cloud_sync_disabled' as any), getConsentRequiredMessage("cloudSync"));
       return;
     }
     if (!isAuthenticated) {
@@ -759,7 +759,7 @@ export default function SettingsScreen() {
       const totalPulled = result.pulled.defects + result.pulled.projects;
       const totalConflicts = result.conflicts.defects + result.conflicts.projects;
       const totalSynced = unsynced.length + totalPushed + totalPulled;
-      Alert.alert('Sync abgeschlossen', `${totalSynced} Element(e) synchronisiert (${totalConflicts} Konflikte gel\u00f6st).`);
+      Alert.alert(t('settings_sync_complete' as any), `${totalSynced} ${t('settings_sync_elements_synced' as any)} (${totalConflicts} ${t('settings_sync_conflicts_resolved' as any)}`);
     } catch  {
       Alert.alert(t('alert_sync_fehler'), t('msg_die_synchronisation_konnte_nicht_abgeschlossen'));
     } finally {
@@ -858,7 +858,7 @@ export default function SettingsScreen() {
     const updated = { ...settings, templateId: template.id };
     setSettings(updated);
     await AsyncStorage.setItem("protokoll-settings", JSON.stringify(updated));
-    setTemplateFeedback(`„${template.name}“ ist jetzt die Standard-Vorlage.`);
+    setTemplateFeedback(`„${template.name}“ ${t('settings_now_default_template' as any)}`);
     setSaved(true);
     setTimeout(() => {
       setTemplateFeedback("");
@@ -867,7 +867,7 @@ export default function SettingsScreen() {
   };
 
   const openTemplateEditor = () => {
-    setTemplateFeedback("Vorlageneditor wird geöffnet …");
+    setTemplateFeedback(t('settings_template_editor_opening' as any));
     router.push({ pathname: "/template-editor" } as any);
   };
 
@@ -1057,7 +1057,7 @@ export default function SettingsScreen() {
       );
     } catch (e: any) {
       console.error("Import contacts error:", e);
-      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || "Unbekannter Fehler"}`);
+      Alert.alert(t('alert_fehler'), `${t('settings_contacts_load_failed' as any)} ${e?.message || t('settings_unknown_error' as any)}`);
     }
   };
 
@@ -1070,7 +1070,7 @@ return (
     <ScreenContainer className="flex-1">
       <View style={styles.headerContainer}>
         <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-          Einstellungen
+          {t('settings_screen_title' as any)}
         </Text>
       </View>
 
@@ -1082,10 +1082,10 @@ return (
         {/* Company Branding Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Firmendaten & Logo
+            {t('settings_company_data_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Erscheint im PDF-Export deiner Protokolle
+            {t('settings_company_data_desc' as any)}
           </Text>
 
           {/* Logo Upload */}
@@ -1130,10 +1130,10 @@ return (
               >
                 <MaterialIcons name="add-photo-alternate" size={32} color={colors.muted} />
                 <Text style={[styles.logoUploadText, { color: colors.muted }]}>
-                  Firmenlogo hochladen
+                  {t('settings_upload_logo' as any)}
                 </Text>
                 <Text style={[styles.logoUploadHint, { color: colors.muted }]}>
-                  Empfohlen: PNG, max. 500x200px
+                  {t('settings_logo_hint' as any)}
                 </Text>
               </Pressable>
             )}
@@ -1144,7 +1144,7 @@ return (
             <View style={styles.inputLabel}>
               <MaterialIcons name="business" size={18} color={colors.primary} />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
-                Firmenname
+                {t('settings_company_name' as any)}
               </Text>
             </View>
             <TextInput
@@ -1161,7 +1161,7 @@ return (
             <View style={styles.inputLabel}>
               <MaterialIcons name="location-on" size={18} color={colors.primary} />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
-                Adresse
+                {t('adresse')}
               </Text>
             </View>
             <TextInput
@@ -1180,7 +1180,7 @@ return (
             <View style={styles.inputLabel}>
               <MaterialIcons name="phone" size={18} color={colors.primary} />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
-                Telefon
+                {t('telefon')}
               </Text>
             </View>
             <TextInput
@@ -1200,16 +1200,16 @@ return (
         {/* Template Selection */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Protokoll-Vorlage
+            {t('settings_protocol_template_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Wähle die Standard-Vorlage für neue Protokolle
+            {t('settings_protocol_template_desc' as any)}
           </Text>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Eigene Vorlage erstellen"
-            accessibilityHint="Öffnet den Vorlageneditor"
+            accessibilityLabel={t('settings_create_own_template' as any)}
+            accessibilityHint={t('settings_open_template_editor' as any)}
             onPress={openTemplateEditor}
             style={({ pressed }) => [
               styles.createTemplateButton,
@@ -1218,7 +1218,7 @@ return (
           >
             <MaterialIcons name="add" size={22} color={colors.primary} />
             <Text style={[styles.createTemplateText, { color: colors.primary }]}>
-              Eigene Vorlage erstellen
+              {t('settings_create_own_template' as any)}
             </Text>
             <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
           </Pressable>
@@ -1232,7 +1232,7 @@ return (
 
           {customTemplates.length > 0 && (
             <View style={[styles.customTemplateSection, { marginBottom: 12 }]}>
-              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>Eigene Vorlagen</Text>
+              <Text style={[styles.optionLabel, { color: colors.muted, marginBottom: 8 }]}>{t('settings_own_templates' as any)}</Text>
               {customTemplates.map((template) => {
                 const isSelected = settings.templateId === template.id;
                 return (
@@ -1243,7 +1243,7 @@ return (
                     <Pressable
                       accessibilityRole="button"
                       accessibilityState={{ selected: isSelected }}
-                      accessibilityLabel={`${template.name} als Standard-Vorlage auswählen`}
+                      accessibilityLabel={`${template.name} ${t('settings_select_as_default' as any)}`}
                       onPress={() => void selectProtocolTemplate(template)}
                       style={({ pressed }) => [{ flex: 1, minHeight: 64, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, opacity: pressed ? 0.65 : 1 }]}
                     >
@@ -1257,7 +1257,7 @@ return (
                     <View style={{ flexDirection: "row", borderLeftWidth: 1, borderLeftColor: colors.border }}>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`${template.name} bearbeiten`}
+                        accessibilityLabel={`${template.name} ${t('settings_template_edit_a11y' as any)}`}
                         onPress={() => router.push({ pathname: "/template-editor", params: { editId: template.id } } as any)}
                         style={({ pressed }) => [{ width: 44, height: 64, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 }]}
                       >
@@ -1265,10 +1265,10 @@ return (
                       </Pressable>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`${template.name} löschen`}
-                        onPress={() => Alert.alert("Vorlage löschen", `„${template.name}“ endgültig löschen?`, [
-                          { text: "Abbrechen", style: "cancel" },
-                          { text: "Löschen", style: "destructive", onPress: () => void deleteCustomTemplate(template.id) },
+                        accessibilityLabel={`${template.name} ${t('settings_template_delete_a11y' as any)}`}
+                        onPress={() => Alert.alert(t('settings_delete_template_title' as any), `„${template.name}“ ${t('settings_delete_template_confirm' as any)}`, [
+                          { text: t('cancel'), style: "cancel" },
+                          { text: t('delete'), style: "destructive", onPress: () => void deleteCustomTemplate(template.id) },
                         ])}
                         style={({ pressed }) => [{ width: 44, height: 64, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 }]}
                       >
@@ -1281,7 +1281,7 @@ return (
             </View>
           )}
 
-          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 6, marginBottom: 8 }]}>Standard-Vorlagen</Text>
+          <Text style={[styles.optionLabel, { color: colors.muted, marginTop: 6, marginBottom: 8 }]}>{t('settings_standard_templates' as any)}</Text>
           <View style={styles.templateGrid}>
             {PROTOCOL_TEMPLATES.map((template) => {
               const isSelected = settings.templateId === template.id;
@@ -1290,7 +1290,7 @@ return (
                   key={template.id}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`${template.name} als Standard-Vorlage auswählen`}
+                  accessibilityLabel={`${template.name} ${t('settings_select_as_default' as any)}`}
                   onPress={() => void selectProtocolTemplate(template)}
                   style={({ pressed }) => [
                     styles.templateCard,
@@ -1312,7 +1312,7 @@ return (
                     {template.description}
                   </Text>
                   <Text style={{ color: isSelected ? colors.primary : colors.muted, fontSize: 10, fontWeight: "700", marginTop: 8 }}>
-                    {isSelected ? "AUSGEWÄHLT" : "AUSWÄHLEN"}
+                    {isSelected ? t('settings_selected_upper' as any) : t('settings_select_upper' as any)}
                   </Text>
                 </Pressable>
               );
@@ -1322,13 +1322,13 @@ return (
 
         {/* Additional protocol tools — deliberately outside all template cards */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Weitere Protokoll-Werkzeuge</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>Vorlagen verwalten und wiederkehrende Abläufe vorbereiten</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_more_protocol_tools' as any)}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('settings_more_protocol_tools_desc' as any)}</Text>
           {[
-            { route: "/template-marketplace", icon: "store", label: "Vorlagenmarktplatz", description: "Vorlagen entdecken und teilen" },
-            { route: "/agenda-preparation", icon: "event-note", label: "Agendavorbereitung", description: "KI-gestützte Meetingagenden erstellen" },
-            { route: "/kanban", icon: "view-kanban", label: "Kanban Board", description: "Aufgaben visuell verwalten" },
-            { route: "/recurring-meetings", icon: "event-repeat", label: "Wiederkehrende Meetings", description: "Protokolle automatisch vorbereiten" },
+            { route: "/template-marketplace", icon: "store", label: t('settings_tool_marketplace_label' as any), description: t('settings_tool_marketplace_desc' as any) },
+            { route: "/agenda-preparation", icon: "event-note", label: t('settings_tool_agenda_label' as any), description: t('settings_tool_agenda_desc' as any) },
+            { route: "/kanban", icon: "view-kanban", label: t('settings_tool_kanban_label' as any), description: t('settings_tool_kanban_desc' as any) },
+            { route: "/recurring-meetings", icon: "event-repeat", label: t('settings_tool_recurring_label' as any), description: t('settings_tool_recurring_desc' as any) },
           ].map((item) => (
             <Pressable
               key={item.route}
@@ -1350,14 +1350,14 @@ return (
         {/* Recipients Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Empfänger
+            {t('settings_recipients_title' as any)}
           </Text>
 
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
               <MaterialIcons name="chat" size={18} color="#25D366" />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
-                WhatsApp-Nummer
+                {t('settings_whatsapp_number' as any)}
               </Text>
             </View>
             <TextInput
@@ -1374,14 +1374,14 @@ return (
             <View style={styles.inputLabel}>
               <MaterialIcons name="email" size={18} color={colors.primary} />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
-                Standard E-Mail
+                {t('settings_default_email' as any)}
               </Text>
             </View>
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               value={settings.defaultEmail}
               onChangeText={(v) => updateSetting("defaultEmail", v)}
-              placeholder="empfaenger@example.de"
+              placeholder={t('settings_default_email_placeholder' as any)}
               placeholderTextColor={colors.muted}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -1392,10 +1392,10 @@ return (
         {/* Auto-Send Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Automatischer Versand
+            {t('settings_auto_send_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            PDF nach Aufnahme automatisch an Standard-Kontakt senden
+            {t('settings_auto_send_desc' as any)}
           </Text>
 
           {/* Toggle */}
@@ -1418,12 +1418,12 @@ return (
               />
               <View style={styles.autoSendToggleText}>
                 <Text style={[styles.autoSendTitle, { color: colors.foreground }]}>
-                  Auto-Versand {settings.autoSend ? "aktiv" : "inaktiv"}
+                  {t('settings_auto_send_label' as any)} {settings.autoSend ? t('settings_active_lower' as any) : t('settings_inactive_lower' as any)}
                 </Text>
                 <Text style={[styles.autoSendSubtitle, { color: colors.muted }]}>
                   {settings.autoSend
-                    ? "PDF wird nach jeder Aufnahme automatisch gesendet"
-                    : "Tippe zum Aktivieren"}
+                    ? t('settings_auto_send_on_desc' as any)
+                    : t('settings_tap_to_activate' as any)}
                 </Text>
               </View>
             </View>
@@ -1482,7 +1482,7 @@ return (
                       { color: settings.autoSendTarget === "email" ? "#FFFFFF" : colors.foreground },
                     ]}
                   >
-                    E-Mail
+                    {t('settings_email_option' as any)}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1501,18 +1501,18 @@ return (
                       { color: settings.autoSendTarget === "both" ? "#FFFFFF" : colors.foreground },
                     ]}
                   >
-                    Beide
+                    {t('settings_both' as any)}
                   </Text>
                 </Pressable>
               </View>
               {!settings.whatsappNumber && settings.autoSendTarget !== "email" && (
                 <Text style={[styles.autoSendWarning, { color: colors.warning }]}>
-                  Bitte WhatsApp-Nummer oben eintragen
+                  {t('settings_enter_whatsapp_warning' as any)}
                 </Text>
               )}
               {!settings.defaultEmail && settings.autoSendTarget !== "whatsapp" && (
                 <Text style={[styles.autoSendWarning, { color: colors.warning }]}>
-                  Bitte E-Mail-Adresse oben eintragen
+                  {t('settings_enter_email_warning' as any)}
                 </Text>
               )}
             </View>
@@ -1522,10 +1522,10 @@ return (
         {/* Auto-Analyse Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            KI-Bildanalyse
+            {t('settings_ai_image_analysis_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Fotos nach Aufnahme automatisch analysieren
+            {t('settings_ai_image_analysis_desc' as any)}
           </Text>
 
           <Pressable
@@ -1547,12 +1547,12 @@ return (
               />
               <View style={styles.autoSendToggleText}>
                 <Text style={[styles.autoSendTitle, { color: colors.foreground }]}>
-                  Auto-Analyse {settings.autoAnalyzePhotos ? "aktiv" : "inaktiv"}
+                  {t('settings_auto_analyze_label' as any)} {settings.autoAnalyzePhotos ? t('settings_active_lower' as any) : t('settings_inactive_lower' as any)}
                 </Text>
                 <Text style={[styles.autoSendSubtitle, { color: colors.muted }]}>
                   {settings.autoAnalyzePhotos
-                    ? "Fotos werden nach Aufnahme automatisch per KI analysiert"
-                    : "Tippe zum Aktivieren"}
+                    ? t('settings_auto_analyze_on_desc' as any)
+                    : t('settings_tap_to_activate' as any)}
                 </Text>
               </View>
             </View>
@@ -1575,10 +1575,10 @@ return (
         {/* Audio Quality Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Aufnahme-Qualität
+            {t('settings_audio_quality_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Höhere Qualität = größere Dateien, bessere Transkription
+            {t('settings_audio_quality_desc' as any)}
           </Text>
           <View style={styles.optionRow}>
             <Pressable
@@ -1608,7 +1608,7 @@ return (
         {/* Protocol Style Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Protokoll-Stil
+            {t('settings_protocol_style_title' as any)}
           </Text>
 
           <Text style={[styles.optionLabel, { color: colors.muted }]}>{t('schreibstil')}</Text>
@@ -1629,7 +1629,7 @@ return (
                   { color: settings.style === "formal" ? "#FFFFFF" : colors.foreground },
                 ]}
               >
-                Formell
+                {t('settings_style_formal' as any)}
               </Text>
             </Pressable>
             <Pressable
@@ -1648,7 +1648,7 @@ return (
                   { color: settings.style === "informal" ? "#FFFFFF" : colors.foreground },
                 ]}
               >
-                Informell
+                {t('settings_style_informal' as any)}
               </Text>
             </Pressable>
           </View>
@@ -1671,7 +1671,7 @@ return (
                   { color: settings.format === "bullets" ? "#FFFFFF" : colors.foreground },
                 ]}
               >
-                Stichpunkte
+                {t('settings_format_bullets' as any)}
               </Text>
             </Pressable>
             <Pressable
@@ -1690,7 +1690,7 @@ return (
                   { color: settings.format === "paragraphs" ? "#FFFFFF" : colors.foreground },
                 ]}
               >
-                Fließtext
+                {t('settings_format_paragraphs' as any)}
               </Text>
             </Pressable>
           </View>
@@ -1699,7 +1699,7 @@ return (
         {/* Language Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Sprache
+            {t('settings_language_title' as any)}
           </Text>
           <View style={styles.optionRow}>
             <Pressable
@@ -1746,10 +1746,10 @@ return (
         {/* Cloud Sync & Konto */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Cloud & Konto
+            {t('settings_cloud_account_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Synchronisiere Protokolle geräteübergreifend
+            {t('settings_cloud_account_desc' as any)}
           </Text>
 
           {/* Login Status */}
@@ -1833,10 +1833,10 @@ return (
         {/* Erinnerungen */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Erinnerungen
+            {t('settings_reminders_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Benachrichtigungen für Aufgaben mit nahender Frist
+            {t('settings_reminders_desc' as any)}
           </Text>
 
           <View style={[styles.autoSendRow, { borderColor: colors.border }]}>
@@ -1989,7 +1989,7 @@ return (
             Dropbox
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Automatischer PDF-Upload in deinen Dropbox-Ordner
+            {t('settings_dropbox_desc' as any)}
           </Text>
           <Pressable
             onPress={() => router.push("/dropbox-settings" as any)}
@@ -2014,10 +2014,10 @@ return (
         {/* Auto-Bericht */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Automatischer Bericht
+            {t('settings_auto_report_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Täglicher oder wöchentlicher Gesamtbericht aller Protokolle
+            {t('settings_auto_report_desc' as any)}
           </Text>
           <Pressable
             onPress={() => router.push("/auto-report-settings" as any)}
@@ -2065,7 +2065,7 @@ return (
           {!showAddTeamContact ? (
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
               <Pressable onPress={() => setShowAddTeamContact(true)} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
-                <Text style={{ fontSize: 13, color: colors.primary }}>+ Manuell hinzufügen</Text>
+                <Text style={{ fontSize: 13, color: colors.primary }}>{t('settings_add_manually' as any)}</Text>
               </Pressable>
               <Pressable onPress={importFromPhoneContacts} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
                 <Text style={{ fontSize: 13, color: colors.primary }}>{t('aus_kontakten')}</Text>
@@ -2080,7 +2080,7 @@ return (
               <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
               <TextInput placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} value={tcPhone} onChangeText={setTcPhone} keyboardType="phone-pad" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
               <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle_optional')}</Text>
-              <TextInput placeholder="z.B. Bauleiter, Architekt" placeholderTextColor={colors.muted + "80"} value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 12 }} />
+              <TextInput placeholder={t('settings_role_placeholder' as any)} placeholderTextColor={colors.muted + "80"} value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 12 }} />
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <Pressable onPress={handleAddTeamContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
                   <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>{t('save')}</Text>
@@ -2102,7 +2102,7 @@ return (
               <View key={profile.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: "500" }}>{profile.name}</Text>
-                  <Text style={{ fontSize: 11, color: "#687076" }}>{profile.label} • {profile.usageCount}x verwendet</Text>
+                  <Text style={{ fontSize: 11, color: "#687076" }}>{profile.label} • {profile.usageCount}x {t('settings_used' as any)}</Text>
                 </View>
                 <Pressable onPress={() => handleDeleteSpeaker(profile.id)} style={{ padding: 6 }}>
                   <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
@@ -2125,7 +2125,7 @@ return (
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: "500" }}>{profile.name}</Text>
-                  <Text style={{ fontSize: 11, color: "#687076" }}>{profile.detectionCount}x erkannt • {Math.round(profile.confidence * 100)}% Konfidenz</Text>
+                  <Text style={{ fontSize: 11, color: "#687076" }}>{profile.detectionCount}x {t('settings_detected' as any)} • {Math.round(profile.confidence * 100)}% {t('settings_confidence' as any)}</Text>
                 </View>
                 <Pressable onPress={() => handleDeleteVoiceProfile(profile.id)} style={{ padding: 6 }}>
                   <Text style={{ fontSize: 16, color: "#EF4444" }}>×</Text>
@@ -2138,10 +2138,10 @@ return (
 {/* KI-Support */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Hilfe & Support
+            {t('settings_help_support_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            KI-gestützter Support-Chat und häufige Fragen
+            {t('settings_help_support_desc' as any)}
           </Text>
           <Pressable
             onPress={() => router.push("/support-chat" as any)}
@@ -2168,10 +2168,10 @@ return (
 {/* Rechtliches & Datenschutz */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Rechtliches & Datenschutz
+            {t('settings_legal_privacy_title' as any)}
           </Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            Optionale Verarbeitungen sind standardmäßig aus und jederzeit widerrufbar.
+            {t('settings_legal_privacy_desc' as any)}
           </Text>
           <PrivacyChoicesSection colors={colors} />
           <View style={{ height: 12 }} />
@@ -2188,8 +2188,8 @@ return (
               <MaterialIcons name="privacy-tip" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Datenschutzerklärung</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>DSGVO, Datenverarbeitung, Ihre Rechte</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_privacy_policy' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_privacy_policy_desc' as any)}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -2205,8 +2205,8 @@ return (
               <MaterialIcons name="psychology" size={20} color={colors.warning} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>KI-Hinweis</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Transparenz zur KI-Nutzung gemäß EU AI Act</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_ai_notice' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_ai_transparency_desc' as any)}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -2222,8 +2222,8 @@ return (
               <MaterialIcons name="business" size={20} color={colors.muted} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Impressum & AGB</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Nutzungsbedingungen, Lizenzen</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_imprint_terms' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_imprint_terms_desc' as any)}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -2239,8 +2239,8 @@ return (
               <MaterialIcons name="delete-forever" size={20} color={colors.error} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>Meine Daten & Konto löschen</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>Konto endgültig löschen, Datenexport, Auskunft</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_delete_my_data' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_delete_my_data_desc' as any)}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -2281,7 +2281,7 @@ return (
             <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
             <TextInput value={editPhone} onChangeText={setEditPhone} placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} keyboardType="phone-pad" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
             <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle')}</Text>
-            <TextInput value={editRole} onChangeText={setEditRole} placeholder="z.B. Bauleiter" placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 16 }} />
+            <TextInput value={editRole} onChangeText={setEditRole} placeholder={t('settings_role_placeholder_short' as any)} placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 16 }} />
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Pressable onPress={saveEditContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
                 <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>{t('save')}</Text>

@@ -23,10 +23,12 @@ import { scheduleFollowUpForDefect, sendImmediateNotification } from "@/lib/noti
 import { addHistoryEntry } from "@/lib/defect-store";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
+import { useTranslation } from "@/lib/language-provider";
 
 type FollowUpFilter = "alle" | "heute" | "ueberfaellig" | "kommend";
 
 export default function FollowUpScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; defectId?: string }>();
@@ -66,7 +68,7 @@ export default function FollowUpScreen() {
         setFollowUpNote(requestedDefect.followUpNote || "");
         setShowDatePicker(true);
       } else if (requestedDefect) {
-        Alert.alert("Nachprüfung nicht erforderlich", "Für erledigte oder geschlossene Mängel kann kein neuer Nachprüfungstermin geplant werden.");
+        Alert.alert(t('follow_up_reinspection_not_needed_title' as any), t('follow_up_reinspection_not_needed_msg' as any));
       }
     }
   }
@@ -97,7 +99,7 @@ export default function FollowUpScreen() {
 
   const scheduleFollowUp = async (defect: Defect, isoDate: string) => {
     if (!isDateOnOrAfter(isoDate, todayDateOnly())) {
-      Alert.alert("Termin prüfen", "Bitte wähle ein heutiges oder zukünftiges Nachprüfungsdatum.");
+      Alert.alert(t('follow_up_check_date_title' as any), t('follow_up_check_date_msg' as any));
       return;
     }
 
@@ -118,7 +120,7 @@ export default function FollowUpScreen() {
       "status_changed",
       defect.status,
       "pruefung",
-      `Nachprüfung geplant: ${formatDateOnly(isoDate)}${followUpNote.trim() ? ` · ${followUpNote.trim()}` : ""}`,
+      `${t('follow_up_history_scheduled' as any)}${formatDateOnly(isoDate)}${followUpNote.trim() ? ` · ${followUpNote.trim()}` : ""}`,
     );
 
     // Immediate confirmation
@@ -131,36 +133,36 @@ export default function FollowUpScreen() {
     setSelectedDefect(null);
 
     Alert.alert(
-      "Nachprüfung geplant",
-      `Nachprüfung für "${defect.title}" am ${formatDateOnly(isoDate)} eingeplant. Du erhältst eine Erinnerung am Vortag.`,
-      [{ text: "OK" }]
+      t('follow_up_scheduled_title' as any),
+      `${t('follow_up_scheduled_msg_a' as any)}${defect.title}${t('follow_up_scheduled_msg_b' as any)}${formatDateOnly(isoDate)}${t('follow_up_scheduled_msg_c' as any)}`,
+      [{ text: t('ok') }]
     );
   };
 
   const markInspectionDone = async (defect: Defect) => {
     Alert.alert(
-      "Nachprüfung abschließen",
-      "Ergebnis der Nachprüfung:",
+      t('follow_up_complete_title' as any),
+      t('follow_up_complete_msg' as any),
       [
-        { text: "Abbrechen", style: "cancel" },
+        { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "✓ Mangel behoben",
+          text: t('follow_up_defect_fixed' as any),
           onPress: async () => {
             await updateDefectStatus(defect.id, "erledigt");
-            await addHistoryEntry(defect.id, "resolved", "pruefung", "erledigt", "Nachprüfung bestanden – Mangel behoben");
+            await addHistoryEntry(defect.id, "resolved", "pruefung", "erledigt", t('follow_up_history_passed' as any));
             if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            await sendImmediateNotification("✓ Mangel behoben", `"${defect.title}" wurde als erledigt markiert.`);
+            await sendImmediateNotification(t('follow_up_defect_fixed' as any), `"${defect.title}${t('follow_up_notif_marked_done' as any)}`);
             await loadFollowUps();
           },
         },
         {
-          text: "✗ Nachbesserung nötig",
+          text: t('follow_up_needs_rework' as any),
           style: "destructive",
           onPress: async () => {
             await updateDefectStatus(defect.id, "nachbesserung");
-            await addHistoryEntry(defect.id, "status_changed", "pruefung", "nachbesserung", "Nachprüfung nicht bestanden – Nachbesserung erforderlich");
+            await addHistoryEntry(defect.id, "status_changed", "pruefung", "nachbesserung", t('follow_up_history_failed' as any));
             if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            await sendImmediateNotification("⚠️ Nachbesserung erforderlich", `"${defect.title}" hat die Nachprüfung nicht bestanden.`);
+            await sendImmediateNotification(t('follow_up_notif_rework_title' as any), `"${defect.title}${t('follow_up_notif_failed' as any)}`);
             await loadFollowUps();
           },
         },
@@ -183,11 +185,11 @@ export default function FollowUpScreen() {
   };
 
   const getStatusLabel = (defect: Defect): string => {
-    if (!defect.followUpDate) return "Kein Datum";
-    if (defect.followUpDate < today) return "Überfällig";
-    if (defect.followUpDate === today) return "Heute fällig";
+    if (!defect.followUpDate) return t('follow_up_no_date' as any);
+    if (defect.followUpDate < today) return t('ueberfaellig');
+    if (defect.followUpDate === today) return t('follow_up_due_today' as any);
     const diff = Math.ceil((new Date(defect.followUpDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return `In ${diff} ${diff === 1 ? "Tag" : "Tagen"}`;
+    return `${t('follow_up_in' as any)} ${diff} ${diff === 1 ? t('follow_up_day' as any) : t('follow_up_days' as any)}`;
   };
 
   const renderDefect = ({ item }: { item: Defect }) => {
@@ -233,7 +235,7 @@ export default function FollowUpScreen() {
               style={({ pressed }) => [styles.actionBtn, styles.actionBtnPrimary, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="check-circle" size={16} color="#4ADE80" />
-              <Text style={[styles.actionBtnText, { color: "#4ADE80" }]}>Prüfen</Text>
+              <Text style={[styles.actionBtnText, { color: "#4ADE80" }]}>{t('anno_pruefen')}</Text>
             </Pressable>
           )}
           <Pressable
@@ -242,7 +244,7 @@ export default function FollowUpScreen() {
           >
             <MaterialIcons name="event-repeat" size={16} color="#5DADE2" />
             <Text style={[styles.actionBtnText, { color: "#5DADE2" }]}>
-              {item.followUpDate ? "Verschieben" : "Termin setzen"}
+              {item.followUpDate ? t('follow_up_reschedule' as any) : t('follow_up_set_date' as any)}
             </Text>
           </Pressable>
           <Pressable
@@ -250,7 +252,7 @@ export default function FollowUpScreen() {
             style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="open-in-new" size={16} color="#8FA3B8" />
-            <Text style={[styles.actionBtnText, { color: "#8FA3B8" }]}>Detail</Text>
+            <Text style={[styles.actionBtnText, { color: "#8FA3B8" }]}>{t('follow_up_detail' as any)}</Text>
           </Pressable>
         </View>
 
@@ -264,7 +266,7 @@ export default function FollowUpScreen() {
           )}
           <View style={[styles.footerChip, { backgroundColor: item.priority === "hoch" ? "#F8717115" : item.priority === "mittel" ? "#FBBF2415" : "#4ADE8015" }]}>
             <Text style={[styles.footerChipText, { color: item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : "#4ADE80" }]}>
-              {item.priority === "hoch" ? "Hoch" : item.priority === "mittel" ? "Mittel" : "Niedrig"}
+              {item.priority === "hoch" ? t('defect_priority_high') : item.priority === "mittel" ? t('defect_priority_medium') : t('defect_priority_low')}
             </Text>
           </View>
           {item.positionCode && (
@@ -286,8 +288,8 @@ export default function FollowUpScreen() {
             <MaterialIcons name="arrow-back" size={24} color="#F0F4F8" />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Nachprüfungen</Text>
-            <Text style={styles.headerSubtitle}>Offene Inspektionstermine</Text>
+            <Text style={styles.headerTitle}>{t('follow_up_title' as any)}</Text>
+            <Text style={styles.headerSubtitle}>{t('follow_up_subtitle' as any)}</Text>
           </View>
         </View>
 
@@ -295,29 +297,29 @@ export default function FollowUpScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statBadge}>
             <Text style={[styles.statNum, { color: "#F0F4F8" }]}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Gesamt</Text>
+            <Text style={styles.statLabel}>{t('gesamt')}</Text>
           </View>
           <View style={styles.statBadge}>
             <Text style={[styles.statNum, { color: "#F87171" }]}>{stats.overdue}</Text>
-            <Text style={styles.statLabel}>Überfällig</Text>
+            <Text style={styles.statLabel}>{t('ueberfaellig')}</Text>
           </View>
           <View style={styles.statBadge}>
             <Text style={[styles.statNum, { color: "#FBBF24" }]}>{stats.today}</Text>
-            <Text style={styles.statLabel}>Heute</Text>
+            <Text style={styles.statLabel}>{t('heute')}</Text>
           </View>
           <View style={styles.statBadge}>
             <Text style={[styles.statNum, { color: "#4ADE80" }]}>{stats.upcoming}</Text>
-            <Text style={styles.statLabel}>Kommend</Text>
+            <Text style={styles.statLabel}>{t('follow_up_upcoming' as any)}</Text>
           </View>
         </View>
 
         {/* Filter Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {([
-            { key: "alle", label: "Alle" },
-            { key: "ueberfaellig", label: "Überfällig" },
-            { key: "heute", label: "Heute" },
-            { key: "kommend", label: "Kommend" },
+            { key: "alle", label: t('all') },
+            { key: "ueberfaellig", label: t('ueberfaellig') },
+            { key: "heute", label: t('heute') },
+            { key: "kommend", label: t('follow_up_upcoming' as any) },
           ] as { key: FollowUpFilter; label: string }[]).map((f) => (
             <Pressable
               key={f.key}
@@ -344,18 +346,18 @@ export default function FollowUpScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <MaterialIcons name="event-available" size={48} color="#1E3A5F" />
-              <Text style={styles.emptyTitle}>Keine Nachprüfungen</Text>
+              <Text style={styles.emptyTitle}>{t('follow_up_empty_title' as any)}</Text>
               <Text style={styles.emptySubtitle}>
                 {filter === "alle"
-                  ? "Setze Nachprüfungstermine bei offenen Mängeln"
-                  : `Keine ${filter === "ueberfaellig" ? "überfälligen" : filter === "heute" ? "heutigen" : "kommenden"} Nachprüfungen`}
+                  ? t('follow_up_empty_all' as any)
+                  : `${t('follow_up_none_prefix' as any)}${filter === "ueberfaellig" ? t('follow_up_adj_overdue' as any) : filter === "heute" ? t('follow_up_adj_today' as any) : t('follow_up_adj_upcoming' as any)}${t('follow_up_none_suffix' as any)}`}
               </Text>
               <Pressable
                 onPress={() => router.push(`/defects?projectId=${projectId}` as any)}
                 style={({ pressed }) => [styles.emptyAction, pressed && { opacity: 0.7 }]}
               >
                 <MaterialIcons name="report-problem" size={17} color="#5DADE2" />
-                <Text style={styles.emptyActionText}>Offenen Mangel auswählen</Text>
+                <Text style={styles.emptyActionText}>{t('follow_up_select_open_defect' as any)}</Text>
               </Pressable>
             </View>
           }
@@ -368,21 +370,21 @@ export default function FollowUpScreen() {
           <KeyboardAvoidingView style={styles.modalKeyboardAvoider} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.modalContent}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={styles.modalTitle}>Nachprüfungstermin</Text>
+            <Text style={styles.modalTitle}>{t('follow_up_modal_title' as any)}</Text>
             {selectedDefect && (
               <Text style={styles.modalSubtitle} numberOfLines={2}>
                 {selectedDefect.title}
               </Text>
             )}
 
-            <Text style={styles.sectionLabel}>Termin wählen</Text>
+            <Text style={styles.sectionLabel}>{t('follow_up_choose_date' as any)}</Text>
             <View style={styles.dateOptions}>
               {[
-                { days: 1, label: "Morgen" },
-                { days: 3, label: "In 3 Tagen" },
-                { days: 7, label: "In 1 Woche" },
-                { days: 14, label: "In 2 Wochen" },
-                { days: 30, label: "In 1 Monat" },
+                { days: 1, label: t('follow_up_opt_tomorrow' as any) },
+                { days: 3, label: t('follow_up_opt_3days' as any) },
+                { days: 7, label: t('follow_up_opt_1week' as any) },
+                { days: 14, label: t('follow_up_opt_2weeks' as any) },
+                { days: 30, label: t('follow_up_opt_1month' as any) },
               ].map((opt) => {
                 const dateValue = addDaysToDateOnly(todayDateOnly(), opt.days);
                 const date = new Date(`${dateValue}T12:00:00`);
@@ -416,16 +418,16 @@ export default function FollowUpScreen() {
               value={selectedFollowUpDate}
               onChange={setSelectedFollowUpDate}
               minimumDate={todayDateOnly()}
-              label="Genaues Nachprüfungsdatum"
+              label={t('follow_up_exact_date' as any)}
               allowClear={false}
               testID="follow-up-date-picker"
             />
 
-            <Text style={styles.sectionLabel}>Notiz zur Nachprüfung (optional)</Text>
+            <Text style={styles.sectionLabel}>{t('follow_up_note_label' as any)}</Text>
             <TextInput
               value={followUpNote}
               onChangeText={setFollowUpNote}
-              placeholder="Zum Beispiel: Fugen und Abdichtung erneut kontrollieren"
+              placeholder={t('follow_up_note_placeholder' as any)}
               placeholderTextColor="#6F8296"
               multiline
               numberOfLines={3}
@@ -435,7 +437,7 @@ export default function FollowUpScreen() {
             <View style={styles.modalInfo}>
               <MaterialIcons name="notifications-active" size={16} color="#5DADE2" />
               <Text style={styles.modalInfoText}>
-                Du erhältst eine Push-Erinnerung am Vortag und am Tag der Nachprüfung.
+                {t('follow_up_info_text' as any)}
               </Text>
             </View>
 
@@ -444,14 +446,14 @@ export default function FollowUpScreen() {
                 onPress={() => { setShowDatePicker(false); setSelectedDefect(null); }}
                 style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={styles.cancelBtnText}>Abbrechen</Text>
+                <Text style={styles.cancelBtnText}>{t('btn_abbrechen')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => selectedDefect && scheduleFollowUp(selectedDefect, selectedFollowUpDate)}
                 style={({ pressed }) => [styles.confirmBtn, { opacity: pressed ? 0.8 : 1 }]}
               >
                 <MaterialIcons name="event-available" size={18} color="#fff" />
-                <Text style={styles.confirmBtnText}>Termin setzen</Text>
+                <Text style={styles.confirmBtnText}>{t('follow_up_set_date' as any)}</Text>
               </Pressable>
             </View>
             </ScrollView>

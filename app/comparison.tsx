@@ -19,6 +19,7 @@ import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 // Need to import Alert
 import { Alert } from "react-native";
@@ -42,6 +43,7 @@ interface ComparisonPair {
 export default function ComparisonScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<ComparisonMode>("side_by_side");
   const [pairs, setPairs] = useState<ComparisonPair[]>([]);
 
@@ -52,16 +54,16 @@ export default function ComparisonScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Vergleich</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('comparison_title' as any)}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       {/* Mode Selector */}
       <View style={[styles.modeRow, { borderBottomColor: colors.border }]}>
         {([
-          { id: "side_by_side", label: "Nebeneinander", icon: "view-column" },
-          { id: "overlay", label: "Überlagert", icon: "layers" },
-          { id: "slider", label: "Schieber", icon: "compare" },
+          { id: "side_by_side", label: t('comparison_mode_side_by_side' as any), icon: "view-column" },
+          { id: "overlay", label: t('comparison_mode_overlay' as any), icon: "layers" },
+          { id: "slider", label: t('comparison_mode_slider' as any), icon: "compare" },
         ] as const).map((m) => (
           <Pressable
             key={m.id}
@@ -88,17 +90,17 @@ export default function ComparisonScreen() {
           <View style={styles.emptyState}>
             <MaterialIcons name="compare" size={56} color={colors.muted} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              Keine Vergleiche
+              {t('comparison_empty_title' as any)}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-              Erstellen Sie Vorher/Nachher-Vergleiche aus Ihren Fotos oder Matterport-Scans.
+              {t('comparison_empty_subtitle' as any)}
             </Text>
 
             <View style={styles.featureList}>
               {[
-                { icon: "photo-library", label: "Fotos vergleichen", desc: "Vorher/Nachher-Fotos nebeneinander" },
-                { icon: "view-in-ar", label: "3D-Scans vergleichen", desc: "Matterport-Scans verschiedener Zeitpunkte" },
-                { icon: "trending-up", label: "Fortschritt tracken", desc: "Baufortschritt visuell dokumentieren" },
+                { icon: "photo-library", label: t('comparison_feature_photos_label' as any), desc: t('comparison_feature_photos_desc' as any) },
+                { icon: "view-in-ar", label: t('comparison_feature_scans_label' as any), desc: t('comparison_feature_scans_desc' as any) },
+                { icon: "trending-up", label: t('comparison_feature_progress_label' as any), desc: t('comparison_feature_progress_desc' as any) },
               ].map((feature, i) => (
                 <View key={i} style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <MaterialIcons name={feature.icon as any} size={24} color="#00B0FF" />
@@ -113,15 +115,15 @@ export default function ComparisonScreen() {
             <Pressable
               onPress={() => {
                 Alert.alert(
-                  "Vergleich erstellen",
-                  "Wählen Sie zwei Fotos oder Matterport-Scans zum Vergleichen aus.",
-                  [{ text: "OK" }]
+                  t('comparison_create_title' as any),
+                  t('comparison_create_msg' as any),
+                  [{ text: t('ok') }]
                 );
               }}
               style={({ pressed }) => [styles.createBtn, { opacity: pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="add" size={20} color="#fff" />
-              <Text style={styles.createBtnText}>Neuen Vergleich erstellen</Text>
+              <Text style={styles.createBtnText}>{t('comparison_create_new' as any)}</Text>
             </Pressable>
           </View>
         ) : (
@@ -130,10 +132,10 @@ export default function ComparisonScreen() {
               <Text style={[styles.pairLabel, { color: colors.foreground }]}>{pair.label}</Text>
               <View style={styles.pairDates}>
                 <Text style={[styles.pairDate, { color: colors.muted }]}>
-                  Vorher: {pair.beforeDate}
+                  {t('comparison_before_prefix' as any)}{pair.beforeDate}
                 </Text>
                 <Text style={[styles.pairDate, { color: colors.muted }]}>
-                  Nachher: {pair.afterDate}
+                  {t('comparison_after_prefix' as any)}{pair.afterDate}
                 </Text>
               </View>
               {pair.room && (

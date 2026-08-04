@@ -36,7 +36,7 @@ export default function CloudPhotoExportScreen() {
   }>();
 
   const photos: string[] = params.photos ? JSON.parse(params.photos) : [];
-  const protocolTitle = params.protocolTitle || "Protokoll";
+  const protocolTitle = params.protocolTitle || t('cloud_photo_export_protokoll' as any);
   const projectName = params.projectName;
   const protocolDate = params.protocolDate;
   const protocolNumber = params.protocolNumber;
@@ -92,8 +92,10 @@ export default function CloudPhotoExportScreen() {
 
     if (result.success) {
       Alert.alert(
-        "Export erfolgreich",
-        `${result.exportedCount} Foto${result.exportedCount !== 1 ? "s" : ""} exportiert.`,
+        t('cloud_photo_export_export_erfolgreich' as any),
+        t('cloud_photo_export_exportiert_msg' as any)
+          .replace('{count}', String(result.exportedCount))
+          .replace('{noun}', result.exportedCount !== 1 ? t('cloud_photo_export_fotos' as any) : t('cloud_photo_export_foto' as any)),
         [{ text: t('ok'), onPress: () => router.back() }]
       );
     } else if (result.error) {
@@ -145,7 +147,7 @@ export default function CloudPhotoExportScreen() {
             {item.protocolTitle}
           </Text>
           <Text style={[styles.historyMeta, { color: colors.muted }]}>
-            {item.photoCount} Foto{item.photoCount !== 1 ? "s" : ""} → {providerConfig?.label || item.provider} · {date.toLocaleDateString("de-DE")}
+            {item.photoCount} {item.photoCount !== 1 ? t('cloud_photo_export_fotos' as any) : t('cloud_photo_export_foto' as any)} → {providerConfig?.label || item.provider} · {date.toLocaleDateString("de-DE")}
           </Text>
         </View>
       </View>
@@ -181,7 +183,7 @@ export default function CloudPhotoExportScreen() {
                     <MaterialIcons name="photo-library" size={32} color={colors.primary} />
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={[styles.infoTitle, { color: colors.foreground }]}>
-                        {photos.length} Foto{photos.length !== 1 ? "s" : ""} verfügbar
+                        {photos.length} {photos.length !== 1 ? t('cloud_photo_export_fotos' as any) : t('cloud_photo_export_foto' as any)} {t('cloud_photo_export_verfuegbar' as any)}
                       </Text>
                       <Text style={[styles.infoSubtitle, { color: colors.muted }]}>
                         {protocolTitle}{projectName ? ` · ${projectName}` : ""}
@@ -197,7 +199,7 @@ export default function CloudPhotoExportScreen() {
                 <View style={styles.selectionSection}>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                      Auswahl ({selectedPhotos.length}/{photos.length})
+                      {t('cloud_photo_export_auswahl' as any)} ({selectedPhotos.length}/{photos.length})
                     </Text>
                     <View style={{ flexDirection: "row", gap: 12 }}>
                       <Pressable onPress={selectAll}>
@@ -224,7 +226,7 @@ export default function CloudPhotoExportScreen() {
                         <View style={[styles.photoPlaceholder, { backgroundColor: colors.surface }]}>
                           <MaterialIcons name="image" size={24} color={colors.muted} />
                           <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>
-                            Foto {index + 1}
+                            {t('cloud_photo_export_foto' as any)} {index + 1}
                           </Text>
                         </View>
                         {selectedPhotos.includes(index) && (
@@ -243,10 +245,10 @@ export default function CloudPhotoExportScreen() {
               return (
                 <View style={styles.providersSection}>
                   <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 12 }]}>
-                    Exportziel wählen
+                    {t('cloud_photo_export_exportziel_waehlen' as any)}
                   </Text>
                   <Text style={[styles.sectionHint, { color: colors.muted }]}>
-                    Die entsprechende Cloud-App muss auf dem Gerät installiert sein.
+                    {t('cloud_photo_export_cloud_app_hinweis' as any)}
                   </Text>
                   {CLOUD_PROVIDERS.map((provider) => (
                     <View key={provider.provider}>{renderProvider({ item: provider })}</View>
@@ -263,7 +265,7 @@ export default function CloudPhotoExportScreen() {
                     style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
                   >
                     <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                      Export-Verlauf
+                      {t('cloud_photo_export_export_verlauf' as any)}
                     </Text>
                     <MaterialIcons
                       name={showHistory ? "expand-less" : "expand-more"}
@@ -280,7 +282,7 @@ export default function CloudPhotoExportScreen() {
                   )}
                   {showHistory && exportHistory.length === 0 && (
                     <Text style={[styles.emptyText, { color: colors.muted }]}>
-                      Noch keine Exporte durchgeführt.
+                      {t('cloud_photo_export_keine_exporte' as any)}
                     </Text>
                   )}
                 </View>

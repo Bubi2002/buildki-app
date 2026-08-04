@@ -7,6 +7,81 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
+
+function DefaultErrorFallback({
+  error,
+  errorInfo,
+  onReset,
+}: {
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+  onReset: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <MaterialIcons name="error-outline" size={48} color="#EF4444" />
+        <Text style={styles.title}>{t('error_boundary_title' as any)}</Text>
+        <Text style={styles.subtitle}>
+          {t('error_boundary_subtitle' as any)}
+        </Text>
+
+        {__DEV__ && error && (
+          <ScrollView style={styles.errorBox} contentContainerStyle={{ padding: 12 }}>
+            <Text style={styles.errorTitle}>{error.name}</Text>
+            <Text style={styles.errorMessage}>{error.message}</Text>
+            {errorInfo?.componentStack && (
+              <Text style={styles.errorStack}>
+                {errorInfo.componentStack.slice(0, 500)}
+              </Text>
+            )}
+          </ScrollView>
+        )}
+
+        <Pressable
+          onPress={onReset}
+          style={({ pressed }) => [styles.retryBtn, { opacity: pressed ? 0.8 : 1 }]}
+        >
+          <MaterialIcons name="refresh" size={20} color="#fff" />
+          <Text style={styles.retryText}>{t('retry')}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function ScreenErrorFallback({
+  screenName,
+  error,
+  onReset,
+}: {
+  screenName?: string;
+  error: Error | null;
+  onReset: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.screenError}>
+      <MaterialIcons name="warning" size={32} color="#FF9800" />
+      <Text style={styles.screenErrorTitle}>
+        {screenName
+          ? t('error_boundary_error_in' as any).replace('{name}', screenName)
+          : t('error_boundary_screen_error' as any)}
+      </Text>
+      <Text style={styles.screenErrorMsg}>
+        {error?.message || t('error_boundary_unknown_error' as any)}
+      </Text>
+      <Pressable
+        onPress={onReset}
+        style={({ pressed }) => [styles.smallRetryBtn, { opacity: pressed ? 0.8 : 1 }]}
+      >
+        <Text style={styles.smallRetryText}>{t('error_boundary_reload' as any)}</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 interface Props {
   children: ReactNode;
@@ -52,35 +127,11 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <View style={styles.container}>
-          <View style={styles.content}>
-            <MaterialIcons name="error-outline" size={48} color="#EF4444" />
-            <Text style={styles.title}>Etwas ist schiefgelaufen</Text>
-            <Text style={styles.subtitle}>
-              Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.
-            </Text>
-
-            {__DEV__ && this.state.error && (
-              <ScrollView style={styles.errorBox} contentContainerStyle={{ padding: 12 }}>
-                <Text style={styles.errorTitle}>{this.state.error.name}</Text>
-                <Text style={styles.errorMessage}>{this.state.error.message}</Text>
-                {this.state.errorInfo?.componentStack && (
-                  <Text style={styles.errorStack}>
-                    {this.state.errorInfo.componentStack.slice(0, 500)}
-                  </Text>
-                )}
-              </ScrollView>
-            )}
-
-            <Pressable
-              onPress={this.handleReset}
-              style={({ pressed }) => [styles.retryBtn, { opacity: pressed ? 0.8 : 1 }]}
-            >
-              <MaterialIcons name="refresh" size={20} color="#fff" />
-              <Text style={styles.retryText}>Erneut versuchen</Text>
-            </Pressable>
-          </View>
-        </View>
+        <DefaultErrorFallback
+          error={this.state.error}
+          errorInfo={this.state.errorInfo}
+          onReset={this.handleReset}
+        />
       );
     }
 
@@ -111,21 +162,11 @@ export class ScreenErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <View style={styles.screenError}>
-          <MaterialIcons name="warning" size={32} color="#FF9800" />
-          <Text style={styles.screenErrorTitle}>
-            {this.props.screenName ? `Fehler in "${this.props.screenName}"` : "Bildschirmfehler"}
-          </Text>
-          <Text style={styles.screenErrorMsg}>
-            {this.state.error?.message || "Unbekannter Fehler"}
-          </Text>
-          <Pressable
-            onPress={() => this.setState({ hasError: false, error: null })}
-            style={({ pressed }) => [styles.smallRetryBtn, { opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Text style={styles.smallRetryText}>Neu laden</Text>
-          </Pressable>
-        </View>
+        <ScreenErrorFallback
+          screenName={this.props.screenName}
+          error={this.state.error}
+          onReset={() => this.setState({ hasError: false, error: null })}
+        />
       );
     }
     return this.props.children;

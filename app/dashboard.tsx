@@ -120,7 +120,7 @@ export default function DashboardScreen() {
       // Template statistics
       const templateCounts: Record<string, number> = {};
       for (const p of active) {
-        const name = p.templateName || "Freies Protokoll";
+        const name = p.templateName || t('dashboard_free_protocol' as any);
         templateCounts[name] = (templateCounts[name] || 0) + 1;
       }
       const sorted = Object.entries(templateCounts)
@@ -166,10 +166,10 @@ export default function DashboardScreen() {
   const maxWeekly = Math.max(...weeklyData.map((w) => w.count), 1);
 
   const statCards: StatCard[] = [
-    { icon: "description", label: "Gesamt", value: stats.total, color: colors.primary },
-    { icon: "today", label: "Diese Woche", value: stats.thisWeek, color: "#4CAF50" },
-    { icon: "calendar-month", label: "Dieser Monat", value: stats.thisMonth, color: "#FF9800" },
-    { icon: "trending-up", label: "Ø pro Woche", value: stats.avgPerWeek, color: "#9C27B0" },
+    { icon: "description", label: t('gesamt'), value: stats.total, color: colors.primary },
+    { icon: "today", label: t('dashboard_this_week' as any), value: stats.thisWeek, color: "#4CAF50" },
+    { icon: "calendar-month", label: t('dashboard_this_month' as any), value: stats.thisMonth, color: "#FF9800" },
+    { icon: "trending-up", label: t('dashboard_avg_per_week' as any), value: stats.avgPerWeek, color: "#9C27B0" },
   ];
 
   return (

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   CURRENT_CONSENT_VERSION,
   DEFAULT_PRIVACY_CHOICES,
@@ -33,39 +34,35 @@ interface PurposeItem {
   label: string;
   description: string;
   transmittedData: string;
+  appendMarker?: boolean;
 }
 
 const PURPOSE_ITEMS: PurposeItem[] = [
   {
     key: "aiProcessing",
-    label: "KI und Transkription",
-    description:
-      "Erlaubt die Übertragung ausgewählter Audio-, Video-, Foto-, Dokument-, Transkript- und Projektinhalte an BuildKI-Server und den technisch angebundenen KI-/Forge-Dienst.",
-    transmittedData:
-      "Empfänger, Region, AVV, Drittlandgrundlage und Löschfrist: " +
-      LEGAL_DRAFT_MARKER,
+    label: "privacy_consent_dialog_ai_label",
+    description: "privacy_consent_dialog_ai_description",
+    transmittedData: "privacy_consent_dialog_ai_transmitted",
+    appendMarker: true,
   },
   {
     key: "cloudSync",
-    label: "Cloud-Synchronisation",
-    description:
-      "Erlaubt die kontoübergreifende Übertragung und Speicherung von Projekten, Protokollen, Mängeln, Aufgaben, Anhängen und Synchronisationsdaten.",
-    transmittedData:
-      "Hosting-/Speicheranbieter, Region, AVV, Backup- und Löschfrist: " +
-      LEGAL_DRAFT_MARKER,
+    label: "privacy_consent_dialog_cloud_label",
+    description: "privacy_consent_dialog_cloud_description",
+    transmittedData: "privacy_consent_dialog_cloud_transmitted",
+    appendMarker: true,
   },
   {
     key: "gpsTracking",
-    label: "Standort für konkrete Funktionen",
-    description:
-      "Erlaubt eine Standortabfrage nur nach einer Nutzeraktion, zum Beispiel für Wetter, Aufnahmeort oder Verortung. Die Betriebssystemfreigabe wird erst bei tatsächlicher Nutzung angefragt.",
-    transmittedData:
-      "Je Funktion können Koordinaten lokal gespeichert oder an Wetter-/BuildKI-Dienste übertragen werden.",
+    label: "privacy_consent_dialog_gps_label",
+    description: "privacy_consent_dialog_gps_description",
+    transmittedData: "privacy_consent_dialog_gps_transmitted",
   },
 ];
 
 export function PrivacyConsentDialog({ visible, onAccept }: Props) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [choices, setChoices] = useState<PrivacyChoices>({
     ...DEFAULT_PRIVACY_CHOICES,
   });
@@ -104,8 +101,8 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <MaterialIcons name="privacy-tip" size={28} color={colors.primary} />
           <View style={styles.headerText}>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Datenschutzoptionen</Text>
-            <Text style={[styles.version, { color: colors.muted }]}>Version {CURRENT_CONSENT_VERSION}</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('privacy_consent_dialog_title' as any)}</Text>
+            <Text style={[styles.version, { color: colors.muted }]}>{t('privacy_consent_dialog_version' as any)} {CURRENT_CONSENT_VERSION}</Text>
           </View>
         </View>
 
@@ -115,15 +112,15 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.warningBox, { borderColor: colors.error }]}>
-            <Text style={[styles.warningTitle, { color: colors.error }]}>Nicht veröffentlichungsfähiger Prüfentwurf</Text>
+            <Text style={[styles.warningTitle, { color: colors.error }]}>{t('privacy_consent_dialog_draft_warning' as any)}</Text>
             <Text style={[styles.warningText, { color: colors.foreground }]}>{LEGAL_DRAFT_NOTICE}</Text>
           </View>
 
           <Text style={[styles.intro, { color: colors.foreground }]}>
-            Die Grundfunktionen können ohne optionale Freigaben verwendet werden. Alle Schalter sind standardmäßig aus. Aktivieren Sie nur Zwecke, die Sie wirklich nutzen möchten.
+            {t('privacy_consent_dialog_intro' as any)}
           </Text>
           <Text style={[styles.subIntro, { color: colors.muted }]}>
-            Notwendige lokale Verarbeitung, Kontosicherheit und gesetzlich erforderliche Nachweise werden nicht als Einwilligung dargestellt. Optionale Freigaben können jederzeit mit Wirkung für die Zukunft widerrufen werden.
+            {t('privacy_consent_dialog_sub_intro' as any)}
           </Text>
 
           {PURPOSE_ITEMS.map((item) => {
@@ -133,7 +130,7 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
                 key={item.key}
                 accessibilityRole="switch"
                 accessibilityState={{ checked: enabled }}
-                accessibilityLabel={item.label}
+                accessibilityLabel={t(item.label as any)}
                 onPress={() => togglePurpose(item.key)}
                 style={({ pressed }) => [
                   styles.purposeItem,
@@ -156,23 +153,19 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
                   >
                     {enabled && <MaterialIcons name="check" size={15} color="#FFF" />}
                   </View>
-                  <Text style={[styles.purposeLabel, { color: colors.foreground }]}>{item.label}</Text>
-                  <Text style={[styles.optionalBadge, { color: colors.muted }]}>Optional</Text>
+                  <Text style={[styles.purposeLabel, { color: colors.foreground }]}>{t(item.label as any)}</Text>
+                  <Text style={[styles.optionalBadge, { color: colors.muted }]}>{t('privacy_consent_dialog_optional' as any)}</Text>
                 </View>
-                <Text style={[styles.description, { color: colors.foreground }]}>{item.description}</Text>
-                <Text style={[styles.dataDetail, { color: colors.muted }]}>{item.transmittedData}</Text>
+                <Text style={[styles.description, { color: colors.foreground }]}>{t(item.description as any)}</Text>
+                <Text style={[styles.dataDetail, { color: colors.muted }]}>{t(item.transmittedData as any)}{item.appendMarker ? LEGAL_DRAFT_MARKER : ""}</Text>
               </Pressable>
             );
           })}
 
           <View style={[styles.rightsBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.rightsTitle, { color: colors.foreground }]}>Ihre Entscheidung</Text>
+            <Text style={[styles.rightsTitle, { color: colors.foreground }]}>{t('privacy_consent_dialog_your_decision' as any)}</Text>
             <Text style={[styles.rightsText, { color: colors.muted }]}>
-              • Keine optionale Freigabe ist Voraussetzung für die Grundnutzung.{"\n"}
-              • Deaktivierte Zwecke bleiben technisch gesperrt.{"\n"}
-              • Betriebssystemberechtigungen werden erst unmittelbar vor der konkreten Funktion angefragt.{"\n"}
-              • Widerruf, Export und Löschung sind in „Rechtliches → Meine Daten“ beziehungsweise über die Datenschutzoptionen erreichbar.{"\n"}
-              • Datenschutzkontakt: {LEGAL_CONTACT_EMAIL}
+              {t('privacy_consent_dialog_rights_text' as any)}{LEGAL_CONTACT_EMAIL}
             </Text>
           </View>
         </ScrollView>
@@ -190,7 +183,7 @@ export function PrivacyConsentDialog({ visible, onAccept }: Props) {
             ]}
           >
             <Text style={styles.continueButtonText}>
-              {saving ? "Speichere..." : "Auswahl speichern und fortfahren"}
+              {saving ? t('privacy_consent_dialog_saving' as any) : "Auswahl speichern und fortfahren"}
             </Text>
           </Pressable>
           <Text style={[styles.footerNote, { color: colors.muted }]}>

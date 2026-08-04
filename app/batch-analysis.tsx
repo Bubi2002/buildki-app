@@ -25,6 +25,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
 import type { BatchAnalysisResult, BatchGroupStrategy } from "@/shared/ai-types";
@@ -38,6 +39,7 @@ import { TaskCard, type TaskData } from "@/components/analysis/TaskCard";
 
 export default function BatchAnalysisScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
 
@@ -100,7 +102,7 @@ export default function BatchAnalysisScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung benötigt", "Bitte erlaube den Zugriff auf die Fotogalerie.");
+        Alert.alert(t('batch_analysis_permission_title' as any), t('batch_analysis_permission_msg' as any));
         return;
       }
 
@@ -121,7 +123,7 @@ export default function BatchAnalysisScreen() {
         setPhotos(prev => [...prev, ...newPhotos]);
       }
     } catch  {
-      Alert.alert("Fehler", "Fotos konnten nicht geladen werden.");
+      Alert.alert(t('batch_analysis_error_title' as any), t('batch_analysis_load_photos_failed' as any));
     }
   };
 
@@ -147,11 +149,11 @@ export default function BatchAnalysisScreen() {
   // Start batch analysis
   const startBatchAnalysis = async () => {
     if (photos.length === 0) {
-      Alert.alert("Keine Fotos", "Bitte wähle mindestens ein Foto aus.");
+      Alert.alert(t('batch_analysis_no_photos_title' as any), t('batch_analysis_no_photos_msg' as any));
       return;
     }
     if (!activeProject) {
-      Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt aus.");
+      Alert.alert(t('batch_analysis_no_project_title' as any), t('batch_analysis_no_project_msg' as any));
       return;
     }
 
@@ -194,8 +196,8 @@ export default function BatchAnalysisScreen() {
       setReviewStep("review");
     } catch (error: any) {
       Alert.alert(
-        "Batch-Analyse fehlgeschlagen",
-        error.message || "Die Analyse konnte nicht durchgeführt werden."
+        t('batch_analysis_failed_title' as any),
+        error.message || t('batch_analysis_failed_msg' as any)
       );
     } finally {
       setIsAnalyzing(false);
@@ -210,7 +212,7 @@ export default function BatchAnalysisScreen() {
       id: createLocalId("defect"),
       projectId: activeProject.id,
       title: defect.title,
-      description: `${defect.description}\n\nMaßnahme: ${defect.suggestedAction}`,
+      description: `${defect.description}\n\n${t('batch_analysis_measure_label' as any)}${defect.suggestedAction}`,
       status: "offen",
       priority: defect.severity === "critical" ? "hoch" : defect.severity === "major" ? "mittel" : "niedrig",
       category: defect.trade || "Sonstiges",
@@ -225,7 +227,7 @@ export default function BatchAnalysisScreen() {
     try {
       await saveDefect(newDefect);
       setAdoptedDefects(prev => new Set([...prev, defect.id]));
-      setUndoToast({ visible: true, message: "Mangel \u00fcbernommen", itemId: newDefect.id, itemType: "defect" });
+      setUndoToast({ visible: true, message: t('batch_analysis_defect_adopted' as any), itemId: newDefect.id, itemType: "defect" });
       if (Platform.OS !== "web") {
         const Haptics = require("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -254,7 +256,7 @@ export default function BatchAnalysisScreen() {
       tasks.push(newTask);
       await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
       setAdoptedTasks(prev => new Set([...prev, task.id]));
-      setUndoToast({ visible: true, message: "Aufgabe \u00fcbernommen", itemId: newTask.id, itemType: "task" });
+      setUndoToast({ visible: true, message: t('batch_analysis_task_adopted' as any), itemId: newTask.id, itemType: "task" });
       if (Platform.OS !== "web") {
         const Haptics = require("expo-haptics");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -309,7 +311,7 @@ export default function BatchAnalysisScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Batch-Analyse</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('batch_analysis_title' as any)}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -324,7 +326,7 @@ export default function BatchAnalysisScreen() {
 
         {/* Strategy Selector */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Gruppierung</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('batch_analysis_grouping' as any)}</Text>
           <View style={styles.strategyRow}>
             {(["auto", "room", "time", "manual"] as BatchGroupStrategy[]).map(strategy => (
               <Pressable
@@ -347,7 +349,7 @@ export default function BatchAnalysisScreen() {
                   styles.strategyLabel,
                   { color: groupStrategy === strategy ? colors.primary : colors.muted },
                 ]}>
-                  {strategy === "auto" ? "Automatisch" : strategy === "room" ? "Nach Raum" : strategy === "time" ? "Nach Zeit" : "Manuell"}
+                  {strategy === "auto" ? t('batch_analysis_strategy_auto' as any) : strategy === "room" ? t('batch_analysis_strategy_room' as any) : strategy === "time" ? t('batch_analysis_strategy_time' as any) : t('batch_analysis_strategy_manual' as any)}
                 </Text>
               </Pressable>
             ))}
@@ -358,7 +360,7 @@ export default function BatchAnalysisScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Fotos ({photos.length})
+              {t('batch_analysis_photos_word' as any)} ({photos.length})
             </Text>
             <Pressable
               onPress={pickPhotos}
@@ -368,7 +370,7 @@ export default function BatchAnalysisScreen() {
               ]}
             >
               <MaterialIcons name="add-photo-alternate" size={18} color="#FFF" />
-              <Text style={styles.addButtonText}>Hinzufügen</Text>
+              <Text style={styles.addButtonText}>{t('batch_analysis_add' as any)}</Text>
             </Pressable>
           </View>
 
@@ -379,10 +381,10 @@ export default function BatchAnalysisScreen() {
             >
               <MaterialIcons name="photo-library" size={48} color={colors.muted} />
               <Text style={[styles.emptyText, { color: colors.muted }]}>
-                Tippe um mehrere Fotos auszuwählen
+                {t('batch_analysis_empty_tap' as any)}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.muted }]}>
-                Die KI gruppiert sie automatisch nach Raum oder Aufnahmezeit
+                {t('batch_analysis_empty_hint' as any)}
               </Text>
             </Pressable>
           ) : (
@@ -410,9 +412,9 @@ export default function BatchAnalysisScreen() {
         {/* Room Assignment (when strategy is "room") */}
         {groupStrategy === "room" && photos.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Raumzuordnung</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('batch_analysis_room_assignment' as any)}</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.muted }]}>
-              Weise Fotos Räumen zu für präzisere Analyse
+              {t('batch_analysis_room_assignment_hint' as any)}
             </Text>
             <View style={styles.roomList}>
               {photos.map((photo, idx) => (
@@ -422,20 +424,20 @@ export default function BatchAnalysisScreen() {
                     onPress={() => {
                       if (Alert.prompt) {
                         Alert.prompt(
-                          "Raum zuweisen",
-                          `Foto ${idx + 1}`,
+                          t('batch_analysis_assign_room_title' as any),
+                          `${t('batch_analysis_photo_word' as any)} ${idx + 1}`,
                           (text) => { if (text) assignRoom(photo.uri, text); },
                           "plain-text",
                           photo.roomName || ""
                         );
                       } else {
-                        Alert.alert("Raum", "Raumzuordnung ist nur auf iOS verfügbar. Nutze die automatische Gruppierung.");
+                        Alert.alert(t('batch_analysis_room_title' as any), t('batch_analysis_room_ios_only' as any));
                       }
                     }}
                     style={[styles.roomInput, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   >
                     <Text style={{ color: photo.roomName ? colors.foreground : colors.muted }}>
-                      {photo.roomName || "Raum zuweisen..."}
+                      {photo.roomName || t('batch_analysis_assign_room_placeholder' as any)}
                     </Text>
                   </Pressable>
                 </View>
@@ -455,7 +457,7 @@ export default function BatchAnalysisScreen() {
           >
             <MaterialIcons name="auto-awesome" size={20} color="#FFF" />
             <Text style={styles.startButtonText}>
-              {photos.length} Foto{photos.length > 1 ? "s" : ""} analysieren
+              {photos.length} {photos.length > 1 ? t('batch_analysis_photos_word' as any) : t('batch_analysis_photo_word' as any)} {t('batch_analysis_analyze' as any)}
             </Text>
           </Pressable>
         )}
@@ -465,10 +467,10 @@ export default function BatchAnalysisScreen() {
           <View style={[styles.loadingCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.foreground }]}>
-              Batch-Analyse läuft...
+              {t('batch_analysis_running' as any)}
             </Text>
             <Text style={[styles.loadingSubtext, { color: colors.muted }]}>
-              {photos.length} Fotos werden gruppiert und analysiert
+              {photos.length} {t('batch_analysis_grouped_analyzed' as any)}
             </Text>
           </View>
         )}
@@ -482,7 +484,7 @@ export default function BatchAnalysisScreen() {
                 onPress={() => setReviewStep("results")}
                 style={[styles.reviewTab, reviewStep === "results" && { backgroundColor: colors.primary + "20" }]}
               >
-                <Text style={[styles.reviewTabText, { color: reviewStep === "results" ? colors.primary : colors.muted }]}>Übersicht</Text>
+                <Text style={[styles.reviewTabText, { color: reviewStep === "results" ? colors.primary : colors.muted }]}>{t('batch_analysis_overview' as any)}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setReviewStep("review")}
@@ -496,7 +498,7 @@ export default function BatchAnalysisScreen() {
             <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.summaryHeader}>
                 <MaterialIcons name="analytics" size={20} color={colors.primary} />
-                <Text style={[styles.summaryTitle, { color: colors.foreground }]}>Ergebnis-Übersicht</Text>
+                <Text style={[styles.summaryTitle, { color: colors.foreground }]}>{t('batch_analysis_result_overview' as any)}</Text>
               </View>
               <Text style={[styles.summaryText, { color: colors.muted }]}>
                 {batchResult.aggregatedSummary}
@@ -504,19 +506,19 @@ export default function BatchAnalysisScreen() {
               <View style={styles.summaryStats}>
                 <View style={styles.statItem}>
                   <Text style={[styles.statNumber, { color: colors.error }]}>{batchResult.totalDefects}</Text>
-                  <Text style={[styles.statLabel, { color: colors.muted }]}>Mängel</Text>
+                  <Text style={[styles.statLabel, { color: colors.muted }]}>{t('batch_analysis_defects_word' as any)}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text style={[styles.statNumber, { color: colors.primary }]}>{batchResult.totalTasks}</Text>
-                  <Text style={[styles.statLabel, { color: colors.muted }]}>Aufgaben</Text>
+                  <Text style={[styles.statLabel, { color: colors.muted }]}>{t('batch_analysis_tasks_word' as any)}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text style={[styles.statNumber, { color: colors.success }]}>{batchResult.averageProgress}%</Text>
-                  <Text style={[styles.statLabel, { color: colors.muted }]}>Fortschritt</Text>
+                  <Text style={[styles.statLabel, { color: colors.muted }]}>{t('batch_analysis_progress' as any)}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text style={[styles.statNumber, { color: colors.foreground }]}>{batchResult.groups.length}</Text>
-                  <Text style={[styles.statLabel, { color: colors.muted }]}>Gruppen</Text>
+                  <Text style={[styles.statLabel, { color: colors.muted }]}>{t('batch_analysis_groups' as any)}</Text>
                 </View>
               </View>
             </View>
@@ -528,7 +530,7 @@ export default function BatchAnalysisScreen() {
                   <MaterialIcons name="folder" size={18} color={colors.primary} />
                   <Text style={[styles.groupTitle, { color: colors.foreground }]}>{group.label}</Text>
                   <Text style={[styles.groupMeta, { color: colors.muted }]}>
-                    {group.result.defects.length} Mängel · {group.result.tasks.length} Aufgaben
+                    {group.result.defects.length} {t('batch_analysis_defects_word' as any)} · {group.result.tasks.length} {t('batch_analysis_tasks_word' as any)}
                   </Text>
                 </View>
                 <Text style={[styles.groupSummary, { color: colors.muted }]}>{group.result.summary}</Text>
@@ -567,14 +569,14 @@ export default function BatchAnalysisScreen() {
                       style={({ pressed }) => [styles.bulkBtn, { backgroundColor: colors.success + "20", opacity: pressed ? 0.7 : 1 }]}
                     >
                       <MaterialIcons name="check-circle" size={14} color={colors.success} />
-                      <Text style={[styles.bulkBtnText, { color: colors.success }]}>Alle übernehmen</Text>
+                      <Text style={[styles.bulkBtnText, { color: colors.success }]}>{t('batch_analysis_adopt_all' as any)}</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => handleDismissAllInGroup(group)}
                       style={({ pressed }) => [styles.bulkBtn, { backgroundColor: colors.error + "20", opacity: pressed ? 0.7 : 1 }]}
                     >
                       <MaterialIcons name="cancel" size={14} color={colors.error} />
-                      <Text style={[styles.bulkBtnText, { color: colors.error }]}>Alle verwerfen</Text>
+                      <Text style={[styles.bulkBtnText, { color: colors.error }]}>{t('batch_analysis_dismiss_all' as any)}</Text>
                     </Pressable>
                   </View>
                 )}

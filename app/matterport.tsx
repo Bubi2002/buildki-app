@@ -149,7 +149,7 @@ export default function MatterportScreen() {
       setModels(result.results || []);
       setTotalModels(result.totalResults || 0);
     } catch (error: any) {
-      Alert.alert("Fehler", "Modelle konnten nicht geladen werden: " + (error.message || "Unbekannter Fehler"));
+      Alert.alert(t("matterport_fehler" as any), t("matterport_modelle_laden_fehler" as any) + (error.message || t("matterport_unbekannter_fehler" as any)));
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +165,7 @@ export default function MatterportScreen() {
       setSelectedModel(result as ModelDetails);
       setViewMode("detail");
     } catch (error: any) {
-      Alert.alert("Fehler", "Modell-Details konnten nicht geladen werden: " + (error.message || ""));
+      Alert.alert(t("matterport_fehler" as any), t("matterport_modell_details_fehler" as any) + (error.message || ""));
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +199,7 @@ export default function MatterportScreen() {
           </Text>
         </View>
         <Text style={[styles.sectionSubtitle, { color: colors.muted }]}>
-          Verbinden Sie Ihr Matterport-Konto, um 3D-Modelle zu laden und für die KI-Analyse vorzubereiten.
+          {t("matterport_konto_verbinden_desc" as any)}
         </Text>
       </View>
 
@@ -220,7 +220,7 @@ export default function MatterportScreen() {
             onPress={disconnect}
             style={({ pressed }) => [styles.disconnectBtn, { opacity: pressed ? 0.7 : 1 }]}
           >
-            <Text style={[styles.disconnectText, { color: colors.error }]}>Trennen</Text>
+            <Text style={[styles.disconnectText, { color: colors.error }]}>{t("matterport_trennen" as any)}</Text>
           </Pressable>
         )}
       </View>
@@ -228,7 +228,7 @@ export default function MatterportScreen() {
       <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}>
         <MaterialIcons name="security" size={18} color="#00B0FF" />
         <Text style={[styles.infoText, { color: colors.foreground }]}>
-          Matterport-Zugangsdaten werden ausschließlich als serverseitige Secrets konfiguriert. BuildKI speichert keine Matterport-Token auf diesem Gerät und überträgt keine Token aus Eingabefeldern.
+          {t("matterport_secrets_hinweis" as any)}
         </Text>
       </View>
 
@@ -276,7 +276,7 @@ export default function MatterportScreen() {
       <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <MaterialIcons name="info-outline" size={18} color={colors.muted} />
         <Text style={[styles.infoText, { color: colors.muted }]}>
-          Die Funktion ist nur verfügbar, wenn der Betreiber Matterport serverseitig konfiguriert und Cloud-Verarbeitung in den Datenschutzoptionen aktiviert wurde. Vertragspartner, AVV, Region und Löschfrist sind vor Veröffentlichung zu ergänzen.
+          {t("matterport_funktion_hinweis" as any)}
         </Text>
       </View>
     </ScrollView>
@@ -347,10 +347,10 @@ export default function MatterportScreen() {
               </View>
               <View style={styles.modelMeta}>
                 <Text style={[styles.modelMetaText, { color: colors.muted }]}>
-                  Erstellt: {formatDate(item.created)}
+                  {t("matterport_erstellt" as any)}: {formatDate(item.created)}
                 </Text>
                 <Text style={[styles.modelMetaText, { color: colors.muted }]}>
-                  Geändert: {formatDate(item.modified)}
+                  {t("matterport_geaendert" as any)}: {formatDate(item.modified)}
                 </Text>
               </View>
             </Pressable>
@@ -393,7 +393,7 @@ export default function MatterportScreen() {
           </View>
           {selectedModel.address && (
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.muted }]}>Adresse:</Text>
+              <Text style={[styles.detailLabel, { color: colors.muted }]}>{t("matterport_adresse" as any)}:</Text>
               <Text style={[styles.detailValue, { color: colors.foreground }]}>
                 {[
                   selectedModel.address.streetAddressLines,
@@ -405,11 +405,11 @@ export default function MatterportScreen() {
             </View>
           )}
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.muted }]}>Erstellt:</Text>
+            <Text style={[styles.detailLabel, { color: colors.muted }]}>{t("matterport_erstellt" as any)}:</Text>
             <Text style={[styles.detailValue, { color: colors.foreground }]}>{formatDate(selectedModel.created)}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.muted }]}>Geändert:</Text>
+            <Text style={[styles.detailLabel, { color: colors.muted }]}>{t("matterport_geaendert" as any)}:</Text>
             <Text style={[styles.detailValue, { color: colors.foreground }]}>{formatDate(selectedModel.modified)}</Text>
           </View>
         </View>
@@ -431,7 +431,7 @@ export default function MatterportScreen() {
                 <Text style={[styles.statNumber, { color: colors.foreground }]}>
                   {selectedModel.assets.photos?.count || 0}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.muted }]}>Fotos</Text>
+                <Text style={[styles.statLabel, { color: colors.muted }]}>{t("matterport_fotos" as any)}</Text>
               </View>
               <View style={styles.statItem}>
                 <MaterialIcons name="view-in-ar" size={24} color="#AB47BC" />
@@ -456,7 +456,7 @@ export default function MatterportScreen() {
                 <View key={floor.id} style={styles.listItem}>
                   <MaterialIcons name="layers" size={18} color="#00B0FF" />
                   <Text style={[styles.listItemText, { color: colors.foreground }]}>
-                    {floor.label || `Etage ${floor.sequence}`}
+                    {floor.label || t("matterport_etage" as any).replace('{n}', String(floor.sequence))}
                   </Text>
                 </View>
               ))}
@@ -474,7 +474,7 @@ export default function MatterportScreen() {
                 <MaterialIcons name="meeting-room" size={18} color="#66BB6A" />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.listItemText, { color: colors.foreground }]}>
-                    {room.label || "Unbenannt"}
+                    {room.label || t("matterport_unbenannt" as any)}
                   </Text>
                   {room.floor && (
                     <Text style={[styles.listItemSub, { color: colors.muted }]}>
@@ -498,7 +498,7 @@ export default function MatterportScreen() {
                 <MaterialIcons name="local-offer" size={18} color="#FF9800" />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.listItemText, { color: colors.foreground }]}>
-                    {tag.label || "Ohne Label"}
+                    {tag.label || t("matterport_ohne_label" as any)}
                   </Text>
                   {tag.description && (
                     <Text style={[styles.listItemSub, { color: colors.muted }]} numberOfLines={2}>
@@ -510,7 +510,7 @@ export default function MatterportScreen() {
             ))}
             {selectedModel.mattertags.length > 20 && (
               <Text style={[styles.moreText, { color: colors.muted }]}>
-                + {selectedModel.mattertags.length - 20} weitere Tags
+                {t("matterport_weitere_tags" as any).replace('{n}', String(selectedModel.mattertags.length - 20))}
               </Text>
             )}
           </View>
@@ -523,8 +523,7 @@ export default function MatterportScreen() {
               {t("matterport_scanpunkte")} ({selectedModel.sweeps.length})
             </Text>
             <Text style={[styles.detailText, { color: colors.muted }]}>
-              {selectedModel.sweeps.length} Scanpunkte mit Panorama-Aufnahmen verfügbar.
-              Diese werden in Phase 2 für die KI-Analyse verwendet.
+              {t("matterport_scanpunkte_info" as any).replace('{n}', String(selectedModel.sweeps.length))}
             </Text>
           </View>
         )}
@@ -544,7 +543,7 @@ export default function MatterportScreen() {
           style={({ pressed }) => [styles.detailCard, { backgroundColor: "#00B0FF", borderColor: "#00B0FF", opacity: pressed ? 0.8 : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }]}
         >
           <MaterialIcons name="view-in-ar" size={22} color="#fff" />
-          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>3D-Modell öffnen</Text>
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>{t("matterport_3d_modell_oeffnen" as any)}</Text>
         </Pressable>
 
         {/* KI-Analyse Features */}
@@ -552,14 +551,14 @@ export default function MatterportScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
             <MaterialIcons name="auto-awesome" size={20} color="#00B0FF" />
             <Text style={[styles.detailCardTitle, { color: "#00B0FF", marginLeft: 8, marginBottom: 0 }]}>
-              KI-Analyse
+              {t("matterport_ki_analyse" as any)}
             </Text>
           </View>
           <Text style={[styles.detailText, { color: colors.muted }]}>
-            Folgende KI-Funktionen stehen über das 3D-Modell zur Verfügung:
+            {t("matterport_ki_funktionen_desc" as any)}
           </Text>
           <View style={{ marginTop: 8 }}>
-            {["Baufortschritt (%)", "Fehlende Gewerke erkennen", "Mängel automatisch identifizieren", "Bautagesbericht generieren", "Aufgaben ableiten"].map((item, i) => (
+            {[t("matterport_feature_baufortschritt" as any), t("matterport_feature_fehlende_gewerke" as any), t("matterport_feature_maengel_identifizieren" as any), t("matterport_feature_bautagesbericht" as any), t("matterport_feature_aufgaben_ableiten" as any)].map((item, i) => (
               <View key={i} style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
                 <MaterialIcons name="check-circle-outline" size={14} color="#00B0FF" />
                 <Text style={[{ marginLeft: 8, fontSize: 13, color: colors.foreground }]}>{item}</Text>
@@ -589,7 +588,7 @@ export default function MatterportScreen() {
         <View style={{ backgroundColor: '#FF980020', paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <MaterialIcons name="science" size={18} color="#FF9800" />
           <Text style={{ color: '#FF9800', fontSize: 12, fontWeight: '600', flex: 1 }}>
-            Sandbox-Modus – Produktions-API beantragt. Funktionalität eingeschränkt.
+            {t("matterport_sandbox_modus" as any)}
           </Text>
         </View>
       )}

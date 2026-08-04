@@ -202,16 +202,16 @@ export default function ProjectDetailScreen() {
           .photos-label { font-size: 12px; color: #666; margin-top: 16px; margin-bottom: 8px; font-weight: 600; }
         </style></head><body>
         <div class="project-cover">
-          <h1>${project?.name || 'Projekt'}</h1>
+          <h1>${project?.name || t('project_detail_projekt' as any)}</h1>
           <p>${project?.description || ''}</p>
           <p style="margin-top: 20px; font-size: 14px; color: #999;">
-            ${protocols.length} Protokoll${protocols.length !== 1 ? 'e' : ''} &bull;
-            Exportiert am ${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+            ${protocols.length} ${protocols.length !== 1 ? t('project_detail_protokolle' as any) : t('project_detail_protokoll_singular' as any)} &bull;
+            ${t('project_detail_exportiert_am' as any)}${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
           </p>
         </div>
         <div class="page-break"></div>
         <div class="toc">
-          <h2>{t('inhaltsverzeichnis')}</h2>
+          <h2>${t('inhaltsverzeichnis' as any)}</h2>
           ${protocols.map((p, i) => `
             <div class="toc-item">
               ${p.protocolNumber ? `<span class="toc-number">${p.protocolNumber}</span>` : `<span class="toc-number">#${i + 1}</span>`}
@@ -230,16 +230,16 @@ export default function ProjectDetailScreen() {
         combinedHtml += `
           <div class="protocol-section">
             <div class="protocol-header">
-              <h2>${p.protocolNumber ? `${p.protocolNumber} – ` : ''}${p.templateName || 'Protokoll'}</h2>
+              <h2>${p.protocolNumber ? `${p.protocolNumber} – ` : ''}${p.templateName || t('project_detail_protokoll' as any)}</h2>
               <div class="protocol-meta">
-                ${date} um ${time}
-                ${p.duration ? ` &bull; Dauer: ${Math.floor((p.duration || 0) / 60)}:${String((p.duration || 0) % 60).padStart(2, '0')}` : ''}
+                ${date} ${t('project_detail_um' as any)} ${time}
+                ${p.duration ? ` &bull; ${t('project_detail_dauer' as any)}${Math.floor((p.duration || 0) / 60)}:${String((p.duration || 0) % 60).padStart(2, '0')}` : ''}
                 ${p.weather ? ` &bull; ${p.weather}` : ''}
               </div>
             </div>
             <div class="protocol-body">${(p.protocol || '').replace(/\n/g, '<br/>')}</div>
             ${photoBase64Map[p.id] && photoBase64Map[p.id].length > 0 ? `
-              <p class="photos-label">Fotos (${photoBase64Map[p.id].length})</p>
+              <p class="photos-label">${t('project_detail_fotos' as any)} (${photoBase64Map[p.id].length})</p>
               <div class="photos-grid">
                 ${photoBase64Map[p.id].map(b64 => `<img src="${b64}" />`).join('')}
               </div>
@@ -265,7 +265,7 @@ export default function ProjectDetailScreen() {
       if (isAvailable) {
         await Sharing.shareAsync(pdfUri, {
           mimeType: 'application/pdf',
-          dialogTitle: `${project?.name || 'Projekt'} – Alle Protokolle`,
+          dialogTitle: `${project?.name || t('project_detail_projekt' as any)} – ${t('project_detail_alle_protokolle' as any)}`,
           UTI: 'com.adobe.pdf',
         });
       }
@@ -349,7 +349,7 @@ export default function ProjectDetailScreen() {
       if (pdfPaths.length === 1) {
         await Sharing.shareAsync(pdfPaths[0], {
           mimeType: 'application/pdf',
-          dialogTitle: `${project?.name || 'Projekt'} \u2013 Protokoll`,
+          dialogTitle: `${project?.name || t('project_detail_projekt' as any)} \u2013 ${t('project_detail_protokoll' as any)}`,
           UTI: 'com.adobe.pdf',
         });
       } else {
@@ -357,17 +357,17 @@ export default function ProjectDetailScreen() {
         // But expo-sharing only supports single files, so we share them one at a time
         // Alternative: create a combined PDF instead
         Alert.alert(
-          `${pdfPaths.length} PDFs erstellt`,
-          `Die einzelnen PDFs werden nacheinander zum Teilen angeboten. Jedes Protokoll ist ein separates PDF.`,
+          `${pdfPaths.length} ${t('project_detail_pdfs_erstellt' as any)}`,
+          t('project_detail_pdfs_share_message' as any),
           [
             {
-              text: 'Alle teilen',
+              text: t('project_detail_alle_teilen' as any),
               onPress: async () => {
                 for (const path of pdfPaths) {
                   try {
                     await Sharing.shareAsync(path, {
                       mimeType: 'application/pdf',
-                      dialogTitle: path.split('/').pop()?.replace('.pdf', '') || 'Protokoll',
+                      dialogTitle: path.split('/').pop()?.replace('.pdf', '') || t('project_detail_protokoll' as any),
                       UTI: 'com.adobe.pdf',
                     });
                   } catch { /* user cancelled */ }
@@ -375,11 +375,11 @@ export default function ProjectDetailScreen() {
               },
             },
             {
-              text: 'Erstes teilen',
+              text: t('project_detail_erstes_teilen' as any),
               onPress: async () => {
                 await Sharing.shareAsync(pdfPaths[0], {
                   mimeType: 'application/pdf',
-                  dialogTitle: pdfPaths[0].split('/').pop()?.replace('.pdf', '') || 'Protokoll',
+                  dialogTitle: pdfPaths[0].split('/').pop()?.replace('.pdf', '') || t('project_detail_protokoll' as any),
                   UTI: 'com.adobe.pdf',
                 });
               },
@@ -453,8 +453,8 @@ export default function ProjectDetailScreen() {
               <View style={{ height: 6, borderRadius: 3, backgroundColor: defectCount.open === 0 && defectCount.total > 0 ? colors.success : colors.primary, width: defectCount.total > 0 ? `${Math.round(((defectCount.total - defectCount.open) / defectCount.total) * 100)}%` : "0%" }} />
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
-              <Text style={{ fontSize: 11, color: colors.muted }}>{protocols.length} Protokolle</Text>
-              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.total - defectCount.open}/{defectCount.total} Mängel erledigt</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{protocols.length} {t('project_detail_protokolle' as any)}</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.total - defectCount.open}/{defectCount.total} {t('project_detail_maengel_erledigt' as any)}</Text>
             </View>
           </View>
         )}
@@ -478,7 +478,7 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
           )}
           <Text style={[styles.exportButtonText, { color: colors.primary }]}>
-            {isExporting ? 'Wird erstellt...' : `Alle als Sammel-PDF`}
+            {isExporting ? t('project_detail_wird_erstellt' as any) : t('project_detail_alle_als_sammel_pdf' as any)}
           </Text>
           {!isExporting && <MaterialIcons name="chevron-right" size={18} color={colors.primary} />}
         </Pressable>
@@ -502,7 +502,7 @@ export default function ProjectDetailScreen() {
             <MaterialIcons name="folder-zip" size={20} color="#4CAF50" />
           )}
           <Text style={[styles.exportButtonText, { color: '#4CAF50' }]}>
-            {isExportingZip ? 'Wird erstellt...' : `Einzelne PDFs exportieren (${protocols.length})`}
+            {isExportingZip ? t('project_detail_wird_erstellt' as any) : `${t('project_detail_einzelne_pdfs_exportieren' as any)} (${protocols.length})`}
           </Text>
           {!isExportingZip && <MaterialIcons name="chevron-right" size={18} color="#4CAF50" />}
         </Pressable>
@@ -711,7 +711,7 @@ export default function ProjectDetailScreen() {
                   {item.title}
                 </Text>
                 <Text style={[styles.protocolDate, { color: colors.muted }]}>
-                  {new Date(item.createdAt).toLocaleDateString("de-DE")} • {item.templateName || "Freies Protokoll"}
+                  {new Date(item.createdAt).toLocaleDateString("de-DE")} • {item.templateName || t('project_detail_freies_protokoll' as any)}
                 </Text>
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
@@ -721,7 +721,7 @@ export default function ProjectDetailScreen() {
             <View style={styles.emptyState}>
               <MaterialIcons name="note-add" size={48} color={colors.border} />
               <Text style={[styles.emptyText, { color: colors.muted }]}>
-                Noch keine Protokolle zugeordnet.{"\n"}Tippe + um Protokolle hinzuzufügen.
+                {t('project_detail_keine_protokolle_zugeordnet' as any)}{"\n"}{t('project_detail_tippe_hinzufuegen' as any)}
               </Text>
             </View>
           }
@@ -741,7 +741,7 @@ export default function ProjectDetailScreen() {
               </View>
               {unassignedProtocols.length === 0 ? (
                 <Text style={[styles.emptyText, { color: colors.muted, paddingVertical: 30 }]}>
-                  Alle Protokolle sind bereits zugeordnet.
+                  {t('project_detail_alle_bereits_zugeordnet' as any)}
                 </Text>
               ) : (
                 <FlatList

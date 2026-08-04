@@ -5,6 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { getAnalysisHistory, type AnalysisHistoryEntry } from "@/lib/analysis-history-store";
 import { getSourceIcon, getSourceLabel, getSourceColor, type AnalysisSource } from "@/shared/ai-types";
 
@@ -33,6 +34,7 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 export default function AnalysisHistoryScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
   const colors = useColors();
@@ -96,10 +98,10 @@ export default function AnalysisHistoryScreen() {
 
   const getStatusLabel = (status?: string) => {
     switch (status) {
-      case "adopted": return "Übernommen";
-      case "reviewed": return "Geprüft";
-      case "dismissed": return "Verworfen";
-      default: return "Ausstehend";
+      case "adopted": return t('analysis_history_status_adopted' as any);
+      case "reviewed": return t('analysis_history_status_reviewed' as any);
+      case "dismissed": return t('analysis_history_status_dismissed' as any);
+      default: return t('analysis_history_status_pending' as any);
     }
   };
 
@@ -131,7 +133,7 @@ export default function AnalysisHistoryScreen() {
         </View>
       </View>
 
-      <Text style={styles.entrySummary} numberOfLines={2}>{item.summary || "Keine Zusammenfassung"}</Text>
+      <Text style={styles.entrySummary} numberOfLines={2}>{item.summary || t('analysis_history_no_summary' as any)}</Text>
 
       <View style={styles.entryMeta}>
         <Text style={styles.entryMetaText}>{formatDate(item.timestamp)}</Text>
@@ -142,11 +144,11 @@ export default function AnalysisHistoryScreen() {
       <View style={styles.entryStats}>
         <View style={styles.stat}>
           <MaterialIcons name="warning" size={12} color="#FF9800" />
-          <Text style={styles.statText}>{item.defectCount} Mängel</Text>
+          <Text style={styles.statText}>{item.defectCount} {t('analysis_history_defects' as any)}</Text>
         </View>
         <View style={styles.stat}>
           <MaterialIcons name="assignment" size={12} color="#5C6BC0" />
-          <Text style={styles.statText}>{item.taskCount} Aufgaben</Text>
+          <Text style={styles.statText}>{item.taskCount} {t('analysis_history_tasks' as any)}</Text>
         </View>
         <View style={styles.stat}>
           <MaterialIcons name="trending-up" size={12} color="#66BB6A" />
@@ -172,7 +174,7 @@ export default function AnalysisHistoryScreen() {
             <Pressable onPress={() => setSelectedEntry(null)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
               <MaterialIcons name="close" size={24} color="#F0F4F8" />
             </Pressable>
-            <Text style={styles.detailTitle}>Analyse-Details</Text>
+            <Text style={styles.detailTitle}>{t('analysis_history_detail_title' as any)}</Text>
             <View style={{ width: 24 }} />
           </View>
 
@@ -198,7 +200,7 @@ export default function AnalysisHistoryScreen() {
             {/* Images */}
             {selectedEntry.imageUrls && selectedEntry.imageUrls.length > 0 && (
               <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Originalbilder</Text>
+                <Text style={styles.detailSectionTitle}>{t('analysis_history_original_images' as any)}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                   {selectedEntry.imageUrls.map((uri, idx) => (
                     <Image key={idx} source={{ uri }} style={styles.detailImage} contentFit="cover" />
@@ -209,34 +211,34 @@ export default function AnalysisHistoryScreen() {
 
             {/* Summary */}
             <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>KI-Ergebnis</Text>
+              <Text style={styles.detailSectionTitle}>{t('analysis_history_ai_result' as any)}</Text>
               <Text style={styles.detailText}>{selectedEntry.summary}</Text>
             </View>
 
             {/* Progress */}
             {selectedEntry.progress && (
               <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Fortschritt</Text>
+                <Text style={styles.detailSectionTitle}>{t('analysis_history_progress' as any)}</Text>
                 <View style={styles.progressRow}>
                   <View style={styles.progressBar}>
                     <View style={[styles.progressFill, { width: `${selectedEntry.progress.overallPercent}%` }]} />
                   </View>
                   <Text style={styles.progressText}>{selectedEntry.progress.overallPercent}%</Text>
                 </View>
-                <Text style={styles.detailSubtext}>Phase: {selectedEntry.progress.phase}</Text>
+                <Text style={styles.detailSubtext}>{t('analysis_history_phase' as any)} {selectedEntry.progress.phase}</Text>
               </View>
             )}
 
             {/* Defects */}
             {selectedEntry.defects && selectedEntry.defects.length > 0 && (
               <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Mängel ({selectedEntry.defects.length})</Text>
+                <Text style={styles.detailSectionTitle}>{t('analysis_history_defects' as any)} ({selectedEntry.defects.length})</Text>
                 {selectedEntry.defects.map((defect) => (
                   <View key={defect.id} style={styles.detailListItem}>
                     <View style={[styles.severityDot, { backgroundColor: defect.severity === "critical" ? "#EF4444" : defect.severity === "major" ? "#FF9800" : "#F59E0B" }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.detailItemTitle}>{defect.title}</Text>
-                      <Text style={styles.detailItemMeta}>{defect.trade} | {Math.round(defect.confidence * 100)}% Konfidenz</Text>
+                      <Text style={styles.detailItemMeta}>{defect.trade} | {Math.round(defect.confidence * 100)}% {t('analysis_history_confidence' as any)}</Text>
                     </View>
                   </View>
                 ))}
@@ -246,7 +248,7 @@ export default function AnalysisHistoryScreen() {
             {/* Tasks */}
             {selectedEntry.tasks && selectedEntry.tasks.length > 0 && (
               <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Aufgaben ({selectedEntry.tasks.length})</Text>
+                <Text style={styles.detailSectionTitle}>{t('analysis_history_tasks' as any)} ({selectedEntry.tasks.length})</Text>
                 {selectedEntry.tasks.map((task) => (
                   <View key={task.id} style={styles.detailListItem}>
                     <MaterialIcons name="assignment" size={14} color="#5C6BC0" />
@@ -262,7 +264,7 @@ export default function AnalysisHistoryScreen() {
             {/* Observations */}
             {selectedEntry.observations && selectedEntry.observations.length > 0 && (
               <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Beobachtungen</Text>
+                <Text style={styles.detailSectionTitle}>{t('analysis_history_observations' as any)}</Text>
                 {selectedEntry.observations.map((obs, idx) => (
                   <Text key={idx} style={styles.detailObservation}>• {obs}</Text>
                 ))}
@@ -271,27 +273,27 @@ export default function AnalysisHistoryScreen() {
 
             {/* Meta info */}
             <View style={styles.detailSection}>
-              <Text style={styles.detailSectionTitle}>Bericht</Text>
+              <Text style={styles.detailSectionTitle}>{t('analysis_history_report' as any)}</Text>
               <View style={styles.metaGrid}>
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Projekt</Text>
+                  <Text style={styles.metaLabel}>{t('analysis_history_project' as any)}</Text>
                   <Text style={styles.metaValue}>{selectedEntry.projectName || "—"}</Text>
                 </View>
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Raum</Text>
+                  <Text style={styles.metaLabel}>{t('analysis_history_room' as any)}</Text>
                   <Text style={styles.metaValue}>{selectedEntry.roomName || "—"}</Text>
                 </View>
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Gewerk</Text>
+                  <Text style={styles.metaLabel}>{t('analysis_history_trade' as any)}</Text>
                   <Text style={styles.metaValue}>{selectedEntry.trade || "—"}</Text>
                 </View>
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Fotos</Text>
+                  <Text style={styles.metaLabel}>{t('analysis_history_photos' as any)}</Text>
                   <Text style={styles.metaValue}>{selectedEntry.photoCount}</Text>
                 </View>
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Übernommen</Text>
-                  <Text style={styles.metaValue}>{selectedEntry.adoptedDefects} Mängel / {selectedEntry.adoptedTasks} Aufgaben</Text>
+                  <Text style={styles.metaLabel}>{t('analysis_history_status_adopted' as any)}</Text>
+                  <Text style={styles.metaValue}>{selectedEntry.adoptedDefects} {t('analysis_history_defects' as any)} / {selectedEntry.adoptedTasks} {t('analysis_history_tasks' as any)}</Text>
                 </View>
               </View>
             </View>
@@ -308,7 +310,7 @@ export default function AnalysisHistoryScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color="#F0F4F8" />
         </Pressable>
-        <Text style={styles.headerTitle}>Analyse-Historie</Text>
+        <Text style={styles.headerTitle}>{t('analysis_history_title' as any)}</Text>
         <Pressable onPress={() => setShowFilters(!showFilters)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <View style={{ position: "relative" }}>
             <MaterialIcons name="filter-list" size={24} color={activeFilterCount > 0 ? "#7C4DFF" : "#F0F4F8"} />
@@ -326,7 +328,7 @@ export default function AnalysisHistoryScreen() {
         <MaterialIcons name="search" size={18} color="#8FA3B8" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Suche in Analysen..."
+          placeholder={t('analysis_history_search_placeholder' as any)}
           placeholderTextColor="#8FA3B8"
           value={filters.search}
           onChangeText={(text) => setFilters(f => ({ ...f, search: text }))}
@@ -343,7 +345,7 @@ export default function AnalysisHistoryScreen() {
         <View style={styles.filterPanel}>
           {/* Source Filter */}
           <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Quelle</Text>
+            <Text style={styles.filterLabel}>{t('analysis_history_source' as any)}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {(["all", "photo", "speech", "matterport", "document", "manual"] as const).map((src) => (
                 <Pressable
@@ -352,7 +354,7 @@ export default function AnalysisHistoryScreen() {
                   style={[styles.filterChip, filters.source === src && styles.filterChipActive]}
                 >
                   <Text style={[styles.filterChipText, filters.source === src && styles.filterChipTextActive]}>
-                    {src === "all" ? "Alle" : getSourceLabel(src)}
+                    {src === "all" ? t('analysis_history_all' as any) : getSourceLabel(src)}
                   </Text>
                 </Pressable>
               ))}
@@ -361,7 +363,7 @@ export default function AnalysisHistoryScreen() {
 
           {/* Status Filter */}
           <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Status</Text>
+            <Text style={styles.filterLabel}>{t('analysis_history_status' as any)}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {(["all", "pending", "reviewed", "adopted", "dismissed"] as const).map((st) => (
                 <Pressable
@@ -370,7 +372,7 @@ export default function AnalysisHistoryScreen() {
                   style={[styles.filterChip, filters.status === st && styles.filterChipActive]}
                 >
                   <Text style={[styles.filterChipText, filters.status === st && styles.filterChipTextActive]}>
-                    {st === "all" ? "Alle" : getStatusLabel(st)}
+                    {st === "all" ? t('analysis_history_all' as any) : getStatusLabel(st)}
                   </Text>
                 </Pressable>
               ))}
@@ -379,10 +381,10 @@ export default function AnalysisHistoryScreen() {
 
           {/* Room Filter */}
           <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Raum</Text>
+            <Text style={styles.filterLabel}>{t('analysis_history_room' as any)}</Text>
             <TextInput
               style={styles.filterInput}
-              placeholder="z.B. Bad EG"
+              placeholder={t('analysis_history_room_placeholder' as any)}
               placeholderTextColor="#8FA3B8"
               value={filters.room}
               onChangeText={(text) => setFilters(f => ({ ...f, room: text }))}
@@ -391,10 +393,10 @@ export default function AnalysisHistoryScreen() {
 
           {/* Trade Filter */}
           <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Gewerk</Text>
+            <Text style={styles.filterLabel}>{t('analysis_history_trade' as any)}</Text>
             <TextInput
               style={styles.filterInput}
-              placeholder="z.B. Trockenbau"
+              placeholder={t('analysis_history_trade_placeholder' as any)}
               placeholderTextColor="#8FA3B8"
               value={filters.trade}
               onChangeText={(text) => setFilters(f => ({ ...f, trade: text }))}
@@ -406,29 +408,29 @@ export default function AnalysisHistoryScreen() {
             onPress={() => setFilters({ ...DEFAULT_FILTERS, project: params.projectId || "" })}
             style={({ pressed }) => [styles.resetButton, { opacity: pressed ? 0.7 : 1 }]}
           >
-            <Text style={styles.resetButtonText}>Filter zurücksetzen</Text>
+            <Text style={styles.resetButtonText}>{t('analysis_history_reset_filters' as any)}</Text>
           </Pressable>
         </View>
       )}
 
       {/* Results Count */}
       <View style={styles.resultsBar}>
-        <Text style={styles.resultsText}>{filteredEntries.length} Analysen</Text>
+        <Text style={styles.resultsText}>{filteredEntries.length} {t('analysis_history_analyses' as any)}</Text>
       </View>
 
       {/* List */}
       {loading ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Laden...</Text>
+          <Text style={styles.emptyText}>{t('analysis_history_loading' as any)}</Text>
         </View>
       ) : filteredEntries.length === 0 ? (
         <View style={styles.emptyState}>
           <MaterialIcons name="history" size={48} color="#1E3A5F" />
-          <Text style={styles.emptyTitle}>Keine Analysen gefunden</Text>
+          <Text style={styles.emptyTitle}>{t('analysis_history_empty_title' as any)}</Text>
           <Text style={styles.emptyText}>
             {entries.length === 0
-              ? "Starte eine KI-Analyse, um hier den Verlauf zu sehen."
-              : "Passe die Filter an, um Ergebnisse zu sehen."}
+              ? t('analysis_history_empty_no_entries' as any)
+              : t('analysis_history_empty_filtered' as any)}
           </Text>
         </View>
       ) : (

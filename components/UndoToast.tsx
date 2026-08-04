@@ -6,6 +6,7 @@
 import { useEffect, useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Animated, Platform } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useTranslation } from "@/lib/language-provider";
 
 export interface UndoToastProps {
   visible: boolean;
@@ -16,6 +17,7 @@ export interface UndoToastProps {
 }
 
 export function UndoToast({ visible, message, onUndo, onDismiss, duration = 4000 }: UndoToastProps) {
+  const { t } = useTranslation();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +81,7 @@ export function UndoToast({ visible, message, onUndo, onDismiss, duration = 4000
           pressed && { opacity: 0.7 },
         ]}
       >
-        <Text style={styles.undoText}>Rückgängig</Text>
+        <Text style={styles.undoText}>{t('UndoToast_undo' as any)}</Text>
       </Pressable>
     </Animated.View>
   );

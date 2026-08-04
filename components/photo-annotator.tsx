@@ -17,6 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Path, Circle, Rect, Line } from "react-native-svg";
 import { createLocalId } from "@/lib/id";
+import { useTranslation } from "@/lib/language-provider";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -41,13 +42,14 @@ type Props = {
 
 const COLORS: AnnotationColor[] = ["#EF4444", "#F59E0B", "#22C55E", "#3B82F6", "#FFFFFF"];
 const TOOLS: { type: AnnotationType; icon: string; label: string }[] = [
-  { type: "freehand", icon: "gesture", label: "Freihand" },
-  { type: "arrow", icon: "arrow-forward", label: "Pfeil" },
-  { type: "circle", icon: "radio-button-unchecked", label: "Kreis" },
-  { type: "rect", icon: "crop-square", label: "Rechteck" },
+  { type: "freehand", icon: "gesture", label: "photo_annotator_tool_freehand" },
+  { type: "arrow", icon: "arrow-forward", label: "photo_annotator_tool_arrow" },
+  { type: "circle", icon: "radio-button-unchecked", label: "photo_annotator_tool_circle" },
+  { type: "rect", icon: "crop-square", label: "photo_annotator_tool_rect" },
 ];
 
 export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnnotations = [] }: Props) {
+  const { t } = useTranslation();
   const [annotations, setAnnotations] = useState<Annotation[]>(existingAnnotations);
   const [currentTool, setCurrentTool] = useState<AnnotationType>("freehand");
   const [currentColor, setCurrentColor] = useState<AnnotationColor>("#EF4444");
@@ -189,11 +191,11 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={onClose} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={styles.headerButton}>Abbrechen</Text>
+            <Text style={styles.headerButton}>{t('photo_annotator_cancel' as any)}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Foto bearbeiten</Text>
+          <Text style={styles.headerTitle}>{t('photo_annotator_edit_photo' as any)}</Text>
           <Pressable onPress={handleSave} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={[styles.headerButton, { color: "#007AFF" }]}>Fertig</Text>
+            <Text style={[styles.headerButton, { color: "#007AFF" }]}>{t('photo_annotator_done' as any)}</Text>
           </Pressable>
         </View>
 
@@ -232,7 +234,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
                 style={[styles.toolButton, currentTool === tool.type && styles.toolButtonActive]}
               >
                 <MaterialIcons name={tool.icon as any} size={22} color={currentTool === tool.type ? "#007AFF" : "#666"} />
-                <Text style={[styles.toolLabel, currentTool === tool.type && { color: "#007AFF" }]}>{tool.label}</Text>
+                <Text style={[styles.toolLabel, currentTool === tool.type && { color: "#007AFF" }]}>{t(tool.label as any)}</Text>
               </Pressable>
             ))}
           </View>

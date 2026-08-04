@@ -31,6 +31,7 @@ import { WebView } from "react-native-webview";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { getProjectStructure, addFloor, addRoom } from "@/lib/room-store";
 import { trpc } from "@/lib/trpc";
 import {
@@ -72,6 +73,7 @@ export interface MatterportPin {
 type ViewMode3D = "inside" | "dollhouse" | "floorplan";
 
 export default function MatterportViewerScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const colors = useColors();
   const params = useLocalSearchParams<{
@@ -344,7 +346,7 @@ export default function MatterportViewerScreen() {
 
   const importRoomsFromMatterport = async () => {
     if (!modelId || !projectId) {
-      Alert.alert("Fehler", "Kein Matterport-Modell oder Projekt verknüpft.");
+      Alert.alert(t('alert_fehler'), t('matterport_viewer_no_model_linked' as any));
       return;
     }
     setShowImportModal(true);
@@ -448,9 +450,9 @@ export default function MatterportViewerScreen() {
 <body>
   <div class="loading" id="loader">
     <div class="loading-spinner"></div>
-    <div>3D-Modell wird geladen...</div>
+    <div>${t('matterport_viewer_loading_3d' as any)}</div>
   </div>
-  <div class="placement-indicator" id="placementBanner">Tippen Sie auf eine Stelle im 3D-Modell</div>
+  <div class="placement-indicator" id="placementBanner">${t('matterport_viewer_tap_surface' as any)}</div>
   <iframe id="showcase" src="${embedUrl}" allow="xr-spatial-tracking; fullscreen" allowfullscreen></iframe>
   
   <script type="module">
@@ -651,21 +653,21 @@ export default function MatterportViewerScreen() {
           <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>3D-Viewer</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('matterport_viewer_3d_viewer' as any)}</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.emptyState}>
           <MaterialIcons name="view-in-ar" size={64} color={colors.muted} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Kein Modell ausgewählt</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('matterport_viewer_no_model_selected' as any)}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Wählen Sie ein Matterport-Modell aus der Modell-Liste oder verbinden Sie Ihr Konto unter Werkzeuge → Matterport.
+            {t('matterport_viewer_no_model_hint' as any)}
           </Text>
           <Pressable
             onPress={() => router.push("/matterport" as any)}
             style={({ pressed }) => [styles.actionButton, { backgroundColor: "#00B0FF", opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="link" size={18} color="#fff" />
-            <Text style={styles.actionButtonText}>Matterport verbinden</Text>
+            <Text style={styles.actionButtonText}>{t('matterport_viewer_connect' as any)}</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -682,7 +684,7 @@ export default function MatterportViewerScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
-          3D-Viewer {pins.length > 0 ? `(${pins.length} Pins)` : ""}
+          {t('matterport_viewer_3d_viewer' as any)} {pins.length > 0 ? `(${pins.length} Pins)` : ""}
         </Text>
         <View style={{ flexDirection: "row", gap: 12 }}>
           <Pressable onPress={() => setShowPinListModal(true)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
@@ -699,7 +701,7 @@ export default function MatterportViewerScreen() {
         <View style={{ backgroundColor: "rgba(245,158,11,0.12)", paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
           <MaterialIcons name="info-outline" size={16} color="#F59E0B" />
           <Text style={{ color: colors.foreground, fontSize: 12, flex: 1 }}>
-            Eingeschränkter Modus: 3D-Navigation aktiv, SDK-Steuerung (Pin-Platzierung) erfordert einen gültigen SDK-Key.
+            {t('matterport_viewer_limited_mode' as any)}
           </Text>
         </View>
       )}
@@ -709,16 +711,16 @@ export default function MatterportViewerScreen() {
         {loadError ? (
           <View style={styles.emptyState}>
             <MaterialIcons name="wifi-off" size={48} color={colors.muted} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Keine Verbindung</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('matterport_viewer_no_connection' as any)}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-              Das 3D-Modell kann nicht geladen werden. Bitte prüfen Sie Ihre Internetverbindung.
+              {t('matterport_viewer_no_connection_hint' as any)}
             </Text>
             <Pressable
               onPress={() => { setLoadError(false); setIsLoading(true); }}
               style={({ pressed }) => [styles.actionButton, { backgroundColor: "#00B0FF", opacity: pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="refresh" size={18} color="#fff" />
-              <Text style={styles.actionButtonText}>Erneut versuchen</Text>
+              <Text style={styles.actionButtonText}>{t('retry')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -743,7 +745,7 @@ export default function MatterportViewerScreen() {
         {isLoading && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#00B0FF" />
-            <Text style={styles.loadingText}>3D-Modell wird geladen...</Text>
+            <Text style={styles.loadingText}>{t('matterport_viewer_loading_3d' as any)}</Text>
           </View>
         )}
       </View>
@@ -757,7 +759,7 @@ export default function MatterportViewerScreen() {
         >
           <MaterialIcons name="add-location-alt" size={22} color={placementMode ? "#EF4444" : "#00B0FF"} />
           <Text style={[styles.toolbarLabel, { color: placementMode ? "#EF4444" : colors.muted }]}>
-            {placementMode ? "Aktiv" : "Pin"}
+            {placementMode ? t('project_active') : "Pin"}
           </Text>
         </Pressable>
 
@@ -772,7 +774,7 @@ export default function MatterportViewerScreen() {
             color="#66BB6A"
           />
           <Text style={[styles.toolbarLabel, { color: colors.muted }]}>
-            {currentViewMode === "inside" ? "Innen" : currentViewMode === "dollhouse" ? "Puppe" : "Plan"}
+            {currentViewMode === "inside" ? t('matterport_viewer_inside' as any) : currentViewMode === "dollhouse" ? t('matterport_viewer_dollhouse' as any) : t('matterport_viewer_floorplan' as any)}
           </Text>
         </Pressable>
 
@@ -811,7 +813,7 @@ export default function MatterportViewerScreen() {
           style={({ pressed }) => [styles.toolbarBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
           <MaterialIcons name="fullscreen" size={22} color={colors.muted} />
-          <Text style={[styles.toolbarLabel, { color: colors.muted }]}>Voll</Text>
+          <Text style={[styles.toolbarLabel, { color: colors.muted }]}>{t('matterport_viewer_fullscreen' as any)}</Text>
         </Pressable>
       </View>
 
@@ -821,7 +823,7 @@ export default function MatterportViewerScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                {pendingPosition ? "Pin an 3D-Position" : "Neuer Pin"}
+                {pendingPosition ? t('matterport_viewer_pin_at_3d' as any) : t('matterport_viewer_new_pin' as any)}
               </Text>
               <Pressable onPress={() => { setShowPinModal(false); setPendingPosition(null); }}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
@@ -833,7 +835,7 @@ export default function MatterportViewerScreen() {
               <View style={[styles.positionInfo, { backgroundColor: "#00B0FF10", borderColor: "#00B0FF" }]}>
                 <MaterialIcons name="place" size={16} color="#00B0FF" />
                 <Text style={{ color: "#00B0FF", fontSize: 12, flex: 1 }}>
-                  3D-Position erfasst: ({pendingPosition.position.x.toFixed(1)}, {pendingPosition.position.y.toFixed(1)}, {pendingPosition.position.z.toFixed(1)})
+                  {t('matterport_viewer_position_captured' as any)} ({pendingPosition.position.x.toFixed(1)}, {pendingPosition.position.y.toFixed(1)}, {pendingPosition.position.z.toFixed(1)})
                 </Text>
               </View>
             )}
@@ -852,7 +854,7 @@ export default function MatterportViewerScreen() {
                   >
                     <MaterialIcons name={getPinIcon(type) as any} size={18} color={getPinColor(type)} />
                     <Text style={[styles.pinTypeLabel, { color: newPinType === type ? getPinColor(type) : colors.muted }]}>
-                      {type === "defect" ? "Mangel" : type === "task" ? "Aufgabe" : type === "note" ? "Notiz" : "Foto"}
+                      {type === "defect" ? t('anno_mangel') : type === "task" ? t('aufgabe') : type === "note" ? t('notiz') : t('foto')}
                     </Text>
                   </Pressable>
                 ))}
@@ -862,7 +864,7 @@ export default function MatterportViewerScreen() {
                 style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
                 value={newPinLabel}
                 onChangeText={setNewPinLabel}
-                placeholder="Bezeichnung..."
+                placeholder={t('matterport_viewer_label_ph' as any)}
                 placeholderTextColor={colors.muted}
                 returnKeyType="next"
               />
@@ -871,7 +873,7 @@ export default function MatterportViewerScreen() {
                 style={[styles.input, styles.inputMulti, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
                 value={newPinDescription}
                 onChangeText={setNewPinDescription}
-                placeholder="Beschreibung (optional)..."
+                placeholder={t('matterport_viewer_description_ph' as any)}
                 placeholderTextColor={colors.muted}
                 multiline
                 numberOfLines={3}
@@ -880,7 +882,7 @@ export default function MatterportViewerScreen() {
               {/* Floor Picker */}
               {modelFloors.length > 0 && (
                 <View style={{ marginBottom: 12 }}>
-                  <Text style={[styles.sectionLabel, { color: colors.muted }]}>Geschoss</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('matterport_viewer_floor' as any)}</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {modelFloors.sort((a, b) => a.sequence - b.sequence).map((f) => (
                       <Pressable
@@ -898,7 +900,7 @@ export default function MatterportViewerScreen() {
               {/* Room Picker */}
               {newPinFloor && modelRooms.filter(r => r.floor?.id === newPinFloor).length > 0 && (
                 <View style={{ marginBottom: 12 }}>
-                  <Text style={[styles.sectionLabel, { color: colors.muted }]}>Raum</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('matterport_viewer_room' as any)}</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {modelRooms.filter(r => r.floor?.id === newPinFloor).map((r) => (
                       <Pressable
@@ -916,12 +918,12 @@ export default function MatterportViewerScreen() {
               {/* Gewerk Picker */}
               {(newPinType === "defect" || newPinType === "task") && (
                 <View style={{ marginBottom: 12 }}>
-                  <Text style={[styles.sectionLabel, { color: colors.muted }]}>Gewerk</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('gewerk')}</Text>
                   <TradePicker
                     value={newPinGewerk}
                     onChange={setNewPinGewerk}
-                    placeholder="Gewerk auswählen (optional)"
-                    accessibilityLabel="Gewerk für den Matterport-Pin auswählen"
+                    placeholder={t('matterport_viewer_trade_ph' as any)}
+                    accessibilityLabel={t('matterport_viewer_trade_a11y' as any)}
                   />
                 </View>
               )}
@@ -933,7 +935,7 @@ export default function MatterportViewerScreen() {
               style={({ pressed }) => [styles.saveBtn, { backgroundColor: "#00B0FF", opacity: !newPinLabel.trim() ? 0.4 : pressed ? 0.8 : 1 }]}
             >
               <MaterialIcons name="add-location" size={18} color="#fff" />
-              <Text style={styles.saveBtnText}>Pin erstellen{newPinType === "defect" ? " + Mangel" : ""}</Text>
+              <Text style={styles.saveBtnText}>{t('matterport_viewer_create_pin' as any)}{newPinType === "defect" ? t('matterport_viewer_plus_defect' as any) : ""}</Text>
             </Pressable>
           </View>
         </View>
@@ -956,7 +958,7 @@ export default function MatterportViewerScreen() {
               <View style={{ alignItems: "center", paddingVertical: 32 }}>
                 <MaterialIcons name="place" size={40} color={colors.muted} />
                 <Text style={{ color: colors.muted, marginTop: 8, fontSize: 14 }}>
-                  Noch keine Pins. Tippen Sie auf &quot;Pin&quot; in der Toolbar, dann auf eine Stelle im 3D-Modell.
+                  {t('matterport_viewer_no_pins_hint' as any)}
                 </Text>
               </View>
             ) : (
@@ -973,7 +975,7 @@ export default function MatterportViewerScreen() {
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={[styles.pinItemLabel, { color: colors.foreground }]}>{item.label}</Text>
                       <Text style={[styles.pinItemDesc, { color: colors.muted }]} numberOfLines={1}>
-                        {[item.floorName, item.roomName, item.gewerk].filter(Boolean).join(" · ") || "Keine Position"}
+                        {[item.floorName, item.roomName, item.gewerk].filter(Boolean).join(" · ") || t('matterport_viewer_no_position' as any)}
                         {item.position ? " · 3D" : ""}
                       </Text>
                     </View>
@@ -999,7 +1001,7 @@ export default function MatterportViewerScreen() {
               style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1, marginTop: 12 }]}
             >
               <MaterialIcons name="add" size={18} color={colors.foreground} />
-              <Text style={[styles.saveBtnText, { color: colors.foreground }]}>Pin ohne 3D-Position</Text>
+              <Text style={[styles.saveBtnText, { color: colors.foreground }]}>{t('matterport_viewer_pin_without_3d' as any)}</Text>
             </Pressable>
           </View>
         </View>
@@ -1010,7 +1012,7 @@ export default function MatterportViewerScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background, maxHeight: 400 }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Räume importieren</Text>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('matterport_viewer_import_rooms' as any)}</Text>
               <Pressable onPress={() => setShowImportModal(false)}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
               </Pressable>
@@ -1030,7 +1032,7 @@ export default function MatterportViewerScreen() {
                 onPress={() => setShowImportModal(false)}
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.success, opacity: pressed ? 0.8 : 1, marginTop: 12 }]}
               >
-                <Text style={styles.saveBtnText}>Fertig</Text>
+                <Text style={styles.saveBtnText}>{t('done')}</Text>
               </Pressable>
             )}
           </View>

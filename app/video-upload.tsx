@@ -29,6 +29,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { useTranslation } from "@/lib/language-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
 import { useNetworkStatus } from "@/hooks/use-network-status";
@@ -73,13 +74,15 @@ type QueueItem = {
   errorMessage?: string;
 };
 
+// label/description hold translation KEYs, resolved with t() at render.
 const DOC_TYPES: { key: DocType; label: string; icon: string; description: string }[] = [
-  { key: "protokoll", label: "Besprechungsprotokoll", icon: "description", description: "Formelles Protokoll mit Teilnehmern, Themen, Beschlüssen" },
-  { key: "zusammenfassung", label: "Zusammenfassung", icon: "summarize", description: "Kompakte Zusammenfassung der wichtigsten Punkte" },
-  { key: "bautagebuch", label: "Bautagebuch-Eintrag", icon: "menu-book", description: "Tagesbericht mit Wetter, Gewerken, Fortschritt" },
+  { key: "protokoll", label: "video_upload_doctype_protokoll_label", icon: "description", description: "video_upload_doctype_protokoll_desc" },
+  { key: "zusammenfassung", label: "zusammenfassung", icon: "summarize", description: "video_upload_doctype_zusammenfassung_desc" },
+  { key: "bautagebuch", label: "video_upload_doctype_bautagebuch_label", icon: "menu-book", description: "video_upload_doctype_bautagebuch_desc" },
 ];
 
 export default function VideoUploadScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const { loading: authLoading, isAuthenticated } = useAuth();
@@ -147,7 +150,7 @@ export default function VideoUploadScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung", "Zugriff auf Medien wird benötigt.");
+        Alert.alert(t('alert_berechtigung'), t('video_upload_zugriff_medien' as any));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -176,7 +179,7 @@ export default function VideoUploadScreen() {
         setQueue(prev => [...prev, ...newItems]);
       }
     } catch (err: any) {
-      Alert.alert("Fehler", err.message || "Videos konnten nicht geladen werden.");
+      Alert.alert(t('error'), err.message || t('video_upload_videos_load_failed' as any));
     }
   };
 
@@ -184,7 +187,7 @@ export default function VideoUploadScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Berechtigung", "Kamerazugriff wird benötigt.");
+        Alert.alert(t('alert_berechtigung'), t('video_upload_kamerazugriff' as any));
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -209,7 +212,7 @@ export default function VideoUploadScreen() {
         }]);
       }
     } catch (err: any) {
-      Alert.alert("Fehler", err.message || "Aufnahme fehlgeschlagen.");
+      Alert.alert(t('error'), err.message || t('video_upload_aufnahme_failed' as any));
     }
   };
 
@@ -250,7 +253,7 @@ export default function VideoUploadScreen() {
         setQueue(prev => [...prev, ...newItems]);
       }
     } catch (err: any) {
-      Alert.alert("Fehler", err.message || "Dateien konnten nicht geladen werden.");
+      Alert.alert(t('error'), err.message || t('video_upload_dateien_load_failed' as any));
     }
   };
 
@@ -265,19 +268,19 @@ export default function VideoUploadScreen() {
   const showBlockedUploadMessage = () => {
     if (uploadGate.reason === "auth-required") {
       Alert.alert(
-        uploadGate.title || "Anmeldung erforderlich",
-        uploadGate.message || "Bitte melde dich an, um Videos zu verarbeiten.",
+        uploadGate.title || t('video_upload_anmeldung_erforderlich' as any),
+        uploadGate.message || t('video_upload_bitte_anmelden_videos' as any),
         [
-          { text: "Abbrechen", style: "cancel" },
-          { text: uploadGate.actionLabel || "Anmelden", onPress: openLogin },
+          { text: t('cancel'), style: "cancel" },
+          { text: uploadGate.actionLabel || t('anmelden'), onPress: openLogin },
         ],
       );
       return;
     }
 
     Alert.alert(
-      uploadGate.title || "Video-Upload nicht verfügbar",
-      uploadGate.message || "Bitte versuche es später erneut.",
+      uploadGate.title || t('video_upload_upload_nicht_verfuegbar' as any),
+      uploadGate.message || t('video_upload_bitte_spaeter' as any),
     );
   };
 
@@ -286,8 +289,8 @@ export default function VideoUploadScreen() {
     const privacyChoices = await getPrivacyChoices();
     if (!privacyChoices.cloudSync || !privacyChoices.aiProcessing) {
       Alert.alert(
-        "Cloud-/KI-Verarbeitung deaktiviert",
-        "Die Dateien bleiben lokal ausgewählt. Aktivieren Sie Cloud-Synchronisation und KI/Transkription in den Datenschutzoptionen, bevor BuildKI Dateien liest, hochlädt oder transkribiert.",
+        t('video_upload_cloud_ki_deaktiviert' as any),
+        t('video_upload_cloud_ki_deaktiviert_msg' as any),
       );
       return;
     }
@@ -296,7 +299,7 @@ export default function VideoUploadScreen() {
       return;
     }
     if (!activeProject) {
-      Alert.alert("Kein Projekt", "Bitte wähle zuerst ein Projekt im Tools-Tab aus.");
+      Alert.alert(t('kein_projekt'), t('video_upload_bitte_projekt_tools' as any));
       return;
     }
 
@@ -338,7 +341,7 @@ export default function VideoUploadScreen() {
                 transcription: undefined,
                 transcriptionSegments: undefined,
                 detectedLanguage: undefined,
-                errorMessage: err?.message || "Video konnte nicht verarbeitet werden.",
+                errorMessage: err?.message || t('video_upload_video_process_failed' as any),
               }
             : item,
         );
@@ -350,7 +353,7 @@ export default function VideoUploadScreen() {
     const combinedTranscription = completion.successfulItems
       .map(
         (item) =>
-          `[${item.video.name}] (Sprache: ${item.detectedLanguage || "unbekannt"})\n${item.transcription!.trim()}`,
+          `[${item.video.name}] (${t('video_upload_sprache_label' as any)}: ${item.detectedLanguage || t('video_upload_unbekannt' as any)})\n${item.transcription!.trim()}`,
       )
       .join("\n\n---\n\n");
 
@@ -426,7 +429,7 @@ export default function VideoUploadScreen() {
 
     setProgress(80);
     const timestampedText = formatTranscriptionWithTimestamps(transcribeResult);
-    const detectedLang = transcribeResult.language || "unbekannt";
+    const detectedLang = transcribeResult.language || t('video_upload_unbekannt' as any);
     const segments: TranscriptSegment[] = Array.isArray(transcribeResult.segments)
       ? transcribeResult.segments
           .filter(
@@ -454,7 +457,7 @@ export default function VideoUploadScreen() {
     const completion = getVideoImportCompletionDecision(queue);
     if (!completion.canFinalize || !activeProject) {
       setErrorMessage(
-        completion.errorMessage || "Das aktive Projekt ist nicht mehr verfügbar. Bitte wählen Sie das Projekt erneut aus.",
+        completion.errorMessage || t('video_upload_projekt_nicht_verfuegbar' as any),
       );
       setStep("error");
       return;
@@ -468,9 +471,9 @@ export default function VideoUploadScreen() {
         .join("\n\n");
 
       const docTypeLabels: Record<DocType, string> = {
-        protokoll: "Besprechungsprotokoll",
-        zusammenfassung: "Zusammenfassung",
-        bautagebuch: "Bautagebuch-Eintrag",
+        protokoll: t('video_upload_doctype_protokoll_label' as any),
+        zusammenfassung: t('zusammenfassung'),
+        bautagebuch: t('video_upload_doctype_bautagebuch_label' as any),
       };
 
       const protocolId = createVideoImportProtocolId();
@@ -502,7 +505,7 @@ export default function VideoUploadScreen() {
 
       const protocol = {
         id: protocolId,
-        title: `${docTypeLabels[docType]}: ${completedVideos[0].video.name.replace(/\.[^.]+$/, "") || "Video"}`,
+        title: `${docTypeLabels[docType]}: ${completedVideos[0].video.name.replace(/\.[^.]+$/, "") || t('video_upload_video_word' as any)}`,
         createdAt: new Date().toISOString(),
         status: "ready" as const,
         transcription: allTranscriptions,
@@ -540,7 +543,7 @@ export default function VideoUploadScreen() {
       }
     } catch (err: any) {
       setStep("error");
-      setErrorMessage(err.message || "Protokoll-Erstellung fehlgeschlagen");
+      setErrorMessage(err.message || t('video_upload_protokoll_erstellung_failed' as any));
     }
   };
 
@@ -594,10 +597,10 @@ export default function VideoUploadScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Video-Import</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('video_upload_video_import_title' as any)}</Text>
         {queue.length > 0 && step === "idle" && (
           <Pressable onPress={reset} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Text style={{ color: "#F87171", fontSize: 14, fontWeight: "600" }}>Leeren</Text>
+            <Text style={{ color: "#F87171", fontSize: 14, fontWeight: "600" }}>{t('video_upload_leeren' as any)}</Text>
           </Pressable>
         )}
         {queue.length === 0 && <View style={{ width: 24 }} />}
@@ -656,9 +659,9 @@ export default function VideoUploadScreen() {
           <>
             <View style={styles.introSection}>
               <MaterialIcons name="videocam" size={40} color="#5DADE2" />
-              <Text style={[styles.introTitle, { color: colors.foreground }]}>Video importieren</Text>
+              <Text style={[styles.introTitle, { color: colors.foreground }]}>{t('video_upload_video_importieren' as any)}</Text>
               <Text style={[styles.introText, { color: colors.muted }]}>
-                Importiere Videos aus WhatsApp, Galerie, E-Mail oder anderen Apps. Mehrfachauswahl möglich.
+                {t('video_upload_intro_text' as any)}
               </Text>
             </View>
 
@@ -666,8 +669,8 @@ export default function VideoUploadScreen() {
               <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <MaterialIcons name="photo-library" size={28} color="#5DADE2" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pickButtonTitle}>Galerie / WhatsApp</Text>
-                  <Text style={styles.pickButtonHint}>Videos aus allen Apps (Mehrfachauswahl)</Text>
+                  <Text style={styles.pickButtonTitle}>{t('video_upload_galerie_whatsapp' as any)}</Text>
+                  <Text style={styles.pickButtonHint}>{t('video_upload_videos_alle_apps' as any)}</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
               </Pressable>
@@ -684,9 +687,9 @@ export default function VideoUploadScreen() {
               >
                 <MaterialIcons name="folder-open" size={28} color="#FF9800" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pickButtonTitle}>Dateien / Downloads</Text>
+                  <Text style={styles.pickButtonTitle}>{t('video_upload_dateien_downloads' as any)}</Text>
                   <Text style={styles.pickButtonHint}>
-                    {isFilePickerOpen ? "Dateiauswahl ist bereits geöffnet" : "E-Mail-Anhänge, Dropbox, Downloads"}
+                    {isFilePickerOpen ? t('video_upload_dateiauswahl_offen' as any) : t('video_upload_email_dropbox_downloads' as any)}
                   </Text>
                 </View>
                 {isFilePickerOpen ? (
@@ -699,8 +702,8 @@ export default function VideoUploadScreen() {
               <Pressable onPress={recordWithCamera} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <MaterialIcons name="videocam" size={28} color="#E53935" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pickButtonTitle}>Kamera</Text>
-                  <Text style={styles.pickButtonHint}>Neues Video aufnehmen</Text>
+                  <Text style={styles.pickButtonTitle}>{t('kamera')}</Text>
+                  <Text style={styles.pickButtonHint}>{t('video_upload_neues_video' as any)}</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
               </Pressable>
@@ -711,7 +714,7 @@ export default function VideoUploadScreen() {
         {/* Queue Preview */}
         {queue.length > 0 && step === "idle" && (
           <>
-            <Text style={styles.sectionLabel}>{queue.length} {queue.length === 1 ? "VIDEO" : "VIDEOS"} AUSGEWÄHLT</Text>
+            <Text style={styles.sectionLabel}>{queue.length} {queue.length === 1 ? t('video_upload_video_uc' as any) : t('video_upload_videos_uc' as any)} {t('video_upload_ausgewaehlt_uc' as any)}</Text>
             <View style={styles.queueList}>
               {queue.map((item, index) => (
                 <View key={index} style={styles.queueItem}>
@@ -739,7 +742,7 @@ export default function VideoUploadScreen() {
             <View style={styles.addMoreRow}>
               <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.addMoreBtn, { opacity: pressed ? 0.7 : 1 }]}>
                 <MaterialIcons name="add" size={16} color="#5DADE2" />
-                <Text style={styles.addMoreText}>Weitere hinzufügen</Text>
+                <Text style={styles.addMoreText}>{t('video_upload_weitere_hinzufuegen' as any)}</Text>
               </Pressable>
             </View>
 
@@ -756,7 +759,7 @@ export default function VideoUploadScreen() {
             >
               <MaterialIcons name="auto-awesome" size={20} color="#fff" />
               <Text style={styles.processButtonText}>
-                {queue.length === 1 ? "Video verarbeiten" : `${queue.length} Videos verarbeiten`}
+                {queue.length === 1 ? t('video_upload_video_verarbeiten' as any) : `${queue.length} ${t('video_upload_videos_verarbeiten_suffix' as any)}`}
               </Text>
             </Pressable>
           </>
@@ -767,11 +770,11 @@ export default function VideoUploadScreen() {
           <View style={styles.processingSection}>
             <ActivityIndicator size="large" color="#5DADE2" />
             <Text style={[styles.processingLabel, { color: colors.foreground }]}>
-              {step === "uploading" ? "Video wird hochgeladen..." : "Audio wird transkribiert..."}
+              {step === "uploading" ? t('video_upload_wird_hochgeladen' as any) : t('video_upload_wird_transkribiert' as any)}
             </Text>
             {queue.length > 1 && (
               <Text style={[styles.processingSubLabel, { color: colors.muted }]}>
-                Video {currentIndex + 1} von {queue.length}
+                {t('video_upload_video_word' as any)} {currentIndex + 1} {t('video_upload_von' as any)} {queue.length}
               </Text>
             )}
             <View style={styles.progressBarBg}>
@@ -785,11 +788,11 @@ export default function VideoUploadScreen() {
         {step === "choose_type" && (
           <View style={styles.docTypeSection}>
             <MaterialIcons name="check-circle" size={36} color="#4ADE80" />
-            <Text style={[styles.docTypeTitle, { color: colors.foreground }]}>Transkription abgeschlossen!</Text>
+            <Text style={[styles.docTypeTitle, { color: colors.foreground }]}>{t('video_upload_transkription_abgeschlossen' as any)}</Text>
             <Text style={[styles.docTypeSubtitle, { color: colors.muted }]}>
               {queueSummary.failedCount > 0
-                ? `${queueSummary.successfulCount} von ${queueSummary.totalCount} Videos erfolgreich. ${queueSummary.failedCount} fehlgeschlagen. Welches Dokument soll aus den erfolgreichen Videos erstellt werden?`
-                : "Welches Dokument soll erstellt werden?"}
+                ? `${queueSummary.successfulCount} ${t('video_upload_von' as any)} ${queueSummary.totalCount} ${t('video_upload_videos_erfolgreich' as any)} ${queueSummary.failedCount} ${t('video_upload_failed_which_doc' as any)}`
+                : t('video_upload_welches_dokument' as any)}
             </Text>
 
             <View style={styles.docTypeList}>
@@ -804,8 +807,8 @@ export default function VideoUploadScreen() {
                 >
                   <MaterialIcons name={dt.icon as any} size={24} color="#5DADE2" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.docTypeCardTitle}>{dt.label}</Text>
-                    <Text style={styles.docTypeCardDesc}>{dt.description}</Text>
+                    <Text style={styles.docTypeCardTitle}>{t(dt.label as any)}</Text>
+                    <Text style={styles.docTypeCardDesc}>{t(dt.description as any)}</Text>
                   </View>
                   <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
                 </Pressable>
@@ -818,7 +821,7 @@ export default function VideoUploadScreen() {
         {step === "generating" && (
           <View style={styles.processingSection}>
             <ActivityIndicator size="large" color="#5DADE2" />
-            <Text style={[styles.processingLabel, { color: colors.foreground }]}>Protokoll wird erstellt...</Text>
+            <Text style={[styles.processingLabel, { color: colors.foreground }]}>{t('video_upload_protokoll_wird_erstellt' as any)}</Text>
           </View>
         )}
 
@@ -826,16 +829,16 @@ export default function VideoUploadScreen() {
         {step === "error" && (
           <View style={styles.errorSection}>
             <MaterialIcons name="error-outline" size={40} color="#F87171" />
-            <Text style={[styles.errorTitle, { color: colors.foreground }]}>Kein Video verarbeitet</Text>
+            <Text style={[styles.errorTitle, { color: colors.foreground }]}>{t('video_upload_kein_video_verarbeitet' as any)}</Text>
             <Text style={[styles.errorMessage, { color: colors.muted }]}>{errorMessage}</Text>
             <View style={styles.errorActions}>
               <Pressable onPress={retryFailedVideos} style={({ pressed }) => [styles.retryButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <MaterialIcons name="refresh" size={18} color="#07131F" />
-                <Text style={styles.retryButtonText}>Erneut verarbeiten</Text>
+                <Text style={styles.retryButtonText}>{t('video_upload_erneut_verarbeiten' as any)}</Text>
               </Pressable>
               <Pressable onPress={reset} style={({ pressed }) => [styles.newSelectionButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <MaterialIcons name="video-library" size={18} color="#5DADE2" />
-                <Text style={styles.newSelectionButtonText}>Neue Auswahl</Text>
+                <Text style={styles.newSelectionButtonText}>{t('video_upload_neue_auswahl' as any)}</Text>
               </Pressable>
             </View>
           </View>
@@ -845,16 +848,16 @@ export default function VideoUploadScreen() {
         {step === "done" && (
           <View style={styles.doneSection}>
             <MaterialIcons name="check-circle" size={48} color="#4ADE80" />
-            <Text style={[styles.doneTitle, { color: colors.foreground }]}>Protokoll erstellt!</Text>
+            <Text style={[styles.doneTitle, { color: colors.foreground }]}>{t('video_upload_protokoll_erstellt' as any)}</Text>
             <Text style={[styles.doneText, { color: colors.muted }]}>
               {createdFailedCount > 0
-                ? `${createdVideoCount} von ${createdVideoCount + createdFailedCount} Videos verarbeitet als ${DOC_TYPES.find(d => d.key === selectedDocType)?.label}.`
-                : `${createdVideoCount} ${createdVideoCount === 1 ? "Video" : "Videos"} verarbeitet als ${DOC_TYPES.find(d => d.key === selectedDocType)?.label}.`}
+                ? `${createdVideoCount} ${t('video_upload_von' as any)} ${createdVideoCount + createdFailedCount} ${t('video_upload_videos_word' as any)} ${t('video_upload_verarbeitet_als' as any)} ${t((DOC_TYPES.find(d => d.key === selectedDocType)?.label ?? '') as any)}.`
+                : `${createdVideoCount} ${createdVideoCount === 1 ? t('video_upload_video_word' as any) : t('video_upload_videos_word' as any)} ${t('video_upload_verarbeitet_als' as any)} ${t((DOC_TYPES.find(d => d.key === selectedDocType)?.label ?? '') as any)}.`}
             </Text>
 
             {transcription.length > 0 && (
               <View style={[styles.transcriptionPreview, { borderColor: colors.border }]}>
-                <Text style={[styles.transcriptionLabel, { color: colors.muted }]}>TRANSKRIPTION (VORSCHAU)</Text>
+                <Text style={[styles.transcriptionLabel, { color: colors.muted }]}>{t('video_upload_transkription_vorschau' as any)}</Text>
                 <Text style={[styles.transcriptionText, { color: colors.foreground }]} numberOfLines={8}>
                   {transcription}
                 </Text>
@@ -868,7 +871,7 @@ export default function VideoUploadScreen() {
                   style={({ pressed }) => [styles.doneButton, styles.donePrimaryButton, { opacity: pressed ? 0.85 : 1 }]}
                 >
                   <MaterialIcons name="description" size={18} color="#fff" />
-                  <Text style={styles.donePrimaryText}>Protokoll anzeigen</Text>
+                  <Text style={styles.donePrimaryText}>{t('video_upload_protokoll_anzeigen' as any)}</Text>
                 </Pressable>
               )}
               <Pressable
@@ -876,7 +879,7 @@ export default function VideoUploadScreen() {
                 style={({ pressed }) => [styles.doneButton, styles.doneSecondaryButton, { opacity: pressed ? 0.85 : 1 }]}
               >
                 <MaterialIcons name="add" size={18} color="#5DADE2" />
-                <Text style={styles.doneSecondaryText}>Weitere Videos</Text>
+                <Text style={styles.doneSecondaryText}>{t('video_upload_weitere_videos' as any)}</Text>
               </Pressable>
             </View>
           </View>

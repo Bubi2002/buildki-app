@@ -21,6 +21,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -70,12 +71,13 @@ const CATEGORY_ICONS: Record<string, string> = {
   sicherheit: "security",
 };
 
+// Values hold translation KEYs (resolved with t() at render). Keys are logic values.
 const CATEGORY_LABELS: Record<string, string> = {
-  gewerk: "Gewerk",
-  foto: "Foto",
-  pruefung: "Prüfung",
-  dokument: "Dokument",
-  sicherheit: "Sicherheit",
+  gewerk: "protocol_assistant_cat_gewerk",
+  foto: "foto",
+  pruefung: "protocol_assistant_cat_pruefung",
+  dokument: "protocol_assistant_cat_dokument",
+  sicherheit: "protocol_assistant_cat_sicherheit",
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -111,6 +113,7 @@ export default function ProtocolAssistantScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ protocolId?: string; protocolText?: string; projectName?: string; roomName?: string }>();
   const colors = useColors();
+  const { t } = useTranslation();
   const assistantMutation = trpc.assistant.analyzeProtocol.useMutation();
 
   const [result, setResult] = useState<AssistantResult | null>(null);
@@ -143,7 +146,7 @@ export default function ProtocolAssistantScreen() {
       }
 
       if (!protocolText) {
-        setError("Kein Protokolltext vorhanden");
+        setError(t('protocol_assistant_kein_protokolltext' as any));
         setIsLoading(false);
         return;
       }
@@ -175,7 +178,7 @@ export default function ProtocolAssistantScreen() {
 
       setResult(analysisResult);
     } catch (err: any) {
-      setError(err.message || "Analyse fehlgeschlagen");
+      setError(err.message || t('protocol_assistant_analyse_fehlgeschlagen' as any));
     } finally {
       setIsLoading(false);
     }
@@ -189,10 +192,10 @@ export default function ProtocolAssistantScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.foreground }]}>
-            KI analysiert Protokoll...
+            {t('protocol_assistant_ki_analysiert' as any)}
           </Text>
           <Text style={[styles.loadingSubtext, { color: colors.muted }]}>
-            Prüfe auf fehlende Gewerke, Fotos und Prüfungen
+            {t('protocol_assistant_pruefe_fehlende' as any)}
           </Text>
         </View>
       </ScreenContainer>
@@ -209,7 +212,7 @@ export default function ProtocolAssistantScreen() {
             onPress={runAnalysis}
             style={({ pressed }) => [styles.retryButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
           >
-            <Text style={styles.retryButtonText}>Erneut versuchen</Text>
+            <Text style={styles.retryButtonText}>{t('retry')}</Text>
           </Pressable>
         </View>
       </ScreenContainer>
@@ -227,7 +230,7 @@ export default function ProtocolAssistantScreen() {
             <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
               <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
             </Pressable>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>KI-Baustellenassistent</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('protocol_assistant_header_title' as any)}</Text>
             <View style={{ width: 24 }} />
           </View>
 
@@ -240,11 +243,11 @@ export default function ProtocolAssistantScreen() {
                 color={RISK_COLORS[result.riskLevel]}
               />
               <Text style={[styles.riskText, { color: RISK_COLORS[result.riskLevel] }]}>
-                Risiko: {result.riskLevel.charAt(0).toUpperCase() + result.riskLevel.slice(1)}
+                {t('protocol_assistant_risiko' as any)}: {result.riskLevel.charAt(0).toUpperCase() + result.riskLevel.slice(1)}
               </Text>
             </View>
             <View style={styles.scoreContainer}>
-              <Text style={[styles.scoreLabel, { color: colors.muted }]}>Vollständigkeit</Text>
+              <Text style={[styles.scoreLabel, { color: colors.muted }]}>{t('protocol_assistant_vollstaendigkeit' as any)}</Text>
               <Text style={[styles.scoreValue, { color: result.completenessScore >= 70 ? "#22C55E" : result.completenessScore >= 40 ? "#F59E0B" : "#EF4444" }]}>
                 {result.completenessScore}%
               </Text>
@@ -254,7 +257,7 @@ export default function ProtocolAssistantScreen() {
 
         {/* Summary */}
         <View style={[styles.section, { borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Zusammenfassung</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('zusammenfassung')}</Text>
           <Text style={[styles.summaryText, { color: colors.foreground }]}>{result.summary}</Text>
         </View>
 
@@ -264,7 +267,7 @@ export default function ProtocolAssistantScreen() {
             <View style={styles.sectionHeader}>
               <MaterialIcons name="search" size={20} color="#EF4444" />
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Fehlende Dokumentation ({result.missingItems.length})
+                {t('protocol_assistant_fehlende_dokumentation' as any)} ({result.missingItems.length})
               </Text>
             </View>
             {result.missingItems.map((item, index) => (
@@ -273,7 +276,7 @@ export default function ProtocolAssistantScreen() {
                   <View style={[styles.categoryBadge, { backgroundColor: PRIORITY_COLORS[item.priority] + "15" }]}>
                     <MaterialIcons name={CATEGORY_ICONS[item.category] as any} size={14} color={PRIORITY_COLORS[item.priority]} />
                     <Text style={[styles.categoryText, { color: PRIORITY_COLORS[item.priority] }]}>
-                      {CATEGORY_LABELS[item.category]}
+                      {t(CATEGORY_LABELS[item.category] as any)}
                     </Text>
                   </View>
                   <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[item.priority] }]} />
@@ -295,7 +298,7 @@ export default function ProtocolAssistantScreen() {
             <View style={styles.sectionHeader}>
               <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                KI-Empfehlungen ({result.recommendations.length})
+                {t('protocol_assistant_ki_empfehlungen' as any)} ({result.recommendations.length})
               </Text>
             </View>
             {result.recommendations.map((rec, index) => (
@@ -306,7 +309,7 @@ export default function ProtocolAssistantScreen() {
                 </View>
                 <Text style={[styles.recDescription, { color: colors.muted }]}>{rec.description}</Text>
                 {rec.relatedTrade && (
-                  <Text style={[styles.recTrade, { color: colors.muted }]}>Gewerk: {rec.relatedTrade}</Text>
+                  <Text style={[styles.recTrade, { color: colors.muted }]}>{t('protocol_assistant_cat_gewerk' as any)}: {rec.relatedTrade}</Text>
                 )}
               </View>
             ))}
@@ -319,7 +322,7 @@ export default function ProtocolAssistantScreen() {
             <View style={styles.sectionHeader}>
               <MaterialIcons name="pending-actions" size={20} color="#F59E0B" />
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Offene Punkte ({result.openPoints.length})
+                {t('protocol_assistant_offene_punkte' as any)} ({result.openPoints.length})
               </Text>
             </View>
             {result.openPoints.map((point, index) => (
@@ -328,12 +331,12 @@ export default function ProtocolAssistantScreen() {
                   <Text style={[styles.openPointTitle, { color: colors.foreground }]}>{point.title}</Text>
                   <View style={[styles.daysBadge, { backgroundColor: point.daysOpen > 7 ? "#EF4444" + "15" : "#F59E0B" + "15" }]}>
                     <Text style={{ fontSize: 11, color: point.daysOpen > 7 ? "#EF4444" : "#F59E0B", fontWeight: "600" }}>
-                      {point.daysOpen} Tage
+                      {point.daysOpen} {t('protocol_assistant_tage' as any)}
                     </Text>
                   </View>
                 </View>
                 <Text style={[styles.openPointDesc, { color: colors.muted }]}>{point.description}</Text>
-                <Text style={[styles.openPointSource, { color: colors.muted }]}>Quelle: {point.source}</Text>
+                <Text style={[styles.openPointSource, { color: colors.muted }]}>{t('protocol_assistant_quelle' as any)}: {point.source}</Text>
               </View>
             ))}
           </View>
@@ -344,7 +347,7 @@ export default function ProtocolAssistantScreen() {
           <View style={[styles.section, { borderColor: colors.border }]}>
             <View style={styles.sectionHeader}>
               <MaterialIcons name="checklist" size={20} color="#22C55E" />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Nächste Schritte</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('protocol_assistant_naechste_schritte' as any)}</Text>
             </View>
             {result.nextSteps.map((step, index) => (
               <View key={index} style={styles.stepRow}>
@@ -361,12 +364,12 @@ export default function ProtocolAssistantScreen() {
         <View style={styles.actionsSection}>
           <Pressable
             onPress={() => {
-              Alert.alert("Übernommen", "Die Empfehlungen wurden als Aufgaben gespeichert.");
+              Alert.alert(t('protocol_assistant_uebernommen' as any), t('protocol_assistant_empfehlungen_gespeichert' as any));
             }}
             style={({ pressed }) => [styles.actionButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="playlist-add-check" size={20} color="#FFF" />
-            <Text style={styles.actionButtonText}>Empfehlungen als Aufgaben übernehmen</Text>
+            <Text style={styles.actionButtonText}>{t('protocol_assistant_empfehlungen_uebernehmen' as any)}</Text>
           </Pressable>
 
           <Pressable
@@ -374,7 +377,7 @@ export default function ProtocolAssistantScreen() {
             style={({ pressed }) => [styles.actionButton, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             <MaterialIcons name="arrow-back" size={20} color={colors.foreground} />
-            <Text style={[styles.actionButtonText, { color: colors.foreground }]}>Zurück zum Protokoll</Text>
+            <Text style={[styles.actionButtonText, { color: colors.foreground }]}>{t('protocol_assistant_zurueck_protokoll' as any)}</Text>
           </Pressable>
         </View>
       </ScrollView>

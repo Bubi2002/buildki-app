@@ -323,11 +323,11 @@ export default function FloorPlanScreen() {
   const filteredPins = filterType === "all" ? pins : pins.filter((p) => p.type === filterType);
 
   const pinTypeOptions: { type: PlanPin["type"]; label: string; icon: string; color: string }[] = [
-    { type: "chapter", label: "Kapitel", icon: "bookmark", color: PIN_COLORS.chapter },
-    { type: "note", label: "Notiz", icon: "edit-note", color: PIN_COLORS.note },
-    { type: "defect", label: "Mangel", icon: "report-problem", color: PIN_COLORS.defect },
-    { type: "photo", label: "Foto", icon: "photo-camera", color: PIN_COLORS.photo },
-    { type: "protocol", label: "Protokoll", icon: "description", color: PIN_COLORS.protocol },
+    { type: "chapter", label: t('floor_plan_typ_kapitel' as any), icon: "bookmark", color: PIN_COLORS.chapter },
+    { type: "note", label: t('floor_plan_typ_notiz' as any), icon: "edit-note", color: PIN_COLORS.note },
+    { type: "defect", label: t('floor_plan_typ_mangel' as any), icon: "report-problem", color: PIN_COLORS.defect },
+    { type: "photo", label: t('floor_plan_typ_foto' as any), icon: "photo-camera", color: PIN_COLORS.photo },
+    { type: "protocol", label: t('floor_plan_typ_protokoll' as any), icon: "description", color: PIN_COLORS.protocol },
   ];
 
   const beginPinEdit = async (pin: PlanPin) => {
@@ -522,7 +522,7 @@ export default function FloorPlanScreen() {
             style={[styles.filterChip, { backgroundColor: filterType === "all" ? colors.primary + "15" : "transparent", borderColor: filterType === "all" ? colors.primary : colors.border }]}
           >
             <Text style={{ fontSize: 11, fontWeight: "600", color: filterType === "all" ? colors.primary : colors.muted }}>
-              Alle ({pins.length})
+              {t('floor_plan_alle' as any)} ({pins.length})
             </Text>
           </Pressable>
           {pinTypeOptions.map((opt) => {
@@ -615,17 +615,17 @@ export default function FloorPlanScreen() {
               {loadingPlanId === selectedPlan.id ? (
                 <View pointerEvents="none" style={styles.planLoadingOverlay}>
                   <ActivityIndicator color="#FFFFFF" />
-                  <Text style={styles.planLoadingText}>Grundriss wird geladen …</Text>
+                  <Text style={styles.planLoadingText}>{t('floor_plan_wird_geladen' as any)}</Text>
                 </View>
               ) : null}
               <Pressable
                 onPress={() => setZoomResetKey((value) => value + 1)}
                 accessibilityRole="button"
-                accessibilityLabel="Grundrisszoom zurücksetzen"
+                accessibilityLabel={t('floor_plan_zoom_zuruecksetzen' as any)}
                 style={({ pressed }) => [styles.resetZoomButton, pressed && { opacity: 0.65 }]}
               >
                 <MaterialIcons name="fit-screen" size={18} color="#FFFFFF" />
-                <Text style={styles.resetZoomText}>Ansicht</Text>
+                <Text style={styles.resetZoomText}>{t('floor_plan_ansicht' as any)}</Text>
               </Pressable>
             </View>
 
@@ -633,7 +633,7 @@ export default function FloorPlanScreen() {
             <View style={[styles.instructionBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <MaterialIcons name="touch-app" size={18} color={colors.primary} />
               <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 8, flex: 1 }}>
-                Zwei Finger zum Zoomen · Ziehen zum Verschieben · Doppeltipp zum Vergrößern · Tippen für Markierung oder Pin-Details.
+                {t('floor_plan_gesten_hinweis' as any)}
               </Text>
             </View>
 
@@ -641,7 +641,7 @@ export default function FloorPlanScreen() {
             {filteredPins.length > 0 && (
               <View style={{ marginTop: 12 }}>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>
-                  Markierungen ({filteredPins.length})
+                  {t('floor_plan_markierungen' as any)} ({filteredPins.length})
                 </Text>
                 {filteredPins.slice(0, 5).map((pin) => (
                   <Pressable
@@ -714,7 +714,7 @@ export default function FloorPlanScreen() {
           </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('grundrisse_plaene')}</Text>
           <Text style={[styles.emptySubtext, { color: colors.muted }]}>
-            Lade Grundrisse, Lagepläne oder technische Zeichnungen hoch und markiere Stellen direkt auf dem Plan.
+            {t('floor_plan_empty_subtext' as any)}
           </Text>
           <Pressable
             onPress={addPlan}
@@ -724,7 +724,7 @@ export default function FloorPlanScreen() {
             <Text style={styles.uploadBtnText}>{t('plan_hochladen')}</Text>
           </Pressable>
           <Text style={{ fontSize: 11, color: colors.muted, marginTop: 12 }}>
-            Unterstützt: JPG, PNG, PDF-Scans
+            {t('floor_plan_unterstuetzt' as any)}
           </Text>
         </View>
       )}
@@ -739,7 +739,7 @@ export default function FloorPlanScreen() {
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neue_markierung')}</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
-              Wähle einen Typ und gib eine Bezeichnung ein
+              {t('floor_plan_typ_hinweis' as any)}
             </Text>
 
             {/* Pin Type Selection */}
@@ -820,7 +820,7 @@ export default function FloorPlanScreen() {
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('plan_benennen')}</Text>
             <TextInput
               style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              placeholder="z.B. EG Grundriss, OG1 Elektro..."
+              placeholder={t('floor_plan_name_placeholder' as any)}
               placeholderTextColor={colors.muted}
               value={newPlanName}
               onChangeText={setNewPlanName}
@@ -926,7 +926,7 @@ export default function FloorPlanScreen() {
                     >
                       <MaterialIcons name="photo-library" size={20} color={colors.primary} />
                       <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary, flex: 1 }}>
-                        {(showPinDetail.photos?.length || 1)} Foto{(showPinDetail.photos?.length || 1) !== 1 ? "s" : ""} anzeigen
+                        {(showPinDetail.photos?.length || 1)} {(showPinDetail.photos?.length || 1) !== 1 ? t('floor_plan_fotos_anzeigen' as any) : t('floor_plan_foto_anzeigen' as any)}
                       </Text>
                       <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
                     </Pressable>
@@ -937,7 +937,7 @@ export default function FloorPlanScreen() {
                           key={`${uri}-${idx}`}
                           onPress={() => viewPinPhotos(showPinDetail, idx)}
                           accessibilityRole="button"
-                          accessibilityLabel={`Foto ${idx + 1} groß anzeigen`}
+                          accessibilityLabel={t('floor_plan_foto_gross_anzeigen' as any).replace('{n}', String(idx + 1))}
                         >
                           <Image
                             source={{ uri }}
@@ -969,7 +969,7 @@ export default function FloorPlanScreen() {
                 <View style={[styles.detailCoords, { backgroundColor: colors.surface }]}>
                   <MaterialIcons name="my-location" size={14} color={colors.muted} />
                   <Text style={{ fontSize: 11, color: colors.muted, marginLeft: 6 }}>
-                    Position: {(showPinDetail.x * 100).toFixed(1)}% / {(showPinDetail.y * 100).toFixed(1)}%
+                    {t('floor_plan_position' as any)}: {(showPinDetail.x * 100).toFixed(1)}% / {(showPinDetail.y * 100).toFixed(1)}%
                   </Text>
                 </View>
                 <Pressable

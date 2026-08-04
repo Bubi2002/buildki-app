@@ -24,10 +24,10 @@ import { exportTaqlohnzettelPdf, exportWeeklyPdf, shareTaqlohnzettel } from "@/l
 import { useTranslation } from "@/lib/language-provider";
 
 const CATEGORIES: { id: TimeEntry["category"]; label: string; icon: string; color: string }[] = [
-  { id: "arbeit", label: "Arbeit", icon: "engineering", color: "#0a7ea4" },
-  { id: "besprechung", label: "Besprechung", icon: "groups", color: "#7C3AED" },
-  { id: "fahrt", label: "Fahrt", icon: "directions-car", color: "#F59E0B" },
-  { id: "pause", label: "Pause", icon: "free-breakfast", color: "#22C55E" },
+  { id: "arbeit", label: "time_tracking_kategorie_arbeit", icon: "engineering", color: "#0a7ea4" },
+  { id: "besprechung", label: "time_tracking_kategorie_besprechung", icon: "groups", color: "#7C3AED" },
+  { id: "fahrt", label: "time_tracking_kategorie_fahrt", icon: "directions-car", color: "#F59E0B" },
+  { id: "pause", label: "time_tracking_kategorie_pause", icon: "free-breakfast", color: "#22C55E" },
 ];
 
 export default function TimeTrackingScreen() {
@@ -177,7 +177,7 @@ export default function TimeTrackingScreen() {
                 <View style={{ alignItems: "center", marginBottom: 16 }}>
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{activeTimer.projectName}</Text>
                   <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                    {CATEGORIES.find((c) => c.id === activeTimer.category)?.label} • seit {formatTime(activeTimer.startTime)}
+                    {t((CATEGORIES.find((c) => c.id === activeTimer.category)?.label ?? '') as any)} • {t('time_tracking_seit' as any)} {formatTime(activeTimer.startTime)}
                   </Text>
                 </View>
               )}
@@ -213,7 +213,7 @@ export default function TimeTrackingScreen() {
                         }]}
                       >
                         <MaterialIcons name={cat.icon as any} size={16} color={selectedCategory === cat.id ? cat.color : colors.muted} />
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: selectedCategory === cat.id ? cat.color : colors.foreground }}>{cat.label}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: selectedCategory === cat.id ? cat.color : colors.foreground }}>{t(cat.label as any)}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -285,7 +285,7 @@ export default function TimeTrackingScreen() {
                     const uri = await exportTaqlohnzettelPdf(projectName, projectId, new Date());
                     await shareTaqlohnzettel(uri);
                   } catch (e: any) {
-                    Alert.alert(t('alert_fehler'), e.message || "Export fehlgeschlagen");
+                    Alert.alert(t('alert_fehler'), e.message || t('time_tracking_export_fehlgeschlagen' as any));
                   }
                 }}
                 style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 0, backgroundColor: colors.primary + "15", borderWidth: 1, borderColor: colors.primary + "40", opacity: pressed ? 0.7 : 1 }]}
@@ -299,7 +299,7 @@ export default function TimeTrackingScreen() {
                     const uri = await exportWeeklyPdf(projectId, projectName);
                     await shareTaqlohnzettel(uri);
                   } catch (e: any) {
-                    Alert.alert(t('alert_fehler'), e.message || "Export fehlgeschlagen");
+                    Alert.alert(t('alert_fehler'), e.message || t('time_tracking_export_fehlgeschlagen' as any));
                   }
                 }}
                 style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
@@ -330,7 +330,7 @@ export default function TimeTrackingScreen() {
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{formatDuration(item.duration)}</Text>
-                    <Text style={{ fontSize: 11, color: cat?.color || colors.muted, fontWeight: "500" }}>{cat?.label}</Text>
+                    <Text style={{ fontSize: 11, color: cat?.color || colors.muted, fontWeight: "500" }}>{t((cat?.label ?? '') as any)}</Text>
                   </View>
                   <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
                     {formatDate(item.startTime)} • {formatTime(item.startTime)} – {item.endTime ? formatTime(item.endTime) : t('laeuft')}
@@ -366,7 +366,7 @@ export default function TimeTrackingScreen() {
                   <TextInput
                     value={settings.workerName}
                     onChangeText={(v) => setSettings({ ...settings, workerName: v })}
-                    placeholder="z.B. Max Mustermann"
+                    placeholder={t('time_tracking_placeholder_name' as any)}
                     placeholderTextColor={colors.muted + "80"}
                     style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
                   />
@@ -378,7 +378,7 @@ export default function TimeTrackingScreen() {
                   <TextInput
                     value={settings.companyName}
                     onChangeText={(v) => setSettings({ ...settings, companyName: v })}
-                    placeholder="z.B. Musterbau GmbH"
+                    placeholder={t('time_tracking_placeholder_firma' as any)}
                     placeholderTextColor={colors.muted + "80"}
                     style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
                   />
@@ -390,7 +390,7 @@ export default function TimeTrackingScreen() {
                   <TextInput
                     value={settings.hourlyRate}
                     onChangeText={(v) => setSettings({ ...settings, hourlyRate: v })}
-                    placeholder="z.B. 65"
+                    placeholder={t('time_tracking_placeholder_stundensatz' as any)}
                     placeholderTextColor={colors.muted + "80"}
                     keyboardType="decimal-pad"
                     style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
@@ -403,7 +403,7 @@ export default function TimeTrackingScreen() {
                   <TextInput
                     value={settings.dailyRate}
                     onChangeText={(v) => setSettings({ ...settings, dailyRate: v })}
-                    placeholder="z.B. 520"
+                    placeholder={t('time_tracking_placeholder_tagessatz' as any)}
                     placeholderTextColor={colors.muted + "80"}
                     keyboardType="decimal-pad"
                     style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
@@ -414,7 +414,7 @@ export default function TimeTrackingScreen() {
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 8, paddingHorizontal: 2 }}>
                   <MaterialIcons name="info-outline" size={14} color={colors.muted} style={{ marginTop: 2 }} />
                   <Text style={{ fontSize: 12, color: colors.muted, flex: 1, lineHeight: 18 }}>
-                    Diese Daten werden im Taglohnzettel-PDF verwendet. Der Stundensatz wird mit der erfassten Arbeitszeit multipliziert.
+                    {t('time_tracking_settings_info' as any)}
                   </Text>
                 </View>
               </ScrollView>

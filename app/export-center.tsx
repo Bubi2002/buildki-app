@@ -24,6 +24,7 @@ import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import {
   getCompanyInfo,
   saveCompanyInfo,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/project-context";
 
 export default function ExportCenterScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const colors = useColors();
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
@@ -88,7 +90,7 @@ export default function ExportCenterScreen() {
 
   const handleSaveCompany = async () => {
     if (!editName.trim()) {
-      Alert.alert("Fehler", "Firmenname ist erforderlich.");
+      Alert.alert(t('alert_fehler'), t('export_center_company_name_required' as any));
       return;
     }
     const info: CompanyInfo = {
@@ -101,14 +103,14 @@ export default function ExportCenterScreen() {
     await saveCompanyInfo(info);
     setCompanyInfo(info);
     setShowCompanyEditor(false);
-    Alert.alert("Gespeichert", "Firmendaten wurden aktualisiert.");
+    Alert.alert(t('alert_gespeichert'), t('export_center_company_saved' as any));
   };
 
   const navigateToExportTarget = (type: ExportCenterType) => {
     const action = getExportCenterAction(type, activeProject?.id);
 
     if (action.kind === "unavailable") {
-      Alert.alert("Projekt erforderlich", action.reason);
+      Alert.alert(t('export_center_project_required' as any), action.reason);
       return;
     }
 
@@ -122,8 +124,8 @@ export default function ExportCenterScreen() {
 
     if (action.dialogTitle && action.dialogMessage) {
       Alert.alert(action.dialogTitle, action.dialogMessage, [
-        { text: "Abbrechen", style: "cancel" },
-        { text: "Öffnen", onPress: navigate },
+        { text: t('btn_abbrechen'), style: "cancel" },
+        { text: t('btn_oeffnen'), onPress: navigate },
       ]);
       return;
     }
@@ -138,7 +140,7 @@ export default function ExportCenterScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Export-Center</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('export_center_title' as any)}</Text>
         <Pressable
           onPress={() => setShowCompanyEditor(!showCompanyEditor)}
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
@@ -152,27 +154,27 @@ export default function ExportCenterScreen() {
         {/* Company Info Card */}
         {showCompanyEditor && (
           <View style={[styles.companyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Firmendaten (PDF-Header)</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('export_center_company_data' as any)}</Text>
 
             <TextInput
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
               value={editName}
               onChangeText={setEditName}
-              placeholder="Firmenname *"
+              placeholder={t('export_center_company_name_ph' as any)}
               placeholderTextColor={colors.muted}
             />
             <TextInput
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
               value={editAddress}
               onChangeText={setEditAddress}
-              placeholder="Adresse"
+              placeholder={t('adresse')}
               placeholderTextColor={colors.muted}
             />
             <TextInput
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
               value={editPhone}
               onChangeText={setEditPhone}
-              placeholder="Telefon"
+              placeholder={t('telefon')}
               placeholderTextColor={colors.muted}
               keyboardType="phone-pad"
             />
@@ -180,7 +182,7 @@ export default function ExportCenterScreen() {
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
               value={editEmail}
               onChangeText={setEditEmail}
-              placeholder="E-Mail"
+              placeholder={t('email')}
               placeholderTextColor={colors.muted}
               keyboardType="email-address"
             />
@@ -188,7 +190,7 @@ export default function ExportCenterScreen() {
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
               value={editWebsite}
               onChangeText={setEditWebsite}
-              placeholder="Website"
+              placeholder={t('website')}
               placeholderTextColor={colors.muted}
             />
 
@@ -196,7 +198,7 @@ export default function ExportCenterScreen() {
               onPress={handleSaveCompany}
               style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1 }]}
             >
-              <Text style={styles.saveBtnText}>Firmendaten speichern</Text>
+              <Text style={styles.saveBtnText}>{t('export_center_save_company' as any)}</Text>
             </Pressable>
           </View>
         )}
@@ -228,16 +230,16 @@ export default function ExportCenterScreen() {
             color={activeProject ? colors.primary : colors.warning}
           />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.projectBadgeLabel, { color: colors.muted }]}>AKTIVES PROJEKT</Text>
+            <Text style={[styles.projectBadgeLabel, { color: colors.muted }]}>{t('export_center_active_project' as any)}</Text>
             <Text style={[styles.projectBadgeName, { color: colors.foreground }]}>
-              {activeProject?.name || "Kein Projekt ausgewählt"}
+              {activeProject?.name || t('export_center_no_project' as any)}
             </Text>
           </View>
         </View>
 
         {/* Export Options */}
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>
-          Export-Optionen
+          {t('export_center_export_options' as any)}
         </Text>
 
         {EXPORT_CENTER_OPTIONS.map((option) => (
@@ -274,7 +276,7 @@ export default function ExportCenterScreen() {
         <View style={[styles.infoBox, { backgroundColor: "rgba(0,176,255,0.05)", borderColor: "#00B0FF" }]}>
           <MaterialIcons name="verified" size={18} color="#00B0FF" />
           <Text style={[styles.infoText, { color: colors.muted }]}>
-            Jede Exportkarte führt ausschließlich zu einem vorhandenen Ablauf mit realen Projekt- oder Protokolldaten.
+            {t('export_center_info_text' as any)}
           </Text>
         </View>
 

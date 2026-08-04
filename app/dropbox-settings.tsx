@@ -41,7 +41,7 @@ export default function DropboxSettingsScreen() {
         }
       });
     } else if (params.error) {
-      Alert.alert(t('alert_fehler'), `Dropbox-Verbindung fehlgeschlagen: ${params.error}`);
+      Alert.alert(t('alert_fehler'), `${t('dropbox_settings_connection_failed' as any)}${params.error}`);
     }
   }, [params.dropbox_connected, params.error]);
 
@@ -144,7 +144,7 @@ export default function DropboxSettingsScreen() {
                 </Text>
               ) : !settings.isConnected ? (
                 <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                  Verbinde dein Konto für automatische Uploads
+                  {t('dropbox_settings_connect_account_hint' as any)}
                 </Text>
               ) : null}
             </View>
@@ -193,7 +193,7 @@ export default function DropboxSettingsScreen() {
             {/* Auto-Upload Options */}
             <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Automatisch hochladen
+                {t('dropbox_settings_auto_upload' as any)}
               </Text>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <View style={{ flex: 1 }}>
@@ -223,7 +223,7 @@ export default function DropboxSettingsScreen() {
             {/* Folder Settings */}
             <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Ordner-Einstellungen
+                {t('dropbox_settings_folder_settings' as any)}
               </Text>
               <Text style={{ fontSize: 13, color: colors.foreground, marginBottom: 6 }}>{t('basisordner_in_dropbox')}</Text>
               <TextInput
@@ -258,11 +258,11 @@ export default function DropboxSettingsScreen() {
             {/* File Naming */}
             <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 16, marginBottom: 16 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Dateiname
+                {t('dropbox_settings_filename' as any)}
               </Text>
               {([
-                { key: "project_date" as const, label: "Projekt + Datum", example: "Hausbau_2026-06-20_Begehung.pdf" },
-                { key: "number_title" as const, label: "Nummer + Titel", example: "P-001_Baubegehung_EG.pdf" },
+                { key: "project_date" as const, label: t('dropbox_settings_pattern_project_date' as any), example: t('dropbox_settings_pattern_project_date_example' as any) },
+                { key: "number_title" as const, label: t('dropbox_settings_pattern_number_title' as any), example: t('dropbox_settings_pattern_number_title_example' as any) },
                 { key: "custom" as const, label: t('benutzerdefiniert'), example: t('eigenes_muster') },
               ]).map((option) => (
                 <Pressable
@@ -311,7 +311,7 @@ export default function DropboxSettingsScreen() {
                     }}
                   />
                   <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
-                    Platzhalter: {"{project}"}, {"{date}"}, {"{title}"}, {"{number}"}
+                    {t('dropbox_settings_placeholders_prefix' as any)}{"{project}"}, {"{date}"}, {"{title}"}, {"{number}"}
                   </Text>
                 </View>
               )}
@@ -327,8 +327,8 @@ export default function DropboxSettingsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 12, color: "#0061FF", fontWeight: "600", marginBottom: 4 }}>{t('so_funktionierts')}</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, lineHeight: 16 }}>
-                  Verbinde dein Dropbox-Konto, um PDFs und Fotos automatisch in deinen Projektordner hochzuladen. Die Dateien werden direkt über die Dropbox-API übertragen – kein manuelles Teilen nötig.{"\n\n"}
-                  Alternativ kannst du auch ohne Verbindung den &quot;In Dropbox speichern&quot; Button in der PDF-Vorschau nutzen (über das System-Teilen-Menü).
+                  {t('dropbox_settings_info_p1' as any)}{"\n\n"}
+                  {t('dropbox_settings_info_p2' as any)}
                 </Text>
               </View>
             </View>
@@ -367,7 +367,7 @@ export default function DropboxSettingsScreen() {
 
         {settings.lastSyncAt && (
           <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 8 }}>
-            Letzter Upload: {new Date(settings.lastSyncAt).toLocaleString("de-DE")}
+            {t('dropbox_settings_last_upload_prefix' as any)}{new Date(settings.lastSyncAt).toLocaleString("de-DE")}
           </Text>
         )}
       </ScrollView>

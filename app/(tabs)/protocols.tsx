@@ -252,7 +252,7 @@ export default function ProtocolsScreen() {
     const duplicate: Protocol = {
       ...item,
       id: createLocalId("protocol"),
-      title: `${item.title} (Kopie)`,
+      title: `${item.title}${t('protocols_kopie_suffix' as any)}`,
       createdAt: new Date().toISOString(),
       status: "ready",
       isFavorite: false,
@@ -348,7 +348,7 @@ export default function ProtocolsScreen() {
           title: item.title,
           createdAt: item.createdAt,
           duration: item.duration,
-          templateName: activeVersion?.templateName || item.templateName || "Freies Protokoll",
+          templateName: activeVersion?.templateName || item.templateName || t('protocols_freies_protokoll' as any),
           templateId: activeVersion?.templateId || item.templateId,
           protocol: activeVersion?.text || item.protocol,
           photos: item.photos,
@@ -361,11 +361,11 @@ export default function ProtocolsScreen() {
       } else {
         // Multiple protocols - generate individual PDFs and share all
         Alert.alert(
-          `${selected.length} Protokolle exportieren`,
+          t('protocols_n_protokolle_exportieren' as any).replace('{count}', String(selected.length)),
           t('wie_exportieren'),
           [
             {
-              text: "Einzelne PDFs",
+              text: t('protocols_einzelne_pdfs' as any),
               onPress: async () => {
                 const pdfUris: string[] = [];
                 for (const item of selected) {
@@ -374,7 +374,7 @@ export default function ProtocolsScreen() {
                     title: item.title,
                     createdAt: item.createdAt,
                     duration: item.duration,
-                    templateName: activeVersion?.templateName || item.templateName || "Freies Protokoll",
+                    templateName: activeVersion?.templateName || item.templateName || t('protocols_freies_protokoll' as any),
                     templateId: activeVersion?.templateId || item.templateId,
                     protocol: activeVersion?.text || item.protocol,
                     photos: item.photos,
@@ -397,7 +397,8 @@ export default function ProtocolsScreen() {
                 const combinedContent = selected.map((item, idx) => {
                   const activeVersion = getActiveExportVersion(item);
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
-                  return `---\n\n## Protokoll ${idx + 1} von ${selected.length}\n\n**Titel:** ${item.title}\n**Datum:** ${date}\n**Vorlage:** ${activeVersion?.templateName || item.templateName || "Freies Protokoll"}\n\n${activeVersion?.text || getProtocolText(item)}\n\n`;
+                  const heading = t('protocols_md_protokoll_x_von_y' as any).replace('{current}', String(idx + 1)).replace('{total}', String(selected.length));
+                  return `---\n\n## ${heading}\n\n**${t('protocols_md_titel' as any)}** ${item.title}\n**${t('protocols_md_datum' as any)}** ${date}\n**${t('protocols_md_vorlage' as any)}** ${activeVersion?.templateName || item.templateName || t('protocols_freies_protokoll' as any)}\n\n${activeVersion?.text || getProtocolText(item)}\n\n`;
                 }).join("\n\n");
                 const combinedEvidenceIds = Array.from(new Set(selected.flatMap((item) => {
                   const activeVersion = getActiveExportVersion(item);
@@ -405,13 +406,13 @@ export default function ProtocolsScreen() {
                 })));
                 
                 const pdfUri = await generateProtocolPdf({
-                  title: `Batch-Export (${selected.length} Protokolle)`,
+                  title: t('protocols_batch_export_titel' as any).replace('{count}', String(selected.length)),
                   createdAt: new Date().toISOString(),
                   duration: selected.reduce((sum, p) => sum + p.duration, 0),
-                  templateName: "Batch-Export",
+                  templateName: t('protocols_batch_export' as any),
                   protocol: combinedContent,
                   evidenceIds: combinedEvidenceIds,
-                  projectName: activeProjectName || "Mehrere Projekte",
+                  projectName: activeProjectName || t('protocols_mehrere_projekte' as any),
                 });
                 if (pdfUri && await Sharing.isAvailableAsync()) {
                   await Sharing.shareAsync(pdfUri);
@@ -419,21 +420,21 @@ export default function ProtocolsScreen() {
               },
             },
             {
-              text: "CSV-Tabelle",
+              text: t('protocols_csv_tabelle' as any),
               onPress: async () => {
                 // Export as CSV for spreadsheet use
-                const header = "Titel;Datum;Vorlage;Dauer (Min);Inhalt\n";
+                const header = t('protocols_csv_header' as any) + "\n";
                 const rows = selected.map((item) => {
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
                   const duration = Math.round(item.duration / 60);
                   const content = getProtocolPreview(item, 500).replace(/[\n\r;]/g, " ");
-                  return `"${item.title}";"${date}";"${item.templateName || "Freies Protokoll"}";${duration};"${content}"`;
+                  return `"${item.title}";"${date}";"${item.templateName || t('protocols_freies_protokoll' as any)}";${duration};"${content}"`;
                 }).join("\n");
                 const csv = header + rows;
                 const csvPath = `${FileSystem.cacheDirectory}batch_export_${Date.now()}.csv`;
                 await FileSystem.writeAsStringAsync(csvPath, csv, { encoding: FileSystem.EncodingType.UTF8 });
                 if (await Sharing.isAvailableAsync()) {
-                  await Sharing.shareAsync(csvPath, { mimeType: "text/csv", dialogTitle: "Protokolle exportieren" });
+                  await Sharing.shareAsync(csvPath, { mimeType: "text/csv", dialogTitle: t('protocols_protokolle_exportieren' as any) });
                 }
               },
             },
@@ -444,7 +445,7 @@ export default function ProtocolsScreen() {
       setBatchMode(false);
       setSelectedIds(new Set());
     } catch (e) {
-      Alert.alert(t('alert_fehler'), t('msg_export_fehlgeschlagen_2') + (e instanceof Error ? e.message : "Unbekannter Fehler"));
+      Alert.alert(t('alert_fehler'), t('msg_export_fehlgeschlagen_2') + (e instanceof Error ? e.message : t('protocols_unbekannter_fehler' as any)));
     }
   };
 
@@ -557,7 +558,7 @@ export default function ProtocolsScreen() {
         title: item.title,
         createdAt: item.createdAt,
         duration: item.duration,
-        templateName: activeVersion?.templateName || item.templateName || "Freies Protokoll",
+        templateName: activeVersion?.templateName || item.templateName || t('protocols_freies_protokoll' as any),
         templateId: activeVersion?.templateId || item.templateId,
         protocol: activeVersion?.text || item.protocol,
         photos: item.photos,
@@ -724,7 +725,7 @@ export default function ProtocolsScreen() {
           <View style={styles.cardMeta}>
             <MaterialIcons name="check-box" size={14} color={colors.warning} />
             <Text style={[styles.cardMetaText, { color: colors.warning }]}>
-              {item.todos.filter((t: any) => !t.done).length} offen
+              {item.todos.filter((t: any) => !t.done).length} {t('protocols_offen' as any)}
             </Text>
           </View>
         )}
@@ -740,7 +741,7 @@ export default function ProtocolsScreen() {
           <MaterialIcons name="search-off" size={64} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('keine_ergebnisse')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Für &quot;{searchQuery}&quot; wurden keine Protokolle gefunden.
+            {t('protocols_keine_treffer_fuer' as any).replace('{query}', searchQuery)}
           </Text>
         </>
       ) : filterBy === "favorites" ? (
@@ -748,7 +749,7 @@ export default function ProtocolsScreen() {
           <MaterialIcons name="star-outline" size={64} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('keine_favoriten')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Halte ein Protokoll gedrückt, um es als Favorit zu markieren.
+            {t('protocols_favoriten_hinweis' as any)}
           </Text>
         </>
       ) : filterBy === "archived" ? (
@@ -756,17 +757,17 @@ export default function ProtocolsScreen() {
           <MaterialIcons name="archive" size={64} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('archiv_leer')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Archivierte Protokolle erscheinen hier.
+            {t('protocols_archiv_hinweis' as any)}
           </Text>
         </>
       ) : activeProjectId && !showAllProjects ? (
         <>
           <MaterialIcons name="folder-off" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>In diesem Projekt noch kein Protokoll</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('protocols_kein_protokoll_projekt' as any)}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             {activeProjectId === UNASSIGNED_PROJECT_ID
-              ? "Alle vorhandenen Protokolle sind einem Projekt zugeordnet."
-              : `Für „${activeProjectName || "dieses Projekt"}“ wurde noch kein Protokoll erstellt.`}
+              ? t('protocols_alle_zugeordnet' as any)
+              : t('protocols_kein_protokoll_fuer' as any).replace('{name}', activeProjectName || t('protocols_dieses_projekt' as any))}
           </Text>
           <Pressable
             onPress={() => {
@@ -776,7 +777,7 @@ export default function ProtocolsScreen() {
             }}
             style={({ pressed }) => [styles.emptyAction, { borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
           >
-            <Text style={[styles.emptyActionText, { color: colors.primary }]}>Alle Protokolle anzeigen</Text>
+            <Text style={[styles.emptyActionText, { color: colors.primary }]}>{t('protocols_alle_anzeigen' as any)}</Text>
           </Pressable>
         </>
       ) : (
@@ -784,7 +785,7 @@ export default function ProtocolsScreen() {
           <MaterialIcons name="mic-none" size={64} color={colors.border} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t('noch_keine_protokolle')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Starte eine Aufnahme, um dein erstes Protokoll zu erstellen.
+            {t('protocols_erstes_erstellen_hinweis' as any)}
           </Text>
         </>
       )}
@@ -806,11 +807,11 @@ export default function ProtocolsScreen() {
         <View style={styles.headerRow}>
           <View>
             <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-              Protokolle
+              {t('protocols_screen_titel' as any)}
             </Text>
             <Text style={[styles.screenSubtitle, { color: colors.muted }]}>
-              {displayedProtocols.length} Protokoll{displayedProtocols.length !== 1 ? "e" : ""}
-              {filterBy === "favorites" ? " (Favoriten)" : filterBy === "archived" ? " (Archiv)" : ""}
+              {displayedProtocols.length} {displayedProtocols.length !== 1 ? t('protocols_zaehler_plural' as any) : t('protocols_zaehler_singular' as any)}
+              {filterBy === "favorites" ? " " + t('protocols_suffix_favoriten' as any) : filterBy === "archived" ? " " + t('protocols_suffix_archiv' as any) : ""}
             </Text>
           </View>
           <View style={styles.headerActions}>
@@ -944,7 +945,7 @@ export default function ProtocolsScreen() {
                 <Pressable
                   onPress={() => {
                     setActiveProjectId(UNASSIGNED_PROJECT_ID);
-                    setActiveProjectName("Ohne Projekt");
+                    setActiveProjectName(t('protocols_ohne_projekt' as any));
                     setShowAllProjects(false);
                   }}
                   style={({ pressed }) => [
@@ -957,7 +958,7 @@ export default function ProtocolsScreen() {
                   ]}
                 >
                   <MaterialIcons name="folder-off" size={14} color={isActive ? colors.warning : colors.muted} />
-                  <Text style={[styles.projectChipText, { color: isActive ? colors.warning : colors.foreground }]}>Ohne Projekt</Text>
+                  <Text style={[styles.projectChipText, { color: isActive ? colors.warning : colors.foreground }]}>{t('protocols_ohne_projekt' as any)}</Text>
                   <View style={[styles.projectChipCount, { backgroundColor: isActive ? colors.warning + "20" : colors.border + "60" }]}>
                     <Text style={[styles.projectChipCountText, { color: isActive ? colors.warning : colors.muted }]}>{unassignedCount}</Text>
                   </View>
@@ -1067,7 +1068,7 @@ export default function ProtocolsScreen() {
               <MaterialIcons name="delete" size={18} color={colors.error} />
               <Text style={[styles.batchBtnText, { color: colors.error }]}>{t('delete')}</Text>
             </Pressable>
-            <Text style={[styles.batchCount, { color: colors.muted }]}>{selectedIds.size} gewählt</Text>
+            <Text style={[styles.batchCount, { color: colors.muted }]}>{selectedIds.size} {t('protocols_gewaehlt' as any)}</Text>
           </View>
         )}
       </View>

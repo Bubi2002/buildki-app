@@ -28,6 +28,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 import { constructionBrain, type BrainResponse, type BrainResponseDetail } from "@/lib/construction-brain";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -41,15 +42,17 @@ type HistoryEntry = {
 
 // ─── Quick Actions ──────────────────────────────────────────────────────────
 
+// label holds a translation KEY (resolved with t() at render). query stays in
+// German because it is the input to the local intent-detection logic.
 const QUICK_ACTIONS = [
-  { label: "Offene Mängel", query: "Welche Mängel sind offen?", icon: "warning" as const },
-  { label: "Überfällige Aufgaben", query: "Welche Aufgaben sind überfällig?", icon: "schedule" as const },
-  { label: "Kritische Gewerke", query: "Welche Gewerke sind kritisch?", icon: "priority-high" as const },
-  { label: "Tageszusammenfassung", query: "Tageszusammenfassung", icon: "today" as const },
-  { label: "Wochenbericht", query: "Wochenbericht", icon: "date-range" as const },
-  { label: "Baufortschritt", query: "Wie ist der Baufortschritt?", icon: "trending-up" as const },
-  { label: "Raumstatus", query: "Welche Räume sind fertig?", icon: "meeting-room" as const },
-  { label: "Projektübersicht", query: "Projektübersicht", icon: "dashboard" as const },
+  { label: "ai_assistant_offene_maengel", query: "Welche Mängel sind offen?", icon: "warning" as const },
+  { label: "ai_assistant_ueberfaellige_aufgaben", query: "Welche Aufgaben sind überfällig?", icon: "schedule" as const },
+  { label: "ai_assistant_kritische_gewerke", query: "Welche Gewerke sind kritisch?", icon: "priority-high" as const },
+  { label: "ai_assistant_tageszusammenfassung", query: "Tageszusammenfassung", icon: "today" as const },
+  { label: "ai_assistant_wochenbericht", query: "Wochenbericht", icon: "date-range" as const },
+  { label: "ai_assistant_baufortschritt", query: "Wie ist der Baufortschritt?", icon: "trending-up" as const },
+  { label: "ai_assistant_raumstatus", query: "Welche Räume sind fertig?", icon: "meeting-room" as const },
+  { label: "ai_assistant_projektuebersicht", query: "Projektübersicht", icon: "dashboard" as const },
 ];
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -63,6 +66,7 @@ export default function ConstructionBrainScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
   const colors = useColors();
+  const { t } = useTranslation();
   const scrollRef = useRef<ScrollView>(null);
 
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
@@ -136,8 +140,8 @@ export default function ConstructionBrainScreen() {
     } catch  {
       setCurrentResponse({
         intent: "unknown",
-        title: "Fehler",
-        summary: "Konnte die Anfrage nicht verarbeiten. Bitte erneut versuchen.",
+        title: t('error'),
+        summary: t('ai_assistant_anfrage_fehler' as any),
         details: [],
         suggestions: ["Projektübersicht", "Offene Mängel?"],
       });
@@ -226,7 +230,7 @@ export default function ConstructionBrainScreen() {
             <View style={styles.warningCard}>
               <MaterialIcons name="info" size={20} color="#F59E0B" />
               <Text style={styles.warningText}>
-                Bitte zuerst ein Projekt auswählen, damit der Construction Brain auf die Wissensbasis zugreifen kann.
+                {t('ai_assistant_projekt_waehlen_hint' as any)}
               </Text>
             </View>
           )}
@@ -234,9 +238,9 @@ export default function ConstructionBrainScreen() {
           {/* History View */}
           {showHistory && (
             <View style={styles.historySection}>
-              <Text style={styles.sectionTitle}>Verlauf</Text>
+              <Text style={styles.sectionTitle}>{t('ai_assistant_verlauf' as any)}</Text>
               {history.length === 0 ? (
-                <Text style={styles.emptyText}>Noch keine Fragen gestellt.</Text>
+                <Text style={styles.emptyText}>{t('ai_assistant_keine_fragen' as any)}</Text>
               ) : (
                 history.slice(-20).reverse().map(entry => (
                   <Pressable
@@ -260,7 +264,7 @@ export default function ConstructionBrainScreen() {
           {/* Quick Actions (when no response shown) */}
           {!currentResponse && !isLoading && !showHistory && (
             <View style={styles.quickActionsSection}>
-              <Text style={styles.sectionTitle}>Schnellzugriff</Text>
+              <Text style={styles.sectionTitle}>{t('ai_assistant_schnellzugriff' as any)}</Text>
               <View style={styles.quickActionsGrid}>
                 {QUICK_ACTIONS.map((action, idx) => (
                   <Pressable
@@ -269,7 +273,7 @@ export default function ConstructionBrainScreen() {
                     onPress={() => askQuestion(action.query)}
                   >
                     <MaterialIcons name={action.icon} size={22} color="#5DADE2" />
-                    <Text style={styles.quickActionLabel}>{action.label}</Text>
+                    <Text style={styles.quickActionLabel}>{t(action.label as any)}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -280,7 +284,7 @@ export default function ConstructionBrainScreen() {
           {isLoading && (
             <View style={styles.loadingCard}>
               <ActivityIndicator size="small" color="#5DADE2" />
-              <Text style={styles.loadingText}>Knowledge Layer wird abgefragt...</Text>
+              <Text style={styles.loadingText}>{t('ai_assistant_knowledge_layer' as any)}</Text>
             </View>
           )}
 
@@ -308,7 +312,7 @@ export default function ConstructionBrainScreen() {
               {/* Details */}
               {currentResponse.details.length > 0 && (
                 <View style={styles.detailsSection}>
-                  <Text style={styles.detailsTitle}>Details</Text>
+                  <Text style={styles.detailsTitle}>{t('ai_assistant_details' as any)}</Text>
                   {currentResponse.details.map((d, i) => renderDetail(d, i))}
                 </View>
               )}
@@ -316,7 +320,7 @@ export default function ConstructionBrainScreen() {
               {/* Suggestions */}
               {currentResponse.suggestions && currentResponse.suggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
-                  <Text style={styles.suggestionsTitle}>Weitere Fragen</Text>
+                  <Text style={styles.suggestionsTitle}>{t('ai_assistant_weitere_fragen' as any)}</Text>
                   <View style={styles.suggestionsRow}>
                     {currentResponse.suggestions.map((s, i) => (
                       <Pressable
@@ -340,7 +344,7 @@ export default function ConstructionBrainScreen() {
             style={styles.input}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Frage zum Projekt stellen..."
+            placeholder={t('ai_assistant_frage_stellen' as any)}
             placeholderTextColor="#6B7280"
             returnKeyType="send"
             onSubmitEditing={() => askQuestion(inputText)}

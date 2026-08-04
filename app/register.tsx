@@ -21,8 +21,10 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import * as Auth from "@/lib/_core/auth";
 import { apiCall } from "@/lib/_core/api";
+import { useTranslation } from "@/lib/language-provider";
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,23 +43,23 @@ export default function RegisterScreen() {
     const newErrors: typeof errors = {};
 
     if (!email.trim()) {
-      newErrors.email = "E-Mail-Adresse ist erforderlich";
+      newErrors.email = t('register_err_email_required' as any);
     } else if (!validateEmail(email.trim())) {
-      newErrors.email = "Bitte gib eine gültige E-Mail-Adresse ein";
+      newErrors.email = t('register_err_email_invalid' as any);
     }
 
     if (!password) {
-      newErrors.password = "Passwort ist erforderlich";
+      newErrors.password = t('register_err_password_required' as any);
     } else if (password.length < 12) {
-      newErrors.password = "Mindestens 12 Zeichen erforderlich";
+      newErrors.password = t('register_err_min_length' as any);
     }
 
     if (password !== confirmPassword) {
-      newErrors.confirm = "Passwörter stimmen nicht überein";
+      newErrors.confirm = t('register_err_mismatch' as any);
     }
 
     if (!agbAccepted) {
-      newErrors.agb = "Bitte akzeptiere den Nutzungsbedingungen-Prüfentwurf";
+      newErrors.agb = t('register_err_accept_terms' as any);
     }
 
     setErrors(newErrors);
@@ -110,8 +112,8 @@ export default function RegisterScreen() {
         } as any);
       }
     } catch (e: any) {
-      const msg = e?.message || "Registrierung fehlgeschlagen. Bitte versuche es erneut.";
-      Alert.alert("Fehler", msg);
+      const msg = e?.message || t('register_failed' as any);
+      Alert.alert(t('error'), msg);
     } finally {
       setLoading(false);
     }
@@ -138,7 +140,7 @@ export default function RegisterScreen() {
             </View>
             <Text style={styles.brandTitle}>BuildKI</Text>
             <Text style={styles.brandSubtitle}>
-              KI-gestützte Baudokumentation{"\n"}für Profis
+              {t('register_brand_subtitle' as any)}
             </Text>
           </View>
 
@@ -146,12 +148,12 @@ export default function RegisterScreen() {
           <View style={styles.formSection}>
             {/* Email */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>E-Mail-Adresse</Text>
+              <Text style={styles.label}>{t('register_email_label' as any)}</Text>
               <View style={[styles.inputContainer, errors.email ? styles.inputError : null]}>
                 <MaterialIcons name="email" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="name@firma.de"
+                  placeholder={t('register_email_placeholder' as any)}
                   placeholderTextColor="#4A5568"
                   value={email}
                   onChangeText={(text) => { setEmail(text); setErrors((e) => ({ ...e, email: undefined })); }}
@@ -166,12 +168,12 @@ export default function RegisterScreen() {
 
             {/* Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Passwort</Text>
+              <Text style={styles.label}>{t('register_password_label' as any)}</Text>
               <View style={[styles.inputContainer, errors.password ? styles.inputError : null]}>
                 <MaterialIcons name="lock" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Mindestens 12 Zeichen"
+                  placeholder={t('register_min_chars' as any)}
                   placeholderTextColor="#4A5568"
                   value={password}
                   onChangeText={(text) => { setPassword(text); setErrors((e) => ({ ...e, password: undefined })); }}
@@ -188,12 +190,12 @@ export default function RegisterScreen() {
 
             {/* Confirm Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Passwort bestätigen</Text>
+              <Text style={styles.label}>{t('register_confirm_label' as any)}</Text>
               <View style={[styles.inputContainer, errors.confirm ? styles.inputError : null]}>
                 <MaterialIcons name="lock-outline" size={20} color="#5A6B7E" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Passwort wiederholen"
+                  placeholder={t('register_repeat' as any)}
                   placeholderTextColor="#4A5568"
                   value={confirmPassword}
                   onChangeText={(text) => { setConfirmPassword(text); setErrors((e) => ({ ...e, confirm: undefined })); }}
@@ -214,9 +216,9 @@ export default function RegisterScreen() {
                 {agbAccepted && <MaterialIcons name="check" size={16} color="#FFF" />}
               </View>
               <Text style={styles.checkboxText}>
-                Ich akzeptiere den{" "}
+                {t('register_accept_prefix' as any)}
                 <Text style={styles.linkText} onPress={() => router.push("/legal" as any)}>
-                  Nutzungsbedingungen-Prüfentwurf
+                  {t('register_terms_link' as any)}
                 </Text>
                 .
               </Text>
@@ -235,21 +237,21 @@ export default function RegisterScreen() {
               ) : (
                 <>
                   <MaterialIcons name="rocket-launch" size={20} color="#FFF" />
-                  <Text style={styles.registerBtnText}>Prüfkonto erstellen</Text>
+                  <Text style={styles.registerBtnText}>{t('register_create_account' as any)}</Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Trust Signals */}
             <Text style={styles.trustText}>
-              Kein Kauf und kein Abonnement. Nicht veröffentlichungsfähiger Compliance-Prüfentwurf.
+              {t('register_trust_text' as any)}
             </Text>
 
             {/* Login Link */}
             <View style={styles.loginRow}>
-              <Text style={styles.loginText}>Bereits registriert? </Text>
+              <Text style={styles.loginText}>{t('register_already_registered' as any)}</Text>
               <TouchableOpacity onPress={navigateToLogin}>
-                <Text style={styles.loginLink}>Anmelden</Text>
+                <Text style={styles.loginLink}>{t('anmelden')}</Text>
               </TouchableOpacity>
             </View>
           </View>

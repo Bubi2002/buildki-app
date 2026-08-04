@@ -103,7 +103,7 @@ export default function ProtocolCompareScreen() {
             <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            Protokoll {selecting} wählen
+            {t('protocol_compare_protokoll_waehlen' as any).replace('{slot}', selecting)}
           </Text>
           <View style={{ width: 24 }} />
         </View>
@@ -145,7 +145,7 @@ export default function ProtocolCompareScreen() {
           }}
           ListEmptyComponent={
             <Text style={{ textAlign: "center", color: colors.muted, marginTop: 40 }}>
-              Keine Protokolle vorhanden
+              {t('protocol_compare_keine_protokolle' as any)}
             </Text>
           }
         />
@@ -175,7 +175,7 @@ export default function ProtocolCompareScreen() {
         >
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>A</Text>
           <Text style={{ fontSize: 12, color: colors.foreground, flex: 1 }} numberOfLines={1}>
-            {selectedA ? (selectedA.protocolNumber || selectedA.templateName || "Protokoll") : t('auswaehlen')}
+            {selectedA ? (selectedA.protocolNumber || selectedA.templateName || t('protokoll')) : t('auswaehlen')}
           </Text>
           <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
         </Pressable>
@@ -265,7 +265,7 @@ export default function ProtocolCompareScreen() {
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <MaterialIcons name="compare-arrows" size={48} color={colors.border} />
           <Text style={{ fontSize: 14, color: colors.muted, marginTop: 12, textAlign: "center" }}>
-            Wähle zwei Protokolle aus,{"\n"}um sie zu vergleichen
+            {t('protocol_compare_zwei_waehlen' as any)}
           </Text>
         </View>
       )}
