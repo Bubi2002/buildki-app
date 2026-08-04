@@ -66,11 +66,13 @@ export default function PhotoCompareScreen() {
 
   const saveComparisons = async (updated: ComparisonPair[]) => {
     try {
-      // Load all, update matching, save all
+      // Keep pairs from OTHER projects untouched; replace this scope's pairs
+      // with `updated` (so deletions actually persist).
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       const all: ComparisonPair[] = stored ? JSON.parse(stored) : [];
-      const ids = new Set(updated.map(c => c.id));
-      const others = all.filter(c => !ids.has(c.id));
+      const others = params.projectId
+        ? all.filter(c => c.projectId !== params.projectId)
+        : [];
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...others, ...updated]));
     } catch {}
   };

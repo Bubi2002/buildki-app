@@ -22,7 +22,7 @@ import { useTranslation } from "@/lib/language-provider";
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ email?: string; name?: string }>();
+  const params = useLocalSearchParams<{ email?: string; name?: string; codeSent?: string }>();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -30,9 +30,12 @@ export default function VerifyEmailScreen() {
   const name = params.name || "";
 
   useEffect(() => {
-    // Bestätigungs-Code beim Laden anfordern
-    if (email) {
+    // Only request a code on load if registration didn't already send one
+    // (avoids two emails where the first code gets overwritten and fails).
+    if (email && !params.codeSent) {
       requestConfirmation();
+    } else if (params.codeSent) {
+      setResendCooldown(60);
     }
   }, []);
 

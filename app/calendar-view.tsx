@@ -73,11 +73,14 @@ export default function CalendarViewScreen() {
     });
   }, []);
 
-  // Group protocols by date
+  const toLocalDateKey = (d: Date) =>
+    `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+
+  // Group protocols by date (local, matching the calendar grid keys)
   const protocolsByDate = useMemo(() => {
     const map: Record<string, Protocol[]> = {};
     protocols.forEach(p => {
-      const date = new Date(p.createdAt).toISOString().split("T")[0];
+      const date = toLocalDateKey(new Date(p.createdAt));
       if (!map[date]) map[date] = [];
       map[date].push(p);
     });
@@ -111,7 +114,7 @@ export default function CalendarViewScreen() {
     const now = new Date();
     setCurrentMonth(now.getMonth());
     setCurrentYear(now.getFullYear());
-    setSelectedDate(now.toISOString().split("T")[0]);
+    setSelectedDate(toLocalDateKey(now));
   };
 
   const selectedProtocols = selectedDate ? (protocolsByDate[selectedDate] || []) : [];
@@ -127,7 +130,7 @@ export default function CalendarViewScreen() {
     return `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
   };
 
-  const todayKey = new Date().toISOString().split("T")[0];
+  const todayKey = toLocalDateKey(new Date());
 
   return (
     <ScreenContainer className="flex-1">

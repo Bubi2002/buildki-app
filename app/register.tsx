@@ -108,7 +108,7 @@ export default function RegisterScreen() {
         // Navigate to email verification (Double-Opt-In)
         router.replace({
           pathname: "/verify-email",
-          params: { email: email.trim().toLowerCase() },
+          params: { email: email.trim().toLowerCase(), codeSent: "1" },
         } as any);
       }
     } catch (e: any) {
