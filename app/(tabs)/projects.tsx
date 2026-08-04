@@ -92,7 +92,7 @@ export default function OverviewTab() {
     [...protocols].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
     [protocols]
   );
-  const openDefects = useMemo(() => defects.filter(d => d.status !== 'erledigt' && d.status !== 'done'), [defects]);
+  const openDefects = useMemo(() => defects.filter(d => d.status !== 'erledigt' && d.status !== 'geschlossen' && d.status !== 'abgelehnt'), [defects]);
   const weekProtocols = useMemo(() => {
     if (!loadedAt) return [];
     const weekAgo = new Date(loadedAt - 7 * 24 * 60 * 60 * 1000);

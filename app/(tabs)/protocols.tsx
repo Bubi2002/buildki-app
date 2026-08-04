@@ -664,7 +664,7 @@ export default function ProtocolsScreen() {
             style={[styles.cardTitle, { color: colors.foreground }]}
             numberOfLines={1}
           >
-            {item.projectName || item.title}
+            {item.title || t('kein_titel')}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + "20" }]}>

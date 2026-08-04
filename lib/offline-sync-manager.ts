@@ -259,7 +259,7 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
       return data.result?.data?.json || data.result?.data || data;
     },
     generateProtocol: async (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, markers?: { time: number; label: string }[], photoCount?: number, photoTimestamps?: number[], customSystemPrompt?: string, customTemplateName?: string) => {
-      const response = await fetch(`${apiBaseUrl}/api/trpc/voice.generateProtocol`, {
+      const response = await fetch(`${apiBaseUrl}/api/trpc/protocol.generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ json: { transcription, templateId, style, format, recordingDate, markers, photoCount, photoTimestamps, customSystemPrompt, customTemplateName } }),
@@ -269,7 +269,7 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
       return data.result?.data?.json || data.result?.data || data;
     },
     extractTodos: async (transcription: string, protocolText: string) => {
-      const response = await fetch(`${apiBaseUrl}/api/trpc/voice.extractTodos`, {
+      const response = await fetch(`${apiBaseUrl}/api/trpc/protocol.extractTodos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ json: { transcription, protocolText } }),
@@ -288,8 +288,8 @@ async function processQueuedRecording(item: QueuedRecording): Promise<void> {
     templateId: item.templateId,
     templateSystemPrompt: item.templateSystemPrompt,
     templateName: item.templateName,
-    style: "professional",
-    format: "detailed",
+    style: "formal",
+    format: "bullets",
     createdAt: item.createdAt,
     markers: item.markers,
     photos: item.photos,

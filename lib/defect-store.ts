@@ -192,42 +192,57 @@ export async function saveDefect(defect: Defect): Promise<void> {
 }
 
 export async function deleteDefect(defectId: string): Promise<void> {
-  const defects = await getDefects();
-  const filtered = defects.filter((d) => d.id !== defectId);
-  await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(filtered));
+  await withDefectWriteLock(async () => {
+    const raw = await AsyncStorage.getItem(DEFECTS_KEY);
+    const defects: Defect[] = raw ? JSON.parse(raw) : [];
+    const filtered = defects.filter((d) => d.id !== defectId);
+    await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(filtered));
+  });
 }
 
 export async function updateDefectStatus(defectId: string, status: DefectStatus): Promise<void> {
-  const defects = await getDefects();
-  const idx = defects.findIndex((d) => d.id === defectId);
-  if (idx >= 0) {
-    const oldStatus = defects[idx].status;
+  let oldStatus: DefectStatus | undefined;
+  let updatedDefect: Defect | undefined;
+
+  await withDefectWriteLock(async () => {
+    const raw = await AsyncStorage.getItem(DEFECTS_KEY);
+    const defects: Defect[] = raw ? JSON.parse(raw) : [];
+    const idx = defects.findIndex((d) => d.id === defectId);
+    if (idx < 0) return;
+    oldStatus = defects[idx].status;
     defects[idx].status = status;
     defects[idx].updatedAt = new Date().toISOString();
-    if (status === "erledigt") defects[idx].resolvedAt = new Date().toISOString();
+    if (status === "erledigt") {
+      defects[idx].resolvedAt = new Date().toISOString();
+    } else if (oldStatus === "erledigt") {
+      // Reopened: clear the stale resolved timestamp
+      defects[idx].resolvedAt = undefined;
+    }
     await AsyncStorage.setItem(DEFECTS_KEY, JSON.stringify(defects));
-    
-    // Record history
-    const action: DefectHistoryAction = status === "erledigt" ? "resolved" : oldStatus === "erledigt" ? "reopened" : "status_changed";
-    await addHistoryEntry(defectId, action, oldStatus, status);
+    updatedDefect = defects[idx];
+  });
 
-    // Timeline event
-    try {
-      const defect = defects[idx];
-      await timelineEngine.emit({
-        projectId: defect.projectId || "default",
-        eventType: status === "erledigt" ? "defect_resolved" : "defect_updated",
-        source: "user",
-        title: status === "erledigt" ? "Mangel behoben" : `Mangel: ${oldStatus} → ${status}`,
-        description: defect.title,
-        entityId: defectId,
-        entityType: "defect",
-        roomName: defect.location,
-        tags: ["defect", status],
-        priority: defect.priority === "hoch" ? "high" : defect.priority === "mittel" ? "medium" : "low",
-      });
-    } catch {}
-  }
+  if (!updatedDefect || oldStatus === undefined) return;
+
+  // Record history
+  const action: DefectHistoryAction = status === "erledigt" ? "resolved" : oldStatus === "erledigt" ? "reopened" : "status_changed";
+  await addHistoryEntry(defectId, action, oldStatus, status);
+
+  // Timeline event
+  try {
+    await timelineEngine.emit({
+      projectId: updatedDefect.projectId || "default",
+      eventType: status === "erledigt" ? "defect_resolved" : "defect_updated",
+      source: "user",
+      title: status === "erledigt" ? "Mangel behoben" : `Mangel: ${oldStatus} → ${status}`,
+      description: updatedDefect.title,
+      entityId: defectId,
+      entityType: "defect",
+      roomName: updatedDefect.location,
+      tags: ["defect", status],
+      priority: updatedDefect.priority === "hoch" ? "high" : updatedDefect.priority === "mittel" ? "medium" : "low",
+    });
+  } catch {}
 }
 
 export function getDefectStats(defects: Defect[]) {

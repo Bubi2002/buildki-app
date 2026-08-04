@@ -58,7 +58,7 @@ export default function ProjectDetailScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [planCount, setPlanCount] = useState(0);
-  const [defectCount, setDefectCount] = useState({ open: 0, total: 0 });
+  const [defectCount, setDefectCount] = useState({ open: 0, resolved: 0, total: 0 });
 
   async function loadData() {
     try {
@@ -82,7 +82,8 @@ export default function ProjectDetailScreen() {
           const { getDefects } = await import("@/lib/defect-store");
           const defects = await getDefects(id);
           const openCount = defects.filter((d: any) => d.status === "offen").length;
-          setDefectCount({ open: openCount, total: defects.length });
+          const resolvedCount = defects.filter((d: any) => d.status === "erledigt" || d.status === "geschlossen").length;
+          setDefectCount({ open: openCount, resolved: resolvedCount, total: defects.length });
         } catch {}
       }
 
@@ -445,16 +446,16 @@ export default function ProjectDetailScreen() {
           <View style={{ marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{t('projektfortschritt')}</Text>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: defectCount.total > 0 ? (defectCount.open === 0 ? colors.success : colors.primary) : colors.muted }}>
-                {defectCount.total > 0 ? Math.round(((defectCount.total - defectCount.open) / defectCount.total) * 100) : 0}%
+              <Text style={{ fontSize: 13, fontWeight: "700", color: defectCount.total > 0 ? (defectCount.resolved === defectCount.total ? colors.success : colors.primary) : colors.muted }}>
+                {defectCount.total > 0 ? Math.round((defectCount.resolved / defectCount.total) * 100) : 0}%
               </Text>
             </View>
             <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.border }}>
-              <View style={{ height: 6, borderRadius: 3, backgroundColor: defectCount.open === 0 && defectCount.total > 0 ? colors.success : colors.primary, width: defectCount.total > 0 ? `${Math.round(((defectCount.total - defectCount.open) / defectCount.total) * 100)}%` : "0%" }} />
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: defectCount.resolved === defectCount.total && defectCount.total > 0 ? colors.success : colors.primary, width: defectCount.total > 0 ? `${Math.round((defectCount.resolved / defectCount.total) * 100)}%` : "0%" }} />
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
               <Text style={{ fontSize: 11, color: colors.muted }}>{protocols.length} {t('project_detail_protokolle' as any)}</Text>
-              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.total - defectCount.open}/{defectCount.total} {t('project_detail_maengel_erledigt' as any)}</Text>
+              <Text style={{ fontSize: 11, color: colors.muted }}>{defectCount.resolved}/{defectCount.total} {t('project_detail_maengel_erledigt' as any)}</Text>
             </View>
           </View>
         )}
