@@ -154,14 +154,14 @@ export async function checkDefectDeadlines(): Promise<void> {
   const reminderDate = new Date(now.getTime() + settings.defectDeadlineDays * 86400000);
 
   const upcomingDeadlines = allDefects.filter(d => {
-    if (d.status === "erledigt") return false;
+    if (d.status === "erledigt" || d.status === "geschlossen" || d.status === "abgelehnt") return false;
     if (!d.dueDate) return false;
     const due = new Date(d.dueDate);
     return due <= reminderDate && due >= now;
   });
 
   const overdueDefects = allDefects.filter(d => {
-    if (d.status === "erledigt") return false;
+    if (d.status === "erledigt" || d.status === "geschlossen" || d.status === "abgelehnt") return false;
     if (!d.dueDate) return false;
     return new Date(d.dueDate) < now;
   });
@@ -209,9 +209,9 @@ export async function generateDailySummaryText(projectId?: string): Promise<{
 
   // Get defects
   const defects = projectId ? await getDefects(projectId) : await getDefects();
-  const openDefects = defects.filter(d => d.status !== "erledigt");
+  const openDefects = defects.filter(d => d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt");
   const overdueDefects = defects.filter(d => {
-    if (d.status === "erledigt" || !d.dueDate) return false;
+    if (d.status === "erledigt" || d.status === "geschlossen" || d.status === "abgelehnt" || !d.dueDate) return false;
     return new Date(d.dueDate) < new Date();
   });
 

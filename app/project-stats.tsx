@@ -88,16 +88,16 @@ export default function ProjectStatsScreen() {
       count: protocols.filter((p) => p.createdAt.startsWith(day)).length,
     }));
 
-    // Defect status breakdown
-    const defectOpen = defects.filter((d) => d.status === "open").length;
-    const defectInProgress = defects.filter((d) => d.status === "in_progress").length;
-    const defectResolved = defects.filter((d) => d.status === "resolved").length;
+    // Defect status breakdown (values are German enums from defect-store)
+    const defectOpen = defects.filter((d) => d.status === "offen").length;
+    const defectInProgress = defects.filter((d) => d.status === "in_bearbeitung").length;
+    const defectResolved = defects.filter((d) => d.status === "erledigt" || d.status === "geschlossen").length;
 
-    // Defect priority breakdown
-    const defectCritical = defects.filter((d) => d.priority === "critical").length;
-    const defectHigh = defects.filter((d) => d.priority === "high").length;
-    const defectMedium = defects.filter((d) => d.priority === "medium").length;
-    const defectLow = defects.filter((d) => d.priority === "low").length;
+    // Defect priority breakdown (DefectPriority = hoch | mittel | niedrig)
+    const defectCritical = 0; // no "kritisch" priority exists in the data model
+    const defectHigh = defects.filter((d) => d.priority === "hoch").length;
+    const defectMedium = defects.filter((d) => d.priority === "mittel").length;
+    const defectLow = defects.filter((d) => d.priority === "niedrig").length;
 
     // Todos completion
     const allTodos = protocols.flatMap((p) => p.todos || []);

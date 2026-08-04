@@ -29,12 +29,17 @@ export async function createBackup(): Promise<void> {
   try {
     const data: Record<string, string | null> = {};
 
-    for (const key of BACKUP_KEYS) {
-      data[key] = await AsyncStorage.getItem(key);
+    // Back up EVERY stored key (defects, defect_history, checklists, diary,
+    // rooms, floor plans, time tracking, team, etc.) — not just a fixed list.
+    // Photos live as files in documentDirectory, so AsyncStorage stays small.
+    const allKeys = await AsyncStorage.getAllKeys();
+    const pairs = await AsyncStorage.multiGet(allKeys);
+    for (const [key, value] of pairs) {
+      data[key] = value;
     }
 
     const backup: BackupData = {
-      version: 1,
+      version: 2,
       createdAt: new Date().toISOString(),
       appVersion: "1.0.0",
       data,

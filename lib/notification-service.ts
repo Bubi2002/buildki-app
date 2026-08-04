@@ -152,7 +152,7 @@ async function scheduleDeadlineReminders(prefs: NotificationPreferences): Promis
             trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 10 },
           });
         }
-        break; // Only one overdue notification per schedule cycle
+        continue; // this defect handled; keep scheduling the rest
       }
 
       // Due today
@@ -166,7 +166,7 @@ async function scheduleDeadlineReminders(prefs: NotificationPreferences): Promis
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 2 },
         });
-        break;
+        continue;
       }
 
       // Due in 1-3 days
@@ -185,7 +185,7 @@ async function scheduleDeadlineReminders(prefs: NotificationPreferences): Promis
             trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
           });
         }
-        break;
+        continue;
       }
     }
   } catch {}

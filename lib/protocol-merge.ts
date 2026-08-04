@@ -171,7 +171,7 @@ async function buildMergedHtml(
     : "";
   
   // Collect all todos across protocols
-  const allTodos: { text: string; done: boolean; assignee?: string; priority?: string; protocol: string }[] = [];
+  const allTodos: { task: string; done: boolean; assignee?: string; priority?: string; protocol: string }[] = [];
   if (options.includeTodos !== false) {
     for (const p of protocols) {
       if (p.todos) {
@@ -265,7 +265,7 @@ async function buildMergedHtml(
       ${allTodos.map((t, i) => `
         <tr>
           <td>${i + 1}</td>
-          <td class="${t.done ? 'todo-done' : ''}">${escapeHtml(t.text)}</td>
+          <td class="${t.done ? 'todo-done' : ''}">${escapeHtml(t.task)}</td>
           <td class="${t.done ? 'todo-done' : 'todo-offen'}">${t.done ? "Erledigt" : "Offen"}</td>
           <td>${escapeHtml(t.assignee || "-")}</td>
           <td>${t.priority === "hoch" ? "Hoch" : t.priority === "niedrig" ? "Niedrig" : "Mittel"}</td>

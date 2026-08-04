@@ -309,7 +309,10 @@ class ProgressEngine {
 
     // Save snapshot
     this.snapshots.push(snapshot);
-    this.snapshots = this.snapshots.filter(s => s.projectId === projectId).slice(-100);
+    // Cap this project's history to 100 without discarding other projects' snapshots
+    const otherProjectSnapshots = this.snapshots.filter(s => s.projectId !== projectId);
+    const thisProjectSnapshots = this.snapshots.filter(s => s.projectId === projectId).slice(-100);
+    this.snapshots = [...otherProjectSnapshots, ...thisProjectSnapshots];
     await this.save();
 
     // Emit timeline event

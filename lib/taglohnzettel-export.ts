@@ -50,7 +50,7 @@ export async function generateWeeklyReport(
   const entries = await getTimeEntries(projectId);
   const now = new Date();
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + 1);
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // Monday of this week (Sunday-safe)
   weekStart.setHours(0, 0, 0, 0);
 
   const days: { date: string; totalHours: number; entries: TimeEntry[] }[] = [];

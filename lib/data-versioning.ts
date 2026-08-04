@@ -193,6 +193,7 @@ export async function runMigrations(): Promise<{ ran: number; errors: number }> 
       
       // Attempt rollback from backup
       await restoreBackup(version);
+      log.push(entry); // record the failed attempt before stopping
       break; // Stop migrations on failure
     }
 

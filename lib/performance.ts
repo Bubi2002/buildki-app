@@ -136,8 +136,8 @@ export async function cacheSet(key: string, value: any, ttlMs: number = 3600000)
   
   await AsyncStorage.setItem(cacheKey, data);
   
-  // Update cache index
-  const index = await getCacheIndex();
+  // Update cache index (drop any prior entry for this key so it isn't duplicated)
+  const index = (await getCacheIndex()).filter((e) => e.key !== cacheKey);
   index.push({
     key: cacheKey,
     expiresAt: Date.now() + ttlMs,

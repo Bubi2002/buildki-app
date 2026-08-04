@@ -181,7 +181,7 @@ export async function exportDefectsWithPhotos(projectId?: string): Promise<strin
     for (let i = 0; i < defects.length; i++) {
       const d = defects[i];
       const statusClass = `status-${d.status}`;
-      const statusText = d.status === "offen" ? "Offen" : d.status === "in_bearbeitung" ? "In Bearbeitung" : "Erledigt";
+      const statusText = ({ offen: "Offen", zugewiesen: "Zugewiesen", in_bearbeitung: "In Bearbeitung", nachbesserung: "Nachbesserung", pruefung: "Prüfung", erledigt: "Erledigt", abgelehnt: "Abgelehnt", geschlossen: "Geschlossen" } as Record<string, string>)[d.status] || d.status;
       const priorityClass = `priority-${d.priority}`;
       const priorityText = d.priority === "hoch" ? "Hoch" : d.priority === "niedrig" ? "Niedrig" : "Mittel";
 
