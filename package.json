@@ -116,7 +116,7 @@
     "typescript": "~6.0.3",
     "vitest": "^2.1.9"
   },
-  "packageManager": "npm@10.9.8",
+  "packageManager": "npm@11.17.0",
   "description": "",
   "directories": {
     "doc": "docs",
