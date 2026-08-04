@@ -44,7 +44,6 @@
       "ios": {
         "buildConfiguration": "Release"
       },
-      "channel": "testflight",
       "env": {
         "EXPO_PUBLIC_ENV": "testflight"
       }

@@ -4,12 +4,6 @@ const config = {
   slug: "protokoll-app",
   owner: "iserlohs-team",
   version: "1.0.44",
-  runtimeVersion: {
-    policy: "appVersion",
-  },
-  updates: {
-    url: "https://u.expo.dev/1928b42a-1649-4093-95f5-12060d8da8c5",
-  },
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "manus20250614001800",
