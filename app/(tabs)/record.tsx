@@ -786,7 +786,11 @@ export default function RecordScreen() {
         const newUri = `${photoDir}${filename}`;
         await FileSystem.copyAsync({ from: photo.uri, to: newUri });
 
-        setCapturedPhotos((prev) => [...prev, newUri]);
+        let newPhotoIndex = 0;
+        setCapturedPhotos((prev) => {
+          newPhotoIndex = prev.length; // index of the photo we're adding
+          return [...prev, newUri];
+        });
         setPhotoTimestamps((prev) => [...prev, recordingDuration]);
         setPhotoVoiceNotes((prev) => [...prev, null]); // placeholder for voice note
 
@@ -805,7 +809,6 @@ export default function RecordScreen() {
 
         // Auto-start voice note for caption dictation
         // Small delay to let state update
-        const newPhotoIndex = capturedPhotos.length; // current length = new index
         setTimeout(() => {
           startVoiceNote(newPhotoIndex);
         }, 300);

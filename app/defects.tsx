@@ -231,6 +231,8 @@ export default function DefectsScreen() {
     setNewFloorId("");
     setNewRoomId("");
     setNewPhotos([]);
+    setNewCategory(DEFECT_CATEGORIES[0]);
+    setNewGewerk(GEWERKE[0]);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -1290,6 +1292,9 @@ export default function DefectsScreen() {
                   setNewAssignee("");
                   setNewFloorId("");
                   setNewRoomId("");
+                  setNewPriority("mittel");
+                  setNewCategory(DEFECT_CATEGORIES[0]);
+                  setNewGewerk(GEWERKE[0]);
                 }}
                 style={({ pressed }) => [styles.cancelBtn, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
               >

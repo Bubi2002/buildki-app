@@ -63,6 +63,13 @@ type VideoFile = {
 
 type DocType = "protokoll" | "zusammenfassung" | "bautagebuch";
 
+// Map each document type to a server template that the AI generate step uses.
+const VIDEO_DOC_TEMPLATE: Record<DocType, string> = {
+  protokoll: "baustellenbericht",
+  zusammenfassung: "freitext",
+  bautagebuch: "tagesbericht",
+};
+
 type ProcessingStep = "idle" | "uploading" | "transcribing" | "choose_type" | "generating" | "done" | "error";
 
 type QueueItem = {
@@ -122,6 +129,7 @@ export default function VideoUploadScreen() {
 
   const uploadMutation = trpc.upload.audio.useMutation();
   const transcribeMutation = trpc.voice.transcribe.useMutation();
+  const generateMutation = trpc.protocol.generate.useMutation();
 
   useEffect(() => {
     (async () => {
@@ -470,6 +478,30 @@ export default function VideoUploadScreen() {
         .map((item) => item.transcription!.trim())
         .join("\n\n");
 
+      // Run the AI generation step so the chosen document type actually
+      // shapes the content. Fall back to the raw transcript if it fails.
+      let generatedText = allTranscriptions;
+      try {
+        const gen = await generateMutation.mutateAsync({
+          transcription: allTranscriptions,
+          templateId: VIDEO_DOC_TEMPLATE[docType],
+          style: "formal",
+          format: docType === "zusammenfassung" ? "paragraphs" : "bullets",
+          recordingDate: new Date().toISOString(),
+          ...(docType === "zusammenfassung"
+            ? {
+                customSystemPrompt:
+                  "Erstelle eine prägnante, gut strukturierte Zusammenfassung der Transkription. Fasse die wichtigsten Punkte, Ergebnisse und offenen Fragen zusammen. Antworte ausschließlich mit der fertigen Zusammenfassung.",
+              }
+            : {}),
+        });
+        if (gen?.protocol?.trim()) {
+          generatedText = gen.protocol.trim();
+        }
+      } catch {
+        // Keep the raw transcript as a usable fallback document.
+      }
+
       const docTypeLabels: Record<DocType, string> = {
         protokoll: t('video_upload_doctype_protokoll_label' as any),
         zusammenfassung: t('zusammenfassung'),
@@ -509,7 +541,7 @@ export default function VideoUploadScreen() {
         createdAt: new Date().toISOString(),
         status: "ready" as const,
         transcription: allTranscriptions,
-        protocol: allTranscriptions,
+        protocol: generatedText,
         projectId: activeProject!.id,
         projectName: activeProject!.name,
         source: "video",

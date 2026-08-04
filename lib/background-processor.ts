@@ -344,7 +344,9 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         transcription: transcription.text,
         transcriptionSegments: transcriptionSegments.length > 0 ? transcriptionSegments.map(s => ({ start: s.start, end: s.end, text: s.text })) : undefined,
         protocol: protocol.protocol,
-        title: transcription.text.substring(0, 50) + "...",
+        title: transcription.text.trim().length > 0
+          ? transcription.text.substring(0, 50) + (transcription.text.length > 50 ? "…" : "")
+          : "Ohne erkannte Sprache",
         todos,
         status: "ready",
         processingStep: undefined,

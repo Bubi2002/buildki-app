@@ -511,7 +511,7 @@ export function generatePdfHtml(
   const inlinePlacedPhotos = new Set<number>();
   const inlineRegex = /\[Foto\s*(\d+)(?:\s*[\u2013\-–][^\]]*)?\]/gi;
   let inlineMatch;
-  while ((inlineMatch = inlineRegex.exec(protocol.protocol)) !== null) {
+  while ((inlineMatch = inlineRegex.exec(getProtocolText(protocol))) !== null) {
     inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
   }
   // Only show photos in Fotodokumentation that were NOT already placed inline.
@@ -896,8 +896,8 @@ export function generatePdfHtml(
       <td>${protocol.templateName || "Freies Protokoll"}</td>
     </tr>
     ${
-      evidenceSnapshots.length > 0 || photoDataUris.length > 0
-        ? `<tr><td>Anh\u00e4nge</td><td>${evidenceSnapshots.length || photoDataUris.length} Beleg${(evidenceSnapshots.length || photoDataUris.length) !== 1 ? "e" : ""}</td></tr>`
+      evidenceSnapshots.length > 0 || photoDataUris.filter(Boolean).length > 0
+        ? `<tr><td>Anh\u00e4nge</td><td>${evidenceSnapshots.length || photoDataUris.filter(Boolean).length} Beleg${(evidenceSnapshots.length || photoDataUris.filter(Boolean).length) !== 1 ? "e" : ""}</td></tr>`
         : ""
     }
     ${
