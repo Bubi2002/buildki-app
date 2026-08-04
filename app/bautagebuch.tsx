@@ -143,8 +143,9 @@ export default function BautagebuchScreen() {
       // 2. Get attendance
       const attendance = await getAttendanceForDate(today);
 
-      // 3. Get defects
-      const allDefects = await getDefects();
+      // 3. Get defects (scoped to the active project)
+      const activeProjectId = (await AsyncStorage.getItem("last-selected-project-id")) || undefined;
+      const allDefects = await getDefects(activeProjectId);
       const defectsForReport = allDefects.map((d: Defect) => ({
         title: d.title,
         description: d.description,
@@ -159,8 +160,9 @@ export default function BautagebuchScreen() {
         positionCode: d.positionCode,
       }));
 
-      // 4. Get protocols from today
-      const protocols = await getProtocolsForDate(today);
+      // 4. Get protocols from today (scoped to the active project)
+      const protocolsRaw = await getProtocolsForDate(today);
+      const protocols = activeProjectId ? protocolsRaw.filter((p: any) => p.projectId === activeProjectId) : protocolsRaw;
       const protocolsForReport = protocols.map((p: any) => ({
         title: p.title || "Aufnahme",
         createdAt: p.createdAt,
@@ -191,7 +193,7 @@ export default function BautagebuchScreen() {
         fullReport: result.fullReport,
         weather: result.weather,
         attendanceCount: attendance.length,
-        defectsCount: allDefects.filter((d: Defect) => d.status !== "erledigt").length,
+        defectsCount: allDefects.filter((d: Defect) => d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt").length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

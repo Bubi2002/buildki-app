@@ -104,6 +104,7 @@ export async function pushDefects(userId: number, items: SyncDefectInput[]): Pro
       signatures: item.signatures,
       comments: item.comments,
       resolvedAt: item.resolvedAt ? new Date(item.resolvedAt) : null,
+      createdAt: new Date(item.createdAt),
     };
 
     if (existing.length > 0) {
@@ -232,6 +233,7 @@ export async function pushProjects(userId: number, items: SyncProjectInput[]): P
       address: item.address,
       client: item.client,
       status: item.status || "active",
+      createdAt: new Date(item.createdAt),
     };
 
     if (existing.length > 0) {

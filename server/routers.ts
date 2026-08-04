@@ -355,6 +355,7 @@ Falls keine Aufgaben erkennbar sind, antworte mit einem leeren Array: []`;
             duration: input.duration,
             recordingMode: input.recordingMode,
             calendarEventId: input.calendarEventId,
+            createdAt: new Date(input.createdAt),
           });
 
           return { id: result[0].insertId, action: "created" as const };
@@ -1155,14 +1156,23 @@ Regeln:
       )
       .mutation(async ({ input }) => {
         const { generateBautagebuch } = await import("./bautagebuch-engine");
+        let weather, attendance, defects, protocols;
+        try {
+          weather = input.weatherJson ? JSON.parse(input.weatherJson) : undefined;
+          attendance = input.attendanceJson ? JSON.parse(input.attendanceJson) : [];
+          defects = input.defectsJson ? JSON.parse(input.defectsJson) : [];
+          protocols = input.protocolsJson ? JSON.parse(input.protocolsJson) : [];
+        } catch {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON payload" });
+        }
         const result = await generateBautagebuch({
           projectName: input.projectName,
           projectAddress: input.projectAddress,
           date: input.date,
-          weather: input.weatherJson ? JSON.parse(input.weatherJson) : undefined,
-          attendance: input.attendanceJson ? JSON.parse(input.attendanceJson) : [],
-          defects: input.defectsJson ? JSON.parse(input.defectsJson) : [],
-          protocols: input.protocolsJson ? JSON.parse(input.protocolsJson) : [],
+          weather,
+          attendance,
+          defects,
+          protocols,
           activities: input.activities,
           photos: input.photos,
           previousDayNotes: input.previousDayNotes,

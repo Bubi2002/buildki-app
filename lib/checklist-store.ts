@@ -161,10 +161,17 @@ export async function getChecklists(): Promise<Checklist[]> {
   try {
     const raw = await AsyncStorage.getItem(CHECKLISTS_KEY);
     const custom: Checklist[] = raw ? JSON.parse(raw) : [];
-    const builtIn: Checklist[] = BUILT_IN_CHECKLISTS.map((c) => ({
-      ...c,
-      createdAt: "2024-01-01T00:00:00.000Z",
-    }));
+    const builtIn: Checklist[] = await Promise.all(
+      BUILT_IN_CHECKLISTS.map(async (c) => {
+        // Apply user edits to built-in checklists (added/removed Prüfpunkte)
+        const modifiedItems = await getModifiedChecklistItems(c.id);
+        return {
+          ...c,
+          items: modifiedItems ?? c.items,
+          createdAt: "2024-01-01T00:00:00.000Z",
+        };
+      }),
+    );
     return [...builtIn, ...custom];
   } catch {
     return BUILT_IN_CHECKLISTS.map((c) => ({ ...c, createdAt: "2024-01-01T00:00:00.000Z" }));
