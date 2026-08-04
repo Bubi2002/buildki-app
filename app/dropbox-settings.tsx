@@ -55,7 +55,7 @@ export default function DropboxSettingsScreen() {
     if (!settings) return;
     const updated = { ...settings, [key]: value };
     setSettings(updated);
-    await saveDropboxSettings({ [key]: value });
+    await saveDropboxSettings(updated);
   };
 
   const handleConnect = async () => {

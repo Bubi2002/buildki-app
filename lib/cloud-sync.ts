@@ -259,8 +259,11 @@ async function mergeRemoteDefects(remoteDefects: any[]): Promise<void> {
   for (const remote of remoteDefects) {
     const local = localMap.get(remote.localId);
     if (!local || new Date(remote.updatedAt) > new Date(local.updatedAt)) {
-      // Remote is newer or doesn't exist locally - merge
+      // Remote is newer or doesn't exist locally - merge.
+      // Spread the local record first so local-only fields not tracked by the
+      // sync payload (planId, pinId, voice-note metadata, …) survive the pull.
       localMap.set(remote.localId, {
+        ...(local || {}),
         id: remote.localId,
         projectId: remote.projectId,
         title: remote.title,
@@ -323,6 +326,7 @@ async function mergeRemoteProjects(remoteProjects: any[]): Promise<void> {
     const local = localMap.get(remote.localId);
     if (!local || new Date(remote.updatedAt) > new Date(local.updatedAt || "2000-01-01")) {
       localMap.set(remote.localId, {
+        ...(local || {}),
         id: remote.localId,
         name: remote.name,
         description: remote.description || "",

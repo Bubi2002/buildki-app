@@ -186,7 +186,7 @@ export default function DiaryScreen() {
         )}
         <View style={styles.entryStat}>
           <MaterialIcons name="list" size={14} color={colors.muted} />
-          <Text style={[styles.entryStatText, { color: colors.muted }]}>{item.trades?.length || item.activities.length} {t('diary_gewerke' as any)}</Text>
+          <Text style={[styles.entryStatText, { color: colors.muted }]}>{item.trades?.length || 0} {t('diary_gewerke' as any)}</Text>
         </View>
       </View>
 

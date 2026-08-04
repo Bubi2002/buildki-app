@@ -76,13 +76,13 @@ export async function exportTasksAsExcel(projectId?: string): Promise<string | n
 
         rows.push([
           counter.toString(),
-          escapeCsv(todo.text),
+          escapeCsv(todo.task),
           statusText,
           priorityText,
           escapeCsv(todo.assignee || "-"),
-          todo.dueDate || "-",
+          escapeCsv(todo.deadline || "-"),
           escapeCsv(protocol.title),
-          protocol.templateName || "-",
+          escapeCsv(protocol.templateName || "-"),
           new Date(protocol.createdAt).toLocaleDateString("de-DE"),
           escapeCsv(project?.name || "-"),
         ]);
@@ -321,10 +321,11 @@ export async function getTaskStats(projectId?: string): Promise<{
 }
 
 function escapeCsv(text: string): string {
-  if (text.includes(";") || text.includes('"') || text.includes("\n")) {
-    return `"${text.replace(/"/g, '""')}"`;
+  const s = String(text ?? "");
+  if (s.includes(";") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
   }
-  return text;
+  return s;
 }
 
 function escapeHtml(text: string): string {
