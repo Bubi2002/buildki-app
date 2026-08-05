@@ -22,6 +22,7 @@ const config = {
       NSCalendarsFullAccessUsageDescription: "BuildKI verwendet Ihren Kalender nach Ihrer Auswahl, um bestehende Termine für die Planung zu lesen sowie Protokoll- und Nachprüfungstermine zu erstellen oder zu aktualisieren.",
       NSContactsUsageDescription: "BuildKI verwendet Ihre Kontakte nach Ihrer Auswahl, damit Sie Namen, E-Mail-Adressen und Telefonnummern als Projektbeteiligte oder Empfänger übernehmen können.",
       NSFaceIDUsageDescription: "BuildKI verwendet Face ID ausschließlich auf Ihrem Gerät, um die optionale App-Sperre zu entsperren.",
+      NSMotionUsageDescription: "BuildKI nutzt die Bewegungssensoren während einer Aufnahme, um die Geräteausrichtung zu erkennen und Ihre Foto- und Videodokumentation korrekt orientiert zu speichern.",
       UIViewControllerBasedStatusBarAppearance: true,
     },
     privacyManifests: {
