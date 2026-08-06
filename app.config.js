@@ -157,7 +157,7 @@ const config = {
     ["expo-camera", { cameraPermission: "BuildKI verwendet die Kamera nur nach Ihrer Auswahl, um Baustellen-, Projekt- und Mängelfotos sowie Videos aufzunehmen und zuzuordnen." }],
     ["expo-location", {
       locationWhenInUsePermission: "BuildKI verwendet Ihren Standort nur bei aktivierter Standortfreigabe während der App-Nutzung, um Ort und lokales Wetter einem Protokoll oder Bautagebuch zuzuordnen.",
-      motionUsagePermission: false,
+      motionUsagePermission: "BuildKI nutzt die Bewegungssensoren während einer Aufnahme, um die Geräteausrichtung zu erkennen und Ihre Foto- und Videodokumentation korrekt orientiert zu speichern.",
       locationAlwaysAndWhenInUsePermission: false,
       locationAlwaysPermission: false,
       isIosBackgroundLocationEnabled: false,
