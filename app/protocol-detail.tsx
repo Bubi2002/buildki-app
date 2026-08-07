@@ -149,6 +149,7 @@ export default function ProtocolDetailScreen() {
   const [showTagEditor, setShowTagEditor] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
+  const [tableEdit, setTableEdit] = useState<null | { before: string; after: string; header: string[]; rows: string[][] }>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -471,6 +472,69 @@ export default function ProtocolDetailScreen() {
       console.error("Error saving edit:", error);
     }
     setIsEditing(false);
+  };
+
+  // ── Tabellen-Editor: Markdown-Tabelle strukturiert bearbeiten ──
+  const splitTableRow = (line: string): string[] =>
+    line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+
+  const openTableEditor = () => {
+    const lines = editedText.split("\n");
+    let start = -1;
+    let end = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i].trim();
+      const isRow = l.startsWith("|") && l.endsWith("|") && l.length > 2;
+      if (isRow) {
+        if (start === -1) start = i;
+        end = i;
+      } else if (start !== -1) {
+        break;
+      }
+    }
+    if (start === -1 || end - start < 2) {
+      Alert.alert(t('protocol_detail_edit' as any), "In diesem Protokoll gibt es keine Tabelle zum Bearbeiten.");
+      return;
+    }
+    const tableLines = lines.slice(start, end + 1);
+    const header = splitTableRow(tableLines[0]);
+    const rows = tableLines.slice(2).map((l) => {
+      const cells = splitTableRow(l).slice(0, header.length);
+      while (cells.length < header.length) cells.push("");
+      return cells;
+    });
+    setTableEdit({
+      before: lines.slice(0, start).join("\n").trimEnd(),
+      after: lines.slice(end + 1).join("\n").trimStart(),
+      header,
+      rows,
+    });
+  };
+
+  const setTableCell = (rowIdx: number, colIdx: number, value: string) => {
+    setTableEdit((prev) =>
+      prev
+        ? {
+            ...prev,
+            rows: prev.rows.map((row, ri) =>
+              ri === rowIdx ? row.map((cell, ci) => (ci === colIdx ? value : cell)) : row
+            ),
+          }
+        : prev
+    );
+  };
+
+  const applyTableEditor = () => {
+    if (!tableEdit) return;
+    const headerLine = "| " + tableEdit.header.join(" | ") + " |";
+    const sepLine = "|" + tableEdit.header.map(() => " --- ").join("|") + "|";
+    const rowLines = tableEdit.rows.map(
+      (r) => "| " + r.map((c) => (c || "").replace(/\|/g, "/").trim()).join(" | ") + " |"
+    );
+    const table = [headerLine, sepLine, ...rowLines].join("\n");
+    const parts = [tableEdit.before, table, tableEdit.after].filter((s) => s && s.length > 0);
+    setEditedText(parts.join("\n\n").replace(/\n{3,}/g, "\n\n"));
+    setTableEdit(null);
   };
 
   // Generate AI summary
@@ -2221,12 +2285,73 @@ export default function ProtocolDetailScreen() {
 
           {/* Protocol text */}
           {isEditing ? (
-            <TextInput
-              value={editedText}
-              onChangeText={setEditedText}
-              multiline
-              style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
-            />
+            <View>
+              <Pressable
+                onPress={openTableEditor}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, marginBottom: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "12", opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="grid-on" size={17} color={colors.primary} />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Tabelle bearbeiten</Text>
+              </Pressable>
+              <TextInput
+                value={editedText}
+                onChangeText={setEditedText}
+                multiline
+                style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
+              />
+              <Modal visible={tableEdit !== null} transparent animationType="slide" onRequestClose={() => setTableEdit(null)}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+                  <View style={{ backgroundColor: colors.surface, maxHeight: "88%", borderTopLeftRadius: 14, borderTopRightRadius: 14, padding: 16 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Tabelle bearbeiten</Text>
+                    <ScrollView style={{ maxHeight: "82%" }}>
+                      {tableEdit?.rows.map((row, rIdx) => (
+                        <View key={rIdx} style={{ borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 10 }}>
+                          {tableEdit.header.map((h, cIdx) => {
+                            const isPriority = /priorit/i.test(h);
+                            return (
+                              <View key={cIdx} style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</Text>
+                                {isPriority ? (
+                                  <View style={{ flexDirection: "row", gap: 6 }}>
+                                    {["Hoch", "Mittel", "Niedrig"].map((opt) => {
+                                      const active = (row[cIdx] || "").toLowerCase() === opt.toLowerCase();
+                                      return (
+                                        <Pressable
+                                          key={opt}
+                                          onPress={() => setTableCell(rIdx, cIdx, opt)}
+                                          style={({ pressed }) => [{ flex: 1, paddingVertical: 8, alignItems: "center", borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent", opacity: pressed ? 0.7 : 1 }]}
+                                        >
+                                          <Text style={{ fontSize: 12, fontWeight: "600", color: active ? colors.primary : colors.muted }}>{opt}</Text>
+                                        </Pressable>
+                                      );
+                                    })}
+                                  </View>
+                                ) : (
+                                  <TextInput
+                                    value={row[cIdx]}
+                                    onChangeText={(v) => setTableCell(rIdx, cIdx, v)}
+                                    multiline
+                                    style={{ borderWidth: 1, borderColor: colors.border, padding: 8, color: colors.foreground, fontSize: 13 }}
+                                  />
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </ScrollView>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                      <Pressable onPress={() => setTableEdit(null)} style={({ pressed }) => [{ flex: 1, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                        <Text style={{ color: colors.muted, fontWeight: "600" }}>{t('btn_abbrechen')}</Text>
+                      </Pressable>
+                      <Pressable onPress={applyTableEditor} style={({ pressed }) => [{ flex: 1, paddingVertical: 12, alignItems: "center", backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+                        <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('protocol_detail_save' as any)}</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+            </View>
           ) : (
             <View>
               {extractedKeywords.length > 0 && (
