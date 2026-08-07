@@ -24,7 +24,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -192,32 +192,32 @@ export default function ConstructionBrainScreen() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <ScreenContainer className="p-0">
+    <ScreenContainer className="p-0" edges={["left", "right"]}>
+      {/* Nativer Header mit garantiertem Zurueck-Button (iOS kann ihn nicht verschlucken) */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Construction Brain",
+          headerStyle: { backgroundColor: "#0F1A2E" },
+          headerTintColor: "#F0F4F8",
+          headerTitleStyle: { color: "#F0F4F8" },
+          headerRight: () => (
+            <View style={{ flexDirection: "row", gap: 16, paddingRight: 4 }}>
+              <Pressable onPress={() => setShowHistory(!showHistory)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+                <MaterialIcons name="history" size={22} color={showHistory ? "#5DADE2" : "#8FA3B8"} />
+              </Pressable>
+              <Pressable onPress={clearHistory} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+                <MaterialIcons name="delete-outline" size={22} color="#8FA3B8" />
+              </Pressable>
+            </View>
+          ),
+        }}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={90}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <MaterialIcons name="arrow-back" size={24} color="#F0F4F8" />
-          </Pressable>
-          <View style={{ flex: 1, alignItems: "center" }}>
-            <Text style={styles.headerTitle}>Construction Brain</Text>
-            {activeProject && (
-              <Text style={styles.headerProject}>{activeProject.name}</Text>
-            )}
-          </View>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable onPress={() => setShowHistory(!showHistory)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-              <MaterialIcons name="history" size={22} color={showHistory ? "#5DADE2" : "#8FA3B8"} />
-            </Pressable>
-            <Pressable onPress={clearHistory} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-              <MaterialIcons name="delete-outline" size={22} color="#8FA3B8" />
-            </Pressable>
-          </View>
-        </View>
 
         {/* Main Content */}
         <ScrollView

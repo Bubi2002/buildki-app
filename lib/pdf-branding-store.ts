@@ -223,7 +223,7 @@ export function generateCoverPage(
     </div>
     
     <!-- Title (Project name as main title, fallback to template name) -->
-    <div style="font-size: 28px; font-weight: 700; color: #111; margin-bottom: 8px; max-width: 80%; line-height: 1.3;">
+    <div style="font-size: 28px; font-weight: 700; color: #111; margin: 0 auto 8px; max-width: 80%; line-height: 1.3; text-align: center;">
       ${protocol.projectName || protocol.templateName || "Protokoll"}
     </div>
     

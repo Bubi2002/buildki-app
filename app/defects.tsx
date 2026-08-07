@@ -92,6 +92,7 @@ export default function DefectsScreen() {
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
   const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const defectVoiceRecorderState = useAudioRecorderState(defectVoiceRecorder, 250);
@@ -697,6 +698,7 @@ export default function DefectsScreen() {
                       {selectedDefect.photos.map((photo, idx) => (
                         <Pressable
                           key={idx}
+                          onPress={() => setFullscreenPhoto(photo)}
                           onLongPress={() => {
                             Alert.alert(t('alert_foto_entfernen'), t('msg_dieses_foto_vom_mangel_entfernen'), [
                               { text: t('btn_abbrechen'), style: "cancel" },
@@ -1071,6 +1073,24 @@ export default function DefectsScreen() {
             </Pressable>
           </View>
         </View>
+      </Modal>
+
+      {/* Foto-Vollbild-Viewer: Tippen auf ein Mangel-Foto zeigt es gross */}
+      <Modal visible={fullscreenPhoto !== null} transparent animationType="fade" onRequestClose={() => setFullscreenPhoto(null)}>
+        <Pressable
+          onPress={() => setFullscreenPhoto(null)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" }}
+        >
+          {fullscreenPhoto ? (
+            <Image source={{ uri: fullscreenPhoto }} style={{ width: "100%", height: "80%" }} resizeMode="contain" />
+          ) : null}
+          <Pressable
+            onPress={() => setFullscreenPhoto(null)}
+            style={{ position: "absolute", top: 50, right: 20, padding: 8 }}
+          >
+            <MaterialIcons name="close" size={30} color="#FFFFFF" />
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Create Modal */}
