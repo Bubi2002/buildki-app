@@ -18,6 +18,10 @@ import {
   LEGAL_DRAFT_VERSION,
   LEGAL_PROVIDER,
 } from "@/lib/legal-draft";
+import {
+  THIRD_PARTY_LICENSES,
+  THIRD_PARTY_LICENSE_COUNT,
+} from "@/lib/third-party-licenses";
 
 type LegalSection =
   | "datenschutz"
@@ -395,15 +399,17 @@ function LizenzenContent() {
       <P>
         {t('legal_lizenzen_text')}
       </P>
-      <LicenseItem name="React / React Native" license="MIT" />
-      <LicenseItem name="Expo / Expo Router" license="MIT" />
-      <LicenseItem name="React Navigation" license="MIT" />
-      <LicenseItem name="AsyncStorage" license="MIT" />
-      <LicenseItem name="NativeWind / Tailwind CSS" license="MIT" />
-      <LicenseItem name="tRPC" license="MIT" />
-      <LicenseItem name="Drizzle ORM" license="Apache-2.0" />
-      <LicenseItem name="Zod" license="MIT" />
-      <OpenLine label={t('legal_lizenzen_vollstaendige')} value={LEGAL_DRAFT_MARKER} />
+      <Text className="text-xs text-muted">
+        {THIRD_PARTY_LICENSE_COUNT} Open-Source-Komponenten (Produktions-Abhängigkeiten).
+      </Text>
+      {THIRD_PARTY_LICENSES.map((lib) => (
+        <LicenseItem
+          key={`${lib.name}@${lib.version}`}
+          name={lib.name}
+          version={lib.version}
+          license={lib.license}
+        />
+      ))}
     </View>
   );
 }
@@ -448,10 +454,12 @@ function OpenLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function LicenseItem({ name, license }: { name: string; license: string }) {
+function LicenseItem({ name, version, license }: { name: string; version?: string; license: string }) {
   return (
     <View className="flex-row justify-between items-center py-2 border-b border-border">
-      <Text className="text-sm text-foreground">{name}</Text>
+      <Text className="text-sm text-foreground flex-1 pr-2">
+        {name}{version ? ` @ ${version}` : ""}
+      </Text>
       <Text className="text-xs text-muted bg-surface px-2 py-1">{license}</Text>
     </View>
   );

@@ -30,6 +30,8 @@ type ProtocolTodo = TodoItem & {
   protocolTitle: string;
   protocolDate: string;
   todoIndex: number;
+  source?: "protocol" | "project-task";
+  taskId?: string;
 };
 
 type FilterType = "all" | "open" | "done";
@@ -59,10 +61,33 @@ export default function TasksScreen() {
               protocolTitle: protocol.templateName || t('protokoll'),
               protocolDate: protocol.createdAt,
               todoIndex: index,
+              source: "protocol",
             });
           });
         }
       }
+
+      // Auch eigenstaendige Projekt-Tasks laden (z. B. aus KI-Analyse "Add as task")
+      try {
+        const projectTasks = JSON.parse(
+          (await AsyncStorage.getItem("project-tasks")) || "[]"
+        );
+        for (const pt of projectTasks) {
+          todos.push({
+            task: pt.title || pt.task || "",
+            assignee: pt.trade || pt.assignee || "",
+            priority: (pt.priority as any) || "mittel",
+            deadline: pt.deadline || "",
+            done: pt.status === "erledigt" || pt.done === true,
+            protocolId: pt.id,
+            protocolTitle: "KI-Analyse",
+            protocolDate: pt.createdAt || new Date().toISOString(),
+            todoIndex: 0,
+            source: "project-task",
+            taskId: pt.id,
+          });
+        }
+      } catch {}
 
       // Sort: open first, then by priority (hoch > mittel > niedrig)
       const priorityOrder = { hoch: 0, mittel: 1, niedrig: 2 };
@@ -92,6 +117,32 @@ export default function TasksScreen() {
   const toggleTodo = async (item: ProtocolTodo) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    // Eigenstaendige Projekt-Tasks im eigenen Speicher abhaken
+    if (item.source === "project-task") {
+      try {
+        const tasks = JSON.parse(
+          (await AsyncStorage.getItem("project-tasks")) || "[]"
+        );
+        const idx = tasks.findIndex((x: any) => x.id === item.taskId);
+        if (idx !== -1) {
+          const nowDone = !item.done;
+          tasks[idx].status = nowDone ? "erledigt" : "offen";
+          tasks[idx].done = nowDone;
+          await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
+        }
+      } catch (error) {
+        console.error("Error toggling project task:", error);
+      }
+      setAllTodos((prev) =>
+        prev.map((t) =>
+          t.source === "project-task" && t.taskId === item.taskId
+            ? { ...t, done: !t.done }
+            : t
+        )
+      );
+      return;
     }
 
     try {

@@ -386,30 +386,43 @@ export default function DefectsScreen() {
       } catch (error) {
         console.warn("Defect voice-note stop race:", error);
       }
-      return defectVoiceRecorder.uri || defectVoiceRecorder.getStatus().url;
+      let resolvedUri: string | null = null;
+      try {
+        resolvedUri = defectVoiceRecorder.uri || defectVoiceRecorder.getStatus().url || null;
+      } catch {
+        resolvedUri = defectVoiceRecorder.uri || null;
+      }
+      return resolvedUri;
     } catch (error) {
       console.warn("Defect voice-note stop failed:", error);
       return defectVoiceRecorder.uri || null;
     } finally {
-      await resetVoiceAudioMode();
+      try {
+        await resetVoiceAudioMode();
+      } catch (error) {
+        console.warn("Defect voice-note audio mode reset failed:", error);
+      }
     }
   };
 
   const saveDefectVoiceNote = async () => {
     const defectId = voiceNoteDefectIdRef.current;
     const durationMillis = defectVoiceRecorderState.durationMillis;
-    if (!defectId) return;
     setShowVoiceNoteFinish(false);
-    setVoiceNoteMode("saving");
-
-    const sourceUri = await stopDefectVoiceRecorder();
-    if (!sourceUri) {
+    if (!defectId) {
       setVoiceNoteMode("idle");
-      Alert.alert(t('defects_sprachnotiz_nicht_gespeichert_titel' as any), t('defects_sprachnotiz_nicht_gespeichert_msg' as any));
       return;
     }
+    setVoiceNoteMode("saving");
 
+    // Alles in try/finally: der "saving"-Zustand wird IMMER zurueckgesetzt,
+    // selbst wenn stop() haengt oder einen Fehler wirft -> keine eingefrorene UI mehr.
     try {
+      const sourceUri = await stopDefectVoiceRecorder();
+      if (!sourceUri) {
+        Alert.alert(t('defects_sprachnotiz_nicht_gespeichert_titel' as any), t('defects_sprachnotiz_nicht_gespeichert_msg' as any));
+        return;
+      }
       const permanentUri = await persistDefectVoiceNote(sourceUri, defectId);
       const updated = await setVoiceNote(defectId, {
         uri: permanentUri,
@@ -421,7 +434,7 @@ export default function DefectsScreen() {
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Alert.alert(t('defects_speichern_fehlgeschlagen_titel' as any), t('defects_sprachnotiz_persistenz_msg' as any));
-      console.warn("Defect voice-note persistence failed:", error);
+      console.warn("Defect voice-note save failed:", error);
     } finally {
       voiceNoteDefectIdRef.current = null;
       setVoiceNoteMode("idle");

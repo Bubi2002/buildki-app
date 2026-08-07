@@ -33,7 +33,8 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLang] = useState<Language>(detectDeviceLanguage());
+  // Standard immer Deutsch; eine zuvor gespeicherte Auswahl ueberschreibt dies im Effect unten.
+  const [language, setLang] = useState<Language>("de");
 
   useEffect(() => {
     (async () => {
