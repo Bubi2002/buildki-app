@@ -72,8 +72,11 @@ export function TradePicker({
   };
 
   const selectIndex = (index: number) => {
+    // Tippen auf ein Gewerk uebernimmt sofort (kein extra "Uebernehmen" noetig)
     setDraftIndex(index);
-    listRef.current?.scrollToIndex({ index, animated: true });
+    const selected = options[index];
+    onChange(selected?.nr === 0 ? "" : selected?.name ?? "");
+    setVisible(false);
   };
 
   const confirmSelection = () => {
