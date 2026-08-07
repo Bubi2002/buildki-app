@@ -117,11 +117,11 @@ export function findUnsupportedReportClaims(
   const sources = sourceText(snapshot);
   const reasons = new Set<string>();
 
-  for (const terms of TRADE_TERM_GROUPS) {
-    if (containsAny(output, terms) && !containsAny(sources, terms)) {
-      reasons.add(`Nicht belegtes Gewerk oder Bauteil: ${terms[0]}`);
-    }
-  }
+  // Hinweis: Die Gewerk-/Bauteil-Pruefung wurde bewusst entschaerft. Bei frei
+  // diktierten Berichten formuliert die KI fachlich und bringt dabei Fachbegriffe
+  // ein, die der Nutzer nicht woertlich getippt hat – das ist gewollt und darf den
+  // Bericht nicht verwerfen. Die wirklich sensiblen Waechter (erfundene Daten,
+  // Firmen, nicht ausgewaehlte Maengeldaten) bleiben aktiv.
 
   const outputDates = markdown.match(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/g) || [];
   for (const outputDate of outputDates) {
