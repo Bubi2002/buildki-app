@@ -8,7 +8,7 @@ import { Platform } from "react-native";
 
 import type { DocumentFileType } from "@/lib/document-ai";
 
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_EXTRACTED_CHARS = 150_000;
 const MIN_MEANINGFUL_CHARS = 20;
 
@@ -285,7 +285,7 @@ export async function extractDocumentText(request: DocumentExtractionRequest): P
   if (request.fileSize && request.fileSize > MAX_FILE_BYTES) {
     throw new DocumentExtractionError(
       "FILE_TOO_LARGE",
-      `Die Datei ist größer als 20 MB (${(request.fileSize / 1024 / 1024).toFixed(1)} MB).`,
+      `Die Datei ist größer als ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB (${(request.fileSize / 1024 / 1024).toFixed(1)} MB).`,
     );
   }
 
