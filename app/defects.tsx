@@ -49,6 +49,7 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { SignaturePad } from "@/components/signature-pad";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { TradePicker } from "@/components/trade-picker";
 import { GEWERKE , generateDefectPdfHtml } from "@/lib/defect-pdf-export";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
@@ -827,87 +828,6 @@ export default function DefectsScreen() {
                   </View>
                 </View>
 
-                {/* Voice Note Section */}
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('defects_sprachnotiz' as any)}</Text>
-                  {selectedDefect.voiceNoteUri ? (
-                    <View style={[styles.voiceNoteCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                      <Pressable
-                        onPress={toggleDefectVoicePlayback}
-                        style={({ pressed }) => [
-                          styles.voiceNotePlayButton,
-                          { backgroundColor: colors.primary + "18", borderColor: colors.primary + "50" },
-                          pressed && { opacity: 0.7 },
-                        ]}
-                      >
-                        <MaterialIcons name={defectVoicePlayerStatus.playing ? "pause" : "play-arrow"} size={22} color={colors.primary} />
-                      </Pressable>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: "600" }}>
-                          {defectVoicePlayerStatus.playing ? t('defects_sprachnotiz_wird_abgespielt' as any) : t('defects_sprachnotiz_abspielen' as any)}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
-                          {formatVoiceNoteDuration((defectVoicePlayerStatus.currentTime || 0) * 1000)} / {formatVoiceNoteDuration(selectedDefect.voiceNoteDurationMillis || (defectVoicePlayerStatus.duration || 0) * 1000)}
-                        </Text>
-                      </View>
-                      <Pressable onPress={deleteDefectVoiceNote} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 8 }]}>
-                        <MaterialIcons name="delete-outline" size={20} color={colors.error} />
-                      </Pressable>
-                    </View>
-                  ) : voiceNoteMode !== "idle" ? (
-                    <View
-                      style={[
-                        styles.voiceRecordingCard,
-                        {
-                          borderColor: voiceNoteMode === "recording" ? colors.error : colors.warning,
-                          backgroundColor: colors.background,
-                        },
-                      ]}
-                    >
-                      <View style={styles.voiceRecordingHeader}>
-                        <View style={[styles.voiceRecordingDot, { backgroundColor: voiceNoteMode === "recording" ? colors.error : colors.warning }]} />
-                        <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "700", flex: 1 }}>
-                          {voiceNoteMode === "saving" ? t('defects_sprachnotiz_wird_gespeichert' as any) : voiceNoteMode === "paused" ? t('defects_aufnahme_pausiert' as any) : t('defects_aufnahme_laeuft' as any)}
-                        </Text>
-                        <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
-                          {formatVoiceNoteDuration(defectVoiceRecorderState.durationMillis)}
-                        </Text>
-                      </View>
-                      {voiceNoteMode !== "saving" ? (
-                        <View style={styles.voiceRecordingActions}>
-                          <Pressable
-                            onPress={voiceNoteMode === "recording" ? pauseDefectVoiceNote : resumeDefectVoiceNote}
-                            style={({ pressed }) => [styles.voiceSecondaryButton, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
-                          >
-                            <MaterialIcons name={voiceNoteMode === "recording" ? "pause" : "mic"} size={17} color={colors.primary} />
-                            <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
-                              {voiceNoteMode === "recording" ? t('defects_pausieren' as any) : t('defects_fortsetzen' as any)}
-                            </Text>
-                          </Pressable>
-                          <Pressable
-                            onPress={requestFinishDefectVoiceNote}
-                            style={({ pressed }) => [styles.voicePrimaryButton, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}
-                          >
-                            <MaterialIcons name="stop" size={17} color="#FFFFFF" />
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>{t('defects_aufnahme_abschliessen' as any)}</Text>
-                          </Pressable>
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : (
-                    <Pressable
-                      onPress={startDefectVoiceNote}
-                      style={({ pressed }) => [{
-                        flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-                        paddingVertical: 10, borderWidth: 1, borderColor: colors.primary + "40",
-                        backgroundColor: colors.primary + "10", opacity: pressed ? 0.7 : 1,
-                      }]}
-                    >
-                      <MaterialIcons name="mic" size={18} color={colors.primary} />
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('defects_sprachnotiz_aufnehmen' as any)}</Text>
-                    </Pressable>
-                  )}
-                </View>
                 {/* Signatures Section */}
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('defects_unterschriften' as any)} ({selectedDefect.signatures?.length || 0})</Text>
@@ -1018,60 +938,32 @@ export default function DefectsScreen() {
               </ScrollView>
             )}
           </View>
-        </View>
-      </Modal>
 
-      {/* Signature Pad Modal */}
-      <Modal visible={showSignaturePad} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('defects_unterschrift' as any)}: {signatureRole}</Text>
-            <SignaturePad
-              onSave={async (paths) => {
-                if (selectedDefect && paths.length > 0) {
-                  const sig: DefectSignature = { role: signatureRole, paths, signedAt: new Date().toISOString() };
-                  const updated = await addDefectSignature(selectedDefect.id, sig);
-                  if (updated) {
-                    setSelectedDefect(updated);
-                    await loadDefects();
-                  }
-                }
-                setShowSignaturePad(false);
-                if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              }}
-              onCancel={() => setShowSignaturePad(false)}
-            />
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={showVoiceNoteFinish} transparent animationType="fade">
-        <View style={styles.voiceConfirmOverlay}>
-          <View style={[styles.voiceConfirmCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialIcons name="pause-circle" size={34} color={colors.primary} />
-            <Text style={[styles.voiceConfirmTitle, { color: colors.foreground }]}>{t('defects_aufnahme_pausiert' as any)}</Text>
-            <Text style={[styles.voiceConfirmText, { color: colors.muted }]}>{t('defects_sprachnotiz_finish_frage' as any)}</Text>
-            <Text style={{ color: colors.primary, fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"], marginBottom: 14 }}>
-              {formatVoiceNoteDuration(defectVoiceRecorderState.durationMillis)}
-            </Text>
-            <Pressable
-              onPress={saveDefectVoiceNote}
-              style={({ pressed }) => [styles.voiceConfirmPrimary, { backgroundColor: colors.primary }, pressed && { opacity: 0.75 }]}
-            >
-              <MaterialIcons name="save" size={18} color="#FFFFFF" />
-              <Text style={styles.voiceConfirmPrimaryText}>{t('defects_sprachnotiz_speichern' as any)}</Text>
-            </Pressable>
-            <Pressable
-              onPress={resumeDefectVoiceNote}
-              style={({ pressed }) => [styles.voiceConfirmSecondary, { borderColor: colors.border }, pressed && { opacity: 0.7 }]}
-            >
-              <MaterialIcons name="mic" size={18} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>{t('defects_aufnahme_fortsetzen' as any)}</Text>
-            </Pressable>
-            <Pressable onPress={discardDefectVoiceNote} style={({ pressed }) => [styles.voiceConfirmDiscard, pressed && { opacity: 0.65 }]}>
-              <Text style={{ color: colors.error, fontSize: 12, fontWeight: "700" }}>{t('defects_aufnahme_verwerfen' as any)}</Text>
-            </Pressable>
-          </View>
+          {/* Signatur-Overlay: bewusst IM Detail-Modal (kein zweites iOS-Modal), damit es zuverlaessig erscheint */}
+          {showSignaturePad && (
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 16 }}>
+              <GestureHandlerRootView style={{ width: "100%" }}>
+                <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('defects_unterschrift' as any)}: {signatureRole}</Text>
+                  <SignaturePad
+                    onSave={async (paths) => {
+                      if (selectedDefect && paths.length > 0) {
+                        const sig: DefectSignature = { role: signatureRole, paths, signedAt: new Date().toISOString() };
+                        const updated = await addDefectSignature(selectedDefect.id, sig);
+                        if (updated) {
+                          setSelectedDefect(updated);
+                          await loadDefects();
+                        }
+                      }
+                      setShowSignaturePad(false);
+                      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    }}
+                    onCancel={() => setShowSignaturePad(false)}
+                  />
+                </View>
+              </GestureHandlerRootView>
+            </View>
+          )}
         </View>
       </Modal>
 
