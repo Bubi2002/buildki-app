@@ -19,6 +19,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "@/lib/language-provider";
+import { collaboration, getOrCreateLocalTeam, buildInviteLink } from "@/lib/collaboration";
 import {
   TeamMember,
   TEAM_ROLES,
@@ -74,7 +75,21 @@ export default function TeamScreen() {
 
     // Send invite if requested
     if (sendInvite && (newEmail.trim() || newPhone.trim())) {
-      const inviteMessage = t('einladung_nachricht').replace('{name}', newName.trim()).replace('{role}', getRoleLabel(newRole));
+      let inviteMessage = t('einladung_nachricht').replace('{name}', newName.trim()).replace('{role}', getRoleLabel(newRole));
+
+      // Collaboration: echten Einladungs-Token + Beitritts-Link erzeugen.
+      // Geraeteuebergreifend funktioniert der Beitritt erst mit dem Server –
+      // die Struktur ist aber vorbereitet (siehe lib/collaboration.ts).
+      try {
+        const team = await getOrCreateLocalTeam();
+        const invite = await collaboration.createInvite({
+          teamId: team.id,
+          email: newEmail.trim() || undefined,
+          role: "member",
+          invitedBy: team.ownerId,
+        });
+        inviteMessage += `\n\nDem Team beitreten: ${buildInviteLink(invite.token)}`;
+      } catch {}
 
       if (newEmail.trim()) {
         const subject = encodeURIComponent(t('team_invite_subject' as any));

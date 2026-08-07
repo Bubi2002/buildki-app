@@ -132,6 +132,56 @@ export async function saveTeams(list: Team[]): Promise<void> {
   await AsyncStorage.setItem(TEAMS_KEY, JSON.stringify(list));
 }
 
+// ─── Lokale Identitaet (bis echte Auth vom Server kommt) ──────────────────────
+
+const LOCAL_USER_KEY = "collab_local_user";
+const LOCAL_TEAM_KEY = "collab_local_team_id";
+
+export interface LocalUser {
+  userId: string;
+  name: string;
+  email?: string;
+}
+
+/** Geraete-lokale Nutzeridentitaet. SERVER-TODO: durch echtes Konto ersetzen. */
+export async function getOrCreateLocalUser(defaults?: { name?: string; email?: string }): Promise<LocalUser> {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_USER_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  const user: LocalUser = {
+    userId: `user_${(await generateToken()).slice(0, 16)}`,
+    name: defaults?.name || "Ich",
+    email: defaults?.email,
+  };
+  await AsyncStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
+  return user;
+}
+
+/** Holt oder erstellt das lokale Team. SERVER-TODO: durch Server-Team ersetzen. */
+export async function getOrCreateLocalTeam(name = "Mein Team"): Promise<Team> {
+  const teams = await loadTeams();
+  const storedId = await AsyncStorage.getItem(LOCAL_TEAM_KEY);
+  const existing = storedId ? teams.find((tm) => tm.id === storedId) : teams[0];
+  if (existing) return existing;
+
+  const owner = await getOrCreateLocalUser();
+  const team: Team = {
+    id: `team_${(await generateToken()).slice(0, 16)}`,
+    name,
+    ownerId: owner.userId,
+    createdAt: new Date().toISOString(),
+    members: [
+      { userId: owner.userId, name: owner.name, email: owner.email, role: "owner", joinedAt: new Date().toISOString() },
+    ],
+    shares: [],
+  };
+  teams.push(team);
+  await saveTeams(teams);
+  await AsyncStorage.setItem(LOCAL_TEAM_KEY, team.id);
+  return team;
+}
+
 /**
  * Lokales Backend: erzeugt echte Tokens/Links und haelt Teams/Einladungen lokal.
  * Die geraeteuebergreifenden Teile (acceptInvite fremder Nutzer, pullSharedData)
