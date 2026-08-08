@@ -51,6 +51,27 @@ export default function QuickNoteScreen() {
       const data = await AsyncStorage.getItem("protocols");
       const protocols = JSON.parse(data || "[]");
 
+      // Notiz dem aktuell ausgewaehlten Projekt zuordnen, damit sie sofort in
+      // der (nach Projekt gefilterten) Protokoll-Liste sichtbar ist. Ohne diese
+      // Zuordnung landet die Notiz zwar in "protocols", wird aber vom aktiven
+      // Projektfilter ausgeblendet -> Nutzer "findet" sie nicht wieder.
+      let projectId: string | undefined;
+      let projectName: string | undefined;
+      try {
+        const lastProjectId = await AsyncStorage.getItem("last-selected-project-id");
+        if (lastProjectId) {
+          const projectsStr = await AsyncStorage.getItem("projects");
+          const projects = projectsStr ? JSON.parse(projectsStr) : [];
+          const activeProject = projects.find((p: any) => p.id === lastProjectId);
+          if (activeProject) {
+            projectId = activeProject.id;
+            projectName = activeProject.name;
+          }
+        }
+      } catch {
+        // Ohne Projektkontext bleibt die Notiz "ohne Projekt" (unter "Alle" sichtbar).
+      }
+
       const note = {
         id: Date.now().toString(),
         title: title.trim() || `Notiz vom ${new Date().toLocaleDateString("de-DE")}`,
@@ -68,12 +89,17 @@ export default function QuickNoteScreen() {
         calendarEventId: null,
         location: null,
         status: "ready",
+        ...(projectId ? { projectId, projectName } : {}),
       };
 
       protocols.unshift(note);
       await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
-      Alert.alert(t('alert_gespeichert'), t('msg_notiz_wurde_erfolgreich_gespeichert'), [
+      const successBody = projectName
+        ? `${t('msg_notiz_wurde_erfolgreich_gespeichert')}\n\nDu findest sie unter „Protokolle" im Projekt „${projectName}".`
+        : `${t('msg_notiz_wurde_erfolgreich_gespeichert')}\n\nDu findest sie unter „Protokolle".`;
+
+      Alert.alert(t('alert_gespeichert'), successBody, [
         { text: t('ok'), onPress: () => router.back() },
       ]);
     } catch  {

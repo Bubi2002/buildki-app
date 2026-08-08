@@ -307,6 +307,11 @@ class ProgressEngine {
       sources,
     };
 
+    // Vorherigen Prozentsatz merken (VOR dem Hinzufuegen des neuen Snapshots).
+    const previousPercent = this.snapshots
+      .filter(s => s.projectId === projectId)
+      .slice(-1)[0]?.overallPercent;
+
     // Save snapshot
     this.snapshots.push(snapshot);
     // Cap this project's history to 100 without discarding other projects' snapshots
@@ -315,14 +320,18 @@ class ProgressEngine {
     this.snapshots = [...otherProjectSnapshots, ...thisProjectSnapshots];
     await this.save();
 
-    // Emit timeline event
-    timelineEngine.emit({
-      projectId,
-      eventType: "progress_updated",
-      title: `Baufortschritt: ${overallPercent}%`,
-      description: `Phase: ${phase}, ${roomProgress.length} Räume, ${tradeProgress.length} Gewerke`,
-      source: "system",
-    });
+    // Timeline-Ereignis NUR bei tatsaechlicher Aenderung des Prozentsatzes.
+    // Verhindert das Fluten mit identischen "Baufortschritt: X%"-Eintraegen bei
+    // jeder Neuberechnung (z. B. beim Oeffnen des Screens).
+    if (previousPercent !== overallPercent) {
+      timelineEngine.emit({
+        projectId,
+        eventType: "progress_updated",
+        title: `Baufortschritt: ${overallPercent}%`,
+        description: `Phase: ${phase}, ${roomProgress.length} Räume, ${tradeProgress.length} Gewerke`,
+        source: "system",
+      });
+    }
 
     return snapshot;
   }
