@@ -5,7 +5,7 @@ import { translations, type Language, type TranslationKey } from "@/lib/i18n";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 
 const LANGUAGE_KEY = "app_language";
-const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr", "es", "ro", "pl"];
+const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr", "uk", "pl", "ru", "ro", "bg", "tr"];
 
 function detectDeviceLanguage(): Language {
   try {
