@@ -7,13 +7,33 @@ import { decodeUnicodeEscapes } from "@/lib/display-text";
 const LANGUAGE_KEY = "app_language";
 const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr", "uk", "pl", "ru", "ro", "bg", "tr"];
 
+// Map a device region/country code to a supported app language, used when the
+// phone's UI language itself isn't one we support.
+const REGION_TO_LANGUAGE: Record<string, Language> = {
+  DE: "de", AT: "de", CH: "de", LI: "de",
+  GB: "en", US: "en", IE: "en", AU: "en", CA: "en", NZ: "en",
+  FR: "fr", BE: "fr", LU: "fr", MC: "fr",
+  UA: "uk",
+  PL: "pl",
+  RU: "ru", BY: "ru", KZ: "ru",
+  RO: "ro", MD: "ro",
+  BG: "bg",
+  TR: "tr", CY: "tr",
+};
+
 function detectDeviceLanguage(): Language {
   try {
     const locales = getLocales();
     if (locales && locales.length > 0) {
+      // 1) Prefer the phone's UI language when we support it.
       const code = locales[0].languageCode?.toLowerCase();
       if (code && SUPPORTED_LANGUAGES.includes(code as Language)) {
         return code as Language;
+      }
+      // 2) Otherwise fall back to the country/region the device is set to.
+      const region = (locales[0].regionCode || "").toUpperCase();
+      if (region && REGION_TO_LANGUAGE[region]) {
+        return REGION_TO_LANGUAGE[region];
       }
     }
   } catch {}
@@ -41,7 +61,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       try {
         const stored = await AsyncStorage.getItem(LANGUAGE_KEY);
         if (stored && SUPPORTED_LANGUAGES.includes(stored as Language)) {
+          // A previously chosen language always wins.
           setLang(stored as Language);
+        } else {
+          // First launch: auto-select by device language/country. Not persisted
+          // yet, so the onboarding language step can still confirm or change it.
+          setLang(detectDeviceLanguage());
         }
       } catch {}
     })();
