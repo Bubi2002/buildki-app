@@ -23,6 +23,10 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Require a couple of consecutive failed probes before declaring offline, so a
+  // single slow/blocked request doesn't flap the banner. Success resets instantly.
+  const failCountRef = useRef(0);
+  const OFFLINE_THRESHOLD = 2;
 
   useEffect(() => {
     // Load initial state
@@ -75,25 +79,48 @@ export function useNetworkStatus(): NetworkStatus & { addToSyncQueue: (item: any
     };
   }, []);
 
+  async function markOnline() {
+    failCountRef.current = 0;
+    setIsConnected(true);
+  }
+
+  // Only flip to offline after several consecutive failures (hysteresis).
+  function markProbeFailed() {
+    failCountRef.current += 1;
+    if (failCountRef.current >= OFFLINE_THRESHOLD) {
+      setIsConnected(false);
+    }
+  }
+
   async function checkConnectivity() {
     try {
       if (Platform.OS === "web") {
         setIsConnected(navigator.onLine);
-      } else {
-        // On native, try a lightweight fetch
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        try {
-          await fetch("https://clients3.google.com/generate_204", { signal: controller.signal, method: "HEAD" });
-          clearTimeout(timeout);
-          setIsConnected(true);
-        } catch {
-          clearTimeout(timeout);
-          setIsConnected(false);
-        }
+        return;
       }
+      // On native, try a lightweight reachability probe.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        await fetch("https://clients3.google.com/generate_204", { signal: controller.signal, method: "HEAD" });
+        clearTimeout(timeout);
+        await markOnline();
+        return;
+      } catch {
+        clearTimeout(timeout);
+      }
+      // The probe failed — before declaring offline, cross-check the OS network
+      // state. The probe host may be blocked/throttled while the device is fine.
+      try {
+        const { isOnline } = require("@/lib/offline-queue");
+        if (await isOnline()) {
+          await markOnline();
+          return;
+        }
+      } catch {}
+      markProbeFailed();
     } catch {
-      setIsConnected(false);
+      markProbeFailed();
     }
   }
 

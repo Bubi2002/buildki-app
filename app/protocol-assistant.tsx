@@ -51,6 +51,16 @@ type OpenPoint = {
   priority: "hoch" | "mittel" | "niedrig";
 };
 
+type StoredProtocol = {
+  id: string;
+  title?: string;
+  protocol?: string;
+  transcription?: string;
+  projectName?: string;
+  roomName?: string;
+  createdAt?: string;
+};
+
 type AssistantResult = {
   missingItems: MissingItem[];
   recommendations: Recommendation[];
@@ -119,37 +129,56 @@ export default function ProtocolAssistantScreen() {
   const [result, setResult] = useState<AssistantResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // When opened standalone (no specific protocol), show a picker instead of erroring.
+  const [pickerProtocols, setPickerProtocols] = useState<StoredProtocol[] | null>(null);
 
   useEffect(() => {
-    runAnalysis();
+    init();
   }, []);
 
-  async function runAnalysis() {
+  async function init() {
+    // A specific protocol was passed in (e.g. opened from a protocol detail) →
+    // analyze it directly.
+    if (params.protocolText || params.protocolId) {
+      let protocolText = params.protocolText || "";
+      if (!protocolText && params.protocolId) {
+        try {
+          const stored = await AsyncStorage.getItem("protocols");
+          const protocols: StoredProtocol[] = stored ? JSON.parse(stored) : [];
+          const found = protocols.find((p) => p.id === params.protocolId);
+          if (found) protocolText = found.protocol || found.transcription || "";
+        } catch {}
+      }
+      if (protocolText) {
+        await runAnalysisFor({
+          protocolText,
+          projectName: params.projectName || "Unbekanntes Projekt",
+          roomName: params.roomName,
+          protocolId: params.protocolId,
+        });
+        return;
+      }
+    }
+
+    // No specific protocol → load the list and let the user pick one.
+    try {
+      const stored = await AsyncStorage.getItem("protocols");
+      const protocols: StoredProtocol[] = stored ? JSON.parse(stored) : [];
+      const withText = protocols
+        .filter((p) => (p.protocol || p.transcription || "").trim().length > 0)
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setPickerProtocols(withText);
+    } catch {
+      setPickerProtocols([]);
+    }
+    setIsLoading(false);
+  }
+
+  async function runAnalysisFor(opts: { protocolText: string; projectName: string; roomName?: string; protocolId?: string }) {
     try {
       setIsLoading(true);
       setError(null);
-
-      let protocolText = params.protocolText || "";
-      const projectName = params.projectName || "Unbekanntes Projekt";
-      const roomName = params.roomName;
-
-      // If no text passed, try to load from storage
-      if (!protocolText && params.protocolId) {
-        const stored = await AsyncStorage.getItem("protocols");
-        if (stored) {
-          const protocols = JSON.parse(stored);
-          const found = protocols.find((p: any) => p.id === params.protocolId);
-          if (found) {
-            protocolText = found.protocol || found.transcription || "";
-          }
-        }
-      }
-
-      if (!protocolText) {
-        setError(t('protocol_assistant_kein_protokolltext' as any));
-        setIsLoading(false);
-        return;
-      }
+      setPickerProtocols(null);
 
       // Get existing defects for context
       const defectsStr = await AsyncStorage.getItem("defects");
@@ -163,14 +192,14 @@ export default function ProtocolAssistantScreen() {
       const protocolsStr = await AsyncStorage.getItem("protocols");
       const allProtocols = protocolsStr ? JSON.parse(protocolsStr) : [];
       const previousSummaries = allProtocols
-        .filter((p: any) => p.id !== params.protocolId)
+        .filter((p: any) => p.id !== opts.protocolId)
         .slice(0, 3)
         .map((p: any) => (p.protocol || "").slice(0, 200));
 
       const analysisResult = await assistantMutation.mutateAsync({
-        protocolText: protocolText.slice(0, 8000), // Limit to avoid token overflow
-        projectName,
-        roomName: roomName || undefined,
+        protocolText: opts.protocolText.slice(0, 8000), // Limit to avoid token overflow
+        projectName: opts.projectName,
+        roomName: opts.roomName || undefined,
         existingDefects: openDefects,
         existingPhotos: 0,
         previousProtocols: previousSummaries,
@@ -182,6 +211,15 @@ export default function ProtocolAssistantScreen() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function analyzePickedProtocol(p: StoredProtocol) {
+    void runAnalysisFor({
+      protocolText: p.protocol || p.transcription || "",
+      projectName: p.projectName || "Unbekanntes Projekt",
+      roomName: p.roomName,
+      protocolId: p.id,
+    });
   }
 
   // ─── Render ──────────────────────────────────────────────────────────────────
@@ -209,12 +247,69 @@ export default function ProtocolAssistantScreen() {
           <MaterialIcons name="error-outline" size={48} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.foreground }]}>{error}</Text>
           <Pressable
-            onPress={runAnalysis}
+            onPress={init}
             style={({ pressed }) => [styles.retryButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
           >
             <Text style={styles.retryButtonText}>{t('retry')}</Text>
           </Pressable>
         </View>
+      </ScreenContainer>
+    );
+  }
+
+  // Standalone entry (no specific protocol) → let the user pick one to analyze.
+  if (pickerProtocols) {
+    return (
+      <ScreenContainer>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
+          <View style={styles.headerTop}>
+            <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+              <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+            </Pressable>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('protocol_assistant_header_title' as any)}</Text>
+            <View style={{ width: 24 }} />
+          </View>
+        </View>
+
+        {pickerProtocols.length === 0 ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="description" size={48} color={colors.muted} />
+            <Text style={[styles.errorText, { color: colors.foreground }]}>{t('protocol_compare_keine_protokolle' as any)}</Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/record" as any)}
+              style={({ pressed }) => [styles.retryButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Text style={styles.retryButtonText}>{t('neue_aufnahme_starten')}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+            <Text style={[styles.pickerHint, { color: colors.muted }]}>{t('protocol_assistant_protokoll_waehlen' as any)}</Text>
+            {pickerProtocols.map((p) => {
+              const preview = (p.protocol || p.transcription || "").replace(/\s+/g, " ").trim().slice(0, 90);
+              const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => analyzePickedProtocol(p)}
+                  style={({ pressed }) => [styles.pickerRow, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pickerTitle, { color: colors.foreground }]} numberOfLines={1}>
+                      {p.title?.trim() || p.projectName?.trim() || t('protocol_assistant_header_title' as any)}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+                      {!!dateStr && <Text style={[styles.pickerMeta, { color: colors.muted }]}>{dateStr}</Text>}
+                      {!!p.projectName?.trim() && <Text style={[styles.pickerMeta, { color: colors.muted }]} numberOfLines={1}>{p.projectName}</Text>}
+                    </View>
+                    {!!preview && <Text style={[styles.pickerPreview, { color: colors.muted }]} numberOfLines={2}>{preview}</Text>}
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
       </ScreenContainer>
     );
   }
@@ -395,6 +490,12 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, textAlign: "center" },
   retryButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   retryButtonText: { color: "#FFF", fontWeight: "600", fontSize: 15 },
+
+  pickerHint: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 },
+  pickerRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 8, padding: 14, marginBottom: 10 },
+  pickerTitle: { fontSize: 15, fontWeight: "600" },
+  pickerMeta: { fontSize: 12 },
+  pickerPreview: { fontSize: 12, marginTop: 4, lineHeight: 17 },
 
   header: { padding: 16, paddingTop: 12 },
   headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },

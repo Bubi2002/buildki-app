@@ -34,9 +34,18 @@ export type QueuedRecording = {
 export async function isOnline(): Promise<boolean> {
   try {
     const state = await Network.getNetworkStateAsync();
-    return state.isInternetReachable === true;
+    // `isInternetReachable` is frequently null/undefined (= "unknown") on iOS,
+    // especially right after a network change. Treating "unknown" as offline is
+    // the main cause of spurious offline flapping, so only declare offline when
+    // the OS reports an explicit failure: no connection at all, or reachability
+    // explicitly false. Unknown reachability is assumed online.
+    if (state.isConnected === false) return false;
+    if (state.isInternetReachable === false) return false;
+    return true;
   } catch {
-    return false;
+    // A probe error should not punish the user with a false offline state;
+    // network calls that genuinely fail will surface their own errors.
+    return true;
   }
 }
 

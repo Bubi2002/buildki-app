@@ -29,6 +29,7 @@ import {
   updateDefectStatus,
   getDefectStats,
   recordDefectCreated,
+  recordPriorityChanged,
   recordPhotoAdded,
   recordPhotoRemoved,
   getDefectHistory,
@@ -294,6 +295,18 @@ export default function DefectsScreen() {
     hoch: "priority-high",
     mittel: "remove",
     niedrig: "arrow-downward",
+  };
+
+  const priorityLabels: Record<DefectPriority, string> = {
+    hoch: t('prioritaet_hoch'),
+    mittel: t('prioritaet_mittel'),
+    niedrig: t('prioritaet_niedrig'),
+  };
+
+  const priorityColors: Record<DefectPriority, string> = {
+    hoch: colors.error,
+    mittel: colors.warning,
+    niedrig: colors.muted,
   };
 
   const openDetail = async (defect: Defect) => {
@@ -647,8 +660,8 @@ export default function DefectsScreen() {
                       {statusLabels[selectedDefect.status]}
                     </Text>
                   </View>
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.border + "40" }}>
-                    <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.priority}</Text>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: priorityColors[selectedDefect.priority] + "20" }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: priorityColors[selectedDefect.priority] }}>{priorityLabels[selectedDefect.priority]}</Text>
                   </View>
                   <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.border + "40" }}>
                     <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.category}</Text>
@@ -822,6 +835,43 @@ export default function DefectsScreen() {
                       >
                         <Text style={{ fontSize: 11, fontWeight: "600", color: selectedDefect.status === s ? statusColors[s] : colors.muted }}>
                           {statusLabels[s]}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Quick Priority Change */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('prioritaet')}</Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {(["niedrig", "mittel", "hoch"] as DefectPriority[]).map((p) => (
+                      <Pressable
+                        key={p}
+                        onPress={async () => {
+                          if (selectedDefect.priority === p) return;
+                          const oldPriority = selectedDefect.priority;
+                          const updated = { ...selectedDefect, priority: p, updatedAt: new Date().toISOString() };
+                          await saveDefect(updated);
+                          await recordPriorityChanged(selectedDefect.id, oldPriority, p);
+                          setSelectedDefect(updated);
+                          const history = await getDefectHistory(selectedDefect.id);
+                          setDefectHistoryEntries(history);
+                          await loadDefects();
+                          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={({ pressed }) => [{
+                          flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                          paddingVertical: 10, paddingHorizontal: 8, borderRadius: 0,
+                          borderWidth: 1,
+                          borderColor: selectedDefect.priority === p ? priorityColors[p] : colors.border,
+                          backgroundColor: selectedDefect.priority === p ? priorityColors[p] + "15" : "transparent",
+                          opacity: pressed ? 0.7 : 1,
+                        }]}
+                      >
+                        <MaterialIcons name={priorityIcons[p] as any} size={16} color={selectedDefect.priority === p ? priorityColors[p] : colors.muted} />
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: selectedDefect.priority === p ? priorityColors[p] : colors.muted }}>
+                          {priorityLabels[p]}
                         </Text>
                       </Pressable>
                     ))}

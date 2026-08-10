@@ -17,7 +17,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { getDefects, updateDefectStatus, type Defect } from "@/lib/defect-store";
+import { getDefects, updateDefectStatus, saveDefect, recordPriorityChanged, type Defect, type DefectPriority } from "@/lib/defect-store";
 import { requestReinspection } from "@/lib/defect-comments";
 import { scheduleFollowUpForDefect, sendImmediateNotification } from "@/lib/notification-service";
 import { addHistoryEntry } from "@/lib/defect-store";
@@ -178,6 +178,32 @@ export default function FollowUpScreen() {
     setShowDatePicker(true);
   };
 
+  const changePriority = (defect: Defect) => {
+    const options: { label: string; value: DefectPriority }[] = [
+      { label: t('defect_priority_low'), value: "niedrig" },
+      { label: t('defect_priority_medium'), value: "mittel" },
+      { label: t('defect_priority_high'), value: "hoch" },
+    ];
+    Alert.alert(
+      t('prioritaet'),
+      undefined,
+      [
+        ...options.map((o) => ({
+          text: defect.priority === o.value ? `✓ ${o.label}` : o.label,
+          onPress: async () => {
+            if (defect.priority === o.value) return;
+            const oldPriority = defect.priority;
+            await saveDefect({ ...defect, priority: o.value, updatedAt: new Date().toISOString() });
+            await recordPriorityChanged(defect.id, oldPriority, o.value);
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await loadFollowUps();
+          },
+        })),
+        { text: t('btn_abbrechen'), style: "cancel" as const },
+      ]
+    );
+  };
+
   const getStatusColor = (defect: Defect): string => {
     if (!defect.followUpDate) return colors.muted;
     if (defect.followUpDate < today) return "#F87171"; // overdue
@@ -202,7 +228,15 @@ export default function FollowUpScreen() {
     return (
       <View style={[styles.card, { borderColor: isOverdue ? "#F8717140" : isToday ? "#FBBF2440" : "#1E3A5F" }]}>
         <View style={styles.cardHeader}>
-          <View style={[styles.statusIndicator, { backgroundColor: statusColor }]} />
+          <Pressable
+            onPress={() => markInspectionDone(item)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t('follow_up_complete_title' as any)}
+            style={({ pressed }) => [styles.checkCircle, { opacity: pressed ? 0.5 : 1 }]}
+          >
+            <MaterialIcons name="radio-button-unchecked" size={26} color={statusColor} />
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
@@ -265,11 +299,15 @@ export default function FollowUpScreen() {
               <Text style={styles.footerChipText}>{item.assignee}</Text>
             </View>
           )}
-          <View style={[styles.footerChip, { backgroundColor: item.priority === "hoch" ? "#F8717115" : item.priority === "mittel" ? "#FBBF2415" : "#4ADE8015" }]}>
+          <Pressable
+            onPress={() => changePriority(item)}
+            style={({ pressed }) => [styles.footerChip, { backgroundColor: item.priority === "hoch" ? "#F8717115" : item.priority === "mittel" ? "#FBBF2415" : "#4ADE8015", opacity: pressed ? 0.6 : 1 }]}
+          >
+            <MaterialIcons name="edit" size={11} color={item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : "#4ADE80"} />
             <Text style={[styles.footerChipText, { color: item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : "#4ADE80" }]}>
               {item.priority === "hoch" ? t('defect_priority_high') : item.priority === "mittel" ? t('defect_priority_medium') : t('defect_priority_low')}
             </Text>
-          </View>
+          </Pressable>
           {item.positionCode && (
             <View style={styles.footerChip}>
               <Text style={styles.footerChipText}>{item.positionCode}</Text>
@@ -549,6 +587,13 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 2,
     marginTop: 2,
+  },
+  checkCircle: {
+    width: 30,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
   },
   cardTitle: {
     fontSize: 15,

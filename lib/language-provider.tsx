@@ -5,7 +5,7 @@ import { translations, type Language, type TranslationKey } from "@/lib/i18n";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 
 const LANGUAGE_KEY = "app_language";
-const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr", "uk", "pl", "ru", "ro", "bg", "tr"];
+const SUPPORTED_LANGUAGES: Language[] = ["de", "en", "fr", "es", "uk", "pl", "ru", "ro", "bg", "tr"];
 
 // Map a device region/country code to a supported app language, used when the
 // phone's UI language itself isn't one we support.
@@ -13,6 +13,9 @@ const REGION_TO_LANGUAGE: Record<string, Language> = {
   DE: "de", AT: "de", CH: "de", LI: "de",
   GB: "en", US: "en", IE: "en", AU: "en", CA: "en", NZ: "en",
   FR: "fr", BE: "fr", LU: "fr", MC: "fr",
+  ES: "es", MX: "es", AR: "es", CO: "es", CL: "es", PE: "es", VE: "es",
+  EC: "es", GT: "es", CU: "es", BO: "es", DO: "es", HN: "es", PY: "es",
+  SV: "es", NI: "es", CR: "es", PA: "es", UY: "es", PR: "es",
   UA: "uk",
   PL: "pl",
   RU: "ru", BY: "ru", KZ: "ru",
