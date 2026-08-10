@@ -19,6 +19,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import { TradePicker } from "@/components/trade-picker";
 import {
@@ -143,6 +145,54 @@ export default function DiaryScreen() {
     return `${days[d.getDay()]}, ${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   };
 
+  const exportPdf = async () => {
+    if (entries.length === 0) {
+      Alert.alert(t('bautagebuch'), t('noch_keine_eintraege'));
+      return;
+    }
+    try {
+      const esc = (s: string) =>
+        String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const nl2br = (s: string) => esc(s).replace(/\n/g, "<br/>");
+
+      const entriesHtml = entries.map((entry) => {
+        const meta: string[] = [];
+        if (entry.weather) meta.push(`${t('diary_weather_prefix' as any)}${esc(entry.weather.description)}, ${entry.weather.temperature}°C`);
+        if (entry.workersOnSite != null) meta.push(`${t('diary_workers_prefix' as any)}${entry.workersOnSite}`);
+        if (entry.workHours) meta.push(`${t('diary_worktime_prefix' as any)}${esc(entry.workHours.from)} – ${esc(entry.workHours.to)}`);
+
+        const block = (label: string, items: string[]) =>
+          items.length
+            ? `<div style="margin-top:10px;"><div style="font-size:13px; font-weight:600; color:#111827; margin-bottom:4px;">${esc(label)}</div>${items.map((i) => `<div style="font-size:13px; color:#374151; margin-bottom:2px;">• ${nl2br(i)}</div>`).join("")}</div>`
+            : "";
+
+        return `<div style="border:1px solid #E5E7EB; padding:16px; margin-bottom:12px;">
+          <div style="font-size:16px; font-weight:700; color:#111827;">${esc(formatDate(entry.date))}</div>
+          ${meta.length ? `<div style="font-size:12px; color:#6B7280; margin-top:4px;">${meta.join(" · ")}</div>` : ""}
+          ${block(t('diary_gewerke' as any), entry.trades || [])}
+          ${block(t('diary_activity_details' as any), entry.activities || [])}
+          ${block(t('lieferungen'), entry.deliveries || [])}
+          ${block(t('vorkommnisse'), entry.incidents || [])}
+          ${entry.notes ? `<div style="margin-top:10px;"><div style="font-size:13px; font-weight:600; color:#111827; margin-bottom:4px;">${esc(t('bemerkungen'))}</div><div style="font-size:13px; color:#374151;">${nl2br(entry.notes)}</div></div>` : ""}
+        </div>`;
+      }).join("");
+
+      const html = `<html><head><meta charset="utf-8"></head>
+        <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
+          <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('bautagebuch'))}</h1>
+          <div style="font-size:12px; color:#6B7280; margin:0 0 16px;">${entries.length} ${esc(t('diary_entries_label' as any))}</div>
+          ${entriesHtml}
+        </body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    }
+  };
+
   const renderEntry = ({ item }: { item: DiaryEntry }) => (
     <Pressable
       onPress={() => setSelectedEntry(item)}
@@ -205,6 +255,13 @@ export default function DiaryScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>{t('bautagebuch')}</Text>
+        <Pressable
+          onPress={exportPdf}
+          accessibilityLabel={t('pdf_teilen')}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+        >
+          <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
+        </Pressable>
         <Pressable onPress={() => setShowCreateModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="add" size={24} color={colors.primary} />
         </Pressable>

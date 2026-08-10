@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  Alert,
  Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -16,6 +17,8 @@ import * as Haptics from "expo-haptics";
 import { exportTasksAsCSV } from "@/lib/csv-export";
 import { useTranslation } from "@/lib/language-provider";
 import { timelineEngine } from "@/lib/timeline-engine";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 type TodoItem = {
   task: string;
@@ -194,6 +197,86 @@ export default function TasksScreen() {
   const openCount = allTodos.filter((t) => !t.done).length;
   const doneCount = allTodos.filter((t) => t.done).length;
 
+  const exportPdf = async () => {
+    // Respect the currently active filter (open / done / all)
+    if (filteredTodos.length === 0) {
+      Alert.alert(t('alert_fehler'), t('tasks_keine_aufgaben' as any));
+      return;
+    }
+
+    const esc = (s: string) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const priorityLabel = (p: ProtocolTodo["priority"]) =>
+      p === "hoch"
+        ? t('tasks_prioritaet_hoch' as any)
+        : p === "niedrig"
+        ? t('prioritaet_niedrig')
+        : t('prioritaet_mittel');
+
+    try {
+      const rows = filteredTodos
+        .map((item) => {
+          const assignee =
+            item.assignee && item.assignee !== t('nicht_zugewiesen')
+              ? item.assignee
+              : "—";
+          const deadline =
+            item.deadline && item.deadline !== t('frist_offen')
+              ? item.deadline
+              : "—";
+          const status = item.done ? t('status_erledigt') : t('status_offen');
+          return `<tr>
+            <td>${esc(item.task)}</td>
+            <td>${esc(assignee)}</td>
+            <td>${esc(priorityLabel(item.priority))}</td>
+            <td>${esc(deadline)}</td>
+            <td>${esc(status)}</td>
+          </tr>`;
+        })
+        .join("");
+
+      const generated = new Date().toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+
+      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
+        <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('tasks_aufgaben' as any))}</h1>
+        <p style="font-size:12px; color:#6B7280; margin:0 0 20px;">${esc(generated)}</p>
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+          <thead>
+            <tr style="background:#F3F4F6; text-align:left;">
+              <th style="padding:8px; border:1px solid #E5E7EB;">Aufgabe</th>
+              <th style="padding:8px; border:1px solid #E5E7EB;">Zuständig</th>
+              <th style="padding:8px; border:1px solid #E5E7EB;">Priorität</th>
+              <th style="padding:8px; border:1px solid #E5E7EB;">Fällig</th>
+              <th style="padding:8px; border:1px solid #E5E7EB;">Status</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body></html>`.replace(
+        /<td>/g,
+        '<td style="padding:8px; border:1px solid #E5E7EB;">'
+      );
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          UTI: "com.adobe.pdf",
+        });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    }
+  };
+
   const renderTodo = ({ item }: { item: ProtocolTodo }) => {
     const date = new Date(item.protocolDate).toLocaleDateString("de-DE", {
       day: "2-digit",
@@ -320,6 +403,13 @@ export default function TasksScreen() {
         {csvEnabled && <Pressable onPress={exportTasksAsCSV} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}>
           <MaterialIcons name="file-download" size={22} color={colors.primary} />
         </Pressable>}
+        <Pressable
+          onPress={exportPdf}
+          accessibilityLabel={t('pdf_teilen')}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
+        </Pressable>
       </View>
 
       {/* Stats */}

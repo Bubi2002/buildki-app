@@ -23,6 +23,8 @@ import {
   Share,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -220,6 +222,39 @@ export default function BautagebuchScreen() {
     } catch {}
   };
 
+  const exportPdf = async (entry: BautagebuchEntry) => {
+    if (!entry.fullReport) return;
+    try {
+      const esc = (s: string) =>
+        String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const dateLabel = new Date(entry.date).toLocaleDateString("de-DE", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+      const meta: string[] = [];
+      if (entry.projectName) meta.push(esc(entry.projectName));
+      if (entry.weather) meta.push(esc(entry.weather));
+      if (entry.attendanceCount != null) meta.push(`${t('bautagebuch_present' as any)}: ${entry.attendanceCount}`);
+      if (entry.defectsCount != null) meta.push(`${t('offene_maengel')}: ${entry.defectsCount}`);
+      const reportHtml = esc(entry.fullReport).replace(/\n/g, "<br/>");
+      const html = `<html><head><meta charset="utf-8"></head>
+        <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
+          <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('bautagebuch'))}</h1>
+          <div style="font-size:14px; color:#374151; margin:0 0 4px;">${esc(dateLabel)}</div>
+          ${meta.length ? `<div style="font-size:12px; color:#6B7280; margin:0 0 16px;">${meta.join(" · ")}</div>` : ""}
+          <div style="font-size:13px; line-height:1.6; color:#1F2937; white-space:pre-wrap;">${reportHtml}</div>
+        </body></html>`;
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    }
+  };
+
   const handleDelete = (entry: BautagebuchEntry) => {
     Alert.alert(
       t('btn_loeschen'),
@@ -253,6 +288,13 @@ export default function BautagebuchScreen() {
           <Text className="text-xl font-bold text-foreground ml-2 flex-1" numberOfLines={1}>
             {new Date(selectedEntry.date).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short" })}
           </Text>
+          <TouchableOpacity
+            onPress={() => exportPdf(selectedEntry)}
+            style={{ padding: 8 }}
+            accessibilityLabel={t('pdf_teilen')}
+          >
+            <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => handleShare(selectedEntry)} style={{ padding: 8 }}>
             <MaterialIcons name="share" size={22} color={colors.primary} />
           </TouchableOpacity>

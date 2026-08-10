@@ -56,8 +56,13 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Video uploads send the file as a base64 string inside the JSON body, which
+  // inflates the binary by ~34%. The audio route allows videos up to 50 MB
+  // (decoded), so the raw JSON body can reach ~67 MB — the previous 50 MB limit
+  // rejected those uploads with a 413 before the route ran. Allow headroom for
+  // the base64 expansion plus JSON overhead.
+  app.use(express.json({ limit: "75mb" }));
+  app.use(express.urlencoded({ limit: "75mb", extended: true }));
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);

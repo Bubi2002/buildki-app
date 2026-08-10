@@ -25,7 +25,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
@@ -92,6 +92,10 @@ export default function VideoUploadScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
+  // "VoiceNote KI" entry point: same upload → transcribe → protocol pipeline,
+  // but audio-first (voice messages from WhatsApp/Files) instead of video.
+  const isAudioMode = params.mode === "audio";
   const { loading: authLoading, isAuthenticated } = useAuth();
   const { isConnected } = useNetworkStatus();
   const uploadGate = getVideoUploadGate({
@@ -258,6 +262,41 @@ export default function VideoUploadScreen() {
             status: "pending",
           });
         }
+        setQueue(prev => [...prev, ...newItems]);
+      }
+    } catch (err: any) {
+      Alert.alert(t('error'), err.message || t('video_upload_dateien_load_failed' as any));
+    }
+  };
+
+  const pickAudioFiles = async () => {
+    try {
+      const invocation = await filePickerGuard.current.run(async () => {
+        setIsFilePickerOpen(true);
+        try {
+          return await DocumentPicker.getDocumentAsync({
+            type: ["audio/*"],
+            copyToCacheDirectory: true,
+            multiple: true,
+          });
+        } finally {
+          setIsFilePickerOpen(false);
+        }
+      });
+
+      if (!invocation.started) return;
+      const result = invocation.value;
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newItems: QueueItem[] = result.assets.map((asset) => ({
+          video: {
+            uri: asset.uri,
+            name: asset.name,
+            mimeType: asset.mimeType || "audio/m4a",
+            size: asset.size || undefined,
+            source: "file",
+          },
+          status: "pending",
+        }));
         setQueue(prev => [...prev, ...newItems]);
       }
     } catch (err: any) {
@@ -629,7 +668,7 @@ export default function VideoUploadScreen() {
         <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('video_upload_video_import_title' as any)}</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{isAudioMode ? t('voice_note_import_title' as any) : t('video_upload_video_import_title' as any)}</Text>
         {queue.length > 0 && step === "idle" && (
           <Pressable onPress={reset} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
             <Text style={{ color: "#F87171", fontSize: 14, fontWeight: "600" }}>{t('video_upload_leeren' as any)}</Text>
@@ -690,55 +729,83 @@ export default function VideoUploadScreen() {
         {queue.length === 0 && step === "idle" && (
           <>
             <View style={styles.introSection}>
-              <MaterialIcons name="videocam" size={40} color="#5DADE2" />
-              <Text style={[styles.introTitle, { color: colors.foreground }]}>{t('video_upload_video_importieren' as any)}</Text>
+              <MaterialIcons name={isAudioMode ? "record-voice-over" : "videocam"} size={40} color="#5DADE2" />
+              <Text style={[styles.introTitle, { color: colors.foreground }]}>{isAudioMode ? t('voice_note_import_intro_title' as any) : t('video_upload_video_importieren' as any)}</Text>
               <Text style={[styles.introText, { color: colors.muted }]}>
-                {t('video_upload_intro_text' as any)}
+                {isAudioMode ? t('voice_note_import_intro_text' as any) : t('video_upload_intro_text' as any)}
               </Text>
             </View>
 
             <View style={styles.pickSection}>
-              <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
-                <MaterialIcons name="photo-library" size={28} color="#5DADE2" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pickButtonTitle}>{t('video_upload_galerie_whatsapp' as any)}</Text>
-                  <Text style={styles.pickButtonHint}>{t('video_upload_videos_alle_apps' as any)}</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-              </Pressable>
+              {isAudioMode ? (
+                <Pressable
+                  onPress={pickAudioFiles}
+                  disabled={isFilePickerOpen}
+                  accessibilityState={{ disabled: isFilePickerOpen, busy: isFilePickerOpen }}
+                  style={({ pressed }) => [
+                    styles.pickButton,
+                    isFilePickerOpen && styles.pickButtonBusy,
+                    { opacity: pressed && !isFilePickerOpen ? 0.8 : 1 },
+                  ]}
+                >
+                  <MaterialIcons name="graphic-eq" size={28} color="#26C6DA" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pickButtonTitle}>{t('voice_note_pick_title' as any)}</Text>
+                    <Text style={styles.pickButtonHint}>
+                      {isFilePickerOpen ? t('video_upload_dateiauswahl_offen' as any) : t('voice_note_pick_hint' as any)}
+                    </Text>
+                  </View>
+                  {isFilePickerOpen ? (
+                    <ActivityIndicator size="small" color="#26C6DA" />
+                  ) : (
+                    <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                  )}
+                </Pressable>
+              ) : (
+                <>
+                  <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="photo-library" size={28} color="#5DADE2" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pickButtonTitle}>{t('video_upload_galerie_whatsapp' as any)}</Text>
+                      <Text style={styles.pickButtonHint}>{t('video_upload_videos_alle_apps' as any)}</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                  </Pressable>
 
-              <Pressable
-                onPress={pickFromFiles}
-                disabled={isFilePickerOpen}
-                accessibilityState={{ disabled: isFilePickerOpen, busy: isFilePickerOpen }}
-                style={({ pressed }) => [
-                  styles.pickButton,
-                  isFilePickerOpen && styles.pickButtonBusy,
-                  { opacity: pressed && !isFilePickerOpen ? 0.8 : 1 },
-                ]}
-              >
-                <MaterialIcons name="folder-open" size={28} color="#FF9800" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pickButtonTitle}>{t('video_upload_dateien_downloads' as any)}</Text>
-                  <Text style={styles.pickButtonHint}>
-                    {isFilePickerOpen ? t('video_upload_dateiauswahl_offen' as any) : t('video_upload_email_dropbox_downloads' as any)}
-                  </Text>
-                </View>
-                {isFilePickerOpen ? (
-                  <ActivityIndicator size="small" color="#FF9800" />
-                ) : (
-                  <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-                )}
-              </Pressable>
+                  <Pressable
+                    onPress={pickFromFiles}
+                    disabled={isFilePickerOpen}
+                    accessibilityState={{ disabled: isFilePickerOpen, busy: isFilePickerOpen }}
+                    style={({ pressed }) => [
+                      styles.pickButton,
+                      isFilePickerOpen && styles.pickButtonBusy,
+                      { opacity: pressed && !isFilePickerOpen ? 0.8 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="folder-open" size={28} color="#FF9800" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pickButtonTitle}>{t('video_upload_dateien_downloads' as any)}</Text>
+                      <Text style={styles.pickButtonHint}>
+                        {isFilePickerOpen ? t('video_upload_dateiauswahl_offen' as any) : t('video_upload_email_dropbox_downloads' as any)}
+                      </Text>
+                    </View>
+                    {isFilePickerOpen ? (
+                      <ActivityIndicator size="small" color="#FF9800" />
+                    ) : (
+                      <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                    )}
+                  </Pressable>
 
-              <Pressable onPress={recordWithCamera} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
-                <MaterialIcons name="videocam" size={28} color="#E53935" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pickButtonTitle}>{t('kamera')}</Text>
-                  <Text style={styles.pickButtonHint}>{t('video_upload_neues_video' as any)}</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-              </Pressable>
+                  <Pressable onPress={recordWithCamera} style={({ pressed }) => [styles.pickButton, { opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="videocam" size={28} color="#E53935" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pickButtonTitle}>{t('kamera')}</Text>
+                      <Text style={styles.pickButtonHint}>{t('video_upload_neues_video' as any)}</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+                  </Pressable>
+                </>
+              )}
             </View>
           </>
         )}
@@ -754,7 +821,7 @@ export default function VideoUploadScreen() {
                     <Image source={{ uri: item.video.thumbnailUri }} style={styles.thumbnail} />
                   ) : (
                     <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-                      <MaterialIcons name="movie" size={20} color="#5DADE2" />
+                      <MaterialIcons name={isAudioMode ? "graphic-eq" : "movie"} size={20} color="#5DADE2" />
                     </View>
                   )}
                   <View style={{ flex: 1 }}>
@@ -772,7 +839,7 @@ export default function VideoUploadScreen() {
 
             {/* Add more */}
             <View style={styles.addMoreRow}>
-              <Pressable onPress={pickFromGallery} style={({ pressed }) => [styles.addMoreBtn, { opacity: pressed ? 0.7 : 1 }]}>
+              <Pressable onPress={isAudioMode ? pickAudioFiles : pickFromGallery} style={({ pressed }) => [styles.addMoreBtn, { opacity: pressed ? 0.7 : 1 }]}>
                 <MaterialIcons name="add" size={16} color="#5DADE2" />
                 <Text style={styles.addMoreText}>{t('video_upload_weitere_hinzufuegen' as any)}</Text>
               </Pressable>
@@ -791,7 +858,9 @@ export default function VideoUploadScreen() {
             >
               <MaterialIcons name="auto-awesome" size={20} color="#fff" />
               <Text style={styles.processButtonText}>
-                {queue.length === 1 ? t('video_upload_video_verarbeiten' as any) : `${queue.length} ${t('video_upload_videos_verarbeiten_suffix' as any)}`}
+                {isAudioMode
+                  ? t('voice_note_verarbeiten' as any)
+                  : queue.length === 1 ? t('video_upload_video_verarbeiten' as any) : `${queue.length} ${t('video_upload_videos_verarbeiten_suffix' as any)}`}
               </Text>
             </Pressable>
           </>
@@ -863,6 +932,25 @@ export default function VideoUploadScreen() {
             <MaterialIcons name="error-outline" size={40} color="#F87171" />
             <Text style={[styles.errorTitle, { color: colors.foreground }]}>{t('video_upload_kein_video_verarbeitet' as any)}</Text>
             <Text style={[styles.errorMessage, { color: colors.muted }]}>{errorMessage}</Text>
+
+            {/* Show the actual per-video failure reason (e.g. "Video zu groß"), which
+                is otherwise hidden behind the generic message above. */}
+            {queue.some((item) => item.status === "error" && item.errorMessage) && (
+              <View style={styles.errorDetailList}>
+                {queue.map((item, index) =>
+                  item.status === "error" && item.errorMessage ? (
+                    <View key={index} style={[styles.errorDetailRow, { borderColor: colors.border }]}>
+                      <MaterialIcons name="warning" size={14} color="#F87171" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.errorDetailName, { color: colors.foreground }]} numberOfLines={1}>{item.video.name}</Text>
+                        <Text style={styles.errorDetailReason}>{item.errorMessage}</Text>
+                      </View>
+                    </View>
+                  ) : null,
+                )}
+              </View>
+            )}
+
             <View style={styles.errorActions}>
               <Pressable onPress={retryFailedVideos} style={({ pressed }) => [styles.retryButton, { opacity: pressed ? 0.8 : 1 }]}>
                 <MaterialIcons name="refresh" size={18} color="#07131F" />
@@ -970,6 +1058,10 @@ const styles = StyleSheet.create({
   errorSection: { alignItems: "center", gap: 12, paddingVertical: 40 },
   errorTitle: { fontSize: 18, fontWeight: "700" },
   errorMessage: { fontSize: 14, textAlign: "center", maxWidth: 300 },
+  errorDetailList: { width: "100%", gap: 6, marginTop: 4 },
+  errorDetailRow: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderWidth: 1 },
+  errorDetailName: { fontSize: 13, fontWeight: "600" },
+  errorDetailReason: { fontSize: 12, color: "#F87171", marginTop: 1 },
   errorActions: { width: "100%", gap: 10, marginTop: 8 },
   retryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "#5DADE2" },
   retryButtonText: { fontSize: 14, fontWeight: "700", color: "#07131F" },

@@ -3,6 +3,8 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Share, Pla
 import { useLocalSearchParams, router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
@@ -70,18 +72,11 @@ export default function ProjectExportScreen() {
     setSelectedProtocols(new Set());
   };
 
-  const exportProject = async () => {
-    if (selectedProtocols.size === 0) {
-      Alert.alert(t('alert_keine_auswahl'), t('msg_bitte_waehle_mindestens_ein_protokoll'));
-      return;
-    }
+  const buildExportText = () => {
+    const selected = protocols.filter((p) => selectedProtocols.has(p.id));
+    let exportText = "";
 
-    setIsExporting(true);
-    try {
-      const selected = protocols.filter((p) => selectedProtocols.has(p.id));
-      let exportText = "";
-
-      // Header
+    // Header
       exportText += `═══════════════════════════════════════\n`;
       exportText += `PROJEKT-EXPORT: ${project.name}\n`;
       exportText += `═══════════════════════════════════════\n\n`;
@@ -121,6 +116,19 @@ export default function ProjectExportScreen() {
       exportText += `Generiert mit BuildKI\n`;
       exportText += `═══════════════════════════════════════\n`;
 
+    return exportText;
+  };
+
+  const exportProject = async () => {
+    if (selectedProtocols.size === 0) {
+      Alert.alert(t('alert_keine_auswahl'), t('msg_bitte_waehle_mindestens_ein_protokoll'));
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const exportText = buildExportText();
+
       // Share
       if (Platform.OS === "web") {
         // On web, copy to clipboard
@@ -136,6 +144,28 @@ export default function ProjectExportScreen() {
       }
     } catch  {
       Alert.alert(t('alert_fehler'), t('msg_export_konnte_nicht_erstellt_werden'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportPdf = async () => {
+    if (selectedProtocols.size === 0) {
+      Alert.alert(t('alert_keine_auswahl'), t('msg_bitte_waehle_mindestens_ein_protokoll'));
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const exportText = buildExportText();
+      const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937; white-space:pre-wrap; font-size:12px;"><h1 style="font-size:20px; margin:0 0 16px;">${escape(project.name)}</h1>${escape(exportText)}</body></html>`;
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
     } finally {
       setIsExporting(false);
     }
@@ -228,12 +258,12 @@ export default function ProjectExportScreen() {
           )}
         </ScrollView>
 
-        {/* Export Button */}
-        <View style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
+        {/* Export Buttons */}
+        <View style={{ position: "absolute", bottom: 24, left: 20, right: 20, flexDirection: "row", gap: 8 }}>
           <Pressable
             onPress={exportProject}
             disabled={isExporting || selectedProtocols.size === 0}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 0, backgroundColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 0, backgroundColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
           >
             {isExporting ? (
               <ActivityIndicator size="small" color="#FFF" />
@@ -245,6 +275,16 @@ export default function ProjectExportScreen() {
                 </Text>
               </>
             )}
+          </Pressable>
+          <Pressable
+            onPress={exportPdf}
+            disabled={isExporting || selectedProtocols.size === 0}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 16, paddingHorizontal: 16, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <MaterialIcons name="picture-as-pdf" size={20} color={selectedProtocols.size > 0 ? colors.primary : colors.muted} />
+            <Text style={{ color: selectedProtocols.size > 0 ? colors.primary : colors.muted, fontSize: 16, fontWeight: "700" }}>
+              {t('pdf_teilen')}
+            </Text>
           </Pressable>
         </View>
       </View>

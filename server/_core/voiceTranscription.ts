@@ -111,13 +111,16 @@ export async function transcribeAudio(
       audioBuffer = Buffer.from(await response.arrayBuffer());
       mimeType = response.headers.get("content-type") || "audio/mpeg";
 
-      // Check file size (16MB limit)
+      // Check file size. Whisper accepts up to 25 MB and extracts the audio
+      // track from video containers (mp4/mov/webm) itself, so short video clips
+      // transcribe without needing a separate audio-extraction step.
+      const MAX_TRANSCRIBE_MB = 25;
       const sizeMB = audioBuffer.length / (1024 * 1024);
-      if (sizeMB > 16) {
+      if (sizeMB > MAX_TRANSCRIBE_MB) {
         return {
           error: "Audio file exceeds maximum size limit",
           code: "FILE_TOO_LARGE",
-          details: `File size is ${sizeMB.toFixed(2)}MB, maximum allowed is 16MB`,
+          details: `File size is ${sizeMB.toFixed(2)}MB, maximum allowed is ${MAX_TRANSCRIBE_MB}MB`,
         };
       }
     } catch (error) {

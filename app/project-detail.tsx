@@ -19,7 +19,9 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
-import { exportAndShareTasks, exportAndShareDefects } from "@/lib/excel-export";
+import { exportAndShareTasks } from "@/lib/excel-export";
+import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
+import { getDefects } from "@/lib/defect-store";
 import { useTranslation } from "@/lib/language-provider";
 
 type Project = {
@@ -145,9 +147,19 @@ export default function ProjectDetailScreen() {
 
   const handleDefectsExport = async () => {
     if (!project) return;
-    const success = await exportAndShareDefects(project.id);
-    if (!success) {
-      Alert.alert(t('hinweis'), t('msg_keine_maengel_zum_exportieren_vorhanden'));
+    try {
+      const defects = await getDefects(project.id);
+      if (defects.length === 0) {
+        Alert.alert(t('hinweis'), t('msg_keine_maengel_zum_exportieren_vorhanden'));
+        return;
+      }
+      const html = await generateDefectPdfHtml(project.id, project.name, { includePhotos: true });
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('defects_pdf_export_fehlgeschlagen' as any));
     }
   };
 
@@ -651,7 +663,7 @@ export default function ProjectDetailScreen() {
               <View style={[styles.toolIconBg, { backgroundColor: '#EF444415' }]}>
                 <MaterialIcons name="picture-as-pdf" size={22} color="#EF4444" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengelxls')}</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengelpdf')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)}

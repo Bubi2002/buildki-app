@@ -17,7 +17,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import { captureRef } from "react-native-view-shot";
+import * as Print from "expo-print";
+import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -143,11 +144,39 @@ export default function PhotoCompareScreen() {
   };
 
   const shareComparison = async () => {
-    if (!compareRef.current) return;
+    if (!selectedPair) return;
     try {
-      const uri = await captureRef(compareRef.current, { format: "png", quality: 0.9 });
-      await Sharing.shareAsync(uri, { mimeType: "image/png" });
-    } catch  {
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const toDataUri = async (uri?: string | null): Promise<string | null> => {
+        if (!uri) return null;
+        try {
+          const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          return `data:image/jpeg;base64,${b64}`;
+        } catch {
+          return null;
+        }
+      };
+      const beforeImg = await toDataUri(selectedPair.beforeUri);
+      const afterImg = await toDataUri(selectedPair.afterUri);
+      const cell = (label: string, color: string, date: string, img: string | null) => `
+        <td style="width:50%; vertical-align:top; padding:6px;">
+          <div style="font-weight:700; color:${color}; text-align:center; margin-bottom:6px; font-size:13px;">${label}</div>
+          ${img ? `<img src="${img}" style="width:100%; border:1px solid #E5E7EB; border-radius:6px;"/>` : `<div style="height:200px; border:1px dashed #E5E7EB; border-radius:6px;"></div>`}
+          <div style="text-align:center; color:#6B7280; font-size:11px; margin-top:6px;">${date}</div>
+        </td>`;
+      const html = `<html><head><meta charset="utf-8"></head>
+        <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
+          <h1 style="font-size:20px; margin:0 0 16px;">${esc(selectedPair.label || t('vergleich'))}</h1>
+          <table style="width:100%; border-collapse:collapse;"><tr>
+            ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
+            ${cell(t('nachher'), "#22C55E", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
+          </tr></table>
+        </body></html>`;
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch {
       Alert.alert(t('alert_fehler'), t('msg_vergleich_konnte_nicht_geteilt_werden'));
     }
   };

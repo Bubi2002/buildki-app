@@ -17,6 +17,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import {
   Checklist,
@@ -100,6 +102,54 @@ export default function ChecklistsScreen() {
     setActiveResult(null);
     setSelectedChecklist(null);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const exportPdf = async (checklist: Checklist, result: ChecklistResult) => {
+    try {
+      if (!checklist.items.length) {
+        Alert.alert(t('alert_fehler'), t('keine_checklisten'));
+        return;
+      }
+      const esc = (s: string) =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      const rate = getChecklistCompletionRate(result);
+      const dateStr = new Date(result.createdAt).toLocaleDateString("de-DE");
+      const rows = checklist.items
+        .map((item) => {
+          const r = result.results.find((x) => x.itemId === item.id);
+          const status = r?.checked ? "✓ erledigt" : "✗ offen";
+          const color = r?.checked ? "#059669" : "#DC2626";
+          const note = r?.note
+            ? `<div style="font-size:12px; color:#6B7280; margin-top:4px;">${esc(r.note)}</div>`
+            : "";
+          return `<tr>
+            <td style="padding:8px 10px; border-bottom:1px solid #E5E7EB; vertical-align:top;">${esc(item.text)}${
+              item.required ? ' <span style="color:#DC2626; font-size:11px;">*</span>' : ""
+            }${note}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #E5E7EB; white-space:nowrap; color:${color}; font-weight:600; vertical-align:top;">${status}</td>
+          </tr>`;
+        })
+        .join("");
+      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
+        <h1 style="font-size:22px; margin:0 0 4px;">${esc(checklist.name)}</h1>
+        <div style="color:#6B7280; font-size:13px; margin-bottom:16px;">${esc(result.inspector)} • ${esc(dateStr)}${
+          result.location ? " • " + esc(result.location) : ""
+        }</div>
+        <div style="font-size:14px; margin-bottom:12px;"><strong>${rate}%</strong> ${esc(t('checklist_incomplete'))} — ${
+          result.results.filter((r) => r.checked).length
+        }/${result.results.length}</div>
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">${rows}</table>
+      </body></html>`;
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    }
   };
 
   const addItemToChecklist = async () => {
@@ -320,10 +370,21 @@ export default function ChecklistsScreen() {
             {selectedChecklist && activeResult && (
               <>
                 <View style={styles.detailHeader}>
-                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>{selectedChecklist.name}</Text>
-                  <Text style={[styles.detailProgress, { color: colors.muted }]}>
-                    {activeResult.results.filter((r) => r.checked).length}/{activeResult.results.length} geprüft
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.modalTitle, { color: colors.foreground }]}>{selectedChecklist.name}</Text>
+                      <Text style={[styles.detailProgress, { color: colors.muted }]}>
+                        {activeResult.results.filter((r) => r.checked).length}/{activeResult.results.length} geprüft
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => exportPdf(selectedChecklist, activeResult)}
+                      accessibilityLabel={t('pdf_teilen')}
+                      style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+                    >
+                      <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
+                    </Pressable>
+                  </View>
                 </View>
                 <FlatList
                   data={selectedChecklist.items}
