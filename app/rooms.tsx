@@ -189,6 +189,16 @@ export default function RoomsScreen() {
           </View>
         </View>
 
+        {/* Bedien-Hinweis: die Gesten sind sonst nicht erkennbar */}
+        <View style={styles.hint}>
+          <MaterialIcons name="info-outline" size={15} color="#5DADE2" />
+          <Text style={styles.hintText}>
+            Geschoss antippen = auf-/zuklappen · Raum antippen = Status weiter
+            (nicht begonnen → in Arbeit → fertig → abgenommen) · lang drücken = löschen.
+            Ein Raum auf „fertig" bewegt auch den Baufortschritt.
+          </Text>
+        </View>
+
         {/* Floor List */}
         {floors.map((floor) => {
           const floorRooms = getRoomsForFloor(floor.id);
@@ -381,6 +391,20 @@ const styles = StyleSheet.create({
   summaryItem: { alignItems: "center" },
   summaryValue: { fontSize: 18, fontWeight: "700", color: "#F0F4F8" },
   summaryLabel: { fontSize: 10, color: "#8FA3B8", marginTop: 2 },
+  hint: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: -8,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#0F1E30",
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+  },
+  hintText: { flex: 1, fontSize: 11, lineHeight: 16, color: "#8FA3B8" },
   // Floor
   floorSection: { marginHorizontal: 16, marginBottom: 8 },
   floorHeader: {

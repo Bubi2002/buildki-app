@@ -11,6 +11,7 @@
  */
 import { knowledgeLayer } from "./knowledge-layer";
 import { timelineEngine } from "./timeline-engine";
+import { getAllRooms } from "./room-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -146,6 +147,19 @@ class ProgressEngine {
     const openDefects = await knowledgeLayer.getOpenDefects(projectId, {});
     const openTasks = await knowledgeLayer.getOpenTasks(projectId, {});
 
+    // 1b. Manueller Raum-Status aus dem Raumbuch (Räume & Geschosse). Dieser
+    // vom Nutzer explizit gesetzte Status hat Vorrang vor der aus Signalen
+    // abgeleiteten Schätzung – "Raum auf fertig tippen" bewegt so den Fortschritt.
+    const manualRoomStatus = new Map<string, "nicht_begonnen" | "in_arbeit" | "fertig" | "abgenommen">();
+    try {
+      const structureRooms = await getAllRooms(projectId);
+      for (const structureRoom of structureRooms) {
+        if (structureRoom.status) {
+          manualRoomStatus.set(structureRoom.name.trim().toLowerCase(), structureRoom.status);
+        }
+      }
+    } catch {}
+
     // 2. Gather timeline events
     const events = await timelineEngine.query({ projectId, limit: 500 });
 
@@ -185,7 +199,20 @@ class ProgressEngine {
         status = "in_progress";
       }
 
-      const lastEntry = roomEntries.sort((a, b) => 
+      // Manuellen Raum-Status anwenden (Vorrang vor der Signal-Schätzung):
+      // fertig/abgenommen = 100 %, in Arbeit = mind. 50 %. "nicht begonnen"
+      // bzw. kein manueller Status -> abgeleitete Werte bleiben unveraendert,
+      // damit dokumentierte (aber nicht abgehakte) Raeume weiter Fortschritt zeigen.
+      const roomManualStatus = manualRoomStatus.get(room.trim().toLowerCase());
+      if (roomManualStatus === "fertig" || roomManualStatus === "abgenommen") {
+        percent = 100;
+        status = "completed";
+      } else if (roomManualStatus === "in_arbeit") {
+        percent = Math.max(percent, 50);
+        if (status === "not_started") status = "in_progress";
+      }
+
+      const lastEntry = roomEntries.sort((a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       )[0];
 

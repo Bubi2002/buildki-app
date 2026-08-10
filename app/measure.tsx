@@ -82,7 +82,7 @@ const METHODS: {
   },
 ];
 
-const UNITS = ["mm", "cm", "m", "m²", "°", "Stk."] as const;
+const UNITS = ["mm", "cm", "m", "in", "ft", "yd", "m²", "ft²", "yd²", "°", "Stk."] as const;
 type Unit = (typeof UNITS)[number];
 
 type ProjectRef = { id: string; name: string };
@@ -237,13 +237,13 @@ export default function MeasureScreen() {
         result: "tmpfile",
       });
       const measurement = createEvidenceMeasurement({
-        kind: unit === "m²" ? "area" : unit === "°" ? "angle" : unit === "Stk." ? "count" : "distance",
+        kind: unit === "m²" || unit === "ft²" || unit === "yd²" ? "area" : unit === "°" ? "angle" : unit === "Stk." ? "count" : "distance",
         value: numericValue,
         unit,
         method,
         accuracy: selectedMethod.accuracy,
         tolerance: numericTolerance,
-        toleranceUnit: numericTolerance != null ? (unit === "m²" || unit === "Stk." ? "%" : unit) : undefined,
+        toleranceUnit: numericTolerance != null ? (unit === "m²" || unit === "ft²" || unit === "yd²" || unit === "Stk." ? "%" : unit) : undefined,
         geometry: {
           points: [
             { x: startPoint.x / CANVAS_WIDTH, y: startPoint.y / CANVAS_HEIGHT },

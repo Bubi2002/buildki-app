@@ -35,11 +35,11 @@ export type EvidenceMeasurement = {
   id: string;
   kind: MeasurementKind;
   value: number;
-  unit: "mm" | "cm" | "m" | "m²" | "°" | "Stk.";
+  unit: "mm" | "cm" | "m" | "in" | "ft" | "yd" | "m²" | "ft²" | "yd²" | "°" | "Stk.";
   method: MeasurementMethod;
   accuracy: MeasurementAccuracy;
   tolerance?: number;
-  toleranceUnit?: "mm" | "cm" | "m" | "%" | "°";
+  toleranceUnit?: "mm" | "cm" | "m" | "in" | "ft" | "yd" | "%" | "°";
   geometry?: {
     points: EvidencePoint[];
   };
