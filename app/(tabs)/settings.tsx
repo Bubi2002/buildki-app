@@ -23,6 +23,7 @@ import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-
 // delegations removed from settings
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
+import { localizedLabel, templateNameKey, templateDescKey } from "@/lib/template-i18n";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "@/lib/language-provider";
 import { useThemeContext } from "@/lib/theme-provider";
@@ -1248,8 +1249,8 @@ return (
                     >
                       <MaterialIcons name={template.icon as any} size={22} color={isSelected ? colors.primary : colors.muted} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.templateName, { color: isSelected ? colors.primary : colors.foreground }]}>{template.name}</Text>
-                        <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={1}>{template.description}</Text>
+                        <Text style={[styles.templateName, { color: isSelected ? colors.primary : colors.foreground }]}>{localizedLabel(t, templateNameKey(template.id), template.name)}</Text>
+                        <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={1}>{localizedLabel(t, templateDescKey(template.id), template.description)}</Text>
                       </View>
                       {isSelected && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
                     </Pressable>
@@ -1305,10 +1306,10 @@ return (
                     {isSelected && <MaterialIcons name="check-circle" size={22} color={colors.primary} />}
                   </View>
                   <Text style={[styles.templateName, { color: isSelected ? colors.primary : colors.foreground }]} numberOfLines={2}>
-                    {template.name}
+                    {localizedLabel(t, templateNameKey(template.id), template.name)}
                   </Text>
                   <Text style={[styles.templateDescription, { color: colors.muted }]} numberOfLines={2}>
-                    {template.description}
+                    {localizedLabel(t, templateDescKey(template.id), template.description)}
                   </Text>
                   <Text style={{ color: isSelected ? colors.primary : colors.muted, fontSize: 10, fontWeight: "700", marginTop: 8 }}>
                     {isSelected ? t('settings_selected_upper' as any) : t('settings_select_upper' as any)}

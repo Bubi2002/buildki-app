@@ -74,7 +74,7 @@ export default function QuickNoteScreen() {
 
       const note = {
         id: Date.now().toString(),
-        title: title.trim() || `Notiz vom ${new Date().toLocaleDateString("de-DE")}`,
+        title: title.trim() || `${t('notiz_vom')} ${new Date().toLocaleDateString()}`,
         transcription: content.trim(),
         protocol: content.trim(),
         templateName: t('schnellnotiz'),

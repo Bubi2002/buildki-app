@@ -33,6 +33,7 @@ import { ReportMarkdownPreview } from "@/components/report-markdown-preview";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
+import { localizedLabel, reportTypeKey, reportTypeDescKey } from "@/lib/template-i18n";
 import { trpc } from "@/lib/trpc";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import { getDefects, type Defect } from "@/lib/defect-store";
@@ -447,9 +448,9 @@ export default function ReportGeneratorScreen() {
             <View style={[styles.typeIconBg, { backgroundColor: type.color + "15" }]}>
               <MaterialIcons name={type.icon as any} size={24} color={type.color} />
             </View>
-            <Text style={[styles.typeLabel, { color: colors.foreground }]}>{type.label}</Text>
+            <Text style={[styles.typeLabel, { color: colors.foreground }]}>{localizedLabel(t, reportTypeKey(type.id), type.label)}</Text>
             <Text style={[styles.typeDesc, { color: colors.muted }]} numberOfLines={2}>
-              {type.description}
+              {localizedLabel(t, reportTypeDescKey(type.id), type.description)}
             </Text>
           </Pressable>
         ))}
@@ -471,9 +472,9 @@ export default function ReportGeneratorScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.stepTitle, { color: colors.foreground, marginBottom: 0 }]}>
-                {config.label}
+                {localizedLabel(t, reportTypeKey(config.id), config.label)}
               </Text>
-              <Text style={[styles.typeDesc, { color: colors.muted }]}>{config.description}</Text>
+              <Text style={[styles.typeDesc, { color: colors.muted }]}>{localizedLabel(t, reportTypeDescKey(config.id), config.description)}</Text>
             </View>
           </View>
 

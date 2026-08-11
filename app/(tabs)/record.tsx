@@ -32,6 +32,7 @@ import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, TEMPLATE_CATEGORIES, type ProtocolTemplate, type TemplateCategory } from "@/shared/templates";
+import { localizedLabel, templateNameKey, templateDescKey, templateCategoryKey } from "@/lib/template-i18n";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
@@ -1862,7 +1863,7 @@ export default function RecordScreen() {
             {t('record_processing_title' as any)}
           </Text>
           <Text style={{ fontSize: 14, color: colors.muted, marginTop: 6, textAlign: "center" }}>
-            {selectedTemplate.name} {t('record_being_created' as any)}
+            {localizedLabel(t, templateNameKey(selectedTemplate.id), selectedTemplate.name)} {t('record_being_created' as any)}
           </Text>
 
           {/* Step progress */}
@@ -2409,13 +2410,13 @@ export default function RecordScreen() {
                               },
                             ]}
                           >
-                            {template.name}
+                            {localizedLabel(t, templateNameKey(template.id), template.name)}
                           </Text>
                           <Text
                             style={[styles.templateListDesc, { color: colors.muted }]}
                             numberOfLines={1}
                           >
-                            {template.description}
+                            {localizedLabel(t, templateDescKey(template.id), template.description)}
                           </Text>
                         </View>
                         {selectedTemplate.id === template.id && (
@@ -2450,7 +2451,7 @@ export default function RecordScreen() {
               ]}
             >
               <MaterialIcons name={selectedTemplate.icon as any} size={16} color="#FFFFFF" />
-              <Text style={styles.templateBadgeText}>{selectedTemplate.name}</Text>
+              <Text style={styles.templateBadgeText}>{localizedLabel(t, templateNameKey(selectedTemplate.id), selectedTemplate.name)}</Text>
               <MaterialIcons name="expand-more" size={16} color="#FFFFFF" />
             </Pressable>
           )}
@@ -2817,7 +2818,7 @@ export default function RecordScreen() {
                     onPress={() => setNewTemplateCategory(cat.id)}
                     style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1, borderColor: newTemplateCategory === cat.id ? colors.primary : colors.border, backgroundColor: newTemplateCategory === cat.id ? colors.primary + "15" : "transparent", opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <Text style={{ fontSize: 13, color: newTemplateCategory === cat.id ? colors.primary : colors.foreground }}>{cat.name}</Text>
+                    <Text style={{ fontSize: 13, color: newTemplateCategory === cat.id ? colors.primary : colors.foreground }}>{localizedLabel(t, templateCategoryKey(cat.id), cat.name)}</Text>
                   </Pressable>
                 ))}
               </View>
