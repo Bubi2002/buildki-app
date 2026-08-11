@@ -8,7 +8,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { getDefects, getDefectStats } from "@/lib/defect-store";
 import { getOverdueDefects } from "@/lib/defect-pdf-export";
 import { progressEngine } from "@/lib/progress-engine";
-import { timelineEngine, type TimelineEvent, getEventTypeLabel, getEventTypeColor } from "@/lib/timeline-engine";
+import { timelineEngine, type TimelineEvent } from "@/lib/timeline-engine";
 import { getProjectStructure } from "@/lib/room-store";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { filterDashboardItemsByProject, normalizeDashboardProjectId } from "@/lib/dashboard-project-context";
@@ -343,7 +343,9 @@ export default function AIWorkbenchScreen() {
             style={({ pressed }) => [styles.projectSelectorToggle, { opacity: pressed ? 0.8 : 1 }]}
           >
             <View style={styles.projectSelectorLeft}>
-              <View style={[styles.projectDot, { backgroundColor: selectedProject?.color || '#E53935' }]} />
+              <View style={[styles.projectIconBox, { backgroundColor: (selectedProject?.color || '#5DADE2') + '22', borderColor: (selectedProject?.color || '#5DADE2') + '55' }]}>
+                <MaterialIcons name={selectedProject ? 'folder' : 'create-new-folder'} size={26} color={selectedProject?.color || '#5DADE2'} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
                 <Text style={styles.projectSelectorName} numberOfLines={1}>
@@ -351,7 +353,9 @@ export default function AIWorkbenchScreen() {
                 </Text>
               </View>
             </View>
-            <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={24} color="#8FA3B8" />
+            <View style={styles.projectSelectorChevron}>
+              <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={24} color="#5DADE2" />
+            </View>
           </Pressable>
           {selectedProject ? (
             <Pressable
@@ -555,32 +559,6 @@ export default function AIWorkbenchScreen() {
           )}
         </View>
 
-        {/* ─── Recent Activity ────────────────────────────────────────────── */}
-        {selectedProject && stats.recentEvents.length > 0 && (
-          <View style={styles.activitySection}>
-            <View style={styles.activityHeader}>
-              <Text style={styles.activityTitle}>{t('index_letzte_aktivitaeten' as any)}</Text>
-              <Pressable onPress={() => navigateModule("/smart-timeline")} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={styles.activityMore}>{t('index_alle_anzeigen' as any)}</Text>
-              </Pressable>
-            </View>
-            {stats.recentEvents.map((event) => (
-              <View key={event.id} style={styles.activityItem}>
-                <View style={[styles.activityDot, { backgroundColor: getEventTypeColor(event.eventType) }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.activityItemTitle} numberOfLines={1}>{event.title}</Text>
-                  <Text style={styles.activityItemMeta}>
-                    {getEventTypeLabel(event.eventType)} {event.roomName ? `• ${event.roomName}` : ""}
-                  </Text>
-                </View>
-                <Text style={styles.activityTime}>
-                  {formatRelativeTime(event.timestamp, t)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
         {/* ─── Neue Aufnahme ───────────────────────────────────────────── */}
         <View style={styles.quickActionsRow}>
           <Pressable
@@ -664,44 +642,31 @@ export default function AIWorkbenchScreen() {
 }
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
-function formatRelativeTime(timestamp: string, t: (key: any) => string): string {
-  const now = Date.now();
-  const then = new Date(timestamp).getTime();
-  const diff = now - then;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return t('index_time_now');
-  if (minutes < 60) return `${minutes} ${t('index_time_min')}`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ${t('index_time_std')}`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} ${t('index_time_tag')}`;
-  return new Date(timestamp).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-}
-
 const styles = StyleSheet.create({
   // ─── Project Selector ──────────────────────────────────────────────────────
   projectSelector: {
     flexDirection: 'row',
     alignItems: 'stretch',
     marginHorizontal: 16,
-    marginTop: 14,
-    backgroundColor: '#0F1E30',
-    borderWidth: 1,
-    borderColor: '#1E3A5F',
-    borderRadius: 0,
+    marginTop: 16,
+    backgroundColor: '#12263E',
+    borderWidth: 1.5,
+    borderColor: '#2E5A86',
+    borderRadius: 12,
     overflow: 'hidden',
   },
   projectSelectorToggle: {
     flex: 1,
-    minHeight: 72,
+    minHeight: 88,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   activeProjectDeleteButton: {
-    width: 52,
-    minHeight: 72,
+    width: 56,
+    minHeight: 88,
     alignItems: 'center',
     justifyContent: 'center',
     borderLeftWidth: 1,
@@ -711,26 +676,37 @@ const styles = StyleSheet.create({
   projectSelectorLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 14,
     flex: 1,
   },
-  projectDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  projectIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  projectSelectorChevron: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#5DADE21A',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   projectSelectorLabel: {
-    fontSize: 10,
-    color: '#8FA3B8',
+    fontSize: 11,
+    color: '#7FB3DE',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   projectSelectorName: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#F0F4F8',
-    marginTop: 2,
+    marginTop: 3,
   },
   projectDropdown: {
     marginHorizontal: 16,
