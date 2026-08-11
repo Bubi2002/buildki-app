@@ -690,7 +690,6 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
-  const { setLanguage: globalSetLanguage } = useTranslation();
   const { setThemeMode } = useThemeContext();
   // Force dark mode always
   useEffect(() => { setThemeMode("dark"); }, []);
@@ -1696,52 +1695,8 @@ return (
           </View>
         </View>
 
-        {/* Language Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {t('settings_language_title' as any)}
-          </Text>
-          <View style={styles.optionRow}>
-            <Pressable
-              onPress={() => { updateSetting("language", "de"); globalSetLanguage("de"); }}
-              style={[
-                styles.optionButton,
-                {
-                  backgroundColor: settings.language === "de" ? colors.primary : colors.surface,
-                  borderColor: settings.language === "de" ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  { color: settings.language === "de" ? "#FFFFFF" : colors.foreground },
-                ]}
-              >
-                Deutsch
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => { updateSetting("language", "en"); globalSetLanguage("en"); }}
-              style={[
-                styles.optionButton,
-                {
-                  backgroundColor: settings.language === "en" ? colors.primary : colors.surface,
-                  borderColor: settings.language === "en" ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  { color: settings.language === "en" ? "#FFFFFF" : colors.foreground },
-                ]}
-              >
-                English
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+        {/* App language is chosen via the dedicated Sprache/Language screen
+            (full 10-language picker); the old de/en protocol toggle was removed. */}
 
         {/* Cloud Sync & Konto */}
         <View style={styles.section}>

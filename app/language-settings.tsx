@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { LANGUAGE_OPTIONS, type Language } from "@/lib/i18n";
+import { LANGUAGE_OPTIONS, t as translateTo, type Language } from "@/lib/i18n";
 import { useTranslation } from "@/lib/language-provider";
 
 export default function LanguageSettingsScreen() {
@@ -13,14 +13,13 @@ export default function LanguageSettingsScreen() {
 
   const selectLanguage = async (lang: Language) => {
     await setLanguage(lang);
+    // Render the whole confirmation in the TARGET language (the provider's `t`
+    // still holds the previous language on this tick, which is why the title
+    // used to appear in the old language).
     Alert.alert(
-      t('sprache_geaendert'),
-      lang === "de"
-        ? "Die App-Sprache wurde auf Deutsch umgestellt. Alle Texte werden jetzt auf Deutsch angezeigt."
-        : lang === "en"
-        ? "The app language has been changed to English. All texts will now be displayed in English."
-        : "La langue de l'application a été changée en français. Tous les textes seront affichés en français.",
-      [{ text: t('ok') }]
+      translateTo('sprache_geaendert', lang),
+      translateTo('sprache_geaendert_msg', lang),
+      [{ text: translateTo('ok', lang) }]
     );
   };
 
@@ -57,9 +56,6 @@ export default function LanguageSettingsScreen() {
               <Text style={{ fontSize: 28, marginRight: 14 }}>{option.flag}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>{option.name}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                  {option.id === "de" ? "Deutsch" : option.id === "en" ? "English" : "Français"}
-                </Text>
               </View>
               {currentLang === option.id && (
                 <MaterialIcons name="check-circle" size={22} color={colors.primary} />
