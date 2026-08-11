@@ -113,7 +113,11 @@ function escapeHtml(value?: string): string {
 
 function formatEvidenceSource(snapshot: DocumentEvidenceSnapshot): string {
   const parts = [snapshot.sourceLabel];
-  if (snapshot.videoTimecode) parts.push(`Zeitcode ${snapshot.videoTimecode}`);
+  // A timecode is only meaningful for a real video frame. A still photo's
+  // "offset" is often 0, so showing "Zeitcode 00:00" is wrong/noisy — omit it.
+  if (snapshot.sourceType === "video_frame" && (snapshot.videoTimeSeconds ?? 0) > 0 && snapshot.videoTimecode) {
+    parts.push(`Zeitcode ${snapshot.videoTimecode}`);
+  }
   if (snapshot.sourceFilename) parts.push(snapshot.sourceFilename);
   return parts.filter(Boolean).join(" · ");
 }
@@ -479,6 +483,15 @@ export function generatePdfHtml(
       if (isGutachten && /^\*\*Empfehlung|^\*\*Sanierungskonzept|^\*\*Ma\u00dfnahmen/i.test(trimmed)) {
         const title = trimmed.replace(/\*\*/g, '').replace(/:$/, '');
         return `<div class="gutachten-empfehlungsbox"><div class="gutachten-empfehlungsbox-title">${title}</div>`;
+      }
+      // Longest heading prefix first: "### "/"#### " would otherwise fail the
+      // "## " check (third char is '#', not a space) and fall through to <p>,
+      // printing the literal "###".
+      if (trimmed.startsWith("#### ")) {
+        return `<h4 style="margin-top: 14px; margin-bottom: 6px; color: #222; font-size: 12px; font-weight: 600;">${trimmed.substring(5).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</h4>`;
+      }
+      if (trimmed.startsWith("### ")) {
+        return `<h4 style="margin-top: 16px; margin-bottom: 6px; color: #111; font-size: 13px; font-weight: 600;">${trimmed.substring(4).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</h4>`;
       }
       if (trimmed.startsWith("## ")) {
         return `<h3 style="margin-top: 18px; margin-bottom: 8px; color: #111; font-size: 14px; font-weight: 600;">${trimmed.substring(3)}</h3>`;

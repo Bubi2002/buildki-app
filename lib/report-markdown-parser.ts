@@ -31,6 +31,10 @@ export function parseReportMarkdown(markdown: string): ReportMarkdownBlock[] {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: ReportMarkdownBlock[] = [];
   let index = 0;
+  // Remember the last real table's headers so a header-less continuation
+  // fragment (rows that appear after an interrupting image/blank line) can reuse
+  // them instead of eating its own first row as a bogus header.
+  let lastTableHeaders: string[] | null = null;
 
   while (index < lines.length) {
     const trimmed = lines[index].trim();
@@ -47,14 +51,30 @@ export function parseReportMarkdown(markdown: string): ReportMarkdownBlock[] {
       }
       const parsedRows = tableLines.map(parseTableCells);
       if (parsedRows.length > 0) {
-        const firstRow = parsedRows[0];
         const separatorIndex = parsedRows.findIndex((row, rowIndex) => rowIndex > 0 && isSeparatorRow(row));
-        const headersAreEmpty = firstRow.every((cell) => cell === "");
-        const headers = headersAreEmpty
-          ? ["Feld", "Angabe"]
-          : firstRow.map((cell, cellIndex) => cell || `Spalte ${cellIndex + 1}`);
-        const rows = parsedRows.filter((row, rowIndex) => rowIndex !== 0 && rowIndex !== separatorIndex && !isSeparatorRow(row));
-        blocks.push({ type: "table", headers, rows, keyValue: headersAreEmpty || headers.length === 2 && headers[0].toLocaleLowerCase("de-DE") === "feld" });
+        if (separatorIndex !== -1) {
+          // A real markdown table: first row is the header, followed by a separator.
+          const firstRow = parsedRows[0];
+          const headersAreEmpty = firstRow.every((cell) => cell === "");
+          const headers = headersAreEmpty
+            ? ["Feld", "Angabe"]
+            : firstRow.map((cell, cellIndex) => cell || `Spalte ${cellIndex + 1}`);
+          lastTableHeaders = headers;
+          const rows = parsedRows.filter((row, rowIndex) => rowIndex !== 0 && rowIndex !== separatorIndex && !isSeparatorRow(row));
+          blocks.push({ type: "table", headers, rows, keyValue: headersAreEmpty || (headers.length === 2 && headers[0].toLocaleLowerCase("de-DE") === "feld") });
+        } else {
+          // Header-less fragment (rows continuing after an interrupting image/line):
+          // every pipe row is data — do NOT drop the first one. Reuse the previous
+          // table's headers so it reads as a continuation.
+          const rows = parsedRows.filter((row) => !isSeparatorRow(row));
+          if (rows.length > 0) {
+            const colCount = Math.max(...rows.map((row) => row.length), lastTableHeaders?.length ?? 0, 2);
+            const headers = lastTableHeaders && lastTableHeaders.length === colCount
+              ? lastTableHeaders
+              : Array.from({ length: colCount }, (_, i) => `Spalte ${i + 1}`);
+            blocks.push({ type: "table", headers, rows, keyValue: false });
+          }
+        }
       }
       continue;
     }
