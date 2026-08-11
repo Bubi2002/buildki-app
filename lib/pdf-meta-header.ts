@@ -8,7 +8,7 @@ import type { ExportDetails } from "@/components/export-details-box";
  */
 export function buildExportDetailsHeaderHtml(
   info: ExportDetails | null | undefined,
-  labels: { bauvorhaben: string; etage: string; raum: string; notizen: string },
+  labels: { bauvorhaben: string; adresse: string; etage: string; raum: string; notizen: string },
 ): string {
   if (!info) return "";
   const esc = (s: string) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -22,6 +22,7 @@ export function buildExportDetailsHeaderHtml(
     }
   };
   add(labels.bauvorhaben, info.bauvorhaben);
+  add(labels.adresse, info.adresse);
   add(labels.etage, info.etage);
   add(labels.raum, info.raum);
   add(labels.notizen, info.notizen);

@@ -34,6 +34,8 @@ import { getCurrentLocation } from "@/lib/location-service";
 import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
+import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 
 type BautagebuchEntry = {
   id: string;
@@ -59,6 +61,7 @@ export default function BautagebuchScreen() {
   const [selectedEntry, setSelectedEntry] = useState<BautagebuchEntry | null>(null);
   const [manualNotes, setManualNotes] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
 
   const generateBautagebuch = trpc.analysis.generateBautagebuch.useMutation();
 
@@ -239,9 +242,14 @@ export default function BautagebuchScreen() {
       if (entry.attendanceCount != null) meta.push(`${t('bautagebuch_present' as any)}: ${entry.attendanceCount}`);
       if (entry.defectsCount != null) meta.push(`${t('offene_maengel')}: ${entry.defectsCount}`);
       const reportHtml = esc(entry.fullReport).replace(/\n/g, "<br/>");
+      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
+        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
+        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+      });
       const html = `<html><head><meta charset="utf-8"></head>
         <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
           <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('bautagebuch'))}</h1>
+          ${metaHeader}
           <div style="font-size:14px; color:#374151; margin:0 0 4px;">${esc(dateLabel)}</div>
           ${meta.length ? `<div style="font-size:12px; color:#6B7280; margin:0 0 16px;">${meta.join(" · ")}</div>` : ""}
           <div style="font-size:13px; line-height:1.6; color:#1F2937; white-space:pre-wrap;">${reportHtml}</div>
@@ -331,6 +339,9 @@ export default function BautagebuchScreen() {
               </Text>
             </View>
           )}
+
+          {/* Optional export details printed into the PDF header */}
+          <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
         </ScrollView>
       </ScreenContainer>
     );

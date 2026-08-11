@@ -20,6 +20,8 @@ import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
+import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import {
   Checklist,
   ChecklistItem,
@@ -53,6 +55,7 @@ export default function ChecklistsScreen() {
   const [inspectorName, setInspectorName] = useState("");
   const [newItemText, setNewItemText] = useState("");
   const [showAddItem, setShowAddItem] = useState(false);
+  const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,8 +136,13 @@ export default function ChecklistsScreen() {
           </tr>`;
         })
         .join("");
+      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
+        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
+        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+      });
       const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
         <h1 style="font-size:22px; margin:0 0 4px;">${esc(checklist.name)}</h1>
+        ${metaHeader}
         <div style="color:#6B7280; font-size:13px; margin-bottom:16px;">${esc(result.inspector)} • ${esc(dateStr)}${
           result.location ? " • " + esc(result.location) : ""
         }</div>
@@ -462,6 +470,7 @@ export default function ChecklistsScreen() {
                     <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('label_pruefpunkt_hinzufuegen')}</Text>
                   </Pressable>
                 )}
+                <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
                 <View style={styles.modalButtons}>
                   <Pressable
                     onPress={() => { setActiveResult(null); setSelectedChecklist(null); Keyboard.dismiss(); }}

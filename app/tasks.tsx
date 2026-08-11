@@ -19,6 +19,8 @@ import { useTranslation } from "@/lib/language-provider";
 import { timelineEngine } from "@/lib/timeline-engine";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 
 type TodoItem = {
   task: string;
@@ -47,6 +49,7 @@ export default function TasksScreen() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("open");
   const [csvEnabled, setCsvEnabled] = useState(true);
+  const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
 
   async function loadAllTodos() {
     try {
@@ -245,8 +248,14 @@ export default function TasksScreen() {
         year: "numeric",
       });
 
+      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
+        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
+        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+      });
+
       const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
         <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('tasks_aufgaben' as any))}</h1>
+        ${metaHeader}
         <p style="font-size:12px; color:#6B7280; margin:0 0 20px;">${esc(generated)}</p>
         <table style="width:100%; border-collapse:collapse; font-size:12px;">
           <thead>
@@ -487,6 +496,9 @@ export default function TasksScreen() {
           }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
+          }
         />
       )}
     </ScreenContainer>

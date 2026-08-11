@@ -173,6 +173,7 @@ export default function PhotoCompareScreen() {
       await saveComparisons(updatedPairs);
       const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
         bauvorhaben: t('export_bauvorhaben'),
+        adresse: t('export_adresse'),
         etage: t('export_etage'),
         raum: t('export_raum'),
         notizen: t('export_notizen'),

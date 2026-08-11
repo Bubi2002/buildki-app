@@ -5,6 +5,7 @@ import { useTranslation } from "@/lib/language-provider";
 /** Optional project/floor/room/notes the user can attach to a PDF export. */
 export type ExportDetails = {
   bauvorhaben: string;
+  adresse: string;
   etage: string;
   raum: string;
   notizen: string;
@@ -12,13 +13,14 @@ export type ExportDetails = {
 
 export const EMPTY_EXPORT_DETAILS: ExportDetails = {
   bauvorhaben: "",
+  adresse: "",
   etage: "",
   raum: "",
   notizen: "",
 };
 
 export function hasExportDetails(d?: ExportDetails | null): boolean {
-  return !!d && [d.bauvorhaben, d.etage, d.raum, d.notizen].some((v) => (v || "").trim().length > 0);
+  return !!d && [d.bauvorhaben, d.adresse, d.etage, d.raum, d.notizen].some((v) => (v || "").trim().length > 0);
 }
 
 /**
@@ -60,6 +62,9 @@ export function ExportDetailsBox({
 
       {label(t('export_bauvorhaben'))}
       <TextInput value={value.bauvorhaben} onChangeText={set("bauvorhaben")} placeholder={t('export_bauvorhaben')} placeholderTextColor={colors.muted} style={inputStyle} />
+
+      {label(t('export_adresse'))}
+      <TextInput value={value.adresse} onChangeText={set("adresse")} placeholder={t('export_adresse')} placeholderTextColor={colors.muted} style={inputStyle} />
 
       {label(t('export_etage'))}
       <TextInput value={value.etage} onChangeText={set("etage")} placeholder={t('export_etage')} placeholderTextColor={colors.muted} style={inputStyle} />

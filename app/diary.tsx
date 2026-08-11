@@ -23,6 +23,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import { TradePicker } from "@/components/trade-picker";
+import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import {
   DiaryEntry,
   getDiaryEntries,
@@ -42,6 +44,7 @@ export default function DiaryScreen() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
+  const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
 
   // Form state
   const [workers, setWorkers] = useState("");
@@ -177,10 +180,16 @@ export default function DiaryScreen() {
         </div>`;
       }).join("");
 
+      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
+        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
+        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+      });
+
       const html = `<html><head><meta charset="utf-8"></head>
         <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
           <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('bautagebuch'))}</h1>
           <div style="font-size:12px; color:#6B7280; margin:0 0 16px;">${entries.length} ${esc(t('diary_entries_label' as any))}</div>
+          ${metaHeader}
           ${entriesHtml}
         </body></html>`;
 
@@ -284,6 +293,7 @@ export default function DiaryScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderEntry}
         contentContainerStyle={styles.list}
+        ListFooterComponent={<ExportDetailsBox value={exportDetails} onChange={setExportDetails} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <MaterialIcons name="menu-book" size={48} color={colors.muted} />
