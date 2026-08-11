@@ -91,10 +91,8 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
-  { key: "video_import", labelKey: "index_tool_video", icon: "videocam", color: "#00BCD4", route: "/video-upload" },
   { key: "ki_analyse", labelKey: "index_tool_ki_analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
   { key: "ki_assistent", labelKey: "index_tool_ki_assistent", icon: "assistant", color: "#00C853", route: "/protocol-assistant" },
-  { key: "voicenote", labelKey: "index_tool_voicenote", icon: "record-voice-over", color: "#26C6DA", route: "/video-upload?mode=audio" },
   { key: "maengel", labelKey: "index_tool_maengel", icon: "warning", color: "#FF9800", route: "/defects" },
   { key: "nachpruefung", labelKey: "index_tool_nachpruefung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
   { key: "aufgaben", labelKey: "index_tool_aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
