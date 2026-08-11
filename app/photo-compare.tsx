@@ -20,6 +20,8 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
+import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -31,6 +33,7 @@ type ComparisonPair = {
   beforeDate: string;
   afterDate: string | null;
   projectId?: string;
+  exportDetails?: ExportDetails;
 };
 
 const STORAGE_KEY = "photo-comparisons";
@@ -44,6 +47,12 @@ export default function PhotoCompareScreen() {
   const [selectedPair, setSelectedPair] = useState<ComparisonPair | null>(null);
   const [sliderPosition, setSliderPosition] = useState(0.5);
   const compareRef = React.useRef<View>(null);
+  // Optional project/floor/room/notes for the PDF export; initialized from the
+  // selected pair so previously entered values are remembered.
+  const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
+  useEffect(() => {
+    setExportDetails(selectedPair?.exportDetails || EMPTY_EXPORT_DETAILS);
+  }, [selectedPair?.id]);
 
   async function loadComparisons() {
     try {
@@ -158,6 +167,16 @@ export default function PhotoCompareScreen() {
       };
       const beforeImg = await toDataUri(selectedPair.beforeUri);
       const afterImg = await toDataUri(selectedPair.afterUri);
+      // Persist the entered details onto the pair so they are remembered, and
+      // print them into the PDF header.
+      const updatedPairs = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, exportDetails } : c));
+      await saveComparisons(updatedPairs);
+      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
+        bauvorhaben: t('export_bauvorhaben'),
+        etage: t('export_etage'),
+        raum: t('export_raum'),
+        notizen: t('export_notizen'),
+      });
       const cell = (label: string, color: string, date: string, img: string | null) => `
         <td style="width:50%; vertical-align:top; padding:6px;">
           <div style="font-weight:700; color:${color}; text-align:center; margin-bottom:6px; font-size:13px;">${label}</div>
@@ -166,7 +185,8 @@ export default function PhotoCompareScreen() {
         </td>`;
       const html = `<html><head><meta charset="utf-8"></head>
         <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
-          <h1 style="font-size:20px; margin:0 0 16px;">${esc(selectedPair.label || t('vergleich'))}</h1>
+          <h1 style="font-size:20px; margin:0 0 12px;">${esc(selectedPair.label || t('vergleich'))}</h1>
+          ${metaHeader}
           <table style="width:100%; border-collapse:collapse;"><tr>
             ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
             ${cell(t('nachher'), "#22C55E", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
@@ -260,6 +280,9 @@ export default function PhotoCompareScreen() {
                 </View>
               )}
             </View>
+
+            {/* Optional details printed into the PDF export header */}
+            <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
           </ScrollView>
         </View>
       </ScreenContainer>
