@@ -251,39 +251,98 @@ export function generatePdfHtml(
   const durationStr = `${durationMins}:${durationSecs.toString().padStart(2, "0")} Min.`;
   const evidenceSnapshots = protocol.evidenceSnapshots || [];
 
-  const evidenceHtml = evidenceSnapshots.length > 0
-    ? `
-      <section class="document-chapter evidence-section">
-        <h2>Visuelle Belege und Messungen</h2>
-        ${evidenceSnapshots
-          .map((snapshot, index) => {
-            const dataUri = evidenceDataUris[index];
-            const finding = escapeHtml(snapshot.findingText || "Beleg ohne Befundtext");
-            const source = escapeHtml(formatEvidenceSource(snapshot));
-            const measurements = snapshot.measurements || [];
-            if (!dataUri) {
-              return `
+  // Which legacy photos are placed inline via [FOTO X]? (used for evidence de-duplication + the
+  // Fotodokumentation appendix further below). Computed once up front so the evidence section can
+  // avoid re-rendering an image that already appears inline.
+  const inlinePlacedPhotos = new Set<number>();
+  {
+    const inlineRegex = /\[Foto\s*(\d+)(?:\s*[–\-–][^\]]*)?\]/gi;
+    let inlineMatch: RegExpExecArray | null;
+    const protocolText = getProtocolText(protocol);
+    while ((inlineMatch = inlineRegex.exec(protocolText)) !== null) {
+      inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
+    }
+  }
+
+  // Normalise a URI to its filename (drop query + path) so an evidence snapshot and a legacy
+  // photo entry pointing at the same underlying file compare equal.
+  const normalizePhotoUri = (u?: string): string => {
+    if (!u) return "";
+    const noQuery = u.split("?")[0];
+    return (noQuery.split("/").pop() || noQuery).toLowerCase();
+  };
+  // URIs of photos that were rendered inline via [FOTO X] and have valid image data.
+  const inlinePlacedPhotoUris = new Set<string>();
+  inlinePlacedPhotos.forEach((idx) => {
+    const u = protocol.photos?.[idx];
+    if (u && photoDataUris[idx]) inlinePlacedPhotoUris.add(normalizePhotoUri(u));
+  });
+  // BUG 4: an evidence snapshot whose underlying image is already shown inline must NOT be
+  // repeated in the trailing evidence section.
+  const isEvidenceShownInline = (snapshot: DocumentEvidenceSnapshot): boolean => {
+    const key = normalizePhotoUri(snapshot.mediaUri);
+    return key !== "" && inlinePlacedPhotoUris.has(key);
+  };
+
+  // BUG 3a: derive a spoken caption for an evidence video frame from the transcript segments,
+  // mirroring the [FOTO X] segment matcher. Returns "" when no usable segment exists.
+  const getCaptionFromSegmentsAtTime = (timeSeconds?: number): string => {
+    if (timeSeconds == null || timeSeconds <= 0) return "";
+    const segments = protocol.transcriptionSegments;
+    if (!segments || segments.length === 0) return "";
+    const exact = segments.find((seg) => seg.start <= timeSeconds && seg.end >= timeSeconds);
+    if (exact) return exact.text.trim();
+    const before = segments.filter((seg) => seg.start <= timeSeconds);
+    if (before.length > 0) return before[before.length - 1].text.trim();
+    return "";
+  };
+
+  // TODO: full inline anchoring — render each referenced evidence <article> at its first
+  // "Abbildung N" mention in the body instead of the trailing section. Kept conservative for now:
+  // de-duplicate against inline [FOTO X] photos and drop the trailing section when nothing remains.
+  const evidenceArticles = evidenceSnapshots
+    .map((snapshot, index) => {
+      // De-dup: skip snapshots already shown inline via the [FOTO X] path.
+      if (isEvidenceShownInline(snapshot)) return "";
+      const dataUri = evidenceDataUris[index];
+      const source = escapeHtml(formatEvidenceSource(snapshot));
+      const measurements = snapshot.measurements || [];
+      if (!dataUri) {
+        return `
                 <article class="evidence-block evidence-block-missing">
                   <p class="evidence-finding"><strong>Abbildung ${index + 1}: Visueller Nachweis konnte nicht geladen werden.</strong></p>
                   <p class="evidence-source"><strong>${source}</strong></p>
                 </article>`;
-            }
-            const wmContent = watermarkText || `${date}${protocol.projectName ? ` | ${protocol.projectName}` : ""}`;
-            const watermarkOverlay = photoWatermark
-              ? `<div class="evidence-watermark"><strong>${escapeHtml(wmContent)}</strong></div>`
-              : "";
-            const measurementsHtml = measurements.length > 0
-              ? `<div class="evidence-measurements">
+      }
+      // BUG 3a: resolve a finding caption. Fall back to the spoken sentence (video frames), then a
+      // neutral room · trade line, and finally omit the finding line entirely — never the alarming
+      // "Beleg ohne Befundtext" literal.
+      let findingText = (snapshot.findingText || "").trim();
+      if (!findingText && snapshot.sourceType === "video_frame" && (snapshot.videoTimeSeconds ?? 0) > 0) {
+        findingText = getCaptionFromSegmentsAtTime(snapshot.videoTimeSeconds);
+      }
+      if (!findingText) {
+        findingText = [snapshot.room, snapshot.trade].filter(Boolean).join(" · ");
+      }
+      const findingHtml = findingText
+        ? `<p class="evidence-finding"><strong>${escapeHtml(findingText)}</strong></p>`
+        : "";
+      const wmContent = watermarkText || `${date}${protocol.projectName ? ` | ${protocol.projectName}` : ""}`;
+      const watermarkOverlay = photoWatermark
+        ? `<div class="evidence-watermark"><strong>${escapeHtml(wmContent)}</strong></div>`
+        : "";
+      const measurementsHtml = measurements.length > 0
+        ? `<div class="evidence-measurements">
                   ${measurements
                     .map((measurement) => `
                       <p><strong>Messung: ${escapeHtml(formatMeasurementForDocument(measurement))}</strong></p>
                       <p><strong>Methode: ${escapeHtml(formatMeasurementMethod(measurement.method))}${measurement.note ? ` · ${escapeHtml(measurement.note)}` : ""}</strong></p>`)
                     .join("")}
                 </div>`
-              : "";
-            return `
+        : "";
+      return `
               <article class="evidence-block" data-evidence-id="${escapeHtml(snapshot.evidenceId)}">
-                <p class="evidence-finding"><strong>${finding}</strong></p>
+                ${findingHtml}
                 <div class="evidence-image-wrap">
                   <img src="${dataUri}" class="evidence-image" />
                   ${watermarkOverlay}
@@ -292,8 +351,14 @@ export function generatePdfHtml(
                 <p class="evidence-source"><strong>${source}</strong></p>
                 ${measurementsHtml}
               </article>`;
-          })
-          .join("")}
+    })
+    .filter((html) => html !== "");
+
+  const evidenceHtml = evidenceArticles.length > 0
+    ? `
+      <section class="document-chapter evidence-section">
+        <h2>Visuelle Belege und Messungen</h2>
+        ${evidenceArticles.join("")}
       </section>`
     : "";
 
@@ -520,13 +585,8 @@ export function generatePdfHtml(
     })
     .join("\n");
 
-  // Check which photos were already placed inline via [FOTO X] or [Foto X – ...] placeholders
-  const inlinePlacedPhotos = new Set<number>();
-  const inlineRegex = /\[Foto\s*(\d+)(?:\s*[\u2013\-–][^\]]*)?\]/gi;
-  let inlineMatch;
-  while ((inlineMatch = inlineRegex.exec(getProtocolText(protocol))) !== null) {
-    inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
-  }
+  // `inlinePlacedPhotos` (inline [FOTO X] photo indices) is computed once above, near the
+  // evidence section, and reused here for the Fotodokumentation appendix.
   // Only show photos in Fotodokumentation that were NOT already placed inline.
   // Photos that have a [Foto X] marker in the text AND have a valid base64 data URI
   // are considered "inline rendered" and excluded from the appendix.

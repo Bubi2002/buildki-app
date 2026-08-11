@@ -1128,6 +1128,7 @@ Regeln:
           photosJson: z.string().optional(),
           attendeesJson: z.string().optional(),
           additionalContext: z.string().optional(),
+          markers: z.array(z.object({ time: z.number(), label: z.string() })).optional(),
         })
       )
       .mutation(async ({ input }) => {

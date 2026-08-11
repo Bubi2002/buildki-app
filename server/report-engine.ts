@@ -22,6 +22,7 @@ export interface GenerateReportInput {
   photosJson?: string;
   attendeesJson?: string;
   additionalContext?: string;
+  markers?: { time: number; label: string }[];
 }
 
 interface TradeSection {
@@ -162,6 +163,7 @@ export async function generateProfessionalReport(input: GenerateReportInput): Pr
     photosJson,
     attendeesJson,
     additionalContext,
+    markers,
   } = input;
 
   // Build context from available data
@@ -241,9 +243,26 @@ Elektro, Sanitär, Heizung/Klima/Lüftung, Rohbau/Mauerwerk, Trockenbau, Maler/L
 
 ${contextBlock ? `VERFÜGBARE DATEN:\n${contextBlock}` : ""}`;
 
+  // Chapter structure spoken by the user during recording (must become top-level # headings).
+  let chapterBlock = "";
+  if (markers && markers.length > 0) {
+    const chapters = markers.filter((m) => m.label.startsWith("KAPITEL:"));
+    if (chapters.length > 0) {
+      chapterBlock += "KAPITEL-STRUKTUR (vom Benutzer gesprochene Kapitelüberschriften während der Aufnahme):\n";
+      chapters.forEach((m) => {
+        const mins = Math.floor(m.time / 60);
+        const secs = Math.floor(m.time % 60);
+        const timeCode = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+        const chapterName = m.label.replace("KAPITEL: ", "");
+        chapterBlock += `  [${timeCode}] Kapitel: ${chapterName}\n`;
+      });
+      chapterBlock += "\nKRITISCH - PFLICHT: Jedes Kapitel MUSS als Markdown-Überschrift mit einem einzelnen # am Zeilenanfang geschrieben werden. Format: '# Kapitelname' (Raute, Leerzeichen, dann der exakte Kapitelname). Dies ist NICHT optional. Jedes genannte Kapitel MUSS als # Überschrift im Ergebnis vorkommen. Auch wenn der Bericht nach Gewerken gruppiert wird, MÜSSEN die Kapitel als # Überschriften auf oberster Ebene erhalten bleiben. Der Text nach jeder Kapitelüberschrift enthält die Inhalte, die ab diesem Zeitpunkt gesprochen wurden. Beginne das Protokoll mit dem ersten Kapitel.\n\n";
+    }
+  }
+
   const userPrompt = `Analysiere die folgende Transkription und erstelle daraus einen professionellen "${reportType}".
 
-TRANSKRIPTION:
+${chapterBlock}TRANSKRIPTION:
 """
 ${transcription}
 """

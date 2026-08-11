@@ -278,6 +278,23 @@ export default function ReportGeneratorScreen() {
       setGenerationStep(t('report_generator_step_ki_generiert' as any));
       setGenerationProgress(60);
 
+      // Forward the user-spoken chapter markers (KAPITEL:) so the report keeps its chapter structure.
+      let protocolMarkers: { time: number; label: string }[] | undefined;
+      if (params.protocolId) {
+        try {
+          const rawProtocols = await AsyncStorage.getItem("protocols");
+          if (rawProtocols) {
+            const protocols = JSON.parse(rawProtocols);
+            const protocol = Array.isArray(protocols)
+              ? protocols.find((p: any) => p.id === params.protocolId)
+              : undefined;
+            if (Array.isArray(protocol?.markers) && protocol.markers.length > 0) {
+              protocolMarkers = protocol.markers;
+            }
+          }
+        } catch {}
+      }
+
       const result = await generateReportMutation.mutateAsync({
         reportType: selectedType,
         transcription,
@@ -297,6 +314,7 @@ export default function ReportGeneratorScreen() {
         ]
           .filter(Boolean)
           .join("\n") || undefined,
+        ...(protocolMarkers ? { markers: protocolMarkers } : {}),
       });
 
       setGenerationStep(t('report_generator_step_formatierung' as any));
