@@ -31,6 +31,119 @@ const TRADE_TERMS = [
   "Verglasung",
 ];
 
+// Building-type words (specific → generic where compounds overlap).
+const BUILDING_TYPE_TERMS = [
+  "Einfamilienhaus",
+  "Mehrfamilienhaus",
+  "Doppelhaus",
+  "Reihenhaus",
+  "Wohnhaus",
+  "Wohngebäude",
+  "Bürogebäude",
+  "Gewerbehalle",
+  "Lagerhalle",
+  "Kindergarten",
+  "Büro",
+  "Gewerbe",
+  "Industrie",
+  "Garage",
+  "Carport",
+  "Schule",
+  "Halle",
+  "Anbau",
+  "Aufstockung",
+  "Umbau",
+  "Sanierung",
+];
+
+// Document-nature words describing what the plan sheet is.
+const DOCUMENT_NATURE_TERMS = [
+  "Plansatz",
+  "Grundriss",
+  "Ansicht",
+  "Schnitt",
+  "Lageplan",
+  "Detail",
+  "Statik",
+  "Leistungsverzeichnis",
+];
+
+const ROOM_TERMS = [
+  "Wohnen",
+  "Wohnzimmer",
+  "Wohnküche",
+  "Küche",
+  "Kochen",
+  "Essen",
+  "Bad",
+  "WC",
+  "Gäste-WC",
+  "Diele",
+  "Flur",
+  "Windfang",
+  "Schlafen",
+  "Schlafzimmer",
+  "Kind",
+  "Kinderzimmer",
+  "Zimmer",
+  "Arbeiten",
+  "Büro",
+  "Abstellraum",
+  "Abstell",
+  "HWR",
+  "Hauswirtschaftsraum",
+  "Technik",
+  "Heizraum",
+  "Keller",
+  "Speis",
+  "Speisekammer",
+  "Vorratsraum",
+  "Ankleide",
+  "Garderobe",
+  "Waschküche",
+  "Terrasse",
+  "Balkon",
+  "Loggia",
+  "Galerie",
+  "Treppenhaus",
+  "Garage",
+  "Gast",
+];
+
+const MATERIAL_TERMS = [
+  "Stahlbeton",
+  "WU-Beton",
+  "Beton",
+  "Kalksandstein",
+  "Ziegel",
+  "Mauerwerk",
+  "Porenbeton",
+  "Ytong",
+  "Estrich",
+  "Wärmedämmung",
+  "Dämmung",
+  "WDVS",
+  "Mineralwolle",
+  "Gipskarton",
+  "Rigips",
+  "Brettschichtholz",
+  "KVH",
+  "Holz",
+  "Stahl",
+  "Fliesen",
+  "Naturstein",
+  "Putz",
+  "Kalkputz",
+  "Gipsputz",
+  "Glas",
+  "Bitumen",
+  "Abdichtung",
+  "Trapezblech",
+  "Dachziegel",
+  "Bewehrung",
+  "Betonstahl",
+];
+
 export interface AnalyzeExtractedDocumentInput {
   documentId: string;
   fileName: string;
@@ -117,17 +230,6 @@ function extractAppointments(lines: string[]): ExtractedAppointment[] {
   return appointments.slice(0, 30);
 }
 
-function extractQuantities(lines: string[]): { item: string; amount: string; unit: string }[] {
-  const quantities: { item: string; amount: string; unit: string }[] = [];
-  const pattern = /\b(\d+(?:[.,]\d+)?)\s*(m²|m2|m³|m3|m|cm|mm|kg|t|Stk\.?|Stück|Std\.?|h)\b/i;
-  for (const line of lines) {
-    const match = line.match(pattern);
-    if (!match) continue;
-    quantities.push({ item: cleanLine(line).slice(0, 160), amount: match[1], unit: match[2] });
-  }
-  return quantities.slice(0, 40);
-}
-
 function extractReferences(lines: string[]): { title: string; type: string; number?: string }[] {
   const references: { title: string; type: string; number?: string }[] = [];
   const pattern = /\b(DIN(?:\s+EN)?\s+[A-Z0-9-]+|Plan(?:-?Nr\.?|nummer)?\s*[:#-]?\s*[A-Z0-9._/-]+)\b/i;
@@ -138,6 +240,157 @@ function extractReferences(lines: string[]): { title: string; type: string; numb
   return references.slice(0, 30);
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// German decimal ("12,34") → number.
+function parseGermanNumber(raw: string): number {
+  const cleaned = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const value = parseFloat(cleaned);
+  return Number.isFinite(value) ? value : 0;
+}
+
+const AREA_TOKEN = /(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:m²|m2|qm)/gi;
+
+function extractBuildingType(fileName: string, text: string): string | undefined {
+  const haystack = `${fileName}\n${text}`.toLowerCase();
+  const typeLabel = BUILDING_TYPE_TERMS.find((term) => haystack.includes(term.toLowerCase()));
+  const natureLabel = DOCUMENT_NATURE_TERMS.find((term) => haystack.includes(term.toLowerCase()));
+  if (typeLabel && natureLabel) return `${typeLabel} · ${natureLabel}`;
+  if (typeLabel) return typeLabel;
+  if (natureLabel) return "Bauplan/Grundriss";
+  return undefined;
+}
+
+function floorRank(label: string): number {
+  if (label === "KG") return 0;
+  if (label === "UG") return 1;
+  if (label === "EG") return 2;
+  if (label === "OG") return 10;
+  const numbered = label.match(/^(\d+)\. OG$/);
+  if (numbered) return 10 + parseInt(numbered[1], 10);
+  if (label === "DG") return 100;
+  if (label === "Staffelgeschoss") return 101;
+  if (label === "Spitzboden") return 102;
+  return 50;
+}
+
+function extractFloors(text: string): string[] {
+  const found = new Set<string>();
+
+  // Numbered upper floors: "2. Obergeschoss" / "2. OG".
+  const numbered = /(\d{1,2})\.\s*(?:OG|Obergeschoss)\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = numbered.exec(text)) !== null) {
+    found.add(`${parseInt(match[1], 10)}. OG`);
+  }
+  // Strip numbered occurrences so a bare "OG" check does not re-match them.
+  const withoutNumbered = text.replace(numbered, " ");
+
+  if (/\bKellergeschoss\b|\bKG\b/i.test(text)) found.add("KG");
+  if (/\bUntergeschoss\b|\bUG\b/i.test(text)) found.add("UG");
+  if (/\bErdgeschoss\b|\bEG\b/i.test(text)) found.add("EG");
+  if (/\bObergeschoss\b|\bOG\b/i.test(withoutNumbered)) found.add("OG");
+  if (/\bDachgeschoss\b|\bDG\b/i.test(text)) found.add("DG");
+  if (/\bStaffelgeschoss\b/i.test(text)) found.add("Staffelgeschoss");
+  if (/\bSpitzboden\b/i.test(text)) found.add("Spitzboden");
+
+  return [...found].sort((a, b) => floorRank(a) - floorRank(b));
+}
+
+// Match the most specific room term present in a line (longest first).
+const ROOM_TERMS_BY_LENGTH = [...ROOM_TERMS].sort((a, b) => b.length - a.length);
+
+function extractRoomAreas(text: string): { name: string; area: number }[] {
+  const result: { name: string; area: number }[] = [];
+  const seen = new Set<string>();
+  for (const rawLine of text.split(/\n+/)) {
+    const line = rawLine.trim();
+    if (line.length < 3) continue;
+    const areaMatch = line.match(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:m²|m2|qm)/i);
+    if (!areaMatch) continue;
+    const name = ROOM_TERMS_BY_LENGTH.find((term) =>
+      new RegExp(`\\b${escapeRegExp(term)}`, "i").test(line),
+    );
+    if (!name) continue;
+    const area = Math.round(parseGermanNumber(areaMatch[1]) * 100) / 100;
+    if (!(area > 0)) continue;
+    const key = `${name.toLowerCase()}|${area}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push({ name, area });
+    if (result.length >= 40) break;
+  }
+  return result;
+}
+
+function extractMaterials(text: string): string[] {
+  const found = new Set<string>();
+  let haystack = text;
+  // Longest first so "Stahlbeton" consumes before "Beton"/"Stahl" can match it.
+  for (const term of [...MATERIAL_TERMS].sort((a, b) => b.length - a.length)) {
+    const pattern = new RegExp(escapeRegExp(term), "gi");
+    if (pattern.test(haystack)) {
+      found.add(term);
+      haystack = haystack.replace(new RegExp(escapeRegExp(term), "gi"), " ");
+    }
+  }
+  return MATERIAL_TERMS.filter((term) => found.has(term)).slice(0, 20);
+}
+
+function computeTotalArea(roomAreas: { name: string; area: number }[], text: string): number | undefined {
+  let sum = roomAreas.reduce((total, room) => total + room.area, 0);
+  if (sum <= 0) {
+    const distinct = new Set<number>();
+    let match: RegExpExecArray | null;
+    AREA_TOKEN.lastIndex = 0;
+    while ((match = AREA_TOKEN.exec(text)) !== null) {
+      const value = parseGermanNumber(match[1]);
+      if (value > 0) distinct.add(value);
+    }
+    sum = [...distinct].reduce((total, value) => total + value, 0);
+  }
+  const rounded = Math.round(sum * 10) / 10;
+  return rounded > 0 ? rounded : undefined;
+}
+
+function formatAreaDe(value: number): string {
+  return (Math.round(value * 10) / 10).toFixed(1).replace(".", ",");
+}
+
+function letterRatio(value: string): number {
+  const letters = (value.match(/[A-Za-zÄÖÜäöüß]/g) ?? []).length;
+  return value.length > 0 ? letters / value.length : 0;
+}
+
+// Fallback summary that skips lines dominated by digits/punctuation (e.g. "12. 00 2.").
+function fallbackSummary(lines: string[], rawText: string): string {
+  const readable = lines.filter((line) => line.length >= 12 && letterRatio(line) >= 0.5);
+  if (readable.length > 0) return summarize(readable.slice(0, 4).join(" "));
+  return summarize(rawText);
+}
+
+function composePlanSummary(
+  buildingType: string | undefined,
+  floors: string[],
+  roomAreas: { name: string; area: number }[],
+  totalAreaSqm: number | undefined,
+): string | null {
+  if (!buildingType && floors.length === 0 && roomAreas.length === 0) return null;
+  let summary = buildingType ?? "Bauplan";
+  if (roomAreas.length > 0) {
+    summary += ` mit ${roomAreas.length} ${roomAreas.length === 1 ? "Raum" : "Räumen"}`;
+  }
+  if (floors.length > 0) {
+    summary += ` auf ${floors.length} ${floors.length === 1 ? "Geschoss" : "Geschossen"}`;
+  }
+  if (totalAreaSqm && totalAreaSqm > 0) {
+    summary += `, ca. ${formatAreaDe(totalAreaSqm)} m²`;
+  }
+  return `${summary}.`;
+}
+
 function computeConfidence(extraction: DocumentExtractionResult, structuredCount: number): number {
   const lengthBase = extraction.textLength >= 4_000 ? 78 : extraction.textLength >= 1_000 ? 72 : extraction.textLength >= 250 ? 64 : 56;
   const structureBonus = Math.min(16, structuredCount * 2);
@@ -146,15 +399,26 @@ function computeConfidence(extraction: DocumentExtractionResult, structuredCount
 }
 
 export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): DocumentAnalysisResult {
-  const lines = sourceLines(input.extraction.text);
+  const text = input.extraction.text;
+  const lines = sourceLines(text);
   const rooms = extractRooms(lines);
-  const trades = extractTrades(input.extraction.text);
+  const trades = extractTrades(text);
   const tasks = extractTasks(lines, trades);
   const defects = extractDefects(lines, trades);
   const appointments = extractAppointments(lines);
-  const quantities = extractQuantities(lines);
   const references = extractReferences(lines);
-  const structuredCount = rooms.length + trades.length + tasks.length + defects.length + appointments.length + quantities.length + references.length;
+
+  // Plan-relevant extraction.
+  const buildingType = extractBuildingType(input.fileName, text);
+  const floors = extractFloors(text);
+  const roomAreas = extractRoomAreas(text);
+  const materials = extractMaterials(text);
+  const totalAreaSqm = computeTotalArea(roomAreas, text);
+
+  const structuredCount = rooms.length + trades.length + tasks.length + defects.length
+    + appointments.length + references.length + floors.length + roomAreas.length + materials.length;
+  const summary = composePlanSummary(buildingType, floors, roomAreas, totalAreaSqm)
+    ?? fallbackSummary(lines, text);
 
   return {
     documentId: input.documentId,
@@ -164,7 +428,7 @@ export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): 
     category: input.category,
     analyzedAt: new Date().toISOString(),
     analysisStatus: "completed",
-    summary: summarize(input.extraction.text),
+    summary,
     rooms,
     trades,
     persons: [],
@@ -172,8 +436,13 @@ export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): 
     appointments,
     tasks,
     defects,
-    quantities,
+    quantities: [],
     references,
+    buildingType,
+    floors,
+    roomAreas,
+    totalAreaSqm,
+    materials,
     entities: [],
     overallConfidence: computeConfidence(input.extraction, structuredCount),
     processingTime: Date.now() - input.startedAt,

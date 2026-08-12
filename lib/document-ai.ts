@@ -78,7 +78,14 @@ export interface DocumentAnalysisResult {
   defects: ExtractedDefect[];
   quantities: { item: string; amount: string; unit: string }[];
   references: { title: string; type: string; number?: string }[];
-  
+
+  // Plan-relevant extraction
+  buildingType?: string;
+  floors?: string[];
+  roomAreas?: { name: string; area: number }[];
+  totalAreaSqm?: number;
+  materials?: string[];
+
   // Raw entities
   entities: ExtractedEntity[];
   

@@ -23,6 +23,11 @@ function formatDate(value: string): string {
   return date.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
 }
 
+// German-style area: comma decimal, up to two decimals, no trailing zeros.
+function formatArea(value: number): string {
+  return (Math.round(value * 100) / 100).toString().replace(".", ",");
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const colors = useColors();
   return (
@@ -143,6 +148,42 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             <Text style={[styles.summary, { color: colors.foreground }]}>{decodeUnicodeEscapes(result.summary)}</Text>
           </Section>
 
+          {result.buildingType ? (
+            <Section title={t('document_ai_gebaeude' as any)}>
+              <Text style={[styles.singleValue, { color: colors.foreground }]}>{decodeUnicodeEscapes(result.buildingType)}</Text>
+            </Section>
+          ) : null}
+
+          {result.floors && result.floors.length > 0 ? (
+            <Section title={t('document_ai_geschosse' as any)}><TagList values={result.floors} /></Section>
+          ) : null}
+
+          {result.roomAreas && result.roomAreas.length > 0 ? (
+            <Section title={t('document_ai_raeume_flaechen' as any)}>
+              <View style={[styles.areaList, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                {result.roomAreas.map((room, index) => (
+                  <View
+                    key={`${room.name}-${room.area}-${index}`}
+                    style={[styles.areaRow, index > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
+                  >
+                    <Text style={[styles.areaName, { color: colors.foreground }]}>{decodeUnicodeEscapes(room.name)}</Text>
+                    <Text style={[styles.areaValue, { color: colors.muted }]}>{formatArea(room.area)} m²</Text>
+                  </View>
+                ))}
+              </View>
+            </Section>
+          ) : null}
+
+          {typeof result.totalAreaSqm === "number" && result.totalAreaSqm > 0 ? (
+            <Section title={t('document_ai_gesamtflaeche' as any)}>
+              <Text style={[styles.singleValue, { color: colors.foreground }]}>{formatArea(result.totalAreaSqm)} m²</Text>
+            </Section>
+          ) : null}
+
+          {result.materials && result.materials.length > 0 ? (
+            <Section title={t('document_ai_materialien' as any)}><TagList values={result.materials} /></Section>
+          ) : null}
+
           <View style={styles.twoColumns}>
             <View style={styles.column}>
               <Section title={t('document_analysis_detail_raeume_bereiche' as any)}><TagList values={result.rooms} /></Section>
@@ -196,11 +237,8 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             </Section>
           )}
 
-          {(result.quantities.length > 0 || result.references.length > 0) && (
+          {result.references.length > 0 && (
             <Section title={t('document_analysis_detail_mengen_referenzen' as any)}>
-              {result.quantities.map((quantity, index) => (
-                <DataCard key={`${quantity.item}-${index}`} title={quantity.item} lines={[`${quantity.amount} ${quantity.unit}`]} accent="#F59E0B" />
-              ))}
               {result.references.map((reference, index) => (
                 <DataCard key={`${reference.title}-${index}`} title={reference.title} lines={[reference.number || reference.type]} accent="#64748B" />
               ))}
@@ -248,6 +286,11 @@ const styles = StyleSheet.create({
   summary: { fontSize: 14, lineHeight: 22 },
   twoColumns: { flexDirection: "row", gap: 14 },
   column: { flex: 1 },
+  singleValue: { fontSize: 14, fontWeight: "700", lineHeight: 20 },
+  areaList: { borderWidth: 1 },
+  areaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10, gap: 12 },
+  areaName: { flex: 1, fontSize: 13, fontWeight: "700" },
+  areaValue: { fontSize: 13, fontWeight: "700" },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { borderWidth: 1, paddingHorizontal: 9, paddingVertical: 6 },
   tagText: { fontSize: 11, fontWeight: "700" },
