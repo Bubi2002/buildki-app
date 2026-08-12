@@ -187,12 +187,24 @@ export function buildSourceBoundReport(snapshot: ReportSourceSnapshot): string {
       "| Mangel | Gewerk | Ort | Status | Priorität | Frist |",
       "|---|---|---|---|---|---|",
     );
+    // Emit ALL rows contiguously so the markdown table stays a single block;
+    // interleaving description lines here split the table and produced garbled
+    // orphan cells in the PDF.
+    const defectDescriptions: string[] = [];
     for (const defect of snapshot.selectedDefects) {
       lines.push(
         `| ${cleanCell(defect.title)} | ${cleanCell(defect.trade)} | ${cleanCell(defect.location)} | ${cleanCell(defect.status)} | ${cleanCell(defect.priority)} | ${cleanCell(defect.dueDate)} |`,
       );
-      if (defect.description?.trim()) {
-        lines.push("", `**Beschreibung zu ${cleanCell(defect.title)}:** ${defect.description.trim()}`);
+      const description = defect.description?.trim();
+      // Skip when the description just repeats the title (redundant noise).
+      if (description && description !== defect.title.trim()) {
+        defectDescriptions.push(`**${cleanCell(defect.title)}:** ${cleanCell(description)}`);
+      }
+    }
+    if (defectDescriptions.length > 0) {
+      lines.push("", "### Beschreibungen", "");
+      for (const description of defectDescriptions) {
+        lines.push(description, "");
       }
     }
   }

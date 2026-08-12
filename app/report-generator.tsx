@@ -35,6 +35,8 @@ import { useTranslation } from "@/lib/language-provider";
 import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { localizedLabel, reportTypeKey, reportTypeDescKey } from "@/lib/template-i18n";
 import { trpc } from "@/lib/trpc";
+import { useAudioRecorder, RecordingPresets, AudioModule } from "expo-audio";
+import * as FileSystem from "expo-file-system/legacy";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import { getDefects, type Defect } from "@/lib/defect-store";
 import {
@@ -86,6 +88,49 @@ export default function ReportGeneratorScreen() {
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [transcription, setTranscription] = useState(params.transcription || "");
   const [reportContent, setReportContent] = useState("");
+
+  // Voice note → transcription (reuses the same upload+transcribe pipeline as the record tab)
+  const voiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const uploadAudioMutation = trpc.upload.audio.useMutation();
+  const transcribeVoiceMutation = trpc.voice.transcribe.useMutation();
+  const [isRecordingNote, setIsRecordingNote] = useState(false);
+  const [isTranscribingNote, setIsTranscribingNote] = useState(false);
+
+  const toggleVoiceNote = async () => {
+    if (isTranscribingNote) return;
+    if (isRecordingNote) {
+      setIsRecordingNote(false);
+      setIsTranscribingNote(true);
+      try {
+        await voiceRecorder.stop();
+        const uri = voiceRecorder.uri;
+        if (uri) {
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const uploaded = await uploadAudioMutation.mutateAsync({ base64, mimeType: "audio/m4a", filename: `report-note-${Date.now()}.m4a` });
+          const transcribed = await transcribeVoiceMutation.mutateAsync({ audioUrl: uploaded.url, language: "de" });
+          const text = (transcribed.text || "").trim();
+          if (text) setTranscription((prev) => (prev.trim() ? prev.trim() + "\n" : "") + text);
+        }
+      } catch {
+        Alert.alert(t('report_generator_fehler' as any));
+      } finally {
+        setIsTranscribingNote(false);
+      }
+    } else {
+      try {
+        const permission = await AudioModule.requestRecordingPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert(t('defects_mikrofonzugriff_titel' as any), t('defects_mikrofonzugriff_msg' as any));
+          return;
+        }
+        await voiceRecorder.prepareToRecordAsync();
+        voiceRecorder.record();
+        setIsRecordingNote(true);
+      } catch {
+        Alert.alert(t('report_generator_fehler' as any));
+      }
+    }
+  };
   const [, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState("");
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -121,9 +166,18 @@ export default function ReportGeneratorScreen() {
       setAvailableDefects(defects);
       setSelectedDefectIds([]);
 
-      await saveEvidenceBatch(
-        defects.flatMap((defect) =>
-          (defect.photos || []).map((uri, index) => ({
+      // One evidence entry per physical photo — a photo can be attached to
+      // several defects, so key on the URI (not the defect id) and dedupe,
+      // otherwise the same image shows up once per defect.
+      const seenPhoto = new Set<string>();
+      const evidenceInputs = defects.flatMap((defect) =>
+        (defect.photos || [])
+          .filter((uri) => {
+            if (seenPhoto.has(uri)) return false;
+            seenPhoto.add(uri);
+            return true;
+          })
+          .map((uri) => ({
             projectId,
             defectId: defect.id,
             protocolId: defect.protocolId,
@@ -134,12 +188,20 @@ export default function ReportGeneratorScreen() {
             trade: defect.gewerk || defect.category,
             capturedAt: defect.createdAt,
             reviewStatus: "approved" as const,
-            legacySourceKey: `defect:${defect.id}:photo:${index}:${uri}`,
+            legacySourceKey: `photo:${uri}`,
           })),
-        ),
       );
+      await saveEvidenceBatch(evidenceInputs);
+      // Dedupe on the underlying photo URI to also collapse any duplicates that
+      // earlier builds stored with per-defect keys.
+      const seenReady = new Set<string>();
       const readyEvidence = (await getEvidence(projectId))
         .filter(isEvidenceDocumentReady)
+        .filter((item) => {
+          if (seenReady.has(item.originalUri)) return false;
+          seenReady.add(item.originalUri);
+          return true;
+        })
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
       setAvailableEvidence(readyEvidence);
       setSelectedEvidenceIds([]);
@@ -379,8 +441,11 @@ export default function ReportGeneratorScreen() {
   const saveReport = async () => {
     // Save to AsyncStorage for later PDF export
     try {
+      const id = `report_${Date.now()}`;
+      const createdAt = new Date().toISOString();
+      const config = REPORT_TYPES.find((item) => item.id === selectedType);
       const reportData = {
-        id: `report_${Date.now()}`,
+        id,
         type: selectedType,
         content: reportContent,
         projectId: params.projectId,
@@ -389,12 +454,36 @@ export default function ReportGeneratorScreen() {
         evidenceIds: documentEvidence?.evidenceIds || [],
         evidenceSnapshots: documentEvidence?.snapshots || [],
         evidenceSelectionCreatedAt: documentEvidence?.createdAt,
-        createdAt: new Date().toISOString(),
+        createdAt,
       };
       const existing = await AsyncStorage.getItem("saved_reports");
       const reports = existing ? JSON.parse(existing) : [];
       reports.unshift(reportData);
       await AsyncStorage.setItem("saved_reports", JSON.stringify(reports.slice(0, 50)));
+
+      // Also persist into the "protocols" store so the report shows up in the
+      // Protokolle tab and can be reopened / re-exported (the "saved_reports"
+      // key has no UI surface of its own).
+      const protocolRecord = {
+        id,
+        title: reportProjekt || config?.label || t('report_generator_bericht' as any),
+        protocol: reportContent,
+        transcription,
+        templateId: selectedType,
+        templateName: config?.label || selectedType,
+        duration: 0,
+        createdAt,
+        status: "ready" as const,
+        projectId: params.projectId,
+        projectName: reportProjekt || undefined,
+        source: "report",
+        evidenceIds: documentEvidence?.evidenceIds || [],
+        evidenceSnapshots: documentEvidence?.snapshots || [],
+      };
+      const existingProtocols = await AsyncStorage.getItem("protocols");
+      const protocols = existingProtocols ? JSON.parse(existingProtocols) : [];
+      protocols.unshift(protocolRecord);
+      await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
       Alert.alert(
         t('report_generator_bericht_gespeichert' as any),
@@ -722,9 +811,32 @@ export default function ReportGeneratorScreen() {
           )}
 
           {/* Transcription Input */}
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-            {t('report_generator_transkription_notizen' as any)}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              {t('report_generator_transkription_notizen' as any)}
+            </Text>
+            <Pressable
+              onPress={toggleVoiceNote}
+              disabled={isTranscribingNote}
+              accessibilityLabel={t('sprachnotiz')}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", gap: 6,
+                paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1,
+                borderColor: isRecordingNote ? "#EF4444" : colors.primary,
+                backgroundColor: (isRecordingNote ? "#EF4444" : colors.primary) + "15",
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              {isTranscribingNote ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <MaterialIcons name={isRecordingNote ? "stop" : "mic"} size={18} color={isRecordingNote ? "#EF4444" : colors.primary} />
+              )}
+              <Text style={{ fontSize: 12, fontWeight: "600", color: isRecordingNote ? "#EF4444" : colors.primary }}>
+                {t('sprachnotiz')}
+              </Text>
+            </Pressable>
+          </View>
           <TextInput
             style={[styles.input, styles.inputLarge, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
             value={transcription}
