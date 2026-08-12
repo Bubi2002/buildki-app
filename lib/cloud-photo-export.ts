@@ -1,5 +1,6 @@
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
+import JSZip from "jszip";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
@@ -194,30 +195,25 @@ function buildFolderName(options: {
  */
 async function createPhotoZip(photos: string[], baseName: string): Promise<string | null> {
   try {
-    // On native, we can't easily create ZIP without a library
-    // Instead, we'll use a directory approach
-    const exportDir = `${FileSystem.cacheDirectory}photo_export_${Date.now()}/`;
-    await FileSystem.makeDirectoryAsync(exportDir, { intermediates: true });
-
-    // Copy photos to export directory with meaningful names
+    // Build a REAL zip that contains ALL photos (the old version copied files
+    // and then shared only the first one, so only one photo was ever exported).
+    const zip = new JSZip();
+    let added = 0;
     for (let i = 0; i < photos.length; i++) {
-      const ext = photos[i].toLowerCase().includes(".png") ? "png" : "jpg";
-      const destName = `${baseName}_Foto_${String(i + 1).padStart(2, "0")}.${ext}`;
-      const destUri = exportDir + destName;
       try {
-        await FileSystem.copyAsync({ from: photos[i], to: destUri });
+        const base64 = await FileSystem.readAsStringAsync(photos[i], { encoding: FileSystem.EncodingType.Base64 });
+        const ext = photos[i].toLowerCase().includes(".png") ? "png" : "jpg";
+        zip.file(`${baseName}_Foto_${String(i + 1).padStart(2, "0")}.${ext}`, base64, { base64: true });
+        added++;
       } catch {
-        // Skip photos that can't be copied
+        // Skip photos that can't be read
       }
     }
-
-    // Return the directory - on iOS/Android the share sheet can handle directories
-    // But for better compatibility, share the first file and note the count
-    const files = await FileSystem.readDirectoryAsync(exportDir);
-    if (files.length > 0) {
-      return exportDir + files[0];
-    }
-    return null;
+    if (added === 0) return null;
+    const content = await zip.generateAsync({ type: "base64" });
+    const zipUri = `${FileSystem.cacheDirectory}${(baseName || "Fotos").replace(/[^\w.-]+/g, "_")}_${Date.now()}.zip`;
+    await FileSystem.writeAsStringAsync(zipUri, content, { encoding: FileSystem.EncodingType.Base64 });
+    return zipUri;
   } catch {
     return null;
   }

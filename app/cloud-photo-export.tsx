@@ -17,10 +17,8 @@ import {
   CLOUD_PROVIDERS,
   CloudExportProvider,
   exportPhotosToCloud,
-  getPreferredProvider,
   getExportHistory,
   type ExportHistoryEntry,
-  type CloudExportConfig,
 } from "@/lib/cloud-photo-export";
 
 export default function CloudPhotoExportScreen() {
@@ -42,7 +40,6 @@ export default function CloudPhotoExportScreen() {
   const protocolNumber = params.protocolNumber;
 
   const [isExporting, setIsExporting] = useState(false);
-  const [preferredProvider, setPreferredProvider] = useState<CloudExportProvider>("system-share");
   const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<number[]>(
     photos.map((_, i) => i) // All selected by default
@@ -50,8 +47,6 @@ export default function CloudPhotoExportScreen() {
   const [showHistory, setShowHistory] = useState(false);
 
   async function loadPreferences() {
-    const pref = await getPreferredProvider();
-    setPreferredProvider(pref);
     const history = await getExportHistory();
     setExportHistory(history);
   }
@@ -102,35 +97,6 @@ export default function CloudPhotoExportScreen() {
       Alert.alert(t('alert_export_fehlgeschlagen'), result.error);
     }
   };
-
-  const renderProvider = ({ item }: { item: CloudExportConfig }) => (
-    <Pressable
-      onPress={() => handleExport(item.provider)}
-      style={({ pressed }) => [
-        styles.providerCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: preferredProvider === item.provider ? item.color : colors.border,
-          borderWidth: preferredProvider === item.provider ? 2 : 1,
-          opacity: pressed ? 0.7 : 1,
-        },
-      ]}
-    >
-      <View style={[styles.providerIcon, { backgroundColor: item.color + "15" }]}>
-        <MaterialIcons name={item.icon as any} size={28} color={item.color} />
-      </View>
-      <View style={styles.providerInfo}>
-        <Text style={[styles.providerLabel, { color: colors.foreground }]}>{item.label}</Text>
-        <Text style={[styles.providerDesc, { color: colors.muted }]}>{item.description}</Text>
-      </View>
-      {preferredProvider === item.provider && (
-        <View style={[styles.preferredBadge, { backgroundColor: item.color + "20" }]}>
-          <Text style={{ fontSize: 9, color: item.color, fontWeight: "600" }}>{t('bevorzugt')}</Text>
-        </View>
-      )}
-      <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-    </Pressable>
-  );
 
   const renderHistoryItem = ({ item }: { item: ExportHistoryEntry }) => {
     const providerConfig = CLOUD_PROVIDERS.find((p) => p.provider === item.provider);
@@ -244,15 +210,16 @@ export default function CloudPhotoExportScreen() {
             if (item.type === "providers") {
               return (
                 <View style={styles.providersSection}>
-                  <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 12 }]}>
-                    {t('cloud_photo_export_exportziel_waehlen' as any)}
-                  </Text>
-                  <Text style={[styles.sectionHint, { color: colors.muted }]}>
+                  <Text style={[styles.sectionHint, { color: colors.muted, marginBottom: 14 }]}>
                     {t('cloud_photo_export_cloud_app_hinweis' as any)}
                   </Text>
-                  {CLOUD_PROVIDERS.map((provider) => (
-                    <View key={provider.provider}>{renderProvider({ item: provider })}</View>
-                  ))}
+                  <Pressable
+                    onPress={() => handleExport("system-share")}
+                    style={({ pressed }) => [styles.exportButton, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+                  >
+                    <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+                    <Text style={styles.exportButtonText}>{t('fotos_exportieren')}</Text>
+                  </Pressable>
                 </View>
               );
             }
@@ -380,6 +347,19 @@ const styles = StyleSheet.create({
   providersSection: {
     paddingHorizontal: 16,
     paddingTop: 24,
+  },
+  exportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 10,
+  },
+  exportButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
   providerCard: {
     flexDirection: "row",
