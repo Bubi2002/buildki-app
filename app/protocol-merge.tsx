@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { mergeAndShare, type MergeOptions } from "@/lib/protocol-merge";
+import { hasProtocolText } from "@/lib/protocol-compat";
 import { useTranslation } from "@/lib/language-provider";
 
 type Protocol = {
@@ -13,7 +14,9 @@ type Protocol = {
   projectId?: string;
   title: string;
   createdAt: string;
+  protocol?: string;
   content?: string;
+  transcription?: string;
   summary?: string;
   photos?: string[];
   protocolNumber?: string;
@@ -43,7 +46,7 @@ export default function ProtocolMergeScreen() {
 
       const allProtocols: Protocol[] = JSON.parse(protocolsData || "[]");
       const projectProtocols = allProtocols
-        .filter((p) => p.projectId === projectId && p.content)
+        .filter((p) => p.projectId === projectId && hasProtocolText(p))
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       setProtocols(projectProtocols);
       // Pre-select all

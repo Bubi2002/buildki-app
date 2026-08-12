@@ -1,5 +1,6 @@
 export type LegacyProtocolTextFields = {
   protocol?: unknown;
+  content?: unknown;
   transcription?: unknown;
   title?: unknown;
   protocolNumber?: unknown;
@@ -15,10 +16,18 @@ export function getProtocolText(record: LegacyProtocolTextFields): string {
   const protocol = asTrimmedString(record.protocol);
   if (protocol) return protocol;
 
+  const content = asTrimmedString(record.content);
+  if (content) return content;
+
   const transcription = asTrimmedString(record.transcription);
   if (transcription) return transcription;
 
   return EMPTY_PROTOCOL_TEXT;
+}
+
+/** True when the record has any usable protocol text (protocol/content/transcription). */
+export function hasProtocolText(record: LegacyProtocolTextFields): boolean {
+  return !!(asTrimmedString(record.protocol) || asTrimmedString(record.content) || asTrimmedString(record.transcription));
 }
 
 export function getProtocolPreview(

@@ -9,11 +9,14 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { getPdfBranding } from "./pdf-branding-store";
+import { getProtocolText, hasProtocolText } from "./protocol-compat";
 
 type Protocol = {
   id: string;
   title: string;
+  protocol?: string;
   content?: string;
+  transcription?: string;
   summary?: string;
   createdAt: string;
   projectId?: string;
@@ -60,7 +63,7 @@ export async function getProtocolsForMerge(projectId: string, dateRange?: { from
   try {
     const raw = await AsyncStorage.getItem("protocols");
     const all: Protocol[] = raw ? JSON.parse(raw) : [];
-    let filtered = all.filter(p => p.projectId === projectId && p.content);
+    let filtered = all.filter(p => p.projectId === projectId && hasProtocolText(p));
     
     if (dateRange) {
       const fromDate = new Date(dateRange.from).getTime();
@@ -311,7 +314,7 @@ function buildProtocolBlock(protocol: Protocol, index: number, options: MergeOpt
       <span class="protocol-meta">${date}${weatherStr}</span>
     </div>
     ${protocol.location ? `<div class="protocol-meta" style="margin-bottom:6px">📍 ${escapeHtml(protocol.location)}</div>` : ""}
-    <div class="protocol-content">${escapeHtml(protocol.content || protocol.summary || "Kein Inhalt")}</div>
+    <div class="protocol-content">${escapeHtml(getProtocolText(protocol) || protocol.summary || "Kein Inhalt")}</div>
     ${photosHtml}
   </div>`;
 }
