@@ -258,11 +258,12 @@ export default function PhotoAnalysisScreen() {
   // ─── Adoption Logic ─────────────────────────────────────────────────────────
 
   const mapSeverityToPriority = (severity: string): DefectPriority => {
+    // Severity scale (display): Leicht=minor · Mittel=major · Schwer=critical · Kosmetisch=cosmetic
     switch (severity) {
-      case "critical": return "hoch";
-      case "major": return "hoch";
-      case "minor": return "mittel";
-      case "cosmetic": return "niedrig";
+      case "critical": return "hoch";   // Schwer
+      case "major": return "mittel";    // Mittel
+      case "minor": return "niedrig";   // Leicht
+      case "cosmetic": return "niedrig"; // Kosmetisch
       default: return "mittel";
     }
   };
@@ -443,10 +444,10 @@ export default function PhotoAnalysisScreen() {
 
   const getSeverityColor = (severity: string): string => {
     switch (severity) {
-      case "critical": return "#DC2626";
-      case "major": return "#F59E0B";
-      case "minor": return "#3B82F6";
-      case "cosmetic": return "#6B7280";
+      case "critical": return "#DC2626"; // Schwer – rot
+      case "major": return "#F59E0B";    // Mittel – orange
+      case "minor": return "#22C55E";    // Leicht – grün
+      case "cosmetic": return "#6B7280"; // Kosmetisch – grau
       default: return "#6B7280";
     }
   };
@@ -816,7 +817,7 @@ export default function PhotoAnalysisScreen() {
                     numberOfLines={3}
                   />
                   <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-                    {(["critical", "major", "minor", "cosmetic"] as const).map((sev) => (
+                    {(["minor", "major", "critical", "cosmetic"] as const).map((sev) => (
                       <Pressable
                         key={sev}
                         onPress={() => setManualSeverity(sev)}

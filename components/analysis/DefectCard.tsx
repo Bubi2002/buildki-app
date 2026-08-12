@@ -80,10 +80,10 @@ export function DefectCard({
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "critical": return colors.error;
-      case "major": return "#F97316";
-      case "minor": return colors.warning;
-      case "cosmetic": return colors.muted;
+      case "critical": return colors.error; // Schwer
+      case "major": return "#F97316";       // Mittel
+      case "minor": return "#22C55E";       // Leicht
+      case "cosmetic": return colors.muted; // Kosmetisch
       default: return colors.muted;
     }
   };
@@ -147,7 +147,7 @@ export function DefectCard({
             style={[styles.editInput, styles.editInputMultiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
           />
           <View style={styles.severityRow}>
-            {(["critical", "major", "minor", "cosmetic"] as const).map((s) => (
+            {(["minor", "major", "critical", "cosmetic"] as const).map((s) => (
               <Pressable
                 key={s}
                 onPress={() => setEditSeverity(s)}
