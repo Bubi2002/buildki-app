@@ -98,7 +98,7 @@ export function DefectCard({
     }
   };
 
-  const severityColor = getSeverityColor(defect.severity);
+  const severityColor = getSeverityColor(editSeverity);
 
   return (
     <Animated.View style={[
