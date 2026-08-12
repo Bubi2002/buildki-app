@@ -3,7 +3,9 @@
  * The original file remains visible and every result section is independently scannable.
  */
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 import { useColors } from "@/hooks/use-colors";
 import type { DocumentAnalysisResult } from "@/lib/document-ai";
@@ -90,6 +92,51 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
           ? t('document_analysis_detail_textdatei' as any)
           : t('document_analysis_detail_bildanalyse' as any);
 
+  const exportAnalysisPdf = async () => {
+    if (!result) return;
+    try {
+      const esc = (s?: string) => decodeUnicodeEscapes(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const heading = (title: string, body: string) =>
+        body ? `<h2 style="font-size:14px; margin:18px 0 6px; color:#111;">${esc(title)}</h2>${body}` : "";
+      const chips = (arr?: string[]) => (arr && arr.length ? `<p style="margin:0; color:#333; font-size:12px;">${arr.map((v) => esc(v)).join(" · ")}</p>` : "");
+      const rooms = result.roomAreas && result.roomAreas.length
+        ? `<table style="width:100%; border-collapse:collapse; font-size:12px;">${result.roomAreas
+            .map((r) => `<tr><td style="padding:3px 8px 3px 0; color:#111; border-bottom:1px solid #eee;">${esc(r.name)}</td><td style="padding:3px 0; text-align:right; color:#333; border-bottom:1px solid #eee;">${formatArea(r.area)} m²</td></tr>`)
+            .join("")}</table>`
+        : "";
+      const cardList = (items: { title: string; lines: string[] }[]) =>
+        items.length
+          ? items.map((it) => `<div style="margin:4px 0;"><strong style="font-size:12px;">${esc(it.title)}</strong>${it.lines.filter(Boolean).map((l) => `<br/><span style="color:#555; font-size:11px;">${esc(l)}</span>`).join("")}</div>`).join("")
+          : "";
+      const defectsHtml = cardList(result.defects.map((d) => ({ title: d.title, lines: [d.description || "", d.location ? `${t('document_analysis_detail_ort' as any)}${d.location}` : "", d.trade ? `${t('document_analysis_detail_gewerk' as any)}${d.trade}` : "", d.severity ? `${t('document_analysis_detail_bewertung' as any)}${d.severity}` : ""] })));
+      const tasksHtml = cardList(result.tasks.map((tk) => ({ title: tk.title, lines: [tk.description || "", tk.trade ? `${t('document_analysis_detail_gewerk' as any)}${tk.trade}` : "", tk.deadline ? `${t('document_analysis_detail_frist' as any)}${tk.deadline}` : ""] })));
+      const apptHtml = cardList(result.appointments.map((a) => ({ title: a.title, lines: [`${t('document_analysis_detail_datum' as any)}${a.date}${a.time ? ` · ${a.time}` : ""}`] })));
+
+      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
+        <div style="color:#2563EB; font-size:11px; font-weight:800; letter-spacing:2px;">DOCUMENT AI</div>
+        <h1 style="font-size:20px; margin:2px 0;">${esc(t('document_analysis_detail_analyse_ergebnis' as any))}</h1>
+        <p style="color:#6B7280; font-size:12px; margin:0 0 16px;">${esc(result.fileName)} · ${esc(result.fileType.toUpperCase())}${result.extraction.pageCount ? ` · ${result.extraction.pageCount} ${esc(t('document_analysis_detail_seiten' as any))}` : ""}</p>
+        ${heading(t('document_analysis_detail_zusammenfassung' as any), `<p style="margin:0; line-height:1.5; font-size:13px;">${esc(result.summary)}</p>`)}
+        ${heading(t('document_ai_gebaeude' as any), result.buildingType ? `<p style="margin:0; font-size:13px;">${esc(result.buildingType)}</p>` : "")}
+        ${heading(t('document_ai_geschosse' as any), chips(result.floors))}
+        ${heading(t('document_ai_raeume_flaechen' as any), rooms)}
+        ${heading(t('document_ai_gesamtflaeche' as any), typeof result.totalAreaSqm === "number" && result.totalAreaSqm > 0 ? `<p style="margin:0; font-size:13px;">${formatArea(result.totalAreaSqm)} m²</p>` : "")}
+        ${heading(t('document_ai_materialien' as any), chips(result.materials))}
+        ${heading(t('document_analysis_detail_gewerke' as any), chips(result.trades))}
+        ${heading(`${t('document_analysis_detail_auffaelligkeiten_maengel' as any)} (${result.defects.length})`, defectsHtml)}
+        ${heading(`${t('document_analysis_detail_aufgaben_massnahmen' as any)} (${result.tasks.length})`, tasksHtml)}
+        ${heading(`${t('document_analysis_detail_termine_fristen' as any)} (${result.appointments.length})`, apptHtml)}
+      </body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -98,6 +145,9 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             <Text style={[styles.headerEyebrow, { color: colors.primary }]}>DOCUMENT AI</Text>
             <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>{t('document_analysis_detail_analyse_ergebnis' as any)}</Text>
           </View>
+          <Pressable onPress={exportAnalysisPdf} style={[styles.closeButton, { borderColor: colors.primary }]} accessibilityLabel={t('pdf_teilen')}>
+            <MaterialIcons name="ios-share" size={22} color={colors.primary} />
+          </Pressable>
           <Pressable onPress={onClose} style={[styles.closeButton, { borderColor: colors.border }]} accessibilityLabel={t('document_analysis_detail_analyse_schliessen' as any)}>
             <MaterialIcons name="close" size={24} color={colors.foreground} />
           </Pressable>
