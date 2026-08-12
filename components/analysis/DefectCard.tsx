@@ -114,7 +114,7 @@ export function DefectCard({
       <View style={styles.header}>
         <View style={[styles.severityBadge, { backgroundColor: severityColor + "20" }]}>
           <Text style={[styles.severityText, { color: severityColor }]}>
-            {getSeverityLabel(defect.severity)}
+            {getSeverityLabel(editSeverity)}
           </Text>
         </View>
         <Text style={[styles.confidence, { color: colors.muted }]}>
@@ -128,9 +128,44 @@ export function DefectCard({
         )}
       </View>
 
-      {/* Title & Description */}
-      <Text style={[styles.title, { color: colors.foreground }]}>{defect.title}</Text>
-      <Text style={[styles.description, { color: colors.muted }]}>{defect.description}</Text>
+      {/* Title & Description (editable in edit mode) */}
+      {isEditing ? (
+        <>
+          <TextInput
+            value={editTitle}
+            onChangeText={setEditTitle}
+            placeholder={defect.title}
+            placeholderTextColor={colors.muted}
+            style={[styles.editInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+          />
+          <TextInput
+            value={editDescription}
+            onChangeText={setEditDescription}
+            placeholder={defect.description}
+            placeholderTextColor={colors.muted}
+            multiline
+            style={[styles.editInput, styles.editInputMultiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+          />
+          <View style={styles.severityRow}>
+            {(["critical", "major", "minor", "cosmetic"] as const).map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => setEditSeverity(s)}
+                style={[styles.severityChip, { borderColor: editSeverity === s ? getSeverityColor(s) : colors.border, backgroundColor: editSeverity === s ? getSeverityColor(s) + "20" : "transparent" }]}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "600", color: editSeverity === s ? getSeverityColor(s) : colors.muted }}>
+                  {getSeverityLabel(s)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={[styles.title, { color: colors.foreground }]}>{editTitle}</Text>
+          <Text style={[styles.description, { color: colors.muted }]}>{editDescription}</Text>
+        </>
+      )}
 
       {/* Meta: Trade + Location */}
       <View style={styles.meta}>
@@ -156,7 +191,7 @@ export function DefectCard({
       {showActions && !isAdopted && !isDismissed && (
         <View style={styles.actions}>
           <Pressable
-            onPress={() => onAdopt?.(defect)}
+            onPress={() => onAdopt?.(effectiveDefect)}
             style={({ pressed }) => [
               styles.adoptButton,
               { backgroundColor: colors.success, transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -164,6 +199,16 @@ export function DefectCard({
           >
             <MaterialIcons name="add-task" size={16} color="#FFF" />
             <Text style={styles.adoptButtonText}>{t('DefectCard_adopt_button' as any)}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setIsEditing((e) => !e)}
+            accessibilityLabel={isEditing ? t('done') : t('edit')}
+            style={({ pressed }) => [
+              styles.dismissButton,
+              { borderColor: isEditing ? colors.primary : colors.border, backgroundColor: isEditing ? colors.primary + "12" : "transparent", transform: [{ scale: pressed ? 0.97 : 1 }] },
+            ]}
+          >
+            <MaterialIcons name={isEditing ? "check" : "edit"} size={16} color={isEditing ? colors.primary : colors.muted} />
           </Pressable>
           <Pressable
             onPress={() => onDismiss?.(defect)}
@@ -224,6 +269,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     marginBottom: 4,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  editInputMultiline: {
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  severityRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 10,
+  },
+  severityChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   description: {
     fontSize: 13,
