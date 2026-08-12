@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
+import { View, Text, Pressable, StyleSheet, Animated, TextInput } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
@@ -50,6 +50,19 @@ export function DefectCard({
   const [scaleAnim] = useState(() => new Animated.Value(1));
   const [checkOpacity] = useState(() => new Animated.Value(0));
   const prevAdopted = useRef(isAdopted);
+
+  // Inline edit mode: lets the user adjust the AI-detected title/description/
+  // severity before adopting it into the defect list.
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(defect.title);
+  const [editDescription, setEditDescription] = useState(defect.description);
+  const [editSeverity, setEditSeverity] = useState<DefectData["severity"]>(defect.severity);
+  const effectiveDefect: DefectData = {
+    ...defect,
+    title: editTitle.trim() || defect.title,
+    description: editDescription,
+    severity: editSeverity,
+  };
 
   // Erfolgsanimation when adopted state changes to true
   useEffect(() => {
