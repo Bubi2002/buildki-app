@@ -1112,6 +1112,27 @@ Regeln:
       }),
 
     /**
+     * Analyze the extracted text of a construction document (plan / spec / report)
+     * and return structured building info (type, floors, room areas, materials …).
+     */
+    analyzeDocument: aiProcedure
+      .input(
+        z.object({
+          text: z.string(),
+          fileName: z.string(),
+          projectName: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { analyzeDocumentText } = await import("./ai-analysis");
+        return analyzeDocumentText({
+          text: input.text,
+          fileName: input.fileName,
+          projectName: input.projectName,
+        });
+      }),
+
+    /**
      * Generate a professional construction report from transcription + metadata.
      * Uses structured JSON output for per-trade summaries, then formats as Markdown.
      */

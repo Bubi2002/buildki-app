@@ -51,8 +51,10 @@ export default function DocumentAIScreen() {
 
   const analysisMutation = trpc.analysis.analyzePhoto.useMutation();
   const uploadPhotoMutation = trpc.analysis.uploadPhoto.useMutation();
+  const analyzeDocumentMutation = trpc.analysis.analyzeDocument.useMutation();
   const isAnalyzing = analysisPhase !== "idle";
   const analyzePhoto = analysisMutation.mutateAsync;
+  const analyzeDocumentText = analyzeDocumentMutation.mutateAsync;
 
   const loadDocuments = useCallback(async () => {
     if (!activeProject) return;
@@ -84,7 +86,8 @@ export default function DocumentAIScreen() {
 
   useEffect(() => {
     documentAI.setAnalyzeMutation(async (input: any) => await analyzePhoto(input));
-  }, [analyzePhoto]);
+    documentAI.setAnalyzeDocumentMutation(async (input: any) => await analyzeDocumentText(input));
+  }, [analyzePhoto, analyzeDocumentText]);
 
   const handlePickDocument = async () => {
     if (!activeProject) {

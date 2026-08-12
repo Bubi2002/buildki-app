@@ -292,3 +292,131 @@ export async function uploadAnalysisPhoto(
   const { url } = await storagePut(key, buffer, mimeType);
   return url;
 }
+
+// ─── Document (plan / text) analysis ─────────────────────────────────────────
+
+export interface AnalyzeDocumentTextInput {
+  text: string;
+  fileName: string;
+  projectName?: string;
+}
+
+export interface DocumentTextAnalysis {
+  summary: string;
+  buildingType?: string;
+  floors: string[];
+  roomAreas: { name: string; area: number }[];
+  totalAreaSqm?: number;
+  materials: string[];
+  trades: string[];
+  tasks: { title: string; description?: string; priority?: string; trade?: string }[];
+  defects: { title: string; description?: string; location?: string; severity?: string; trade?: string }[];
+  appointments: { title: string; date: string }[];
+}
+
+const asStringArray = (value: any, cap: number): string[] =>
+  (Array.isArray(value) ? value : [])
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean)
+    .slice(0, cap);
+
+/**
+ * Analyze the extracted text of a construction document (usually a plan /
+ * Grundriss / Leistungsverzeichnis) with the LLM and return structured,
+ * source-bound building information. The model is instructed to invent nothing.
+ */
+export async function analyzeDocumentText(input: AnalyzeDocumentTextInput): Promise<DocumentTextAnalysis> {
+  const text = (input.text || "").slice(0, 12000);
+
+  const system = "Du bist ein erfahrener Bau-Sachverständiger. Du analysierst den aus einem Bau-Dokument (häufig ein Plan/Grundriss, Leistungsverzeichnis oder Bericht) extrahierten Text und lieferst strukturierte Informationen AUSSCHLIESSLICH auf Basis des Textes. Erfinde nichts. Wenn eine Angabe nicht im Text vorkommt, lass das Feld leer bzw. das Array leer.";
+
+  const user = `Dateiname: "${input.fileName}"${input.projectName ? `\nProjekt: ${input.projectName}` : ""}
+
+Gib ein JSON-Objekt mit exakt diesen Feldern zurück:
+{
+  "summary": "2-3 Sätze: Was für ein Dokument ist das und was ist der Kerninhalt?",
+  "buildingType": "Art des Gebäudes/Vorhabens (z.B. 'Einfamilienhaus', 'Mehrfamilienhaus', 'Bürogebäude', 'Gewerbehalle'); wenn erkennbar plus Dokumentart, z.B. 'Einfamilienhaus · Grundriss'. Leerer String wenn unklar.",
+  "floors": ["erkannte Geschosse, z.B. 'UG','EG','1. OG','DG'"],
+  "roomAreas": [{"name": "Raumbezeichnung", "area": 12.34}],
+  "totalAreaSqm": 0,
+  "materials": ["genannte Materialien/Bauweisen, z.B. 'Stahlbeton','Estrich','Wärmedämmung','Fliesen'"],
+  "trades": ["betroffene Gewerke, z.B. 'Elektro','Sanitär','Rohbau'"],
+  "tasks": [{"title":"...","description":"...","priority":"niedrig|mittel|hoch","trade":"..."}],
+  "defects": [{"title":"...","description":"...","location":"...","severity":"minor|major|critical","trade":"..."}],
+  "appointments": [{"title":"...","date":"YYYY-MM-DD"}]
+}
+
+Regeln: "area" und "totalAreaSqm" als Zahl in m² (Punkt als Dezimaltrenner). "roomAreas" nur mit echten Raumbezeichnungen samt Fläche. "totalAreaSqm" = Summe der Wohn-/Nutzflächen falls im Text erkennbar, sonst 0. Antworte NUR mit dem JSON, ohne Erklärtext.
+
+DOKUMENTTEXT:
+${text}`;
+
+  const response = await invokeLLM({
+    model: "gemini-3-flash-preview",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    response_format: { type: "json_object" },
+    max_tokens: 4096,
+  });
+
+  const messageContent = response.choices?.[0]?.message?.content;
+  const rawContent: string = typeof messageContent === "string" ? messageContent : JSON.stringify(messageContent) || "{}";
+  let parsed: any;
+  try {
+    parsed = JSON.parse(rawContent);
+  } catch {
+    const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+    parsed = jsonMatch ? JSON.parse(jsonMatch[1]) : {};
+  }
+
+  const roomAreas = (Array.isArray(parsed.roomAreas) ? parsed.roomAreas : [])
+    .map((r: any) => ({ name: typeof r?.name === "string" ? r.name.trim() : "", area: Number(r?.area) || 0 }))
+    .filter((r: { name: string; area: number }) => r.name && r.area > 0)
+    .slice(0, 60);
+
+  const tasks = (Array.isArray(parsed.tasks) ? parsed.tasks : [])
+    .map((tk: any) => ({
+      title: typeof tk?.title === "string" ? tk.title.trim() : "",
+      description: typeof tk?.description === "string" ? tk.description.trim() : undefined,
+      priority: typeof tk?.priority === "string" ? tk.priority.trim() : undefined,
+      trade: typeof tk?.trade === "string" ? tk.trade.trim() : undefined,
+    }))
+    .filter((tk: { title: string }) => tk.title)
+    .slice(0, 40);
+
+  const defects = (Array.isArray(parsed.defects) ? parsed.defects : [])
+    .map((d: any) => ({
+      title: typeof d?.title === "string" ? d.title.trim() : "",
+      description: typeof d?.description === "string" ? d.description.trim() : undefined,
+      location: typeof d?.location === "string" ? d.location.trim() : undefined,
+      severity: typeof d?.severity === "string" ? d.severity.trim() : undefined,
+      trade: typeof d?.trade === "string" ? d.trade.trim() : undefined,
+    }))
+    .filter((d: { title: string }) => d.title)
+    .slice(0, 40);
+
+  const appointments = (Array.isArray(parsed.appointments) ? parsed.appointments : [])
+    .map((a: any) => ({
+      title: typeof a?.title === "string" ? a.title.trim() : "Termin",
+      date: typeof a?.date === "string" ? a.date.trim() : "",
+    }))
+    .filter((a: { date: string }) => a.date)
+    .slice(0, 30);
+
+  const totalArea = Number(parsed.totalAreaSqm) > 0 ? Math.round(Number(parsed.totalAreaSqm) * 10) / 10 : undefined;
+
+  return {
+    summary: typeof parsed.summary === "string" ? parsed.summary.trim() : "",
+    buildingType: typeof parsed.buildingType === "string" && parsed.buildingType.trim() ? parsed.buildingType.trim() : undefined,
+    floors: asStringArray(parsed.floors, 20),
+    roomAreas,
+    totalAreaSqm: totalArea,
+    materials: asStringArray(parsed.materials, 25),
+    trades: asStringArray(parsed.trades, 25),
+    tasks,
+    defects,
+    appointments,
+  };
+}

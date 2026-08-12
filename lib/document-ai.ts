@@ -16,6 +16,7 @@ import {
   DocumentExtractionError,
   extractDocumentText,
   type DocumentExtractionMethod,
+  type DocumentExtractionResult,
 } from "@/lib/document-text-extractor";
 import { knowledgeLayer } from "@/lib/knowledge-layer";
 import { timelineEngine } from "@/lib/timeline-engine";
@@ -131,12 +132,91 @@ const DOCUMENTS_KEY = "document-ai-store";
 
 export class DocumentAIService {
   private analyzeMutation: ((input: any) => Promise<any>) | null = null;
+  private analyzeDocumentMutation: ((input: any) => Promise<any>) | null = null;
+
+  /**
+   * Inject the tRPC mutation for server-side text/document (LLM) analysis.
+   */
+  setAnalyzeDocumentMutation(mutation: (input: any) => Promise<any>): void {
+    this.analyzeDocumentMutation = mutation;
+  }
 
   /**
    * Inject the tRPC mutation for server-side analysis.
    */
   setAnalyzeMutation(mutation: (input: any) => Promise<any>): void {
     this.analyzeMutation = mutation;
+  }
+
+  /**
+   * Map the server LLM's document analysis to a full DocumentAnalysisResult.
+   */
+  private buildResultFromLLM(
+    documentId: string,
+    request: DocumentUploadRequest,
+    category: DocumentCategory,
+    extraction: DocumentExtractionResult,
+    ai: any,
+    startedAt: number,
+  ): DocumentAnalysisResult {
+    const roomAreas = (Array.isArray(ai?.roomAreas) ? ai.roomAreas : [])
+      .map((r: any) => ({ name: String(r?.name || "").trim(), area: Number(r?.area) || 0 }))
+      .filter((r: { name: string; area: number }) => r.name && r.area > 0);
+    const strArr = (v: any): string[] => (Array.isArray(v) ? v.map((x: any) => String(x).trim()).filter(Boolean) : []);
+    const floors = strArr(ai?.floors);
+    const materials = strArr(ai?.materials);
+    const trades = strArr(ai?.trades);
+    const tasks: ExtractedTask[] = (Array.isArray(ai?.tasks) ? ai.tasks : [])
+      .map((t: any) => ({ title: String(t?.title || "").trim(), description: t?.description, priority: t?.priority, trade: t?.trade }))
+      .filter((t: ExtractedTask) => t.title);
+    const defects: ExtractedDefect[] = (Array.isArray(ai?.defects) ? ai.defects : [])
+      .map((d: any) => ({ title: String(d?.title || "").trim(), description: d?.description, location: d?.location, severity: d?.severity, trade: d?.trade }))
+      .filter((d: ExtractedDefect) => d.title);
+    const appointments: ExtractedAppointment[] = (Array.isArray(ai?.appointments) ? ai.appointments : [])
+      .map((a: any) => ({ title: String(a?.title || "Termin").trim(), date: String(a?.date || "").trim() }))
+      .filter((a: ExtractedAppointment) => a.date);
+    const totalAreaSqm = Number(ai?.totalAreaSqm) > 0
+      ? Math.round(Number(ai.totalAreaSqm) * 10) / 10
+      : roomAreas.length
+        ? Math.round(roomAreas.reduce((sum: number, r: { area: number }) => sum + r.area, 0) * 10) / 10
+        : undefined;
+    const lines = extraction.text.split(/\n+/).map((l) => l.trim()).filter((l) => l.length >= 3);
+
+    return {
+      documentId,
+      fileName: request.fileName,
+      fileUri: request.fileUri,
+      fileType: request.fileType,
+      category,
+      analyzedAt: new Date().toISOString(),
+      analysisStatus: "completed",
+      summary: String(ai?.summary || "").trim() || "Analyse abgeschlossen.",
+      buildingType: ai?.buildingType ? String(ai.buildingType).trim() : undefined,
+      floors,
+      roomAreas,
+      totalAreaSqm,
+      materials,
+      rooms: roomAreas.map((r: { name: string }) => r.name),
+      trades,
+      persons: [],
+      companies: [],
+      appointments,
+      tasks,
+      defects,
+      quantities: [],
+      references: [],
+      entities: [],
+      overallConfidence: 90,
+      processingTime: Date.now() - startedAt,
+      extraction: {
+        method: extraction.method,
+        pageCount: extraction.pageCount,
+        textLength: extraction.textLength,
+        truncated: extraction.truncated,
+      },
+      warnings: extraction.warnings,
+      sourceExcerpts: lines.slice(0, 8).map((l) => l.slice(0, 240)),
+    };
   }
 
   /**
@@ -168,12 +248,28 @@ export class DocumentAIService {
           fileType: request.fileType,
           fileSize: request.fileSize,
         });
-        result = analyzeExtractedDocument({
+        const category = request.category || this.suggestCategory(request.fileName);
+        // Prefer the server LLM for a high-quality, plan-focused analysis; fall
+        // back to the local keyword parser when offline or on any LLM error.
+        let llmResult: DocumentAnalysisResult | null = null;
+        if (this.analyzeDocumentMutation && extraction.text.trim().length > 0) {
+          try {
+            const ai = await this.analyzeDocumentMutation({
+              text: extraction.text,
+              fileName: request.fileName,
+              projectName: request.projectName,
+            });
+            llmResult = this.buildResultFromLLM(documentId, request, category, extraction, ai, startTime);
+          } catch {
+            llmResult = null;
+          }
+        }
+        result = llmResult ?? analyzeExtractedDocument({
           documentId,
           fileName: request.fileName,
           fileUri: request.fileUri,
           fileType: request.fileType,
-          category: request.category || this.suggestCategory(request.fileName),
+          category,
           extraction,
           startedAt: startTime,
         });
