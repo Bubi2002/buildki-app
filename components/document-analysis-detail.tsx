@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 
 import { useColors } from "@/hooks/use-colors";
 import type { DocumentAnalysisResult } from "@/lib/document-ai";
@@ -112,10 +113,21 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
       const tasksHtml = cardList(result.tasks.map((tk) => ({ title: tk.title, lines: [tk.description || "", tk.trade ? `${t('document_analysis_detail_gewerk' as any)}${tk.trade}` : "", tk.deadline ? `${t('document_analysis_detail_frist' as any)}${tk.deadline}` : ""] })));
       const apptHtml = cardList(result.appointments.map((a) => ({ title: a.title, lines: [`${t('document_analysis_detail_datum' as any)}${a.date}${a.time ? ` · ${a.time}` : ""}`] })));
 
+      // If the analyzed document is an image, embed it directly so the reader
+      // sees what the analysis is about (no extra library needed).
+      let planImageHtml = "";
+      if (result.fileType === "image" && result.fileUri) {
+        try {
+          const b64 = await FileSystem.readAsStringAsync(result.fileUri, { encoding: FileSystem.EncodingType.Base64 });
+          planImageHtml = `<img src="data:image/jpeg;base64,${b64}" style="width:100%; max-height:520px; object-fit:contain; border:1px solid #E5E7EB; border-radius:6px; margin:8px 0 18px;"/>`;
+        } catch {}
+      }
+
       const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
         <div style="color:#2563EB; font-size:11px; font-weight:800; letter-spacing:2px;">DOCUMENT AI</div>
         <h1 style="font-size:20px; margin:2px 0;">${esc(t('document_analysis_detail_analyse_ergebnis' as any))}</h1>
         <p style="color:#6B7280; font-size:12px; margin:0 0 16px;">${esc(result.fileName)} · ${esc(result.fileType.toUpperCase())}${result.extraction.pageCount ? ` · ${result.extraction.pageCount} ${esc(t('document_analysis_detail_seiten' as any))}` : ""}</p>
+        ${planImageHtml}
         ${heading(t('document_analysis_detail_zusammenfassung' as any), `<p style="margin:0; line-height:1.5; font-size:13px;">${esc(result.summary)}</p>`)}
         ${heading(t('document_ai_gebaeude' as any), result.buildingType ? `<p style="margin:0; font-size:13px;">${esc(result.buildingType)}</p>` : "")}
         ${heading(t('document_ai_geschosse' as any), chips(result.floors))}
@@ -128,9 +140,34 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
         ${heading(`${t('document_analysis_detail_termine_fristen' as any)} (${result.appointments.length})`, apptHtml)}
       </body></html>`;
 
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const { uri: analysisUri } = await Print.printToFileAsync({ html, base64: false });
+      let finalUri = analysisUri;
+
+      // Append the original plan (PDF) after the analysis so the recipient sees
+      // the plan too. Uses pdf-lib; on any failure we share the analysis-only PDF.
+      if (result.fileType === "pdf" && result.fileUri) {
+        try {
+          const { PDFDocument } = require("pdf-lib");
+          const [analysisB64, planB64] = await Promise.all([
+            FileSystem.readAsStringAsync(analysisUri, { encoding: FileSystem.EncodingType.Base64 }),
+            FileSystem.readAsStringAsync(result.fileUri, { encoding: FileSystem.EncodingType.Base64 }),
+          ]);
+          const merged = await PDFDocument.create();
+          const analysisDoc = await PDFDocument.load(analysisB64);
+          const planDoc = await PDFDocument.load(planB64);
+          (await merged.copyPages(analysisDoc, analysisDoc.getPageIndices())).forEach((p: any) => merged.addPage(p));
+          (await merged.copyPages(planDoc, planDoc.getPageIndices())).forEach((p: any) => merged.addPage(p));
+          const mergedB64 = await merged.saveAsBase64();
+          const mergedPath = `${FileSystem.cacheDirectory}analyse-${Date.now()}.pdf`;
+          await FileSystem.writeAsStringAsync(mergedPath, mergedB64, { encoding: FileSystem.EncodingType.Base64 });
+          finalUri = mergedPath;
+        } catch {
+          // pdf-lib unavailable or merge failed → keep the analysis-only PDF.
+        }
+      }
+
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+        await Sharing.shareAsync(finalUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
       }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));

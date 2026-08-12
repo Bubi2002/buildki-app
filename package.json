@@ -76,6 +76,7 @@
     "mysql2": "^3.16.0",
     "nativewind": "^4.2.6",
     "nodemailer": "^9.0.3",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
