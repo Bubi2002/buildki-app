@@ -99,9 +99,12 @@ export default function DefectExportScreen() {
       });
 
       // Individual defects
-      for (const defect of filteredDefects) {
+      filteredDefects.forEach((defect, di) => {
+        const prioColor = defect.priority === "hoch" ? "#DC2626" : defect.priority === "mittel" ? "#F59E0B" : "#16A34A";
+        const prioText = defect.priority === "hoch" ? t('defect_export_prio_hoch' as any) : defect.priority === "mittel" ? t('defect_export_prio_mittel' as any) : t('defect_export_prio_niedrig' as any);
+
         let content = `**${t('defect_export_label_status' as any)}** ${t(STATUS_LABEL_KEYS[defect.status] as any)}\n`;
-        content += `**${t('defect_export_label_prioritaet' as any)}** ${defect.priority === "hoch" ? t('defect_export_prio_hoch' as any) : defect.priority === "mittel" ? t('defect_export_prio_mittel' as any) : t('defect_export_prio_niedrig' as any)}\n`;
+        content += `**${t('defect_export_label_prioritaet' as any)}** <span style="color:${prioColor};font-weight:700;">${prioText}</span>\n`;
         if (defect.location) content += `**${t('defect_export_label_ort' as any)}** ${defect.location}\n`;
         if (defect.gewerk) content += `**${t('defect_export_label_gewerk' as any)}** ${defect.gewerk}\n`;
         if (defect.assignee) content += `**${t('defect_export_label_zustaendig' as any)}** ${defect.assignee}\n`;
@@ -115,11 +118,12 @@ export default function DefectExportScreen() {
           }
         }
 
+        const cleanTitle = (defect.title || "").trim();
         sections.push({
-          title: `#${defect.id.slice(-4)} – ${defect.title}`,
+          title: cleanTitle || `${t('defect_export_mangel' as any)} ${di + 1}`,
           content,
         });
-      }
+      });
 
       // Generate QR code for digital version
       const qrData = `buildki://defects/${params.projectId || "all"}`;

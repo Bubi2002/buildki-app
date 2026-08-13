@@ -192,7 +192,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   <meta charset="utf-8">
   <style>
     @page {
-      margin: 20mm 15mm 25mm 15mm;
+      margin: 16mm 12mm 20mm 12mm;
       @bottom-center {
         content: counter(page) " / " counter(pages);
         font-size: 9px;
@@ -205,6 +205,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       font-size: 11px;
       line-height: 1.5;
       color: #1a1a1a;
+      padding: 0 18px;
     }
     .header {
       display: flex;
@@ -241,22 +242,25 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     }
     .toc {
       margin: 20px 0;
-      padding: 16px;
+      padding: 16px 18px;
       background: #f8f9fa;
-      border-radius: 4px;
+      border-left: 4px solid ${accentColor};
+      border-radius: 0 4px 4px 0;
     }
-    .toc h3 { font-size: 14px; margin-bottom: 8px; }
+    .toc h3 { font-size: 14px; margin-bottom: 8px; color: ${accentColor}; }
     .toc ol { padding-left: 20px; }
-    .toc li { margin: 4px 0; font-size: 11px; }
-    .toc a { color: ${accentColor}; text-decoration: none; }
-    .section { margin-bottom: 20px; }
+    .toc li { margin: 5px 0; font-size: 11px; }
+    .toc a { color: #1a1a1a; text-decoration: none; }
+    .section { margin-bottom: 22px; }
     .section-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: #1a1a1a;
-      border-bottom: 1px solid #e0e0e0;
-      padding-bottom: 6px;
-      margin-bottom: 10px;
+      background: ${accentColor}14;
+      border-left: 4px solid ${accentColor};
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border-radius: 0 4px 4px 0;
     }
     .section-number {
       display: inline-block;
@@ -270,7 +274,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       font-size: 10px;
       margin-right: 8px;
     }
-    .section-content { font-size: 11px; line-height: 1.6; }
+    .section-content { font-size: 11px; line-height: 1.6; padding: 2px 4px; }
     .section-content p { margin-bottom: 8px; }
     .section-content ul, .section-content ol { padding-left: 20px; margin-bottom: 8px; }
     .section-content li { margin-bottom: 4px; }
