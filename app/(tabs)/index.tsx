@@ -90,32 +90,64 @@ interface ToolItem {
   route: string;
 }
 
-const TOOLS: ToolItem[] = [
-  { key: "ki_analyse", labelKey: "index_tool_ki_analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
-  { key: "ki_assistent", labelKey: "index_tool_ki_assistent", icon: "assistant", color: "#00C853", route: "/protocol-assistant" },
-  { key: "maengel", labelKey: "index_tool_maengel", icon: "warning", color: "#FF9800", route: "/defects" },
-  { key: "nachpruefung", labelKey: "index_tool_nachpruefung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
-  { key: "aufgaben", labelKey: "index_tool_aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
-  { key: "raeume", labelKey: "index_tool_raeume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
-  { key: "grundriss", labelKey: "index_tool_grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
-  { key: "messen", labelKey: "index_tool_messen", icon: "straighten", color: "#00ACC1", route: "/measure" },
-  { key: "tagebuch", labelKey: "index_tool_bautagebuch", icon: "menu-book", color: "#66BB6A", route: "/bautagebuch" },
-  { key: "checklisten", labelKey: "index_tool_checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
-  { key: "fotos", labelKey: "index_tool_fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },
-  { key: "notizen", labelKey: "index_tool_notizen", icon: "edit-note", color: "#78909C", route: "/quick-note" },
-  { key: "timeline", labelKey: "index_tool_timeline", icon: "timeline", color: "#009688", route: "/smart-timeline" },
-  { key: "zeiterfassung", labelKey: "index_tool_zeiterfassung", icon: "timer", color: "#FF5722", route: "/time-tracking" },
-  { key: "team", labelKey: "index_tool_team", icon: "groups", color: "#5C6BC0", route: "/team" },
-  { key: "anwesenheit", labelKey: "index_tool_anwesenheit", icon: "how-to-reg", color: "#00897B", route: "/attendance" },
-  { key: "kalender", labelKey: "index_tool_kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
-  { key: "fortschritt", labelKey: "index_tool_fortschritt", icon: "trending-up", color: "#4CAF50", route: "/progress" },
-  { key: "ki_bericht", labelKey: "index_tool_ki_bericht", icon: "auto-awesome", color: "#7B1FA2", route: "/report-generator" },
-  { key: "maengel_export", labelKey: "index_tool_maengel_pdf", icon: "picture-as-pdf", color: "#EF4444", route: "/defect-export" },
-  { key: "vergleich", labelKey: "index_tool_vergleich", icon: "compare", color: "#5C6BC0", route: "/photo-compare" },
-  { key: "bericht", labelKey: "index_tool_bericht", icon: "summarize", color: "#795548", route: "/protocol-merge" },
-  { key: "matterport", labelKey: "index_tool_matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
-  { key: "dokument_ai", labelKey: "index_tool_dokument_ki", icon: "smart-toy", color: "#FF6F00", route: "/document-ai" },
-  { key: "brain", labelKey: "index_tool_brain", icon: "psychology", color: "#E040FB", route: "/ai-assistant" },
+interface ToolGroup {
+  titleKey: string;
+  tools: ToolItem[];
+}
+
+const TOOL_GROUPS: ToolGroup[] = [
+  {
+    titleKey: "tools_group_erfassen",
+    tools: [
+      { key: "fotos", labelKey: "index_tool_fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },
+      { key: "vergleich", labelKey: "index_tool_vergleich", icon: "compare", color: "#5C6BC0", route: "/photo-compare" },
+      { key: "notizen", labelKey: "index_tool_notizen", icon: "edit-note", color: "#78909C", route: "/quick-note" },
+      { key: "tagebuch", labelKey: "index_tool_bautagebuch", icon: "menu-book", color: "#66BB6A", route: "/bautagebuch" },
+      { key: "raeume", labelKey: "index_tool_raeume", icon: "layers", color: "#5C6BC0", route: "/rooms" },
+      { key: "grundriss", labelKey: "index_tool_grundriss", icon: "map", color: "#4FC3F7", route: "/floor-plan" },
+      { key: "messen", labelKey: "index_tool_messen", icon: "straighten", color: "#00ACC1", route: "/measure" },
+      { key: "matterport", labelKey: "index_tool_matterport", icon: "view-in-ar", color: "#00B0FF", route: "/matterport" },
+    ],
+  },
+  {
+    titleKey: "tools_group_maengel",
+    tools: [
+      { key: "maengel", labelKey: "index_tool_maengel", icon: "warning", color: "#FF9800", route: "/defects" },
+      { key: "nachpruefung", labelKey: "index_tool_nachpruefung", icon: "event-repeat", color: "#A78BFA", route: "/follow-up" },
+      { key: "checklisten", labelKey: "index_tool_checklisten", icon: "checklist", color: "#AB47BC", route: "/checklists" },
+    ],
+  },
+  {
+    titleKey: "tools_group_ki",
+    tools: [
+      { key: "ki_analyse", labelKey: "index_tool_ki_analyse", icon: "auto-awesome", color: "#7C4DFF", route: "/photo-analysis" },
+      { key: "dokument_ai", labelKey: "index_tool_dokument_ki", icon: "smart-toy", color: "#FF6F00", route: "/document-ai" },
+      { key: "ki_bericht", labelKey: "index_tool_ki_bericht", icon: "auto-awesome", color: "#7B1FA2", route: "/report-generator" },
+      { key: "brain", labelKey: "index_tool_brain", icon: "psychology", color: "#E040FB", route: "/ai-assistant" },
+    ],
+  },
+  {
+    titleKey: "tools_group_planung",
+    tools: [
+      { key: "aufgaben", labelKey: "index_tool_aufgaben", icon: "task-alt", color: "#1976D2", route: "/tasks" },
+      { key: "kalender", labelKey: "index_tool_kalender", icon: "calendar-today", color: "#EF6C00", route: "/calendar-view" },
+      { key: "fortschritt", labelKey: "index_tool_fortschritt", icon: "trending-up", color: "#4CAF50", route: "/progress" },
+    ],
+  },
+  {
+    titleKey: "tools_group_team",
+    tools: [
+      { key: "team", labelKey: "index_tool_team", icon: "groups", color: "#5C6BC0", route: "/team" },
+      { key: "anwesenheit", labelKey: "index_tool_anwesenheit", icon: "how-to-reg", color: "#00897B", route: "/attendance" },
+      { key: "zeiterfassung", labelKey: "index_tool_zeiterfassung", icon: "timer", color: "#FF5722", route: "/time-tracking" },
+    ],
+  },
+  {
+    titleKey: "tools_group_berichte",
+    tools: [
+      { key: "bericht", labelKey: "index_tool_bericht", icon: "summarize", color: "#795548", route: "/protocol-merge" },
+    ],
+  },
 ];
 
 export default function AIWorkbenchScreen() {
@@ -618,21 +650,26 @@ export default function AIWorkbenchScreen() {
           </Pressable>
         </View>
 
-        {/* ─── TOOLS Grid (3 columns) ─────────────────────────────────────── */}
+        {/* ─── TOOLS (grouped, 3 columns) ─────────────────────────────────── */}
         <Text style={styles.toolsSectionTitle}>{t('index_tools' as any)}</Text>
 
-        <View style={styles.toolGrid}>
-          {TOOLS.map((tool) => (
-            <Pressable
-              key={tool.key}
-              onPress={() => navigateModule(tool.route)}
-              style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
-              <Text style={styles.toolLabel} numberOfLines={1}>{t(tool.labelKey as any)}</Text>
-            </Pressable>
-          ))}
-        </View>
+        {TOOL_GROUPS.map((group) => (
+          <View key={group.titleKey}>
+            <Text style={styles.toolGroupTitle}>{t(group.titleKey as any)}</Text>
+            <View style={styles.toolGrid}>
+              {group.tools.map((tool) => (
+                <Pressable
+                  key={tool.key}
+                  onPress={() => navigateModule(tool.route)}
+                  style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
+                  <Text style={styles.toolLabel} numberOfLines={1}>{t(tool.labelKey as any)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ))}
 
       </ScrollView>
     </ScreenContainer>
@@ -1040,6 +1077,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: 20,
     marginBottom: 10,
+    paddingLeft: 20,
+  },
+  toolGroupTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#5F7590',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 16,
+    marginBottom: 8,
     paddingLeft: 20,
   },
   toolGrid: {
