@@ -374,7 +374,7 @@ export default function AIWorkbenchScreen() {
           >
             <View style={styles.projectSelectorLeft}>
               <View style={[styles.projectIconBox, { backgroundColor: (selectedProject?.color || '#5DADE2') + '22', borderColor: (selectedProject?.color || '#5DADE2') + '55' }]}>
-                <MaterialIcons name={selectedProject ? 'folder' : 'create-new-folder'} size={26} color={selectedProject?.color || '#5DADE2'} />
+                <MaterialIcons name={selectedProject ? 'folder' : 'create-new-folder'} size={36} color={selectedProject?.color || '#5DADE2'} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
@@ -384,7 +384,7 @@ export default function AIWorkbenchScreen() {
               </View>
             </View>
             <View style={styles.projectSelectorChevron}>
-              <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={24} color="#5DADE2" />
+              <MaterialIcons name={showProjectPicker ? "expand-less" : "expand-more"} size={28} color="#5DADE2" />
             </View>
           </Pressable>
           {selectedProject ? (
@@ -692,16 +692,16 @@ const styles = StyleSheet.create({
   },
   projectSelectorToggle: {
     flex: 1,
-    minHeight: 88,
+    minHeight: 128,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
   },
   activeProjectDeleteButton: {
-    width: 56,
-    minHeight: 88,
+    width: 64,
+    minHeight: 128,
     alignItems: 'center',
     justifyContent: 'center',
     borderLeftWidth: 1,
@@ -711,37 +711,37 @@ const styles = StyleSheet.create({
   projectSelectorLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 18,
     flex: 1,
   },
   projectIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   projectSelectorChevron: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#5DADE21A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   projectSelectorLabel: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#7FB3DE',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     fontWeight: '700',
   },
   projectSelectorName: {
-    fontSize: 19,
+    fontSize: 27,
     fontWeight: '800',
     color: '#F0F4F8',
-    marginTop: 3,
+    marginTop: 5,
   },
   projectDropdown: {
     marginHorizontal: 16,
