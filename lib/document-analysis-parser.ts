@@ -218,26 +218,74 @@ function normalizeDate(value: string): string {
   return value;
 }
 
+// Only treat a date as an appointment when the line actually signals a
+// deadline/milestone. Plain dates in a plan's title block (plan date, sheet
+// "1 von 5", paper format) are NOT appointments.
+const DEADLINE_HINT = /\b(Frist|Termin|Fertigstell\w*|Abgabe|Ausführung\w*|Baubeginn|Bauende|Baustart|Abnahme|spätestens|fällig|Meilenstein|Übergabe|Beginn|Ende)\b/i;
+
 function extractAppointments(lines: string[]): ExtractedAppointment[] {
   const appointments: ExtractedAppointment[] = [];
+  const seen = new Set<string>();
   const datePattern = /\b(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})\b/;
   for (const line of lines) {
     const date = line.match(datePattern)?.[1];
     if (!date) continue;
-    const title = cleanLine(line.replace(date, "")) || "Datum im Dokument";
-    appointments.push({ title: title.slice(0, 140), date: normalizeDate(date) });
+    if (!DEADLINE_HINT.test(line)) continue; // skip title-block/plan dates
+    const title = cleanLine(line.replace(date, "")) || "Termin";
+    const normalized = normalizeDate(date);
+    const key = `${normalized}|${title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    appointments.push({ title: title.slice(0, 140), date: normalized });
   }
   return appointments.slice(0, 30);
 }
 
 function extractReferences(lines: string[]): { title: string; type: string; number?: string }[] {
   const references: { title: string; type: string; number?: string }[] = [];
-  const pattern = /\b(DIN(?:\s+EN)?\s+[A-Z0-9-]+|Plan(?:-?Nr\.?|nummer)?\s*[:#-]?\s*[A-Z0-9._/-]+)\b/i;
+  const seen = new Set<string>();
+  // Norms need real digits so paper formats ("DIN A0") never match.
+  const normRe = /\bDIN(?:\s+EN)?(?:\s+ISO)?\s+\d{2,6}(?:-\d+)?\b/i;
+  // A plan number must carry an explicit "Nr./Nummer" token so labels like
+  // "PLANVERFASSER" no longer get mistaken for a plan reference.
+  const planRe = /\b(?:Plan|Blatt|Zeichnung)\s*-?\s*(?:Nr\.?|Nummer)\s*[:#]?\s*([A-Z0-9][A-Z0-9._/-]{1,})/i;
   for (const line of lines) {
-    const match = line.match(pattern)?.[1];
-    if (match) references.push({ title: cleanLine(line).slice(0, 180), type: /^DIN/i.test(match) ? "norm" : "plan", number: match });
+    const norm = line.match(normRe)?.[0];
+    if (norm) {
+      const label = norm.replace(/\s+/g, " ").trim();
+      const key = `n:${label.toUpperCase()}`;
+      if (!seen.has(key)) { seen.add(key); references.push({ title: label, type: "norm", number: label }); }
+    }
+    const plan = line.match(planRe);
+    if (plan) {
+      const num = plan[1].trim();
+      if (/^A[0-6]$/i.test(num)) continue; // paper format, not a plan number
+      const key = `p:${num.toUpperCase()}`;
+      if (!seen.has(key)) { seen.add(key); references.push({ title: `Plan-Nr. ${num}`, type: "plan", number: num }); }
+    }
   }
-  return references.slice(0, 30);
+  return references.slice(0, 20);
+}
+
+// Maßstab, e.g. "M 1:100" / "Maßstab 1:50" / bare common scale.
+function extractScale(text: string): string | undefined {
+  const labelled = text.match(/\b(?:Maßstab|M)\.?\s*=?\s*1\s*[:：]\s*(\d{2,4})\b/i);
+  if (labelled) return `1:${labelled[1]}`;
+  const common = text.match(/\b1\s*[:：]\s*(20|25|50|75|100|200|250|500|1000)\b/);
+  return common ? `1:${common[1]}` : undefined;
+}
+
+// Room / ceiling heights explicitly labelled in the plan.
+function extractCeilingHeights(text: string): string[] {
+  const found = new Set<string>();
+  const re = /(?:lichte\s+(?:Raum)?höhe|Raumhöhe|Deckenhöhe|LRH|LH)\s*[:=]?\s*(\d(?:[.,]\d{1,2})?)\s*m\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    const value = parseGermanNumber(match[1]);
+    if (value >= 1.8 && value <= 6) found.add(`${match[1].replace(".", ",")} m`);
+    if (found.size >= 8) break;
+  }
+  return [...found];
 }
 
 function escapeRegExp(value: string): string {
@@ -414,9 +462,12 @@ export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): 
   const roomAreas = extractRoomAreas(text);
   const materials = extractMaterials(text);
   const totalAreaSqm = computeTotalArea(roomAreas, text);
+  const scale = extractScale(text);
+  const ceilingHeights = extractCeilingHeights(text);
 
   const structuredCount = rooms.length + trades.length + tasks.length + defects.length
-    + appointments.length + references.length + floors.length + roomAreas.length + materials.length;
+    + appointments.length + references.length + floors.length + roomAreas.length + materials.length
+    + (scale ? 1 : 0) + ceilingHeights.length;
   const summary = composePlanSummary(buildingType, floors, roomAreas, totalAreaSqm)
     ?? fallbackSummary(lines, text);
 
@@ -443,6 +494,8 @@ export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): 
     roomAreas,
     totalAreaSqm,
     materials,
+    scale,
+    ceilingHeights,
     entities: [],
     overallConfidence: computeConfidence(input.extraction, structuredCount),
     processingTime: Date.now() - input.startedAt,

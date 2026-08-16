@@ -86,6 +86,8 @@ export interface DocumentAnalysisResult {
   roomAreas?: { name: string; area: number }[];
   totalAreaSqm?: number;
   materials?: string[];
+  scale?: string;            // Maßstab, z.B. "1:100"
+  ceilingHeights?: string[]; // Raumhöhen, z.B. ["2,50 m"]
 
   // Raw entities
   entities: ExtractedEntity[];

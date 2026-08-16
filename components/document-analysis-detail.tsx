@@ -2,8 +2,9 @@
  * Design: evidence-first document analysis with square cards and explicit sources.
  * The original file remains visible and every result section is independently scannable.
  */
+import { useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -81,6 +82,7 @@ function DataCard({ title, lines, accent = "#5CB8E6" }: { title: string; lines: 
 export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }: DocumentAnalysisDetailProps) {
   const colors = useColors();
   const { t } = useTranslation();
+  const [isExporting, setIsExporting] = useState(false);
   if (!result) return null;
 
   const extractionLabel = result.extraction.method === "native_pdf_text"
@@ -94,7 +96,11 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
           : t('document_analysis_detail_bildanalyse' as any);
 
   const exportAnalysisPdf = async () => {
-    if (!result) return;
+    if (!result || isExporting) return;
+    setIsExporting(true);
+    // Yield one frame so the spinner paints before the (potentially slow,
+    // pure-JS pdf-lib) merge blocks the thread.
+    await new Promise((resolve) => setTimeout(resolve, 50));
     try {
       const esc = (s?: string) => decodeUnicodeEscapes(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const heading = (title: string, body: string) =>
@@ -130,9 +136,11 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
         ${planImageHtml}
         ${heading(t('document_analysis_detail_zusammenfassung' as any), `<p style="margin:0; line-height:1.5; font-size:13px;">${esc(result.summary)}</p>`)}
         ${heading(t('document_ai_gebaeude' as any), result.buildingType ? `<p style="margin:0; font-size:13px;">${esc(result.buildingType)}</p>` : "")}
+        ${heading(t('document_ai_massstab' as any), result.scale ? `<p style="margin:0; font-size:13px;">${esc(result.scale)}</p>` : "")}
         ${heading(t('document_ai_geschosse' as any), chips(result.floors))}
         ${heading(t('document_ai_raeume_flaechen' as any), rooms)}
         ${heading(t('document_ai_gesamtflaeche' as any), typeof result.totalAreaSqm === "number" && result.totalAreaSqm > 0 ? `<p style="margin:0; font-size:13px;">${formatArea(result.totalAreaSqm)} m²</p>` : "")}
+        ${heading(t('document_ai_raumhoehen' as any), chips(result.ceilingHeights))}
         ${heading(t('document_ai_materialien' as any), chips(result.materials))}
         ${heading(t('document_analysis_detail_gewerke' as any), chips(result.trades))}
         ${heading(`${t('document_analysis_detail_auffaelligkeiten_maengel' as any)} (${result.defects.length})`, defectsHtml)}
@@ -171,6 +179,8 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
       }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -182,8 +192,8 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             <Text style={[styles.headerEyebrow, { color: colors.primary }]}>DOCUMENT AI</Text>
             <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>{t('document_analysis_detail_analyse_ergebnis' as any)}</Text>
           </View>
-          <Pressable onPress={exportAnalysisPdf} style={[styles.closeButton, { borderColor: colors.primary }]} accessibilityLabel={t('pdf_teilen')}>
-            <MaterialIcons name="ios-share" size={22} color={colors.primary} />
+          <Pressable onPress={exportAnalysisPdf} disabled={isExporting} style={[styles.closeButton, { borderColor: colors.primary, opacity: isExporting ? 0.6 : 1 }]} accessibilityLabel={t('pdf_teilen')}>
+            {isExporting ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="ios-share" size={22} color={colors.primary} />}
           </Pressable>
           <Pressable onPress={onClose} style={[styles.closeButton, { borderColor: colors.border }]} accessibilityLabel={t('document_analysis_detail_analyse_schliessen' as any)}>
             <MaterialIcons name="close" size={24} color={colors.foreground} />
@@ -241,6 +251,12 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             </Section>
           ) : null}
 
+          {result.scale ? (
+            <Section title={t('document_ai_massstab' as any)}>
+              <Text style={[styles.singleValue, { color: colors.foreground }]}>{result.scale}</Text>
+            </Section>
+          ) : null}
+
           {result.floors && result.floors.length > 0 ? (
             <Section title={t('document_ai_geschosse' as any)}><TagList values={result.floors} /></Section>
           ) : null}
@@ -265,6 +281,10 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             <Section title={t('document_ai_gesamtflaeche' as any)}>
               <Text style={[styles.singleValue, { color: colors.foreground }]}>{formatArea(result.totalAreaSqm)} m²</Text>
             </Section>
+          ) : null}
+
+          {result.ceilingHeights && result.ceilingHeights.length > 0 ? (
+            <Section title={t('document_ai_raumhoehen' as any)}><TagList values={result.ceilingHeights} /></Section>
           ) : null}
 
           {result.materials && result.materials.length > 0 ? (
