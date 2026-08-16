@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
+import { View, Text, Pressable, StyleSheet, Animated, TextInput } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
@@ -45,6 +45,20 @@ export function TaskCard({
   const [checkOpacity] = useState(() => new Animated.Value(0));
   const prevAdopted = useRef(isAdopted);
 
+  // Inline edit mode: adjust AI-detected task fields before adopting.
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editDescription, setEditDescription] = useState(task.description);
+  const [editPriority, setEditPriority] = useState<TaskData["priority"]>(task.priority);
+  const [editDuration, setEditDuration] = useState(task.estimatedDuration);
+  const effectiveTask: TaskData = {
+    ...task,
+    title: editTitle.trim() || task.title,
+    description: editDescription,
+    priority: editPriority,
+    estimatedDuration: editDuration.trim() || task.estimatedDuration,
+  };
+
   useEffect(() => {
     if (isAdopted && !prevAdopted.current) {
       Animated.parallel([
@@ -76,7 +90,7 @@ export function TaskCard({
     }
   };
 
-  const priorityColor = getPriorityColor(task.priority);
+  const priorityColor = getPriorityColor(editPriority);
 
   return (
     <Animated.View style={[
@@ -90,7 +104,9 @@ export function TaskCard({
     ]}>
       <View style={styles.header}>
         <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-        <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>{task.title}</Text>
+        <Text style={[styles.title, { color: isEditing ? colors.muted : colors.foreground }]} numberOfLines={isEditing ? 1 : 2}>
+          {isEditing ? t('edit') : editTitle}
+        </Text>
         {isAdopted && (
           <Animated.View style={[styles.adoptedBadge, { backgroundColor: colors.success + "20", opacity: checkOpacity }]}>
             <MaterialIcons name="check-circle" size={14} color={colors.success} />
@@ -98,23 +114,65 @@ export function TaskCard({
         )}
       </View>
 
-      <Text style={[styles.description, { color: colors.muted }]}>{task.description}</Text>
+      {isEditing ? (
+        <>
+          <TextInput
+            value={editTitle}
+            onChangeText={setEditTitle}
+            placeholder={task.title}
+            placeholderTextColor={colors.muted}
+            style={[styles.editInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+          />
+          <TextInput
+            value={editDescription}
+            onChangeText={setEditDescription}
+            placeholder={task.description}
+            placeholderTextColor={colors.muted}
+            multiline
+            style={[styles.editInput, styles.editInputMultiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+          />
+          <TextInput
+            value={editDuration}
+            onChangeText={setEditDuration}
+            placeholder={task.estimatedDuration}
+            placeholderTextColor={colors.muted}
+            style={[styles.editInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+          />
+          <View style={styles.priorityRow}>
+            {(["high", "medium", "low"] as const).map((p) => (
+              <Pressable
+                key={p}
+                onPress={() => setEditPriority(p)}
+                style={[styles.priorityChip, { borderColor: editPriority === p ? getPriorityColor(p) : colors.border, backgroundColor: editPriority === p ? getPriorityColor(p) + "20" : "transparent" }]}
+              >
+                <Text style={{ fontSize: 11, fontWeight: "600", color: editPriority === p ? getPriorityColor(p) : colors.muted }}>
+                  {getPriorityLabel(p)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={[styles.description, { color: colors.muted }]}>{editDescription}</Text>
 
-      <View style={styles.meta}>
-        <View style={styles.metaItem}>
-          <MaterialIcons name="build" size={12} color={colors.muted} />
-          <Text style={[styles.metaText, { color: colors.muted }]}>{task.trade}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <MaterialIcons name="schedule" size={12} color={colors.muted} />
-          <Text style={[styles.metaText, { color: colors.muted }]}>{task.estimatedDuration}</Text>
-        </View>
-        <View style={[styles.priorityBadge, { backgroundColor: priorityColor + "15" }]}>
-          <Text style={[styles.priorityText, { color: priorityColor }]}>
-            {getPriorityLabel(task.priority)}
-          </Text>
-        </View>
-      </View>
+          <View style={styles.meta}>
+            <View style={styles.metaItem}>
+              <MaterialIcons name="build" size={12} color={colors.muted} />
+              <Text style={[styles.metaText, { color: colors.muted }]}>{task.trade}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <MaterialIcons name="schedule" size={12} color={colors.muted} />
+              <Text style={[styles.metaText, { color: colors.muted }]}>{editDuration}</Text>
+            </View>
+            <View style={[styles.priorityBadge, { backgroundColor: priorityColor + "15" }]}>
+              <Text style={[styles.priorityText, { color: priorityColor }]}>
+                {getPriorityLabel(editPriority)}
+              </Text>
+            </View>
+          </View>
+        </>
+      )}
 
       {task.deadline && (
         <View style={styles.deadlineRow}>
@@ -128,7 +186,7 @@ export function TaskCard({
       {showActions && !isAdopted && !isDismissed && (
         <View style={styles.actions}>
           <Pressable
-            onPress={() => onAdopt?.(task)}
+            onPress={() => onAdopt?.(effectiveTask)}
             style={({ pressed }) => [
               styles.adoptButton,
               { backgroundColor: colors.primary, transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -136,6 +194,16 @@ export function TaskCard({
           >
             <MaterialIcons name="playlist-add" size={16} color="#FFF" />
             <Text style={styles.adoptButtonText}>{t('TaskCard_add_as_task' as any)}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setIsEditing((e) => !e)}
+            accessibilityLabel={isEditing ? t('done') : t('edit')}
+            style={({ pressed }) => [
+              styles.dismissButton,
+              { borderColor: isEditing ? colors.primary : colors.border, backgroundColor: isEditing ? colors.primary + "12" : "transparent", transform: [{ scale: pressed ? 0.97 : 1 }] },
+            ]}
+          >
+            <MaterialIcons name={isEditing ? "check" : "edit"} size={16} color={isEditing ? colors.primary : colors.muted} />
           </Pressable>
           <Pressable
             onPress={() => onDismiss?.(task)}
@@ -187,6 +255,30 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginBottom: 10,
     paddingLeft: 18,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  editInputMultiline: {
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  priorityRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 10,
+  },
+  priorityChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   meta: {
     flexDirection: "row",
