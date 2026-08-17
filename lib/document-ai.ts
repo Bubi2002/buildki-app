@@ -88,6 +88,7 @@ export interface DocumentAnalysisResult {
   materials?: string[];
   scale?: string;            // Maßstab, z.B. "1:100"
   ceilingHeights?: string[]; // Raumhöhen, z.B. ["2,50 m"]
+  projectAddress?: string;   // Bauvorhaben / Standort, z.B. "Kaiserstraße 42, 50667 Köln"
 
   // Raw entities
   entities: ExtractedEntity[];

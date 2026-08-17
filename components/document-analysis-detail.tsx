@@ -135,6 +135,7 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
         <p style="color:#6B7280; font-size:12px; margin:0 0 16px;">${esc(result.fileName)} · ${esc(result.fileType.toUpperCase())}${result.extraction.pageCount ? ` · ${result.extraction.pageCount} ${esc(t('document_analysis_detail_seiten' as any))}` : ""}</p>
         ${planImageHtml}
         ${heading(t('document_analysis_detail_zusammenfassung' as any), `<p style="margin:0; line-height:1.5; font-size:13px;">${esc(result.summary)}</p>`)}
+        ${heading(t('document_ai_standort' as any), result.projectAddress ? `<p style="margin:0; font-size:13px;">${esc(result.projectAddress)}</p>` : "")}
         ${heading(t('document_ai_gebaeude' as any), result.buildingType ? `<p style="margin:0; font-size:13px;">${esc(result.buildingType)}</p>` : "")}
         ${heading(t('document_ai_massstab' as any), result.scale ? `<p style="margin:0; font-size:13px;">${esc(result.scale)}</p>` : "")}
         ${heading(t('document_ai_geschosse' as any), chips(result.floors))}
@@ -245,6 +246,12 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
             <Text style={[styles.summary, { color: colors.foreground }]}>{decodeUnicodeEscapes(result.summary)}</Text>
           </Section>
 
+          {result.projectAddress ? (
+            <Section title={t('document_ai_standort' as any)}>
+              <Text style={[styles.singleValue, { color: colors.foreground }]}>{decodeUnicodeEscapes(result.projectAddress)}</Text>
+            </Section>
+          ) : null}
+
           {result.buildingType ? (
             <Section title={t('document_ai_gebaeude' as any)}>
               <Text style={[styles.singleValue, { color: colors.foreground }]}>{decodeUnicodeEscapes(result.buildingType)}</Text>
@@ -258,7 +265,7 @@ export function DocumentAnalysisDetail({ result, visible, onClose, onOpenFile }:
           ) : null}
 
           {result.floors && result.floors.length > 0 ? (
-            <Section title={t('document_ai_geschosse' as any)}><TagList values={result.floors} /></Section>
+            <Section title={`${t('document_ai_geschosse' as any)} (${result.floors.length})`}><TagList values={result.floors} /></Section>
           ) : null}
 
           {result.roomAreas && result.roomAreas.length > 0 ? (

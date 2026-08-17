@@ -275,6 +275,30 @@ function extractScale(text: string): string | undefined {
   return common ? `1:${common[1]}` : undefined;
 }
 
+// Building site address / "Bauvorhaben" – checks the filename, explicit
+// title-block labels, and a street + optional PLZ/city pattern.
+function extractProjectAddress(fileName: string, text: string, lines: string[]): string | undefined {
+  const streetRe = /\b([A-ZÄÖÜ][A-Za-zäöüß.\-]+(?:straße|strasse|str\.?|weg|allee|platz|gasse|ring|damm|ufer|chaussee)\s*\.?\s*\d{1,4}\s*[a-z]?)\b/;
+  const plzRe = /\b(\d{5})\s+([A-ZÄÖÜ][A-Za-zäöüß.\-]+(?:\s[A-ZÄÖÜ][A-Za-zäöüß.\-]+)?)/;
+
+  const labeled = findLabeledLines(lines, ["Bauvorhaben", "Bauort", "Objekt", "Standort", "Adresse", "BV", "Projekt"]);
+  const fileHay = fileName.replace(/[_]+/g, " ");
+
+  let street: string | undefined;
+  for (const l of labeled) { const m = l.match(streetRe); if (m) { street = m[1]; break; } }
+  if (!street) street = fileHay.match(streetRe)?.[1];
+  if (!street) street = text.match(streetRe)?.[1];
+
+  const plz = text.match(plzRe) || fileHay.match(plzRe);
+  const city = plz ? `${plz[1]} ${plz[2].replace(/\s+/g, " ").trim()}` : undefined;
+
+  if (street && city) return `${street.replace(/\s+/g, " ").trim()}, ${city}`;
+  if (street) return street.replace(/\s+/g, " ").trim();
+  if (city) return city;
+  const firstLabeled = labeled.find((l) => /[A-Za-zÄÖÜ]{3,}/.test(l));
+  return firstLabeled ? firstLabeled.slice(0, 120) : undefined;
+}
+
 // Room / ceiling heights explicitly labelled in the plan.
 function extractCeilingHeights(text: string): string[] {
   const found = new Set<string>();
@@ -464,6 +488,7 @@ export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): 
   const totalAreaSqm = computeTotalArea(roomAreas, text);
   const scale = extractScale(text);
   const ceilingHeights = extractCeilingHeights(text);
+  const projectAddress = extractProjectAddress(input.fileName, text, lines);
 
   const structuredCount = rooms.length + trades.length + tasks.length + defects.length
     + appointments.length + references.length + floors.length + roomAreas.length + materials.length
@@ -496,6 +521,7 @@ export function analyzeExtractedDocument(input: AnalyzeExtractedDocumentInput): 
     materials,
     scale,
     ceilingHeights,
+    projectAddress,
     entities: [],
     overallConfidence: computeConfidence(input.extraction, structuredCount),
     processingTime: Date.now() - input.startedAt,
