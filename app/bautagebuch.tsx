@@ -65,6 +65,8 @@ export default function BautagebuchScreen() {
   const [manualNotes, setManualNotes] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
+  const [editingReport, setEditingReport] = useState(false);
+  const [reportDraft, setReportDraft] = useState("");
 
   const generateBautagebuch = trpc.analysis.generateBautagebuch.useMutation();
 
@@ -272,6 +274,22 @@ export default function BautagebuchScreen() {
     }
   };
 
+  const startEditReport = () => {
+    if (!selectedEntry) return;
+    setReportDraft(selectedEntry.fullReport || "");
+    setEditingReport(true);
+  };
+
+  const saveReport = async () => {
+    if (!selectedEntry) return;
+    const updatedEntry = { ...selectedEntry, fullReport: reportDraft };
+    const updated = entries.map((e) => (e.id === selectedEntry.id ? updatedEntry : e));
+    setEntries(updated);
+    await saveEntries(updated);
+    setSelectedEntry(updatedEntry);
+    setEditingReport(false);
+  };
+
   const handleDelete = (entry: BautagebuchEntry) => {
     Alert.alert(
       t('btn_loeschen'),
@@ -305,6 +323,15 @@ export default function BautagebuchScreen() {
           <Text className="text-xl font-bold text-foreground ml-2 flex-1" numberOfLines={1}>
             {new Date(selectedEntry.date).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short" })}
           </Text>
+          {selectedEntry.fullReport ? (
+            <TouchableOpacity
+              onPress={editingReport ? saveReport : startEditReport}
+              style={{ padding: 8 }}
+              accessibilityLabel={editingReport ? t('save') : t('edit')}
+            >
+              <MaterialIcons name={editingReport ? "check" : "edit"} size={22} color={editingReport ? colors.success : colors.primary} />
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             onPress={() => exportPdf(selectedEntry)}
             style={{ padding: 8 }}
@@ -343,7 +370,29 @@ export default function BautagebuchScreen() {
           {/* Full report */}
           {selectedEntry.fullReport && (
             <View className="bg-surface rounded-xl p-4 mb-4">
-              <ReportMarkdownPreview markdown={selectedEntry.fullReport} />
+              {editingReport ? (
+                <>
+                  <TextInput
+                    value={reportDraft}
+                    onChangeText={setReportDraft}
+                    multiline
+                    textAlignVertical="top"
+                    style={{ minHeight: 320, fontSize: 14, lineHeight: 21, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12 }}
+                    placeholder={t('bautagebuch') as any}
+                    placeholderTextColor={colors.muted}
+                  />
+                  <View className="flex-row justify-end mt-3" style={{ gap: 10 }}>
+                    <TouchableOpacity onPress={() => setEditingReport(false)} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                      <Text style={{ color: colors.muted, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={saveReport} style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.primary }}>
+                      <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('save')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <ReportMarkdownPreview markdown={selectedEntry.fullReport} />
+              )}
             </View>
           )}
 
