@@ -405,8 +405,7 @@ export default function FollowUpScreen() {
 
       {/* Date Picker Modal */}
       <Modal visible={showDatePicker} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView style={styles.modalKeyboardAvoider} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.modalContent}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={styles.modalTitle}>{t('follow_up_modal_title' as any)}</Text>
@@ -497,8 +496,7 @@ export default function FollowUpScreen() {
             </View>
             </ScrollView>
           </View>
-          </KeyboardAvoidingView>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenContainer>
   );
@@ -709,7 +707,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 24,
     paddingBottom: 40,
-    maxHeight: "80%",
+    maxHeight: "90%",
   },
   modalTitle: {
     fontSize: 20,
