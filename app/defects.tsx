@@ -81,6 +81,7 @@ export default function DefectsScreen() {
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newPriority, setNewPriority] = useState<DefectPriority>("mittel");
+  const [newStatus, setNewStatus] = useState<DefectStatus>("offen");
   const [newCategory, setNewCategory] = useState(DEFECT_CATEGORIES[0]);
   const [newLocation, setNewLocation] = useState("");
   const [newGewerk, setNewGewerk] = useState<string>(GEWERKE[0]);
@@ -187,7 +188,7 @@ export default function DefectsScreen() {
       projectId,
       title: newTitle.trim(),
       description: newDescription.trim(),
-      status: "offen",
+      status: newStatus,
       priority: newPriority,
       category: newCategory,
       photos: [...newPhotos],
@@ -219,6 +220,7 @@ export default function DefectsScreen() {
     setNewTitle("");
     setNewDescription("");
     setNewPriority("mittel");
+    setNewStatus("offen");
     setNewLocation("");
     setNewDueDate("");
     setNewAssignee("");
@@ -515,6 +517,32 @@ export default function DefectsScreen() {
             {item.description}
           </Text>
         ) : null}
+        {/* Quick status bar — tap to change status directly from the list. */}
+        <View style={styles.statusChipRow}>
+          {(() => {
+            const QUICK: DefectStatus[] = ["offen", "in_bearbeitung", "erledigt"];
+            const chips = QUICK.includes(item.status) ? QUICK : [item.status, ...QUICK];
+            return chips.map((s) => {
+              const active = item.status === s;
+              return (
+                <Pressable
+                  key={s}
+                  onPress={async () => {
+                    if (active) return;
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    await updateDefectStatus(item.id, s);
+                    await loadDefects();
+                  }}
+                  style={[styles.statusChip, { borderColor: active ? statusColors[s] : colors.border, backgroundColor: active ? statusColors[s] + "22" : "transparent" }]}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: active ? "700" : "600", color: active ? statusColors[s] : colors.muted }}>
+                    {statusLabels[s]}
+                  </Text>
+                </Pressable>
+              );
+            });
+          })()}
+        </View>
       </View>
     </Pressable>
   );
@@ -1172,6 +1200,25 @@ export default function DefectsScreen() {
               ))}
             </View>
 
+            {/* Status */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('status_label' as any)}</Text>
+            <View style={styles.statusChipRow}>
+              {(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"] as DefectStatus[]).map((s) => {
+                const active = newStatus === s;
+                return (
+                  <Pressable
+                    key={s}
+                    onPress={() => setNewStatus(s)}
+                    style={[styles.statusChip, { borderColor: active ? statusColors[s] : colors.border, backgroundColor: active ? statusColors[s] + "22" : "transparent" }]}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? statusColors[s] : colors.muted }}>
+                      {statusLabels[s]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Gewerk */}
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('gewerk')}</Text>
             <TradePicker
@@ -1258,6 +1305,7 @@ export default function DefectsScreen() {
                   setNewFloorId("");
                   setNewRoomId("");
                   setNewPriority("mittel");
+                  setNewStatus("offen");
                   setNewCategory(DEFECT_CATEGORIES[0]);
                   setNewGewerk(GEWERKE[0]);
                 }}
@@ -1301,6 +1349,8 @@ const styles = StyleSheet.create({
   defectTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
   defectMeta: { fontSize: 12, marginTop: 3 },
   defectDesc: { fontSize: 13, marginTop: 4 },
+  statusChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1 },
   voiceNoteCard: { borderWidth: 1, minHeight: 64, flexDirection: "row", alignItems: "center", gap: 10, padding: 10 },
   voiceNotePlayButton: { width: 42, height: 42, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   voiceRecordingCard: { borderWidth: 1, padding: 12 },
