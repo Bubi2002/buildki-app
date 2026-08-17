@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
 import { PhotoAnnotator, type Annotation } from "@/components/photo-annotator";
+import { importFromCloud } from "@/lib/cloud-import-service";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { createAsyncInvocationGuard } from "@/lib/async-invocation-guard";
@@ -188,6 +189,42 @@ export default function PhotoGalleryScreen() {
       }
     });
     if (!invocation.started) return;
+  };
+
+  // Import via the Files app (which also exposes Dropbox, Drive, iCloud…).
+  const importFromFiles = async () => {
+    if (!projectId) {
+      Alert.alert(t('photo_gallery_no_project_title' as any), t('photo_gallery_no_project_select' as any));
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const files = await importFromCloud({ category: "photo", multiple: true });
+      if (files.length === 0) return;
+      const projectName = project?.name || t('photo_gallery_project_fallback' as any);
+      for (const file of files) {
+        await persistDirectProjectPhoto({
+          projectId,
+          projectName,
+          sourceUri: file.uri,
+          originalFileName: file.name,
+          source: "library",
+        });
+      }
+      await loadPhotos();
+      if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Let the user pick the import source (photo library vs. Files/Cloud).
+  const chooseImport = () => {
+    Alert.alert(t('import_source_title' as any), t('import_source_message' as any), [
+      { text: t('import_source_gallery' as any), onPress: () => { void importPhotos(); } },
+      { text: t('import_source_files' as any), onPress: () => { void importFromFiles(); } },
+      { text: t('photo_gallery_cancel' as any), style: "cancel" },
+    ]);
   };
 
   const openPhoto = (photo: PhotoItem) => {
@@ -375,7 +412,7 @@ export default function PhotoGalleryScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('photo_gallery_import_a11y' as any)}
             disabled={isImporting || !projectId}
-            onPress={importPhotos}
+            onPress={chooseImport}
             style={({ pressed }) => [{
               flex: 1,
               minHeight: 48,
