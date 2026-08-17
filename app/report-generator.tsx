@@ -35,7 +35,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { localizedLabel, reportTypeKey, reportTypeDescKey } from "@/lib/template-i18n";
 import { trpc } from "@/lib/trpc";
-import { useAudioRecorder, RecordingPresets, AudioModule } from "expo-audio";
+import { useAudioRecorder, RecordingPresets, AudioModule, setAudioModeAsync } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import { getDefects, type Defect } from "@/lib/defect-store";
@@ -103,6 +103,8 @@ export default function ReportGeneratorScreen() {
       setIsTranscribingNote(true);
       try {
         await voiceRecorder.stop();
+        // Restore normal playback mode.
+        try { await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }); } catch {}
         const uri = voiceRecorder.uri;
         if (uri) {
           const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
@@ -111,8 +113,8 @@ export default function ReportGeneratorScreen() {
           const text = (transcribed.text || "").trim();
           if (text) setTranscription((prev) => (prev.trim() ? prev.trim() + "\n" : "") + text);
         }
-      } catch {
-        Alert.alert(t('report_generator_fehler' as any));
+      } catch (e: any) {
+        Alert.alert(t('report_generator_fehler' as any), e?.message || t('report_generator_sprachnotiz_fehler' as any));
       } finally {
         setIsTranscribingNote(false);
       }
@@ -123,11 +125,13 @@ export default function ReportGeneratorScreen() {
           Alert.alert(t('defects_mikrofonzugriff_titel' as any), t('defects_mikrofonzugriff_msg' as any));
           return;
         }
+        // Enable the recording audio session before preparing (required on iOS).
+        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
         await voiceRecorder.prepareToRecordAsync();
         voiceRecorder.record();
         setIsRecordingNote(true);
-      } catch {
-        Alert.alert(t('report_generator_fehler' as any));
+      } catch (e: any) {
+        Alert.alert(t('report_generator_fehler' as any), e?.message || t('report_generator_sprachnotiz_fehler' as any));
       }
     }
   };
