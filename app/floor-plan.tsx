@@ -24,6 +24,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { FullscreenPhotoViewer } from "@/components/fullscreen-photo-viewer";
 import { ZoomableCanvas } from "@/components/zoomable-canvas";
 import { PhotoAnnotator, type Annotation } from "@/components/photo-annotator";
+import { PdfRasterizer, type RasterResult } from "@/components/pdf-rasterizer";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -95,6 +96,8 @@ export default function FloorPlanScreen() {
   const [planInteractionActive, setPlanInteractionActive] = useState(false);
   const [zoomResetKey, setZoomResetKey] = useState(0);
   const [drawingPlan, setDrawingPlan] = useState(false);
+  const [pdfToConvert, setPdfToConvert] = useState<string | null>(null);
+  const [pdfConvertName, setPdfConvertName] = useState("");
   const [photoViewer, setPhotoViewer] = useState<{
     photos: string[];
     title: string;
@@ -191,19 +194,38 @@ export default function FloorPlanScreen() {
         text: "Cloud (Dropbox, Drive...)",
         onPress: async () => {
           const file = await importPlanFromCloud();
-          if (file) {
-            setPendingPlanAsset({ uri: file.uri, width: 1000, height: 1000 });
-            setNewPlanName(file.name.replace(/\.[^/.]+$/, ""));
-            setShowPlanNameModal(true);
-            // Try to get actual dimensions
-            RNImage.getSize(file.uri, (w, h) => {
-              setPendingPlanAsset((prev: any) => prev ? { ...prev, width: w, height: h } : prev);
-            }, () => {});
+          if (!file) return;
+          const isPdf = file.mimeType === "application/pdf" || /\.pdf$/i.test(file.name);
+          if (isPdf) {
+            // PDFs can't be rendered/annotated directly → rasterize to an image first.
+            setPdfConvertName(file.name.replace(/\.[^/.]+$/, ""));
+            setPdfToConvert(file.uri);
+            return;
           }
+          setPendingPlanAsset({ uri: file.uri, width: 1000, height: 1000 });
+          setNewPlanName(file.name.replace(/\.[^/.]+$/, ""));
+          setShowPlanNameModal(true);
+          // Try to get actual dimensions
+          RNImage.getSize(file.uri, (w, h) => {
+            setPendingPlanAsset((prev: any) => prev ? { ...prev, width: w, height: h } : prev);
+          }, () => {});
         },
       },
       { text: t('btn_abbrechen'), style: "cancel" },
     ]);
+  };
+
+  // Receive the rasterized PDF (now a sharp JPG) and continue the normal flow.
+  const handlePdfConverted = (result: RasterResult | null) => {
+    const name = pdfConvertName;
+    setPdfToConvert(null);
+    if (!result) {
+      Alert.alert(t('alert_fehler' as any), t('floor_plan_pdf_convert_failed' as any));
+      return;
+    }
+    setPendingPlanAsset({ uri: result.uri, width: result.width, height: result.height });
+    setNewPlanName(name || `Plan ${plans.length + 1}`);
+    setShowPlanNameModal(true);
   };
 
   // Bake freehand drawings into the current plan image (pins stay intact).
@@ -1182,6 +1204,12 @@ export default function FloorPlanScreen() {
           onSave={handlePlanDrawSave}
         />
       )}
+
+      <PdfRasterizer
+        pdfUri={pdfToConvert}
+        label={t('floor_plan_pdf_converting' as any)}
+        onDone={handlePdfConverted}
+      />
     </ScreenContainer>
   );
 }
