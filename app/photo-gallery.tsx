@@ -208,15 +208,13 @@ export default function PhotoGalleryScreen() {
     if (!selectedPhoto?.directPhoto) return;
     const updated = await updateDirectProjectPhoto(selectedPhoto.id, { description, trade, location });
     if (updated) {
-      setSelectedPhoto({
-        ...selectedPhoto,
-        protocolTitle: updated.description || t('photo_gallery_direct_project_photo' as any),
-        directPhoto: updated,
-      });
       await loadPhotos();
       if (Platform.OS !== "web") {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
+      closePhoto();
+    } else {
+      Alert.alert(t('photo_gallery_error_title' as any), t('photo_gallery_save_failed' as any));
     }
   };
 
