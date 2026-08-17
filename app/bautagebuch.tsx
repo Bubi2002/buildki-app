@@ -351,9 +351,18 @@ export default function BautagebuchScreen() {
   return (
     <ScreenContainer className="p-4">
       <View className="flex-row items-center justify-between mb-4">
-        <View>
-          <Text className="text-2xl font-bold text-foreground">{t('bautagebuch')}</Text>
-          <Text className="text-sm text-muted">{t('bautagebuch_subtitle' as any)}</Text>
+        <View className="flex-row items-center flex-1">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            accessibilityLabel={t('btn_zurueck' as any)}
+            style={{ paddingVertical: 8, paddingRight: 8 }}
+          >
+            <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <View className="flex-1">
+            <Text className="text-2xl font-bold text-foreground">{t('bautagebuch')}</Text>
+            <Text className="text-sm text-muted">{t('bautagebuch_subtitle' as any)}</Text>
+          </View>
         </View>
         <TouchableOpacity
           onPress={() => router.back()}
