@@ -21,6 +21,8 @@ import type {
   ProgressAssessment,
 } from "@/shared/ai-types";
 
+import { getDefects } from "@/lib/defect-store";
+
 const KNOWLEDGE_KEY_PREFIX = "knowledge_";
 const KNOWLEDGE_INDEX_KEY = "knowledge_index";
 const MAX_ENTRIES_PER_PROJECT = 200;
@@ -319,6 +321,36 @@ class ProjectKnowledgeLayer {
   }): Promise<ProjectKnowledgeEntry[]> {
     let entries = await this.getProjectKnowledge(projectId);
     entries = entries.filter(e => e.type === "defect");
+
+    // Include the real, user-created defects from the defect store (not just
+    // AI-ingested ones), so the assistant reflects the actual Mängel list.
+    try {
+      const OPEN_STATUSES = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+      const realDefects = await getDefects(projectId);
+      const prioToSeverity: Record<string, string> = { hoch: "hoch", mittel: "mittel", niedrig: "niedrig" };
+      const mapped: ProjectKnowledgeEntry[] = realDefects
+        .filter(d => OPEN_STATUSES.has(d.status))
+        .map(d => ({
+          id: `defect-${d.id}`,
+          projectId,
+          source: "manual" as const,
+          sourceId: d.id,
+          timestamp: d.createdAt,
+          type: "defect" as const,
+          content: d.description ? `${d.title}: ${d.description}` : d.title,
+          metadata: {
+            location: d.location || d.room || d.floor || "",
+            trade: d.gewerk || "",
+            severity: prioToSeverity[d.priority as string] || (d.priority as string) || "",
+          },
+        }));
+      // De-dupe: knowledge entries that reference the same defect id win nothing
+      // here; simply append the real defects (ids are prefixed, so no clash).
+      entries = [...mapped, ...entries];
+    } catch {
+      // If the defect store can't be read, fall back to knowledge entries only.
+    }
+
     if (filters?.room) {
       const room = filters.room.toLowerCase();
       entries = entries.filter(e => (e.metadata.location as string || "").toLowerCase().includes(room) || e.content.toLowerCase().includes(room));
