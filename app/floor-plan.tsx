@@ -23,6 +23,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { FullscreenPhotoViewer } from "@/components/fullscreen-photo-viewer";
 import { ZoomableCanvas } from "@/components/zoomable-canvas";
+import { PhotoAnnotator, type Annotation } from "@/components/photo-annotator";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -93,6 +94,7 @@ export default function FloorPlanScreen() {
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [planInteractionActive, setPlanInteractionActive] = useState(false);
   const [zoomResetKey, setZoomResetKey] = useState(0);
+  const [drawingPlan, setDrawingPlan] = useState(false);
   const [photoViewer, setPhotoViewer] = useState<{
     photos: string[];
     title: string;
@@ -202,6 +204,37 @@ export default function FloorPlanScreen() {
       },
       { text: t('btn_abbrechen'), style: "cancel" },
     ]);
+  };
+
+  // Bake freehand drawings into the current plan image (pins stay intact).
+  const handlePlanDrawSave = async (_annotations: Annotation[], flattenedUri?: string) => {
+    setDrawingPlan(false);
+    const plan = selectedPlan;
+    if (!flattenedUri || !plan) return;
+    try {
+      const optimized = await persistFloorPlanMedia({
+        sourceUri: flattenedUri,
+        projectId,
+        ownerId: plan.id,
+        width: plan.width,
+        height: plan.height,
+        kind: "plan",
+      });
+      const updated: FloorPlan = {
+        ...plan,
+        imageUri: optimized.uri,
+        width: optimized.width || plan.width,
+        height: optimized.height || plan.height,
+      };
+      await saveFloorPlan(updated);
+      setPlans((current) => current.map((p) => (p.id === updated.id ? updated : p)));
+      setSelectedPlan(updated);
+      selectedPlanRef.current = updated;
+      setZoomResetKey((value) => value + 1);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert(t('alert_fehler' as any), t('floor_plan_draw_failed' as any));
+    }
   };
 
   const savePlanWithName = async () => {
@@ -472,6 +505,16 @@ export default function FloorPlanScreen() {
           )}
         </View>
         <View style={{ flexDirection: "row", gap: 4 }}>
+          {/* Draw / mark up the plan */}
+          {selectedPlan && (
+            <Pressable
+              onPress={() => setDrawingPlan(true)}
+              accessibilityLabel={t('floor_plan_draw' as any)}
+              style={({ pressed }) => [styles.headerAction, { backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}
+            >
+              <MaterialIcons name="gesture" size={20} color={colors.primary} />
+            </Pressable>
+          )}
           {/* View mode toggle */}
           <Pressable
             onPress={() => setViewMode(viewMode === "plan" ? "list" : "plan")}
@@ -1122,6 +1165,15 @@ export default function FloorPlanScreen() {
           onClose={() => setPhotoViewer(null)}
         />
       ) : null}
+
+      {selectedPlan && (
+        <PhotoAnnotator
+          visible={drawingPlan}
+          photoUri={selectedPlan.imageUri}
+          onClose={() => setDrawingPlan(false)}
+          onSave={handlePlanDrawSave}
+        />
+      )}
     </ScreenContainer>
   );
 }
