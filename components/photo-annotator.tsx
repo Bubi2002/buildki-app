@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import Svg, { Path, Circle, Rect, Line } from "react-native-svg";
+import { captureRef } from "react-native-view-shot";
 import { createLocalId } from "@/lib/id";
 import { useTranslation } from "@/lib/language-provider";
 
@@ -36,7 +37,9 @@ type Props = {
   visible: boolean;
   photoUri: string;
   onClose: () => void;
-  onSave: (annotations: Annotation[]) => void;
+  /** Called on save with the vector annotations and, when capture succeeds, a
+   *  flattened image file URI (image + drawings baked in). */
+  onSave: (annotations: Annotation[], flattenedUri?: string) => void;
   existingAnnotations?: Annotation[];
 };
 
@@ -58,6 +61,8 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   const [imageSize, setImageSize] = useState({ width: SCREEN_WIDTH - 32, height: (SCREEN_WIDTH - 32) * 1.33 });
 
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const canvasRef = useRef<View>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleTouchStart = useCallback((x: number, y: number) => {
     setStartPoint({ x, y });
@@ -106,9 +111,20 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
-  const handleSave = () => {
-    onSave(annotations);
+  const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    let flattenedUri: string | undefined;
+    try {
+      if (canvasRef.current) {
+        flattenedUri = await captureRef(canvasRef, { format: "jpg", quality: 0.9 });
+      }
+    } catch {
+      // Capture failed → fall back to vector annotations only.
+    }
+    onSave(annotations, flattenedUri);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsSaving(false);
   };
 
   const renderAnnotation = (annotation: Annotation) => {
@@ -201,26 +217,28 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
 
         {/* Canvas */}
         <View style={styles.canvasContainer}>
-          <Image
-            source={{ uri: photoUri }}
-            style={[styles.image, { width: imageSize.width, height: imageSize.height }]}
-            contentFit="contain"
-            onLoad={(e) => {
-              const { width: imgW, height: imgH } = e.source;
-              const containerW = SCREEN_WIDTH - 32;
-              const ratio = imgW / imgH;
-              const containerH = containerW / ratio;
-              setImageSize({ width: containerW, height: Math.min(containerH, 500) });
-            }}
-          />
-          <GestureDetector gesture={panGesture}>
-            <Animated.View style={[StyleSheet.absoluteFill, { width: imageSize.width, height: imageSize.height }]}>
-              <Svg width={imageSize.width} height={imageSize.height} style={StyleSheet.absoluteFill}>
-                {annotations.map(renderAnnotation)}
-                {renderCurrentPath()}
-              </Svg>
-            </Animated.View>
-          </GestureDetector>
+          <View ref={canvasRef} collapsable={false} style={{ width: imageSize.width, height: imageSize.height }}>
+            <Image
+              source={{ uri: photoUri }}
+              style={[styles.image, { width: imageSize.width, height: imageSize.height }]}
+              contentFit="contain"
+              onLoad={(e) => {
+                const { width: imgW, height: imgH } = e.source;
+                const containerW = SCREEN_WIDTH - 32;
+                const ratio = imgW / imgH;
+                const containerH = containerW / ratio;
+                setImageSize({ width: containerW, height: Math.min(containerH, 500) });
+              }}
+            />
+            <GestureDetector gesture={panGesture}>
+              <Animated.View style={[StyleSheet.absoluteFill, { width: imageSize.width, height: imageSize.height }]}>
+                <Svg width={imageSize.width} height={imageSize.height} style={StyleSheet.absoluteFill}>
+                  {annotations.map(renderAnnotation)}
+                  {renderCurrentPath()}
+                </Svg>
+              </Animated.View>
+            </GestureDetector>
+          </View>
         </View>
 
         {/* Tools */}

@@ -20,6 +20,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
+import { PhotoAnnotator, type Annotation } from "@/components/photo-annotator";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { createAsyncInvocationGuard } from "@/lib/async-invocation-guard";
@@ -56,6 +57,7 @@ export default function PhotoGalleryScreen() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [project, setProject] = useState<any>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null);
+  const [annotating, setAnnotating] = useState(false);
   const [filterMonth, setFilterMonth] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [description, setDescription] = useState("");
@@ -216,6 +218,22 @@ export default function PhotoGalleryScreen() {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     }
+  };
+
+  const handleAnnotationSave = async (_annotations: Annotation[], flattenedUri?: string) => {
+    setAnnotating(false);
+    if (!flattenedUri || !projectId) return;
+    const projectName = project?.name || t('photo_gallery_project_fallback' as any);
+    await persistDirectProjectPhoto({
+      projectId,
+      projectName,
+      sourceUri: flattenedUri,
+      originalFileName: t('photo_gallery_annotated_label' as any),
+      source: "camera",
+    });
+    await loadPhotos();
+    if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    closePhoto();
   };
 
   const confirmDelete = () => {
@@ -490,6 +508,16 @@ export default function PhotoGalleryScreen() {
                     {selectedPhoto.source === "protocol" ? t('photo_gallery_source_protocol' as any) : selectedPhoto.source === "camera" ? t('photo_gallery_source_camera' as any) : t('photo_gallery_source_library' as any)}
                   </Text>
 
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('photo_gallery_annotate' as any)}
+                    onPress={() => setAnnotating(true)}
+                    style={({ pressed }) => [{ marginTop: 16, minHeight: 48, flexDirection: "row", gap: 8, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="gesture" size={20} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontSize: 14, fontWeight: "800" }}>{t('photo_gallery_annotate' as any)}</Text>
+                  </Pressable>
+
                   {selectedPhoto.directPhoto && (
                     <View style={{ marginTop: 18, gap: 10 }}>
                       <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }} numberOfLines={1}>
@@ -542,6 +570,15 @@ export default function PhotoGalleryScreen() {
             )}
           </KeyboardAvoidingView>
         </Modal>
+
+        {selectedPhoto && (
+          <PhotoAnnotator
+            visible={annotating}
+            photoUri={selectedPhoto.uri}
+            onClose={() => setAnnotating(false)}
+            onSave={handleAnnotationSave}
+          />
+        )}
       </View>
     </ScreenContainer>
   );
