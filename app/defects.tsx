@@ -57,6 +57,7 @@ import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { useTranslation } from "@/lib/language-provider";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import { generatePositionCode } from "@/lib/position-numbering";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
@@ -163,20 +164,9 @@ export default function DefectsScreen() {
   };
 
   const addNewDefectLibraryPhotos = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(t('alert_berechtigung'), t('defects_fotomediathek_zugriff' as any));
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.85,
-      allowsMultipleSelection: true,
-      selectionLimit: 5,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      setNewPhotos((photos) => [...photos, ...result.assets.map((asset) => asset.uri)]);
+    const picked = await pickImagesWithSource({ t, multiple: true });
+    if (picked.length > 0) {
+      setNewPhotos((photos) => [...photos, ...picked.map((image) => image.uri)]);
     }
   };
 
@@ -777,14 +767,9 @@ export default function DefectsScreen() {
 
                     <Pressable
                       onPress={async () => {
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                          mediaTypes: ["images"],
-                          quality: 0.8,
-                          allowsMultipleSelection: true,
-                          selectionLimit: 5,
-                        });
-                        if (!result.canceled && result.assets.length > 0) {
-                          const newUris = result.assets.map(a => a.uri);
+                        const picked = await pickImagesWithSource({ t, multiple: true });
+                        if (picked.length > 0) {
+                          const newUris = picked.map((image) => image.uri);
                           const updatedPhotos = [...selectedDefect.photos, ...newUris];
                           const updatedDefect = { ...selectedDefect, photos: updatedPhotos };
                           await saveDefect(updatedDefect);

@@ -48,6 +48,7 @@ import { generateAndSharePdf, type ProfessionalPdfOptions, type PdfSection, getC
 // Undo toast component
 import { UndoToast } from "@/components/UndoToast";
 import { createLocalId } from "@/lib/id";
+import { pickImagesWithSource } from "@/lib/import-picker";
 
 // Central AI Service
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
@@ -184,28 +185,15 @@ export default function PhotoAnalysisScreen() {
   // Load on mount
   useState(() => { loadActiveProject(); });
 
-  // Pick photos from gallery
+  // Pick photos from gallery or Files/Cloud
   const pickPhotos = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t('photo_analysis_permission_required' as any), t('photo_analysis_permission_library' as any));
-      return;
-    }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: 5,
-      quality: 0.8,
-      base64: true,
-    });
-
-    if (!pickerResult.canceled && pickerResult.assets) {
-      const newPhotos: SelectedPhoto[] = pickerResult.assets.map((asset) => ({
-        uri: asset.uri,
-        base64: asset.base64 || undefined,
-        mimeType: asset.mimeType || "image/jpeg",
-        filename: asset.fileName || `${createLocalId("photo")}.jpg`,
+    const picked = await pickImagesWithSource({ t, multiple: true, withBase64: true });
+    if (picked.length > 0) {
+      const newPhotos: SelectedPhoto[] = picked.map((image) => ({
+        uri: image.uri,
+        base64: image.base64 || undefined,
+        mimeType: image.mimeType || "image/jpeg",
+        filename: image.fileName || `${createLocalId("photo")}.jpg`,
       }));
       setPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
       setResult(null);

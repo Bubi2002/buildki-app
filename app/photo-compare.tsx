@@ -20,6 +20,7 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 
@@ -89,16 +90,13 @@ export default function PhotoCompareScreen() {
 
   const createNewComparison = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.8,
-      });
-      if (result.canceled) return;
+      const picked = await pickImagesWithSource({ t });
+      if (picked.length === 0) return;
 
       const newPair: ComparisonPair = {
         id: Date.now().toString(),
         label: t('photo_compare_vergleich_n' as any).replace('{n}', String(comparisons.length + 1)),
-        beforeUri: result.assets[0].uri,
+        beforeUri: picked[0].uri,
         afterUri: null,
         beforeDate: new Date().toISOString(),
         afterDate: null,
@@ -116,19 +114,17 @@ export default function PhotoCompareScreen() {
 
   const addAfterPhoto = async (pair: ComparisonPair) => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.8,
-      });
-      if (result.canceled) return;
+      const picked = await pickImagesWithSource({ t });
+      if (picked.length === 0) return;
+      const afterUri = picked[0].uri;
 
       const updated = comparisons.map(c =>
-        c.id === pair.id ? { ...c, afterUri: result.assets[0].uri, afterDate: new Date().toISOString() } : c
+        c.id === pair.id ? { ...c, afterUri, afterDate: new Date().toISOString() } : c
       );
       setComparisons(updated);
       await saveComparisons(updated);
       if (selectedPair?.id === pair.id) {
-        setSelectedPair({ ...pair, afterUri: result.assets[0].uri, afterDate: new Date().toISOString() });
+        setSelectedPair({ ...pair, afterUri, afterDate: new Date().toISOString() });
       }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch  {
