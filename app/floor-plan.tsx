@@ -606,15 +606,23 @@ export default function FloorPlanScreen() {
                 onInteractionChange={setPlanInteractionActive}
                 testID="floor-plan-zoom-stage"
               >
-                <View style={{ width: containerWidth, height: containerHeight }}>
+                <View style={{ width: containerWidth, height: containerHeight, backgroundColor: "#FFFFFF" }}>
                 <Image
                   source={{ uri: selectedPlan.imageUri }}
                   style={{ width: containerWidth, height: containerHeight }}
-                  contentFit="fill"
+                  contentFit="contain"
                   cachePolicy="memory-disk"
                   recyclingKey={`floor-plan-${selectedPlan.id}`}
                   onLoadStart={() => setLoadingPlanId(selectedPlan.id)}
-                  onLoad={() => setLoadingPlanId(null)}
+                  onLoad={(e: any) => {
+                    setLoadingPlanId(null);
+                    // Use the image's real dimensions so the canvas aspect ratio
+                    // matches the plan (no distortion) and pins stay aligned.
+                    const src = e?.source;
+                    if (src?.width > 0 && src?.height > 0) {
+                      setImageSize((prev) => (prev.width === src.width && prev.height === src.height ? prev : { width: src.width, height: src.height }));
+                    }
+                  }}
                   onError={() => setLoadingPlanId(null)}
                 />
                 {/* Render Pins */}
