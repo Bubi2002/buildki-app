@@ -27,6 +27,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
 import { SwipeableRow } from "@/components/swipeable-row";
+import { ReportMarkdownPreview } from "@/components/report-markdown-preview";
+import { markdownReportToHtml, markdownReportStyles } from "@/lib/markdown-report-html";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDefects, type Defect } from "@/lib/defect-store";
@@ -242,18 +244,24 @@ export default function BautagebuchScreen() {
       if (entry.weather) meta.push(esc(entry.weather));
       if (entry.attendanceCount != null) meta.push(`${t('bautagebuch_present' as any)}: ${entry.attendanceCount}`);
       if (entry.defectsCount != null) meta.push(`${t('offene_maengel')}: ${entry.defectsCount}`);
-      const reportHtml = esc(entry.fullReport).replace(/\n/g, "<br/>");
+      const reportHtml = markdownReportToHtml(entry.fullReport);
       const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
         bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
         etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
       });
-      const html = `<html><head><meta charset="utf-8"></head>
-        <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
-          <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('bautagebuch'))}</h1>
+      const html = `<html><head><meta charset="utf-8"><style>
+          @page { margin: 16mm 14mm 18mm 14mm; }
+          body { font-family:-apple-system,Arial,sans-serif; padding:0; color:#1F2937; }
+          ${markdownReportStyles("#2563EB")}
+        </style></head>
+        <body>
+          <div style="border-bottom:2px solid #2563EB; padding-bottom:10px; margin-bottom:14px;">
+            <h1 style="font-size:22px; margin:0 0 4px; color:#2563EB; font-weight:800;">${esc(t('bautagebuch'))}</h1>
+            <div style="font-size:14px; color:#374151; margin:0 0 4px;">${esc(dateLabel)}</div>
+            ${meta.length ? `<div style="font-size:12px; color:#6B7280;">${meta.join(" · ")}</div>` : ""}
+          </div>
           ${metaHeader}
-          <div style="font-size:14px; color:#374151; margin:0 0 4px;">${esc(dateLabel)}</div>
-          ${meta.length ? `<div style="font-size:12px; color:#6B7280; margin:0 0 16px;">${meta.join(" · ")}</div>` : ""}
-          <div style="font-size:13px; line-height:1.6; color:#1F2937; white-space:pre-wrap;">${reportHtml}</div>
+          <div class="md-report">${reportHtml}</div>
         </body></html>`;
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
@@ -335,9 +343,7 @@ export default function BautagebuchScreen() {
           {/* Full report */}
           {selectedEntry.fullReport && (
             <View className="bg-surface rounded-xl p-4 mb-4">
-              <Text className="text-sm text-foreground leading-6" selectable>
-                {selectedEntry.fullReport}
-              </Text>
+              <ReportMarkdownPreview markdown={selectedEntry.fullReport} />
             </View>
           )}
 
