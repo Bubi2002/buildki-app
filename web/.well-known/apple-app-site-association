@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TLHL2MRJB4.space.manus.protokoll.app.t20250614001800"],
+        "components": [
+          { "/": "/join", "comment": "Team-Einladung" },
+          { "/": "/join*", "comment": "Team-Einladung mit Token" }
+        ]
+      }
+    ]
+  }
+}
