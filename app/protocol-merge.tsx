@@ -5,7 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { mergeAndShare, type MergeOptions } from "@/lib/protocol-merge";
+import { mergeProtocols, type MergeOptions } from "@/lib/protocol-merge";
+import * as Sharing from "expo-sharing";
 import { hasProtocolText } from "@/lib/protocol-compat";
 import { useTranslation } from "@/lib/language-provider";
 
@@ -88,9 +89,13 @@ export default function ProtocolMergeScreen() {
         includeWeather,
       };
 
-      const success = await mergeAndShare(options);
-      if (!success) {
-        Alert.alert(t('alert_fehler'), t('msg_gesamtbericht_konnte_nicht_erstellt_werden'));
+      const result = await mergeProtocols(options);
+      if (!result.success || !result.filePath) {
+        Alert.alert(t('alert_fehler'), result.error || t('msg_gesamtbericht_konnte_nicht_erstellt_werden'));
+        return;
+      }
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.filePath, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
       }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e.message || t('protocol_merge_unbekannter_fehler' as any));

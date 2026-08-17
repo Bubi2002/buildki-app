@@ -126,10 +126,15 @@ export async function mergeProtocols(options: MergeOptions): Promise<MergeResult
     
     // Move to cache with meaningful name
     const dateStr = new Date().toISOString().split("T")[0];
-    const projectSlug = project.name.replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, "_").replace(/_+/g, "_");
-    const fileName = `${projectSlug}_Gesamtbericht_${dateStr}.pdf`;
+    const projectSlug = (project.name || "Projekt").replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, "_").replace(/_+/g, "_");
+    // Unique suffix so re-running on the same day doesn't clash with an existing file.
+    const fileName = `${projectSlug}_Gesamtbericht_${dateStr}_${Date.now()}.pdf`;
     const destPath = `${FileSystem.cacheDirectory}${fileName}`;
-    
+
+    try {
+      const existing = await FileSystem.getInfoAsync(destPath);
+      if (existing.exists) await FileSystem.deleteAsync(destPath, { idempotent: true });
+    } catch {}
     await FileSystem.moveAsync({ from: uri, to: destPath });
     
     return { success: true, filePath: destPath, protocolCount: protocols.length };
@@ -332,7 +337,7 @@ function getDateRange(protocols: Protocol[]): string {
 }
 
 function escapeHtml(text: string): string {
-  return text
+  return String(text ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
