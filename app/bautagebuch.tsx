@@ -26,6 +26,7 @@ import { useRouter } from "expo-router";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDefects, type Defect } from "@/lib/defect-store";
@@ -430,8 +431,8 @@ export default function BautagebuchScreen() {
           </View>
         ) : (
           entries.map((entry) => (
+            <SwipeableRow key={entry.id} onDelete={() => handleDelete(entry)} deleteLabel={t('btn_loeschen')}>
             <TouchableOpacity
-              key={entry.id}
               onPress={() => setSelectedEntry(entry)}
               onLongPress={() => handleDelete(entry)}
               className="bg-surface rounded-xl p-4 mb-3 border border-border"
@@ -467,6 +468,7 @@ export default function BautagebuchScreen() {
                 </View>
               </View>
             </TouchableOpacity>
+            </SwipeableRow>
           ))
         )}
       </ScrollView>

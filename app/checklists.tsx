@@ -13,6 +13,7 @@ import {
   Keyboard,
  Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -349,7 +350,11 @@ export default function ChecklistsScreen() {
           <FlatList
             data={results.slice(0, 5)}
             keyExtractor={(item) => item.id}
-            renderItem={renderResult}
+            renderItem={(p) => (
+              <SwipeableRow onDelete={() => removeResult(p.item.id)} deleteLabel={t('btn_loeschen')}>
+                {renderResult(p)}
+              </SwipeableRow>
+            )}
             scrollEnabled={false}
           />
         </View>

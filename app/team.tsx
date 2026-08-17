@@ -14,6 +14,7 @@ import {
   Linking,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -233,7 +234,11 @@ export default function TeamScreen() {
       <FlatList
         data={members}
         keyExtractor={(item) => item.id}
-        renderItem={renderMember}
+        renderItem={(p) => (
+          <SwipeableRow onDelete={() => removeMember(p.item.id, p.item.name)} deleteLabel={t('btn_loeschen')}>
+            {renderMember(p)}
+          </SwipeableRow>
+        )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyState}>

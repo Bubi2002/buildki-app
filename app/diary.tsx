@@ -15,6 +15,7 @@ import {
   Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -291,7 +292,11 @@ export default function DiaryScreen() {
       <FlatList
         data={entries}
         keyExtractor={(item) => item.id}
-        renderItem={renderEntry}
+        renderItem={(p) => (
+          <SwipeableRow onDelete={() => removeEntry(p.item.id)} deleteLabel={t('btn_loeschen')}>
+            {renderEntry(p)}
+          </SwipeableRow>
+        )}
         contentContainerStyle={styles.list}
         ListFooterComponent={<ExportDetailsBox value={exportDetails} onChange={setExportDetails} />}
         ListEmptyComponent={

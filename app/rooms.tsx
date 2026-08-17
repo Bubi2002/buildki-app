@@ -23,6 +23,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useTranslation } from "@/lib/language-provider";
 import {
   type Floor,
@@ -208,6 +209,7 @@ export default function RoomsScreen() {
           return (
             <View key={floor.id} style={styles.floorSection}>
               {/* Floor Header */}
+              <SwipeableRow onDelete={() => handleDeleteFloor(floor)} deleteLabel={t('btn_loeschen')}>
               <Pressable
                 onPress={() => setExpandedFloor(isExpanded ? null : floor.id)}
                 onLongPress={() => handleDeleteFloor(floor)}
@@ -224,13 +226,14 @@ export default function RoomsScreen() {
                   <Text style={styles.floorProgress}>{floorDone}/{floorRooms.length}</Text>
                 )}
               </Pressable>
+              </SwipeableRow>
 
               {/* Rooms */}
               {isExpanded && (
                 <View style={styles.roomList}>
                   {floorRooms.map((room) => (
+                    <SwipeableRow key={room.id} onDelete={() => handleDeleteRoom(room)} deleteLabel={t('btn_loeschen')}>
                     <Pressable
-                      key={room.id}
                       onPress={() => cycleRoomStatus(room)}
                       onLongPress={() => handleDeleteRoom(room)}
                       style={({ pressed }) => [styles.roomCard, { opacity: pressed ? 0.8 : 1 }]}
@@ -247,6 +250,7 @@ export default function RoomsScreen() {
                         {t(ROOM_STATUS_LABELS[room.status || "nicht_begonnen"] as any)}
                       </Text>
                     </Pressable>
+                    </SwipeableRow>
                   ))}
 
                   {/* Add Room Button */}

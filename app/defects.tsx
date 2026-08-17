@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
  Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -612,7 +613,11 @@ export default function DefectsScreen() {
       <FlatList
         data={filteredDefects}
         keyExtractor={(item) => item.id}
-        renderItem={renderDefect}
+        renderItem={(p) => (
+          <SwipeableRow onDelete={() => removeDefect(p.item.id)} deleteLabel={t('btn_loeschen')}>
+            {renderDefect(p)}
+          </SwipeableRow>
+        )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyState}>

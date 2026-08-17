@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { SwipeableRow } from "@/components/swipeable-row";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -711,6 +712,7 @@ export default function ProjectDetailScreen() {
             </>
           )}
           renderItem={({ item }) => (
+            <SwipeableRow onDelete={() => removeFromProject(item.id)} deleteLabel={t('btn_loeschen')}>
             <Pressable
               onPress={() => router.push(`/protocol-detail?id=${item.id}` as any)}
               onLongPress={() => removeFromProject(item.id)}
@@ -729,6 +731,7 @@ export default function ProjectDetailScreen() {
               </View>
               <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
             </Pressable>
+            </SwipeableRow>
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
