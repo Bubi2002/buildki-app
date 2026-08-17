@@ -21,6 +21,7 @@ import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
+import { Swipeable } from "react-native-gesture-handler";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 
@@ -38,6 +39,24 @@ type ComparisonPair = {
 };
 
 const STORAGE_KEY = "photo-comparisons";
+
+// Copy a picked image into permanent app storage. Picker/cache URIs are
+// temporary and get purged (e.g. on app update), which is why previously
+// imported comparison images vanished.
+async function persistCompareImage(uri: string): Promise<string> {
+  try {
+    if (!FileSystem.documentDirectory) return uri;
+    const dir = `${FileSystem.documentDirectory}compare-media/`;
+    const info = await FileSystem.getInfoAsync(dir);
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    const ext = uri.toLowerCase().includes(".png") ? "png" : "jpg";
+    const dest = `${dir}${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+    return dest;
+  } catch {
+    return uri;
+  }
+}
 
 export default function PhotoCompareScreen() {
   const { t } = useTranslation();
@@ -92,11 +111,12 @@ export default function PhotoCompareScreen() {
     try {
       const picked = await pickImagesWithSource({ t });
       if (picked.length === 0) return;
+      const beforeUri = await persistCompareImage(picked[0].uri);
 
       const newPair: ComparisonPair = {
         id: Date.now().toString(),
         label: t('photo_compare_vergleich_n' as any).replace('{n}', String(comparisons.length + 1)),
-        beforeUri: picked[0].uri,
+        beforeUri,
         afterUri: null,
         beforeDate: new Date().toISOString(),
         afterDate: null,
@@ -116,7 +136,7 @@ export default function PhotoCompareScreen() {
     try {
       const picked = await pickImagesWithSource({ t });
       if (picked.length === 0) return;
-      const afterUri = picked[0].uri;
+      const afterUri = await persistCompareImage(picked[0].uri);
 
       const updated = comparisons.map(c =>
         c.id === pair.id ? { ...c, afterUri, afterDate: new Date().toISOString() } : c
@@ -322,8 +342,26 @@ export default function PhotoCompareScreen() {
         ) : (
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             {comparisons.map(pair => (
-              <Pressable
+              <Swipeable
                 key={pair.id}
+                renderRightActions={() => (
+                  <Pressable
+                    onPress={() => deletePair(pair)}
+                    style={({ pressed }) => [{
+                      backgroundColor: "#EF4444",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: 88,
+                      gap: 4,
+                      opacity: pressed ? 0.85 : 1,
+                    }]}
+                  >
+                    <MaterialIcons name="delete" size={24} color="#FFFFFF" />
+                    <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>{t('btn_loeschen')}</Text>
+                  </Pressable>
+                )}
+              >
+              <Pressable
                 onPress={() => setSelectedPair(pair)}
                 onLongPress={() => deletePair(pair)}
                 style={({ pressed }) => [{
@@ -367,6 +405,7 @@ export default function PhotoCompareScreen() {
                   )}
                 </View>
               </Pressable>
+              </Swipeable>
             ))}
           </ScrollView>
         )}
