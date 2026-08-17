@@ -254,10 +254,28 @@ export async function generateDefectPdfHtml(
 
     for (const [, sig] of uniqueSigs) {
       const sigDate = new Date(sig.signedAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-      // Render signature paths as SVG
+      // Render signature paths as SVG. The paths use the raw signature-pad pixel
+      // coordinates (pad size isn't stored), so fit the viewBox to the actual
+      // bounding box — otherwise a fixed viewBox clips the strokes to nothing.
       let sigSvg = "";
       if (sig.paths && sig.paths.length > 0) {
-        sigSvg = `<svg width="150" height="50" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg" style="border-bottom: 1px solid #333;"><path d="${sig.paths.join(" ")}" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        const d = sig.paths.join(" ");
+        const nums = (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+        const xs: number[] = [];
+        const ys: number[] = [];
+        for (let i = 0; i + 1 < nums.length; i += 2) { xs.push(nums[i]); ys.push(nums[i + 1]); }
+        let vbX = 0, vbY = 0, vbW = 300, vbH = 100;
+        if (xs.length && ys.length) {
+          const minX = Math.min(...xs), maxX = Math.max(...xs);
+          const minY = Math.min(...ys), maxY = Math.max(...ys);
+          const pad = 10;
+          vbX = minX - pad; vbY = minY - pad;
+          vbW = Math.max(1, (maxX - minX) + pad * 2);
+          vbH = Math.max(1, (maxY - minY) + pad * 2);
+        }
+        // Keep the stroke visible after scaling the (possibly large) viewBox down.
+        const strokeW = Math.max(2, (vbW / 160) * 2.2).toFixed(1);
+        sigSvg = `<svg width="160" height="54" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="border-bottom: 1px solid #333;"><path d="${d}" stroke="#1a1a1a" stroke-width="${strokeW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
       } else {
         sigSvg = `<em style="color: #666;">[Digital signiert]</em>`;
       }

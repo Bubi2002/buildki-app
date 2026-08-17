@@ -94,6 +94,9 @@ export default function DefectsScreen() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [gewerkFilter, setGewerkFilter] = useState<string>("alle");
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
+  const [editingDefect, setEditingDefect] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -304,9 +307,31 @@ export default function DefectsScreen() {
 
   const openDetail = async (defect: Defect) => {
     setSelectedDefect(defect);
+    setEditingDefect(false);
     const history = await getDefectHistory(defect.id);
     setDefectHistoryEntries(history);
     setShowDetailModal(true);
+  };
+
+  const startEditDefect = () => {
+    if (!selectedDefect) return;
+    setEditTitle(selectedDefect.title);
+    setEditDescription(selectedDefect.description || "");
+    setEditingDefect(true);
+  };
+
+  const saveDefectEdits = async () => {
+    if (!selectedDefect) return;
+    const updated: Defect = {
+      ...selectedDefect,
+      title: editTitle.trim() || selectedDefect.title,
+      description: editDescription.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    await saveDefect(updated);
+    setSelectedDefect(updated);
+    setEditingDefect(false);
+    await loadDefects();
   };
 
   const resetVoiceAudioMode = async () => {
@@ -663,8 +688,26 @@ export default function DefectsScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             {selectedDefect && (
               <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>{selectedDefect.title}</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
+                  {editingDefect ? (
+                    <TextInput
+                      value={editTitle}
+                      onChangeText={setEditTitle}
+                      multiline
+                      placeholder={t('titel' as any)}
+                      placeholderTextColor={colors.muted}
+                      style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0, flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 }]}
+                    />
+                  ) : (
+                    <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0, flex: 1 }]}>{selectedDefect.title}</Text>
+                  )}
+                  <Pressable
+                    onPress={editingDefect ? saveDefectEdits : startEditDefect}
+                    accessibilityLabel={editingDefect ? t('save') : t('edit')}
+                    style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 2 }]}
+                  >
+                    <MaterialIcons name={editingDefect ? "check" : "edit"} size={22} color={editingDefect ? colors.success : colors.primary} />
+                  </Pressable>
                   <Pressable onPress={closeDefectDetail} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
                     <MaterialIcons name="close" size={24} color={colors.muted} />
                   </Pressable>
@@ -691,7 +734,17 @@ export default function DefectsScreen() {
                   </View>
                 </View>
 
-                {selectedDefect.description ? (
+                {editingDefect ? (
+                  <TextInput
+                    value={editDescription}
+                    onChangeText={setEditDescription}
+                    multiline
+                    textAlignVertical="top"
+                    placeholder={t('beschreibung_optional')}
+                    placeholderTextColor={colors.muted}
+                    style={{ fontSize: 14, color: colors.foreground, marginBottom: 12, lineHeight: 20, minHeight: 90, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10 }}
+                  />
+                ) : selectedDefect.description ? (
                   <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: 12, lineHeight: 20 }}>{selectedDefect.description}</Text>
                 ) : null}
 
