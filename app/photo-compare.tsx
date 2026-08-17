@@ -7,6 +7,7 @@ import {
   Dimensions,
   Platform,
   Alert,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -168,6 +169,15 @@ export default function PhotoCompareScreen() {
     ]);
   };
 
+  // Persist an edited comparison title.
+  const saveTitle = async () => {
+    if (!selectedPair) return;
+    const label = selectedPair.label.trim() || selectedPair.label;
+    const updated = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, label } : c));
+    setComparisons(updated);
+    await saveComparisons(updated);
+  };
+
   const shareComparison = async () => {
     if (!selectedPair) return;
     try {
@@ -236,7 +246,19 @@ export default function PhotoCompareScreen() {
             <Pressable onPress={() => setSelectedPair(null)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 12 }]}>
               <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
             </Pressable>
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, flex: 1 }}>{selectedPair.label}</Text>
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <TextInput
+                value={selectedPair.label}
+                onChangeText={(text) => setSelectedPair({ ...selectedPair, label: text })}
+                onEndEditing={saveTitle}
+                onSubmitEditing={saveTitle}
+                returnKeyType="done"
+                placeholder={t('photo_compare_titel_placeholder' as any)}
+                placeholderTextColor={colors.muted}
+                style={{ flex: 1, fontSize: 17, fontWeight: "700", color: colors.foreground, paddingVertical: 0 }}
+              />
+              <MaterialIcons name="edit" size={16} color={colors.muted} />
+            </View>
             {selectedPair.afterUri && (
               <Pressable onPress={shareComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
                 <MaterialIcons name="share" size={22} color={colors.primary} />
