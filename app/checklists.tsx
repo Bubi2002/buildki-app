@@ -14,6 +14,7 @@ import {
  Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { SwipeableRow } from "@/components/swipeable-row";
+import { getProjectStructure, type Room as ProjectRoom, type Floor as ProjectFloor } from "@/lib/room-store";
 import { useColors } from "@/hooks/use-colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -57,6 +58,8 @@ export default function ChecklistsScreen() {
   const [newItemText, setNewItemText] = useState("");
   const [showAddItem, setShowAddItem] = useState(false);
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
+  const [projectRooms, setProjectRooms] = useState<ProjectRoom[]>([]);
+  const [projectFloors, setProjectFloors] = useState<ProjectFloor[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,6 +72,13 @@ export default function ChecklistsScreen() {
     setChecklists(allChecklists);
     const allResults = await getChecklistResults(projectId || undefined);
     setResults(allResults);
+    if (projectId) {
+      try {
+        const structure = await getProjectStructure(projectId);
+        setProjectFloors(structure.floors.sort((a, b) => a.number - b.number));
+        setProjectRooms(structure.rooms);
+      } catch {}
+    }
   }
 
   const startChecklist = (checklist: Checklist) => {
@@ -355,7 +365,7 @@ export default function ChecklistsScreen() {
           <Text style={[styles.progressText, { color: colors.muted }]}>{rate}%</Text>
         </View>
         <Text style={[styles.resultMeta, { color: colors.muted }]}>
-          {item.inspector} • {new Date(item.createdAt).toLocaleDateString("de-DE")}
+          {item.location ? `${item.location} • ` : ""}{item.inspector} • {new Date(item.createdAt).toLocaleDateString("de-DE")}
         </Text>
       </Pressable>
     );
@@ -429,6 +439,31 @@ export default function ChecklistsScreen() {
                     </Pressable>
                   </View>
                 </View>
+
+                {projectRooms.length > 0 && (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
+                      <MaterialIcons name="place" size={14} color={colors.muted} />
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('export_raum')}</Text>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                      {projectRooms.map((room) => {
+                        const floorName = projectFloors.find((f) => f.id === room.floorId)?.name || "";
+                        const label = floorName ? `${floorName} · ${room.name}` : room.name;
+                        const active = activeResult.location === label;
+                        return (
+                          <Pressable
+                            key={room.id}
+                            onPress={() => setActiveResult({ ...activeResult, location: active ? undefined : label })}
+                            style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}
+                          >
+                            <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{label}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
                 <FlatList
                   data={selectedChecklist.items}
                   keyExtractor={(item) => item.id}
