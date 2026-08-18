@@ -146,6 +146,7 @@ const TOOL_GROUPS: ToolGroup[] = [
     titleKey: "tools_group_berichte",
     tools: [
       { key: "bericht", labelKey: "index_tool_bericht", icon: "summarize", color: "#795548", route: "/protocol-merge" },
+      { key: "projekt_export", labelKey: "index_tool_projekt_export", icon: "picture-as-pdf", color: "#2563EB", route: "/project-export" },
     ],
   },
 ];

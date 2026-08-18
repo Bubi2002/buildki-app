@@ -1,293 +1,291 @@
-import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Share, Platform } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+/**
+ * Projekt-Gesamtexport – wählt aus, welche Tool-Daten (Mängel, Checklisten,
+ * Aufgaben, Anwesenheit, Zeiterfassung, Bautagebuch, Protokolle, Räume) in eine
+ * einzige PDF exportiert werden.
+ */
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator, StyleSheet } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { getDefects } from "@/lib/defect-store";
+import { getChecklistResults, getChecklistCompletionRate } from "@/lib/checklist-store";
+import { getTimeEntries } from "@/lib/time-tracking-store";
+import { getProjectStructure } from "@/lib/room-store";
+import { generateAndSharePdf, type PdfSection } from "@/lib/pdf-professional";
 
-type Protocol = {
-  id: string;
-  projectId?: string;
-  title: string;
-  createdAt: string;
-  content?: string;
-  summary?: string;
-  weather?: { temp?: number; condition?: string };
-  photos?: string[];
+type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms";
+
+const STATUS_LABEL: Record<string, string> = {
+  offen: "Offen", zugewiesen: "Zugewiesen", in_bearbeitung: "In Arbeit", nachbesserung: "Nachbesserung",
+  pruefung: "Prüfung", erledigt: "Erledigt", abgelehnt: "Abgelehnt", geschlossen: "Geschlossen",
 };
 
+function fmtDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}:${String(m).padStart(2, "0")} h`;
+}
+
 export default function ProjectExportScreen() {
+  const router = useRouter();
   const { t } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
-  const [project, setProject] = useState<any>(null);
-  const [protocols, setProtocols] = useState<Protocol[]>([]);
-  const [selectedProtocols, setSelectedProtocols] = useState<Set<string>>(new Set());
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"text" | "summary" | "full">("full");
+  const { projectId = "", projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
 
-  async function loadData() {
-    try {
-      const [projectsData, protocolsData] = await Promise.all([
-        AsyncStorage.getItem("projects"),
-        AsyncStorage.getItem("protocols"),
-      ]);
-      const allProjects = JSON.parse(projectsData || "[]");
-      const proj = allProjects.find((p: any) => p.id === id);
-      setProject(proj);
+  const [selected, setSelected] = useState<Record<SourceKey, boolean>>({
+    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: true, protocols: true, rooms: true,
+  });
+  const [counts, setCounts] = useState<Partial<Record<SourceKey, number>>>({});
+  const [busy, setBusy] = useState(false);
 
-      const allProtocols: Protocol[] = JSON.parse(protocolsData || "[]");
-      const projectProtocols = allProtocols
-        .filter((p) => p.projectId === id)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setProtocols(projectProtocols);
-      setSelectedProtocols(new Set(projectProtocols.map((p) => p.id)));
-    } catch {}
-  }
+  const SOURCES: { key: SourceKey; label: string; icon: string }[] = [
+    { key: "defects", label: t('index_tool_maengel' as any), icon: "warning" },
+    { key: "checklists", label: t('checklist_title' as any), icon: "checklist" },
+    { key: "tasks", label: t('index_tool_aufgaben' as any), icon: "task-alt" },
+    { key: "attendance", label: t('index_tool_anwesenheit' as any), icon: "how-to-reg" },
+    { key: "time", label: t('index_tool_zeiterfassung' as any), icon: "timer" },
+    { key: "diary", label: t('index_tool_bautagebuch' as any), icon: "menu-book" },
+    { key: "protocols", label: t('project_export_protocols' as any), icon: "description" },
+    { key: "rooms", label: t('index_tool_raeume' as any), icon: "layers" },
+  ];
 
   useEffect(() => {
-    void Promise.resolve().then(() => {
-      loadData();
-    });
-  }, [id]);
-
-  const toggleProtocol = (protocolId: string) => {
-    setSelectedProtocols((prev) => {
-      const next = new Set(prev);
-      if (next.has(protocolId)) next.delete(protocolId);
-      else next.add(protocolId);
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedProtocols(new Set(protocols.map((p) => p.id)));
-  };
-
-  const deselectAll = () => {
-    setSelectedProtocols(new Set());
-  };
-
-  const buildExportText = () => {
-    const selected = protocols.filter((p) => selectedProtocols.has(p.id));
-    let exportText = "";
-
-    // Header
-      exportText += `═══════════════════════════════════════\n`;
-      exportText += `PROJEKT-EXPORT: ${project.name}\n`;
-      exportText += `═══════════════════════════════════════\n\n`;
-      exportText += `Exportiert am: ${new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}\n`;
-      exportText += `Projekt: ${project.name}\n`;
-      if (project.description) exportText += `Beschreibung: ${project.description}\n`;
-      if (project.protocolPrefix) exportText += `${t('praefix_export').replace('\{prefix\}', project.protocolPrefix)}\n`;
-      exportText += `Anzahl Protokolle: ${selected.length}\n`;
-      exportText += `\n───────────────────────────────────────\n\n`;
-
-      // Protocols
-      selected.forEach((protocol, index) => {
-        exportText += `▸ PROTOKOLL ${index + 1}/${selected.length}\n`;
-        exportText += `  Titel: ${protocol.title}\n`;
-        exportText += `  Datum: ${new Date(protocol.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}\n`;
-        if (protocol.weather?.temp) {
-          exportText += `  Wetter: ${protocol.weather.temp}°C, ${protocol.weather.condition || ""}\n`;
-        }
-        if (protocol.photos && protocol.photos.length > 0) {
-          exportText += `  Fotos: ${protocol.photos.length} Aufnahmen\n`;
-        }
-        exportText += `\n`;
-
-        if (exportFormat === "summary" && protocol.summary) {
-          exportText += `  Zusammenfassung:\n  ${protocol.summary}\n`;
-        } else if (exportFormat === "full" && protocol.content) {
-          exportText += `  Inhalt:\n  ${protocol.content.replace(/\n/g, "\n  ")}\n`;
-        } else if (protocol.summary) {
-          exportText += `  ${protocol.summary}\n`;
-        }
-
-        exportText += `\n───────────────────────────────────────\n\n`;
-      });
-
-      exportText += `\n═══════════════════════════════════════\n`;
-      exportText += `Ende des Exports\n`;
-      exportText += `Generiert mit BuildKI\n`;
-      exportText += `═══════════════════════════════════════\n`;
-
-    return exportText;
-  };
-
-  const exportProject = async () => {
-    if (selectedProtocols.size === 0) {
-      Alert.alert(t('alert_keine_auswahl'), t('msg_bitte_waehle_mindestens_ein_protokoll'));
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      const exportText = buildExportText();
-
-      // Share
-      if (Platform.OS === "web") {
-        // On web, copy to clipboard
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(exportText);
-          Alert.alert(t('alert_exportiert'), t('msg_der_export_wurde_in_die'));
-        }
-      } else {
-        await Share.share({
-          message: exportText,
-          title: `Projekt-Export: ${project.name}`,
+    void (async () => {
+      if (!projectId) return;
+      try {
+        const [defects, checklists, timeEntries, structure, attRaw, diaryRaw, protoRaw, tasksRaw] = await Promise.all([
+          getDefects(projectId),
+          getChecklistResults(projectId),
+          getTimeEntries(projectId),
+          getProjectStructure(projectId),
+          AsyncStorage.getItem("attendance_records"),
+          AsyncStorage.getItem("bautagebuch_entries"),
+          AsyncStorage.getItem("protocols"),
+          AsyncStorage.getItem("project-tasks"),
+        ]);
+        const att = (attRaw ? JSON.parse(attRaw) : []).filter((r: any) => r.projectId === projectId);
+        const diary = (diaryRaw ? JSON.parse(diaryRaw) : []).filter((r: any) => r.projectId === projectId);
+        const proto = (protoRaw ? JSON.parse(protoRaw) : []).filter((p: any) => p.projectId === projectId);
+        const tasks = (tasksRaw ? JSON.parse(tasksRaw) : []).filter((tk: any) => !tk.projectId || tk.projectId === projectId);
+        setCounts({
+          defects: defects.length,
+          checklists: checklists.length,
+          tasks: tasks.length,
+          attendance: att.length,
+          time: timeEntries.length,
+          diary: diary.length,
+          protocols: proto.length,
+          rooms: structure.rooms.length,
         });
-      }
-    } catch  {
-      Alert.alert(t('alert_fehler'), t('msg_export_konnte_nicht_erstellt_werden'));
-    } finally {
-      setIsExporting(false);
-    }
-  };
+      } catch {}
+    })();
+  }, [projectId]);
 
-  const exportPdf = async () => {
-    if (selectedProtocols.size === 0) {
-      Alert.alert(t('alert_keine_auswahl'), t('msg_bitte_waehle_mindestens_ein_protokoll'));
-      return;
-    }
+  const toggle = (key: SourceKey) => setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
 
-    setIsExporting(true);
+  const handleExport = async () => {
+    if (!projectId) return;
+    setBusy(true);
     try {
-      const exportText = buildExportText();
-      const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937; white-space:pre-wrap; font-size:12px;"><h1 style="font-size:20px; margin:0 0 16px;">${escape(project.name)}</h1>${escape(exportText)}</body></html>`;
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      const sections: PdfSection[] = [];
+
+      if (selected.defects) {
+        const defects = await getDefects(projectId);
+        if (defects.length) {
+          sections.push({
+            title: `${t('index_tool_maengel' as any)} (${defects.length})`,
+            content: "",
+            table: {
+              headers: ["Titel", "Status", "Priorität", "Ort"],
+              rows: defects.map((d) => [d.title || "-", STATUS_LABEL[d.status] || d.status, d.priority || "-", d.room || d.location || "-"]),
+            },
+          });
+        }
       }
+
+      if (selected.checklists) {
+        const results = await getChecklistResults(projectId);
+        if (results.length) {
+          sections.push({
+            title: `${t('checklist_title' as any)} (${results.length})`,
+            content: "",
+            table: {
+              headers: ["Checkliste", "Ort", "Erledigt", "Datum"],
+              rows: results.map((r) => [r.checklistName || "-", r.location || "-", `${getChecklistCompletionRate(r)}%`, new Date(r.createdAt).toLocaleDateString("de-DE")]),
+            },
+          });
+        }
+      }
+
+      if (selected.tasks) {
+        const raw = await AsyncStorage.getItem("project-tasks");
+        const tasks = (raw ? JSON.parse(raw) : []).filter((tk: any) => !tk.projectId || tk.projectId === projectId);
+        if (tasks.length) {
+          sections.push({
+            title: `${t('index_tool_aufgaben' as any)} (${tasks.length})`,
+            content: "",
+            table: {
+              headers: ["Aufgabe", "Raum", "Status"],
+              rows: tasks.map((tk: any) => [tk.title || tk.task || "-", tk.room || "-", tk.status === "erledigt" || tk.done ? "Erledigt" : "Offen"]),
+            },
+          });
+        }
+      }
+
+      if (selected.attendance) {
+        const raw = await AsyncStorage.getItem("attendance_records");
+        const att = (raw ? JSON.parse(raw) : []).filter((r: any) => r.projectId === projectId);
+        if (att.length) {
+          sections.push({
+            title: `${t('index_tool_anwesenheit' as any)} (${att.length})`,
+            content: "",
+            table: {
+              headers: ["Datum", "Anzahl", "Personen"],
+              rows: att.map((r: any) => [
+                new Date(r.date).toLocaleDateString("de-DE"),
+                String((r.workers || []).length),
+                (r.workers || []).map((w: any) => w.name || w.workerName || "").filter(Boolean).join(", ") || "-",
+              ]),
+            },
+          });
+        }
+      }
+
+      if (selected.time) {
+        const entries = await getTimeEntries(projectId);
+        if (entries.length) {
+          const total = entries.reduce((s, e) => s + (e.duration || 0), 0);
+          sections.push({
+            title: `${t('index_tool_zeiterfassung' as any)} (${entries.length})`,
+            content: `**${t('project_export_total_hours' as any)}:** ${fmtDuration(total)}`,
+            table: {
+              headers: ["Datum", "Kategorie", "Dauer", "Notiz"],
+              rows: entries.map((e) => [new Date(e.startTime).toLocaleDateString("de-DE"), e.category || "-", fmtDuration(e.duration || 0), e.note || "-"]),
+            },
+          });
+        }
+      }
+
+      if (selected.diary) {
+        const raw = await AsyncStorage.getItem("bautagebuch_entries");
+        const diary = (raw ? JSON.parse(raw) : []).filter((r: any) => r.projectId === projectId);
+        if (diary.length) {
+          sections.push({
+            title: `${t('index_tool_bautagebuch' as any)} (${diary.length})`,
+            content: diary.map((d: any) => `**${new Date(d.date).toLocaleDateString("de-DE")}** — ${d.weather || ""}`).join("\n\n"),
+          });
+        }
+      }
+
+      if (selected.protocols) {
+        const raw = await AsyncStorage.getItem("protocols");
+        const proto = (raw ? JSON.parse(raw) : []).filter((p: any) => p.projectId === projectId);
+        if (proto.length) {
+          sections.push({
+            title: `${t('project_export_protocols' as any)} (${proto.length})`,
+            content: "",
+            table: {
+              headers: ["Titel", "Datum"],
+              rows: proto.map((p: any) => [p.title || "-", new Date(p.createdAt).toLocaleDateString("de-DE")]),
+            },
+          });
+        }
+      }
+
+      if (selected.rooms) {
+        const structure = await getProjectStructure(projectId);
+        if (structure.rooms.length) {
+          const floorName = (fid: string) => structure.floors.find((f) => f.id === fid)?.name || "-";
+          sections.push({
+            title: `${t('index_tool_raeume' as any)} (${structure.rooms.length})`,
+            content: "",
+            table: {
+              headers: ["Geschoss", "Raum", "Status"],
+              rows: structure.rooms.map((r) => [floorName(r.floorId), r.name, r.status || "-"]),
+            },
+          });
+        }
+      }
+
+      if (sections.length === 0) {
+        Alert.alert(t('project_export_title' as any), t('project_export_empty' as any));
+        return;
+      }
+
+      await generateAndSharePdf({
+        title: t('project_export_title' as any),
+        subtitle: projectName || undefined,
+        reportType: t('project_export_title' as any),
+        datum: new Date().toLocaleDateString("de-DE"),
+        projekt: projectName || undefined,
+        sections,
+        includeTableOfContents: sections.length > 3,
+        accentColor: "#2563EB",
+      });
     } catch (e: any) {
-      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+      Alert.alert(t('alert_fehler'), e?.message || t('project_export_failed' as any));
     } finally {
-      setIsExporting(false);
+      setBusy(false);
     }
   };
 
-  if (!project) {
-    return (
-      <ScreenContainer className="flex-1 items-center justify-center">
-        <Text style={{ color: colors.muted }}>{t('projekt_nicht_gefunden')}</Text>
-      </ScreenContainer>
-    );
-  }
+  const anySelected = Object.values(selected).some(Boolean);
 
   return (
-    <ScreenContainer className="flex-1">
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
-        {/* Header */}
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [{ marginRight: 12, opacity: pressed ? 0.5 : 1 }]}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground }}>{t('projekt_exportieren')}</Text>
-            <Text style={{ fontSize: 13, color: colors.muted }}>{project.name}</Text>
-          </View>
-        </View>
-
-        {/* Export Format */}
-        <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>{t('exportformat')}</Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {([
-              { key: "full", label: t('export_vollstaendig'), icon: "article" },
-              { key: "summary", label: "Zusammenfassung", icon: "summarize" },
-              { key: "text", label: "Nur Titel", icon: "title" },
-            ] as const).map((fmt) => (
-              <Pressable
-                key={fmt.key}
-                onPress={() => setExportFormat(fmt.key)}
-                style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 0, backgroundColor: exportFormat === fmt.key ? colors.primary + "15" : colors.surface, borderWidth: 1, borderColor: exportFormat === fmt.key ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name={fmt.icon as any} size={16} color={exportFormat === fmt.key ? colors.primary : colors.muted} />
-                <Text style={{ fontSize: 12, fontWeight: "600", color: exportFormat === fmt.key ? colors.primary : colors.muted }}>{fmt.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Selection Controls */}
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, flex: 1 }}>
-            {selectedProtocols.size}/{protocols.length} Protokolle ausgewählt
-          </Text>
-          <Pressable onPress={selectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t('all')}</Text>
-          </Pressable>
-          <Text style={{ color: colors.border, marginHorizontal: 4 }}>|</Text>
-          <Pressable onPress={deselectAll} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>{t('none')}</Text>
-          </Pressable>
-        </View>
-
-        {/* Protocol List */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
-          {protocols.map((protocol) => {
-            const isSelected = selectedProtocols.has(protocol.id);
-            return (
-              <Pressable
-                key={protocol.id}
-                onPress={() => toggleProtocol(protocol.id)}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 0, marginBottom: 8, backgroundColor: isSelected ? colors.primary + "08" : colors.surface, borderWidth: 1, borderColor: isSelected ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name={isSelected ? "check-box" : "check-box-outline-blank"} size={22} color={isSelected ? colors.primary : colors.border} style={{ marginRight: 10 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{protocol.title}</Text>
-                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                    {new Date(protocol.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
-                    {protocol.photos && protocol.photos.length > 0 ? ` · ${protocol.photos.length} Fotos` : ""}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-          {protocols.length === 0 && (
-            <View style={{ alignItems: "center", paddingTop: 40 }}>
-              <MaterialIcons name="description" size={48} color={colors.border} />
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginTop: 12 }}>{t('protocol_no_protocols')}</Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{t('dieses_projekt_hat_noch')}</Text>
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Export Buttons */}
-        <View style={{ position: "absolute", bottom: 24, left: 20, right: 20, flexDirection: "row", gap: 8 }}>
-          <Pressable
-            onPress={exportProject}
-            disabled={isExporting || selectedProtocols.size === 0}
-            style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 0, backgroundColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
-          >
-            {isExporting ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <>
-                <MaterialIcons name="ios-share" size={20} color="#FFF" />
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>
-                  {selectedProtocols.size} Protokolle exportieren
-                </Text>
-              </>
-            )}
-          </Pressable>
-          <Pressable
-            onPress={exportPdf}
-            disabled={isExporting || selectedProtocols.size === 0}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 16, paddingHorizontal: 16, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: selectedProtocols.size > 0 ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 }]}
-          >
-            <MaterialIcons name="picture-as-pdf" size={20} color={selectedProtocols.size > 0 ? colors.primary : colors.muted} />
-            <Text style={{ color: selectedProtocols.size > 0 ? colors.primary : colors.muted, fontSize: 16, fontWeight: "700" }}>
-              {t('pdf_teilen')}
-            </Text>
-          </Pressable>
-        </View>
+    <ScreenContainer className="p-0">
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+        </Pressable>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t('project_export_title' as any)}</Text>
+        <View style={{ width: 24 }} />
       </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <Text style={[styles.hint, { color: colors.muted }]}>{t('project_export_hint' as any)}</Text>
+
+        {SOURCES.map((s) => {
+          const on = selected[s.key];
+          const count = counts[s.key] ?? 0;
+          return (
+            <Pressable
+              key={s.key}
+              onPress={() => toggle(s.key)}
+              style={[styles.row, { backgroundColor: colors.surface, borderColor: on ? colors.primary : colors.border }]}
+            >
+              <MaterialIcons name={on ? "check-box" : "check-box-outline-blank"} size={22} color={on ? colors.primary : colors.muted} />
+              <MaterialIcons name={s.icon as any} size={20} color={colors.muted} />
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>{s.label}</Text>
+              <Text style={[styles.rowCount, { color: colors.muted }]}>{count}</Text>
+            </Pressable>
+          );
+        })}
+
+        <Pressable
+          onPress={handleExport}
+          disabled={busy || !anySelected}
+          style={({ pressed }) => [styles.exportBtn, { backgroundColor: colors.primary, opacity: busy || !anySelected ? 0.4 : pressed ? 0.85 : 1 }]}
+        >
+          {busy ? <ActivityIndicator size="small" color="#fff" /> : <MaterialIcons name="picture-as-pdf" size={20} color="#fff" />}
+          <Text style={styles.exportBtnText}>{t('project_export_button' as any)}</Text>
+        </Pressable>
+      </ScrollView>
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5 },
+  title: { fontSize: 17, fontWeight: "700" },
+  hint: { fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderWidth: 1, borderRadius: 10, marginBottom: 8 },
+  rowLabel: { flex: 1, fontSize: 15, fontWeight: "600" },
+  rowCount: { fontSize: 14, fontWeight: "700" },
+  exportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 15, borderRadius: 12, marginTop: 18 },
+  exportBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+});
