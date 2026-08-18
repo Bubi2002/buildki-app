@@ -35,6 +35,7 @@ import {
   deleteChecklistResult,
   getChecklistCompletionRate,
   saveModifiedBuiltInChecklist,
+  deleteCustomChecklist,
 } from "@/lib/checklist-store";
 
 export default function ChecklistsScreen() {
@@ -323,6 +324,21 @@ export default function ChecklistsScreen() {
     void exportPdf(checklist, result);
   };
 
+  // Only custom checklists can be deleted (built-in templates stay).
+  const removeChecklistTemplate = (checklist: Checklist) => {
+    Alert.alert(
+      t('btn_loeschen'),
+      `"${checklist.name}" ${t('checklists_vorlage_loeschen_q' as any)}`,
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        { text: t('btn_loeschen'), style: "destructive", onPress: async () => {
+          await deleteCustomChecklist(checklist.id);
+          await loadData();
+        } },
+      ],
+    );
+  };
+
   const renderResult = ({ item }: { item: ChecklistResult }) => {
     const rate = getChecklistCompletionRate(item);
     return (
@@ -405,7 +421,13 @@ export default function ChecklistsScreen() {
       <FlatList
         data={checklists}
         keyExtractor={(item) => item.id}
-        renderItem={renderChecklist}
+        renderItem={(p) => (
+          p.item.id.startsWith("custom-") ? (
+            <SwipeableRow onDelete={() => removeChecklistTemplate(p.item)} deleteLabel={t('btn_loeschen')}>
+              {renderChecklist(p)}
+            </SwipeableRow>
+          ) : renderChecklist(p)
+        )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyState}>
