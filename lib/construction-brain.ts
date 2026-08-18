@@ -22,6 +22,16 @@
  */
 
 import { knowledgeLayer } from "./knowledge-layer";
+import { t as tr, type Language } from "@/lib/i18n";
+
+// Response texts are localized. The current language is set per ask() call
+// (calls are sequential, so a module-level value is safe).
+let BRAIN_LANG: Language = "de";
+function T(key: string, vars?: Record<string, string | number>): string {
+  let s = tr(key as any, BRAIN_LANG);
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+  return s;
+}
 
 // ─── Intent Types ───────────────────────────────────────────────────────────
 
@@ -354,7 +364,8 @@ class ConstructionBrain {
   /**
    * Full pipeline: detect intent → query knowledge layer → format response.
    */
-  async ask(projectId: string, question: string): Promise<BrainResponse> {
+  async ask(projectId: string, question: string, lang?: Language): Promise<BrainResponse> {
+    BRAIN_LANG = lang || "de";
     const query = this.detectIntent(question);
     return this.executeQuery(projectId, query);
   }
@@ -386,12 +397,12 @@ class ConstructionBrain {
 
     return {
       intent: "open_defects",
-      title: "Offene Mängel",
+      title: T('brain_open_defects_title'),
       summary: entries.length === 0
-        ? "Keine offenen Mängel gefunden."
-        : `${entries.length} offene Mängel${query.params.room ? ` in ${query.params.room}` : ""}${query.params.trade ? ` (${query.params.trade})` : ""}.`,
+        ? T('brain_defects_none')
+        : `${T('brain_defects_count', { n: entries.length })}${query.params.room ? ` · ${query.params.room}` : ""}${query.params.trade ? ` · ${query.params.trade}` : ""}`,
       details,
-      stats: { gesamt: entries.length, ...bySeverity },
+      stats: { [T('brain_stat_total')]: entries.length, ...bySeverity },
       suggestions: entries.length > 0
         ? ["Welche Gewerke sind kritisch?", "Welche Aufgaben sind überfällig?"]
         : ["Wie ist der Baufortschritt?"],
@@ -415,12 +426,12 @@ class ConstructionBrain {
 
     return {
       intent: "open_tasks",
-      title: "Offene Aufgaben",
+      title: T('brain_open_tasks_title'),
       summary: entries.length === 0
-        ? "Keine offenen Aufgaben."
-        : `${entries.length} offene Aufgaben${query.params.trade ? ` für ${query.params.trade}` : ""}.`,
+        ? T('brain_tasks_none')
+        : `${T('brain_tasks_count', { n: entries.length })}${query.params.trade ? ` · ${query.params.trade}` : ""}`,
       details,
-      stats: { gesamt: entries.length },
+      stats: { [T('brain_stat_total')]: entries.length },
       suggestions: ["Welche Aufgaben sind überfällig?", "Welche Mängel sind offen?"],
     };
   }
@@ -445,12 +456,12 @@ class ConstructionBrain {
 
     return {
       intent: "overdue_tasks",
-      title: "Überfällige Aufgaben",
+      title: T('brain_overdue_tasks_title'),
       summary: entries.length === 0
-        ? "Keine überfälligen Aufgaben."
-        : `${entries.length} überfällige Aufgaben.`,
+        ? T('brain_overdue_none')
+        : T('brain_overdue_count', { n: entries.length }),
       details,
-      stats: { gesamt: entries.length },
+      stats: { [T('brain_stat_total')]: entries.length },
       suggestions: ["Welche Gewerke sind kritisch?", "Wochenbericht erstellen"],
     };
   }
@@ -471,20 +482,20 @@ class ConstructionBrain {
       .map(([trade, v]) => ({ trade, defects: v.defects, high: v.high, severity: v.high > 0 ? "hoch" : v.defects >= 3 ? "mittel" : "niedrig" }))
       .sort((a, b) => (b.high - a.high) || (b.defects - a.defects));
 
-    const details: BrainResponseDetail[] = trades.slice(0, 20).map(t => ({
+    const details: BrainResponseDetail[] = trades.slice(0, 20).map(tr2 => ({
       type: "info" as const,
-      content: `${t.trade}: ${t.defects} offene Mängel${t.high ? `, davon ${t.high} mit hoher Priorität` : ""}`,
-      metadata: { trade: t.trade, severity: t.severity },
+      content: `${T('brain_trade_line', { trade: tr2.trade, n: tr2.defects })}${tr2.high ? ` · ${T('brain_trade_high', { n: tr2.high })}` : ""}`,
+      metadata: { trade: tr2.trade, severity: tr2.severity },
     }));
 
     return {
       intent: "critical_trades",
-      title: "Kritische Gewerke",
+      title: T('brain_critical_trades_title'),
       summary: trades.length === 0
-        ? "Keine offenen Mängel — keine kritischen Gewerke."
-        : `${trades.length} Gewerke mit offenen Mängeln.`,
+        ? T('brain_trades_none')
+        : T('brain_trades_count', { n: trades.length }),
       details,
-      stats: { gewerke: trades.length },
+      stats: { [T('brain_stat_trades')]: trades.length },
       suggestions: ["Welche Mängel sind offen?", "Welche Aufgaben sind überfällig?"],
     };
   }
@@ -496,7 +507,7 @@ class ConstructionBrain {
     const defects = await getDefects(projectId);
     const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
     const statusLabel = (s?: string) =>
-      s === "fertig" ? "fertig" : s === "abgenommen" ? "abgenommen" : s === "in_arbeit" ? "in Arbeit" : "nicht begonnen";
+      s === "fertig" ? T('brain_room_status_done') : s === "abgenommen" ? T('brain_room_status_accepted') : s === "in_arbeit" ? T('brain_room_status_in_progress') : T('brain_room_status_not_started');
     const done = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
 
     const details: BrainResponseDetail[] = structure.rooms.slice(0, 25).map(r => {
@@ -504,19 +515,19 @@ class ConstructionBrain {
       const openDefects = defects.filter(d => (d.room || "").trim().toLowerCase() === r.name.trim().toLowerCase() && OPEN.has(d.status)).length;
       return {
         type: "info" as const,
-        content: `${floorName ? floorName + " · " : ""}${r.name} — ${statusLabel(r.status)}${openDefects ? `, ${openDefects} offene Mängel` : ""}`,
+        content: `${floorName ? floorName + " · " : ""}${r.name} — ${statusLabel(r.status)}${openDefects ? ` · ${T('brain_room_open_defects', { n: openDefects })}` : ""}`,
         metadata: { room: r.name },
       };
     });
 
     return {
       intent: "room_status",
-      title: "Raumstatus",
+      title: T('brain_room_status_title'),
       summary: structure.rooms.length === 0
-        ? "Noch keine Räume angelegt."
-        : `${done}/${structure.rooms.length} Räume fertig.`,
+        ? T('brain_rooms_none')
+        : T('brain_rooms_done', { done, total: structure.rooms.length }),
       details,
-      stats: { räume: structure.rooms.length, fertig: done },
+      stats: { [T('brain_stat_rooms')]: structure.rooms.length, [T('brain_stat_done')]: done },
       suggestions: ["Welche Mängel sind offen?", "Wie ist der Baufortschritt?"],
     };
   }

@@ -66,7 +66,7 @@ export default function ConstructionBrainScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
   const colors = useColors();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const scrollRef = useRef<ScrollView>(null);
 
   const [activeProject, setActiveProject] = useState<{ id: string; name: string } | null>(null);
@@ -124,7 +124,7 @@ export default function ConstructionBrainScreen() {
     setShowHistory(false);
 
     try {
-      const response = await constructionBrain.ask(activeProject.id, question.trim());
+      const response = await constructionBrain.ask(activeProject.id, question.trim(), language);
       setCurrentResponse(response);
 
       const entry: HistoryEntry = {
