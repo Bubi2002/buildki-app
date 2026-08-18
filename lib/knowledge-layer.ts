@@ -379,6 +379,28 @@ class ProjectKnowledgeLayer {
   }): Promise<ProjectKnowledgeEntry[]> {
     let entries = await this.getProjectKnowledge(projectId);
     entries = entries.filter(e => e.type === "task");
+
+    // Include the real standalone tasks (project-tasks), not just AI-ingested ones.
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const all: any[] = raw ? JSON.parse(raw) : [];
+      const mapped: ProjectKnowledgeEntry[] = all
+        .filter((tk) => (!tk.projectId || tk.projectId === projectId) && tk.status !== "erledigt" && tk.done !== true)
+        .map((tk) => ({
+          id: `task-${tk.id}`,
+          projectId,
+          source: "manual" as const,
+          sourceId: tk.id,
+          timestamp: tk.createdAt || new Date().toISOString(),
+          type: "task" as const,
+          content: tk.title || tk.task || "",
+          metadata: { trade: tk.trade || "", priority: tk.priority || "", deadline: tk.deadline || null, room: tk.room || "" },
+        }));
+      entries = [...mapped, ...entries];
+    } catch {
+      // fall back to knowledge entries only
+    }
+
     if (filters?.trade) {
       const trade = filters.trade.toLowerCase();
       entries = entries.filter(e => (e.metadata.trade as string || "").toLowerCase().includes(trade));

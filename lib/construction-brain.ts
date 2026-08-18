@@ -456,11 +456,24 @@ class ConstructionBrain {
   }
 
   private async handleCriticalTrades(projectId: string): Promise<BrainResponse> {
-    const trades = await knowledgeLayer.getCriticalTrades(projectId);
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects(projectId);
+    const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+    const byTrade: Record<string, { defects: number; high: number }> = {};
+    for (const d of defects) {
+      if (!OPEN.has(d.status)) continue;
+      const trade = (d as any).gewerk || d.category || "Sonstiges";
+      if (!byTrade[trade]) byTrade[trade] = { defects: 0, high: 0 };
+      byTrade[trade].defects++;
+      if (d.priority === "hoch") byTrade[trade].high++;
+    }
+    const trades = Object.entries(byTrade)
+      .map(([trade, v]) => ({ trade, defects: v.defects, high: v.high, severity: v.high > 0 ? "hoch" : v.defects >= 3 ? "mittel" : "niedrig" }))
+      .sort((a, b) => (b.high - a.high) || (b.defects - a.defects));
 
-    const details: BrainResponseDetail[] = trades.map(t => ({
+    const details: BrainResponseDetail[] = trades.slice(0, 20).map(t => ({
       type: "info" as const,
-      content: `${t.trade}: ${t.defects} Mängel, ${t.overdueTasks} überfällige Aufgaben (Schweregrad: ${t.severity})`,
+      content: `${t.trade}: ${t.defects} offene Mängel${t.high ? `, davon ${t.high} mit hoher Priorität` : ""}`,
       metadata: { trade: t.trade, severity: t.severity },
     }));
 
@@ -468,40 +481,43 @@ class ConstructionBrain {
       intent: "critical_trades",
       title: "Kritische Gewerke",
       summary: trades.length === 0
-        ? "Keine kritischen Gewerke identifiziert."
-        : `${trades.length} Gewerke mit kritischen Problemen.`,
+        ? "Keine offenen Mängel — keine kritischen Gewerke."
+        : `${trades.length} Gewerke mit offenen Mängeln.`,
       details,
-      stats: { kritischeGewerke: trades.length },
-      suggestions: ["Offene Mängel anzeigen", "Überfällige Aufgaben?"],
+      stats: { gewerke: trades.length },
+      suggestions: ["Welche Mängel sind offen?", "Welche Aufgaben sind überfällig?"],
     };
   }
 
   private async handleRoomStatus(projectId: string): Promise<BrainResponse> {
-    const rooms = await knowledgeLayer.getProjectRooms(projectId);
-    const details: BrainResponseDetail[] = [];
+    const { getProjectStructure } = await import("@/lib/room-store");
+    const { getDefects } = await import("@/lib/defect-store");
+    const structure = await getProjectStructure(projectId);
+    const defects = await getDefects(projectId);
+    const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+    const statusLabel = (s?: string) =>
+      s === "fertig" ? "fertig" : s === "abgenommen" ? "abgenommen" : s === "in_arbeit" ? "in Arbeit" : "nicht begonnen";
+    const done = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
 
-    for (const room of rooms.slice(0, 15)) {
-      const entries = await knowledgeLayer.getByRoom(projectId, room);
-      const defects = entries.filter(e => e.type === "defect").length;
-      const tasks = entries.filter(e => e.type === "task").length;
-      const observations = entries.filter(e => e.type === "observation").length;
-
-      details.push({
-        type: "info",
-        content: `${room}: ${defects} Mängel, ${tasks} Aufgaben, ${observations} Beobachtungen`,
-        metadata: { room, defects, tasks, observations },
-      });
-    }
+    const details: BrainResponseDetail[] = structure.rooms.slice(0, 25).map(r => {
+      const floorName = structure.floors.find(f => f.id === r.floorId)?.name || "";
+      const openDefects = defects.filter(d => (d.room || "").trim().toLowerCase() === r.name.trim().toLowerCase() && OPEN.has(d.status)).length;
+      return {
+        type: "info" as const,
+        content: `${floorName ? floorName + " · " : ""}${r.name} — ${statusLabel(r.status)}${openDefects ? `, ${openDefects} offene Mängel` : ""}`,
+        metadata: { room: r.name },
+      };
+    });
 
     return {
       intent: "room_status",
       title: "Raumstatus",
-      summary: rooms.length === 0
-        ? "Keine Räume im Knowledge Layer erfasst."
-        : `${rooms.length} Räume erfasst.`,
+      summary: structure.rooms.length === 0
+        ? "Noch keine Räume angelegt."
+        : `${done}/${structure.rooms.length} Räume fertig.`,
       details,
-      stats: { räume: rooms.length },
-      suggestions: ["Welche Mängel sind offen?", "Baufortschritt?"],
+      stats: { räume: structure.rooms.length, fertig: done },
+      suggestions: ["Welche Mängel sind offen?", "Wie ist der Baufortschritt?"],
     };
   }
 
