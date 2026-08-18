@@ -14,11 +14,15 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getDefects } from "@/lib/defect-store";
 import { getChecklistResults, getChecklistCompletionRate } from "@/lib/checklist-store";
-import { getTimeEntries } from "@/lib/time-tracking-store";
+import { getTimeEntries, getTimeTrackingSettings } from "@/lib/time-tracking-store";
 import { getProjectStructure } from "@/lib/room-store";
-import { generateAndSharePdf, type PdfSection } from "@/lib/pdf-professional";
+import { getDirectProjectPhotos } from "@/lib/project-photo-store";
+import { generateAndSharePdf, type PdfSection, type PdfImage } from "@/lib/pdf-professional";
+import * as FileSystem from "expo-file-system/legacy";
 
-type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms";
+type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "photos";
+
+const MAX_EXPORT_PHOTOS = 40;
 
 const STATUS_LABEL: Record<string, string> = {
   offen: "Offen", zugewiesen: "Zugewiesen", in_bearbeitung: "In Arbeit", nachbesserung: "Nachbesserung",
@@ -38,7 +42,7 @@ export default function ProjectExportScreen() {
   const { projectId = "", projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
 
   const [selected, setSelected] = useState<Record<SourceKey, boolean>>({
-    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: true, protocols: true, rooms: true,
+    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: true, protocols: true, rooms: true, photos: false,
   });
   const [counts, setCounts] = useState<Partial<Record<SourceKey, number>>>({});
   const [busy, setBusy] = useState(false);
@@ -58,11 +62,12 @@ export default function ProjectExportScreen() {
     void (async () => {
       if (!projectId) return;
       try {
-        const [defects, checklists, timeEntries, structure, attRaw, diaryRaw, protoRaw, tasksRaw] = await Promise.all([
+        const [defects, checklists, timeEntries, structure, projectPhotos, attRaw, diaryRaw, protoRaw, tasksRaw] = await Promise.all([
           getDefects(projectId),
           getChecklistResults(projectId),
           getTimeEntries(projectId),
           getProjectStructure(projectId),
+          getDirectProjectPhotos(projectId),
           AsyncStorage.getItem("attendance_records"),
           AsyncStorage.getItem("bautagebuch_entries"),
           AsyncStorage.getItem("protocols"),
@@ -72,6 +77,7 @@ export default function ProjectExportScreen() {
         const diary = (diaryRaw ? JSON.parse(diaryRaw) : []).filter((r: any) => r.projectId === projectId);
         const proto = (protoRaw ? JSON.parse(protoRaw) : []).filter((p: any) => p.projectId === projectId);
         const tasks = (tasksRaw ? JSON.parse(tasksRaw) : []).filter((tk: any) => !tk.projectId || tk.projectId === projectId);
+        const defectPhotos = defects.reduce((s, d) => s + ((d.photos || []).length), 0);
         setCounts({
           defects: defects.length,
           checklists: checklists.length,
@@ -81,6 +87,7 @@ export default function ProjectExportScreen() {
           diary: diary.length,
           protocols: proto.length,
           rooms: structure.rooms.length,
+          photos: projectPhotos.length + defectPhotos,
         });
       } catch {}
     })();
@@ -160,12 +167,20 @@ export default function ProjectExportScreen() {
         const entries = await getTimeEntries(projectId);
         if (entries.length) {
           const total = entries.reduce((s, e) => s + (e.duration || 0), 0);
+          const settings = await getTimeTrackingSettings();
+          const rate = parseFloat(String(settings.hourlyRate || "").replace(",", ".")) || 0;
+          const euro = (seconds: number) => `${((seconds / 3600) * rate).toFixed(2).replace(".", ",")} €`;
+          const totalCost = (total / 3600) * rate;
+          let content = `**${t('project_export_total_hours' as any)}:** ${fmtDuration(total)}`;
+          if (rate > 0) content += `  ·  **${t('project_export_total_cost' as any)}:** ${totalCost.toFixed(2).replace(".", ",")} € (${rate.toFixed(2).replace(".", ",")} €/h)`;
           sections.push({
             title: `${t('index_tool_zeiterfassung' as any)} (${entries.length})`,
-            content: `**${t('project_export_total_hours' as any)}:** ${fmtDuration(total)}`,
+            content,
             table: {
-              headers: ["Datum", "Kategorie", "Dauer", "Notiz"],
-              rows: entries.map((e) => [new Date(e.startTime).toLocaleDateString("de-DE"), e.category || "-", fmtDuration(e.duration || 0), e.note || "-"]),
+              headers: rate > 0 ? ["Datum", "Kategorie", "Dauer", "Kosten", "Notiz"] : ["Datum", "Kategorie", "Dauer", "Notiz"],
+              rows: entries.map((e) => rate > 0
+                ? [new Date(e.startTime).toLocaleDateString("de-DE"), e.category || "-", fmtDuration(e.duration || 0), euro(e.duration || 0), e.note || "-"]
+                : [new Date(e.startTime).toLocaleDateString("de-DE"), e.category || "-", fmtDuration(e.duration || 0), e.note || "-"]),
             },
           });
         }
@@ -208,6 +223,30 @@ export default function ProjectExportScreen() {
               headers: ["Geschoss", "Raum", "Status"],
               rows: structure.rooms.map((r) => [floorName(r.floorId), r.name, r.status || "-"]),
             },
+          });
+        }
+      }
+
+      if (selected.photos) {
+        const direct = await getDirectProjectPhotos(projectId);
+        const defects = await getDefects(projectId);
+        const uris = [
+          ...direct.map((p) => p.uri),
+          ...defects.flatMap((d) => d.photos || []),
+        ].filter(Boolean).slice(0, MAX_EXPORT_PHOTOS);
+        const images: PdfImage[] = [];
+        for (const uri of uris) {
+          try {
+            const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+            const mime = uri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+            images.push({ base64: `data:${mime};base64,${b64}`, width: 31 });
+          } catch {}
+        }
+        if (images.length) {
+          sections.push({
+            title: `${t('project_export_photos' as any)} (${images.length})`,
+            content: uris.length >= MAX_EXPORT_PHOTOS ? t('project_export_photos_capped' as any).replace("{n}", String(MAX_EXPORT_PHOTOS)) : "",
+            images,
           });
         }
       }
@@ -266,6 +305,21 @@ export default function ProjectExportScreen() {
           );
         })}
 
+        {/* Photos — optional, heavy */}
+        <Pressable
+          onPress={() => toggle("photos")}
+          style={[styles.row, { backgroundColor: colors.surface, borderColor: selected.photos ? "#F59E0B" : colors.border, marginTop: 6 }]}
+        >
+          <MaterialIcons name={selected.photos ? "check-box" : "check-box-outline-blank"} size={22} color={selected.photos ? "#F59E0B" : colors.muted} />
+          <MaterialIcons name="photo-library" size={20} color={colors.muted} />
+          <Text style={[styles.rowLabel, { color: colors.foreground }]}>{t('project_export_photos' as any)}</Text>
+          <Text style={[styles.rowCount, { color: colors.muted }]}>{counts.photos ?? 0}</Text>
+        </Pressable>
+        <View style={styles.warnRow}>
+          <MaterialIcons name="info-outline" size={14} color="#F59E0B" />
+          <Text style={styles.warnText}>{t('project_export_photos_warning' as any).replace("{n}", String(MAX_EXPORT_PHOTOS))}</Text>
+        </View>
+
         <Pressable
           onPress={handleExport}
           disabled={busy || !anySelected}
@@ -286,6 +340,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderWidth: 1, borderRadius: 10, marginBottom: 8 },
   rowLabel: { flex: 1, fontSize: 15, fontWeight: "600" },
   rowCount: { fontSize: 14, fontWeight: "700" },
+  warnRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, marginBottom: 4, paddingHorizontal: 4 },
+  warnText: { flex: 1, fontSize: 12, color: "#F59E0B", lineHeight: 16 },
   exportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 15, borderRadius: 12, marginTop: 18 },
   exportBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });
