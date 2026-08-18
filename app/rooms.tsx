@@ -17,6 +17,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Keyboard,
+  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -39,6 +40,13 @@ import {
 import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAudioRecorder, RecordingPresets, AudioModule, setAudioModeAsync } from "expo-audio";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { trpc } from "@/lib/trpc";
+import { extractDocumentText } from "@/lib/document-text-extractor";
+import { extractStructureFromText, type ExtractedStructure } from "@/lib/room-extraction";
+import type { DocumentFileType } from "@/lib/document-ai";
 
 type ProjectTask = { id: string; projectId?: string; title?: string; task?: string; status?: string; done?: boolean; priority?: string; room?: string; floor?: string; createdAt?: string };
 
@@ -81,6 +89,14 @@ export default function RoomsScreen() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [taskRoom, setTaskRoom] = useState<Room | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
+
+  // AI structure creation (voice / plan → floors & rooms)
+  const aiRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const uploadAudioMutation = trpc.upload.audio.useMutation();
+  const transcribeMutation = trpc.voice.transcribe.useMutation();
+  const [aiRecording, setAiRecording] = useState(false);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [aiPreview, setAiPreview] = useState<ExtractedStructure | null>(null);
 
   // Add Floor Modal
   const [showAddFloor, setShowAddFloor] = useState(false);
@@ -238,6 +254,100 @@ export default function RoomsScreen() {
 
   const getRoomsForFloor = (floorId: string) => rooms.filter(r => r.floorId === floorId);
 
+  // ─── AI: create floors & rooms from voice or a plan ──────────────────────────
+  const showAiOptions = () => {
+    Alert.alert(t('rooms_ai_title' as any), t('rooms_ai_message' as any), [
+      { text: t('rooms_ai_voice' as any), onPress: () => { void startVoice(); } },
+      { text: t('rooms_ai_plan' as any), onPress: () => { void pickPlan(); } },
+      { text: t('rooms_cancel' as any), style: "cancel" },
+    ]);
+  };
+
+  const startVoice = async () => {
+    try {
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) { Alert.alert(t('rooms_ai_title' as any), t('defects_mikrofonzugriff_msg' as any)); return; }
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await aiRecorder.prepareToRecordAsync();
+      aiRecorder.record();
+      setAiRecording(true);
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('rooms_ai_failed' as any));
+    }
+  };
+
+  const stopVoice = async () => {
+    setAiRecording(false);
+    setAiBusy(t('rooms_ai_transcribing' as any));
+    try {
+      await aiRecorder.stop();
+      try { await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }); } catch {}
+      const uri = aiRecorder.uri;
+      if (!uri) { setAiBusy(null); return; }
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      const uploaded = await uploadAudioMutation.mutateAsync({ base64, mimeType: "audio/m4a", filename: `rooms-${Date.now()}.m4a` });
+      const transcribed = await transcribeMutation.mutateAsync({ audioUrl: uploaded.url, language: "de" });
+      const structure = extractStructureFromText((transcribed.text || "").trim());
+      setAiBusy(null);
+      if (structure.rooms.length === 0) { Alert.alert(t('rooms_ai_title' as any), t('rooms_ai_nothing' as any)); return; }
+      setAiPreview(structure);
+    } catch (e: any) {
+      setAiBusy(null);
+      Alert.alert(t('alert_fehler'), e?.message || t('rooms_ai_failed' as any));
+    }
+  };
+
+  const pickPlan = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const file = res.assets[0];
+      const lower = (file.name || "").toLowerCase();
+      const fileType: DocumentFileType = lower.endsWith(".pdf") ? "pdf" : lower.endsWith(".docx") ? "docx" : "other";
+      setAiBusy(t('rooms_ai_reading' as any));
+      const extraction = await extractDocumentText({ fileUri: file.uri, fileName: file.name || "plan", fileType, fileSize: file.size });
+      const structure = extractStructureFromText(extraction.text);
+      setAiBusy(null);
+      if (structure.rooms.length === 0) { Alert.alert(t('rooms_ai_title' as any), t('rooms_ai_nothing' as any)); return; }
+      setAiPreview(structure);
+    } catch (e: any) {
+      setAiBusy(null);
+      Alert.alert(t('alert_fehler'), e?.message || t('rooms_ai_failed' as any));
+    }
+  };
+
+  const createFromPreview = async () => {
+    if (!aiPreview || !projectId) { setAiPreview(null); return; }
+    setAiBusy(t('rooms_ai_creating' as any));
+    try {
+      const structure = await getProjectStructure(projectId);
+      const floorIdByLabel = new Map<string, string>();
+      for (const f of structure.floors) floorIdByLabel.set(f.name.trim().toLowerCase(), f.id);
+      let nextNum = structure.floors.reduce((mx, f) => Math.max(mx, f.number), 0);
+      for (const label of aiPreview.floors) {
+        const key = label.trim().toLowerCase();
+        if (!floorIdByLabel.has(key)) {
+          const created = await addFloor(projectId, label, ++nextNum);
+          floorIdByLabel.set(key, created.id);
+        }
+      }
+      for (const r of aiPreview.rooms) {
+        const fid = floorIdByLabel.get(r.floorLabel.trim().toLowerCase());
+        if (fid) await addRoom(projectId, fid, r.name, undefined, undefined);
+      }
+      setAiBusy(null);
+      setAiPreview(null);
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      loadData();
+    } catch (e: any) {
+      setAiBusy(null);
+      Alert.alert(t('alert_fehler'), e?.message || t('rooms_ai_failed' as any));
+    }
+  };
+
   const totalRooms = rooms.length;
   const completedRooms = rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
 
@@ -253,6 +363,13 @@ export default function RoomsScreen() {
             <Text style={styles.title}>{t('rooms_title' as any)}</Text>
             <Text style={styles.subtitle}>{projectName || t('rooms_project_fallback' as any)}</Text>
           </View>
+          <Pressable
+            onPress={showAiOptions}
+            style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1, marginRight: 8, borderColor: "#A78BFA55" }]}
+          >
+            <MaterialIcons name="auto-awesome" size={16} color="#A78BFA" />
+            <Text style={[styles.addBtnText, { color: "#A78BFA" }]}>KI</Text>
+          </Pressable>
           <Pressable
             onPress={() => setShowAddFloor(true)}
             style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1 }]}
@@ -580,6 +697,72 @@ export default function RoomsScreen() {
                 <Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI: recording */}
+      <Modal visible={aiRecording} transparent animationType="fade">
+        <View style={[styles.detailOverlay, { justifyContent: "center", alignItems: "center", padding: 24 }]}>
+          <View style={[styles.detailSheet, { borderRadius: 16, alignItems: "center", alignSelf: "stretch" }]}>
+            <MaterialIcons name="mic" size={40} color="#EF4444" />
+            <Text style={[styles.detailTitle, { marginTop: 10 }]}>{t('rooms_ai_recording' as any)}</Text>
+            <Text style={[styles.detailSubtitle, { textAlign: "center", marginTop: 6 }]}>{t('rooms_ai_recording_hint' as any)}</Text>
+            <Pressable onPress={stopVoice} style={[styles.detailActionBtn, { backgroundColor: "#EF4444", marginTop: 20, alignSelf: "stretch" }]}>
+              <MaterialIcons name="stop" size={18} color="#fff" />
+              <Text style={styles.detailActionText}>{t('rooms_ai_stop' as any)}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI: busy */}
+      <Modal visible={!!aiBusy} transparent animationType="fade">
+        <View style={[styles.detailOverlay, { justifyContent: "center", alignItems: "center" }]}>
+          <View style={{ backgroundColor: "#0F1E30", padding: 24, borderRadius: 14, alignItems: "center", gap: 12 }}>
+            <ActivityIndicator size="large" color="#A78BFA" />
+            <Text style={{ color: "#F0F4F8", fontSize: 15, fontWeight: "600" }}>{aiBusy}</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI: preview & confirm */}
+      <Modal visible={!!aiPreview} transparent animationType="slide" onRequestClose={() => setAiPreview(null)}>
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailSheet}>
+            {aiPreview && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <Text style={styles.detailTitle}>{t('rooms_ai_preview_title' as any)}</Text>
+                  <Pressable onPress={() => setAiPreview(null)} hitSlop={8}><MaterialIcons name="close" size={24} color="#8FA3B8" /></Pressable>
+                </View>
+                <Text style={styles.detailSubtitle}>{aiPreview.floors.length} · {aiPreview.rooms.length}</Text>
+                {aiPreview.floors.map((fl) => {
+                  const rs = aiPreview.rooms.filter((r) => r.floorLabel === fl);
+                  return (
+                    <View key={fl} style={{ marginTop: 14 }}>
+                      <Text style={styles.detailLabel}>{fl} ({rs.length})</Text>
+                      {rs.length === 0 ? <Text style={styles.detailEmpty}>—</Text> : rs.map((r, i) => (
+                        <View key={`${fl}-${i}`} style={styles.linkRow}>
+                          <MaterialIcons name="meeting-room" size={14} color="#8FA3B8" />
+                          <Text style={styles.linkText}>{r.name}</Text>
+                          {r.area ? <Text style={{ fontSize: 12, color: "#8FA3B8" }}>{r.area} m²</Text> : null}
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })}
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
+                  <Pressable onPress={() => setAiPreview(null)} style={{ flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" }}>
+                    <Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+                  </Pressable>
+                  <Pressable onPress={createFromPreview} style={{ flex: 2, paddingVertical: 12, borderRadius: 8, backgroundColor: "#5DADE2", alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}>
+                    <MaterialIcons name="check" size={18} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "700" }}>{t('rooms_ai_create' as any)}</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
