@@ -1,5 +1,5 @@
 import { getDefects, type Defect, type DefectStatus, type DefectPriority } from "./defect-store";
-import { getPdfBranding, generatePdfHeader, generatePdfFooter } from "./pdf-branding-store";
+import { getPdfBranding } from "./pdf-branding-store";
 import * as FileSystem from "expo-file-system/legacy";
 import { TRADE_NAMES, type TradeName } from "./trades";
 
@@ -110,52 +110,97 @@ export async function generateDefectPdfHtml(
     niedrig: "Niedrig",
   };
 
+  const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const NAVY = "#0F2744";
+  const logoTag = branding.logoUri ? `<img src="${branding.logoUri}" alt="" />` : "";
+  const coName = esc(branding.companyName || "BuildKI");
+  const coSub = esc(branding.headerText || "Mängeldokumentation");
+  const footerLeft = escCss(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"));
+  const pageBox = branding.showPageNumbers
+    ? `@bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
+    : "";
+  const icoBuilding = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 8h5a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5"/><path d="M7 7h.01M7 11h.01M7 15h.01M10 7h.01M10 11h.01M10 15h.01"/></svg>`;
+  const icoCal = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>`;
+  const icoWarn = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>`;
+
   let html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; color: #1a1a1a; font-size: 12px; line-height: 1.5; }
-  .page-break { page-break-before: always; }
-  .header { margin-bottom: 20px; }
-  .stats-grid { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
-  .stat-box { flex: 1; min-width: 80px; padding: 14px 12px; border-radius: 10px; text-align: center; background: #f8fafc; border: 1px solid #e8ecf1; }
+  @page { margin: 12mm 0 15mm 0; ${pageBox} @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 14mm; } }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
+  .band { background: ${NAVY}; color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 16px; }
+  .band img { height: 40px; width: auto; object-fit: contain; }
+  .band .co { font-size: 17px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.2; }
+  .band .co small { display: block; font-size: 9px; font-weight: 600; color: #8FB0CF; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 3px; }
+  .wrap { padding: 24px 28px 12px; }
+  .title { font-size: 28px; font-weight: 800; color: ${NAVY}; margin: 0; letter-spacing: 0.4px; }
+  .title-rule { height: 3px; background: ${accentColor}; margin: 10px 0 0; border-radius: 2px; }
+  .subtitle { font-size: 12px; color: #64748b; margin: 12px 0 0; }
+  .infogrid { display: flex; margin: 18px 0 2px; border: 1px solid #e8ecf1; border-radius: 10px; overflow: hidden; }
+  .infocol { flex: 1; padding: 12px 14px; border-right: 1px solid #eef1f5; }
+  .infocol:last-child { border-right: none; }
+  .infocol .lbl { display: flex; align-items: center; gap: 6px; font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+  .infocol .val { font-size: 14px; font-weight: 700; color: #1f2937; }
+  .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px; margin: 18px 0 2px; }
+  .stats-grid { display: flex; gap: 10px; }
+  .stat-box { flex: 1; min-width: 70px; padding: 12px; border-radius: 10px; text-align: center; background: #fff; border: 1px solid #e8ecf1; }
   .stat-number { font-size: 22px; font-weight: 800; }
-  .stat-label { font-size: 10px; color: #64748b; margin-top: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-label { font-size: 9px; color: #64748b; margin-top: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; padding: 12px 2px 4px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #475569; font-weight: 600; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid; }
+  .section-chip { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
+  .section-chip .num { background: ${NAVY}; color: #fff; font-size: 12px; font-weight: 800; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+  .section-chip .txt { font-size: 15px; font-weight: 800; color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.4px; }
+  .page-break { page-break-before: always; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
   .defect-card { border: 1px solid #e8ecf1; border-radius: 10px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
   .defect-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
   .defect-title { font-size: 14px; font-weight: 700; flex: 1; color: #1f2937; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
   .defect-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: #475569; }
   .defect-meta-item { display: flex; align-items: center; gap: 4px; }
   .defect-description { font-size: 12px; color: #334155; margin-bottom: 10px; padding: 10px; background: #f8fafc; border-radius: 6px; }
   .defect-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .defect-photo { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #e8ecf1; }
-  .summary-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
   .summary-table th, .summary-table td { padding: 9px 10px; border-bottom: 1px solid #eef1f5; text-align: left; }
   .summary-table th { background: #f8fafc; font-weight: 700; color: #334155; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 10px; letter-spacing: 0.3px; }
   .summary-table tr:nth-child(even) td { background: #fbfcfd; }
-  .footer { margin-top: 24px; }
 </style>
 </head>
-<body>`;
+<body>
+  <div class="band">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
+  <div class="wrap">
+    <h1 class="title">Mängelbericht</h1>
+    <div class="title-rule"></div>
+    <p class="subtitle">Projekt: ${esc(projectName)} &nbsp;·&nbsp; Stand: ${dateStr}</p>
 
-  // Header
-  html += `<div class="header">${generatePdfHeader(branding, projectName)}</div>`;
+    <div class="infogrid">
+      <div class="infocol"><div class="lbl">${icoBuilding} Projekt</div><div class="val">${esc(projectName)}</div></div>
+      <div class="infocol"><div class="lbl">${icoCal} Datum</div><div class="val">${dateStr}</div></div>
+      <div class="infocol"><div class="lbl">${icoWarn} Mängel gesamt</div><div class="val">${stats.total}</div></div>
+    </div>
 
-  // Title
-  html += `<h1 style="font-size: 22px; font-weight: 800; color: #1f2937; margin: 0 0 3px;">Mängelbericht</h1>`;
-  html += `<div style="height: 3px; width: 54px; background: ${accentColor}; border-radius: 2px; margin-bottom: 10px;"></div>`;
-  html += `<p style="font-size: 12px; color: #64748b; margin-bottom: 20px;">Projekt: ${projectName} | Stand: ${dateStr}</p>`;
+    <div class="summary-band"><div class="stats-grid">
+      <div class="stat-box" style="border-top: 3px solid #334155;"><div class="stat-number" style="color: #334155;">${stats.total}</div><div class="stat-label">Gesamt</div></div>
+      <div class="stat-box" style="border-top: 3px solid #DC2626;"><div class="stat-number" style="color: #DC2626;">${stats.offen}</div><div class="stat-label">Offen</div></div>
+      <div class="stat-box" style="border-top: 3px solid #D97706;"><div class="stat-number" style="color: #D97706;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
+      <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
+      <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
+    </div></div>
 
-  // Statistics
-  html += `<div class="stats-grid">
-    <div class="stat-box" style="border-top: 3px solid #334155;"><div class="stat-number" style="color: #334155;">${stats.total}</div><div class="stat-label">Gesamt</div></div>
-    <div class="stat-box" style="border-top: 3px solid #DC2626;"><div class="stat-number" style="color: #DC2626;">${stats.offen}</div><div class="stat-label">Offen</div></div>
-    <div class="stat-box" style="border-top: 3px solid #D97706;"><div class="stat-number" style="color: #D97706;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
-    <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
-    <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
-  </div>`;
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="border-color: ${statusColors.offen};"></span>Offen</div>
+      <div class="legend-item"><span class="legend-dot" style="border-color: ${statusColors.in_bearbeitung};"></span>In Bearbeitung</div>
+      <div class="legend-item"><span class="legend-dot" style="border-color: ${statusColors.erledigt}; background: ${statusColors.erledigt};"></span>Erledigt</div>
+      <div class="legend-item"><span class="legend-dot" style="border-color: ${priorityColors.hoch}; background: ${priorityColors.hoch};"></span>Priorität hoch</div>
+    </div>
+
+    <div class="section-chip"><span class="num">1</span><span class="txt">Übersicht</span></div>`;
 
   // Summary table
   html += `<table class="summary-table">
@@ -186,7 +231,7 @@ export async function generateDefectPdfHtml(
   // Detailed defect cards
   if (defects.length > 0) {
     html += `<div class="page-break"></div>`;
-    html += `<h2 style="font-size: 16px; font-weight: 700; color: ${accentColor}; margin-bottom: 16px;">Detailansicht</h2>`;
+    html += `<div class="section-chip"><span class="num">2</span><span class="txt">Detailansicht</span></div>`;
 
     for (let i = 0; i < defects.length; i++) {
       const d = defects[i];
@@ -248,7 +293,7 @@ export async function generateDefectPdfHtml(
   const allSignatures = defects.flatMap(d => (d.signatures || []).map(s => ({ ...s, defectTitle: d.title })));
   if (allSignatures.length > 0) {
     html += `<div class="page-break"></div>`;
-    html += `<h2 style="font-size: 16px; font-weight: 700; color: ${accentColor}; margin-bottom: 16px;">Unterschriften</h2>`;
+    html += `<div class="section-chip"><span class="num">3</span><span class="txt">Unterschriften</span></div>`;
     html += `<p style="font-size: 11px; color: #666; margin-bottom: 16px;">Die folgenden digitalen Unterschriften bestätigen die Kenntnisnahme und/oder Anerkennung der dokumentierten Mängel.</p>`;
     html += `<table class="summary-table"><thead><tr><th>Rolle</th><th>Datum</th><th>Unterschrift</th></tr></thead><tbody>`;
 
@@ -293,8 +338,8 @@ export async function generateDefectPdfHtml(
     html += `<p style="font-size: 9px; color: #999; margin-top: 12px; font-style: italic;">Hinweis: Die digitalen Unterschriften wurden elektronisch erfasst und sind rechtlich bindend gemäß § 126a BGB (elektronische Form). Die Unterzeichner bestätigen die Richtigkeit und Vollständigkeit der dokumentierten Mängel zum Zeitpunkt der Unterschrift.</p>`;
   }
 
-  // Footer
-  html += `<div class="footer">${generatePdfFooter(branding)}</div>`;
+  // Close content wrapper (page footer is rendered via @page margin boxes)
+  html += `</div>`;
   html += `</body></html>`;
 
   return html;
