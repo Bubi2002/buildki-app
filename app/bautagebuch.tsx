@@ -38,7 +38,8 @@ import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
-import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
+import { buildPremiumHtml, statBand, premiumIcons, type InfoCol } from "@/lib/pdf-premium";
+import { getPdfBranding } from "@/lib/pdf-branding-store";
 
 type BautagebuchEntry = {
   id: string;
@@ -241,30 +242,32 @@ export default function BautagebuchScreen() {
         month: "long",
         year: "numeric",
       });
-      const meta: string[] = [];
-      if (entry.projectName) meta.push(esc(entry.projectName));
-      if (entry.weather) meta.push(esc(entry.weather));
-      if (entry.attendanceCount != null) meta.push(`${t('bautagebuch_present' as any)}: ${entry.attendanceCount}`);
-      if (entry.defectsCount != null) meta.push(`${t('offene_maengel')}: ${entry.defectsCount}`);
+      const branding = await getPdfBranding();
+      const accent = branding.accentColor || "#0E7490";
+      const ic = premiumIcons(accent);
       const reportHtml = markdownReportToHtml(entry.fullReport);
-      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
-        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
-        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+
+      const info: InfoCol[] = [];
+      if (entry.projectName) info.push({ label: t('projekt' as any), value: entry.projectName, icon: ic.building });
+      info.push({ label: t('datum' as any), value: dateLabel, icon: ic.calendar });
+      if (entry.weather) info.push({ label: t('wetter' as any), value: entry.weather, icon: ic.warning });
+
+      const bandItems: { value: string | number; label: string; color: string }[] = [];
+      if (entry.attendanceCount != null) bandItems.push({ value: entry.attendanceCount, label: t('bautagebuch_present' as any), color: "#334155" });
+      if (entry.defectsCount != null) bandItems.push({ value: entry.defectsCount, label: t('offene_maengel'), color: "#B91C1C" });
+      const band = bandItems.length ? statBand(bandItems) : "";
+
+      const html = buildPremiumHtml({
+        branding,
+        accentColor: accent,
+        title: t('bautagebuch'),
+        reportTag: t('bautagebuch_report_tag' as any),
+        subtitle: esc(dateLabel),
+        info,
+        body: `${band}<div class="md-report" style="margin-top:18px;">${reportHtml}</div>`,
+        extraCss: markdownReportStyles(accent),
+        footerLeft: entry.projectName ? `Projekt: ${entry.projectName}` : undefined,
       });
-      const html = `<html><head><meta charset="utf-8"><style>
-          @page { margin: 16mm 14mm 18mm 14mm; }
-          body { font-family:-apple-system,Arial,sans-serif; padding:0; color:#1F2937; }
-          ${markdownReportStyles("#2563EB")}
-        </style></head>
-        <body>
-          <div style="border-bottom:2px solid #2563EB; padding-bottom:10px; margin-bottom:14px;">
-            <h1 style="font-size:22px; margin:0 0 4px; color:#2563EB; font-weight:800;">${esc(t('bautagebuch'))}</h1>
-            <div style="font-size:14px; color:#374151; margin:0 0 4px;">${esc(dateLabel)}</div>
-            ${meta.length ? `<div style="font-size:12px; color:#6B7280;">${meta.join(" · ")}</div>` : ""}
-          </div>
-          ${metaHeader}
-          <div class="md-report">${reportHtml}</div>
-        </body></html>`;
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });

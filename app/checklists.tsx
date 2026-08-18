@@ -23,7 +23,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
-import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
+import { buildPremiumHtml, progressRing, legend, premiumIcons, type InfoCol } from "@/lib/pdf-premium";
+import { getPdfBranding } from "@/lib/pdf-branding-store";
 import {
   Checklist,
   ChecklistItem,
@@ -125,44 +126,68 @@ export default function ChecklistsScreen() {
         Alert.alert(t('alert_fehler'), t('keine_checklisten'));
         return;
       }
-      const esc = (s: string) =>
-        String(s ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-      const rate = getChecklistCompletionRate(result);
+      const esc = (s: unknown) =>
+        String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const branding = await getPdfBranding();
+      const accent = branding.accentColor || "#0E7490";
+      const ic = premiumIcons(accent);
       const dateStr = new Date(result.createdAt).toLocaleDateString("de-DE");
+      const done = result.results.filter((r) => r.checked).length;
+      const totalItems = result.results.length;
+      const pct = totalItems ? Math.round((done / totalItems) * 100) : 0;
+
+      const info: InfoCol[] = [];
+      if (exportDetails?.bauvorhaben) info.push({ label: t('export_bauvorhaben'), value: exportDetails.bauvorhaben, icon: ic.building });
+      if (exportDetails?.etage) info.push({ label: t('export_etage'), value: exportDetails.etage, icon: ic.layers });
+      if (exportDetails?.raum || result.location) info.push({ label: t('export_raum'), value: exportDetails?.raum || result.location || "", icon: ic.room });
+      if (result.inspector) info.push({ label: t('checklist_inspector' as any), value: result.inspector, icon: ic.person });
+      info.push({ label: t('datum' as any), value: dateStr, icon: ic.calendar });
+
+      const progressBand = `<div class="progress-band">
+        ${progressRing(done, totalItems, accent)}
+        <div class="pmeta">
+          <div class="plabel">${esc(t('checklist_progress' as any))}</div>
+          <div class="pbig">${done} / ${totalItems}</div>
+          <div class="pbar"><i style="width:${pct}%"></i></div>
+          <div class="psub">${esc(t('checklist_points_progress' as any).replace("{done}", String(done)).replace("{total}", String(totalItems)))}</div>
+        </div>
+      </div>`;
+
       const rows = checklist.items
-        .map((item) => {
+        .map((item, idx) => {
           const r = result.results.find((x) => x.itemId === item.id);
-          const status = r?.checked ? "✓ erledigt" : "✗ offen";
-          const color = r?.checked ? "#059669" : "#DC2626";
-          const note = r?.note
-            ? `<div style="font-size:12px; color:#6B7280; margin-top:4px;">${esc(r.note)}</div>`
-            : "";
+          const ok = !!r?.checked;
+          const col = ok ? "#16A34A" : "#DC2626";
+          const label = ok ? t('checklist_fulfilled' as any) : t('offen');
           return `<tr>
-            <td style="padding:8px 10px; border-bottom:1px solid #E5E7EB; vertical-align:top;">${esc(item.text)}${
-              item.required ? ' <span style="color:#DC2626; font-size:11px;">*</span>' : ""
-            }${note}</td>
-            <td style="padding:8px 10px; border-bottom:1px solid #E5E7EB; white-space:nowrap; color:${color}; font-weight:600; vertical-align:top;">${status}</td>
+            <td style="width:34px; color:#94a3b8; font-weight:700;">${idx + 1}</td>
+            <td style="font-weight:600; color:#1f2937;">${esc(item.text)}${item.required ? ' <span style="color:#DC2626;">*</span>' : ""}</td>
+            <td style="width:104px;"><span class="badge" style="background:${col}1A; color:${col}; border:1px solid ${col}44;">${esc(label)}</span></td>
+            <td style="color:#475569;">${r?.note ? esc(r.note) : ""}</td>
           </tr>`;
         })
         .join("");
-      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
-        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
-        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+
+      const table = `<table class="prem-table">
+        <thead><tr><th>Nr.</th><th>${esc(t('checklist_point' as any))}</th><th>Status</th><th>${esc(t('checklist_remark' as any))}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+      const legendHtml = legend([
+        { label: t('checklist_fulfilled' as any), color: "#16A34A", filled: true },
+        { label: t('offen'), color: "#DC2626" },
+      ]);
+
+      const html = buildPremiumHtml({
+        branding,
+        accentColor: accent,
+        title: checklist.name,
+        reportTag: t('checklist_report_tag' as any),
+        subtitle: `${esc(result.inspector)} &nbsp;·&nbsp; ${dateStr}`,
+        info,
+        body: `${progressBand}${table}${legendHtml}`,
+        footerLeft: exportDetails?.bauvorhaben ? `Projekt: ${exportDetails.bauvorhaben}` : undefined,
       });
-      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
-        <h1 style="font-size:22px; margin:0 0 4px;">${esc(checklist.name)}</h1>
-        ${metaHeader}
-        <div style="color:#6B7280; font-size:13px; margin-bottom:16px;">${esc(result.inspector)} • ${esc(dateStr)}${
-          result.location ? " • " + esc(result.location) : ""
-        }</div>
-        <div style="font-size:14px; margin-bottom:12px;"><strong>${rate}%</strong> ${esc(t('checklist_incomplete'))} — ${
-          result.results.filter((r) => r.checked).length
-        }/${result.results.length}</div>
-        <table style="width:100%; border-collapse:collapse; font-size:14px;">${rows}</table>
-      </body></html>`;
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
