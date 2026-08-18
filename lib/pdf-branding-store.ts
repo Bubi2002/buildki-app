@@ -49,7 +49,7 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showPageNumbers: true,
   showDate: true,
   showProjectName: true,
-  accentColor: "#0a7ea4",
+  accentColor: "#0E7490",
   filenameSchema: "project_date_nr",
   pdfTemplate: "standard" as PdfTemplate,
   photoWatermark: true,
@@ -203,7 +203,7 @@ export function generateCoverPage(
   },
   logoBase64?: string | null
 ): string {
-  const accentColor = branding.accentColor || protocol.projectColor || "#0a7ea4";
+  const accentColor = branding.accentColor || protocol.projectColor || "#0E7490";
   const date = new Date(protocol.createdAt);
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });

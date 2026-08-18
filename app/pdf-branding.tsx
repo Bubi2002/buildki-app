@@ -10,9 +10,10 @@ import { useColors } from "@/hooks/use-colors";
 import { getPdfBranding, savePdfBranding, type PdfBranding, type FilenameSchema, type PdfTemplate, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
 import { useTranslation } from "@/lib/language-provider";
 
+// Muted accent palette — same hues, less neon/saturation.
 const ACCENT_COLORS = [
-  "#0a7ea4", "#1E40AF", "#7C3AED", "#DC2626",
-  "#059669", "#D97706", "#374151", "#0F172A",
+  "#0E7490", "#2C4A8C", "#6D45B0", "#B23B3B",
+  "#2E7D5B", "#BC6B24", "#3F4855", "#172033",
 ];
 
 export default function PdfBrandingScreen() {
