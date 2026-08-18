@@ -7,9 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
  Platform } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
+import { TradePicker } from "@/components/trade-picker";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -50,6 +53,35 @@ export default function TasksScreen() {
   const [filter, setFilter] = useState<FilterType>("open");
   const [csvEnabled, setCsvEnabled] = useState(true);
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
+  const { projectId, projectName } = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newTrade, setNewTrade] = useState("");
+  const [newPriority, setNewPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+
+  const saveNewTask = async () => {
+    if (!newTitle.trim()) return;
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const tasks = raw ? JSON.parse(raw) : [];
+      tasks.push({
+        id: `task_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
+        projectId: projectId || undefined,
+        title: newTitle.trim(),
+        trade: newTrade.trim() || undefined,
+        priority: newPriority,
+        status: "offen",
+        createdAt: new Date().toISOString(),
+      });
+      await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
+      if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowCreate(false);
+      setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
+      loadAllTodos();
+    } catch {
+      Alert.alert(t('alert_fehler'));
+    }
+  };
 
   async function loadAllTodos() {
     try {
@@ -419,6 +451,13 @@ export default function TasksScreen() {
         >
           <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
         </Pressable>
+        <Pressable
+          onPress={() => setShowCreate(true)}
+          accessibilityLabel={t('tasks_add' as any)}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <MaterialIcons name="add" size={26} color={colors.primary} />
+        </Pressable>
       </View>
 
       {/* Stats */}
@@ -501,11 +540,65 @@ export default function TasksScreen() {
           }
         />
       )}
+
+      {/* Create task */}
+      <Modal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
+        <View style={styles.createOverlay}>
+          <View style={[styles.createSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('tasks_add' as any)}</Text>
+              <Pressable onPress={() => setShowCreate(false)} hitSlop={8}>
+                <MaterialIcons name="close" size={24} color={colors.muted} />
+              </Pressable>
+            </View>
+
+            <Text style={[styles.createLabel, { color: colors.muted }]}>{t('titel' as any)}</Text>
+            <TextInput
+              value={newTitle}
+              onChangeText={setNewTitle}
+              placeholder={t('tasks_title_placeholder' as any)}
+              placeholderTextColor={colors.muted}
+              autoFocus
+              style={[styles.createInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+            />
+
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('gewerk' as any)}</Text>
+            <TradePicker value={newTrade} onChange={setNewTrade} placeholder={t('tasks_trade_placeholder' as any)} accessibilityLabel={t('gewerk' as any)} />
+
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('prioritaet' as any)}</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {(["niedrig", "mittel", "hoch"] as const).map((p) => {
+                const active = newPriority === p;
+                const col = p === "hoch" ? "#DC2626" : p === "mittel" ? "#F59E0B" : "#16A34A";
+                return (
+                  <Pressable key={p} onPress={() => setNewPriority(p)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: active ? col : colors.border, backgroundColor: active ? col + "18" : "transparent" }}>
+                    <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? col : colors.muted }}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
+              <Pressable onPress={() => setShowCreate(false)} style={[styles.createBtn, { borderWidth: 1, borderColor: colors.border }]}>
+                <Text style={{ color: colors.muted, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+              </Pressable>
+              <Pressable onPress={saveNewTask} style={[styles.createBtn, { flex: 2, backgroundColor: colors.primary }]}>
+                <Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  createOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  createSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 24, paddingBottom: 40 },
+  createLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
+  createInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
+  createBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: "center" },
   header: {
     flexDirection: "row",
     alignItems: "center",
