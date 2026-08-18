@@ -56,8 +56,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="projects"
         options={{
-          title: t("uebersicht"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+          title: t("rundgang"),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.walk" color={color} />,
         }}
       />
       <Tabs.Screen

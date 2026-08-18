@@ -1,444 +1,288 @@
-import { useState, useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  Modal,
-  Alert,
-  StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
-  ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
-import { useColors } from "@/hooks/use-colors";
-import { PROJECT_TEMPLATES } from "@/lib/project-templates";
 import { useTranslation } from "@/lib/language-provider";
+import {
+  getProjectStructure,
+  updateRoom,
+  initializeDefaultFloors,
+  type Floor,
+  type Room,
+} from "@/lib/room-store";
+import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
+import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
 
-type ProjectItem = {
-  id: string;
-  name: string;
-  description: string;
-  color: string;
-  createdAt: string;
-  protocolPrefix?: string;
-  protocolCounter?: number;
-  archived?: boolean;
-  favorite?: boolean;
+type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
+type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string };
+
+const ROOM_STATUS_LABELS: Record<string, string> = {
+  nicht_begonnen: "rooms_status_nicht_begonnen",
+  in_arbeit: "rooms_status_in_arbeit",
+  fertig: "rooms_status_fertig",
+  abgenommen: "rooms_status_abgenommen",
 };
-
-type ProtocolItem = {
-  id: string;
-  title: string;
-  createdAt: string;
-  projectId?: string;
-  projectName?: string;
+const ROOM_STATUS_COLORS: Record<string, string> = {
+  nicht_begonnen: "#6B7280",
+  in_arbeit: "#F59E0B",
+  fertig: "#10B981",
+  abgenommen: "#3B82F6",
 };
+const OPEN_DEFECT_STATUSES = new Set<DefectStatus>(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+const DONE_STATUSES = new Set(["fertig", "abgenommen"]);
 
-type DefectItem = {
-  id: string;
-  title: string;
-  status: string;
-};
-
-const PROJECT_COLORS = ["#F87171", "#FBBF24", "#4ADE80", "#38BDF8", "#A78BFA", "#F472B6", "#2DD4BF", "#818CF8"];
-
-export default function OverviewTab() {
+export default function RundgangTab() {
   const { t } = useTranslation();
-  const colors = useColors();
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [protocols, setProtocols] = useState<ProtocolItem[]>([]);
-  const [defects, setDefects] = useState<DefectItem[]>([]);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [newPrefix, setNewPrefix] = useState("");
-  const [newColor, setNewColor] = useState(PROJECT_COLORS[0]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [loadedAt, setLoadedAt] = useState(0);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [checklistResults, setChecklistResults] = useState<ChecklistResult[]>([]);
+  const [tasks, setTasks] = useState<ProjectTask[]>([]);
+  const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
 
-  async function loadData() {
+  const tn = (key: string, n: number) => t(key as any).replace("{n}", String(n));
+
+  const loadProjects = useCallback(async () => {
     try {
-      const [projData, protoData] = await Promise.all([
+      const [projRaw, lastSel] = await Promise.all([
         AsyncStorage.getItem("projects"),
-        AsyncStorage.getItem("protocols"),
+        AsyncStorage.getItem("last-selected-project-id"),
       ]);
-      const { getDefects } = await import("@/lib/defect-store");
-      const allDefects = await getDefects();
-      setProjects(projData ? JSON.parse(projData) : []);
-      setProtocols(protoData ? JSON.parse(protoData) : []);
-      setDefects(allDefects as any);
-      setLoadedAt(Date.now());
+      const all: ProjectItem[] = projRaw ? JSON.parse(projRaw) : [];
+      const active = all.filter((p) => !p.archived);
+      setProjects(active);
+      setSelectedProjectId((prev) => {
+        if (prev && active.some((p) => p.id === prev)) return prev;
+        if (lastSel && active.some((p) => p.id === lastSel)) return lastSel;
+        const fav = active.find((p) => p.favorite);
+        return (fav || active[0])?.id ?? null;
+      });
     } catch {}
-  }
+  }, []);
+
+  const loadRundgang = useCallback(async (pid: string) => {
+    try {
+      await initializeDefaultFloors(pid);
+      const structure = await getProjectStructure(pid);
+      const sortedFloors = structure.floors.sort((a, b) => a.number - b.number);
+      setFloors(sortedFloors);
+      setRooms(structure.rooms);
+      setExpandedFloors((prev) => (prev.size === 0 && sortedFloors.length > 0 ? new Set([sortedFloors[0].id]) : prev));
+      const [allDefects, allResults, tasksRaw] = await Promise.all([
+        getDefects(pid),
+        getChecklistResults(pid),
+        AsyncStorage.getItem("project-tasks"),
+      ]);
+      setDefects(allDefects);
+      setChecklistResults(allResults);
+      const allTasks: ProjectTask[] = tasksRaw ? JSON.parse(tasksRaw) : [];
+      setTasks(allTasks.filter((tk) => !tk.projectId || tk.projectId === pid));
+    } catch {}
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      loadProjects();
+      if (selectedProjectId) loadRundgang(selectedProjectId);
+    }, [loadProjects, loadRundgang, selectedProjectId])
   );
 
-  const favorites = useMemo(() => projects.filter(p => p.favorite && !p.archived), [projects]);
-  const activeProjects = useMemo(() => projects.filter(p => !p.archived), [projects]);
-  const recentProtocols = useMemo(() =>
-    [...protocols].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
-    [protocols]
-  );
-  const openDefects = useMemo(() => defects.filter(d => d.status !== 'erledigt' && d.status !== 'geschlossen' && d.status !== 'abgelehnt'), [defects]);
-  const weekProtocols = useMemo(() => {
-    if (!loadedAt) return [];
-    const weekAgo = new Date(loadedAt - 7 * 24 * 60 * 60 * 1000);
-    return protocols.filter(p => new Date(p.createdAt) >= weekAgo);
-  }, [loadedAt, protocols]);
-
-  const createProject = async () => {
-    if (!newName.trim()) {
-      Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein'));
-      return;
+  useEffect(() => {
+    if (selectedProjectId) {
+      AsyncStorage.setItem("last-selected-project-id", selectedProjectId);
+      loadRundgang(selectedProjectId);
     }
-    const prefix = newPrefix.trim() || newName.trim().substring(0, 3).toUpperCase();
-    const np: ProjectItem = {
-      id: `proj_${Date.now()}`,
-      name: newName.trim(),
-      description: newDesc.trim(),
-      color: newColor,
-      createdAt: new Date().toISOString(),
-      protocolPrefix: prefix,
-      protocolCounter: 0,
-    };
-    const updated = [...projects, np];
-    setProjects(updated);
-    await AsyncStorage.setItem("projects", JSON.stringify(updated));
-    setShowCreate(false);
-    setNewName("");
-    setNewDesc("");
-    setNewPrefix("");
-    setNewColor(PROJECT_COLORS[0]);
-    setSelectedTemplate(null);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await AsyncStorage.setItem("last-selected-project-id", np.id);
-    router.push(`/project-detail?id=${np.id}` as any);
+  }, [selectedProjectId, loadRundgang]);
+
+  const pickProject = (id: string) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedProjectId(id);
   };
 
-  const toggleFavorite = async (id: string) => {
-    const updated = projects.map((p) => (p.id === id ? { ...p, favorite: !p.favorite } : p));
-    setProjects(updated);
-    await AsyncStorage.setItem("projects", JSON.stringify(updated));
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const toggleFloor = (id: string) =>
+    setExpandedFloors((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const roomDefects = (room: Room) =>
+    defects.filter((d) => (d.room || "").trim().toLowerCase() === room.name.trim().toLowerCase());
+  const roomOpenDefects = (room: Room) => roomDefects(room).filter((d) => OPEN_DEFECT_STATUSES.has(d.status)).length;
+  const roomFollowUps = (room: Room) =>
+    roomDefects(room).filter((d) => !!(d as any).followUpDate && d.status !== "erledigt" && d.status !== "geschlossen").length;
+  const roomChecklists = (room: Room) =>
+    checklistResults.filter((r) => (r.location || "").toLowerCase().includes(room.name.trim().toLowerCase())).length;
+  const roomTasks = (room: Room) =>
+    tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && tk.status !== "erledigt" && tk.done !== true).length;
+
+  const openRoom = (room: Room) => {
+    if (!selectedProjectId) return;
+    router.push(`/rooms?projectId=${selectedProjectId}&openRoom=${room.id}` as any);
   };
 
-  const selectProject = async (project: ProjectItem) => {
-    await AsyncStorage.setItem("last-selected-project-id", project.id);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/project-detail?id=${project.id}` as any);
+  const toggleRoomDone = async (room: Room) => {
+    if (!selectedProjectId) return;
+    const isDone = DONE_STATUSES.has(room.status || "");
+    const next: Room["status"] = isDone ? "nicht_begonnen" : "fertig";
+    setRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, status: next } : r)));
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await updateRoom(selectedProjectId, room.id, { status: next });
+    } catch {}
   };
+
+  const doneRooms = rooms.filter((r) => DONE_STATUSES.has(r.status || "")).length;
+  const totalRooms = rooms.length;
+  const doneText = t("brain_rooms_done" as any).replace("{done}", String(doneRooms)).replace("{total}", String(totalRooms));
+  const progress = totalRooms > 0 ? doneRooms / totalRooms : 0;
 
   return (
     <ScreenContainer className="flex-1">
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('uebersicht')}</Text>
-          <Pressable
-            onPress={() => setShowCreate(true)}
-            style={({ pressed }) => [styles.newBtn, { opacity: pressed ? 0.8 : 1 }]}
-          >
-            <MaterialIcons name="add" size={18} color="#FFF" />
-            <Text style={styles.newBtnText}>{t('neu')}</Text>
-          </Pressable>
-        </View>
-
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <Pressable
-            onPress={() => router.push("/(tabs)/protocols" as any)}
-            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={styles.statNumber}>{protocols.length}</Text>
-            <Text style={styles.statLabel}>{t('nav_protocols')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/(tabs)/protocols" as any)}
-            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={[styles.statNumber, { color: '#5DADE2' }]}>{weekProtocols.length}</Text>
-            <Text style={styles.statLabel}>{t('diese_woche')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/defects" as any)}
-            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={[styles.statNumber, { color: '#FF9800' }]}>{openDefects.length}</Text>
-            <Text style={styles.statLabel}>{t('offene_maengel')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/dashboard-stats" as any)}
-            style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={[styles.statNumber, { color: '#4ADE80' }]}>{activeProjects.length}</Text>
-            <Text style={styles.statLabel}>{t('nav_projects')}</Text>
-          </Pressable>
-        </View>
-
-        {/* Favorites Section */}
-        {favorites.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('favoriten')}</Text>
-            {favorites.map((project) => (
-              <Pressable
-                key={project.id}
-                onPress={() => selectProject(project)}
-                style={({ pressed }) => [styles.projectCard, { opacity: pressed ? 0.8 : 1 }]}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <View style={{ width: 4, height: 28, backgroundColor: project.color }} />
-                  <MaterialIcons name="star" size={16} color="#FBBF24" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.projectName} numberOfLines={1}>{project.name}</Text>
-                    {project.description ? (
-                      <Text style={styles.projectDesc} numberOfLines={1}>{project.description}</Text>
-                    ) : null}
-                  </View>
-                  <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
-                </View>
-              </Pressable>
-            ))}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t("rundgang" as any)}</Text>
+        {totalRooms > 0 && (
+          <View style={styles.doneBadge}>
+            <MaterialIcons name="check-circle" size={14} color="#10B981" />
+            <Text style={styles.doneBadgeText}>{doneText}</Text>
           </View>
         )}
+      </View>
 
-        {/* Recent Protocols */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('letzte_protokolle')}</Text>
-            <Pressable
-              onPress={() => router.push("/(tabs)/protocols" as any)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={{ fontSize: 12, color: '#5DADE2', fontWeight: '600' }}>{t('alle_anzeigen')}</Text>
-            </Pressable>
-          </View>
-          {recentProtocols.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <MaterialIcons name="description" size={24} color="#8FA3B8" />
-              <Text style={styles.emptyText}>{t('keine_protokolle_vorhanden')}</Text>
-            </View>
-          ) : (
-            recentProtocols.map((proto) => (
-              <Pressable
-                key={proto.id}
-                onPress={() => router.push(`/protocol-detail?id=${proto.id}` as any)}
-                style={({ pressed }) => [styles.listItem, { opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="description" size={18} color="#5DADE2" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.listItemTitle} numberOfLines={1}>{proto.title || t('kein_titel')}</Text>
-                  <Text style={styles.listItemSub}>
-                    {new Date(proto.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
-                    {proto.projectName ? ` \u2022 ${proto.projectName}` : ''}
-                  </Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={16} color="#8FA3B8" />
-              </Pressable>
-            ))
-          )}
+      {projects.length === 0 ? (
+        <View style={styles.empty}>
+          <MaterialIcons name="folder-open" size={48} color="#4A5568" />
+          <Text style={styles.emptyHint}>{t("rundgang_no_projects" as any)}</Text>
         </View>
-
-        {/* All Projects */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('nav_projects')}</Text>
-            <Pressable
-              onPress={() => setShowCreate(true)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="add-circle-outline" size={20} color="#5DADE2" />
-            </Pressable>
+      ) : (
+        <>
+          {/* Project selector */}
+          <View style={styles.pickerWrap}>
+            <Text style={styles.pickerLabel}>{t("rundgang_pick_project" as any)}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+              {projects.map((p) => {
+                const active = p.id === selectedProjectId;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => pickProject(p.id)}
+                    style={[styles.chip, active && styles.chipActive]}
+                  >
+                    <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
+                    <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
+                      {p.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
-          {activeProjects.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <MaterialIcons name="folder-open" size={24} color="#8FA3B8" />
-              <Text style={styles.emptyText}>{t('keine_projekte' as any)}</Text>
-              <Pressable
-                onPress={() => setShowCreate(true)}
-                style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.8 : 1 }]}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFF' }}>{t('erstes_projekt_anlegen')}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            activeProjects.map((project) => (
-              <Pressable
-                key={project.id}
-                onPress={() => selectProject(project)}
-                style={({ pressed }) => [styles.projectCard, { opacity: pressed ? 0.8 : 1 }]}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Pressable onPress={() => toggleFavorite(project.id)} style={({ pressed: p }) => [{ opacity: p ? 0.5 : 1 }]}>
-                    <MaterialIcons
-                      name={project.favorite ? "star" : "star-outline"}
-                      size={18}
-                      color={project.favorite ? "#FBBF24" : "#8FA3B8"}
-                    />
-                  </Pressable>
-                  <View style={{ width: 4, height: 28, backgroundColor: project.color }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.projectName} numberOfLines={1}>{project.name}</Text>
-                    {project.description ? (
-                      <Text style={styles.projectDesc} numberOfLines={1}>{project.description}</Text>
-                    ) : null}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 3 }}>
-                      {project.protocolPrefix && (
-                        <Text style={styles.prefixBadge}>
-                          {project.protocolPrefix}-{String((project.protocolCounter || 0) + 1).padStart(3, "0")}
-                        </Text>
-                      )}
-                      <Text style={{ fontSize: 10, color: "#8FA3B8" }}>
-                        {new Date(project.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" })}
-                      </Text>
-                    </View>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
-                </View>
-              </Pressable>
-            ))
-          )}
-        </View>
-      </ScrollView>
 
-      {/* Create Project Modal */}
-      <Modal visible={showCreate} animationType="fade" transparent={true}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={styles.modalKeyboardView}
-            >
-              <View style={styles.modalCard}>
-                <View style={styles.modalCardHeader}>
-                  <Text style={{ fontSize: 18, fontWeight: "700", color: "#F0F4F8" }}>{t('project_new')}</Text>
-                  <Pressable onPress={() => { setShowCreate(false); Keyboard.dismiss(); }} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}>
-                    <MaterialIcons name="close" size={22} color="#8FA3B8" />
+          {/* Progress bar */}
+          {totalRooms > 0 && (
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+            </View>
+          )}
+
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
+            {floors.map((floor) => {
+              const floorRooms = rooms.filter((r) => r.floorId === floor.id);
+              const floorDone = floorRooms.filter((r) => DONE_STATUSES.has(r.status || "")).length;
+              const expanded = expandedFloors.has(floor.id);
+              return (
+                <View key={floor.id} style={styles.floorBlock}>
+                  <Pressable onPress={() => toggleFloor(floor.id)} style={styles.floorHeader}>
+                    <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={22} color="#8FA3B8" />
+                    <Text style={styles.floorName}>{floor.name}</Text>
+                    <Text style={styles.floorCount}>
+                      {floorDone}/{floorRooms.length}
+                    </Text>
                   </Pressable>
+
+                  {expanded &&
+                    (floorRooms.length === 0 ? (
+                      <Text style={styles.floorEmpty}>—</Text>
+                    ) : (
+                      floorRooms.map((room) => {
+                        const od = roomOpenDefects(room);
+                        const fu = roomFollowUps(room);
+                        const tk = roomTasks(room);
+                        const cl = roomChecklists(room);
+                        const done = DONE_STATUSES.has(room.status || "");
+                        const statusColor = ROOM_STATUS_COLORS[room.status || "nicht_begonnen"];
+                        return (
+                          <Pressable key={room.id} onPress={() => openRoom(room)} style={styles.roomCard}>
+                            <Pressable
+                              onPress={() => toggleRoomDone(room)}
+                              hitSlop={10}
+                              style={styles.checkbox}
+                            >
+                              <MaterialIcons
+                                name={done ? "check-circle" : "radio-button-unchecked"}
+                                size={26}
+                                color={done ? "#10B981" : "#4B5B6B"}
+                              />
+                            </Pressable>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.roomName}>{room.name}</Text>
+                              <View style={styles.badgeRow}>
+                                {od > 0 && (
+                                  <View style={[styles.badge, { backgroundColor: "#3A1E12", borderColor: "#F97316" }]}>
+                                    <MaterialIcons name="warning" size={11} color="#F97316" />
+                                    <Text style={[styles.badgeText, { color: "#F9A97C" }]}>{tn("rundgang_defects", od)}</Text>
+                                  </View>
+                                )}
+                                {fu > 0 && (
+                                  <View style={[styles.badge, { backgroundColor: "#122A3A", borderColor: "#38BDF8" }]}>
+                                    <MaterialIcons name="event-repeat" size={11} color="#38BDF8" />
+                                    <Text style={[styles.badgeText, { color: "#8BD3F5" }]}>{tn("rundgang_followup", fu)}</Text>
+                                  </View>
+                                )}
+                                {tk > 0 && (
+                                  <View style={[styles.badge, { backgroundColor: "#1E2A3A", borderColor: "#818CF8" }]}>
+                                    <MaterialIcons name="task-alt" size={11} color="#818CF8" />
+                                    <Text style={[styles.badgeText, { color: "#B4B9F7" }]}>{tn("rundgang_tasks", tk)}</Text>
+                                  </View>
+                                )}
+                                {cl > 0 && (
+                                  <View style={[styles.badge, { backgroundColor: "#14261C", borderColor: "#34D399" }]}>
+                                    <MaterialIcons name="checklist" size={11} color="#34D399" />
+                                    <Text style={[styles.badgeText, { color: "#8FE3BE" }]}>{t("rundgang_checklist" as any)}</Text>
+                                  </View>
+                                )}
+                                {od === 0 && fu === 0 && tk === 0 && cl === 0 && (
+                                  <Text style={[styles.roomStatusText, { color: statusColor }]}>
+                                    {t(ROOM_STATUS_LABELS[room.status || "nicht_begonnen"] as any)}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                            <MaterialIcons name="chevron-right" size={20} color="#5A6B7C" />
+                          </Pressable>
+                        );
+                      })
+                    ))}
                 </View>
-                <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ padding: 20, gap: 16 }}>
-                  <View>
-                    <Text style={styles.fieldLabel}>{t('vorlage_optional')}</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                      {PROJECT_TEMPLATES.map((tmpl) => (
-                        <Pressable
-                          key={tmpl.id}
-                          onPress={() => {
-                            if (selectedTemplate === tmpl.id) {
-                              setSelectedTemplate(null);
-                            } else {
-                              setSelectedTemplate(tmpl.id);
-                              setNewColor(tmpl.color);
-                              setNewPrefix(tmpl.defaultPrefix);
-                            }
-                          }}
-                          style={({ pressed }) => [{
-                            paddingHorizontal: 14, paddingVertical: 10, marginRight: 8,
-                            borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6,
-                            borderColor: selectedTemplate === tmpl.id ? tmpl.color : "#1E3A5F",
-                            backgroundColor: selectedTemplate === tmpl.id ? tmpl.color + "15" : "transparent",
-                            opacity: pressed ? 0.7 : 1,
-                          }]}
-                        >
-                          <MaterialIcons name={tmpl.icon as any} size={18} color={selectedTemplate === tmpl.id ? tmpl.color : "#8FA3B8"} />
-                          <Text style={{ fontSize: 13, fontWeight: "600", color: selectedTemplate === tmpl.id ? tmpl.color : "#8FA3B8" }}>{tmpl.name}</Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-                  <View>
-                    <Text style={styles.fieldLabel}>{t('projektname')}</Text>
-                    <TextInput
-                      value={newName}
-                      onChangeText={setNewName}
-                      placeholder={t('placeholder_zb_neubau')}
-                      placeholderTextColor="#8FA3B8"
-                      returnKeyType="next"
-                      style={styles.input}
-                      autoFocus
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.fieldLabel}>{t('beschreibung_optional')}</Text>
-                    <TextInput
-                      value={newDesc}
-                      onChangeText={setNewDesc}
-                      placeholder={t('kurze_projektbeschreibung')}
-                      placeholderTextColor="#8FA3B8"
-                      returnKeyType="done"
-                      blurOnSubmit={true}
-                      onSubmitEditing={() => Keyboard.dismiss()}
-                      style={[styles.input, { minHeight: 50, textAlignVertical: "top" }]}
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.fieldLabel}>{t('protokollpraefix')}</Text>
-                    <TextInput
-                      value={newPrefix}
-                      onChangeText={(val) => setNewPrefix(val.toUpperCase())}
-                      placeholder="z.B. BST, MNG"
-                      placeholderTextColor="#8FA3B8"
-                      maxLength={5}
-                      autoCapitalize="characters"
-                      returnKeyType="done"
-                      blurOnSubmit={true}
-                      onSubmitEditing={() => Keyboard.dismiss()}
-                      style={styles.input}
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.fieldLabel}>{t('farbe_waehlen')}</Text>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                      {PROJECT_COLORS.map((c) => (
-                        <Pressable
-                          key={c}
-                          onPress={() => setNewColor(c)}
-                          style={{
-                            width: 32, height: 32,
-                            backgroundColor: c,
-                            borderWidth: newColor === c ? 3 : 0,
-                            borderColor: "#FFF",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {newColor === c && <MaterialIcons name="check" size={16} color="#FFF" />}
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                </ScrollView>
-                <View style={styles.modalCardFooter}>
-                  <Pressable
-                    onPress={() => { setShowCreate(false); Keyboard.dismiss(); }}
-                    style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#8FA3B8" }}>{t('cancel')}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={createProject}
-                    style={({ pressed }) => [styles.createBtn, { opacity: pressed ? 0.8 : 1 }]}
-                  >
-                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF" }}>{t('erstellen')}</Text>
-                  </Pressable>
-                </View>
+              );
+            })}
+
+            {floors.length > 0 && totalRooms === 0 && (
+              <View style={styles.empty}>
+                <MaterialIcons name="meeting-room" size={44} color="#4A5568" />
+                <Text style={styles.emptyTitle}>{t("rooms_empty_title" as any)}</Text>
+                <Text style={styles.emptyHint}>{t("rooms_empty_hint" as any)}</Text>
               </View>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+            )}
+          </ScrollView>
+        </>
+      )}
     </ScreenContainer>
   );
 }
@@ -449,200 +293,89 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1E3A5F",
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#F0F4F8",
-    letterSpacing: -0.3,
-  },
-  newBtn: {
+  headerTitle: { fontSize: 30, fontWeight: "800", color: "#F0F4F8" },
+  doneBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: "#14261C",
+    borderWidth: 1,
+    borderColor: "#166534",
+  },
+  doneBadgeText: { color: "#8FE3BE", fontSize: 12, fontWeight: "700" },
+  pickerWrap: { paddingHorizontal: 16, marginBottom: 10 },
+  pickerLabel: { color: "#7F8C9B", fontSize: 12, fontWeight: "700", textTransform: "uppercase", marginBottom: 8, letterSpacing: 0.5 },
+  chipsRow: { gap: 8, paddingRight: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: "#5DADE2",
+    paddingVertical: 9,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#132238",
+    maxWidth: 220,
   },
-  newBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFF",
+  chipActive: { borderColor: "#5DADE2", backgroundColor: "#15304A" },
+  chipDot: { width: 10, height: 10, borderRadius: 5 },
+  chipText: { color: "#B7C4D2", fontSize: 14, fontWeight: "600" },
+  chipTextActive: { color: "#FFFFFF", fontWeight: "800" },
+  progressTrack: {
+    height: 6,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 3,
+    backgroundColor: "#13233A",
+    overflow: "hidden",
   },
-  statsRow: {
+  progressFill: { height: "100%", backgroundColor: "#10B981", borderRadius: 3 },
+  floorBlock: { marginBottom: 8 },
+  floorHeader: {
     flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingTop: 14,
+    alignItems: "center",
     gap: 6,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#0F1E30",
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
     paddingVertical: 10,
-    paddingHorizontal: 6,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#F0F4F8",
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: "500",
-    color: "#8FA3B8",
-    marginTop: 2,
-    textAlign: "center",
-  },
-  section: {
     paddingHorizontal: 16,
-    marginTop: 20,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#8FA3B8",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  projectCard: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0F1E30",
-    marginBottom: 8,
-  },
-  projectName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#F0F4F8",
-  },
-  projectDesc: {
-    fontSize: 11,
-    color: "#8FA3B8",
-    marginTop: 1,
-  },
-  prefixBadge: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#5DADE2",
-    backgroundColor: "#5DADE215",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  listItem: {
+  floorName: { flex: 1, color: "#DCE6F0", fontSize: 16, fontWeight: "800" },
+  floorCount: { color: "#7F8C9B", fontSize: 13, fontWeight: "700" },
+  floorEmpty: { color: "#5A6B7C", fontSize: 13, paddingHorizontal: 52, paddingBottom: 8 },
+  roomCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0F1E30",
-    marginBottom: 6,
-  },
-  listItemTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#F0F4F8",
-  },
-  listItemSub: {
-    fontSize: 11,
-    color: "#8FA3B8",
-    marginTop: 1,
-  },
-  emptyCard: {
-    alignItems: "center",
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0F1E30",
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#8FA3B8",
-  },
-  emptyBtn: {
-    marginTop: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#5DADE2",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  modalKeyboardView: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalCard: {
-    width: "100%",
-    maxWidth: 440,
-    borderWidth: 1,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0F1E30",
-    overflow: "hidden",
-  },
-  modalCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1E3A5F",
-  },
-  modalCardFooter: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#1E3A5F",
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: "600",
+    marginHorizontal: 12,
     marginBottom: 6,
-    color: "#F0F4F8",
-  },
-  input: {
-    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#101E30",
     borderWidth: 1,
-    fontSize: 15,
-    borderColor: "#1E3A5F",
-    backgroundColor: "#0B1622",
-    color: "#F0F4F8",
+    borderColor: "#17293F",
   },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
+  checkbox: { padding: 2 },
+  roomName: { color: "#F0F4F8", fontSize: 15, fontWeight: "700", marginBottom: 4 },
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  badge: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0B1622",
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#1E3A5F",
   },
-  createBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: "center",
-    backgroundColor: "#5DADE2",
-  },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+  roomStatusText: { fontSize: 12, fontWeight: "600" },
+  empty: { alignItems: "center", justifyContent: "center", padding: 40, gap: 10, marginTop: 40 },
+  emptyTitle: { color: "#B7C4D2", fontSize: 16, fontWeight: "700" },
+  emptyHint: { color: "#7F8C9B", fontSize: 14, textAlign: "center", lineHeight: 20 },
 });
