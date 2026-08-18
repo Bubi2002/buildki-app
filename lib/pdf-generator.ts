@@ -784,7 +784,7 @@ export function generatePdfHtml(
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid ${accentColor || protocol.projectColor || '#0a7ea4'};
+      border-bottom: 3px solid ${accentColor || protocol.projectColor || '#0E7490'};
       padding-bottom: 12px;
       margin-bottom: 20px;
     }
@@ -796,9 +796,10 @@ export function generatePdfHtml(
       text-align: right;
     }
     .doc-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: #111;
+      font-size: 26px;
+      font-weight: 800;
+      color: #0F2744;
+      letter-spacing: 0.3px;
       margin: 0 0 4px 0;
     }
     .doc-subtitle {
@@ -914,21 +915,21 @@ export function generatePdfHtml(
       page-break-before: always;
       font-size: 16px;
       font-weight: 700;
-      color: #1A237E;
+      color: #0F2744;
       margin-top: 24px;
       margin-bottom: 12px;
-      border-bottom: 2px solid #1A237E;
+      border-bottom: 2px solid #0F2744;
       padding-bottom: 6px;
     }
   </style>
 </head>
 <body>
   ${isGutachten ? `
-  <div style="border-bottom: 3px solid #1A237E; padding-bottom: 16px; margin-bottom: 24px;">
+  <div style="border-bottom: 3px solid #0F2744; padding-bottom: 16px; margin-bottom: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
       <div>
         ${logoHtml}
-        <h1 style="font-size: 24px; font-weight: 800; color: #1A237E; margin: 8px 0 4px 0;">${escapeHtml(protocol.projectName || "Projekt")}</h1>
+        <h1 style="font-size: 24px; font-weight: 800; color: #0F2744; margin: 8px 0 4px 0;">${escapeHtml(protocol.projectName || "Projekt")}</h1>
         <p style="font-size: 11px; color: #666; margin: 0;"><strong>${escapeHtml(protocol.templateName || "Gutachterliche Bewertung")}</strong></p>
       </div>
       <div style="text-align: right;">
