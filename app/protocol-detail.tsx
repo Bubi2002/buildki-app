@@ -765,8 +765,48 @@ export default function ProtocolDetailScreen() {
 
   // PDF email with contact picker
   const openPdfEmailPicker = () => {
-    setShowPdfRecipientPicker(true);
+    setShowPdfPreview(false);
     setPdfRecipientEmail("");
+    setShowPdfRecipientPicker(true);
+  };
+
+  // Pick a recipient straight from the device address book (fills the field)
+  const pickDeviceContactForPdf = async () => {
+    try {
+      if (Platform.OS === "web") {
+        Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
+        return;
+      }
+      const ContactsModule = await import("expo-contacts");
+      const { status } = await ContactsModule.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
+        return;
+      }
+      const { data } = await ContactsModule.getContactsAsync({
+        fields: [ContactsModule.Fields.Emails, ContactsModule.Fields.Name],
+        sort: ContactsModule.SortTypes?.FirstName || undefined,
+      });
+      const withEmail = (data || []).filter((c) => c.name && c.emails && c.emails.length > 0);
+      if (withEmail.length === 0) {
+        Alert.alert(t('alert_keine_kontakte'), t('msg_es_wurden_keine_kontakte_auf'));
+        return;
+      }
+      const sorted = withEmail.sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 12);
+      Alert.alert(
+        t('alert_kontakt_importieren'),
+        t('waehle_kontakt'),
+        [
+          ...sorted.map((c) => ({
+            text: `${c.name} (${c.emails![0].email})`,
+            onPress: () => setPdfRecipientEmail(c.emails![0].email || ""),
+          })),
+          { text: t('btn_abbrechen'), style: "cancel" as const },
+        ]
+      );
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || t('protocol_detail_unknown_error' as any)}`);
+    }
   };
 
   const sendPdfToSelectedRecipient = async (email: string) => {
@@ -2927,6 +2967,13 @@ export default function ProtocolDetailScreen() {
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('pdf_teilen_herunterladen')}</Text>
                 </Pressable>
                 <Pressable
+                  onPress={openPdfEmailPicker}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="email" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('email_senden')}</Text>
+                </Pressable>
+                <Pressable
                   onPress={() => setShowPdfPreview(false)}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
                 >
@@ -2960,6 +3007,13 @@ export default function ProtocolDetailScreen() {
                 >
                   <MaterialIcons name="share" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('pdf_teilen')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={openPdfEmailPicker}
+                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <MaterialIcons name="email" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('email_senden')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowPdfPreview(false)}
@@ -3382,6 +3436,13 @@ export default function ProtocolDetailScreen() {
                   ))}
                 </ScrollView>
               )}
+              <Pressable
+                onPress={pickDeviceContactForPdf}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="contacts" size={18} color={colors.primary} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('aus_kontakten')}</Text>
+              </Pressable>
               <Pressable
                 onPress={() => sendPdfToSelectedRecipient(pdfRecipientEmail)}
                 disabled={!pdfRecipientEmail.trim()}
