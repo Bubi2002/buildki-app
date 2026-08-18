@@ -537,6 +537,26 @@ export default function DefectsScreen() {
         <Text style={[styles.defectMeta, { color: colors.muted }]}>
           {item.positionCode ? `[${item.positionCode}] ` : ""}{(item as any).gewerk || item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
         </Text>
+        {(item.floor || item.room || (item as any).assignee) ? (
+          <View style={styles.defectSubMeta}>
+            {(item.floor || item.room) ? (
+              <View style={styles.subMetaItem}>
+                <MaterialIcons name="place" size={13} color={colors.muted} />
+                <Text style={[styles.subMetaText, { color: colors.muted }]} numberOfLines={1}>
+                  {[item.floor, item.room].filter(Boolean).join(" · ")}
+                </Text>
+              </View>
+            ) : null}
+            {(item as any).assignee ? (
+              <View style={styles.subMetaItem}>
+                <MaterialIcons name="person" size={13} color={colors.muted} />
+                <Text style={[styles.subMetaText, { color: colors.muted }]} numberOfLines={1}>
+                  {(item as any).assignee}{(item as any).assigneeFirma ? ` (${(item as any).assigneeFirma})` : ""}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         {item.description ? (
           <Text style={[styles.defectDesc, { color: colors.muted }]} numberOfLines={2}>
             {item.description}
@@ -1401,6 +1421,9 @@ const styles = StyleSheet.create({
   defectHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   defectTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
   defectMeta: { fontSize: 12, marginTop: 3 },
+  defectSubMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 14, marginTop: 4 },
+  subMetaItem: { flexDirection: "row", alignItems: "center", gap: 3 },
+  subMetaText: { fontSize: 12, fontWeight: "500" },
   defectDesc: { fontSize: 13, marginTop: 4 },
   statusChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   statusChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1 },

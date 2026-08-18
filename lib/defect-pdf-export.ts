@@ -78,15 +78,16 @@ export async function generateDefectPdfHtml(
   }
 
   // Build HTML
+  // Muted, cohesive palette (Tailwind-700-ish) — no neon.
   const statusColors: Record<DefectStatus, string> = {
-    offen: "#EF4444",
-    zugewiesen: "#FF9800",
-    in_bearbeitung: "#F59E0B",
-    nachbesserung: "#E91E63",
-    pruefung: "#9C27B0",
-    erledigt: "#22C55E",
-    abgelehnt: "#795548",
-    geschlossen: "#607D8B",
+    offen: "#DC2626",
+    zugewiesen: "#EA580C",
+    in_bearbeitung: "#D97706",
+    nachbesserung: "#DB2777",
+    pruefung: "#7C3AED",
+    erledigt: "#16A34A",
+    abgelehnt: "#78716C",
+    geschlossen: "#475569",
   };
   const statusLabels: Record<DefectStatus, string> = {
     offen: "Offen",
@@ -99,8 +100,8 @@ export async function generateDefectPdfHtml(
     geschlossen: "Geschlossen",
   };
   const priorityColors: Record<DefectPriority, string> = {
-    hoch: "#DC2626",
-    mittel: "#F59E0B",
+    hoch: "#B91C1C",
+    mittel: "#B45309",
     niedrig: "#6B7280",
   };
   const priorityLabels: Record<DefectPriority, string> = {
@@ -117,22 +118,23 @@ export async function generateDefectPdfHtml(
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; color: #1a1a1a; font-size: 12px; line-height: 1.5; }
   .page-break { page-break-before: always; }
   .header { margin-bottom: 20px; }
-  .stats-grid { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-  .stat-box { flex: 1; min-width: 80px; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb; }
-  .stat-number { font-size: 24px; font-weight: 800; }
-  .stat-label { font-size: 10px; color: #666; margin-top: 2px; }
-  .defect-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
+  .stats-grid { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat-box { flex: 1; min-width: 80px; padding: 14px 12px; border-radius: 10px; text-align: center; background: #f8fafc; border: 1px solid #e8ecf1; }
+  .stat-number { font-size: 22px; font-weight: 800; }
+  .stat-label { font-size: 10px; color: #64748b; margin-top: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .defect-card { border: 1px solid #e8ecf1; border-radius: 10px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
   .defect-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-  .defect-title { font-size: 14px; font-weight: 700; flex: 1; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; color: white; }
-  .defect-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: #666; }
+  .defect-title { font-size: 14px; font-weight: 700; flex: 1; color: #1f2937; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+  .defect-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: #475569; }
   .defect-meta-item { display: flex; align-items: center; gap: 4px; }
-  .defect-description { font-size: 12px; color: #333; margin-bottom: 10px; padding: 8px; background: #f9fafb; border-radius: 4px; }
+  .defect-description { font-size: 12px; color: #334155; margin-bottom: 10px; padding: 10px; background: #f8fafc; border-radius: 6px; }
   .defect-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-  .defect-photo { width: 120px; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb; }
+  .defect-photo { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #e8ecf1; }
   .summary-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
-  .summary-table th, .summary-table td { padding: 8px 10px; border: 1px solid #e5e7eb; text-align: left; }
-  .summary-table th { background: ${accentColor}10; font-weight: 600; color: ${accentColor}; }
+  .summary-table th, .summary-table td { padding: 9px 10px; border-bottom: 1px solid #eef1f5; text-align: left; }
+  .summary-table th { background: #f8fafc; font-weight: 700; color: #334155; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 10px; letter-spacing: 0.3px; }
+  .summary-table tr:nth-child(even) td { background: #fbfcfd; }
   .footer { margin-top: 24px; }
 </style>
 </head>
@@ -142,34 +144,39 @@ export async function generateDefectPdfHtml(
   html += `<div class="header">${generatePdfHeader(branding, projectName)}</div>`;
 
   // Title
-  html += `<h1 style="font-size: 20px; font-weight: 800; color: ${accentColor}; margin-bottom: 4px;">Mängelbericht</h1>`;
-  html += `<p style="font-size: 12px; color: #666; margin-bottom: 20px;">Projekt: ${projectName} | Stand: ${dateStr}</p>`;
+  html += `<h1 style="font-size: 22px; font-weight: 800; color: #1f2937; margin: 0 0 3px;">Mängelbericht</h1>`;
+  html += `<div style="height: 3px; width: 54px; background: ${accentColor}; border-radius: 2px; margin-bottom: 10px;"></div>`;
+  html += `<p style="font-size: 12px; color: #64748b; margin-bottom: 20px;">Projekt: ${projectName} | Stand: ${dateStr}</p>`;
 
   // Statistics
   html += `<div class="stats-grid">
-    <div class="stat-box"><div class="stat-number" style="color: ${accentColor};">${stats.total}</div><div class="stat-label">Gesamt</div></div>
-    <div class="stat-box"><div class="stat-number" style="color: #EF4444;">${stats.offen}</div><div class="stat-label">Offen</div></div>
-    <div class="stat-box"><div class="stat-number" style="color: #F59E0B;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
-    <div class="stat-box"><div class="stat-number" style="color: #22C55E;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
-    <div class="stat-box"><div class="stat-number" style="color: #DC2626;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
+    <div class="stat-box" style="border-top: 3px solid #334155;"><div class="stat-number" style="color: #334155;">${stats.total}</div><div class="stat-label">Gesamt</div></div>
+    <div class="stat-box" style="border-top: 3px solid #DC2626;"><div class="stat-number" style="color: #DC2626;">${stats.offen}</div><div class="stat-label">Offen</div></div>
+    <div class="stat-box" style="border-top: 3px solid #D97706;"><div class="stat-number" style="color: #D97706;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
+    <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
+    <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
   </div>`;
 
   // Summary table
   html += `<table class="summary-table">
     <thead><tr>
-      <th>Nr.</th><th>Titel</th><th>Status</th><th>Priorität</th><th>Gewerk</th><th>Ort</th><th>Frist</th>
+      <th>Nr.</th><th>Titel</th><th>Gewerk</th><th>Ort</th><th>Zuständig</th><th>Status</th><th>Priorität</th><th>Frist</th>
     </tr></thead><tbody>`;
 
   defects.forEach((d, i) => {
     const gewerk = (d as any).gewerk || d.category || "–";
     const dueDate = d.dueDate ? new Date(d.dueDate).toLocaleDateString("de-DE") : "–";
+    const ort = [d.floor, d.room].filter(Boolean).join(" · ") || d.location || "–";
+    const zust = d.assignee ? `${d.assignee}${d.assigneeFirma ? ` (${d.assigneeFirma})` : ""}` : "–";
+    const sc = statusColors[d.status];
     html += `<tr>
       <td>${i + 1}</td>
       <td>${(d as any).positionCode ? `[${(d as any).positionCode}] ` : ''}${d.title}</td>
-      <td><span class="badge" style="background: ${statusColors[d.status]};">${statusLabels[d.status]}</span></td>
-      <td style="color: ${priorityColors[d.priority]}; font-weight: 600;">${priorityLabels[d.priority]}</td>
       <td>${gewerk}</td>
-      <td>${d.location || "–"}</td>
+      <td>${ort}</td>
+      <td>${zust}</td>
+      <td><span class="badge" style="background: ${sc}1A; color: ${sc}; border: 1px solid ${sc}44;">${statusLabels[d.status]}</span></td>
+      <td style="color: ${priorityColors[d.priority]}; font-weight: 700;">${priorityLabels[d.priority]}</td>
       <td>${dueDate}</td>
     </tr>`;
   });
@@ -190,7 +197,7 @@ export async function generateDefectPdfHtml(
       html += `<div class="defect-card" style="border-left: 4px solid ${statusColors[d.status]};">`;
       html += `<div class="defect-header">
         <div class="defect-title">${(d as any).positionCode ? `<span style="font-family:monospace;color:${accentColor};">[${(d as any).positionCode}]</span> ` : ''}${i + 1}. ${d.title}</div>
-        <span class="badge" style="background: ${statusColors[d.status]};">${statusLabels[d.status]}</span>
+        <span class="badge" style="background: ${statusColors[d.status]}1A; color: ${statusColors[d.status]}; border: 1px solid ${statusColors[d.status]}44;">${statusLabels[d.status]}</span>
       </div>`;
 
       const followUpStr = d.followUpDate ? new Date(d.followUpDate).toLocaleDateString("de-DE") : null;
