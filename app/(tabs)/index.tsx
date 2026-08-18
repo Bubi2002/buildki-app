@@ -394,7 +394,7 @@ export default function AIWorkbenchScreen() {
               <View style={[styles.projectIconBox, { backgroundColor: (selectedProject?.color || '#5DADE2') + '22', borderColor: (selectedProject?.color || '#5DADE2') + '55' }]}>
                 <MaterialIcons name={selectedProject ? 'folder' : 'create-new-folder'} size={36} color={selectedProject?.color || '#5DADE2'} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
                 <Text style={styles.projectSelectorLabel}>{t('projekt_waehlen')}</Text>
                 <Text style={styles.projectSelectorName} numberOfLines={1}>
                   {selectedProject?.name || t('kein_projekt')}
@@ -826,12 +826,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     fontWeight: '700',
+    textAlign: 'center',
   },
   projectSelectorName: {
     fontSize: 27,
     fontWeight: '800',
     color: '#F0F4F8',
     marginTop: 5,
+    textAlign: 'center',
   },
   projectDropdown: {
     marginHorizontal: 16,
@@ -1056,7 +1058,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E3A5F',
     borderRadius: 12,
-    padding: 14,
+    padding: 18,
   },
   roomsHomeHead: {
     flexDirection: 'row',
@@ -1078,7 +1080,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 9,
+    paddingVertical: 15,
     borderTopWidth: 1,
     borderTopColor: '#12263E',
   },
@@ -1086,12 +1088,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 9,
+    paddingVertical: 15,
     borderTopWidth: 1,
     borderTopColor: '#12263E',
   },
   roomsHomeFloorName: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '800',
     color: '#C7D5E5',
     flex: 1,
@@ -1106,7 +1108,7 @@ const styles = StyleSheet.create({
   },
   roomsHomeName: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
     color: '#F0F4F8',
   },
