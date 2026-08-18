@@ -33,6 +33,13 @@ const ROOM_STATUS_COLORS: Record<string, string> = {
 };
 const OPEN_DEFECT_STATUSES = new Set<DefectStatus>(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
 const DONE_STATUSES = new Set(["fertig", "abgenommen"]);
+const FLOOR_NAME_KEYS: Record<string, string> = {
+  "UG": "floor_ug",
+  "EG": "floor_eg",
+  "1. OG": "floor_og1",
+  "2. OG": "floor_og2",
+  "DG": "floor_dg",
+};
 
 export default function RundgangTab() {
   const { t } = useTranslation();
@@ -200,7 +207,7 @@ export default function RundgangTab() {
                 <View key={floor.id} style={styles.floorBlock}>
                   <Pressable onPress={() => toggleFloor(floor.id)} style={styles.floorHeader}>
                     <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={22} color="#8FA3B8" />
-                    <Text style={styles.floorName}>{floor.name}</Text>
+                    <Text style={styles.floorName}>{FLOOR_NAME_KEYS[floor.name] ? t(FLOOR_NAME_KEYS[floor.name] as any) : floor.name}</Text>
                     <Text style={styles.floorCount}>
                       {floorDone}/{floorRooms.length}
                     </Text>

@@ -64,6 +64,17 @@ const ROOM_STATUS_COLORS: Record<string, string> = {
   abgenommen: "#3B82F6",
 };
 
+// Default floor abbreviations are stored in German; localize them at display time.
+const FLOOR_NAME_KEYS: Record<string, string> = {
+  "UG": "floor_ug",
+  "EG": "floor_eg",
+  "1. OG": "floor_og1",
+  "2. OG": "floor_og2",
+  "DG": "floor_dg",
+};
+const localizeFloorName = (t: (k: any) => string, name: string) =>
+  FLOOR_NAME_KEYS[name] ? t(FLOOR_NAME_KEYS[name]) : name;
+
 const DEFECT_STATUS_DOT: Record<string, string> = {
   offen: "#EF4444",
   zugewiesen: "#F59E0B",
@@ -211,7 +222,7 @@ export default function RoomsScreen() {
     const floorRooms = rooms.filter(r => r.floorId === floor.id);
     Alert.alert(
       t('rooms_delete_floor_title' as any),
-      `"${floor.name}" ${t('rooms_delete_floor_connector' as any)} ${floorRooms.length} ${t('rooms_delete_floor_suffix' as any)}`,
+      `"${localizeFloorName(t, floor.name)}" ${t('rooms_delete_floor_connector' as any)} ${floorRooms.length} ${t('rooms_delete_floor_suffix' as any)}`,
       [
         { text: t('rooms_cancel' as any), style: "cancel" },
         { text: t('rooms_delete' as any), style: "destructive", onPress: async () => {
@@ -398,11 +409,7 @@ export default function RoomsScreen() {
         {/* Bedien-Hinweis: die Gesten sind sonst nicht erkennbar */}
         <View style={styles.hint}>
           <MaterialIcons name="info-outline" size={15} color="#5DADE2" />
-          <Text style={styles.hintText}>
-            Geschoss antippen = auf-/zuklappen · Raum antippen = Status weiter
-            (nicht begonnen → in Arbeit → fertig → abgenommen) · lang drücken = löschen.
-            Ein Raum auf „fertig" bewegt auch den Baufortschritt.
-          </Text>
+          <Text style={styles.hintText}>{t('rooms_hint' as any)}</Text>
         </View>
 
         {/* Floor List */}
@@ -425,7 +432,7 @@ export default function RoomsScreen() {
                   size={20}
                   color="#8FA3B8"
                 />
-                <Text style={styles.floorName}>{floor.name}</Text>
+                <Text style={styles.floorName}>{localizeFloorName(t, floor.name)}</Text>
                 <Text style={styles.floorCount}>{floorRooms.length} {t('rooms_rooms' as any)}</Text>
                 {floorRooms.length > 0 && (
                   <Text style={styles.floorProgress}>{floorDone}/{floorRooms.length}</Text>
@@ -581,7 +588,7 @@ export default function RoomsScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.detailTitle}>{selectedRoom.name}</Text>
-                      <Text style={styles.detailSubtitle}>{floorName}{selectedRoom.trade ? ` · ${selectedRoom.trade}` : ""}</Text>
+                      <Text style={styles.detailSubtitle}>{localizeFloorName(t, floorName)}{selectedRoom.trade ? ` · ${selectedRoom.trade}` : ""}</Text>
                     </View>
                     <Pressable onPress={() => setSelectedRoom(null)} hitSlop={8}>
                       <MaterialIcons name="close" size={24} color="#8FA3B8" />
