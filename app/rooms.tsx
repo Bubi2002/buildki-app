@@ -641,7 +641,7 @@ export default function RoomsScreen() {
                   {/* Aufgaben */}
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 8 }}>
                     <Text style={styles.detailLabel}>{t('index_tool_aufgaben')} ({rt.length})</Text>
-                    <Pressable onPress={() => { setTaskTitle(""); setTaskRoom(selectedRoom); }}>
+                    <Pressable onPress={() => { const r = selectedRoom; setTaskTitle(""); setSelectedRoom(null); setTimeout(() => setTaskRoom(r), 350); }}>
                       <Text style={{ color: "#5DADE2", fontSize: 12, fontWeight: "700" }}>+ {t('rooms_add_task_here' as any)}</Text>
                     </Pressable>
                   </View>
