@@ -556,83 +556,88 @@ class ConstructionBrain {
   }
 
   private async handleDailySummary(projectId: string): Promise<BrainResponse> {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const entries = await knowledgeLayer.getByTimeRange(projectId, todayStart.toISOString());
+    const { getDefects } = await import("@/lib/defect-store");
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const defects = await getDefects(projectId);
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const startMs = dayStart.getTime();
+    const isToday = (v?: string | number) => {
+      if (!v) return false;
+      const t = new Date(v).getTime();
+      return !isNaN(t) && t >= startMs;
+    };
+    const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+    const newDefects = defects.filter(d => isToday((d as any).createdAt)).length;
+    const openDefects = defects.filter(d => OPEN.has(d.status)).length;
 
-    const defects = entries.filter(e => e.type === "defect");
-    const tasks = entries.filter(e => e.type === "task");
-    const observations = entries.filter(e => e.type === "observation");
+    let newTasks = 0;
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      if (raw) newTasks = (JSON.parse(raw) as any[]).filter(tk => tk.projectId === projectId && isToday(tk.createdAt)).length;
+    } catch {}
 
-    const details: BrainResponseDetail[] = entries.slice(0, 10).map(e => ({
-      type: e.type === "defect" ? "defect" : e.type === "task" ? "task" : "observation",
-      content: e.content,
-      metadata: { source: e.source, time: new Date(e.timestamp).toLocaleTimeString("de-DE") },
-    }));
+    const details: BrainResponseDetail[] = [
+      { type: "defect", content: T('brain_daily_new_defects', { n: newDefects }), metadata: {} },
+      { type: "task", content: T('brain_daily_new_tasks', { n: newTasks }), metadata: {} },
+      { type: "info", content: T('brain_room_open_defects', { n: openDefects }), metadata: {} },
+    ];
 
+    const total = newDefects + newTasks;
     return {
       intent: "daily_summary",
-      title: "Tageszusammenfassung",
-      summary: entries.length === 0
-        ? "Heute noch keine Aktivitäten erfasst."
-        : `Heute: ${defects.length} Mängel, ${tasks.length} Aufgaben, ${observations.length} Beobachtungen.`,
+      title: T('brain_daily_title'),
+      summary: total === 0 ? T('brain_daily_none') : T('brain_daily_summary', { defects: newDefects, tasks: newTasks }),
       details,
-      stats: {
-        mängel: defects.length,
-        aufgaben: tasks.length,
-        beobachtungen: observations.length,
-        gesamt: entries.length,
-      },
+      stats: { [T('brain_stat_new')]: total, [T('brain_stat_total')]: openDefects },
       suggestions: ["Offene Mängel?", "Wochenbericht erstellen"],
     };
   }
 
   private async handleWeeklyReport(projectId: string): Promise<BrainResponse> {
-    const changes = await knowledgeLayer.getWeeklyChanges(projectId);
-    const criticalTrades = await knowledgeLayer.getCriticalTrades(projectId);
-    const summary = await knowledgeLayer.getProjectSummary(projectId);
+    const { getDefects } = await import("@/lib/defect-store");
+    const { progressEngine } = await import("@/lib/progress-engine");
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const defects = await getDefects(projectId);
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceMs = since.getTime();
+    const inWeek = (v?: string | number) => {
+      if (!v) return false;
+      const t = new Date(v).getTime();
+      return !isNaN(t) && t >= sinceMs;
+    };
+    const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+    const newDefects = defects.filter(d => inWeek((d as any).createdAt)).length;
+    const openDefs = defects.filter(d => OPEN.has(d.status));
+    const byTrade = new Map<string, number>();
+    openDefs.forEach(d => { const g = ((d as any).gewerk || "—") as string; byTrade.set(g, (byTrade.get(g) || 0) + 1); });
+    const criticalCount = byTrade.size;
+
+    let newTasks = 0;
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      if (raw) newTasks = (JSON.parse(raw) as any[]).filter(tk => tk.projectId === projectId && inWeek(tk.createdAt)).length;
+    } catch {}
+
+    const snap = await progressEngine.calculateProgress(projectId);
 
     const details: BrainResponseDetail[] = [
-      {
-        type: "info",
-        content: `Gesamtstatus: ${summary.totalEntries} Einträge, ${summary.defectCount} Mängel, ${summary.taskCount} Aufgaben`,
-        metadata: {},
-      },
-      {
-        type: "info",
-        content: `Neue Einträge diese Woche: ${changes.newDefects} Mängel, ${changes.newTasks} Aufgaben, ${changes.newObservations} Beobachtungen`,
-        metadata: {},
-      },
+      { type: "defect", content: T('brain_weekly_defects', { n: newDefects }), metadata: {} },
+      { type: "task", content: T('brain_weekly_tasks', { n: newTasks }), metadata: {} },
+      { type: "progress", content: T('brain_weekly_progress', { p: snap.overallPercent }), metadata: { progress: snap } },
     ];
-
-    if (criticalTrades.length > 0) {
-      details.push({
-        type: "defect",
-        content: `Kritische Gewerke: ${criticalTrades.map(t => t.trade).join(", ")}`,
-        metadata: { trades: criticalTrades },
-      });
-    }
-
-    if (summary.latestProgress) {
-      details.push({
-        type: "progress",
-        content: `Baufortschritt: ${summary.latestProgress.overallPercent}% (Phase: ${summary.latestProgress.phase})`,
-        metadata: { progress: summary.latestProgress },
-      });
+    if (criticalCount > 0) {
+      details.push({ type: "info", content: T('brain_trades_count', { n: criticalCount }), metadata: {} });
     }
 
     return {
       intent: "weekly_report",
-      title: "Wochenbericht",
-      summary: `KW-Bericht: ${changes.newDefects + changes.newTasks + changes.newObservations} neue Einträge, ${criticalTrades.length} kritische Gewerke.`,
+      title: T('brain_weekly_title'),
+      summary: T('brain_weekly_summary', { defects: newDefects, tasks: newTasks }),
       details,
-      stats: {
-        neueMängel: changes.newDefects,
-        neueAufgaben: changes.newTasks,
-        kritischeGewerke: criticalTrades.length,
-        fortschritt: summary.latestProgress?.overallPercent ?? "unbekannt",
-      },
-      suggestions: ["Kritische Gewerke im Detail?", "Überfällige Aufgaben?"],
+      stats: { [T('brain_stat_new')]: newDefects + newTasks, [T('brain_stat_trades')]: criticalCount, [T('brain_stat_progress')]: `${snap.overallPercent}%` },
+      suggestions: ["Welche Gewerke sind kritisch?", "Überfällige Aufgaben?"],
     };
   }
 
@@ -757,72 +762,63 @@ class ConstructionBrain {
   }
 
   private async handleProgressStatus(projectId: string): Promise<BrainResponse> {
-    const summary = await knowledgeLayer.getProjectSummary(projectId);
+    const { progressEngine } = await import("@/lib/progress-engine");
+    const { getProjectStructure } = await import("@/lib/room-store");
+    const { getDefects } = await import("@/lib/defect-store");
+    const snap = await progressEngine.calculateProgress(projectId);
+    const structure = await getProjectStructure(projectId);
+    const defects = await getDefects(projectId);
+    const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+    const roomsDone = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
+    const openDefects = defects.filter(d => OPEN.has(d.status)).length;
 
-    const details: BrainResponseDetail[] = [];
-    if (summary.latestProgress) {
-      details.push({
-        type: "progress",
-        content: `Gesamtfortschritt: ${summary.latestProgress.overallPercent}% – Phase: ${summary.latestProgress.phase}`,
-        metadata: { progress: summary.latestProgress },
-      });
-    }
-
-    details.push({
-      type: "info",
-      content: `Erfasst: ${summary.defectCount} Mängel, ${summary.taskCount} Aufgaben, ${summary.observationCount} Beobachtungen`,
-      metadata: {},
-    });
+    const details: BrainResponseDetail[] = [
+      { type: "progress", content: T('brain_progress_line', { p: snap.overallPercent, phase: snap.phase || "-" }), metadata: { progress: snap } },
+      { type: "info", content: T('brain_rooms_done', { done: roomsDone, total: structure.rooms.length }), metadata: {} },
+      { type: "info", content: T('brain_room_open_defects', { n: openDefects }), metadata: {} },
+    ];
 
     return {
       intent: "progress_status",
-      title: "Baufortschritt",
-      summary: summary.latestProgress
-        ? `Fortschritt: ${summary.latestProgress.overallPercent}% (${summary.latestProgress.phase})`
-        : "Kein Fortschritt erfasst. Bitte Fotos oder Berichte erstellen.",
+      title: T('brain_progress_title'),
+      summary: T('brain_progress_summary', { p: snap.overallPercent, phase: snap.phase || "-" }),
       details,
-      stats: {
-        fortschritt: summary.latestProgress?.overallPercent ?? "unbekannt",
-        mängel: summary.defectCount,
-        aufgaben: summary.taskCount,
-      },
-      suggestions: ["Kritische Gewerke?", "Wochenbericht erstellen"],
+      stats: { [T('brain_stat_progress')]: `${snap.overallPercent}%`, [T('brain_stat_rooms')]: structure.rooms.length, [T('brain_stat_total')]: openDefects },
+      suggestions: ["Welche Gewerke sind kritisch?", "Wochenbericht erstellen"],
     };
   }
 
   private async handleProjectSummary(projectId: string): Promise<BrainResponse> {
-    const summary = await knowledgeLayer.getProjectSummary(projectId);
-    const rooms = await knowledgeLayer.getProjectRooms(projectId);
-    const trades = await knowledgeLayer.getProjectTrades(projectId);
-    const criticalTrades = await knowledgeLayer.getCriticalTrades(projectId);
+    const { getDefects } = await import("@/lib/defect-store");
+    const { getProjectStructure } = await import("@/lib/room-store");
+    const { progressEngine } = await import("@/lib/progress-engine");
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const defects = await getDefects(projectId);
+    const structure = await getProjectStructure(projectId);
+    const snap = await progressEngine.calculateProgress(projectId);
+    const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+    const openDefects = defects.filter(d => OPEN.has(d.status)).length;
+    const roomsDone = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
+
+    let openTasks = 0;
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      if (raw) openTasks = (JSON.parse(raw) as any[]).filter(tk => tk.projectId === projectId && tk.status !== "erledigt" && tk.status !== "done").length;
+    } catch {}
 
     const details: BrainResponseDetail[] = [
-      { type: "info", content: `${summary.totalEntries} Einträge im Knowledge Layer`, metadata: {} },
-      { type: "info", content: `${rooms.length} Räume: ${rooms.slice(0, 5).join(", ")}${rooms.length > 5 ? "..." : ""}`, metadata: {} },
-      { type: "info", content: `${trades.length} Gewerke: ${trades.slice(0, 5).join(", ")}${trades.length > 5 ? "..." : ""}`, metadata: {} },
+      { type: "info", content: T('brain_overview_defects', { open: openDefects, total: defects.length }), metadata: {} },
+      { type: "info", content: T('brain_overview_tasks', { n: openTasks }), metadata: {} },
+      { type: "info", content: T('brain_rooms_done', { done: roomsDone, total: structure.rooms.length }), metadata: {} },
+      { type: "progress", content: T('brain_weekly_progress', { p: snap.overallPercent }), metadata: { progress: snap } },
     ];
-
-    if (criticalTrades.length > 0) {
-      details.push({
-        type: "defect",
-        content: `${criticalTrades.length} kritische Gewerke: ${criticalTrades.map(t => t.trade).join(", ")}`,
-        metadata: {},
-      });
-    }
 
     return {
       intent: "project_summary",
-      title: "Projektübersicht",
-      summary: `${summary.totalEntries} Einträge, ${summary.defectCount} Mängel, ${summary.taskCount} Aufgaben, ${rooms.length} Räume, ${trades.length} Gewerke.`,
+      title: T('brain_overview_title'),
+      summary: T('brain_overview_summary', { defects: openDefects, tasks: openTasks, rooms: structure.rooms.length }),
       details,
-      stats: {
-        einträge: summary.totalEntries,
-        mängel: summary.defectCount,
-        aufgaben: summary.taskCount,
-        räume: rooms.length,
-        gewerke: trades.length,
-        kritisch: criticalTrades.length,
-      },
+      stats: { [T('brain_stat_total')]: defects.length, [T('brain_stat_rooms')]: structure.rooms.length, [T('brain_stat_done')]: roomsDone, [T('brain_stat_progress')]: `${snap.overallPercent}%` },
       suggestions: ["Offene Mängel?", "Baufortschritt?", "Wochenbericht"],
     };
   }
