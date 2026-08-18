@@ -158,7 +158,8 @@ export default function AIWorkbenchScreen() {
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<LiveStats>(createEmptyLiveStats);
-  const [roomSummaries, setRoomSummaries] = useState<{ id: string; name: string; floorName: string; open: number }[]>([]);
+  const [roomSummaries, setRoomSummaries] = useState<{ id: string; name: string; floorId: string; floorName: string; floorNumber: number; open: number }[]>([]);
+  const [expandedHomeFloors, setExpandedHomeFloors] = useState<Set<string>>(new Set());
 
   const loadProjects = useCallback(async () => {
     try {
@@ -235,12 +236,19 @@ export default function AIWorkbenchScreen() {
         roomsTotal = structure.rooms.length;
         roomsCompleted = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
         const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
-        setRoomSummaries(structure.rooms.map(r => ({
-          id: r.id,
-          name: r.name,
-          floorName: structure.floors.find(f => f.id === r.floorId)?.name || "",
-          open: allDefects.filter(d => (d.room || "").trim().toLowerCase() === r.name.trim().toLowerCase() && OPEN.has(d.status)).length,
-        })));
+        setRoomSummaries(structure.rooms.map(r => {
+          const fl = structure.floors.find(f => f.id === r.floorId);
+          return {
+            id: r.id,
+            name: r.name,
+            floorId: r.floorId,
+            floorName: fl?.name || "",
+            floorNumber: fl?.number ?? 0,
+            open: allDefects.filter(d => (d.room || "").trim().toLowerCase() === r.name.trim().toLowerCase() && OPEN.has(d.status)).length,
+          };
+        }));
+        // Expand all floors that have rooms by default.
+        setExpandedHomeFloors(new Set(structure.rooms.map(r => r.floorId)));
       } catch {}
 
       // 6. Attendance (today)
@@ -604,23 +612,59 @@ export default function AIWorkbenchScreen() {
                     <MaterialIcons name="add" size={18} color="#5DADE2" />
                     <Text style={[styles.roomsHomeName, { color: "#5DADE2" }]}>{t('rooms_add_room' as any)}</Text>
                   </Pressable>
-                ) : roomSummaries.slice(0, 8).map((r) => (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => selectedProject && router.push(`/rooms?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}&openRoom=${r.id}` as any)}
-                    style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <MaterialIcons name="meeting-room" size={16} color="#8FA3B8" />
-                    <Text style={styles.roomsHomeName} numberOfLines={1}>{r.floorName ? `${r.floorName} · ` : ""}{r.name}</Text>
-                    {r.open > 0 && (
-                      <View style={styles.roomsHomeBadge}>
-                        <MaterialIcons name="warning" size={11} color="#F97316" />
-                        <Text style={styles.roomsHomeBadgeText}>{r.open}</Text>
+                ) : (() => {
+                  const byFloor = new Map<string, typeof roomSummaries>();
+                  for (const r of roomSummaries) {
+                    if (!byFloor.has(r.floorId)) byFloor.set(r.floorId, []);
+                    byFloor.get(r.floorId)!.push(r);
+                  }
+                  const floorGroups = [...byFloor.values()]
+                    .map((rms) => ({ floorId: rms[0].floorId, floorName: rms[0].floorName, floorNumber: rms[0].floorNumber, rooms: rms }))
+                    .sort((a, b) => a.floorNumber - b.floorNumber);
+                  return floorGroups.map((g) => {
+                    const expanded = expandedHomeFloors.has(g.floorId);
+                    const openSum = g.rooms.reduce((s, r) => s + r.open, 0);
+                    return (
+                      <View key={g.floorId}>
+                        <Pressable
+                          onPress={() => setExpandedHomeFloors((prev) => {
+                            const n = new Set(prev);
+                            if (n.has(g.floorId)) n.delete(g.floorId); else n.add(g.floorId);
+                            return n;
+                          })}
+                          style={({ pressed }) => [styles.roomsHomeFloorHead, { opacity: pressed ? 0.7 : 1 }]}
+                        >
+                          <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={18} color="#8FA3B8" />
+                          <Text style={styles.roomsHomeFloorName}>{g.floorName || "—"}</Text>
+                          <Text style={styles.roomsHomeFloorCount}>{g.rooms.length}</Text>
+                          {openSum > 0 && (
+                            <View style={styles.roomsHomeBadge}>
+                              <MaterialIcons name="warning" size={11} color="#F97316" />
+                              <Text style={styles.roomsHomeBadgeText}>{openSum}</Text>
+                            </View>
+                          )}
+                        </Pressable>
+                        {expanded && g.rooms.map((r) => (
+                          <Pressable
+                            key={r.id}
+                            onPress={() => selectedProject && router.push(`/rooms?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}&openRoom=${r.id}` as any)}
+                            style={({ pressed }) => [styles.roomsHomeRow, styles.roomsHomeRoomIndent, { opacity: pressed ? 0.7 : 1 }]}
+                          >
+                            <MaterialIcons name="meeting-room" size={16} color="#8FA3B8" />
+                            <Text style={styles.roomsHomeName} numberOfLines={1}>{r.name}</Text>
+                            {r.open > 0 && (
+                              <View style={styles.roomsHomeBadge}>
+                                <MaterialIcons name="warning" size={11} color="#F97316" />
+                                <Text style={styles.roomsHomeBadgeText}>{r.open}</Text>
+                              </View>
+                            )}
+                            <MaterialIcons name="chevron-right" size={16} color="#5F7590" />
+                          </Pressable>
+                        ))}
                       </View>
-                    )}
-                    <MaterialIcons name="chevron-right" size={16} color="#5F7590" />
-                  </Pressable>
-                ))}
+                    );
+                  });
+                })()}
               </View>
             </>
           ) : (
@@ -1036,6 +1080,28 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderTopWidth: 1,
     borderTopColor: '#12263E',
+  },
+  roomsHomeFloorHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    borderTopColor: '#12263E',
+  },
+  roomsHomeFloorName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#C7D5E5',
+    flex: 1,
+  },
+  roomsHomeFloorCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#5F7590',
+  },
+  roomsHomeRoomIndent: {
+    paddingLeft: 24,
   },
   roomsHomeName: {
     flex: 1,
