@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -5,6 +6,13 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { LEGAL_DRAFT_MARKER } from "@/lib/legal-draft";
 import { useTranslation } from "@/lib/language-provider";
+
+type PlanId = "free" | "monthly" | "yearly";
+const PLANS: { id: PlanId; price: string; nameKey: string; periodKey: string; descKey: string; badgeKey?: string; noteKey?: string; highlight?: boolean }[] = [
+  { id: "free", price: "0 €", nameKey: "subscription_plan_free_name", periodKey: "subscription_plan_free_period", descKey: "subscription_plan_free_desc", badgeKey: "subscription_badge_ads" },
+  { id: "monthly", price: "9,99 €", nameKey: "subscription_plan_monthly_name", periodKey: "subscription_plan_monthly_period", descKey: "subscription_plan_monthly_desc" },
+  { id: "yearly", price: "99,99 €", nameKey: "subscription_plan_yearly_name", periodKey: "subscription_plan_yearly_period", descKey: "subscription_plan_yearly_desc", badgeKey: "subscription_badge_popular", noteKey: "subscription_plan_yearly_note", highlight: true },
+];
 
 const OPEN_DECISIONS = [
   "subscription_decision_1",
@@ -25,6 +33,7 @@ export default function SubscriptionScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>("yearly");
 
   return (
     <ScreenContainer edges={["top", "left", "right", "bottom"]}>
@@ -42,6 +51,49 @@ export default function SubscriptionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.sectionTitle}>{t('subscription_plans_title' as any)}</Text>
+        <View style={styles.plansWrap}>
+          {PLANS.map((plan) => {
+            const active = selectedPlan === plan.id;
+            return (
+              <TouchableOpacity
+                key={plan.id}
+                activeOpacity={0.85}
+                onPress={() => setSelectedPlan(plan.id)}
+                style={[styles.planCard, plan.highlight && styles.planCardHighlight, active && styles.planCardActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                {plan.badgeKey ? (
+                  <View style={[styles.planBadge, plan.highlight && styles.planBadgePopular]}>
+                    <Text style={styles.planBadgeText}>{t(plan.badgeKey as any)}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.planTop}>
+                  <MaterialIcons
+                    name={active ? "radio-button-checked" : "radio-button-unchecked"}
+                    size={22}
+                    color={active ? "#5DADE2" : "#4B5B6B"}
+                  />
+                  <Text style={styles.planName}>{t(plan.nameKey as any)}</Text>
+                </View>
+                <View style={styles.planPriceRow}>
+                  <Text style={styles.planPrice}>{plan.price}</Text>
+                  <Text style={styles.planPeriod}> {t(plan.periodKey as any)}</Text>
+                </View>
+                {plan.noteKey ? <Text style={styles.planNote}>{t(plan.noteKey as any)}</Text> : null}
+                <Text style={styles.planDesc}>{t(plan.descKey as any)}</Text>
+                <View style={[styles.planSelectBtn, active && styles.planSelectBtnActive]}>
+                  <Text style={[styles.planSelectText, active && styles.planSelectTextActive]}>
+                    {t((active ? 'subscription_selected' : 'subscription_select') as any)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.priceHint}>{t('subscription_price_hint' as any)}</Text>
+
         <View style={styles.holdCard} accessibilityRole="summary">
           <MaterialIcons name="lock-outline" size={30} color="#F59E0B" />
           <View style={styles.holdCopy}>
@@ -119,6 +171,48 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", textAlign: "center" },
   headerSpacer: { width: 40 },
   content: { padding: 16, paddingBottom: 48 },
+  plansWrap: { gap: 12, marginBottom: 12 },
+  planCard: {
+    borderWidth: 1,
+    borderColor: "#1E3A5F",
+    backgroundColor: "#132238",
+    borderRadius: 12,
+    padding: 16,
+  },
+  planCardHighlight: { borderColor: "#2E5A86" },
+  planCardActive: { borderColor: "#5DADE2", backgroundColor: "#15304A" },
+  planBadge: {
+    position: "absolute",
+    top: -10,
+    right: 14,
+    backgroundColor: "#1E3A5F",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  planBadgePopular: { backgroundColor: "#2563EB" },
+  planBadgeText: { color: "#EAF2FA", fontSize: 11, fontWeight: "800" },
+  planTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  planName: { color: "#F0F4F8", fontSize: 17, fontWeight: "800" },
+  planPriceRow: { flexDirection: "row", alignItems: "baseline" },
+  planPrice: { color: "#FFFFFF", fontSize: 28, fontWeight: "900" },
+  planPeriod: { color: "#9FB2C4", fontSize: 14, fontWeight: "600" },
+  planNote: { color: "#4ADE80", fontSize: 13, fontWeight: "700", marginTop: 4 },
+  planDesc: { color: "#C4D0DC", fontSize: 13, lineHeight: 19, marginTop: 8 },
+  planSelectBtn: {
+    marginTop: 14,
+    minHeight: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#2E5A86",
+    backgroundColor: "#10283D",
+  },
+  planSelectBtnActive: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
+  planSelectText: { color: "#9FC5E8", fontSize: 15, fontWeight: "800" },
+  planSelectTextActive: { color: "#FFFFFF" },
+  priceHint: { color: "#7F8C9B", fontSize: 12, lineHeight: 18, marginBottom: 22 },
   holdCard: {
     flexDirection: "row",
     gap: 14,
