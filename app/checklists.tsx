@@ -292,10 +292,32 @@ export default function ChecklistsScreen() {
     </Pressable>
   );
 
+  // Reopen a past inspection (to view/continue/export).
+  const openResult = (result: ChecklistResult) => {
+    const checklist = checklists.find((c) => c.id === result.checklistId);
+    if (!checklist) {
+      Alert.alert(t('alert_fehler'), t('checklists_vorlage_fehlt' as any));
+      return;
+    }
+    setActiveResult(result);
+    setSelectedChecklist(checklist);
+  };
+
+  // Export a past inspection directly from the list.
+  const exportResultDirect = (result: ChecklistResult) => {
+    const checklist = checklists.find((c) => c.id === result.checklistId);
+    if (!checklist) {
+      Alert.alert(t('alert_fehler'), t('checklists_vorlage_fehlt' as any));
+      return;
+    }
+    void exportPdf(checklist, result);
+  };
+
   const renderResult = ({ item }: { item: ChecklistResult }) => {
     const rate = getChecklistCompletionRate(item);
     return (
       <Pressable
+        onPress={() => openResult(item)}
         onLongPress={() => removeResult(item.id)}
         style={({ pressed }) => [
           styles.resultCard,
@@ -309,9 +331,17 @@ export default function ChecklistsScreen() {
             size={20}
             color={rate === 100 ? colors.success : colors.warning}
           />
-          <Text style={[styles.resultName, { color: colors.foreground }]} numberOfLines={1}>
+          <Text style={[styles.resultName, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
             {item.checklistName}
           </Text>
+          <Pressable
+            onPress={() => exportResultDirect(item)}
+            hitSlop={8}
+            accessibilityLabel={t('pdf_teilen')}
+            style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1, padding: 4 }]}
+          >
+            <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
+          </Pressable>
         </View>
         <View style={styles.progressRow}>
           <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
