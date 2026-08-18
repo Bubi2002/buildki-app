@@ -347,7 +347,7 @@ export default function RoomsScreen() {
       }
       for (const r of aiPreview.rooms) {
         const fid = floorIdByLabel.get(r.floorLabel.trim().toLowerCase());
-        if (fid) await addRoom(projectId, fid, r.name, undefined, undefined);
+        if (fid) await addRoom(projectId, fid, r.name, r.number, undefined);
       }
       setAiBusy(null);
       setAiPreview(null);
@@ -748,11 +748,12 @@ export default function RoomsScreen() {
                   const rs = aiPreview.rooms.filter((r) => r.floorLabel === fl);
                   return (
                     <View key={fl} style={{ marginTop: 14 }}>
-                      <Text style={styles.detailLabel}>{fl} ({rs.length})</Text>
+                      <Text style={styles.detailLabel}>{localizeFloorName(t, fl)} ({rs.length})</Text>
                       {rs.length === 0 ? <Text style={styles.detailEmpty}>—</Text> : rs.map((r, i) => (
                         <View key={`${fl}-${i}`} style={styles.linkRow}>
                           <MaterialIcons name="meeting-room" size={14} color="#8FA3B8" />
                           <Text style={styles.linkText}>{r.name}</Text>
+                          {r.number ? <Text style={{ fontSize: 11, color: "#5DADE2", fontWeight: "700" }}>{r.number}</Text> : null}
                           {r.area ? <Text style={{ fontSize: 12, color: "#8FA3B8" }}>{r.area} m²</Text> : null}
                         </View>
                       ))}

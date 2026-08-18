@@ -8,8 +8,19 @@
  * numbered rooms.
  */
 
-export type ExtractedRoom = { floorLabel: string; name: string; area?: number };
+export type ExtractedRoom = { floorLabel: string; name: string; area?: number; number?: string };
 export type ExtractedStructure = { floors: string[]; rooms: ExtractedRoom[] };
+
+// A room designation spoken next to the room, e.g. "Küche UG3" / "EG02 Bad".
+// Requires a floor abbreviation (UG/EG/OG/DG/KG or "2. OG") directly followed
+// by a number, so plain quantities like "3 Zimmer" are not mistaken for one.
+const DESIG_AFTER = /^[\s:.\-–]*((?:UG|OG|EG|DG|KG)|\d{1,2}\.\s?OG)\s?-?\s?(\d{1,3})\b/i;
+const DESIG_BEFORE = /((?:UG|OG|EG|DG|KG)|\d{1,2}\.\s?OG)\s?-?\s?(\d{1,3})[\s:.\-–]*$/i;
+function normFloorPart(p: string): string {
+  const up = p.toUpperCase().replace(/\s+/g, "");
+  const og = up.match(/^(\d+)\.OG$/);
+  return og ? `${parseInt(og[1], 10)}. OG` : up;
+}
 
 const ROOM_TERMS = [
   "Wohnzimmer", "Wohnküche", "Wohnen", "Küche", "Kochen", "Esszimmer", "Essen",
@@ -93,7 +104,7 @@ export function extractStructureFromText(text: string): ExtractedStructure {
     let m: RegExpExecArray | null;
     while ((m = re.exec(src)) !== null) {
       const pos = m.index;
-      const floorLabel = floorAt(pos);
+      let floorLabel = floorAt(pos);
 
       // Quantity right before the term ("zwei Schlafzimmer" / "3 Zimmer").
       const before = src.slice(Math.max(0, pos - 14), pos).toLowerCase();
@@ -107,6 +118,19 @@ export function extractStructureFromText(text: string): ExtractedStructure {
       const after = src.slice(pos, pos + 40);
       const areaMatch = after.match(/(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:m²|m2|qm)/i);
       const area = areaMatch ? Math.round(parseFloat(areaMatch[1].replace(",", ".")) * 100) / 100 : undefined;
+
+      // Optional designation directly next to the term ("Küche UG3" / "UG3 Küche").
+      // A single specific room only — quantities stay generic.
+      let designation: string | undefined;
+      if (qty === 1) {
+        let dm = src.slice(pos + term.length, pos + term.length + 12).match(DESIG_AFTER);
+        if (!dm) dm = src.slice(Math.max(0, pos - 10), pos).match(DESIG_BEFORE);
+        if (dm) {
+          const fp = normFloorPart(dm[1]);
+          designation = `${fp.replace(/\s+/g, "")}${dm[2]}`;
+          floorLabel = fp;
+        }
+      }
 
       if (qty > 1) {
         for (let i = 1; i <= qty; i++) {
@@ -126,7 +150,7 @@ export function extractStructureFromText(text: string): ExtractedStructure {
         const key = `${floorLabel}|${name.toLowerCase()}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        rooms.push({ floorLabel, name, area });
+        rooms.push({ floorLabel, name, area, number: designation });
       }
       if (rooms.length >= 60) break;
     }
