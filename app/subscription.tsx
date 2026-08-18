@@ -94,16 +94,6 @@ export default function SubscriptionScreen() {
         </View>
         <Text style={styles.priceHint}>{t('subscription_price_hint' as any)}</Text>
 
-        <View style={styles.holdCard} accessibilityRole="summary">
-          <MaterialIcons name="lock-outline" size={30} color="#F59E0B" />
-          <View style={styles.holdCopy}>
-            <Text style={styles.holdTitle}>{t('subscription_hold_title' as any)}</Text>
-            <Text style={styles.holdText}>
-              {t('subscription_hold_text' as any)}
-            </Text>
-          </View>
-        </View>
-
         <View style={styles.openCard}>
           <Text style={styles.openLabel}>{LEGAL_DRAFT_MARKER}</Text>
           <Text style={styles.openText}>
@@ -138,6 +128,16 @@ export default function SubscriptionScreen() {
           <Text style={styles.protectionText}>
             {t('subscription_protection_text' as any)}
           </Text>
+        </View>
+
+        <View style={styles.holdCard} accessibilityRole="summary">
+          <MaterialIcons name="lock-outline" size={30} color="#F59E0B" />
+          <View style={styles.holdCopy}>
+            <Text style={styles.holdTitle}>{t('subscription_hold_title' as any)}</Text>
+            <Text style={styles.holdText}>
+              {t('subscription_hold_text' as any)}
+            </Text>
+          </View>
         </View>
 
         <TouchableOpacity
