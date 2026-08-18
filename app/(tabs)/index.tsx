@@ -158,6 +158,7 @@ export default function AIWorkbenchScreen() {
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<LiveStats>(createEmptyLiveStats);
+  const [roomSummaries, setRoomSummaries] = useState<{ id: string; name: string; floorName: string; open: number }[]>([]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -182,6 +183,7 @@ export default function AIWorkbenchScreen() {
     const activeProjectId = normalizeDashboardProjectId(projectId);
     if (!activeProjectId) {
       setStats(createEmptyLiveStats());
+      setRoomSummaries([]);
       return;
     }
 
@@ -232,6 +234,13 @@ export default function AIWorkbenchScreen() {
         const structure = await getProjectStructure(activeProjectId);
         roomsTotal = structure.rooms.length;
         roomsCompleted = structure.rooms.filter(r => r.status === "fertig" || r.status === "abgenommen").length;
+        const OPEN = new Set(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+        setRoomSummaries(structure.rooms.map(r => ({
+          id: r.id,
+          name: r.name,
+          floorName: structure.floors.find(f => f.id === r.floorId)?.name || "",
+          open: allDefects.filter(d => (d.room || "").trim().toLowerCase() === r.name.trim().toLowerCase() && OPEN.has(d.status)).length,
+        })));
       } catch {}
 
       // 6. Attendance (today)
@@ -577,6 +586,42 @@ export default function AIWorkbenchScreen() {
                   </Text>
                 </View>
               )}
+
+              {/* Rooms — cross-tool hub: defects / tasks / checklists / follow-ups per room */}
+              <View style={styles.roomsHome}>
+                <View style={styles.roomsHomeHead}>
+                  <View style={styles.tasksHeader}>
+                    <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
+                    <Text style={styles.tasksTitle}>{t('index_tool_raeume')}</Text>
+                  </View>
+                  <Pressable onPress={() => navigateModule("/rooms")} hitSlop={6}>
+                    <Text style={styles.roomsHomeAll}>{roomSummaries.length > 0 ? t('rooms_open_all' as any) : t('rooms_add_room' as any)}</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.roomsHomeHint}>{t('rooms_home_hint' as any)}</Text>
+                {roomSummaries.length === 0 ? (
+                  <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}>
+                    <MaterialIcons name="add" size={18} color="#5DADE2" />
+                    <Text style={[styles.roomsHomeName, { color: "#5DADE2" }]}>{t('rooms_add_room' as any)}</Text>
+                  </Pressable>
+                ) : roomSummaries.slice(0, 8).map((r) => (
+                  <Pressable
+                    key={r.id}
+                    onPress={() => selectedProject && router.push(`/rooms?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}&openRoom=${r.id}` as any)}
+                    style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="meeting-room" size={16} color="#8FA3B8" />
+                    <Text style={styles.roomsHomeName} numberOfLines={1}>{r.floorName ? `${r.floorName} · ` : ""}{r.name}</Text>
+                    {r.open > 0 && (
+                      <View style={styles.roomsHomeBadge}>
+                        <MaterialIcons name="warning" size={11} color="#F97316" />
+                        <Text style={styles.roomsHomeBadgeText}>{r.open}</Text>
+                      </View>
+                    )}
+                    <MaterialIcons name="chevron-right" size={16} color="#5F7590" />
+                  </Pressable>
+                ))}
+              </View>
             </>
           ) : (
             <View style={styles.noProjectOverview} accessibilityRole="summary">
@@ -958,6 +1003,59 @@ const styles = StyleSheet.create({
   tasksText: {
     fontSize: 11,
     color: '#8FA3B8',
+  },
+  roomsHome: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 12,
+    padding: 14,
+  },
+  roomsHomeHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roomsHomeAll: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5DADE2',
+  },
+  roomsHomeHint: {
+    fontSize: 11,
+    color: '#5F7590',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  roomsHomeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    borderTopColor: '#12263E',
+  },
+  roomsHomeName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F0F4F8',
+  },
+  roomsHomeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F9731622',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  roomsHomeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F97316',
   },
   // ─── Activity Section ──────────────────────────────────────────────────────
   activitySection: {

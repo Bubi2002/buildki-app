@@ -4,7 +4,7 @@
  * Manage floors and rooms per project.
  * Accessible from project-detail and the tools grid.
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -69,7 +69,8 @@ const DEFECT_STATUS_DOT: Record<string, string> = {
 
 export default function RoomsScreen() {
   const { t } = useTranslation();
-  const { projectId, projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
+  const { projectId, projectName, openRoom } = useLocalSearchParams<{ projectId: string; projectName?: string; openRoom?: string }>();
+  const openRoomHandled = useRef(false);
   const router = useRouter();
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -100,6 +101,15 @@ export default function RoomsScreen() {
     const structure = await getProjectStructure(projectId);
     setFloors(structure.floors.sort((a, b) => a.number - b.number));
     setRooms(structure.rooms);
+    // Deep-link from the home overview: auto-open a specific room once.
+    if (openRoom && !openRoomHandled.current) {
+      const target = structure.rooms.find((r) => r.id === openRoom);
+      if (target) {
+        openRoomHandled.current = true;
+        setExpandedFloor(target.floorId);
+        setSelectedRoom(target);
+      }
+    }
     // Cross-tool link: defects & checklist inspections tied to a room (by name).
     try {
       const [allDefects, allResults, tasksRaw] = await Promise.all([
