@@ -38,6 +38,9 @@ import {
 } from "@/lib/room-store";
 import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+type ProjectTask = { id: string; projectId?: string; title?: string; task?: string; status?: string; done?: boolean; priority?: string; room?: string; floor?: string; createdAt?: string };
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
   nicht_begonnen: "rooms_status_nicht_begonnen",
@@ -73,7 +76,10 @@ export default function RoomsScreen() {
   const [expandedFloor, setExpandedFloor] = useState<string | null>(null);
   const [defects, setDefects] = useState<Defect[]>([]);
   const [checklistResults, setChecklistResults] = useState<ChecklistResult[]>([]);
+  const [projectTasks, setProjectTasks] = useState<ProjectTask[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [taskRoom, setTaskRoom] = useState<Room | null>(null);
+  const [taskTitle, setTaskTitle] = useState("");
 
   // Add Floor Modal
   const [showAddFloor, setShowAddFloor] = useState(false);
@@ -96,12 +102,15 @@ export default function RoomsScreen() {
     setRooms(structure.rooms);
     // Cross-tool link: defects & checklist inspections tied to a room (by name).
     try {
-      const [allDefects, allResults] = await Promise.all([
+      const [allDefects, allResults, tasksRaw] = await Promise.all([
         getDefects(projectId),
         getChecklistResults(projectId),
+        AsyncStorage.getItem("project-tasks"),
       ]);
       setDefects(allDefects);
       setChecklistResults(allResults);
+      const allTasks: ProjectTask[] = tasksRaw ? JSON.parse(tasksRaw) : [];
+      setProjectTasks(allTasks.filter((t) => !t.projectId || t.projectId === projectId));
     } catch {}
     // Expand first floor by default
     if (structure.floors.length > 0 && !expandedFloor) {
@@ -118,6 +127,35 @@ export default function RoomsScreen() {
     roomDefects(room).filter((d) => OPEN_DEFECT_STATUSES.has(d.status)).length;
   const roomChecklists = (room: Room) =>
     checklistResults.filter((r) => (r.location || "").toLowerCase().includes(room.name.trim().toLowerCase()));
+  const roomFollowUps = (room: Room) =>
+    roomDefects(room).filter((d) => !!(d as any).followUpDate && d.status !== "erledigt" && d.status !== "geschlossen");
+  const roomTasks = (room: Room) =>
+    projectTasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && tk.status !== "erledigt" && tk.done !== true);
+
+  const createRoomTask = async () => {
+    const room = taskRoom;
+    const title = taskTitle.trim();
+    if (!room || !title) { setTaskRoom(null); return; }
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const tasks: ProjectTask[] = raw ? JSON.parse(raw) : [];
+      tasks.push({
+        id: `task_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
+        projectId,
+        title,
+        status: "offen",
+        priority: "mittel",
+        room: room.name,
+        floor: floors.find((f) => f.id === room.floorId)?.name,
+        createdAt: new Date().toISOString(),
+      });
+      await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+    setTaskRoom(null);
+    setTaskTitle("");
+    loadData();
+  };
 
   const handleAddFloor = async () => {
     Keyboard.dismiss();
@@ -408,6 +446,8 @@ export default function RoomsScreen() {
             {selectedRoom && (() => {
               const rd = roomDefects(selectedRoom);
               const rc = roomChecklists(selectedRoom);
+              const rf = roomFollowUps(selectedRoom);
+              const rt = roomTasks(selectedRoom);
               const floorName = floors.find((f) => f.id === selectedRoom.floorId)?.name || "";
               return (
                 <ScrollView showsVerticalScrollIndicator={false}>
@@ -452,6 +492,34 @@ export default function RoomsScreen() {
                     </View>
                   ))}
 
+                  {/* Nachprüfungen */}
+                  <Text style={[styles.detailLabel, { marginTop: 18 }]}>{t('index_tool_nachpruefung')} ({rf.length})</Text>
+                  {rf.length === 0 ? (
+                    <Text style={styles.detailEmpty}>—</Text>
+                  ) : rf.map((d) => (
+                    <View key={`fu-${d.id}`} style={styles.linkRow}>
+                      <MaterialIcons name="event-repeat" size={14} color="#A78BFA" />
+                      <Text style={styles.linkText} numberOfLines={1}>{d.title}</Text>
+                      <Text style={{ fontSize: 11, color: "#8FA3B8" }}>{(d as any).followUpDate}</Text>
+                    </View>
+                  ))}
+
+                  {/* Aufgaben */}
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 8 }}>
+                    <Text style={styles.detailLabel}>{t('index_tool_aufgaben')} ({rt.length})</Text>
+                    <Pressable onPress={() => { setTaskTitle(""); setTaskRoom(selectedRoom); }}>
+                      <Text style={{ color: "#5DADE2", fontSize: 12, fontWeight: "700" }}>+ {t('rooms_add_task_here' as any)}</Text>
+                    </Pressable>
+                  </View>
+                  {rt.length === 0 ? (
+                    <Text style={styles.detailEmpty}>{t('rooms_no_tasks' as any)}</Text>
+                  ) : rt.map((tk) => (
+                    <View key={`tk-${tk.id}`} style={styles.linkRow}>
+                      <MaterialIcons name="task-alt" size={14} color="#8FA3B8" />
+                      <Text style={styles.linkText} numberOfLines={1}>{tk.title || tk.task}</Text>
+                    </View>
+                  ))}
+
                   {rc.length > 0 && (
                     <>
                       <Text style={[styles.detailLabel, { marginTop: 18 }]}>{t('checklist_title')} ({rc.length})</Text>
@@ -474,6 +542,34 @@ export default function RoomsScreen() {
                 </ScrollView>
               );
             })()}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add task to room */}
+      <Modal visible={!!taskRoom} transparent animationType="slide" onRequestClose={() => setTaskRoom(null)}>
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailSheet}>
+            <Text style={styles.detailTitle}>{t('rooms_add_task_here' as any)}</Text>
+            <Text style={styles.detailSubtitle}>{taskRoom?.name}</Text>
+            <TextInput
+              value={taskTitle}
+              onChangeText={setTaskTitle}
+              placeholder={t('titel' as any)}
+              placeholderTextColor="#5F7590"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={createRoomTask}
+              style={{ marginTop: 14, borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 8, padding: 12, color: "#F0F4F8", fontSize: 15 }}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => setTaskRoom(null)} style={{ flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" }}>
+                <Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+              </Pressable>
+              <Pressable onPress={createRoomTask} style={{ flex: 2, paddingVertical: 12, borderRadius: 8, backgroundColor: "#5DADE2", alignItems: "center" }}>
+                <Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
