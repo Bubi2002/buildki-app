@@ -36,6 +36,8 @@ import {
   deleteFloor,
   initializeDefaultFloors,
 } from "@/lib/room-store";
+import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
+import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
   nicht_begonnen: "rooms_status_nicht_begonnen",
@@ -51,6 +53,17 @@ const ROOM_STATUS_COLORS: Record<string, string> = {
   abgenommen: "#3B82F6",
 };
 
+const DEFECT_STATUS_DOT: Record<string, string> = {
+  offen: "#EF4444",
+  zugewiesen: "#F59E0B",
+  in_bearbeitung: "#F59E0B",
+  nachbesserung: "#F59E0B",
+  pruefung: "#8B5CF6",
+  erledigt: "#10B981",
+  abgelehnt: "#6B7280",
+  geschlossen: "#10B981",
+};
+
 export default function RoomsScreen() {
   const { t } = useTranslation();
   const { projectId, projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
@@ -58,6 +71,9 @@ export default function RoomsScreen() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [expandedFloor, setExpandedFloor] = useState<string | null>(null);
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [checklistResults, setChecklistResults] = useState<ChecklistResult[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   // Add Floor Modal
   const [showAddFloor, setShowAddFloor] = useState(false);
@@ -78,6 +94,15 @@ export default function RoomsScreen() {
     const structure = await getProjectStructure(projectId);
     setFloors(structure.floors.sort((a, b) => a.number - b.number));
     setRooms(structure.rooms);
+    // Cross-tool link: defects & checklist inspections tied to a room (by name).
+    try {
+      const [allDefects, allResults] = await Promise.all([
+        getDefects(projectId),
+        getChecklistResults(projectId),
+      ]);
+      setDefects(allDefects);
+      setChecklistResults(allResults);
+    } catch {}
     // Expand first floor by default
     if (structure.floors.length > 0 && !expandedFloor) {
       setExpandedFloor(structure.floors[0].id);
@@ -85,6 +110,14 @@ export default function RoomsScreen() {
   }, [projectId]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const OPEN_DEFECT_STATUSES = new Set<DefectStatus>(["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"]);
+  const roomDefects = (room: Room) =>
+    defects.filter((d) => (d.room || "").trim().toLowerCase() === room.name.trim().toLowerCase());
+  const roomOpenDefectCount = (room: Room) =>
+    roomDefects(room).filter((d) => OPEN_DEFECT_STATUSES.has(d.status)).length;
+  const roomChecklists = (room: Room) =>
+    checklistResults.filter((r) => (r.location || "").toLowerCase().includes(room.name.trim().toLowerCase()));
 
   const handleAddFloor = async () => {
     Keyboard.dismiss();
@@ -145,6 +178,13 @@ export default function RoomsScreen() {
     const nextStatus = statuses[(currentIdx + 1) % statuses.length];
     await updateRoom(projectId!, room.id, { status: nextStatus });
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    loadData();
+  };
+
+  const setRoomStatus = async (room: Room, status: Room["status"]) => {
+    await updateRoom(projectId!, room.id, { status });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setSelectedRoom({ ...room, status });
     loadData();
   };
 
@@ -234,7 +274,7 @@ export default function RoomsScreen() {
                   {floorRooms.map((room) => (
                     <SwipeableRow key={room.id} onDelete={() => handleDeleteRoom(room)} deleteLabel={t('btn_loeschen')}>
                     <Pressable
-                      onPress={() => cycleRoomStatus(room)}
+                      onPress={() => setSelectedRoom(room)}
                       onLongPress={() => handleDeleteRoom(room)}
                       style={({ pressed }) => [styles.roomCard, { opacity: pressed ? 0.8 : 1 }]}
                     >
@@ -246,9 +286,16 @@ export default function RoomsScreen() {
                           {room.trade && <Text style={styles.roomTrade}>{room.trade}</Text>}
                         </View>
                       </View>
+                      {roomOpenDefectCount(room) > 0 && (
+                        <View style={styles.roomDefectBadge}>
+                          <MaterialIcons name="warning" size={12} color="#F97316" />
+                          <Text style={styles.roomDefectBadgeText}>{roomOpenDefectCount(room)}</Text>
+                        </View>
+                      )}
                       <Text style={[styles.roomStatusText, { color: ROOM_STATUS_COLORS[room.status || "nicht_begonnen"] }]}>
                         {t(ROOM_STATUS_LABELS[room.status || "nicht_begonnen"] as any)}
                       </Text>
+                      <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" style={{ marginLeft: 2 }} />
                     </Pressable>
                     </SwipeableRow>
                   ))}
@@ -354,11 +401,100 @@ export default function RoomsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      {/* Room Detail Hub */}
+      <Modal visible={!!selectedRoom} transparent animationType="slide" onRequestClose={() => setSelectedRoom(null)}>
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailSheet}>
+            {selectedRoom && (() => {
+              const rd = roomDefects(selectedRoom);
+              const rc = roomChecklists(selectedRoom);
+              const floorName = floors.find((f) => f.id === selectedRoom.floorId)?.name || "";
+              return (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.detailTitle}>{selectedRoom.name}</Text>
+                      <Text style={styles.detailSubtitle}>{floorName}{selectedRoom.trade ? ` · ${selectedRoom.trade}` : ""}</Text>
+                    </View>
+                    <Pressable onPress={() => setSelectedRoom(null)} hitSlop={8}>
+                      <MaterialIcons name="close" size={24} color="#8FA3B8" />
+                    </Pressable>
+                  </View>
+
+                  <Text style={styles.detailLabel}>{t('status_label' as any)}</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+                    {(["nicht_begonnen", "in_arbeit", "fertig", "abgenommen"] as const).map((s) => {
+                      const active = (selectedRoom.status || "nicht_begonnen") === s;
+                      return (
+                        <Pressable
+                          key={s}
+                          onPress={() => setRoomStatus(selectedRoom, s)}
+                          style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: active ? ROOM_STATUS_COLORS[s] : "#1E3A5F", backgroundColor: active ? ROOM_STATUS_COLORS[s] + "22" : "transparent" }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? ROOM_STATUS_COLORS[s] : "#8FA3B8" }}>{t(ROOM_STATUS_LABELS[s] as any)}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <Text style={styles.detailLabel}>{t('maengel')} ({rd.length})</Text>
+                    <Pressable onPress={() => { setSelectedRoom(null); router.push(`/defects?projectId=${projectId}` as any); }}>
+                      <Text style={{ color: "#5DADE2", fontSize: 12, fontWeight: "700" }}>{t('rooms_open_all' as any)}</Text>
+                    </Pressable>
+                  </View>
+                  {rd.length === 0 ? (
+                    <Text style={styles.detailEmpty}>{t('rooms_no_defects' as any)}</Text>
+                  ) : rd.map((d) => (
+                    <View key={d.id} style={styles.linkRow}>
+                      <View style={[styles.linkDot, { backgroundColor: DEFECT_STATUS_DOT[d.status] || "#6B7280" }]} />
+                      <Text style={styles.linkText} numberOfLines={1}>{d.title}</Text>
+                    </View>
+                  ))}
+
+                  {rc.length > 0 && (
+                    <>
+                      <Text style={[styles.detailLabel, { marginTop: 18 }]}>{t('checklist_title')} ({rc.length})</Text>
+                      {rc.map((r) => (
+                        <View key={r.id} style={styles.linkRow}>
+                          <MaterialIcons name="checklist" size={14} color="#8FA3B8" />
+                          <Text style={styles.linkText} numberOfLines={1}>{r.checklistName}</Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+
+                  <Pressable
+                    onPress={() => { setSelectedRoom(null); router.push(`/defects?projectId=${projectId}` as any); }}
+                    style={styles.detailActionBtn}
+                  >
+                    <MaterialIcons name="add" size={18} color="#fff" />
+                    <Text style={styles.detailActionText}>{t('rooms_add_defect_here' as any)}</Text>
+                  </Pressable>
+                </ScrollView>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  detailOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  detailSheet: { backgroundColor: "#0F1E30", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "85%" },
+  detailTitle: { fontSize: 20, fontWeight: "800", color: "#F0F4F8" },
+  detailSubtitle: { fontSize: 13, color: "#8FA3B8", marginTop: 2 },
+  detailLabel: { fontSize: 12, fontWeight: "700", color: "#5F7590", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  detailEmpty: { fontSize: 13, color: "#5F7590", fontStyle: "italic" },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#12263E" },
+  linkDot: { width: 8, height: 8, borderRadius: 4 },
+  linkText: { flex: 1, fontSize: 14, color: "#F0F4F8" },
+  detailActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#5DADE2", borderRadius: 10, paddingVertical: 12, marginTop: 20 },
+  detailActionText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  roomDefectBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#F9731622", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginRight: 6 },
+  roomDefectBadgeText: { fontSize: 12, fontWeight: "700", color: "#F97316" },
   header: {
     flexDirection: "row",
     alignItems: "center",
