@@ -574,9 +574,8 @@ export default function RoomsScreen() {
         </KeyboardAvoidingView>
       </Modal>
       {/* Room Detail Hub */}
-      <Modal visible={!!selectedRoom} transparent animationType="slide" onRequestClose={() => setSelectedRoom(null)}>
-        <View style={styles.detailOverlay}>
-          <View style={styles.detailSheet}>
+      <Modal visible={!!selectedRoom} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setSelectedRoom(null)}>
+        <ScreenContainer>
             {selectedRoom && (() => {
               const rd = roomDefects(selectedRoom);
               const rc = roomChecklists(selectedRoom);
@@ -584,17 +583,17 @@ export default function RoomsScreen() {
               const rt = roomTasks(selectedRoom);
               const floorName = floors.find((f) => f.id === selectedRoom.floorId)?.name || "";
               return (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.roomDetailHeader}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.detailTitle}>{selectedRoom.name}</Text>
                       <Text style={styles.detailSubtitle}>{localizeFloorName(t, floorName)}{selectedRoom.trade ? ` · ${selectedRoom.trade}` : ""}</Text>
                     </View>
-                    <Pressable onPress={() => setSelectedRoom(null)} hitSlop={8}>
-                      <MaterialIcons name="close" size={24} color="#8FA3B8" />
+                    <Pressable onPress={() => setSelectedRoom(null)} hitSlop={8} style={styles.roomDetailClose}>
+                      <MaterialIcons name="close" size={26} color="#8FA3B8" />
                     </Pressable>
                   </View>
-
+                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 28 }}>
                   <Text style={styles.detailLabel}>{t('status_label' as any)}</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
                     {(["nicht_begonnen", "in_arbeit", "fertig", "abgenommen"] as const).map((s) => {
@@ -666,18 +665,20 @@ export default function RoomsScreen() {
                     </>
                   )}
 
-                  <Pressable
-                    onPress={() => { setSelectedRoom(null); router.push(`/defects?projectId=${projectId}` as any); }}
-                    style={styles.detailActionBtn}
-                  >
-                    <MaterialIcons name="add" size={18} color="#fff" />
-                    <Text style={styles.detailActionText}>{t('rooms_add_defect_here' as any)}</Text>
-                  </Pressable>
-                </ScrollView>
+                  </ScrollView>
+                  <View style={styles.roomDetailFooter}>
+                    <Pressable
+                      onPress={() => { setSelectedRoom(null); router.push(`/defects?projectId=${projectId}` as any); }}
+                      style={[styles.detailActionBtn, { marginTop: 0 }]}
+                    >
+                      <MaterialIcons name="add" size={18} color="#fff" />
+                      <Text style={styles.detailActionText}>{t('rooms_add_defect_here' as any)}</Text>
+                    </Pressable>
+                  </View>
+                </View>
               );
             })()}
-          </View>
-        </View>
+        </ScreenContainer>
       </Modal>
 
       {/* Add task to room */}
@@ -788,7 +789,10 @@ const styles = StyleSheet.create({
   linkRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#12263E" },
   linkDot: { width: 8, height: 8, borderRadius: 4 },
   linkText: { flex: 1, fontSize: 14, color: "#F0F4F8" },
-  detailActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#5DADE2", borderRadius: 10, paddingVertical: 12, marginTop: 20 },
+  detailActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#5DADE2", borderRadius: 10, paddingVertical: 14, marginTop: 20 },
+  roomDetailHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 6, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "#12263E" },
+  roomDetailClose: { padding: 4 },
+  roomDetailFooter: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18, borderTopWidth: 1, borderTopColor: "#12263E" },
   detailActionText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   roomDefectBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#F9731622", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginRight: 6 },
   roomDefectBadgeText: { fontSize: 12, fontWeight: "700", color: "#F97316" },
