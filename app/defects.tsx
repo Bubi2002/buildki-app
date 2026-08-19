@@ -11,6 +11,7 @@ import {
   ScrollView,
   Image,
   KeyboardAvoidingView,
+  ActivityIndicator,
  Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { SwipeableRow } from "@/components/swipeable-row";
@@ -60,6 +61,9 @@ import * as Print from "expo-print";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { generatePositionCode } from "@/lib/position-numbering";
+import { trpc } from "@/lib/trpc";
+import * as FileSystem from "expo-file-system/legacy";
+import { extractDefectFromText } from "@/lib/defect-extraction";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
 import {
@@ -110,6 +114,92 @@ export default function DefectsScreen() {
   const [showVoiceNoteFinish, setShowVoiceNoteFinish] = useState(false);
   const voiceNoteDefectIdRef = useRef<string | null>(null);
   const routeDefectHandledRef = useRef("");
+
+  // Voice-create: speak a defect, AI pre-fills the form (still editable).
+  const aiRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [showVoiceCreate, setShowVoiceCreate] = useState(false);
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const [voiceCreateBusy, setVoiceCreateBusy] = useState<string | null>(null);
+  const uploadAudioMutation = trpc.upload.audio.useMutation();
+  const transcribeMutation = trpc.voice.transcribe.useMutation();
+
+  const beginVoiceRecording = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert(t('defects_sprachnotiz' as any), t('defects_web_aufnahme_nicht_verfuegbar' as any));
+      return;
+    }
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t('defects_mikrofonzugriff_titel' as any), t('defects_mikrofonzugriff_msg' as any));
+        return;
+      }
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await aiRecorder.prepareToRecordAsync();
+      aiRecorder.record();
+      setVoiceRecording(true);
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('defects_aufnahme_nicht_moeglich_msg' as any));
+    }
+  };
+
+  const applyExtractedDefect = (ex: ReturnType<typeof extractDefectFromText>) => {
+    if (ex.title) setNewTitle(ex.title);
+    if (ex.description) setNewDescription(ex.description);
+    if (ex.priority) setNewPriority(ex.priority);
+    if (ex.assignee) setNewAssignee(ex.assignee);
+    if (ex.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(ex.dueDate)) setNewDueDate(ex.dueDate);
+    if (ex.gewerk) {
+      const g = ex.gewerk.toLowerCase();
+      const match = GEWERKE.find((x) => x.toLowerCase() === g || x.toLowerCase().includes(g) || g.includes(x.toLowerCase()));
+      if (match) setNewGewerk(match);
+    }
+    let matchedFloorId = "";
+    if (ex.floor) {
+      const f = ex.floor.toLowerCase();
+      const fl = floors.find((x) => x.name.trim().toLowerCase() === f || x.name.toLowerCase().includes(f) || f.includes(x.name.toLowerCase()));
+      if (fl) { setNewFloorId(fl.id); matchedFloorId = fl.id; }
+    }
+    if (ex.room) {
+      const r = ex.room.toLowerCase();
+      const rm = rooms.find((x) => x.name.trim().toLowerCase() === r || x.name.toLowerCase().includes(r) || r.includes(x.name.toLowerCase()));
+      if (rm) { setNewRoomId(rm.id); if (!matchedFloorId) setNewFloorId(rm.floorId); }
+    }
+    if (ex.floor || ex.room) setNewLocation([ex.floor, ex.room].filter(Boolean).join(" / "));
+  };
+
+  const stopVoiceCreateAndProcess = async () => {
+    setVoiceRecording(false);
+    setVoiceCreateBusy(t('defects_voice_transcribing' as any));
+    try {
+      try { await aiRecorder.stop(); } catch {}
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+      const uri = aiRecorder.uri || aiRecorder.getStatus().url || null;
+      if (!uri) throw new Error(t('defects_voice_empty' as any));
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      const uploaded = await uploadAudioMutation.mutateAsync({ base64, mimeType: "audio/m4a", filename: `defect-${Date.now()}.m4a` });
+      const transcribed = await transcribeMutation.mutateAsync({ audioUrl: uploaded.url, language: "de" });
+      const text = (transcribed.text || "").trim();
+      if (!text) throw new Error(t('defects_voice_empty' as any));
+      applyExtractedDefect(extractDefectFromText(text));
+      setVoiceCreateBusy(null);
+      setShowVoiceCreate(false);
+      setShowCreateModal(true);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      setVoiceCreateBusy(null);
+      Alert.alert(t('alert_fehler'), e?.message || t('defects_voice_failed' as any));
+    }
+  };
+
+  const cancelVoiceCreate = async () => {
+    try { if (voiceRecording) await aiRecorder.stop(); } catch {}
+    try { await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }); } catch {}
+    setVoiceRecording(false);
+    setVoiceCreateBusy(null);
+    setShowVoiceCreate(false);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -599,6 +689,9 @@ export default function DefectsScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>{t('maengel')}</Text>
+        <Pressable onPress={() => setShowVoiceCreate(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
+          <MaterialIcons name="mic" size={23} color={colors.primary} />
+        </Pressable>
         <Pressable
           onPress={async () => {
             try {
@@ -619,6 +712,56 @@ export default function DefectsScreen() {
           <MaterialIcons name="add" size={24} color={colors.primary} />
         </Pressable>
       </View>
+
+      {/* Voice-create defect */}
+      <Modal visible={showVoiceCreate} transparent animationType="slide" onRequestClose={cancelVoiceCreate}>
+        <View style={styles.voiceOverlay}>
+          <View style={[styles.voiceSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('defects_voice_title' as any)}</Text>
+              <Pressable onPress={cancelVoiceCreate} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+            </View>
+
+            {voiceCreateBusy ? (
+              <View style={{ alignItems: "center", paddingVertical: 34, gap: 12 }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={{ color: colors.muted }}>{voiceCreateBusy}</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 460 }}>
+                <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 10 }}>{t('defects_voice_hint' as any)}</Text>
+                <View style={[styles.voiceGuide, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  {[
+                    t('defects_voice_g_floor' as any), t('defects_voice_g_room' as any), t('defects_voice_g_title' as any),
+                    t('defects_voice_g_desc' as any), t('defects_voice_g_gewerk' as any), t('defects_voice_g_assignee' as any),
+                    t('defects_voice_g_due' as any), t('defects_voice_g_prio' as any),
+                  ].map((g, i) => (
+                    <View key={i} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start", marginBottom: 6 }}>
+                      <MaterialIcons name="chevron-right" size={16} color={colors.primary} style={{ marginTop: 1 }} />
+                      <Text style={{ flex: 1, color: colors.foreground, fontSize: 13 }}>{g}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={{ color: colors.muted, fontSize: 12, fontStyle: "italic", marginTop: 12 }}>{t('defects_voice_example' as any)}</Text>
+                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 8, marginBottom: 4 }}>{t('defects_voice_editable' as any)}</Text>
+
+                {voiceRecording && <Text style={{ textAlign: "center", color: "#DC2626", marginTop: 12, fontWeight: "700" }}>● {t('defects_voice_recording' as any)}</Text>}
+                {!voiceRecording ? (
+                  <Pressable onPress={beginVoiceRecording} style={[styles.voiceRecBtn, { backgroundColor: colors.primary }]}>
+                    <MaterialIcons name="mic" size={22} color="#fff" />
+                    <Text style={styles.voiceRecText}>{t('defects_voice_start' as any)}</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable onPress={stopVoiceCreateAndProcess} style={[styles.voiceRecBtn, { backgroundColor: "#DC2626" }]}>
+                    <MaterialIcons name="stop" size={22} color="#fff" />
+                    <Text style={styles.voiceRecText}>{t('defects_voice_stop' as any)}</Text>
+                  </Pressable>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -1407,6 +1550,11 @@ const styles = StyleSheet.create({
   backBtn: { padding: 8, marginRight: 8 },
   title: { fontSize: 22, fontWeight: "700", flex: 1 },
   addBtn: { padding: 8 },
+  voiceOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  voiceSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, paddingBottom: 34 },
+  voiceGuide: { borderWidth: 1, borderRadius: 10, padding: 14 },
+  voiceRecBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52, borderRadius: 12, marginTop: 14 },
+  voiceRecText: { color: "#fff", fontSize: 16, fontWeight: "800" },
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   statBadge: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 0 },
   statNum: { fontSize: 20, fontWeight: "700" },
