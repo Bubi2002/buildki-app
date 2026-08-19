@@ -275,6 +275,10 @@ export default function BautagebuchScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
       }
+      try {
+        const { addExportEntry } = await import("@/lib/pdf-export-history");
+        await addExportEntry({ filename: uri.split("/").pop() || "bautagebuch.pdf", protocolTitle: t('bautagebuch'), templateName: t('bautagebuch_report_tag' as any), projectName: entry.projectName || "", recipients: [], ccRecipients: [], method: "share" });
+      } catch {}
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
     } finally {

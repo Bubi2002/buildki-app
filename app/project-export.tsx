@@ -257,7 +257,7 @@ export default function ProjectExportScreen() {
         return;
       }
 
-      await generateAndSharePdf({
+      const exportedUri = await generateAndSharePdf({
         title: t('project_export_title' as any),
         subtitle: projectName || undefined,
         reportType: t('project_export_title' as any),
@@ -267,6 +267,12 @@ export default function ProjectExportScreen() {
         includeTableOfContents: sections.length > 3,
         accentColor: "#2563EB",
       });
+      if (exportedUri) {
+        try {
+          const { addExportEntry } = await import("@/lib/pdf-export-history");
+          await addExportEntry({ filename: exportedUri.split("/").pop() || "projekt-export.pdf", protocolTitle: t('project_export_title' as any), templateName: t('project_export_title' as any), projectName: projectName || "", recipients: [], ccRecipients: [], method: "share" });
+        } catch {}
+      }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('project_export_failed' as any));
     } finally {

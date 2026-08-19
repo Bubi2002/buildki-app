@@ -390,6 +390,10 @@ export default function TasksScreen() {
           UTI: "com.adobe.pdf",
         });
       }
+      try {
+        const { addExportEntry } = await import("@/lib/pdf-export-history");
+        await addExportEntry({ filename: uri.split("/").pop() || "aufgaben.pdf", protocolTitle: t('tasks_aufgaben' as any), templateName: t('tasks_aufgaben' as any), projectName: "", recipients: [], ccRecipients: [], method: "share" });
+      } catch {}
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
     } finally {

@@ -725,6 +725,10 @@ export default function DefectsScreen() {
               if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
               }
+              try {
+                const { addExportEntry } = await import("@/lib/pdf-export-history");
+                await addExportEntry({ filename: uri.split("/").pop() || "maengelbericht.pdf", protocolTitle: "Mängelbericht", templateName: t('maengel'), projectName: "", recipients: [], ccRecipients: [], method: "share" });
+              } catch {}
             } catch (e: any) {
               Alert.alert(t('alert_fehler'), e?.message || t('defects_pdf_export_fehlgeschlagen' as any));
             } finally {

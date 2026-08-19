@@ -196,6 +196,10 @@ export default function ChecklistsScreen() {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
       }
+      try {
+        const { addExportEntry } = await import("@/lib/pdf-export-history");
+        await addExportEntry({ filename: uri.split("/").pop() || "checkliste.pdf", protocolTitle: checklist.name, templateName: t('checklist_report_tag' as any), projectName: exportDetails?.bauvorhaben || "", recipients: [], ccRecipients: [], method: "share" });
+      } catch {}
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
     } finally {
