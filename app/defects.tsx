@@ -65,6 +65,7 @@ import { trpc } from "@/lib/trpc";
 import * as FileSystem from "expo-file-system/legacy";
 import { extractDefectFromText } from "@/lib/defect-extraction";
 import { PhotoAnnotator } from "@/components/photo-annotator";
+import { BusyOverlay } from "@/components/busy-overlay";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
 import {
@@ -108,6 +109,7 @@ export default function DefectsScreen() {
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [annotatingPhoto, setAnnotatingPhoto] = useState<string | null>(null);
   const [annotateTarget, setAnnotateTarget] = useState<"detail" | "create">("detail");
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
   const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const defectVoiceRecorderState = useAudioRecorderState(defectVoiceRecorder, 250);
@@ -713,7 +715,10 @@ export default function DefectsScreen() {
           <MaterialIcons name="mic" size={23} color={colors.primary} />
         </Pressable>
         <Pressable
+          disabled={exportingPdf}
           onPress={async () => {
+            if (exportingPdf) return;
+            setExportingPdf(true);
             try {
               const html = await generateDefectPdfHtml(projectId, "Projekt", { includePhotos: true });
               const { uri } = await Print.printToFileAsync({ html, base64: false });
@@ -722,9 +727,11 @@ export default function DefectsScreen() {
               }
             } catch (e: any) {
               Alert.alert(t('alert_fehler'), e?.message || t('defects_pdf_export_fehlgeschlagen' as any));
+            } finally {
+              setExportingPdf(false);
             }
           }}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.addBtn, (pressed || exportingPdf) && { opacity: 0.5 }]}
         >
           <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
         </Pressable>
@@ -1269,6 +1276,8 @@ export default function DefectsScreen() {
           }}
         />
       )}
+
+      <BusyOverlay visible={exportingPdf} label={t('pdf_wird_erstellt' as any)} />
 
       {/* Create Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide">

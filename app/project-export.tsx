@@ -10,6 +10,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { BusyOverlay } from "@/components/busy-overlay";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getDefects } from "@/lib/defect-store";
@@ -329,6 +330,7 @@ export default function ProjectExportScreen() {
           <Text style={styles.exportBtnText}>{t('project_export_button' as any)}</Text>
         </Pressable>
       </ScrollView>
+      <BusyOverlay visible={busy} label={t('pdf_wird_erstellt' as any)} />
     </ScreenContainer>
   );
 }

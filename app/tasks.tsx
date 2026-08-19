@@ -24,6 +24,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
+import { BusyOverlay } from "@/components/busy-overlay";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { trpc } from "@/lib/trpc";
 import * as FileSystem from "expo-file-system/legacy";
@@ -63,6 +64,7 @@ export default function TasksScreen() {
   const [newTitle, setNewTitle] = useState("");
   const [newTrade, setNewTrade] = useState("");
   const [newPriority, setNewPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   // Voice-create: speak a task, AI pre-fills the form (still editable).
   const aiRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -306,6 +308,7 @@ export default function TasksScreen() {
   const doneCount = allTodos.filter((t) => t.done).length;
 
   const exportPdf = async () => {
+    if (pdfBusy) return;
     // Respect the currently active filter (open / done / all)
     if (filteredTodos.length === 0) {
       Alert.alert(t('alert_fehler'), t('tasks_keine_aufgaben' as any));
@@ -325,6 +328,7 @@ export default function TasksScreen() {
         ? t('prioritaet_niedrig')
         : t('prioritaet_mittel');
 
+    setPdfBusy(true);
     try {
       const rows = filteredTodos
         .map((item) => {
@@ -388,6 +392,8 @@ export default function TasksScreen() {
       }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -715,6 +721,8 @@ export default function TasksScreen() {
           </View>
         </View>
       </Modal>
+
+      <BusyOverlay visible={pdfBusy} label={t('pdf_wird_erstellt' as any)} />
     </ScreenContainer>
   );
 }

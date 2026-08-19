@@ -40,6 +40,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildPremiumHtml, statBand, premiumIcons, type InfoCol } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
+import { BusyOverlay } from "@/components/busy-overlay";
 
 type BautagebuchEntry = {
   id: string;
@@ -62,6 +63,7 @@ export default function BautagebuchScreen() {
   const router = useRouter();
   const [entries, setEntries] = useState<BautagebuchEntry[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<BautagebuchEntry | null>(null);
   const [manualNotes, setManualNotes] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
@@ -232,7 +234,8 @@ export default function BautagebuchScreen() {
   };
 
   const exportPdf = async (entry: BautagebuchEntry) => {
-    if (!entry.fullReport) return;
+    if (!entry.fullReport || pdfBusy) return;
+    setPdfBusy(true);
     try {
       const esc = (s: string) =>
         String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -274,6 +277,8 @@ export default function BautagebuchScreen() {
       }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -530,6 +535,7 @@ export default function BautagebuchScreen() {
           ))
         )}
       </ScrollView>
+      <BusyOverlay visible={pdfBusy} label={t('pdf_wird_erstellt' as any)} />
     </ScreenContainer>
   );
 }

@@ -25,6 +25,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildPremiumHtml, progressRing, legend, premiumIcons, type InfoCol } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
+import { BusyOverlay } from "@/components/busy-overlay";
 import {
   Checklist,
   ChecklistItem,
@@ -120,12 +121,15 @@ export default function ChecklistsScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const [pdfBusy, setPdfBusy] = useState(false);
   const exportPdf = async (checklist: Checklist, result: ChecklistResult) => {
+    if (pdfBusy) return;
+    if (!checklist.items.length) {
+      Alert.alert(t('alert_fehler'), t('keine_checklisten'));
+      return;
+    }
+    setPdfBusy(true);
     try {
-      if (!checklist.items.length) {
-        Alert.alert(t('alert_fehler'), t('keine_checklisten'));
-        return;
-      }
       const esc = (s: unknown) =>
         String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const branding = await getPdfBranding();
@@ -194,6 +198,8 @@ export default function ChecklistsScreen() {
       }
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -728,6 +734,8 @@ export default function ChecklistsScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      <BusyOverlay visible={pdfBusy} label={t('pdf_wird_erstellt' as any)} />
     </ScreenContainer>
   );
 }
