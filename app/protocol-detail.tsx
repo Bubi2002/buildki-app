@@ -127,6 +127,32 @@ type GeneratedVersion = {
   evidenceIds?: string[];
 };
 
+/**
+ * A [FOTO N] marker sometimes lands inside a markdown table row (the AI puts it
+ * in a cell). Splitting the body on the marker then truncates the row and the
+ * whole table falls back to raw "| … |" text. Lift any photo markers out of
+ * table rows onto their own line right after the row, so the row stays intact
+ * and the photo still renders directly below the table.
+ */
+function liftTableRowPhotos(text: string): string {
+  if (!text || !/\[FOTO\s*\d+\]/i.test(text)) return text;
+  return text
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("|") || !/\[FOTO\s*\d+\]/i.test(trimmed)) return line;
+      const markers: string[] = [];
+      let row = line.replace(/\[FOTO\s*(\d+)\]/gi, (_m, n) => {
+        markers.push(`[FOTO ${n}]`);
+        return "";
+      });
+      // Tidy the cell left behind (double spaces / stray space before a pipe).
+      row = row.replace(/[ \t]{2,}/g, " ").replace(/\s+\|/g, " |").replace(/\|\s{2,}/g, "| ").trimEnd();
+      return markers.length ? `${row}\n${markers.join("\n")}` : line;
+    })
+    .join("\n");
+}
+
 export default function ProtocolDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -2436,7 +2462,7 @@ export default function ProtocolDetailScreen() {
               )}
               {!showSpeakers && (
                 <View>
-                  {displayedProtocolText.split(/(\[FOTO\s*\d+\])/gi).map((part, idx) => {
+                  {liftTableRowPhotos(displayedProtocolText).split(/(\[FOTO\s*\d+\])/gi).map((part, idx) => {
                     const fotoMatch = part.match(/^\[FOTO\s*(\d+)\]$/i);
                     if (fotoMatch) {
                       const photoIdx = parseInt(fotoMatch[1], 10) - 1;
