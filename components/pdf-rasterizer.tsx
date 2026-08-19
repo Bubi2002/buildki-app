@@ -22,7 +22,7 @@ type Props = {
   onDone: (result: RasterResult | null) => void;
 };
 
-export function PdfRasterizer({ pdfUri, label, maxSize = 2000, onDone }: Props) {
+export function PdfRasterizer({ pdfUri, label, maxSize = 1600, onDone }: Props) {
   const stageRef = useRef<View>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
   const finished = useRef(false);
@@ -70,11 +70,19 @@ export function PdfRasterizer({ pdfUri, label, maxSize = 2000, onDone }: Props) 
               source={{ uri: pdfUri }}
               style={{ width: dims.w, height: dims.h }}
               contentFit="fill"
+              cachePolicy="none"
+              allowDownscaling={false}
               onLoad={async () => {
                 try {
-                  // Let the renderer settle before snapshotting.
-                  await new Promise((resolve) => setTimeout(resolve, 150));
-                  const uri = await captureRef(stageRef, { format: "jpg", quality: 0.92, width: dims.w, height: dims.h });
+                  // Wait for two frames + a beat so expo-image has fully
+                  // rasterized the PDF page before we snapshot it — capturing
+                  // too early yields a blurry/half-rendered frame.
+                  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))));
+                  await new Promise((resolve) => setTimeout(resolve, 450));
+                  // No explicit width/height → view-shot captures at the device
+                  // pixel density (≈ view size × screen scale), so the result is
+                  // sharper than a 1:1 point-size capture.
+                  const uri = await captureRef(stageRef, { format: "jpg", quality: 0.95, result: "tmpfile" });
                   finish({ uri, width: dims.w, height: dims.h });
                 } catch {
                   finish(null);
