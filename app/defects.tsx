@@ -103,6 +103,7 @@ export default function DefectsScreen() {
   const [editDescription, setEditDescription] = useState("");
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailTab, setDetailTab] = useState<"details" | "verlauf">("details");
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
@@ -398,6 +399,7 @@ export default function DefectsScreen() {
   const openDetail = async (defect: Defect) => {
     setSelectedDefect(defect);
     setEditingDefect(false);
+    setDetailTab("details");
     const history = await getDefectHistory(defect.id);
     setDefectHistoryEntries(history);
     setShowDetailModal(true);
@@ -897,6 +899,21 @@ export default function DefectsScreen() {
                   </View>
                 </View>
 
+                <View style={[styles.detailTabs, { borderBottomColor: colors.border }]}>
+                  {(["details", "verlauf"] as const).map((tab) => (
+                    <Pressable
+                      key={tab}
+                      onPress={() => setDetailTab(tab)}
+                      style={[styles.detailTab, detailTab === tab && { borderBottomColor: colors.primary }]}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: detailTab === tab ? colors.primary : colors.muted }}>
+                        {tab === "details" ? t('defects_tab_details' as any) : t('verlauf')}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {detailTab === "details" && (<>
                 {editingDefect ? (
                   <TextInput
                     value={editDescription}
@@ -1190,8 +1207,10 @@ export default function DefectsScreen() {
                       : t('defects_nachpruefung_planen' as any)}
                   </Text>
                 </Pressable>
+                </>)}
 
                 {/* History Timeline */}
+                {detailTab === "verlauf" && (
                 <View style={{ marginBottom: 20 }}>
                   <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('verlauf')}</Text>
                   {defectHistoryEntries.length === 0 ? (
@@ -1215,6 +1234,7 @@ export default function DefectsScreen() {
                     ))
                   )}
                 </View>
+                )}
 
                 <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center" }}>
                   {t('defects_erstellt' as any)}: {new Date(selectedDefect.createdAt).toLocaleString("de-DE")}
@@ -1550,6 +1570,8 @@ const styles = StyleSheet.create({
   backBtn: { padding: 8, marginRight: 8 },
   title: { fontSize: 22, fontWeight: "700", flex: 1 },
   addBtn: { padding: 8 },
+  detailTabs: { flexDirection: "row", borderBottomWidth: 1, marginTop: 4, marginBottom: 16 },
+  detailTab: { paddingVertical: 10, marginRight: 22, borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1 },
   voiceOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   voiceSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, paddingBottom: 34 },
   voiceGuide: { borderWidth: 1, borderRadius: 10, padding: 14 },
