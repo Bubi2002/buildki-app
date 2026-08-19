@@ -1617,6 +1617,23 @@ return (
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
+          <Pressable
+            onPress={() => router.push("/get-started" as any)}
+            style={({ pressed }) => [{
+              flexDirection: "row", alignItems: "center", padding: 14, marginTop: 10,
+              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
+              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#5DADE215", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+              <MaterialIcons name="rocket-launch" size={20} color="#5DADE2" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('getstarted_title' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('getstarted_subtitle' as any)}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
         </View>
 
 {/* Feature-Toggles */}

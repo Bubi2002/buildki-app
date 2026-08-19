@@ -154,6 +154,18 @@ const TOOL_GROUPS: ToolGroup[] = [
 export default function AIWorkbenchScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+
+  // Show the "Loslegen" get-started screen once (after the feature onboarding).
+  useEffect(() => {
+    (async () => {
+      try {
+        if (await AsyncStorage.getItem("getstarted_seen")) return;
+        if (!(await AsyncStorage.getItem("onboarding_complete"))) return; // onboarding runs first
+        router.push("/get-started" as any);
+      } catch {}
+    })();
+  }, []);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
