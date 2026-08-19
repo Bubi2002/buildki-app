@@ -1194,6 +1194,34 @@ return (
           </View>
         </View>
 
+        {/* PDF-Branding */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdfbranding')}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('firmenlogo_und_kopffusszeile_fuer')}</Text>
+          <Pressable
+            onPress={() => router.push("/pdf-branding" as any)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pdflayout_anpassen')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('logo_firmendaten_farben')}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/export-history" as any)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
+          >
+            <MaterialIcons name="history" size={22} color={colors.primary} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('exportverlauf')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('alle_gesendeten_pdfs_anzeigen')}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
+        </View>
+
         {/* Wasserzeichen / Firmenstempel */}
         <WatermarkSection colors={colors} />
 
@@ -1374,56 +1402,6 @@ return (
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('sprache_language')}</Text>
               <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('deutsch_english_franais')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-        </View>
-
-        {/* PDF-Branding */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdfbranding')}</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('firmenlogo_und_kopffusszeile_fuer')}</Text>
-          <Pressable
-            onPress={() => router.push("/pdf-branding" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pdflayout_anpassen')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('logo_firmendaten_farben')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/export-history" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
-          >
-            <MaterialIcons name="history" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('exportverlauf')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('alle_gesendeten_pdfs_anzeigen')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/calendar-view" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
-          >
-            <MaterialIcons name="calendar-today" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('kalenderansicht')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('protokolle_in_timeline_anzeigen')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/photo-compare" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
-          >
-            <MaterialIcons name="compare" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('vorhernachher')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('fotovergleiche_fu00fcr_fortschrittsdoku')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
