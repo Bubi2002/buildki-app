@@ -64,6 +64,7 @@ import { generatePositionCode } from "@/lib/position-numbering";
 import { trpc } from "@/lib/trpc";
 import * as FileSystem from "expo-file-system/legacy";
 import { extractDefectFromText } from "@/lib/defect-extraction";
+import { PhotoAnnotator } from "@/components/photo-annotator";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
 import {
@@ -105,6 +106,7 @@ export default function DefectsScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
+  const [annotatingPhoto, setAnnotatingPhoto] = useState<string | null>(null);
   const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
   const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const defectVoiceRecorderState = useAudioRecorderState(defectVoiceRecorder, 250);
@@ -401,6 +403,19 @@ export default function DefectsScreen() {
     const history = await getDefectHistory(defect.id);
     setDefectHistoryEntries(history);
     setShowDetailModal(true);
+  };
+
+  // Append a (possibly annotated) photo to the open defect.
+  const finalizeDefectPhoto = async (uri: string) => {
+    if (!selectedDefect) return;
+    const updatedDefect = { ...selectedDefect, photos: [...selectedDefect.photos, uri] };
+    await saveDefect(updatedDefect);
+    await recordPhotoAdded(selectedDefect.id);
+    setSelectedDefect(updatedDefect);
+    const history = await getDefectHistory(selectedDefect.id);
+    setDefectHistoryEntries(history);
+    await loadDefects();
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const startEditDefect = () => {
@@ -992,15 +1007,7 @@ export default function DefectsScreen() {
                           quality: 0.8,
                         });
                         if (!result.canceled && result.assets[0]) {
-                          const updatedPhotos = [...selectedDefect.photos, result.assets[0].uri];
-                          const updatedDefect = { ...selectedDefect, photos: updatedPhotos };
-                          await saveDefect(updatedDefect);
-                          await recordPhotoAdded(selectedDefect.id);
-                          setSelectedDefect(updatedDefect);
-                          const history = await getDefectHistory(selectedDefect.id);
-                          setDefectHistoryEntries(history);
-                          await loadDefects();
-                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          setAnnotatingPhoto(result.assets[0].uri);
                         }
                       }}
                       style={({ pressed }) => [{
@@ -1017,17 +1024,10 @@ export default function DefectsScreen() {
                     <Pressable
                       onPress={async () => {
                         const picked = await pickImagesWithSource({ t, multiple: true });
-                        if (picked.length > 0) {
-                          const newUris = picked.map((image) => image.uri);
-                          const updatedPhotos = [...selectedDefect.photos, ...newUris];
-                          const updatedDefect = { ...selectedDefect, photos: updatedPhotos };
-                          await saveDefect(updatedDefect);
-                          for (const _ of newUris) await recordPhotoAdded(selectedDefect.id);
-                          setSelectedDefect(updatedDefect);
-                          const history = await getDefectHistory(selectedDefect.id);
-                          setDefectHistoryEntries(history);
-                          await loadDefects();
-                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        if (picked.length === 1) {
+                          setAnnotatingPhoto(picked[0].uri);
+                        } else if (picked.length > 1) {
+                          for (const image of picked) await finalizeDefectPhoto(image.uri);
                         }
                       }}
                       style={({ pressed }) => [{
@@ -1243,6 +1243,20 @@ export default function DefectsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Mark up a newly added photo before saving it */}
+      {annotatingPhoto && (
+        <PhotoAnnotator
+          visible={!!annotatingPhoto}
+          photoUri={annotatingPhoto}
+          onClose={() => setAnnotatingPhoto(null)}
+          onSave={async (_annotations, flattenedUri) => {
+            const uri = flattenedUri || annotatingPhoto;
+            setAnnotatingPhoto(null);
+            await finalizeDefectPhoto(uri);
+          }}
+        />
+      )}
 
       {/* Create Modal */}
       <Modal visible={showCreateModal} transparent animationType="slide">
