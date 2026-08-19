@@ -107,6 +107,7 @@ export default function DefectsScreen() {
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [annotatingPhoto, setAnnotatingPhoto] = useState<string | null>(null);
+  const [annotateTarget, setAnnotateTarget] = useState<"detail" | "create">("detail");
   const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
   const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const defectVoiceRecorderState = useAudioRecorderState(defectVoiceRecorder, 250);
@@ -256,13 +257,17 @@ export default function DefectsScreen() {
       quality: 0.85,
     });
     if (!result.canceled && result.assets[0]) {
-      setNewPhotos((photos) => [...photos, result.assets[0].uri]);
+      setAnnotateTarget("create");
+      setAnnotatingPhoto(result.assets[0].uri);
     }
   };
 
   const addNewDefectLibraryPhotos = async () => {
     const picked = await pickImagesWithSource({ t, multiple: true });
-    if (picked.length > 0) {
+    if (picked.length === 1) {
+      setAnnotateTarget("create");
+      setAnnotatingPhoto(picked[0].uri);
+    } else if (picked.length > 1) {
       setNewPhotos((photos) => [...photos, ...picked.map((image) => image.uri)]);
     }
   };
@@ -1007,6 +1012,7 @@ export default function DefectsScreen() {
                           quality: 0.8,
                         });
                         if (!result.canceled && result.assets[0]) {
+                          setAnnotateTarget("detail");
                           setAnnotatingPhoto(result.assets[0].uri);
                         }
                       }}
@@ -1025,6 +1031,7 @@ export default function DefectsScreen() {
                       onPress={async () => {
                         const picked = await pickImagesWithSource({ t, multiple: true });
                         if (picked.length === 1) {
+                          setAnnotateTarget("detail");
                           setAnnotatingPhoto(picked[0].uri);
                         } else if (picked.length > 1) {
                           for (const image of picked) await finalizeDefectPhoto(image.uri);
@@ -1252,8 +1259,13 @@ export default function DefectsScreen() {
           onClose={() => setAnnotatingPhoto(null)}
           onSave={async (_annotations, flattenedUri) => {
             const uri = flattenedUri || annotatingPhoto;
+            const target = annotateTarget;
             setAnnotatingPhoto(null);
-            await finalizeDefectPhoto(uri);
+            if (target === "create") {
+              setNewPhotos((photos) => [...photos, uri]);
+            } else {
+              await finalizeDefectPhoto(uri);
+            }
           }}
         />
       )}
