@@ -30,6 +30,7 @@ import { SignaturePad } from "@/components/signature-pad";
 
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { WebView } from "react-native-webview";
 import { matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
@@ -1602,12 +1603,8 @@ export default function ProtocolDetailScreen() {
 
   const addPhotoFromGallery = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-      });
-      if (!result.canceled && result.assets.length > 0) {
+      const picked = await pickImagesWithSource({ t, multiple: true });
+      if (picked.length > 0) {
         // Copy photos to persistent app storage to ensure they remain readable
         const photoDir = `${FileSystem.documentDirectory}photos/`;
         const dirInfo = await FileSystem.getInfoAsync(photoDir);
@@ -1615,7 +1612,7 @@ export default function ProtocolDetailScreen() {
           await FileSystem.makeDirectoryAsync(photoDir, { intermediates: true });
         }
         const persistedUris: string[] = [];
-        for (const asset of result.assets) {
+        for (const asset of picked) {
           try {
             const filename = `photo-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
             const destUri = `${photoDir}${filename}`;
