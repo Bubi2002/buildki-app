@@ -422,6 +422,8 @@ export class DocumentAIService {
   private buildAnalysisPrompt(request: DocumentUploadRequest): string {
     return `Analysiere dieses Dokument (${request.fileType.toUpperCase()}: "${request.fileName}") für das Bauprojekt "${request.projectName || ""}".
 
+Wenn es sich um einen Bauplan / Grundriss / Plansatz handelt: Die Textebene besteht oft nur aus verstreuten Vermaßungszahlen, Koordinaten und wenigen Beschriftungen über mehrere Seiten hinweg. Werte ALLE Seiten aus und extrahiere möglichst vollständig: alle Raumnamen mit ihren Flächen (m²), alle Geschossbezeichnungen (KG, UG, EG, 1. OG, 2. OG, DG, Staffelgeschoss), den Maßstab (z. B. 1:100), die Objektadresse, sowie Legenden- und Raumstempel-Texte. Zahlen ohne Einheit sind in der Regel Maße oder Koordinaten und dürfen NICHT als Räume interpretiert werden. Nenne im summary die tatsächliche Zahl gefundener Räume und Geschosse.
+
 Extrahiere folgende Informationen im JSON-Format:
 {
   "summary": "Kurze Zusammenfassung des Dokuments (max 2 Sätze)",
