@@ -20,7 +20,7 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as DocumentPicker from "expo-document-picker";
+import { pickDocumentWithSource } from "@/lib/import-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
@@ -96,19 +96,18 @@ export default function DocumentAIScreen() {
     }
 
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
+      const picked = await pickDocumentWithSource({
+        t,
+        documentTypes: [
           "application/pdf",
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           "image/*",
         ],
-        copyToCacheDirectory: true,
       });
+      if (!picked) return;
 
-      if (result.canceled || !result.assets || result.assets.length === 0) return;
-
-      const file = result.assets[0];
+      const file = picked;
       const fileType = documentAI.detectFileType(file.name);
       if (fileType === "other") {
         Alert.alert(t('document_ai_format_nicht_unterstuetzt' as any), t('document_ai_format_hinweis' as any));
