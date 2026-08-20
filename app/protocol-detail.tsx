@@ -1748,6 +1748,9 @@ export default function ProtocolDetailScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
       >
         {/* Tags */}
         {showTagEditor && (
