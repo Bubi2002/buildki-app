@@ -726,7 +726,7 @@ export default function ProtocolDetailScreen() {
         Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
         return;
       }
-      const ContactsModule = await import("expo-contacts");
+      const ContactsModule = await import("expo-contacts/legacy");
       const { status } = await ContactsModule.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
@@ -803,7 +803,7 @@ export default function ProtocolDetailScreen() {
         Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
         return;
       }
-      const ContactsModule = await import("expo-contacts");
+      const ContactsModule = await import("expo-contacts/legacy");
       const { status } = await ContactsModule.requestPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
