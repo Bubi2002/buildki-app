@@ -2366,7 +2366,8 @@ export default function ProtocolDetailScreen() {
                 value={editedText}
                 onChangeText={setEditedText}
                 multiline
-                style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, textAlignVertical: "top" }]}
+                scrollEnabled
+                style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, maxHeight: 320, textAlignVertical: "top" }]}
               />
               <Modal visible={tableEdit !== null} transparent animationType="slide" onRequestClose={() => setTableEdit(null)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
