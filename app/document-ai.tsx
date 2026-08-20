@@ -114,6 +114,25 @@ export default function DocumentAIScreen() {
         return;
       }
 
+      // Plans have a sparse, mostly-numeric text layer — Document AI is built
+      // for text documents. Steer plan-like files to the Räume tool, but let
+      // the user analyse anyway.
+      if (/\b(plan|plansatz|grundriss|lageplan|ansicht|schnitt)\b/i.test(file.name)) {
+        const proceed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            t('document_ai_plan_hint_title' as any),
+            t('document_ai_plan_hint_msg' as any),
+            [
+              { text: t('document_ai_plan_open_rooms' as any), onPress: () => { resolve(false); if (activeProject) router.push(`/rooms?projectId=${activeProject.id}` as any); } },
+              { text: t('document_ai_plan_analyze_anyway' as any), onPress: () => resolve(true) },
+              { text: t('cancel'), style: "cancel", onPress: () => resolve(false) },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) },
+          );
+        });
+        if (!proceed) return;
+      }
+
       setAnalysisPhase("preparing");
       setAnalysisError(null);
       setShowResult(false);
@@ -312,6 +331,9 @@ export default function DocumentAIScreen() {
             {t('document_ai_upload_hint' as any)}
           </Text>
         </Pressable>
+        <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8, lineHeight: 17 }}>
+          {t('document_ai_scope_hint' as any)}
+        </Text>
       </View>
 
       {analysisError && (
