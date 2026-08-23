@@ -53,21 +53,38 @@ export function markdownReportToHtml(markdown: string): string {
   return html;
 }
 
-/** CSS for the report body. Pass an accent colour (defaults to blue). */
-export function markdownReportStyles(accent = "#2563EB"): string {
+/** CSS for the report body — calm navy house style with numbered section
+ * blocks and a short accent underline (matches the premium report look). */
+export function markdownReportStyles(accent = "#0E7490"): string {
+  const NAVY = "#0F2744";
   return `
-    .md-report h1 { font-size: 22px; color: ${accent}; margin: 0 0 8px; font-weight: 800; }
+    .md-report { counter-reset: sec; }
+    .md-report h1 { font-size: 20px; color: ${NAVY}; margin: 0 0 8px; font-weight: 800; }
     .md-report h2 {
-      font-size: 15px; color: #111827; font-weight: 800;
-      background: ${accent}14; border-left: 4px solid ${accent};
-      padding: 8px 12px; margin: 22px 0 12px; border-radius: 0 4px 4px 0;
+      counter-increment: sec;
+      position: relative;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; color: ${NAVY}; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      margin: 26px 0 14px; padding: 0 0 10px;
+      border-bottom: 1px solid #e8ecf1;
     }
-    .md-report h3 { font-size: 13px; color: ${accent}; margin: 16px 0 4px; font-weight: 700; }
-    .md-report p { font-size: 12.5px; line-height: 1.6; margin: 6px 0; color: #1F2937; }
-    .md-report strong { color: #111827; font-weight: 700; }
-    .md-report em { color: #374151; font-style: italic; }
+    .md-report h2::before {
+      content: counter(sec, decimal-leading-zero);
+      background: ${NAVY}; color: #fff; font-size: 12px; font-weight: 800;
+      width: 28px; height: 28px; border-radius: 6px; flex: none;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .md-report h2::after {
+      content: ""; position: absolute; left: 38px; bottom: -1px;
+      width: 46px; height: 2px; background: ${accent};
+    }
+    .md-report h3 { font-size: 13px; color: #334155; margin: 16px 0 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+    .md-report p { font-size: 12.5px; line-height: 1.6; margin: 6px 0; color: #334155; }
+    .md-report strong { color: ${NAVY}; font-weight: 700; }
+    .md-report em { color: #475569; font-style: italic; }
     .md-report ul { margin: 6px 0; padding-left: 20px; }
-    .md-report li { font-size: 12.5px; line-height: 1.6; margin: 3px 0; color: #1F2937; }
-    .md-report hr.rule { border: none; border-top: 1px solid #E5E7EB; margin: 14px 0; }
+    .md-report li { font-size: 12.5px; line-height: 1.6; margin: 3px 0; color: #334155; }
+    .md-report hr.rule { border: none; border-top: 1px solid #eef1f5; margin: 16px 0; }
   `;
 }

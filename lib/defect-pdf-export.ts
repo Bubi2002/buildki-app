@@ -113,7 +113,9 @@ export async function generateDefectPdfHtml(
   const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const NAVY = "#0F2744";
-  const logoTag = branding.logoUri ? `<img src="${branding.logoUri}" alt="" />` : "";
+  const { resolveBrandingLogo } = await import("./pdf-premium");
+  const logoDataUri = await resolveBrandingLogo(branding);
+  const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : "";
   const coName = esc(branding.companyName || "BuildKI");
   const coSub = esc(branding.headerText || "Mängeldokumentation");
   const footerLeft = escCss(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"));

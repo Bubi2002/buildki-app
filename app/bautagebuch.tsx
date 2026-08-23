@@ -38,7 +38,7 @@ import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
-import { buildPremiumHtml, statBand, premiumIcons, type InfoCol } from "@/lib/pdf-premium";
+import { buildPremiumHtml, statBand, premiumIcons, resolveBrandingLogo, type InfoCol } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 import { BusyOverlay } from "@/components/busy-overlay";
 
@@ -247,6 +247,7 @@ export default function BautagebuchScreen() {
       });
       const branding = await getPdfBranding();
       const accent = branding.accentColor || "#0E7490";
+      const logoDataUri = await resolveBrandingLogo(branding);
       const ic = premiumIcons(accent);
       const reportHtml = markdownReportToHtml(entry.fullReport);
 
@@ -269,6 +270,7 @@ export default function BautagebuchScreen() {
         info,
         body: `${band}<div class="md-report" style="margin-top:18px;">${reportHtml}</div>`,
         extraCss: markdownReportStyles(accent),
+        logoDataUri,
         footerLeft: entry.projectName ? `Projekt: ${entry.projectName}` : undefined,
       });
       const { uri } = await Print.printToFileAsync({ html, base64: false });

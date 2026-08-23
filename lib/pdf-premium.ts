@@ -7,9 +7,29 @@
  * to `buildPremiumHtml`, which wraps it in the navy header band, title,
  * optional icon info-row, consistent styles and a repeating page footer.
  */
+import * as FileSystem from "expo-file-system/legacy";
 import type { PdfBranding } from "./pdf-branding-store";
 
 const NAVY = "#0F2744";
+
+/**
+ * The branding logo is stored as a local file URI, which expo-print's WebView
+ * cannot load in an <img>. Convert it to a base64 data URI so it actually
+ * shows up in the exported PDF. Returns "" when there is no (readable) logo.
+ */
+export async function resolveBrandingLogo(branding: { logoUri?: string | null } | null | undefined): Promise<string> {
+  const uri = branding?.logoUri;
+  if (!uri) return "";
+  if (uri.startsWith("data:")) return uri;
+  try {
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    const ext = (uri.split(".").pop() || "").toLowerCase();
+    const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+    return `data:${mime};base64,${base64}`;
+  } catch {
+    return "";
+  }
+}
 
 export const escHtml = (s: unknown) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -86,9 +106,11 @@ export function buildPremiumHtml(opts: {
   body: string;
   footerLeft?: string;
   extraCss?: string;
+  /** Pre-resolved base64 data URI of the logo (see resolveBrandingLogo). */
+  logoDataUri?: string;
 }): string {
-  const { branding, accentColor, title, subtitle, reportTag, info, body, extraCss } = opts;
-  const logoTag = branding.logoUri ? `<img src="${branding.logoUri}" alt="" />` : "";
+  const { branding, accentColor, title, subtitle, reportTag, info, body, extraCss, logoDataUri } = opts;
+  const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : "";
   const coName = escHtml(branding.companyName || "BuildKI");
   const coSub = escHtml(reportTag || branding.headerText || "Baudokumentation");
   const footerLeft = escCss(opts.footerLeft || branding.footerText || "BuildKI");

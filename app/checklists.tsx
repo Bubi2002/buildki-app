@@ -23,7 +23,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
-import { buildPremiumHtml, progressRing, legend, premiumIcons, type InfoCol } from "@/lib/pdf-premium";
+import { buildPremiumHtml, progressRing, legend, premiumIcons, resolveBrandingLogo, type InfoCol } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 import { BusyOverlay } from "@/components/busy-overlay";
 import {
@@ -190,6 +190,7 @@ export default function ChecklistsScreen() {
         subtitle: `${esc(result.inspector)} &nbsp;·&nbsp; ${dateStr}`,
         info,
         body: `${progressBand}${table}${legendHtml}`,
+        logoDataUri: await resolveBrandingLogo(branding),
         footerLeft: exportDetails?.bauvorhaben ? `Projekt: ${exportDetails.bauvorhaben}` : undefined,
       });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
