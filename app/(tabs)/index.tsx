@@ -169,6 +169,7 @@ export default function AIWorkbenchScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<LiveStats>(createEmptyLiveStats);
   const [roomSummaries, setRoomSummaries] = useState<{ id: string; name: string; floorId: string; floorName: string; floorNumber: number; open: number }[]>([]);
@@ -476,6 +477,34 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
+        {/* ─── Home Action Cards ──────────────────────────────────────────── */}
+        <View style={styles.homeCards}>
+          {[
+            { icon: "mic", tint: "#EF4444", title: t('neue_aufnahme'), desc: t('home_desc_record' as any), onPress: () => router.push('/(tabs)/record' as any) },
+            { icon: "add-business", tint: "#34D399", title: t('neues_projekt'), desc: t('home_desc_project' as any), onPress: () => router.push('/projects' as any) },
+            { icon: "warning-amber", tint: "#F59E0B", title: t('maengel'), desc: t('home_desc_defects' as any), onPress: () => navigateModule('/defects') },
+            { icon: "directions-walk", tint: "#5DADE2", title: t('rundgang'), desc: t('home_desc_rundgang' as any), onPress: () => router.push('/(tabs)/projects' as any) },
+            { icon: (showAll ? "expand-less" : "apps"), tint: "#A78BFA", title: t('alle_werkzeuge' as any), desc: t('home_desc_tools' as any), onPress: () => setShowAll((v) => !v) },
+          ].map((c) => (
+            <Pressable
+              key={c.title}
+              onPress={c.onPress}
+              style={({ pressed }) => [styles.homeCard, { opacity: pressed ? 0.75 : 1 }]}
+            >
+              <View style={[styles.homeCardIcon, { backgroundColor: c.tint + "22", borderColor: c.tint + "55" }]}>
+                <MaterialIcons name={c.icon as any} size={26} color={c.tint} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.homeCardTitle}>{c.title}</Text>
+                <Text style={styles.homeCardDesc} numberOfLines={2}>{c.desc}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#4A5F78" />
+            </Pressable>
+          ))}
+        </View>
+
+        {showAll && (
+        <>
         {/* ─── Live Stats Overview ────────────────────────────────────────── */}
         <View style={styles.statsSection}>
           <Text style={styles.statsSectionTitle}>{t('index_uebersicht' as any)}</Text>
@@ -772,6 +801,8 @@ export default function AIWorkbenchScreen() {
             </View>
           </View>
         ))}
+        </>
+        )}
 
       </ScrollView>
     </ScreenContainer>
@@ -1292,5 +1323,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F0F4F8',
     textAlign: 'center',
+  },
+  homeCards: {
+    marginTop: 4,
+    marginBottom: 8,
+    gap: 10,
+  },
+  homeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  homeCardIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F0F4F8',
+  },
+  homeCardDesc: {
+    fontSize: 12.5,
+    color: '#8FA3B8',
+    marginTop: 2,
+    lineHeight: 17,
   },
 });
