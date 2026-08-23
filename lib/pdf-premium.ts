@@ -37,9 +37,9 @@ const escCss = (s: unknown) =>
   String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
 /** Small line icons (stroke = accent color). */
-export function premiumIcons(accent: string) {
+export function premiumIcons(accent: string, size = 14) {
   const s = (inner: string) =>
-    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
   return {
     building: s(`<rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 8h5a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5"/><path d="M7 7h.01M7 11h.01M7 15h.01M10 7h.01M10 11h.01M10 15h.01"/>`),
     layers: s(`<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>`),
@@ -50,6 +50,12 @@ export function premiumIcons(accent: string) {
     check: s(`<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>`),
     hash: s(`<path d="M9 3L7 21M17 3l-2 18M4 8.5h16M3 15.5h16"/>`),
     clipboard: s(`<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h4"/>`),
+    cloud: s(`<path d="M7 18h9a4 4 0 0 0 .4-7.98A6 6 0 0 0 5.5 9.5 3.5 3.5 0 0 0 6 18h1z"/>`),
+    thermometer: s(`<path d="M12 4a2 2 0 0 1 2 2v7.5a4 4 0 1 1-4 0V6a2 2 0 0 1 2-2z"/>`),
+    droplet: s(`<path d="M12 3s6 6.5 6 10.5a6 6 0 0 1-12 0C6 9.5 12 3 12 3z"/>`),
+    wind: s(`<path d="M3 8h11a3 3 0 1 0-3-3M3 16h14a3 3 0 1 1-3 3M3 12h18"/>`),
+    calendarClock: s(`<rect x="3" y="4" width="13" height="10" rx="2"/><path d="M3 8h13M8 2v4M13 2v4"/><circle cx="18" cy="16" r="4"/><path d="M18 14.5V16l1 1"/>`),
+    people: s(`<circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5.5M17 20a5.5 5.5 0 0 0-3-4.9"/>`),
   };
 }
 
@@ -83,12 +89,12 @@ export function legend(items: { label: string; color: string; filled?: boolean }
     .join("")}</div>`;
 }
 
-/** A light band of stat cards (value + label, coloured top-border). */
-export function statBand(items: { value: string | number; label: string; color: string }[]): string {
+/** A light band of stat cards (optional icon + value + label, coloured top-border). */
+export function statBand(items: { value: string | number; label: string; color: string; icon?: string }[]): string {
   return `<div class="summary-band"><div class="stats-grid">${items
     .map(
       (i) =>
-        `<div class="stat-box" style="border-top:3px solid ${i.color};"><div class="stat-number" style="color:${i.color};">${escHtml(i.value)}</div><div class="stat-label">${escHtml(i.label)}</div></div>`,
+        `<div class="stat-box" style="border-top:3px solid ${i.color};">${i.icon ? `<div class="stat-icon">${i.icon}</div>` : ""}<div class="stat-number" style="color:${i.color};">${escHtml(i.value)}</div><div class="stat-label">${escHtml(i.label)}</div></div>`,
     )
     .join("")}</div></div>`;
 }
@@ -151,7 +157,8 @@ export function buildPremiumHtml(opts: {
   .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px; margin: 18px 0 2px; }
   .stats-grid { display: flex; gap: 10px; }
   .stat-box { flex: 1; min-width: 68px; padding: 12px; border-radius: 10px; text-align: center; background: #fff; border: 1px solid #e8ecf1; }
-  .stat-number { font-size: 22px; font-weight: 800; }
+  .stat-icon { display: flex; justify-content: center; margin-bottom: 6px; }
+  .stat-number { font-size: 20px; font-weight: 800; }
   .stat-label { font-size: 9px; color: #64748b; margin-top: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
   .progress-band { display: flex; align-items: center; gap: 20px; background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px 20px; margin: 18px 0 2px; }
   .progress-band .pmeta { flex: 1; }

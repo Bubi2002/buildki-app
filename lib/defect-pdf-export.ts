@@ -113,9 +113,14 @@ export async function generateDefectPdfHtml(
   const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const NAVY = "#0F2744";
-  const { resolveBrandingLogo } = await import("./pdf-premium");
+  const { resolveBrandingLogo, premiumIcons } = await import("./pdf-premium");
   const logoDataUri = await resolveBrandingLogo(branding);
   const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : "";
+  const siTotal = premiumIcons("#334155", 22).clipboard;
+  const siOffen = premiumIcons("#DC2626", 22).warning;
+  const siProg = premiumIcons("#D97706", 22).calendarClock;
+  const siDone = premiumIcons("#16A34A", 22).check;
+  const siHigh = premiumIcons("#B91C1C", 22).warning;
   const coName = esc(branding.companyName || "BuildKI");
   const coSub = esc(branding.headerText || "Mängeldokumentation");
   const footerLeft = escCss(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"));
@@ -150,7 +155,8 @@ export async function generateDefectPdfHtml(
   .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px; margin: 18px 0 2px; }
   .stats-grid { display: flex; gap: 10px; }
   .stat-box { flex: 1; min-width: 70px; padding: 12px; border-radius: 10px; text-align: center; background: #fff; border: 1px solid #e8ecf1; }
-  .stat-number { font-size: 22px; font-weight: 800; }
+  .stat-icon { display: flex; justify-content: center; margin-bottom: 6px; }
+  .stat-number { font-size: 20px; font-weight: 800; }
   .stat-label { font-size: 9px; color: #64748b; margin-top: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
   .legend { display: flex; gap: 22px; flex-wrap: wrap; padding: 12px 2px 4px; }
   .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #475569; font-weight: 600; }
@@ -188,11 +194,11 @@ export async function generateDefectPdfHtml(
     </div>
 
     <div class="summary-band"><div class="stats-grid">
-      <div class="stat-box" style="border-top: 3px solid #334155;"><div class="stat-number" style="color: #334155;">${stats.total}</div><div class="stat-label">Gesamt</div></div>
-      <div class="stat-box" style="border-top: 3px solid #DC2626;"><div class="stat-number" style="color: #DC2626;">${stats.offen}</div><div class="stat-label">Offen</div></div>
-      <div class="stat-box" style="border-top: 3px solid #D97706;"><div class="stat-number" style="color: #D97706;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
-      <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
-      <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
+      <div class="stat-box" style="border-top: 3px solid #334155;"><div class="stat-icon">${siTotal}</div><div class="stat-number" style="color: #334155;">${stats.total}</div><div class="stat-label">Gesamt</div></div>
+      <div class="stat-box" style="border-top: 3px solid #DC2626;"><div class="stat-icon">${siOffen}</div><div class="stat-number" style="color: #DC2626;">${stats.offen}</div><div class="stat-label">Offen</div></div>
+      <div class="stat-box" style="border-top: 3px solid #D97706;"><div class="stat-icon">${siProg}</div><div class="stat-number" style="color: #D97706;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
+      <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-icon">${siDone}</div><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
+      <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-icon">${siHigh}</div><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
     </div></div>
 
     <div class="legend">
