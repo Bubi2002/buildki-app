@@ -6,7 +6,7 @@
  * Ergebnisse fließen in den Knowledge Layer.
  */
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
 import { DocumentAnalysisDetail } from "@/components/document-analysis-detail";
+import { PdfRasterizer, type RasterResult } from "@/components/pdf-rasterizer";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
@@ -48,6 +49,9 @@ export default function DocumentAIScreen() {
   const [currentResult, setCurrentResult] = useState<DocumentAnalysisResult | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
+  const [rasterPdfUri, setRasterPdfUri] = useState<string | null>(null);
+  const rasterResolveRef = useRef<((r: RasterResult | null) => void) | null>(null);
+  const lastPickedFile = useRef<{ uri: string; name: string; size?: number } | null>(null);
 
   const analysisMutation = trpc.analysis.analyzePhoto.useMutation();
   const uploadPhotoMutation = trpc.analysis.uploadPhoto.useMutation();
@@ -89,6 +93,66 @@ export default function DocumentAIScreen() {
     documentAI.setAnalyzeDocumentMutation(async (input: any) => await analyzeDocumentText(input));
   }, [analyzePhoto, analyzeDocumentText]);
 
+  // Rasterize the first page of a PDF to an image, awaited via a promise.
+  const rasterizePdfFirstPage = (uri: string): Promise<RasterResult | null> =>
+    new Promise((resolve) => {
+      rasterResolveRef.current = resolve;
+      setRasterPdfUri(uri);
+    });
+
+  const handleRasterDone = (result: RasterResult | null) => {
+    setRasterPdfUri(null);
+    const resolve = rasterResolveRef.current;
+    rasterResolveRef.current = null;
+    resolve?.(result);
+  };
+
+  // Analyse a plan PDF visually: rasterize page 1 → upload → vision analysis.
+  // Far better than the near-empty plan text layer.
+  const analyzePlanViaVision = async (file: { uri: string; name: string; size?: number }) => {
+    if (!activeProject) return;
+    setAnalysisPhase("preparing");
+    setAnalysisError(null);
+    setShowResult(false);
+    setCurrentResult(null);
+    try {
+      const raster = await rasterizePdfFirstPage(file.uri);
+      if (!raster) throw new DocumentAnalysisError("RASTER_FAILED", t('document_ai_analyse_fehler_fallback' as any));
+      setAnalysisPhase("uploading");
+      const base64 = await FileSystem.readAsStringAsync(raster.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const uploaded = await uploadPhotoMutation.mutateAsync({
+        base64,
+        mimeType: "image/jpeg",
+        filename: file.name.replace(/\.pdf$/i, ".jpg"),
+      });
+      setAnalysisPhase("analyzing");
+      const analysisResult = await documentAI.analyzeDocument({
+        projectId: activeProject.id,
+        projectName: activeProject.name,
+        fileUri: file.uri,
+        fileName: file.name,
+        fileType: "pdf",
+        fileSize: file.size,
+        remoteUri: uploaded.url,
+        forceVision: true,
+        category: "plan",
+      });
+      setCurrentResult(analysisResult);
+      setShowResult(true);
+      await loadDocuments();
+    } catch (error) {
+      const message = error instanceof DocumentAnalysisError
+        ? error.userMessage
+        : error instanceof Error
+          ? error.message
+          : t('document_ai_analyse_fehler_fallback' as any);
+      setAnalysisError(message);
+      Alert.alert(t('document_ai_analyse_nicht_moeglich' as any), message);
+    } finally {
+      setAnalysisPhase("idle");
+    }
+  };
+
   const handlePickDocument = async () => {
     if (!activeProject) {
       Alert.alert(t('document_ai_kein_projekt' as any), t('document_ai_bitte_projekt' as any));
@@ -108,6 +172,7 @@ export default function DocumentAIScreen() {
       if (!picked) return;
 
       const file = picked;
+      lastPickedFile.current = { uri: file.uri, name: file.name, size: file.size };
       const fileType = documentAI.detectFileType(file.name);
       if (fileType === "other") {
         Alert.alert(t('document_ai_format_nicht_unterstuetzt' as any), t('document_ai_format_hinweis' as any));
@@ -117,20 +182,23 @@ export default function DocumentAIScreen() {
       // Plans have a sparse, mostly-numeric text layer — Document AI is built
       // for text documents. Steer plan-like files to the Räume tool, but let
       // the user analyse anyway.
-      if (/\b(plan|plansatz|grundriss|lageplan|ansicht|schnitt)\b/i.test(file.name)) {
-        const proceed = await new Promise<boolean>((resolve) => {
+      if (fileType === "pdf" && /\b(plan|plansatz|grundriss|lageplan|ansicht|schnitt)\b/i.test(file.name)) {
+        const choice = await new Promise<"rooms" | "vision" | "cancel">((resolve) => {
           Alert.alert(
             t('document_ai_plan_hint_title' as any),
             t('document_ai_plan_hint_msg' as any),
             [
-              { text: t('document_ai_plan_open_rooms' as any), onPress: () => { resolve(false); if (activeProject) router.push(`/rooms?projectId=${activeProject.id}` as any); } },
-              { text: t('document_ai_plan_analyze_anyway' as any), onPress: () => resolve(true) },
-              { text: t('cancel'), style: "cancel", onPress: () => resolve(false) },
+              { text: t('document_ai_plan_open_rooms' as any), onPress: () => { resolve("rooms"); if (activeProject) router.push(`/rooms?projectId=${activeProject.id}` as any); } },
+              { text: t('document_ai_plan_analyze_anyway' as any), onPress: () => resolve("vision") },
+              { text: t('cancel'), style: "cancel", onPress: () => resolve("cancel") },
             ],
-            { cancelable: true, onDismiss: () => resolve(false) },
+            { cancelable: true, onDismiss: () => resolve("cancel") },
           );
         });
-        if (!proceed) return;
+        // Plans: analyse the rendered page with the image AI, not the sparse
+        // text layer. Rooms/Cancel end the flow here.
+        if (choice === "vision") { await analyzePlanViaVision(file); return; }
+        return;
       }
 
       setAnalysisPhase("preparing");
@@ -174,6 +242,20 @@ export default function DocumentAIScreen() {
         : error instanceof Error
           ? error.message
           : t('document_ai_analyse_fehler_fallback' as any);
+      // A PDF without a usable text layer (scan or plan) can still be analysed
+      // visually — offer to rasterize it and run the image AI.
+      if (error instanceof DocumentAnalysisError && error.code === "EMPTY_TEXT" && lastPickedFile.current?.name?.toLowerCase().endsWith(".pdf")) {
+        const f = lastPickedFile.current;
+        Alert.alert(
+          t('document_ai_analyse_nicht_moeglich' as any),
+          message,
+          [
+            { text: t('document_ai_plan_analyze_anyway' as any), onPress: () => { void analyzePlanViaVision(f); } },
+            { text: t('cancel'), style: "cancel" },
+          ],
+        );
+        return;
+      }
       setAnalysisError(message);
       Alert.alert(t('document_ai_analyse_nicht_moeglich' as any), message);
     } finally {
@@ -377,6 +459,12 @@ export default function DocumentAIScreen() {
           />
         )}
       </View>
+
+      <PdfRasterizer
+        pdfUri={rasterPdfUri}
+        label={t('document_ai_phase_auswerten' as any)}
+        onDone={handleRasterDone}
+      />
     </ScreenContainer>
   );
 }

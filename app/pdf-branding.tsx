@@ -156,83 +156,14 @@ export default function PdfBrandingScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {/* Logo Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('firmenlogo')}</Text>
-          <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('wird_in_der_kopfzeile')}</Text>
-
-          {branding.logoUri ? (
-            <View style={[styles.logoPreview, { borderColor: colors.border }]}>
-              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}>
-                <Text style={{ fontSize: 12, color: colors.muted }}>{t('logo_ausgewaehlt')}</Text>
-                <MaterialIcons name="check-circle" size={24} color={colors.success} style={{ marginTop: 8 }} />
-              </View>
-              <View style={{ flexDirection: "row", gap: 8, padding: 12 }}>
-                <Pressable onPress={pickLogo} style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.primary + "10", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t('aendern')}</Text>
-                </Pressable>
-                <Pressable onPress={removeLogo} style={({ pressed }) => [{ flex: 1, paddingVertical: 8, borderRadius: 0, backgroundColor: colors.error + "10", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.error }}>{t('entfernen')}</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <Pressable
-              onPress={pickLogo}
-              style={({ pressed }) => [styles.logoUpload, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="add-photo-alternate" size={32} color={colors.muted} />
-              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 8 }}>{t('logo_hochladen')}</Text>
-              <Text style={{ fontSize: 11, color: colors.muted }}>{t('empfohlen_300x100px_pngjpg')}</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Company Info */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_company')}</Text>
-          <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('erscheinen_in_der_fusszeile')}</Text>
-
-          <TextInput
-            value={branding.companyName}
-            onChangeText={(v) => updateField("companyName", v)}
-            placeholder={t('firmenname')}
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
-          <TextInput
-            value={branding.companyAddress}
-            onChangeText={(v) => updateField("companyAddress", v)}
-            placeholder={t('adresse')}
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <TextInput
-              value={branding.companyPhone}
-              onChangeText={(v) => updateField("companyPhone", v)}
-              placeholder={t('telefon')}
-              placeholderTextColor={colors.muted}
-              keyboardType="phone-pad"
-              style={[styles.input, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-            />
-            <TextInput
-              value={branding.companyEmail}
-              onChangeText={(v) => updateField("companyEmail", v)}
-              placeholder={t('email')}
-              placeholderTextColor={colors.muted}
-              keyboardType="email-address"
-              style={[styles.input, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-            />
-          </View>
-          <TextInput
-            value={branding.companyWebsite}
-            onChangeText={(v) => updateField("companyWebsite", v)}
-            placeholder={t('website')}
-            placeholderTextColor={colors.muted}
-            keyboardType="url"
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
+        {/* Company identity (logo, name, address, contact) is managed centrally
+            in Settings → Firmendaten and mirrored into this store automatically,
+            so it isn't duplicated here. */}
+        <View style={[styles.section, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
+          <MaterialIcons name="info-outline" size={20} color={colors.primary} />
+          <Text style={{ flex: 1, fontSize: 12, color: colors.muted, lineHeight: 17 }}>
+            {t('pdf_company_managed_hint' as any)}
+          </Text>
         </View>
 
         {/* Header/Footer Text */}

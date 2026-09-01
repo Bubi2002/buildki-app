@@ -43,6 +43,7 @@ export function screenPointToNormalized(
   scale: number,
   translation: Point,
 ): Point {
+  "worklet";
   const safeScale = Math.max(1, scale);
   const localX = (point.x - stage.width / 2 - translation.x) / safeScale + stage.width / 2;
   const localY = (point.y - stage.height / 2 - translation.y) / safeScale + stage.height / 2;

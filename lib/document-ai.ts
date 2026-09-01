@@ -116,6 +116,12 @@ export interface DocumentUploadRequest {
   remoteUri?: string;
   category?: DocumentCategory;
   additionalContext?: string;
+  /**
+   * Force the vision (image) analysis path even for a PDF. Used for plans:
+   * the page is rasterized to an image (remoteUri) and analysed visually,
+   * which works far better than the sparse plan text layer.
+   */
+  forceVision?: boolean;
 }
 
 export class DocumentAnalysisError extends Error {
@@ -243,6 +249,10 @@ export class DocumentAIService {
     let result: DocumentAnalysisResult;
     try {
       if (request.fileType === "image") {
+        result = await this.analyzeImageDocument(documentId, request, startTime);
+      } else if (request.forceVision && request.remoteUri) {
+        // Plan PDF rasterized to an image → analyse it visually instead of
+        // relying on the near-empty plan text layer.
         result = await this.analyzeImageDocument(documentId, request, startTime);
       } else {
         const extraction = await extractDocumentText({

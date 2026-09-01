@@ -18,6 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTeamContacts, saveTeamContact, deleteTeamContact, updateTeamContact, TeamContact } from "@/lib/team-contacts";
+import { getPdfBranding, savePdfBranding } from "@/lib/pdf-branding-store";
 import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
 import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-profiles";
 // delegations removed from settings
@@ -66,6 +67,8 @@ type CompanySettings = {
   companyName: string;
   companyAddress: string;
   companyPhone: string;
+  companyEmail: string;
+  companyWebsite: string;
   logoBase64: string;
   logoUri: string;
 };
@@ -91,6 +94,8 @@ const DEFAULT_COMPANY: CompanySettings = {
   companyName: "",
   companyAddress: "",
   companyPhone: "",
+  companyEmail: "",
+  companyWebsite: "",
   logoBase64: "",
   logoUri: "",
 };
@@ -814,12 +819,38 @@ export default function SettingsScreen() {
     }
   }
 
+  // Mirror the shared company identity into the PDF-branding store so both the
+  // classic protocol PDF and the premium reports use one set of company data.
+  async function mirrorCompanyToBranding(c: CompanySettings) {
+    await savePdfBranding({
+      companyName: c.companyName,
+      companyAddress: c.companyAddress,
+      companyPhone: c.companyPhone,
+      companyEmail: c.companyEmail,
+      companyWebsite: c.companyWebsite,
+      logoUri: c.logoUri || null,
+    });
+  }
+
   async function loadCompanySettings() {
     try {
       const stored = await AsyncStorage.getItem("company-settings");
-      if (stored) {
-        setCompany({ ...DEFAULT_COMPANY, ...JSON.parse(stored) });
-      }
+      const base: CompanySettings = { ...DEFAULT_COMPANY, ...(stored ? JSON.parse(stored) : {}) };
+      // One-time unify: pull any fields that previously only lived in the
+      // PDF-branding store (e.g. email/website) so nothing is lost.
+      const branding = await getPdfBranding();
+      const merged: CompanySettings = {
+        companyName: base.companyName || branding.companyName || "",
+        companyAddress: base.companyAddress || branding.companyAddress || "",
+        companyPhone: base.companyPhone || branding.companyPhone || "",
+        companyEmail: base.companyEmail || branding.companyEmail || "",
+        companyWebsite: base.companyWebsite || branding.companyWebsite || "",
+        logoBase64: base.logoBase64 || "",
+        logoUri: base.logoUri || branding.logoUri || "",
+      };
+      setCompany(merged);
+      await AsyncStorage.setItem("company-settings", JSON.stringify(merged));
+      await mirrorCompanyToBranding(merged);
     } catch (error) {
       console.error("Error loading company settings:", error);
     }
@@ -829,6 +860,7 @@ export default function SettingsScreen() {
     try {
       await AsyncStorage.setItem("protokoll-settings", JSON.stringify(settings));
       await AsyncStorage.setItem("company-settings", JSON.stringify(company));
+      await mirrorCompanyToBranding(company);
 
       // Schedule or cancel reminders based on settings
       if (settings.remindersEnabled) {
@@ -1192,20 +1224,58 @@ return (
               keyboardType="phone-pad"
             />
           </View>
+
+          {/* Company Email */}
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="email" size={18} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>
+                {t('email')}
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={company.companyEmail}
+              onChangeText={(v) => updateCompany("companyEmail", v)}
+              placeholder="info@firma.de"
+              placeholderTextColor={colors.muted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Company Website */}
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="language" size={18} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>
+                {t('website')}
+              </Text>
+            </View>
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              value={company.companyWebsite}
+              onChangeText={(v) => updateCompany("companyWebsite", v)}
+              placeholder="www.firma.de"
+              placeholderTextColor={colors.muted}
+              keyboardType="url"
+              autoCapitalize="none"
+            />
+          </View>
         </View>
 
         {/* PDF-Branding */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdfbranding')}</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('firmenlogo_und_kopffusszeile_fuer')}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('pdf_design_desc' as any)}</Text>
           <Pressable
             onPress={() => router.push("/pdf-branding" as any)}
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
           >
-            <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} style={{ marginRight: 12 }} />
+            <MaterialIcons name="palette" size={22} color={colors.primary} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pdflayout_anpassen')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('logo_firmendaten_farben')}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('pdf_design_subtitle' as any)}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1629,7 +1699,7 @@ return (
           <View style={{ height: 12 }} />
 
           <Pressable
-            onPress={() => router.push("/legal?section=datenschutz" as any)}
+            onPress={() => router.push("/legal" as any)}
             style={({ pressed }) => [{
               flexDirection: "row", alignItems: "center", padding: 14,
               backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
@@ -1637,45 +1707,11 @@ return (
             }]}
           >
             <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="privacy-tip" size={20} color={colors.primary} />
+              <MaterialIcons name="gavel" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_privacy_policy' as any)}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_privacy_policy_desc' as any)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/legal?section=ki-hinweis" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
-              borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginBottom: 8,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.warning + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="psychology" size={20} color={colors.warning} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_ai_notice' as any)}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_ai_transparency_desc' as any)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/legal?section=impressum" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
-              borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginBottom: 8,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.muted + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="business" size={20} color={colors.muted} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('settings_imprint_terms' as any)}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_imprint_terms_desc' as any)}</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('legal_rechtliches' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>{t('settings_legal_open_desc' as any)}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
