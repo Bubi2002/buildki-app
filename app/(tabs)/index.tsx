@@ -487,32 +487,6 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
-        {/* ─── Was möchtest du tun? (Chooser) ─────────────────────────────── */}
-        <Text style={styles.chooserTitle}>{t('index_was_moechtest_du_tun' as any)}</Text>
-        <View style={styles.homeCards}>
-          {[
-            { icon: "mic", tint: "#EF4444", title: t('neue_aufnahme'), desc: t('home_desc_record' as any), onPress: () => router.push('/(tabs)/record' as any) },
-            { icon: "add-business", tint: "#34D399", title: t('neues_projekt'), desc: t('home_desc_project' as any), onPress: () => router.push('/projects' as any) },
-            { icon: "warning-amber", tint: "#F59E0B", title: t('maengel'), desc: t('home_desc_defects' as any), onPress: () => navigateModule('/defects') },
-            { icon: "directions-walk", tint: "#5DADE2", title: t('rundgang'), desc: t('home_desc_rundgang' as any), onPress: () => router.push('/(tabs)/projects' as any) },
-          ].map((c) => (
-            <Pressable
-              key={c.title}
-              onPress={c.onPress}
-              style={({ pressed }) => [styles.homeCard, { opacity: pressed ? 0.75 : 1 }]}
-            >
-              <View style={[styles.homeCardIcon, { backgroundColor: c.tint + "22", borderColor: c.tint + "55" }]}>
-                <MaterialIcons name={c.icon as any} size={26} color={c.tint} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.homeCardTitle}>{c.title}</Text>
-                <Text style={styles.homeCardDesc} numberOfLines={2}>{c.desc}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={22} color="#4A5F78" />
-            </Pressable>
-          ))}
-        </View>
-
         {/* ─── Räume (oben): cross-tool hub — Mängel / Aufgaben / Checklisten je Raum ─── */}
         {selectedProject && (
               <View style={styles.roomsHome}>
