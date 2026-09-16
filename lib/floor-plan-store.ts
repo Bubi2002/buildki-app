@@ -25,7 +25,7 @@ export type PlanPin = {
   projectId: string;
   x: number; // 0-1 relative position
   y: number; // 0-1 relative position
-  type: "photo" | "defect" | "note" | "protocol" | "chapter";
+  type: "photo" | "defect" | "note" | "protocol" | "chapter" | "task";
   label: string;
   description?: string;
   photoUri?: string;

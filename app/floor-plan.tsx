@@ -60,6 +60,7 @@ const PIN_COLORS: Record<PlanPin["type"], string> = {
   note: "#FF9800",
   protocol: "#4CAF50",
   chapter: "#9C27B0",
+  task: "#818CF8",
 };
 
 const PIN_ICONS: Record<PlanPin["type"], string> = {
@@ -68,6 +69,7 @@ const PIN_ICONS: Record<PlanPin["type"], string> = {
   note: "edit-note",
   protocol: "description",
   chapter: "bookmark",
+  task: "task-alt",
 };
 
 export default function FloorPlanScreen() {
@@ -291,15 +293,18 @@ export default function FloorPlanScreen() {
 
   const handlePlanTap = (point: Point) => {
     if (!selectedPlan) return;
+    // Map the container-normalized tap onto the actually-visible plan rectangle
+    // (contentFit="contain" letterbox) so the pin lands exactly where tapped.
+    const img = containerPointToImage(point);
     const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
-      const distance = Math.hypot(pin.x - point.x, pin.y - point.y);
+      const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
       return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
     }, null);
     if (nearestPin && nearestPin.distance <= 0.045) {
       setShowPinDetail(nearestPin.pin);
       return;
     }
-    setPendingPin(point);
+    setPendingPin(img);
     setPinLabel("");
     setPinDescription("");
     setPinType("note");
@@ -307,6 +312,14 @@ export default function FloorPlanScreen() {
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+  };
+
+  const startDrawingFromModal = () => {
+    setShowPinModal(false);
+    setPendingPin(null);
+    // Close the pin sheet first, then open the annotator (iOS won't show two
+    // modals at once).
+    setTimeout(() => setDrawingPlan(true), 350);
   };
 
   const savePin = async () => {
@@ -375,10 +388,27 @@ export default function FloorPlanScreen() {
   const aspectRatio = imageSize.width / imageSize.height;
   const containerHeight = Math.min(containerWidth / aspectRatio, SCREEN_HEIGHT * 0.5);
 
+  // Rectangle the plan image actually occupies inside the canvas after
+  // contentFit="contain" letterboxing. Pins/taps are mapped to THIS rect so
+  // markers land exactly where the user tapped (no offset from the padding).
+  const _contAspect = containerWidth / containerHeight;
+  const dispW = aspectRatio > _contAspect ? containerWidth : containerHeight * aspectRatio;
+  const dispH = aspectRatio > _contAspect ? containerWidth / aspectRatio : containerHeight;
+  const offX = (containerWidth - dispW) / 2;
+  const offY = (containerHeight - dispH) / 2;
+
+  const containerPointToImage = (point: Point): Point => {
+    const clampN = (v: number) => Math.min(1, Math.max(0, v));
+    return {
+      x: clampN((point.x * containerWidth - offX) / dispW),
+      y: clampN((point.y * containerHeight - offY) / dispH),
+    };
+  };
+
   const filteredPins = filterType === "all" ? pins : pins.filter((p) => p.type === filterType);
 
   const pinTypeOptions: { type: PlanPin["type"]; label: string; icon: string; color: string }[] = [
-    { type: "chapter", label: t('floor_plan_typ_kapitel' as any), icon: "bookmark", color: PIN_COLORS.chapter },
+    { type: "task", label: t('floor_plan_typ_aufgabe' as any), icon: "task-alt", color: PIN_COLORS.task },
     { type: "note", label: t('floor_plan_typ_notiz' as any), icon: "edit-note", color: PIN_COLORS.note },
     { type: "defect", label: t('floor_plan_typ_mangel' as any), icon: "report-problem", color: PIN_COLORS.defect },
     { type: "photo", label: t('floor_plan_typ_foto' as any), icon: "photo-camera", color: PIN_COLORS.photo },
@@ -527,16 +557,7 @@ export default function FloorPlanScreen() {
           )}
         </View>
         <View style={{ flexDirection: "row", gap: 4 }}>
-          {/* Draw / mark up the plan */}
-          {selectedPlan && (
-            <Pressable
-              onPress={() => setDrawingPlan(true)}
-              accessibilityLabel={t('floor_plan_draw' as any)}
-              style={({ pressed }) => [styles.headerAction, { backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}
-            >
-              <MaterialIcons name="gesture" size={20} color={colors.primary} />
-            </Pressable>
-          )}
+          {/* Draw/annotate now lives in the "Neue Markierung" sheet (tap the plan). */}
           {/* View mode toggle */}
           <Pressable
             onPress={() => setViewMode(viewMode === "plan" ? "list" : "plan")}
@@ -655,8 +676,8 @@ export default function FloorPlanScreen() {
                       style={[
                         styles.pin,
                         {
-                          left: pin.x * containerWidth - 14,
-                          top: pin.y * containerHeight - 32,
+                          left: offX + pin.x * dispW - 14,
+                          top: offY + pin.y * dispH - 32,
                         },
                       ]}
                     >
@@ -671,8 +692,8 @@ export default function FloorPlanScreen() {
                       style={[
                         styles.pin,
                         {
-                          left: pendingPin.x * containerWidth - 14,
-                          top: pendingPin.y * containerHeight - 32,
+                          left: offX + pendingPin.x * dispW - 14,
+                          top: offY + pendingPin.y * dispH - 32,
                         },
                       ]}
                     >
@@ -838,6 +859,21 @@ export default function FloorPlanScreen() {
                   </Text>
                 </Pressable>
               ))}
+              {/* Draw/annotate directly from the marking area */}
+              <Pressable
+                key="draw"
+                onPress={startDrawingFromModal}
+                style={({ pressed }) => [
+                  styles.typeBtn,
+                  { borderColor: colors.border, backgroundColor: colors.surface },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <View style={[styles.typeBtnIcon, { backgroundColor: colors.primary + "30" }]}>
+                  <MaterialIcons name="gesture" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.typeBtnText, { color: colors.primary }]}>{t('floor_plan_draw' as any)}</Text>
+              </Pressable>
             </View>
 
             <TextInput
@@ -1208,6 +1244,7 @@ export default function FloorPlanScreen() {
       <PdfRasterizer
         pdfUri={pdfToConvert}
         label={t('floor_plan_pdf_converting' as any)}
+        maxSize={2600}
         onDone={handlePdfConverted}
       />
     </ScreenContainer>
