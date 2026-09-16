@@ -234,7 +234,19 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       encoding: FileSystem.EncodingType.Base64,
     });
     
-    const ext = "m4a";
+    // Derive the extension from the actual mime type. Uploading a video with a
+    // ".m4a" name makes the transcription service reject it — it must match the
+    // real container (mp4/mov) so the service can pull the audio track.
+    const mt = (job.mimeType || "").toLowerCase();
+    const ext = mt.includes("quicktime") || mt.includes("mov")
+      ? "mov"
+      : mt.includes("mp4") || mt.includes("mpeg4")
+        ? "mp4"
+        : mt.includes("wav")
+          ? "wav"
+          : mt.includes("mp3") || mt.includes("mpeg")
+            ? "mp3"
+            : "m4a";
     const uploadResult = await withRetry(
       () => apiClient.upload(base64, job.mimeType, `recording-${Date.now()}.${ext}`),
       "Upload",
