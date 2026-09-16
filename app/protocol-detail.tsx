@@ -18,6 +18,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { MarkdownText } from "@/components/markdown-text";
 import { useColors } from "@/hooks/use-colors";
+import { PlanWithPins } from "@/components/plan-with-pins";
+import { getFloorPlans, getPlanPins, type FloorPlan, type PlanPin } from "@/lib/floor-plan-store";
+import { getDefects, type Defect } from "@/lib/defect-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
@@ -160,6 +163,8 @@ export default function ProtocolDetailScreen() {
   const colors = useColors();
   const router = useRouter();
   const [protocol, setProtocol] = useState<Protocol | null>(null);
+  const [projPlans, setProjPlans] = useState<{ plan: FloorPlan; pins: PlanPin[] }[]>([]);
+  const [projDefects, setProjDefects] = useState<Defect[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTranscription, setShowTranscription] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
@@ -259,6 +264,21 @@ export default function ProtocolDetailScreen() {
   async function loadTemplates() {
     setAvailableTemplates(await getAllProtocolTemplates());
   }
+
+  // Load the project's tool results (plans with pins, defects) to embed here.
+  useEffect(() => {
+    const pid = protocol?.projectId;
+    if (!pid) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [fp, def] = await Promise.all([getFloorPlans(pid), getDefects(pid)]);
+        const withPins = await Promise.all(fp.map(async (p) => ({ plan: p, pins: await getPlanPins(p.id) })));
+        if (!cancelled) { setProjPlans(withPins); setProjDefects(def); }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [protocol?.projectId]);
 
   // Auto-refresh while protocol is still processing in background
   useEffect(() => {
@@ -2215,6 +2235,55 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
+        {/* Werkzeuge & Projekt-Ergebnisse */}
+        {protocol?.projectId && (
+          <View style={styles.section}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <MaterialIcons name="build" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('werkzeuge')}</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+              {[
+                { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
+                { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
+                { icon: "photo-library", label: t('index_tool_fotos' as any), route: "/photo-gallery", color: "#EC407A" },
+                { icon: "checklist", label: t('index_tool_checklisten' as any), route: "/checklists", color: "#AB47BC" },
+                { icon: "timer", label: t('index_tool_zeiterfassung' as any), route: "/time-tracking", color: "#FF5722" },
+              ].map((tool) => (
+                <Pressable
+                  key={tool.route}
+                  onPress={() => router.push(`${tool.route}?projectId=${protocol.projectId}` as any)}
+                  style={({ pressed }) => [styles.toolChip, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={tool.icon as any} size={20} color={tool.color} />
+                  <Text style={[styles.toolChipText, { color: colors.foreground }]}>{tool.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {projPlans.slice(0, 1).map(({ plan, pins }) => (
+              <Pressable key={plan.id} onPress={() => router.push(`/floor-plan?projectId=${protocol.projectId}` as any)} style={{ marginTop: 14 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted, marginBottom: 6 }}>{plan.name}{pins.length ? `  ·  ${pins.length}` : ""}</Text>
+                <PlanWithPins plan={plan} pins={pins} width={SCREEN_WIDTH - 64} maxHeight={320} />
+              </Pressable>
+            ))}
+
+            {projDefects.length > 0 && (
+              <Pressable onPress={() => router.push(`/defects?projectId=${protocol.projectId}` as any)} style={[styles.embedRow, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 12 }]}>
+                <MaterialIcons name="warning" size={18} color="#F97316" />
+                <Text style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 14 }}>{projDefects.length} {t('maengel')}</Text>
+                <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+              </Pressable>
+            )}
+
+            <Pressable onPress={() => router.push(`/project-overview?projectId=${protocol.projectId}` as any)} style={[styles.embedRow, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "12", marginTop: 8 }]}>
+              <MaterialIcons name="visibility" size={18} color={colors.primary} />
+              <Text style={{ flex: 1, color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('project_overview_title' as any)}</Text>
+              <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
+            </Pressable>
+          </View>
+        )}
+
         {/* KI-Werkzeuge */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
@@ -3714,6 +3783,25 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
+  },
+  toolChip: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    width: 78,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  toolChipText: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  embedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 13,
+    borderWidth: 1,
+    borderRadius: 10,
   },
   photoGrid: {
     flexDirection: "row",

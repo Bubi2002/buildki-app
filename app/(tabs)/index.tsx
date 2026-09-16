@@ -752,6 +752,13 @@ export default function AIWorkbenchScreen() {
               ))}
             </View>
             <Pressable
+              onPress={() => navigateModule('/project-overview')}
+              style={({ pressed }) => [styles.dossierViewBtn, { opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="visibility" size={19} color="#5DADE2" />
+              <Text style={styles.dossierViewBtnText}>{t('project_overview_title' as any)}</Text>
+            </Pressable>
+            <Pressable
               onPress={() => navigateModule('/project-export')}
               style={({ pressed }) => [styles.dossierBtn, { opacity: pressed ? 0.85 : 1 }]}
             >
@@ -1277,6 +1284,18 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   dossierBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  dossierViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  dossierViewBtnText: { color: '#5DADE2', fontSize: 14, fontWeight: '700' },
   helpRow: {
     flexDirection: 'row',
     gap: 8,
