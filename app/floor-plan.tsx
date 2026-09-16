@@ -41,7 +41,7 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
-import { generatePdfPageImages, type PdfPageImage } from "@/lib/pdf-pages";
+import { splitPdfIntoPages } from "@/lib/pdf-pages";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 import { persistFloorPlanMedia } from "@/lib/floor-plan-media";
 import {
@@ -113,6 +113,7 @@ export default function FloorPlanScreen() {
   const [protocolPickerPin, setProtocolPickerPin] = useState<PlanPin | null>(null);
   const [protocolOptions, setProtocolOptions] = useState<FloorPlanProtocolReference[]>([]);
   const [loadingProtocols, setLoadingProtocols] = useState(false);
+  const rasterResolveRef = useRef<((r: RasterResult | null) => void) | null>(null);
   const mountedRef = useRef(true);
   const plansLoadRequestRef = useRef(0);
   const loadRequestRef = useRef(0);
@@ -177,8 +178,18 @@ export default function FloorPlanScreen() {
     }, [loadPlans])
   );
 
+  // Rasterize one PDF (single page) to a sharp image via the PdfRasterizer.
+  const rasterizeOne = (uri: string): Promise<RasterResult | null> =>
+    new Promise((resolve) => {
+      rasterResolveRef.current = resolve;
+      setPdfToConvert(uri);
+    });
+
   // Turn rendered PDF pages into one plan each.
-  const createPlansFromPages = async (pages: PdfPageImage[], baseName: string) => {
+  const createPlansFromPages = async (
+    pages: { uri: string; width: number; height: number }[],
+    baseName: string,
+  ) => {
     let firstId: string | null = null;
     const stamp = Date.now();
     for (let i = 0; i < pages.length; i++) {
@@ -233,18 +244,27 @@ export default function FloorPlanScreen() {
           const isPdf = file.mimeType === "application/pdf" || /\.pdf$/i.test(file.name);
           if (isPdf) {
             const baseName = file.name.replace(/\.[^/.]+$/, "");
-            // Multi-page: render every PDF page to its own plan (native module).
+            // Multi-page: split the PDF into single-page PDFs (pdf-lib), then
+            // rasterize each one sharply via the existing expo-image rasterizer.
+            let pageUris: string[] = [];
             setConverting(true);
             try {
-              const pages = await generatePdfPageImages(file.uri);
-              if (pages.length > 0) {
-                await createPlansFromPages(pages, baseName);
-                return;
-              }
+              pageUris = await splitPdfIntoPages(file.uri);
             } finally {
               setConverting(false);
             }
-            // Fallback (module unavailable): rasterize page 1 via expo-image.
+            if (pageUris.length > 0) {
+              const rasters: { uri: string; width: number; height: number }[] = [];
+              for (const uri of pageUris) {
+                const r = await rasterizeOne(uri);
+                if (r) rasters.push({ uri: r.uri, width: r.width, height: r.height });
+              }
+              if (rasters.length > 0) {
+                await createPlansFromPages(rasters, baseName);
+                return;
+              }
+            }
+            // Single page (or split failed): rasterize the original directly.
             setPdfConvertName(baseName);
             setPdfToConvert(file.uri);
             return;
@@ -266,6 +286,13 @@ export default function FloorPlanScreen() {
   const handlePdfConverted = (result: RasterResult | null) => {
     const name = pdfConvertName;
     setPdfToConvert(null);
+    // Multi-page queue: hand the result back to the awaiting rasterizeOne().
+    if (rasterResolveRef.current) {
+      const resolve = rasterResolveRef.current;
+      rasterResolveRef.current = null;
+      resolve(result);
+      return;
+    }
     if (!result) {
       Alert.alert(t('alert_fehler' as any), t('floor_plan_pdf_convert_failed' as any));
       return;

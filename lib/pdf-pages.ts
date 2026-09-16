@@ -1,33 +1,53 @@
-import { Platform } from "react-native";
-
-export type PdfPageImage = { uri: string; width: number; height: number };
+import * as FileSystem from "expo-file-system/legacy";
 
 /**
- * Render every page of a PDF into an image using the native
- * `react-native-pdf-thumbnail` module (iOS PDFKit / Android PdfRenderer).
+ * Split a multi-page PDF into individual single-page PDF files (pure JS via
+ * pdf-lib — no native module). Each returned file can then be rasterized to a
+ * sharp image with the existing expo-image based PdfRasterizer.
  *
- * Returns [] when the module isn't available (e.g. Expo Go / web / not yet in
- * the native build) or on any error, so callers can fall back to the
- * single-page expo-image rasterizer.
+ * Returns [] on any failure so callers can fall back to single-page import.
  */
-export async function generatePdfPageImages(pdfUri: string): Promise<PdfPageImage[]> {
-  if (Platform.OS === "web") return [];
+export async function splitPdfIntoPages(pdfUri: string): Promise<string[]> {
   try {
-    const mod: any = await import("react-native-pdf-thumbnail");
-    const PdfThumbnail = mod?.default ?? mod;
-    if (!PdfThumbnail?.generateAllPages) return [];
-    // Android sometimes needs a plain path; iOS accepts the file:// URI.
-    const path = Platform.OS === "android" ? pdfUri.replace(/^file:\/\//, "") : pdfUri;
-    const results = await PdfThumbnail.generateAllPages(path, 80);
-    if (!Array.isArray(results)) return [];
-    return results
-      .map((r: any) => ({
-        uri: String(r?.uri || ""),
-        width: Number(r?.width) || 0,
-        height: Number(r?.height) || 0,
-      }))
-      .filter((r: PdfPageImage) => r.uri);
+    const { PDFDocument } = await import("pdf-lib");
+    const base64 = await FileSystem.readAsStringAsync(pdfUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const src = await PDFDocument.load(base64, { ignoreEncryption: true });
+    const count = src.getPageCount();
+    if (count <= 1) return []; // single page → let the normal path handle it
+
+    const dir = `${FileSystem.cacheDirectory}pdf-pages/`;
+    const info = await FileSystem.getInfoAsync(dir);
+    if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+
+    const stamp = Date.now();
+    const uris: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const out = await PDFDocument.create();
+      const [page] = await out.copyPages(src, [i]);
+      out.addPage(page);
+      const pageB64 = await out.saveAsBase64();
+      const uri = `${dir}page-${stamp}-${i}.pdf`;
+      await FileSystem.writeAsStringAsync(uri, pageB64, { encoding: FileSystem.EncodingType.Base64 });
+      uris.push(uri);
+    }
+    return uris;
   } catch {
     return [];
+  }
+}
+
+/** Number of pages in a PDF (0 on failure). */
+export async function getPdfPageCount(pdfUri: string): Promise<number> {
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const base64 = await FileSystem.readAsStringAsync(pdfUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const src = await PDFDocument.load(base64, { ignoreEncryption: true });
+    return src.getPageCount();
+  } catch {
+    return 0;
   }
 }
