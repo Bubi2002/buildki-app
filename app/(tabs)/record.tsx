@@ -868,6 +868,53 @@ export default function RecordScreen() {
     }
   };
 
+  // Import a video from the gallery and turn it into a protocol: the video is
+  // run through the same upload + transcription + protocol pipeline as a normal
+  // recording (its spoken content becomes the protocol text).
+  const importVideoFromGallery = async () => {
+    try {
+      if (!selectedProject) {
+        setShowProjectPicker(true);
+        Alert.alert(t('record_select_project_title' as any), t('record_process_needs_project' as any));
+        return;
+      }
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsMultipleSelection: false,
+        quality: 1,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+
+      // Reading very large videos as base64 can exhaust memory — keep it short.
+      if (asset.fileSize && asset.fileSize > 100 * 1024 * 1024) {
+        Alert.alert(t('hinweis'), t('record_video_too_large_msg' as any));
+        return;
+      }
+
+      // Persist a copy so the source survives after the picker cache is cleared.
+      const videoDir = `${FileSystem.documentDirectory}videos/`;
+      const dirInfo = await FileSystem.getInfoAsync(videoDir);
+      if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(videoDir, { intermediates: true });
+      const isMov = /\.mov$/i.test(asset.uri) || asset.mimeType === "video/quicktime";
+      const ext = isMov ? "mov" : "mp4";
+      const mime = isMov ? "video/quicktime" : (asset.mimeType || "video/mp4");
+      const dest = `${videoDir}video-${Date.now()}.${ext}`;
+      await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
+      setIsProcessing(true);
+      setProcessingSource("audio");
+      await processRecording(dest, mime);
+    } catch (error) {
+      console.error("Video import error:", error);
+      setIsProcessing(false);
+      setProcessingSource(null);
+      Alert.alert(t('alert_fehler'), t('record_video_import_error_msg' as any));
+    }
+  };
+
   // --- VOICE NOTE PER PHOTO ---
   const startVoiceNote = async (photoIndex: number) => {
     try {
@@ -2532,7 +2579,16 @@ export default function RecordScreen() {
                 )}
               </Pressable>
             ) : (
-              <View style={styles.actionButtonPlaceholder} />
+              <Pressable
+                onPress={importVideoFromGallery}
+                style={({ pressed }) => [
+                  styles.actionButtonLarge,
+                  { backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                ]}
+              >
+                <MaterialIcons name="video-library" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>{t('video')}</Text>
+              </Pressable>
             )}
           </View>
 
