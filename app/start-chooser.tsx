@@ -33,7 +33,7 @@ export default function StartChooserScreen() {
       tint: "#5DADE2",
       title: t("start_tile_tools_t" as any),
       desc: t("start_tile_tools_d" as any),
-      onPress: close, // Werkzeuge tab is the screen underneath
+      onPress: () => go("/project-wizard"),
     },
     {
       icon: "directions-walk",

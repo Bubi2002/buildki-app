@@ -478,7 +478,7 @@ export default function AIWorkbenchScreen() {
               ))
             )}
             <Pressable
-              onPress={() => { setShowProjectPicker(false); router.push("/(tabs)/projects" as any); }}
+              onPress={() => { setShowProjectPicker(false); router.push("/project-wizard" as any); }}
               style={({ pressed }) => [styles.projectItem, { opacity: pressed ? 0.7 : 1 }]}
             >
               <MaterialIcons name="add" size={16} color="#5DADE2" />
