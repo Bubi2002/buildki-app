@@ -13,8 +13,8 @@ import {
   type Floor,
   type Room,
 } from "@/lib/room-store";
-import { getDefects, updateDefectStatus, type Defect, type DefectStatus } from "@/lib/defect-store";
-import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
+import { getDefects, updateDefectStatus, saveDefect, deleteDefect, type Defect, type DefectStatus } from "@/lib/defect-store";
+import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
 type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; title?: string; task?: string; dueDate?: string };
@@ -55,6 +55,16 @@ export default function RundgangTab() {
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
   const [taskRoom, setTaskRoom] = useState<Room | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  // Defect create popup
+  const [defectRoom, setDefectRoom] = useState<Room | null>(null);
+  const [newDefectTitle, setNewDefectTitle] = useState("");
+  const [newDefectDesc, setNewDefectDesc] = useState("");
+  // Detail popups
+  const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
+  const [editDefectDesc, setEditDefectDesc] = useState("");
+  const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+  const [editTaskTitle, setEditTaskTitle] = useState("");
+  const [selectedChecklist, setSelectedChecklist] = useState<ChecklistResult | null>(null);
 
   const tn = (key: string, n: number) => t(key as any).replace("{n}", String(n));
 
@@ -178,18 +188,36 @@ export default function RundgangTab() {
   };
 
   const openDefect = (d: Defect) => {
-    if (!selectedProjectId) return;
-    router.push(`/defects?projectId=${selectedProjectId}&defectId=${d.id}` as any);
+    setEditDefectDesc(d.description || "");
+    setSelectedDefect(d);
   };
-  const openTasksList = () => {
-    if (!selectedProjectId) return;
-    router.push(`/tasks?projectId=${selectedProjectId}` as any);
+  const openTaskDetail = (tk: ProjectTask) => {
+    setEditTaskTitle(taskTitle(tk));
+    setSelectedTask(tk);
   };
-  const openChecklistsList = () => {
-    if (!selectedProjectId) return;
-    router.push(`/checklists?projectId=${selectedProjectId}` as any);
-  };
+  const openChecklistDetail = (c: ChecklistResult) => setSelectedChecklist(c);
   const taskTitle = (tk: ProjectTask) => (tk.title || tk.task || "").trim() || t("index_tool_aufgaben" as any);
+
+  // ── Defect popup actions ──────────────────────────────────────────────────
+  const setDefectStatusNow = async (d: Defect, status: DefectStatus) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDefects((prev) => prev.map((x) => (x.id === d.id ? { ...x, status } : x)));
+    setSelectedDefect((prev) => (prev && prev.id === d.id ? { ...prev, status } : prev));
+    try { await updateDefectStatus(d.id, status); } catch {}
+  };
+  const saveDefectEdit = async () => {
+    const d = selectedDefect;
+    if (!d) return;
+    const updated = { ...d, description: editDefectDesc.trim(), updatedAt: new Date().toISOString() };
+    setDefects((prev) => prev.map((x) => (x.id === d.id ? updated : x)));
+    try { await saveDefect(updated as any); } catch {}
+    setSelectedDefect(null);
+  };
+  const deleteDefectNow = async (d: Defect) => {
+    setDefects((prev) => prev.filter((x) => x.id !== d.id));
+    setSelectedDefect(null);
+    try { await deleteDefect(d.id); } catch {}
+  };
 
   const setRoomStatus = async (room: Room, status: Room["status"]) => {
     if (!selectedProjectId) return;
@@ -198,9 +226,55 @@ export default function RundgangTab() {
     try { await updateRoom(selectedProjectId, room.id, { status }); } catch {}
   };
 
-  const addDefectForRoom = () => {
-    if (!selectedProjectId) return;
-    router.push(`/defects?projectId=${selectedProjectId}` as any);
+  const openDefectCreate = (room: Room) => {
+    setNewDefectTitle("");
+    setNewDefectDesc("");
+    setDefectRoom(room);
+  };
+  const createRoomDefect = async () => {
+    const room = defectRoom;
+    const title = newDefectTitle.trim();
+    if (!room || !title || !selectedProjectId) { setDefectRoom(null); return; }
+    const now = new Date().toISOString();
+    const newDefect = {
+      id: `defect_${Date.now()}`,
+      projectId: selectedProjectId,
+      title,
+      description: newDefectDesc.trim(),
+      status: "offen" as DefectStatus,
+      priority: "mittel",
+      category: "sonstiges",
+      photos: [] as string[],
+      room: room.name,
+      createdAt: now,
+      updatedAt: now,
+    };
+    try { await saveDefect(newDefect as any); } catch {}
+    setDefects((prev) => [newDefect as any, ...prev]);
+    setDefectRoom(null);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  // ── Task popup actions ────────────────────────────────────────────────────
+  const persistTasks = async (updater: (all: ProjectTask[]) => ProjectTask[]) => {
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
+      await AsyncStorage.setItem("project-tasks", JSON.stringify(updater(all)));
+    } catch {}
+  };
+  const saveTaskEdit = async () => {
+    const tk = selectedTask;
+    const title = editTaskTitle.trim();
+    if (!tk || !title) { setSelectedTask(null); return; }
+    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, title } : x)));
+    await persistTasks((all) => all.map((x) => (x.id === tk.id ? { ...x, title } : x)));
+    setSelectedTask(null);
+  };
+  const deleteTaskNow = async (tk: ProjectTask) => {
+    setTasks((prev) => prev.filter((x) => x.id !== tk.id));
+    setSelectedTask(null);
+    await persistTasks((all) => all.filter((x) => x.id !== tk.id));
   };
 
   const openTaskCreate = (room: Room) => {
@@ -402,7 +476,7 @@ export default function RundgangTab() {
                                 {/* Mängel */}
                                 <View style={styles.expandHeader}>
                                   <Text style={styles.expandHeaderText}>{t('maengel')} ({dList.length})</Text>
-                                  <Pressable onPress={addDefectForRoom} hitSlop={6}>
+                                  <Pressable onPress={() => openDefectCreate(room)} hitSlop={6}>
                                     <Text style={styles.expandAdd}>+ {t('rooms_add_defect_here' as any)}</Text>
                                   </Pressable>
                                 </View>
@@ -435,7 +509,7 @@ export default function RundgangTab() {
                                       <Pressable onPress={() => toggleTaskDone(tkItem)} hitSlop={8} style={styles.entryCheck}>
                                         <MaterialIcons name={tdone ? "check-circle" : "radio-button-unchecked"} size={22} color={tdone ? "#10B981" : "#4B5B6B"} />
                                       </Pressable>
-                                      <Pressable onPress={openTasksList} style={styles.entryTap}>
+                                      <Pressable onPress={() => openTaskDetail(tkItem)} style={styles.entryTap}>
                                         <MaterialIcons name="task-alt" size={14} color="#818CF8" />
                                         <Text style={[styles.entryTitle, tdone && styles.entryTitleDone]} numberOfLines={1}>{taskTitle(tkItem)}</Text>
                                       </Pressable>
@@ -449,7 +523,7 @@ export default function RundgangTab() {
                                       <Text style={styles.expandHeaderText}>{t('rundgang_checklist')} ({cList.length})</Text>
                                     </View>
                                     {cList.map((c) => (
-                                      <Pressable key={c.id} onPress={openChecklistsList} style={styles.entryRow}>
+                                      <Pressable key={c.id} onPress={() => openChecklistDetail(c)} style={styles.entryRow}>
                                         <View style={styles.entryCheck}>
                                           <MaterialIcons name="checklist" size={20} color="#34D399" />
                                         </View>
@@ -506,6 +580,97 @@ export default function RundgangTab() {
                 <Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create defect for a room (inline popup) */}
+      <Modal visible={!!defectRoom} transparent animationType="slide" onRequestClose={() => setDefectRoom(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            <Text style={styles.taskSheetTitle}>{t('rooms_add_defect_here' as any)}</Text>
+            <Text style={styles.taskSheetSub}>{defectRoom?.name}</Text>
+            <TextInput value={newDefectTitle} onChangeText={setNewDefectTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" autoFocus returnKeyType="next" style={styles.taskInput} />
+            <TextInput value={newDefectDesc} onChangeText={setNewDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => setDefectRoom(null)} style={styles.taskCancel}><Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text></Pressable>
+              <Pressable onPress={createRoomDefect} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Defect detail popup */}
+      <Modal visible={!!selectedDefect} transparent animationType="slide" onRequestClose={() => setSelectedDefect(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            {selectedDefect && (
+              <>
+                <Text style={styles.taskSheetTitle} numberOfLines={2}>{selectedDefect.title}</Text>
+                {selectedDefect.room ? <Text style={styles.taskSheetSub}>{selectedDefect.room}</Text> : null}
+                <View style={styles.statusRow}>
+                  {([["offen", "index_offen"], ["in_bearbeitung", "index_in_arbeit"], ["erledigt", "index_erledigt"]] as const).map(([s, lbl]) => {
+                    const active = selectedDefect.status === s;
+                    const col = s === "erledigt" ? "#10B981" : s === "in_bearbeitung" ? "#F59E0B" : "#F97316";
+                    return (
+                      <Pressable key={s} onPress={() => setDefectStatusNow(selectedDefect, s as DefectStatus)} style={[styles.statusChip, { borderColor: active ? col : "#1E3A5F", backgroundColor: active ? col + "22" : "transparent" }]}>
+                        <Text style={{ fontSize: 12, fontWeight: active ? "800" : "600", color: active ? col : "#8FA3B8" }}>{t(lbl as any)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <TextInput value={editDefectDesc} onChangeText={setEditDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 80, textAlignVertical: "top", marginTop: 12 }]} />
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <Pressable onPress={() => deleteDefectNow(selectedDefect)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
+                  <Pressable onPress={saveDefectEdit} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Task detail popup */}
+      <Modal visible={!!selectedTask} transparent animationType="slide" onRequestClose={() => setSelectedTask(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            {selectedTask && (
+              <>
+                <Text style={styles.taskSheetTitle}>{t('index_tool_aufgaben' as any)}</Text>
+                {selectedTask.room ? <Text style={styles.taskSheetSub}>{selectedTask.room}</Text> : null}
+                <TextInput value={editTaskTitle} onChangeText={setEditTaskTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" style={styles.taskInput} />
+                <Pressable onPress={() => toggleTaskDone(selectedTask)} style={[styles.doneToggle, { borderColor: isTaskDone(selectedTask) ? "#10B981" : "#1E3A5F" }]}>
+                  <MaterialIcons name={isTaskDone(selectedTask) ? "check-circle" : "radio-button-unchecked"} size={22} color={isTaskDone(selectedTask) ? "#10B981" : "#4B5B6B"} />
+                  <Text style={{ color: isTaskDone(selectedTask) ? "#10B981" : "#8FA3B8", fontWeight: "700" }}>{t('index_erledigt' as any)}</Text>
+                </Pressable>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <Pressable onPress={() => deleteTaskNow(selectedTask)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
+                  <Pressable onPress={saveTaskEdit} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Checklist detail popup (read-only) */}
+      <Modal visible={!!selectedChecklist} transparent animationType="slide" onRequestClose={() => setSelectedChecklist(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            {selectedChecklist && (
+              <>
+                <Text style={styles.taskSheetTitle} numberOfLines={2}>{selectedChecklist.checklistName}</Text>
+                <Text style={styles.taskSheetSub}>
+                  {getChecklistCompletionRate(selectedChecklist)}%
+                  {selectedChecklist.location ? `  ·  ${selectedChecklist.location}` : ""}
+                  {selectedChecklist.inspector ? `  ·  ${selectedChecklist.inspector}` : ""}
+                </Text>
+                <Text style={{ color: "#8FA3B8", fontSize: 13, marginTop: 10 }}>
+                  {(selectedChecklist.results || []).filter((r) => r.checked).length} / {(selectedChecklist.results || []).length} {t('index_erledigt' as any)}
+                </Text>
+                <Pressable onPress={() => setSelectedChecklist(null)} style={[styles.taskSave, { marginTop: 18 }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -623,6 +788,7 @@ const styles = StyleSheet.create({
   taskInput: { marginTop: 14, borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 8, padding: 12, color: "#F0F4F8", fontSize: 15, backgroundColor: "#0C1826" },
   taskCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" },
   taskSave: { flex: 2, paddingVertical: 12, borderRadius: 8, backgroundColor: "#5DADE2", alignItems: "center" },
+  doneToggle: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },
   entryRow: {
     flexDirection: "row",
     alignItems: "center",
