@@ -169,7 +169,6 @@ export default function AIWorkbenchScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
-  const [showAll, setShowAll] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<LiveStats>(createEmptyLiveStats);
   const [roomSummaries, setRoomSummaries] = useState<{ id: string; name: string; floorId: string; floorName: string; floorNumber: number; open: number }[]>([]);
@@ -477,14 +476,14 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
-        {/* ─── Home Action Cards ──────────────────────────────────────────── */}
+        {/* ─── Was möchtest du tun? (Chooser) ─────────────────────────────── */}
+        <Text style={styles.chooserTitle}>{t('index_was_moechtest_du_tun' as any)}</Text>
         <View style={styles.homeCards}>
           {[
             { icon: "mic", tint: "#EF4444", title: t('neue_aufnahme'), desc: t('home_desc_record' as any), onPress: () => router.push('/(tabs)/record' as any) },
             { icon: "add-business", tint: "#34D399", title: t('neues_projekt'), desc: t('home_desc_project' as any), onPress: () => router.push('/projects' as any) },
             { icon: "warning-amber", tint: "#F59E0B", title: t('maengel'), desc: t('home_desc_defects' as any), onPress: () => navigateModule('/defects') },
             { icon: "directions-walk", tint: "#5DADE2", title: t('rundgang'), desc: t('home_desc_rundgang' as any), onPress: () => router.push('/(tabs)/projects' as any) },
-            { icon: (showAll ? "expand-less" : "apps"), tint: "#A78BFA", title: t('alle_werkzeuge' as any), desc: t('home_desc_tools' as any), onPress: () => setShowAll((v) => !v) },
           ].map((c) => (
             <Pressable
               key={c.title}
@@ -503,8 +502,101 @@ export default function AIWorkbenchScreen() {
           ))}
         </View>
 
-        {showAll && (
-        <>
+        {/* ─── Räume (oben): cross-tool hub — Mängel / Aufgaben / Checklisten je Raum ─── */}
+        {selectedProject && (
+              <View style={styles.roomsHome}>
+                <View style={styles.roomsHomeHead}>
+                  <View style={styles.tasksHeader}>
+                    <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
+                    <Text style={styles.tasksTitle}>{t('index_tool_raeume')}</Text>
+                  </View>
+                  <Pressable onPress={() => navigateModule("/rooms")} hitSlop={6}>
+                    <Text style={styles.roomsHomeAll}>{roomSummaries.length > 0 ? t('rooms_open_all' as any) : t('rooms_add_room' as any)}</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.roomsHomeHint}>{t('rooms_home_hint' as any)}</Text>
+                {roomSummaries.length === 0 ? (
+                  <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}>
+                    <MaterialIcons name="add" size={18} color="#5DADE2" />
+                    <Text style={[styles.roomsHomeName, { color: "#5DADE2" }]}>{t('rooms_add_room' as any)}</Text>
+                  </Pressable>
+                ) : (() => {
+                  const byFloor = new Map<string, typeof roomSummaries>();
+                  for (const r of roomSummaries) {
+                    if (!byFloor.has(r.floorId)) byFloor.set(r.floorId, []);
+                    byFloor.get(r.floorId)!.push(r);
+                  }
+                  const floorGroups = [...byFloor.values()]
+                    .map((rms) => ({ floorId: rms[0].floorId, floorName: rms[0].floorName, floorNumber: rms[0].floorNumber, rooms: rms }))
+                    .sort((a, b) => a.floorNumber - b.floorNumber);
+                  return floorGroups.map((g) => {
+                    const expanded = expandedHomeFloors.has(g.floorId);
+                    const openSum = g.rooms.reduce((s, r) => s + r.open, 0);
+                    return (
+                      <View key={g.floorId}>
+                        <Pressable
+                          onPress={() => setExpandedHomeFloors((prev) => {
+                            const n = new Set(prev);
+                            if (n.has(g.floorId)) n.delete(g.floorId); else n.add(g.floorId);
+                            return n;
+                          })}
+                          style={({ pressed }) => [styles.roomsHomeFloorHead, { opacity: pressed ? 0.7 : 1 }]}
+                        >
+                          <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={18} color="#8FA3B8" />
+                          <Text style={styles.roomsHomeFloorName}>{g.floorName || "—"}</Text>
+                          <Text style={styles.roomsHomeFloorCount}>{g.rooms.length}</Text>
+                          {openSum > 0 && (
+                            <View style={styles.roomsHomeBadge}>
+                              <MaterialIcons name="warning" size={11} color="#F97316" />
+                              <Text style={styles.roomsHomeBadgeText}>{openSum}</Text>
+                            </View>
+                          )}
+                        </Pressable>
+                        {expanded && g.rooms.map((r) => (
+                          <Pressable
+                            key={r.id}
+                            onPress={() => selectedProject && router.push(`/rooms?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}&openRoom=${r.id}` as any)}
+                            style={({ pressed }) => [styles.roomsHomeRow, styles.roomsHomeRoomIndent, { opacity: pressed ? 0.7 : 1 }]}
+                          >
+                            <MaterialIcons name="meeting-room" size={16} color="#8FA3B8" />
+                            <Text style={styles.roomsHomeName} numberOfLines={1}>{r.name}</Text>
+                            {r.open > 0 && (
+                              <View style={styles.roomsHomeBadge}>
+                                <MaterialIcons name="warning" size={11} color="#F97316" />
+                                <Text style={styles.roomsHomeBadgeText}>{r.open}</Text>
+                              </View>
+                            )}
+                            <MaterialIcons name="chevron-right" size={16} color="#5F7590" />
+                          </Pressable>
+                        ))}
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+        )}
+
+        {/* ─── TOOLS (grouped, 3 columns) ─────────────────────────────────── */}
+        <Text style={styles.toolsSectionTitle}>{t('index_tools' as any)}</Text>
+
+        {TOOL_GROUPS.map((group) => (
+          <View key={group.titleKey}>
+            <Text style={styles.toolGroupTitle}>{t(group.titleKey as any)}</Text>
+            <View style={styles.toolGrid}>
+              {group.tools.map((tool) => (
+                <Pressable
+                  key={tool.key}
+                  onPress={() => navigateModule(tool.route)}
+                  style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
+                  <Text style={styles.toolLabel} numberOfLines={1}>{t(tool.labelKey as any)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ))}
+
         {/* ─── Live Stats Overview ────────────────────────────────────────── */}
         <View style={styles.statsSection}>
           <Text style={styles.statsSectionTitle}>{t('index_uebersicht' as any)}</Text>
@@ -637,77 +729,6 @@ export default function AIWorkbenchScreen() {
                 </View>
               )}
 
-              {/* Rooms — cross-tool hub: defects / tasks / checklists / follow-ups per room */}
-              <View style={styles.roomsHome}>
-                <View style={styles.roomsHomeHead}>
-                  <View style={styles.tasksHeader}>
-                    <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
-                    <Text style={styles.tasksTitle}>{t('index_tool_raeume')}</Text>
-                  </View>
-                  <Pressable onPress={() => navigateModule("/rooms")} hitSlop={6}>
-                    <Text style={styles.roomsHomeAll}>{roomSummaries.length > 0 ? t('rooms_open_all' as any) : t('rooms_add_room' as any)}</Text>
-                  </Pressable>
-                </View>
-                <Text style={styles.roomsHomeHint}>{t('rooms_home_hint' as any)}</Text>
-                {roomSummaries.length === 0 ? (
-                  <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}>
-                    <MaterialIcons name="add" size={18} color="#5DADE2" />
-                    <Text style={[styles.roomsHomeName, { color: "#5DADE2" }]}>{t('rooms_add_room' as any)}</Text>
-                  </Pressable>
-                ) : (() => {
-                  const byFloor = new Map<string, typeof roomSummaries>();
-                  for (const r of roomSummaries) {
-                    if (!byFloor.has(r.floorId)) byFloor.set(r.floorId, []);
-                    byFloor.get(r.floorId)!.push(r);
-                  }
-                  const floorGroups = [...byFloor.values()]
-                    .map((rms) => ({ floorId: rms[0].floorId, floorName: rms[0].floorName, floorNumber: rms[0].floorNumber, rooms: rms }))
-                    .sort((a, b) => a.floorNumber - b.floorNumber);
-                  return floorGroups.map((g) => {
-                    const expanded = expandedHomeFloors.has(g.floorId);
-                    const openSum = g.rooms.reduce((s, r) => s + r.open, 0);
-                    return (
-                      <View key={g.floorId}>
-                        <Pressable
-                          onPress={() => setExpandedHomeFloors((prev) => {
-                            const n = new Set(prev);
-                            if (n.has(g.floorId)) n.delete(g.floorId); else n.add(g.floorId);
-                            return n;
-                          })}
-                          style={({ pressed }) => [styles.roomsHomeFloorHead, { opacity: pressed ? 0.7 : 1 }]}
-                        >
-                          <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={18} color="#8FA3B8" />
-                          <Text style={styles.roomsHomeFloorName}>{g.floorName || "—"}</Text>
-                          <Text style={styles.roomsHomeFloorCount}>{g.rooms.length}</Text>
-                          {openSum > 0 && (
-                            <View style={styles.roomsHomeBadge}>
-                              <MaterialIcons name="warning" size={11} color="#F97316" />
-                              <Text style={styles.roomsHomeBadgeText}>{openSum}</Text>
-                            </View>
-                          )}
-                        </Pressable>
-                        {expanded && g.rooms.map((r) => (
-                          <Pressable
-                            key={r.id}
-                            onPress={() => selectedProject && router.push(`/rooms?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}&openRoom=${r.id}` as any)}
-                            style={({ pressed }) => [styles.roomsHomeRow, styles.roomsHomeRoomIndent, { opacity: pressed ? 0.7 : 1 }]}
-                          >
-                            <MaterialIcons name="meeting-room" size={16} color="#8FA3B8" />
-                            <Text style={styles.roomsHomeName} numberOfLines={1}>{r.name}</Text>
-                            {r.open > 0 && (
-                              <View style={styles.roomsHomeBadge}>
-                                <MaterialIcons name="warning" size={11} color="#F97316" />
-                                <Text style={styles.roomsHomeBadgeText}>{r.open}</Text>
-                              </View>
-                            )}
-                            <MaterialIcons name="chevron-right" size={16} color="#5F7590" />
-                          </Pressable>
-                        ))}
-                      </View>
-                    );
-                  });
-                })()}
-              </View>
             </>
           ) : (
             <View style={styles.noProjectOverview} accessibilityRole="summary">
@@ -718,42 +739,6 @@ export default function AIWorkbenchScreen() {
               </Text>
             </View>
           )}
-        </View>
-
-        {/* ─── Neue Aufnahme ───────────────────────────────────────────── */}
-        <View style={styles.quickActionsRow}>
-          <Pressable
-            onPress={() => navigateModule('/(tabs)/record')}
-            style={({ pressed }) => [styles.quickActionBtn, styles.quickActionPrimary, { opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="mic" size={22} color="#fff" />
-            <Text
-              style={styles.quickActionPrimaryText}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.82}
-            >
-              {t('neue_aufnahme')}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={async () => {
-              try {
-                const data = await AsyncStorage.getItem("protocols");
-                const protocols: Protocol[] = data ? JSON.parse(data) : [];
-                if (protocols.length > 0) {
-                  const sorted = [...protocols].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                  router.push(`/protocol-detail?id=${sorted[0].id}` as any);
-                } else {
-                  Alert.alert(t('index_keine_protokolle' as any), t('index_keine_protokolle_text' as any));
-                }
-              } catch { }
-            }}
-            style={({ pressed }) => [styles.quickActionBtn, styles.quickActionSecondary, { opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="history" size={22} color="#5DADE2" />
-            <Text style={styles.quickActionSecondaryText}>{t('letzte_protokolle')}</Text>
-          </Pressable>
         </View>
 
         {/* ─── Hilfe & Abo ───────────────────────────────────────────── */}
@@ -780,29 +765,6 @@ export default function AIWorkbenchScreen() {
             <Text style={styles.helpBtnText}>{t('index_abo' as any)}</Text>
           </Pressable>
         </View>
-
-        {/* ─── TOOLS (grouped, 3 columns) ─────────────────────────────────── */}
-        <Text style={styles.toolsSectionTitle}>{t('index_tools' as any)}</Text>
-
-        {TOOL_GROUPS.map((group) => (
-          <View key={group.titleKey}>
-            <Text style={styles.toolGroupTitle}>{t(group.titleKey as any)}</Text>
-            <View style={styles.toolGrid}>
-              {group.tools.map((tool) => (
-                <Pressable
-                  key={tool.key}
-                  onPress={() => navigateModule(tool.route)}
-                  style={({ pressed }) => [styles.toolCard, { opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name={tool.icon as any} size={24} color={tool.color} />
-                  <Text style={styles.toolLabel} numberOfLines={1}>{t(tool.labelKey as any)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ))}
-        </>
-        )}
 
       </ScrollView>
     </ScreenContainer>
@@ -1324,8 +1286,15 @@ const styles = StyleSheet.create({
     color: '#F0F4F8',
     textAlign: 'center',
   },
-  homeCards: {
+  chooserTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F0F4F8',
     marginTop: 4,
+    marginBottom: 10,
+  },
+  homeCards: {
+    marginTop: 0,
     marginBottom: 8,
     gap: 10,
   },
