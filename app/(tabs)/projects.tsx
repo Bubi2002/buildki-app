@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -53,6 +53,8 @@ export default function RundgangTab() {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
+  const [taskRoom, setTaskRoom] = useState<Room | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
 
   const tn = (key: string, n: number) => t(key as any).replace("{n}", String(n));
 
@@ -188,6 +190,47 @@ export default function RundgangTab() {
     router.push(`/checklists?projectId=${selectedProjectId}` as any);
   };
   const taskTitle = (tk: ProjectTask) => (tk.title || tk.task || "").trim() || t("index_tool_aufgaben" as any);
+
+  const setRoomStatus = async (room: Room, status: Room["status"]) => {
+    if (!selectedProjectId) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, status } : r)));
+    try { await updateRoom(selectedProjectId, room.id, { status }); } catch {}
+  };
+
+  const addDefectForRoom = () => {
+    if (!selectedProjectId) return;
+    router.push(`/defects?projectId=${selectedProjectId}` as any);
+  };
+
+  const openTaskCreate = (room: Room) => {
+    setNewTaskTitle("");
+    setTaskRoom(room);
+  };
+
+  const createRoomTask = async () => {
+    const room = taskRoom;
+    const title = newTaskTitle.trim();
+    if (!room || !title || !selectedProjectId) { setTaskRoom(null); return; }
+    const newTask: ProjectTask = {
+      id: `task-${Date.now()}`,
+      projectId: selectedProjectId,
+      room: room.name,
+      title,
+      status: "offen",
+      done: false,
+    };
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
+      all.unshift(newTask);
+      await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
+      setTasks((prev) => [newTask, ...prev]);
+    } catch {}
+    setNewTaskTitle("");
+    setTaskRoom(null);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
 
   const toggleRoomDone = async (room: Room) => {
     if (!selectedProjectId) return;
@@ -338,9 +381,31 @@ export default function RundgangTab() {
 
                             {expanded && (
                               <View style={styles.roomExpand}>
-                                {dList.length === 0 && tList.length === 0 && cList.length === 0 && (
-                                  <Text style={styles.expandEmpty}>{t("rundgang_room_empty" as any)}</Text>
-                                )}
+                                {/* Status */}
+                                <View style={styles.statusRow}>
+                                  {(["nicht_begonnen", "in_arbeit", "fertig", "abgenommen"] as const).map((s) => {
+                                    const active = (room.status || "nicht_begonnen") === s;
+                                    return (
+                                      <Pressable
+                                        key={s}
+                                        onPress={() => setRoomStatus(room, s)}
+                                        style={[styles.statusChip, { borderColor: active ? ROOM_STATUS_COLORS[s] : "#1E3A5F", backgroundColor: active ? ROOM_STATUS_COLORS[s] + "22" : "transparent" }]}
+                                      >
+                                        <Text style={{ fontSize: 12, fontWeight: active ? "800" : "600", color: active ? ROOM_STATUS_COLORS[s] : "#8FA3B8" }}>
+                                          {t(ROOM_STATUS_LABELS[s] as any)}
+                                        </Text>
+                                      </Pressable>
+                                    );
+                                  })}
+                                </View>
+
+                                {/* Mängel */}
+                                <View style={styles.expandHeader}>
+                                  <Text style={styles.expandHeaderText}>{t('maengel')} ({dList.length})</Text>
+                                  <Pressable onPress={addDefectForRoom} hitSlop={6}>
+                                    <Text style={styles.expandAdd}>+ {t('rooms_add_defect_here' as any)}</Text>
+                                  </Pressable>
+                                </View>
                                 {dList.map((d) => {
                                   const ddone = isDefectDone(d);
                                   return (
@@ -356,6 +421,13 @@ export default function RundgangTab() {
                                     </View>
                                   );
                                 })}
+                                {/* Aufgaben */}
+                                <View style={styles.expandHeader}>
+                                  <Text style={styles.expandHeaderText}>{t('index_tool_aufgaben')} ({tList.length})</Text>
+                                  <Pressable onPress={() => openTaskCreate(room)} hitSlop={6}>
+                                    <Text style={styles.expandAdd}>+ {t('rooms_add_task_here' as any)}</Text>
+                                  </Pressable>
+                                </View>
                                 {tList.map((tkItem) => {
                                   const tdone = isTaskDone(tkItem);
                                   return (
@@ -371,21 +443,24 @@ export default function RundgangTab() {
                                     </View>
                                   );
                                 })}
-                                {cList.map((c) => (
-                                  <Pressable key={c.id} onPress={openChecklistsList} style={styles.entryRow}>
-                                    <View style={styles.entryCheck}>
-                                      <MaterialIcons name="checklist" size={20} color="#34D399" />
+                                {cList.length > 0 && (
+                                  <>
+                                    <View style={styles.expandHeader}>
+                                      <Text style={styles.expandHeaderText}>{t('rundgang_checklist')} ({cList.length})</Text>
                                     </View>
-                                    <View style={styles.entryTap}>
-                                      <Text style={styles.entryTitle} numberOfLines={1}>{c.checklistName || t("rundgang_checklist" as any)}</Text>
-                                    </View>
-                                    <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
-                                  </Pressable>
-                                ))}
-                                <Pressable onPress={() => openRoom(room)} style={styles.roomOpenLink}>
-                                  <MaterialIcons name="open-in-new" size={16} color="#5DADE2" />
-                                  <Text style={styles.roomOpenLinkText}>{t("rundgang_open_room" as any)}</Text>
-                                </Pressable>
+                                    {cList.map((c) => (
+                                      <Pressable key={c.id} onPress={openChecklistsList} style={styles.entryRow}>
+                                        <View style={styles.entryCheck}>
+                                          <MaterialIcons name="checklist" size={20} color="#34D399" />
+                                        </View>
+                                        <View style={styles.entryTap}>
+                                          <Text style={styles.entryTitle} numberOfLines={1}>{c.checklistName || t("rundgang_checklist" as any)}</Text>
+                                        </View>
+                                        <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
+                                      </Pressable>
+                                    ))}
+                                  </>
+                                )}
                               </View>
                             )}
                           </View>
@@ -406,6 +481,34 @@ export default function RundgangTab() {
           </ScrollView>
         </>
       )}
+
+      {/* Add task to a room (inline, no window switch) */}
+      <Modal visible={!!taskRoom} transparent animationType="slide" onRequestClose={() => setTaskRoom(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            <Text style={styles.taskSheetTitle}>{t('rooms_add_task_here' as any)}</Text>
+            <Text style={styles.taskSheetSub}>{taskRoom?.name}</Text>
+            <TextInput
+              value={newTaskTitle}
+              onChangeText={setNewTaskTitle}
+              placeholder={t('titel' as any)}
+              placeholderTextColor="#5F7590"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={createRoomTask}
+              style={styles.taskInput}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => setTaskRoom(null)} style={styles.taskCancel}>
+                <Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+              </Pressable>
+              <Pressable onPress={createRoomTask} style={styles.taskSave}>
+                <Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -501,6 +604,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#0C1826",
   },
   expandEmpty: { color: "#5A6B7C", fontSize: 13, paddingVertical: 10, paddingHorizontal: 4 },
+  statusRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingVertical: 8, paddingHorizontal: 2 },
+  statusChip: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1 },
+  expandHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    marginBottom: 2,
+    paddingHorizontal: 2,
+  },
+  expandHeaderText: { color: "#7F8C9B", fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },
+  expandAdd: { color: "#5DADE2", fontSize: 12, fontWeight: "700" },
+  taskOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
+  taskSheet: { backgroundColor: "#0F1E30", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: "#1E3A5F" },
+  taskSheetTitle: { color: "#F0F4F8", fontSize: 18, fontWeight: "800" },
+  taskSheetSub: { color: "#8FA3B8", fontSize: 13, marginTop: 2 },
+  taskInput: { marginTop: 14, borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 8, padding: 12, color: "#F0F4F8", fontSize: 15, backgroundColor: "#0C1826" },
+  taskCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" },
+  taskSave: { flex: 2, paddingVertical: 12, borderRadius: 8, backgroundColor: "#5DADE2", alignItems: "center" },
   entryRow: {
     flexDirection: "row",
     alignItems: "center",

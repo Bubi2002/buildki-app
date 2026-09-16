@@ -495,13 +495,13 @@ export default function AIWorkbenchScreen() {
                     <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
                     <Text style={styles.tasksTitle}>{t('index_tool_raeume')}</Text>
                   </View>
-                  <Pressable onPress={() => navigateModule("/rooms")} hitSlop={6}>
+                  <Pressable onPress={() => router.push("/(tabs)/projects" as any)} hitSlop={6}>
                     <Text style={styles.roomsHomeAll}>{roomSummaries.length > 0 ? t('rooms_open_all' as any) : t('rooms_add_room' as any)}</Text>
                   </Pressable>
                 </View>
                 <Text style={styles.roomsHomeHint}>{t('rooms_home_hint' as any)}</Text>
                 {roomSummaries.length === 0 ? (
-                  <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}>
+                  <Pressable onPress={() => router.push("/(tabs)/projects" as any)} style={({ pressed }) => [styles.roomsHomeRow, { opacity: pressed ? 0.7 : 1 }]}>
                     <MaterialIcons name="add" size={18} color="#5DADE2" />
                     <Text style={[styles.roomsHomeName, { color: "#5DADE2" }]}>{t('rooms_add_room' as any)}</Text>
                   </Pressable>
@@ -540,7 +540,7 @@ export default function AIWorkbenchScreen() {
                         {expanded && g.rooms.map((r) => (
                           <Pressable
                             key={r.id}
-                            onPress={() => selectedProject && router.push(`/rooms?projectId=${selectedProject.id}&projectName=${encodeURIComponent(selectedProject.name)}&openRoom=${r.id}` as any)}
+                            onPress={() => router.push("/(tabs)/projects" as any)}
                             style={({ pressed }) => [styles.roomsHomeRow, styles.roomsHomeRoomIndent, { opacity: pressed ? 0.7 : 1 }]}
                           >
                             <MaterialIcons name="meeting-room" size={16} color="#8FA3B8" />
@@ -649,7 +649,7 @@ export default function AIWorkbenchScreen() {
               <Text style={styles.statValue}>{stats.todayAttendance}</Text>
               <Text style={styles.statLabel}>{t('index_heute_vor_ort' as any)}</Text>
             </Pressable>
-            <Pressable onPress={() => navigateModule("/rooms")} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
+            <Pressable onPress={() => router.push("/(tabs)/projects" as any)} style={({ pressed }) => [styles.statCard, { opacity: pressed ? 0.8 : 1 }]}>
               <MaterialIcons name="layers" size={20} color="#5C6BC0" />
               <Text style={styles.statValue}>{stats.roomsCompleted}/{stats.roomsTotal}</Text>
               <Text style={styles.statLabel}>{t('index_raeume_fertig' as any)}</Text>
