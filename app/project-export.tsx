@@ -15,13 +15,14 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getDefects } from "@/lib/defect-store";
 import { getChecklistResults, getChecklistCompletionRate } from "@/lib/checklist-store";
+import { getFloorPlans } from "@/lib/floor-plan-store";
 import { getTimeEntries, getTimeTrackingSettings } from "@/lib/time-tracking-store";
 import { getProjectStructure } from "@/lib/room-store";
 import { getDirectProjectPhotos } from "@/lib/project-photo-store";
 import { generateAndSharePdf, type PdfSection, type PdfImage } from "@/lib/pdf-professional";
 import * as FileSystem from "expo-file-system/legacy";
 
-type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "photos";
+type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "plans" | "photos";
 
 const MAX_EXPORT_PHOTOS = 40;
 
@@ -43,7 +44,7 @@ export default function ProjectExportScreen() {
   const { projectId = "", projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
 
   const [selected, setSelected] = useState<Record<SourceKey, boolean>>({
-    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: true, protocols: true, rooms: true, photos: false,
+    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: true, protocols: true, rooms: true, plans: true, photos: false,
   });
   const [counts, setCounts] = useState<Partial<Record<SourceKey, number>>>({});
   const [busy, setBusy] = useState(false);
@@ -57,18 +58,20 @@ export default function ProjectExportScreen() {
     { key: "diary", label: t('index_tool_bautagebuch' as any), icon: "menu-book" },
     { key: "protocols", label: t('project_export_protocols' as any), icon: "description" },
     { key: "rooms", label: t('index_tool_raeume' as any), icon: "layers" },
+    { key: "plans", label: t('index_tool_grundriss' as any), icon: "map" },
   ];
 
   useEffect(() => {
     void (async () => {
       if (!projectId) return;
       try {
-        const [defects, checklists, timeEntries, structure, projectPhotos, attRaw, diaryRaw, protoRaw, tasksRaw] = await Promise.all([
+        const [defects, checklists, timeEntries, structure, projectPhotos, floorPlans, attRaw, diaryRaw, protoRaw, tasksRaw] = await Promise.all([
           getDefects(projectId),
           getChecklistResults(projectId),
           getTimeEntries(projectId),
           getProjectStructure(projectId),
           getDirectProjectPhotos(projectId),
+          getFloorPlans(projectId),
           AsyncStorage.getItem("attendance_records"),
           AsyncStorage.getItem("bautagebuch_entries"),
           AsyncStorage.getItem("protocols"),
@@ -88,6 +91,7 @@ export default function ProjectExportScreen() {
           diary: diary.length,
           protocols: proto.length,
           rooms: structure.rooms.length,
+          plans: floorPlans.length,
           photos: projectPhotos.length + defectPhotos,
         });
       } catch {}
@@ -224,6 +228,25 @@ export default function ProjectExportScreen() {
               headers: ["Geschoss", "Raum", "Status"],
               rows: structure.rooms.map((r) => [floorName(r.floorId), r.name, r.status || "-"]),
             },
+          });
+        }
+      }
+
+      if (selected.plans) {
+        const plans = await getFloorPlans(projectId);
+        const images: PdfImage[] = [];
+        for (const p of plans.slice(0, 12)) {
+          try {
+            const b64 = await FileSystem.readAsStringAsync(p.imageUri, { encoding: FileSystem.EncodingType.Base64 });
+            const mime = p.imageUri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+            images.push({ base64: `data:${mime};base64,${b64}`, width: 96 });
+          } catch {}
+        }
+        if (images.length) {
+          sections.push({
+            title: `${t('index_tool_grundriss' as any)} (${images.length})`,
+            content: "",
+            images,
           });
         }
       }

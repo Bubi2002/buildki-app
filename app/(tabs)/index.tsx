@@ -726,6 +726,41 @@ export default function AIWorkbenchScreen() {
           )}
         </View>
 
+        {/* ─── Projekt-Dossier (alles als PDF exportieren) ────────────────── */}
+        {selectedProject && (
+          <View style={styles.dossier}>
+            <View style={styles.dossierHead}>
+              <MaterialIcons name="folder-zip" size={20} color="#5DADE2" />
+              <Text style={styles.dossierTitle}>{t('home_dossier_title' as any)}</Text>
+            </View>
+            <Text style={styles.dossierSub}>{t('home_dossier_sub' as any)}</Text>
+            <View style={styles.dossierChips}>
+              {[
+                { icon: "warning", label: t('index_tool_maengel' as any) },
+                { icon: "description", label: t('project_export_protocols' as any) },
+                { icon: "checklist", label: t('checklist_title' as any) },
+                { icon: "task-alt", label: t('index_tool_aufgaben' as any) },
+                { icon: "layers", label: t('index_tool_raeume' as any) },
+                { icon: "map", label: t('index_tool_grundriss' as any) },
+                { icon: "menu-book", label: t('index_tool_bautagebuch' as any) },
+                { icon: "timer", label: t('index_tool_zeiterfassung' as any) },
+              ].map((c) => (
+                <View key={c.label} style={styles.dossierChip}>
+                  <MaterialIcons name={c.icon as any} size={13} color="#8FA3B8" />
+                  <Text style={styles.dossierChipText}>{c.label}</Text>
+                </View>
+              ))}
+            </View>
+            <Pressable
+              onPress={() => navigateModule('/project-export')}
+              style={({ pressed }) => [styles.dossierBtn, { opacity: pressed ? 0.85 : 1 }]}
+            >
+              <MaterialIcons name="picture-as-pdf" size={20} color="#FFFFFF" />
+              <Text style={styles.dossierBtnText}>{t('home_dossier_export' as any)}</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* ─── Hilfe & Abo ───────────────────────────────────────────── */}
         <View style={styles.helpRow}>
           <Pressable
@@ -1206,6 +1241,42 @@ const styles = StyleSheet.create({
     color: '#5DADE2',
   },
   // ─── Help Row ──────────────────────────────────────────────────────────────
+  dossier: {
+    backgroundColor: '#0F1E30',
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  dossierHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dossierTitle: { fontSize: 16, fontWeight: '800', color: '#F0F4F8' },
+  dossierSub: { fontSize: 12.5, color: '#8FA3B8', marginTop: 4, lineHeight: 17 },
+  dossierChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  dossierChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1E3A5F',
+    backgroundColor: '#132238',
+  },
+  dossierChipText: { fontSize: 11, fontWeight: '600', color: '#B7C4D2' },
+  dossierBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    paddingVertical: 13,
+    marginTop: 14,
+  },
+  dossierBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   helpRow: {
     flexDirection: 'row',
     gap: 8,
