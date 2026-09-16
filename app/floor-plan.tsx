@@ -41,6 +41,7 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
+import { generatePdfPageImages, type PdfPageImage } from "@/lib/pdf-pages";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 import { persistFloorPlanMedia } from "@/lib/floor-plan-media";
 import {
@@ -100,6 +101,7 @@ export default function FloorPlanScreen() {
   const [drawingPlan, setDrawingPlan] = useState(false);
   const [pdfToConvert, setPdfToConvert] = useState<string | null>(null);
   const [pdfConvertName, setPdfConvertName] = useState("");
+  const [converting, setConverting] = useState(false);
   const [photoViewer, setPhotoViewer] = useState<{
     photos: string[];
     title: string;
@@ -175,6 +177,37 @@ export default function FloorPlanScreen() {
     }, [loadPlans])
   );
 
+  // Turn rendered PDF pages into one plan each.
+  const createPlansFromPages = async (pages: PdfPageImage[], baseName: string) => {
+    let firstId: string | null = null;
+    const stamp = Date.now();
+    for (let i = 0; i < pages.length; i++) {
+      const p = pages[i];
+      const planId = `plan-${stamp}-${i}`;
+      const optimized = await persistFloorPlanMedia({
+        sourceUri: p.uri,
+        projectId,
+        ownerId: planId,
+        width: p.width,
+        height: p.height,
+        kind: "plan",
+      });
+      const newPlan: FloorPlan = {
+        id: planId,
+        projectId,
+        name: pages.length > 1 ? `${baseName} – ${t('floor_plan_page' as any)} ${i + 1}` : baseName,
+        imageUri: optimized.uri,
+        width: optimized.width || p.width || 1000,
+        height: optimized.height || p.height || 1000,
+        createdAt: new Date().toISOString(),
+      };
+      await saveFloorPlan(newPlan);
+      if (!firstId) firstId = planId;
+    }
+    await loadPlans();
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const addPlan = async () => {
     // Show options: Galerie or Cloud
     Alert.alert(t('alert_plan_hinzufuegen'), t('msg_woher_moechtest_du_den_plan'), [
@@ -199,8 +232,20 @@ export default function FloorPlanScreen() {
           if (!file) return;
           const isPdf = file.mimeType === "application/pdf" || /\.pdf$/i.test(file.name);
           if (isPdf) {
-            // PDFs can't be rendered/annotated directly → rasterize to an image first.
-            setPdfConvertName(file.name.replace(/\.[^/.]+$/, ""));
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            // Multi-page: render every PDF page to its own plan (native module).
+            setConverting(true);
+            try {
+              const pages = await generatePdfPageImages(file.uri);
+              if (pages.length > 0) {
+                await createPlansFromPages(pages, baseName);
+                return;
+              }
+            } finally {
+              setConverting(false);
+            }
+            // Fallback (module unavailable): rasterize page 1 via expo-image.
+            setPdfConvertName(baseName);
             setPdfToConvert(file.uri);
             return;
           }
@@ -1247,6 +1292,13 @@ export default function FloorPlanScreen() {
         maxSize={2600}
         onDone={handlePdfConverted}
       />
+
+      <Modal visible={converting} transparent animationType="fade">
+        <View style={styles.convertOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.convertText}>{t('floor_plan_pdf_converting' as any)}</Text>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -1320,6 +1372,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
+  convertOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+    backgroundColor: "rgba(0,0,0,0.9)",
+  },
+  convertText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
   resetZoomButton: {
     position: "absolute",
     right: 10,
