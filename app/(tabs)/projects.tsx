@@ -13,11 +13,11 @@ import {
   type Floor,
   type Room,
 } from "@/lib/room-store";
-import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
+import { getDefects, updateDefectStatus, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
-type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string };
+type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; title?: string; task?: string; dueDate?: string };
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
   nicht_begonnen: "rooms_status_nicht_begonnen",
@@ -52,6 +52,7 @@ export default function RundgangTab() {
   const [checklistResults, setChecklistResults] = useState<ChecklistResult[]>([]);
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [expandedFloors, setExpandedFloors] = useState<Set<string>>(new Set());
+  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
 
   const tn = (key: string, n: number) => t(key as any).replace("{n}", String(n));
 
@@ -133,6 +134,60 @@ export default function RundgangTab() {
     if (!selectedProjectId) return;
     router.push(`/rooms?projectId=${selectedProjectId}&openRoom=${room.id}` as any);
   };
+
+  const toggleRoomExpand = (id: string) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setExpandedRooms((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  // Full item lists per room (for the inline expand view)
+  const roomTaskList = (room: Room) =>
+    tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase());
+  const roomChecklistList = (room: Room) =>
+    checklistResults.filter((r) => (r.location || "").toLowerCase().includes(room.name.trim().toLowerCase()));
+
+  const isDefectDone = (d: Defect) => d.status === "erledigt" || d.status === "geschlossen";
+  const isTaskDone = (tk: ProjectTask) => tk.done === true || tk.status === "erledigt";
+
+  const toggleDefectDone = async (d: Defect) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const next: DefectStatus = isDefectDone(d) ? "offen" : "erledigt";
+    setDefects((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: next } : x)));
+    try { await updateDefectStatus(d.id, next); } catch {}
+  };
+
+  const toggleTaskDone = async (tk: ProjectTask) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const nextDone = !isTaskDone(tk);
+    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, done: nextDone, status: nextDone ? "erledigt" : "offen" } : x)));
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
+      const idx = all.findIndex((x) => x.id === tk.id);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], done: nextDone, status: nextDone ? "erledigt" : "offen" };
+        await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
+      }
+    } catch {}
+  };
+
+  const openDefect = (d: Defect) => {
+    if (!selectedProjectId) return;
+    router.push(`/defects?projectId=${selectedProjectId}&defectId=${d.id}` as any);
+  };
+  const openTasksList = () => {
+    if (!selectedProjectId) return;
+    router.push(`/tasks?projectId=${selectedProjectId}` as any);
+  };
+  const openChecklistsList = () => {
+    if (!selectedProjectId) return;
+    router.push(`/checklists?projectId=${selectedProjectId}` as any);
+  };
+  const taskTitle = (tk: ProjectTask) => (tk.title || tk.task || "").trim() || t("index_tool_aufgaben" as any);
 
   const toggleRoomDone = async (room: Room) => {
     if (!selectedProjectId) return;
@@ -224,55 +279,116 @@ export default function RundgangTab() {
                         const cl = roomChecklists(room);
                         const done = DONE_STATUSES.has(room.status || "");
                         const statusColor = ROOM_STATUS_COLORS[room.status || "nicht_begonnen"];
+                        const expanded = expandedRooms.has(room.id);
+                        const dList = roomDefects(room);
+                        const tList = roomTaskList(room);
+                        const cList = roomChecklistList(room);
                         return (
-                          <Pressable key={room.id} onPress={() => openRoom(room)} style={styles.roomCard}>
-                            <Pressable
-                              onPress={() => toggleRoomDone(room)}
-                              hitSlop={10}
-                              style={styles.checkbox}
-                            >
-                              <MaterialIcons
-                                name={done ? "check-circle" : "radio-button-unchecked"}
-                                size={26}
-                                color={done ? "#10B981" : "#4B5B6B"}
-                              />
-                            </Pressable>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.roomName}>{room.name}</Text>
-                              <View style={styles.badgeRow}>
-                                {od > 0 && (
-                                  <View style={[styles.badge, { backgroundColor: "#3A1E12", borderColor: "#F97316" }]}>
-                                    <MaterialIcons name="warning" size={11} color="#F97316" />
-                                    <Text style={[styles.badgeText, { color: "#F9A97C" }]}>{tn("rundgang_defects", od)}</Text>
+                          <View key={room.id} style={styles.roomCard}>
+                            <View style={styles.roomHeaderRow}>
+                              <Pressable
+                                onPress={() => toggleRoomDone(room)}
+                                hitSlop={10}
+                                style={styles.checkbox}
+                              >
+                                <MaterialIcons
+                                  name={done ? "check-circle" : "radio-button-unchecked"}
+                                  size={26}
+                                  color={done ? "#10B981" : "#4B5B6B"}
+                                />
+                              </Pressable>
+                              <Pressable onPress={() => toggleRoomExpand(room.id)} style={styles.roomHeaderTap}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.roomName}>{room.name}</Text>
+                                  <View style={styles.badgeRow}>
+                                    {od > 0 && (
+                                      <View style={[styles.badge, { backgroundColor: "#3A1E12", borderColor: "#F97316" }]}>
+                                        <MaterialIcons name="warning" size={11} color="#F97316" />
+                                        <Text style={[styles.badgeText, { color: "#F9A97C" }]}>{tn("rundgang_defects", od)}</Text>
+                                      </View>
+                                    )}
+                                    {fu > 0 && (
+                                      <View style={[styles.badge, { backgroundColor: "#122A3A", borderColor: "#38BDF8" }]}>
+                                        <MaterialIcons name="event-repeat" size={11} color="#38BDF8" />
+                                        <Text style={[styles.badgeText, { color: "#8BD3F5" }]}>{tn("rundgang_followup", fu)}</Text>
+                                      </View>
+                                    )}
+                                    {tk > 0 && (
+                                      <View style={[styles.badge, { backgroundColor: "#1E2A3A", borderColor: "#818CF8" }]}>
+                                        <MaterialIcons name="task-alt" size={11} color="#818CF8" />
+                                        <Text style={[styles.badgeText, { color: "#B4B9F7" }]}>{tn("rundgang_tasks", tk)}</Text>
+                                      </View>
+                                    )}
+                                    {cl > 0 && (
+                                      <View style={[styles.badge, { backgroundColor: "#14261C", borderColor: "#34D399" }]}>
+                                        <MaterialIcons name="checklist" size={11} color="#34D399" />
+                                        <Text style={[styles.badgeText, { color: "#8FE3BE" }]}>{t("rundgang_checklist" as any)}</Text>
+                                      </View>
+                                    )}
+                                    {od === 0 && fu === 0 && tk === 0 && cl === 0 && (
+                                      <Text style={[styles.roomStatusText, { color: statusColor }]}>
+                                        {t(ROOM_STATUS_LABELS[room.status || "nicht_begonnen"] as any)}
+                                      </Text>
+                                    )}
                                   </View>
-                                )}
-                                {fu > 0 && (
-                                  <View style={[styles.badge, { backgroundColor: "#122A3A", borderColor: "#38BDF8" }]}>
-                                    <MaterialIcons name="event-repeat" size={11} color="#38BDF8" />
-                                    <Text style={[styles.badgeText, { color: "#8BD3F5" }]}>{tn("rundgang_followup", fu)}</Text>
-                                  </View>
-                                )}
-                                {tk > 0 && (
-                                  <View style={[styles.badge, { backgroundColor: "#1E2A3A", borderColor: "#818CF8" }]}>
-                                    <MaterialIcons name="task-alt" size={11} color="#818CF8" />
-                                    <Text style={[styles.badgeText, { color: "#B4B9F7" }]}>{tn("rundgang_tasks", tk)}</Text>
-                                  </View>
-                                )}
-                                {cl > 0 && (
-                                  <View style={[styles.badge, { backgroundColor: "#14261C", borderColor: "#34D399" }]}>
-                                    <MaterialIcons name="checklist" size={11} color="#34D399" />
-                                    <Text style={[styles.badgeText, { color: "#8FE3BE" }]}>{t("rundgang_checklist" as any)}</Text>
-                                  </View>
-                                )}
-                                {od === 0 && fu === 0 && tk === 0 && cl === 0 && (
-                                  <Text style={[styles.roomStatusText, { color: statusColor }]}>
-                                    {t(ROOM_STATUS_LABELS[room.status || "nicht_begonnen"] as any)}
-                                  </Text>
-                                )}
-                              </View>
+                                </View>
+                                <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={22} color="#5A6B7C" />
+                              </Pressable>
                             </View>
-                            <MaterialIcons name="chevron-right" size={20} color="#5A6B7C" />
-                          </Pressable>
+
+                            {expanded && (
+                              <View style={styles.roomExpand}>
+                                {dList.length === 0 && tList.length === 0 && cList.length === 0 && (
+                                  <Text style={styles.expandEmpty}>{t("rundgang_room_empty" as any)}</Text>
+                                )}
+                                {dList.map((d) => {
+                                  const ddone = isDefectDone(d);
+                                  return (
+                                    <View key={d.id} style={styles.entryRow}>
+                                      <Pressable onPress={() => toggleDefectDone(d)} hitSlop={8} style={styles.entryCheck}>
+                                        <MaterialIcons name={ddone ? "check-circle" : "radio-button-unchecked"} size={22} color={ddone ? "#10B981" : "#4B5B6B"} />
+                                      </Pressable>
+                                      <Pressable onPress={() => openDefect(d)} style={styles.entryTap}>
+                                        <MaterialIcons name="warning" size={14} color="#F97316" />
+                                        <Text style={[styles.entryTitle, ddone && styles.entryTitleDone]} numberOfLines={1}>{d.title || d.description || t("index_tool_maengel" as any)}</Text>
+                                      </Pressable>
+                                      <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
+                                    </View>
+                                  );
+                                })}
+                                {tList.map((tkItem) => {
+                                  const tdone = isTaskDone(tkItem);
+                                  return (
+                                    <View key={tkItem.id} style={styles.entryRow}>
+                                      <Pressable onPress={() => toggleTaskDone(tkItem)} hitSlop={8} style={styles.entryCheck}>
+                                        <MaterialIcons name={tdone ? "check-circle" : "radio-button-unchecked"} size={22} color={tdone ? "#10B981" : "#4B5B6B"} />
+                                      </Pressable>
+                                      <Pressable onPress={openTasksList} style={styles.entryTap}>
+                                        <MaterialIcons name="task-alt" size={14} color="#818CF8" />
+                                        <Text style={[styles.entryTitle, tdone && styles.entryTitleDone]} numberOfLines={1}>{taskTitle(tkItem)}</Text>
+                                      </Pressable>
+                                      <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
+                                    </View>
+                                  );
+                                })}
+                                {cList.map((c) => (
+                                  <Pressable key={c.id} onPress={openChecklistsList} style={styles.entryRow}>
+                                    <View style={styles.entryCheck}>
+                                      <MaterialIcons name="checklist" size={20} color="#34D399" />
+                                    </View>
+                                    <View style={styles.entryTap}>
+                                      <Text style={styles.entryTitle} numberOfLines={1}>{c.checklistName || t("rundgang_checklist" as any)}</Text>
+                                    </View>
+                                    <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
+                                  </Pressable>
+                                ))}
+                                <Pressable onPress={() => openRoom(room)} style={styles.roomOpenLink}>
+                                  <MaterialIcons name="open-in-new" size={16} color="#5DADE2" />
+                                  <Text style={styles.roomOpenLinkText}>{t("rundgang_open_room" as any)}</Text>
+                                </Pressable>
+                              </View>
+                            )}
+                          </View>
                         );
                       })
                     ))}
@@ -356,18 +472,54 @@ const styles = StyleSheet.create({
   floorCount: { color: "#7F8C9B", fontSize: 13, fontWeight: "700" },
   floorEmpty: { color: "#5A6B7C", fontSize: 13, paddingHorizontal: 52, paddingBottom: 8 },
   roomCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     marginHorizontal: 12,
     marginBottom: 6,
     borderRadius: 10,
     backgroundColor: "#101E30",
     borderWidth: 1,
     borderColor: "#17293F",
+    overflow: "hidden",
   },
+  roomHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  roomHeaderTap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  roomExpand: {
+    borderTopWidth: 1,
+    borderTopColor: "#17293F",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#0C1826",
+  },
+  expandEmpty: { color: "#5A6B7C", fontSize: 13, paddingVertical: 10, paddingHorizontal: 4 },
+  entryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  entryCheck: { padding: 2, width: 28, alignItems: "center" },
+  entryTap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  entryTitle: { flex: 1, color: "#DCE6F0", fontSize: 14, fontWeight: "600" },
+  entryTitleDone: { color: "#6B7A8A", textDecorationLine: "line-through" },
+  roomOpenLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginTop: 2,
+  },
+  roomOpenLinkText: { color: "#5DADE2", fontSize: 13, fontWeight: "700" },
   checkbox: { padding: 2 },
   roomName: { color: "#F0F4F8", fontSize: 15, fontWeight: "700", marginBottom: 4 },
   badgeRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },

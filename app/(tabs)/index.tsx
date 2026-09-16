@@ -151,17 +151,28 @@ const TOOL_GROUPS: ToolGroup[] = [
   },
 ];
 
+// Reset on every cold start (module state is re-created when the JS bundle
+// reloads), so the startup chooser appears once per app launch.
+let startChooserShownThisLaunch = false;
+
 export default function AIWorkbenchScreen() {
   const router = useRouter();
   const { t } = useTranslation();
 
-  // Show the "Loslegen" get-started screen once (after the feature onboarding).
+  // Show the "Loslegen" get-started screen once (after the feature onboarding),
+  // then a "Was möchtest du tun?" chooser on every subsequent cold start.
   useEffect(() => {
     (async () => {
       try {
-        if (await AsyncStorage.getItem("getstarted_seen")) return;
         if (!(await AsyncStorage.getItem("onboarding_complete"))) return; // onboarding runs first
-        router.push("/get-started" as any);
+        if (!(await AsyncStorage.getItem("getstarted_seen"))) {
+          router.push("/get-started" as any);
+          return;
+        }
+        if (!startChooserShownThisLaunch) {
+          startChooserShownThisLaunch = true;
+          router.push("/start-chooser" as any);
+        }
       } catch {}
     })();
   }, []);
