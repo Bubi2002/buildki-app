@@ -395,7 +395,12 @@ export default function RundgangTab() {
                         const tk = roomTasks(room);
                         const cl = roomChecklists(room);
                         const done = DONE_STATUSES.has(room.status || "");
-                        const statusColor = ROOM_STATUS_COLORS[room.status || "nicht_begonnen"];
+                        const rStatus = room.status || "nicht_begonnen";
+                        const statusColor = ROOM_STATUS_COLORS[rStatus];
+                        const statusIcon = rStatus === "abgenommen" ? "verified"
+                          : rStatus === "fertig" ? "check-circle"
+                            : rStatus === "in_arbeit" ? "timelapse"
+                              : "radio-button-unchecked";
                         const expanded = expandedRooms.has(room.id);
                         const dList = roomDefects(room);
                         const tList = roomTaskList(room);
@@ -409,9 +414,9 @@ export default function RundgangTab() {
                                 style={styles.checkbox}
                               >
                                 <MaterialIcons
-                                  name={done ? "check-circle" : "radio-button-unchecked"}
+                                  name={statusIcon as any}
                                   size={26}
-                                  color={done ? "#10B981" : "#4B5B6B"}
+                                  color={rStatus === "nicht_begonnen" ? "#4B5B6B" : statusColor}
                                 />
                               </Pressable>
                               <Pressable onPress={() => toggleRoomExpand(room.id)} style={styles.roomHeaderTap}>
