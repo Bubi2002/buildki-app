@@ -729,31 +729,6 @@ export default function AIWorkbenchScreen() {
           </View>
         )}
 
-        {/* ─── Hilfe & Abo ───────────────────────────────────────────── */}
-        <View style={styles.helpRow}>
-          <Pressable
-            onPress={() => router.push('/tutorial' as any)}
-            style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="menu-book" size={20} color="#5DADE2" />
-            <Text style={styles.helpBtnText}>{t('index_anleitung' as any)}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/support-chat' as any)}
-            style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="support-agent" size={20} color="#A78BFA" />
-            <Text style={styles.helpBtnText}>{t('index_ki_support' as any)}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/subscription' as any)}
-            style={({ pressed }) => [styles.helpBtn, { backgroundColor: '#1A2A3F', borderColor: '#1E3A5F', opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="credit-card" size={20} color="#4ADE80" />
-            <Text style={styles.helpBtnText}>{t('index_abo' as any)}</Text>
-          </Pressable>
-        </View>
-
       </ScrollView>
     </ScreenContainer>
   );
