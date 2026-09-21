@@ -5,7 +5,7 @@
  * project active and everything saved.
  */
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -13,10 +13,12 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "expo-image";
+import { RecordingPresets, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
-import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, type Floor, type Room } from "@/lib/room-store";
+import { trpc } from "@/lib/trpc";
+import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect } from "@/lib/defect-store";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
@@ -41,6 +43,13 @@ export default function ProjectWizardScreen() {
   // Step 2 – rooms
   const [floors, setFloors] = useState<Floor[]>([]);
   const [floorId, setFloorId] = useState<string | null>(null);
+  const [floorInputOpen, setFloorInputOpen] = useState(false);
+  const [newFloorName, setNewFloorName] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const uploadAudio = trpc.upload.audio.useMutation();
+  const transcribe = trpc.voice.transcribe.useMutation();
   const [roomName, setRoomName] = useState("");
   const [rooms, setRooms] = useState<Room[]>([]);
 
@@ -127,6 +136,67 @@ export default function ProjectWizardScreen() {
     await addRoom(projectId, floorId, roomName.trim());
     setRoomName("");
     setRooms(await getAllRooms(projectId));
+  };
+
+  const addCustomFloor = async () => {
+    const name = newFloorName.trim();
+    if (!name || !projectId) { setFloorInputOpen(false); setNewFloorName(""); return; }
+    haptic();
+    const nextNum = floors.reduce((m, f) => Math.max(m, f.number), -1) + 1;
+    await addFloor(projectId, name, nextNum);
+    const fl = await getFloors(projectId);
+    setFloors(fl);
+    const created = [...fl].reverse().find((f) => f.name === name);
+    if (created) setFloorId(created.id);
+    setNewFloorName("");
+    setFloorInputOpen(false);
+  };
+
+  // Speak room names ("Küche, Bad und Schlafzimmer") → adds them to the floor.
+  const parseRoomNames = (text: string): string[] =>
+    text
+      .split(/\s*(?:,|;|·|\/|\n|\bund\b|\bsowie\b)\s*/gi)
+      .map((s) => s.trim().replace(/[.!?]+$/g, "").trim())
+      .filter((s) => s.length >= 2)
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .slice(0, 25);
+
+  const startVoiceRooms = async () => {
+    if (!projectId) return;
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecording(true);
+      haptic();
+    } catch { setRecording(false); }
+  };
+
+  const stopVoiceRooms = async () => {
+    setRecording(false);
+    setVoiceBusy(true);
+    try {
+      try { await recorder.stop(); } catch {}
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+      const uri = recorder.uri || (recorder.getStatus?.() as any)?.url || null;
+      if (!uri) throw new Error();
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      const uploaded = await uploadAudio.mutateAsync({ base64, mimeType: "audio/m4a", filename: `rooms-${Date.now()}.m4a` });
+      const transcribed = await transcribe.mutateAsync({ audioUrl: uploaded.url, language: "de" });
+      const names = parseRoomNames((transcribed.text || "").trim());
+      const fid = floorId ?? floors[0]?.id ?? null;
+      if (fid && names.length) {
+        for (const n of names) await addRoom(projectId, fid, n);
+        setRooms(await getAllRooms(projectId));
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert(t('hinweis'), t('wizard_voice_none' as any));
+      }
+    } catch {
+      Alert.alert(t('alert_fehler'), t('wizard_voice_failed' as any));
+    } finally {
+      setVoiceBusy(false);
+    }
   };
 
   const curFloorId = itemFloorId ?? floorId ?? (floors[0]?.id ?? null);
@@ -283,13 +353,33 @@ export default function ProjectWizardScreen() {
                   </Pressable>
                 );
               })}
+              <Pressable onPress={() => { setNewFloorName(""); setFloorInputOpen(true); }} style={[styles.floorChip, { flexDirection: "row", alignItems: "center", gap: 4, borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <MaterialIcons name="add" size={15} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>{t('wizard_floor' as any)}</Text>
+              </Pressable>
             </ScrollView>
+
+            {floorInputOpen && (
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+                <TextInput value={newFloorName} onChangeText={setNewFloorName} placeholder={t('wizard_floor' as any)} placeholderTextColor={colors.muted} autoFocus returnKeyType="done" onSubmitEditing={addCustomFloor} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+                <Pressable onPress={addCustomFloor} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
+                  <MaterialIcons name="check" size={22} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            )}
+
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
               <TextInput value={roomName} onChangeText={setRoomName} placeholder={t('rooms_add_room')} placeholderTextColor={colors.muted} returnKeyType="done" onSubmitEditing={addRoomNow} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+              <Pressable onPress={recording ? stopVoiceRooms : startVoiceRooms} style={({ pressed }) => [styles.addBtn, { backgroundColor: recording ? "#EF4444" : "#334155", opacity: pressed ? 0.85 : 1 }]}>
+                <MaterialIcons name={recording ? "stop" : "mic"} size={22} color="#FFFFFF" />
+              </Pressable>
               <Pressable onPress={addRoomNow} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
                 <MaterialIcons name="add" size={22} color="#FFFFFF" />
               </Pressable>
             </View>
+            <Text style={{ color: recording ? "#EF4444" : colors.muted, fontSize: 12, marginTop: 6 }}>
+              {recording ? t('wizard_voice_listening' as any) : t('wizard_voice_hint' as any)}
+            </Text>
             {floors.map((f) => {
               const fr = roomsForFloor(f.id);
               if (fr.length === 0) return null;
@@ -431,6 +521,13 @@ export default function ProjectWizardScreen() {
           )}
         </View>
       )}
+
+      {voiceBusy && (
+        <View style={styles.voiceOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600", marginTop: 12 }}>{t('wizard_voice_processing' as any)}</Text>
+        </View>
+      )}
     </ScreenContainer>
   );
 }
@@ -466,4 +563,5 @@ const styles = StyleSheet.create({
   footerGhostText: { fontSize: 15, fontWeight: "700" },
   footerPrimary: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#2563EB", borderRadius: 12, paddingVertical: 14 },
   footerPrimaryText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  voiceOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.72)" },
 });
