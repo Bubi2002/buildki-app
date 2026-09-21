@@ -1573,7 +1573,7 @@ const styles = StyleSheet.create({
   statBadge: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 0 },
   statNum: { fontSize: 20, fontWeight: "700" },
   statLabel: { fontSize: 11, fontWeight: "500", marginTop: 2 },
-  filterRow: { marginBottom: 12, maxHeight: 46 },
+  filterRow: { marginBottom: 12, maxHeight: 58, paddingBottom: 2 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 0, borderWidth: 1, marginRight: 8, justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "500", lineHeight: 18 },
   list: { paddingBottom: 20 },
