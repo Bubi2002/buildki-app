@@ -10,6 +10,9 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
@@ -45,6 +48,9 @@ export default function ProjectWizardScreen() {
   const [itemType, setItemType] = useState<"defect" | "task">("defect");
   const [itemTitle, setItemTitle] = useState("");
   const [itemRoom, setItemRoom] = useState("");
+  const [itemFloorId, setItemFloorId] = useState<string | null>(null);
+  const [itemAssignee, setItemAssignee] = useState("");
+  const [itemPhotos, setItemPhotos] = useState<string[]>([]);
   const [addedItems, setAddedItems] = useState<{ type: "defect" | "task"; title: string; room?: string }[]>([]);
 
   const haptic = () => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
@@ -123,11 +129,40 @@ export default function ProjectWizardScreen() {
     setRooms(await getAllRooms(projectId));
   };
 
+  const curFloorId = itemFloorId ?? floorId ?? (floors[0]?.id ?? null);
+
+  const pickItemPhotos = async () => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+      if (res.canceled || !res.assets?.length) return;
+      const dir = `${FileSystem.documentDirectory}wizard-photos/`;
+      try {
+        const info = await FileSystem.getInfoAsync(dir);
+        if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      } catch {}
+      const uris: string[] = [];
+      for (const a of res.assets) {
+        try {
+          const dest = `${dir}p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`;
+          await FileSystem.copyAsync({ from: a.uri, to: dest });
+          uris.push(dest);
+        } catch { uris.push(a.uri); }
+      }
+      setItemPhotos((prev) => [...prev, ...uris]);
+    } catch {}
+  };
+
   const addItemNow = async () => {
     if (!projectId || !itemTitle.trim()) return;
     haptic();
     const title = itemTitle.trim();
     const room = itemRoom.trim() || undefined;
+    const floorName = floors.find((f) => f.id === curFloorId)?.name || undefined;
+    const assignee = itemAssignee.trim() || undefined;
     try {
       if (itemType === "defect") {
         const now = new Date().toISOString();
@@ -139,19 +174,23 @@ export default function ProjectWizardScreen() {
           status: "offen",
           priority: "mittel",
           category: "sonstiges",
-          photos: [],
+          photos: itemPhotos,
           room,
+          floor: floorName,
+          assignee,
           createdAt: now,
           updatedAt: now,
         } as any);
       } else {
         const raw = await AsyncStorage.getItem("project-tasks");
         const all = raw ? JSON.parse(raw) : [];
-        all.unshift({ id: `task-${Date.now()}`, projectId, title, room, status: "offen", done: false });
+        all.unshift({ id: `task-${Date.now()}`, projectId, title, room, floor: floorName, assignee, status: "offen", done: false });
         await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
       }
       setAddedItems((prev) => [{ type: itemType, title, room }, ...prev]);
       setItemTitle("");
+      setItemPhotos([]);
+      setItemAssignee("");
     } catch {}
   };
 
@@ -287,12 +326,68 @@ export default function ProjectWizardScreen() {
               })}
             </View>
             <TextInput value={itemTitle} onChangeText={setItemTitle} placeholder={t('titel')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <TextInput value={itemRoom} onChangeText={setItemRoom} placeholder={t('index_tool_raeume')} placeholderTextColor={colors.muted} returnKeyType="done" onSubmitEditing={addItemNow} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
-              <Pressable onPress={addItemNow} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
-                <MaterialIcons name="add" size={22} color="#FFFFFF" />
-              </Pressable>
-            </View>
+
+            {/* Etage */}
+            {floors.length > 0 && (
+              <>
+                <Text style={styles.miniLabel}>{t('wizard_floor' as any)}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+                  {floors.map((f) => {
+                    const active = f.id === curFloorId;
+                    return (
+                      <Pressable key={f.id} onPress={() => setItemFloorId(f.id)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                        <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }}>{floorLabel(f)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
+            {/* Raum – aus den zuvor erstellten Räumen wählen */}
+            {curFloorId && roomsForFloor(curFloorId).length > 0 && (
+              <>
+                <Text style={styles.miniLabel}>{t('index_tool_raeume')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+                  {roomsForFloor(curFloorId).map((r) => {
+                    const active = itemRoom === r.name;
+                    return (
+                      <Pressable key={r.id} onPress={() => setItemRoom(active ? "" : r.name)} style={[styles.floorChip, { flexDirection: "row", alignItems: "center", gap: 5, borderColor: active ? "#5DADE2" : colors.border, backgroundColor: active ? "#5DADE218" : colors.surface }]}>
+                        <MaterialIcons name="meeting-room" size={14} color={active ? "#5DADE2" : colors.muted} />
+                        <Text style={{ color: active ? "#5DADE2" : colors.muted, fontWeight: "600", fontSize: 13 }}>{r.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+            <TextInput value={itemRoom} onChangeText={setItemRoom} placeholder={t('index_tool_raeume')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            {/* Zuständiger */}
+            <TextInput value={itemAssignee} onChangeText={setItemAssignee} placeholder={t('zustaendig')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            {/* Fotos */}
+            <Pressable onPress={pickItemPhotos} style={({ pressed }) => [styles.photoBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+              <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+            </Pressable>
+            {itemPhotos.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                {itemPhotos.map((uri, i) => (
+                  <View key={i} style={{ marginRight: 8 }}>
+                    <Image source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                    <Pressable onPress={() => setItemPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={styles.photoRemove}>
+                      <MaterialIcons name="close" size={13} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            <Pressable onPress={addItemNow} disabled={!itemTitle.trim()} style={({ pressed }) => [styles.addFullBtn, { opacity: !itemTitle.trim() ? 0.4 : pressed ? 0.85 : 1 }]}>
+              <MaterialIcons name="add" size={20} color="#FFFFFF" />
+              <Text style={styles.addFullBtnText}>{t('hinzufuegen')}</Text>
+            </Pressable>
             {addedItems.map((it, i) => (
               <View key={i} style={[styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: i === 0 ? 14 : 8 }]}>
                 <MaterialIcons name={it.type === "defect" ? "warning" : "task-alt"} size={16} color={it.type === "defect" ? "#F59E0B" : "#818CF8"} />
@@ -352,6 +447,11 @@ const styles = StyleSheet.create({
   hint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
   floorChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
   addBtn: { width: 46, height: 46, borderRadius: 10, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" },
+  miniLabel: { fontSize: 12, fontWeight: "700", color: "#7F8C9B", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 6, marginBottom: 6 },
+  photoBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingVertical: 12, marginTop: 2 },
+  photoRemove: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center" },
+  addFullBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#2563EB", borderRadius: 12, paddingVertical: 14, marginTop: 14 },
+  addFullBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
   groupLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 },
   itemRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderWidth: 1, borderRadius: 10, marginBottom: 8 },
   itemText: { flex: 1, fontSize: 14, fontWeight: "600" },
