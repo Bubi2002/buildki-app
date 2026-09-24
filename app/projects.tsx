@@ -15,6 +15,15 @@ import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
+import { getDefects, type Defect } from "@/lib/defect-store";
+
+const DATE_LOCALE: Record<string, string> = {
+  de: "de-DE", en: "en-GB", fr: "fr-FR", es: "es-ES", uk: "uk-UA",
+  pl: "pl-PL", ru: "ru-RU", ro: "ro-RO", bg: "bg-BG", tr: "tr-TR",
+};
+
+// A defect still counts as "open" unless it is resolved, rejected or closed.
+const OPEN_DEFECT = (d: Defect) => d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt";
 
 type Project = {
   id: string;
@@ -40,11 +49,13 @@ const PROJECT_COLORS = [
 ];
 
 export default function ProjectsScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -54,12 +65,14 @@ export default function ProjectsScreen() {
 
   async function loadData() {
     try {
-      const [projectsData, protocolsData] = await Promise.all([
+      const [projectsData, protocolsData, defectsData] = await Promise.all([
         AsyncStorage.getItem("projects"),
         AsyncStorage.getItem("protocols"),
+        getDefects(),
       ]);
       setProjects(JSON.parse(projectsData || "[]"));
       setProtocols(JSON.parse(protocolsData || "[]"));
+      setDefects(defectsData);
     } catch (e) {
       console.error("Error loading projects:", e);
     }
@@ -147,6 +160,26 @@ export default function ProjectsScreen() {
     return protocols.filter((p) => !p.projectId).length;
   };
 
+  const getOpenDefectCount = (projectId: string) =>
+    defects.filter((d) => d.projectId === projectId && OPEN_DEFECT(d)).length;
+
+  const getLastInspection = (projectId: string): string | null => {
+    const dates = protocols
+      .filter((p) => p.projectId === projectId && p.createdAt)
+      .map((p) => p.createdAt as string)
+      .sort((a, b) => b.localeCompare(a));
+    if (dates.length === 0) return null;
+    const d = new Date(dates[0]);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString(DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
+  const query = search.trim().toLowerCase();
+  const filteredProjects = query
+    ? projects.filter((p) =>
+        p.name.toLowerCase().includes(query) || (p.description || "").toLowerCase().includes(query))
+    : projects;
+
   const openEdit = (project: Project) => {
     setEditingProject(project);
     setNewName(project.name);
@@ -158,6 +191,8 @@ export default function ProjectsScreen() {
 
   const renderProject = ({ item }: { item: Project }) => {
     const count = getProtocolCount(item.id);
+    const openDefects = getOpenDefectCount(item.id);
+    const lastInspection = getLastInspection(item.id);
     return (
       <Pressable
         onPress={() => router.push(`/project-detail?id=${item.id}` as any)}
@@ -180,7 +215,23 @@ export default function ProjectsScreen() {
             <Text style={[styles.projectMetaText, { color: colors.muted }]}>
               {count} Protokoll{count !== 1 ? "e" : ""}
             </Text>
+            {openDefects > 0 && (
+              <>
+                <MaterialIcons name="report-problem" size={14} color="#E53935" style={{ marginLeft: 10 }} />
+                <Text style={[styles.projectMetaText, { color: "#E53935" }]}>
+                  {openDefects} {t('projects_open_defects' as any)}
+                </Text>
+              </>
+            )}
           </View>
+          {lastInspection && (
+            <View style={[styles.projectMeta, { marginTop: 2 }]}>
+              <MaterialIcons name="event-available" size={14} color={colors.muted} />
+              <Text style={[styles.projectMetaText, { color: colors.muted }]}>
+                {t('projects_last_visit' as any)}: {lastInspection}
+              </Text>
+            </View>
+          )}
         </View>
         <Pressable
           onPress={() => deleteProject(item)}
@@ -219,9 +270,28 @@ export default function ProjectsScreen() {
           </View>
         )}
 
+        {/* Search */}
+        {projects.length > 3 && (
+          <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <MaterialIcons name="search" size={18} color={colors.muted} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t('projects_search_placeholder' as any)}
+              placeholderTextColor={colors.muted}
+              style={{ flex: 1, color: colors.foreground, fontSize: 15, paddingVertical: 0 }}
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch("")} hitSlop={8}>
+                <MaterialIcons name="close" size={18} color={colors.muted} />
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Projects list */}
         <FlatList
-          data={projects}
+          data={filteredProjects}
           keyExtractor={(item) => item.id}
           renderItem={renderProject}
           contentContainerStyle={styles.list}
@@ -331,6 +401,7 @@ const styles = StyleSheet.create({
   projectMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
   projectMetaText: { fontSize: 12 },
   unassignedBanner: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 0, borderWidth: 1 },
+  searchBar: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginBottom: 12, paddingHorizontal: 12, height: 44, borderRadius: 10, borderWidth: 1 },
   unassignedText: { fontSize: 13 },
   emptyState: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: "600" },
