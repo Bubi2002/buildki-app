@@ -1280,6 +1280,17 @@ export default function ProtocolDetailScreen() {
     setVersionSummaries(prev => ({ ...prev, [versionId]: summary.substring(0, 120) }));
   };
 
+  const dismissSendPrepared = async () => {
+    if (!protocol) return;
+    try {
+      const pStr = await AsyncStorage.getItem("protocols");
+      const pArr = pStr ? JSON.parse(pStr) : [];
+      const i = pArr.findIndex((p: any) => p.id === protocol.id);
+      if (i !== -1) { delete pArr[i].sendPrepared; await AsyncStorage.setItem("protocols", JSON.stringify(pArr)); }
+    } catch {}
+    setProtocol({ ...(protocol as any), sendPrepared: false } as any);
+  };
+
   const exportPdf = async () => {
     if (!protocol) return;
 
@@ -1971,6 +1982,21 @@ export default function ProtocolDetailScreen() {
         </View>
 
         {/* PDF export lives in the header (single entry point) — no duplicate banner here. */}
+
+        {/* Prepared-to-send banner (auto-send mode "prepare") */}
+        {(protocol as any).sendPrepared && (
+          <Pressable
+            onPress={() => setShowEmailModal(true)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#34D399", backgroundColor: "#34D39918", borderRadius: 10, padding: 12, marginBottom: 12, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="mark-email-read" size={22} color="#0E9F6E" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>{t('send_ready_title' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('send_ready_desc' as any)}</Text>
+            </View>
+            <Pressable onPress={dismissSendPrepared} hitSlop={8}><MaterialIcons name="close" size={18} color={colors.muted} /></Pressable>
+          </Pressable>
+        )}
 
         {/* Photos Gallery - only show if photos are NOT already all referenced inline in text */}
         {photos.length > 0 && !allPhotosInlined && (

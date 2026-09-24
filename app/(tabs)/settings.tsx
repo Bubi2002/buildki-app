@@ -1290,6 +1290,17 @@ return (
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
+          <Pressable
+            onPress={() => router.push("/send-automation" as any)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
+          >
+            <MaterialIcons name="send" size={22} color={colors.primary} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('send_auto_title' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('send_auto_intro' as any)}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
         </View>
 
         {/* Wasserzeichen / Firmenstempel */}

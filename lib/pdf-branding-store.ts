@@ -25,7 +25,8 @@ export type PdfBranding = {
   showCoverPage: boolean; // show professional cover page as first page
   watermarkText: string; // custom watermark text (empty = use date + project name)
   defaultEmailAddress: string; // default email for PDF direct send (comma-separated for multiple)
-  autoSendEmail: boolean; // automatically send PDF via email after protocol creation
+  autoSendEmail: boolean; // legacy flag (kept in sync with autoSendMode for compatibility)
+  autoSendMode: "off" | "prepare" | "auto"; // off = manual; prepare = auto-build PDF, confirm before send; auto = send immediately
   showTranscription: boolean; // show original transcription in PDF
   showTodos: boolean; // show task list in PDF
   showMetadata: boolean; // show metadata (location, weather, participants) in PDF
@@ -57,6 +58,7 @@ export const DEFAULT_BRANDING: PdfBranding = {
   watermarkText: "",
   defaultEmailAddress: "info@iserloh.net",
   autoSendEmail: false,
+  autoSendMode: "off",
   showTranscription: true,
   showTodos: true,
   showMetadata: true,
@@ -105,7 +107,12 @@ export async function getPdfBranding(): Promise<PdfBranding> {
   try {
     const stored = await AsyncStorage.getItem(PDF_BRANDING_KEY);
     if (stored) {
-      return { ...DEFAULT_BRANDING, ...JSON.parse(stored) };
+      const merged = { ...DEFAULT_BRANDING, ...JSON.parse(stored) };
+      // Migrate the legacy boolean to the new 3-state mode if not set yet.
+      if (!JSON.parse(stored).autoSendMode) {
+        merged.autoSendMode = merged.autoSendEmail ? "auto" : "off";
+      }
+      return merged;
     }
     return DEFAULT_BRANDING;
   } catch {

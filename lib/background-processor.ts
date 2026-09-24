@@ -144,11 +144,12 @@ export function isJobActive(protocolId: string): boolean {
 async function autoSendPdfIfEnabled(protocolId: string) {
   const { getPdfBranding } = await import("@/lib/pdf-branding-store");
   const branding = await getPdfBranding();
-  
-  if (!branding.autoSendEmail) {
+
+  const mode = branding.autoSendMode || (branding.autoSendEmail ? "auto" : "off");
+  if (mode === "off") {
     return;
   }
-  
+
   const emailAddressRaw = branding.defaultEmailAddress || "info@iserloh.net";
   const recipients = emailAddressRaw.split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
   const ccRecipients = (branding.emailCc || "").split(",").map((e: string) => e.trim()).filter((e: string) => e.length > 0);
@@ -207,7 +208,30 @@ async function autoSendPdfIfEnabled(protocolId: string) {
     ? replacePlaceholders(branding.emailBodyTemplate)
     : `Anbei das Protokoll "${protocol.title || protocol.templateName || "Protokoll"}" vom ${datumStr}.\n\nMit freundlichen Gr\u00fc\u00dfen`;
 
-  // Send via mail composer
+  // Prepare mode: stage everything but let the user review & confirm before
+  // anything leaves the device (safer for AI-generated content).
+  if (mode === "prepare") {
+    try {
+      const pStr = await AsyncStorage.getItem("protocols");
+      const pArr = pStr ? JSON.parse(pStr) : [];
+      const pIdx = pArr.findIndex((p: any) => p.id === protocolId);
+      if (pIdx !== -1) {
+        pArr[pIdx] = {
+          ...pArr[pIdx],
+          sendPrepared: true,
+          sendRecipients: recipients,
+          sendCc: ccRecipients,
+          sendBcc: bccRecipients,
+          sendSubject: subjectText,
+          sendBody: bodyText,
+        };
+        await AsyncStorage.setItem("protocols", JSON.stringify(pArr));
+      }
+    } catch {}
+    return;
+  }
+
+  // Send via mail composer (auto mode)
   try {
     const MailComposer = await import("expo-mail-composer");
     const isAvailable = await MailComposer.isAvailableAsync();

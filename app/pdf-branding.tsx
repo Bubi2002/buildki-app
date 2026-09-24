@@ -367,77 +367,19 @@ export default function PdfBrandingScreen() {
           )}
         </View>
 
-        {/* E-Mail-Versand */}
+        {/* E-Mail-Versand → moved to its own screen */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('emailversand')}</Text>
-          <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('empfu00e4nger_fu00fcr_pdfdirektversand_k')}</Text>
-
-          <TextInput
-            value={branding.defaultEmailAddress || ""}
-            onChangeText={(v) => updateField("defaultEmailAddress", v)}
-            placeholder={t('pdf_branding_email_addresses_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            multiline
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 44 }]}
-          />
-          <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{t('mehrere_adressen_mit_komma')}</Text>
-
-          <View style={[styles.toggleRow, { borderColor: colors.border, marginTop: 12 }]}>
+          <Pressable
+            onPress={() => router.push("/send-automation" as any)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, padding: 14, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <MaterialIcons name="send" size={22} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>{t('autoversand')}</Text>
-              <Text style={{ fontSize: 11, color: colors.muted }}>{t('pdf_automatisch_nach_protokollerstellung')}</Text>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>{t('send_auto_title' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('send_auto_intro' as any)}</Text>
             </View>
-            <Switch
-              value={branding.autoSendEmail === true}
-              onValueChange={(v) => updateField("autoSendEmail", v)}
-              trackColor={{ false: colors.border, true: colors.primary + "50" }}
-              thumbColor={branding.autoSendEmail === true ? colors.primary : colors.muted}
-            />
-          </View>
-
-          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 16 }]}>{t('pdf_branding_email_betreff_hint' as any)}</Text>
-          <TextInput
-            value={branding.emailSubjectTemplate || ""}
-            onChangeText={(v) => updateField("emailSubjectTemplate", v)}
-            placeholder={t('pdf_branding_email_betreff_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
-
-          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>{t('pdf_branding_email_text_hint' as any)}</Text>
-          <TextInput
-            value={branding.emailBodyTemplate || ""}
-            onChangeText={(v) => updateField("emailBodyTemplate", v)}
-            placeholder={t('pdf_branding_email_text_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            multiline
-            numberOfLines={4}
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 80, textAlignVertical: "top" }]}
-          />
-
-          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>{t('cc_kommagetrennt')}</Text>
-          <TextInput
-            value={branding.emailCc || ""}
-            onChangeText={(v) => updateField("emailCc", v)}
-            placeholder={t('pdf_branding_cc_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
-
-          <Text style={[styles.sectionHint, { color: colors.muted, marginTop: 12 }]}>{t('bcc_kommagetrennt')}</Text>
-          <TextInput
-            value={branding.emailBcc || ""}
-            onChangeText={(v) => updateField("emailBcc", v)}
-            placeholder={t('pdf_branding_bcc_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
+            <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+          </Pressable>
         </View>
 
         {/* Custom Layout Editor */}
