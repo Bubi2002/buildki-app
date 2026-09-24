@@ -98,6 +98,10 @@ export default function MeasureScreen() {
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [endPoint, setEndPoint] = useState<Point | null>(null);
+  // Which endpoint the current drag is moving, and the finger→handle offset so
+  // grabbing a handle doesn't snap it to the finger.
+  const activeHandleRef = useRef<"start" | "end" | "new">("new");
+  const grabOffsetRef = useRef<Point>({ x: 0, y: 0 });
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState<Unit>("cm");
   const [method, setMethod] = useState<MeasurementMethod>("manual_on_site");
@@ -188,13 +192,45 @@ export default function MeasureScreen() {
     selectEvidence(item);
   }
 
+  const clampToCanvas = (p: Point): Point => ({
+    x: Math.min(CANVAS_WIDTH, Math.max(0, p.x)),
+    y: Math.min(CANVAS_HEIGHT, Math.max(0, p.y)),
+  });
+
   const drawingGesture = Gesture.Pan()
     .onStart((event) => {
-      setStartPoint({ x: event.x, y: event.y });
-      setEndPoint({ x: event.x, y: event.y });
+      const touch = { x: event.x, y: event.y };
+      // If a line already exists, grabbing near an endpoint moves THAT endpoint
+      // (freely, both are independently draggable). Grabbing away from both
+      // endpoints starts a fresh line.
+      if (startPoint && endPoint) {
+        const dStart = Math.hypot(touch.x - startPoint.x, touch.y - startPoint.y);
+        const dEnd = Math.hypot(touch.x - endPoint.x, touch.y - endPoint.y);
+        const GRAB = 44; // generous touch radius around each handle
+        if (dStart <= GRAB && dStart <= dEnd) {
+          activeHandleRef.current = "start";
+          grabOffsetRef.current = { x: startPoint.x - touch.x, y: startPoint.y - touch.y };
+          return;
+        }
+        if (dEnd <= GRAB) {
+          activeHandleRef.current = "end";
+          grabOffsetRef.current = { x: endPoint.x - touch.x, y: endPoint.y - touch.y };
+          return;
+        }
+      }
+      // New line.
+      activeHandleRef.current = "new";
+      grabOffsetRef.current = { x: 0, y: 0 };
+      setStartPoint(touch);
+      setEndPoint(touch);
     })
     .onUpdate((event) => {
-      setEndPoint({ x: event.x, y: event.y });
+      const p = clampToCanvas({
+        x: event.x + grabOffsetRef.current.x,
+        y: event.y + grabOffsetRef.current.y,
+      });
+      if (activeHandleRef.current === "start") setStartPoint(p);
+      else setEndPoint(p);
     })
     .runOnJS(true);
 
@@ -363,8 +399,11 @@ export default function MeasureScreen() {
                       {startPoint && endPoint && (
                         <>
                           <Line x1={startPoint.x} y1={startPoint.y} x2={endPoint.x} y2={endPoint.y} stroke="#FF3B30" strokeWidth={4} />
-                          <Circle cx={startPoint.x} cy={startPoint.y} r={7} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
-                          <Circle cx={endPoint.x} cy={endPoint.y} r={7} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
+                          {/* Larger translucent grab rings signal that both ends are draggable. */}
+                          <Circle cx={startPoint.x} cy={startPoint.y} r={20} fill="rgba(255,59,48,0.18)" />
+                          <Circle cx={endPoint.x} cy={endPoint.y} r={20} fill="rgba(255,59,48,0.18)" />
+                          <Circle cx={startPoint.x} cy={startPoint.y} r={9} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
+                          <Circle cx={endPoint.x} cy={endPoint.y} r={9} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
                           <Rect x={Math.max(4, (startPoint.x + endPoint.x) / 2 - 58)} y={Math.max(4, (startPoint.y + endPoint.y) / 2 - 30)} width={116} height={25} rx={4} fill="rgba(0,0,0,0.72)" />
                           <SvgText x={(startPoint.x + endPoint.x) / 2} y={Math.max(21, (startPoint.y + endPoint.y) / 2 - 13)} fill="#FFFFFF" fontSize={12} fontWeight="700" textAnchor="middle">
                             {measurementLabel}
