@@ -122,9 +122,34 @@ export async function savePdfBranding(branding: Partial<PdfBranding>): Promise<v
 }
 
 /**
+ * Replace header/footer placeholders like {projekt} · {firma} · {datum} ·
+ * {dokumenttyp} · Seite {seite}/{seiten} with real values. Unknown or missing
+ * values collapse to an empty string. Case-insensitive.
+ */
+export function applyBrandingVariables(
+  text: string,
+  ctx: { projekt?: string; firma?: string; datum?: string; dokumenttyp?: string; seite?: number | string; seiten?: number | string } = {},
+): string {
+  if (!text) return text;
+  const map: Record<string, string> = {
+    projekt: ctx.projekt || "",
+    firma: ctx.firma || "",
+    datum: ctx.datum || "",
+    dokumenttyp: ctx.dokumenttyp || "",
+    seite: ctx.seite != null ? String(ctx.seite) : "",
+    seiten: ctx.seiten != null ? String(ctx.seiten) : "",
+  };
+  return text.replace(/\{(projekt|firma|datum|dokumenttyp|seite|seiten)\}/gi, (_m, k) => map[String(k).toLowerCase()] ?? "");
+}
+
+function todayShort(): string {
+  return new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/**
  * Generate HTML header for PDF export
  */
-export function generatePdfHeader(branding: PdfBranding, projectName?: string): string {
+export function generatePdfHeader(branding: PdfBranding, projectName?: string, docType?: string): string {
   const parts: string[] = [];
 
   // Logo + Company name
@@ -139,8 +164,10 @@ export function generatePdfHeader(branding: PdfBranding, projectName?: string): 
     parts.push(`</div>`);
   }
 
-  // Header text or project name
-  const headerLine = branding.headerText || (branding.showProjectName && projectName ? `Projekt: ${projectName}` : "");
+  // Header text (with variables) or project name
+  const headerLine = branding.headerText
+    ? applyBrandingVariables(branding.headerText, { projekt: projectName, firma: branding.companyName, datum: todayShort(), dokumenttyp: docType })
+    : (branding.showProjectName && projectName ? `Projekt: ${projectName}` : "");
   if (headerLine) {
     parts.push(`<div style="font-size:11px;color:#666;margin-top:4px;">${headerLine}</div>`);
   }
@@ -154,13 +181,16 @@ export function generatePdfHeader(branding: PdfBranding, projectName?: string): 
 /**
  * Generate HTML footer for PDF export
  */
-export function generatePdfFooter(branding: PdfBranding, pageNum?: number, totalPages?: number): string {
+export function generatePdfFooter(branding: PdfBranding, pageNum?: number, totalPages?: number, projectName?: string, docType?: string): string {
   const parts: string[] = [];
   parts.push(`<div style="height:1px;background:#e5e7eb;margin-top:16px;margin-bottom:8px;"></div>`);
   parts.push(`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#999;">`);
 
-  // Left: footer text
-  parts.push(`<span>${branding.footerText || ""}</span>`);
+  // Left: footer text (with variables)
+  const footerResolved = applyBrandingVariables(branding.footerText || "", {
+    projekt: projectName, firma: branding.companyName, datum: todayShort(), dokumenttyp: docType, seite: pageNum, seiten: totalPages,
+  });
+  parts.push(`<span>${footerResolved}</span>`);
 
   // Right: page number and/or date
   const rightParts: string[] = [];
@@ -257,7 +287,9 @@ export function generateCoverPage(
     
     <!-- Footer -->
     <div style="margin-top: 24px; font-size: 10px; color: #666;">
-      ${branding.footerText || "Erstellt mit BuildKI"}
+      ${branding.footerText
+        ? applyBrandingVariables(branding.footerText, { projekt: protocol.projectName, firma: branding.companyName, datum: dateStr, dokumenttyp: protocol.templateName })
+        : "Erstellt mit BuildKI"}
     </div>
   </div>`;
 }

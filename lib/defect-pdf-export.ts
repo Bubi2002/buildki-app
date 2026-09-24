@@ -121,9 +121,12 @@ export async function generateDefectPdfHtml(
   const siProg = premiumIcons("#D97706", 22).calendarClock;
   const siDone = premiumIcons("#16A34A", 22).check;
   const siHigh = premiumIcons("#B91C1C", 22).warning;
+  const { applyBrandingVariables } = await import("./pdf-branding-store");
+  const nowStr = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const varCtx = { projekt: projectName, firma: branding.companyName, datum: nowStr, dokumenttyp: "Mängeldokumentation" };
   const coName = esc(branding.companyName || "BuildKI");
-  const coSub = esc(branding.headerText || "Mängeldokumentation");
-  const footerLeft = escCss(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"));
+  const coSub = esc(applyBrandingVariables(branding.headerText || "Mängeldokumentation", varCtx));
+  const footerLeft = escCss(applyBrandingVariables(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"), varCtx));
   const pageBox = branding.showPageNumbers
     ? `@bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
     : "";

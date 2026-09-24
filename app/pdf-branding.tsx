@@ -7,7 +7,7 @@ import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { getPdfBranding, savePdfBranding, type PdfBranding, type FilenameSchema, type PdfTemplate, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
+import { getPdfBranding, savePdfBranding, applyBrandingVariables, type PdfBranding, type FilenameSchema, type PdfTemplate, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
 import { useTranslation } from "@/lib/language-provider";
 
 // Muted accent palette — same hues, less neon/saturation.
@@ -36,6 +36,47 @@ export default function PdfBrandingScreen() {
   const updateField = (field: keyof PdfBranding, value: any) => {
     setBranding((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
+  };
+
+  // "Variable einfügen": append a placeholder token so the user never has to
+  // type the codes by hand.
+  const VAR_OPTIONS: { labelKey: string; token: string }[] = [
+    { labelKey: "pdf_var_project", token: "{projekt}" },
+    { labelKey: "pdf_var_doctype", token: "{dokumenttyp}" },
+    { labelKey: "pdf_var_company", token: "{firma}" },
+    { labelKey: "pdf_var_date", token: "{datum}" },
+    { labelKey: "pdf_var_page", token: "Seite {seite}/{seiten}" },
+  ];
+  const insertVar = (field: "headerText" | "footerText", token: string) => {
+    const cur = (branding[field] as string) || "";
+    const next = cur && !/\s$/.test(cur) ? `${cur} ${token}` : `${cur}${token}`;
+    updateField(field, next);
+  };
+  const renderVarButtons = (field: "headerText" | "footerText") => (
+    <View style={{ marginBottom: 8 }}>
+      <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 6 }}>{t('pdf_var_insert' as any)}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        {VAR_OPTIONS.map((v) => (
+          <Pressable
+            key={v.token}
+            onPress={() => insertVar(field, v.token)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="add" size={13} color={colors.primary} />
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>{t(v.labelKey as any)}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+
+  // Sample values so the preview shows resolved text, not raw codes.
+  const previewVarCtx = {
+    projekt: t('pdf_branding_projekt_fallback' as any),
+    firma: branding.companyName || t('firmenname'),
+    datum: new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    dokumenttyp: t('protokoll'),
+    seite: 1, seiten: 3,
   };
 
   const handleSave = async () => {
@@ -178,6 +219,7 @@ export default function PdfBrandingScreen() {
             placeholderTextColor={colors.muted}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           />
+          {renderVarButtons("headerText")}
 
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('fusszeile')}</Text>
           <TextInput
@@ -187,6 +229,7 @@ export default function PdfBrandingScreen() {
             placeholderTextColor={colors.muted}
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           />
+          {renderVarButtons("footerText")}
         </View>
 
         {/* Accent Color */}
@@ -488,7 +531,7 @@ export default function PdfBrandingScreen() {
             <Text style={{ fontSize: 11, fontWeight: "700", color: "#1a1a1a" }}>{branding.companyName || t('firmenname')}</Text>
           </View>
           {(branding.headerText || branding.showProjectName) && (
-            <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText || t('pdf_branding_projekt_fallback' as any)}</Text>
+            <Text style={{ fontSize: 9, color: "#666" }}>{branding.headerText ? applyBrandingVariables(branding.headerText, previewVarCtx) : t('pdf_branding_projekt_fallback' as any)}</Text>
           )}
           <View style={{ height: 2, backgroundColor: branding.accentColor, marginVertical: 8, borderRadius: 0 }} />
           {/* Content placeholder */}
@@ -500,7 +543,7 @@ export default function PdfBrandingScreen() {
           {/* Footer Preview */}
           <View style={{ height: 1, backgroundColor: "#e5e7eb", marginBottom: 6 }} />
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 8, color: "#999" }}>{branding.footerText || t('pdf_branding_erstellt_mit_buildki' as any)}</Text>
+            <Text style={{ fontSize: 8, color: "#999" }}>{branding.footerText ? applyBrandingVariables(branding.footerText, previewVarCtx) : t('pdf_branding_erstellt_mit_buildki' as any)}</Text>
             <Text style={{ fontSize: 8, color: "#999" }}>
               {branding.showDate ? "15.06.2026" : ""}{branding.showDate && branding.showPageNumbers ? " | " : ""}{branding.showPageNumbers ? "Seite 1 / 3" : ""}
             </Text>
