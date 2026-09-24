@@ -19,7 +19,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
 import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
-import { saveDefect } from "@/lib/defect-store";
+import { saveDefect, getDefects, deleteDefect } from "@/lib/defect-store";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
 type Step = "choose" | "details" | "rooms" | "items";
@@ -62,7 +62,9 @@ export default function ProjectWizardScreen() {
   const [itemFloorId, setItemFloorId] = useState<string | null>(null);
   const [itemAssignee, setItemAssignee] = useState("");
   const [itemPhotos, setItemPhotos] = useState<string[]>([]);
-  const [addedItems, setAddedItems] = useState<{ type: "defect" | "task"; title: string; room?: string }[]>([]);
+  const [addedItems, setAddedItems] = useState<{ id: string; type: "defect" | "task"; title: string; room?: string }[]>([]);
+  const [editItem, setEditItem] = useState<{ id: string; type: "defect" | "task"; title: string; room?: string } | null>(null);
+  const [editItemTitle, setEditItemTitle] = useState("");
 
   const haptic = () => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 
@@ -259,11 +261,12 @@ export default function ProjectWizardScreen() {
     const room = itemRoom.trim() || undefined;
     const floorName = floors.find((f) => f.id === curFloorId)?.name || undefined;
     const assignee = itemAssignee.trim() || undefined;
+    const id = itemType === "defect" ? `defect_${Date.now()}` : `task-${Date.now()}`;
     try {
       if (itemType === "defect") {
         const now = new Date().toISOString();
         await saveDefect({
-          id: `defect_${Date.now()}`,
+          id,
           projectId,
           title,
           description: "",
@@ -280,14 +283,52 @@ export default function ProjectWizardScreen() {
       } else {
         const raw = await AsyncStorage.getItem("project-tasks");
         const all = raw ? JSON.parse(raw) : [];
-        all.unshift({ id: `task-${Date.now()}`, projectId, title, room, floor: floorName, assignee, status: "offen", done: false });
+        all.unshift({ id, projectId, title, room, floor: floorName, assignee, status: "offen", done: false });
         await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
       }
-      setAddedItems((prev) => [{ type: itemType, title, room }, ...prev]);
+      setAddedItems((prev) => [{ id, type: itemType, title, room }, ...prev]);
       setItemTitle("");
       setItemPhotos([]);
       setItemAssignee("");
     } catch {}
+  };
+
+  const openEditItem = (it: { id: string; type: "defect" | "task"; title: string; room?: string }) => {
+    setEditItemTitle(it.title);
+    setEditItem(it);
+  };
+  const saveEditItem = async () => {
+    const it = editItem;
+    const title = editItemTitle.trim();
+    if (!it || !title || !projectId) { setEditItem(null); return; }
+    try {
+      if (it.type === "defect") {
+        const all = await getDefects(projectId);
+        const d = all.find((x) => x.id === it.id);
+        if (d) await saveDefect({ ...d, title, updatedAt: new Date().toISOString() } as any);
+      } else {
+        const raw = await AsyncStorage.getItem("project-tasks");
+        const all = raw ? JSON.parse(raw) : [];
+        const idx = all.findIndex((x: any) => x.id === it.id);
+        if (idx >= 0) { all[idx] = { ...all[idx], title }; await AsyncStorage.setItem("project-tasks", JSON.stringify(all)); }
+      }
+    } catch {}
+    setAddedItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, title } : x)));
+    setEditItem(null);
+  };
+  const deleteItemNow = async (it: { id: string; type: "defect" | "task" }) => {
+    if (!projectId) { setEditItem(null); return; }
+    try {
+      if (it.type === "defect") {
+        await deleteDefect(it.id);
+      } else {
+        const raw = await AsyncStorage.getItem("project-tasks");
+        const all = raw ? JSON.parse(raw) : [];
+        await AsyncStorage.setItem("project-tasks", JSON.stringify(all.filter((x: any) => x.id !== it.id)));
+      }
+    } catch {}
+    setAddedItems((prev) => prev.filter((x) => x.id !== it.id));
+    setEditItem(null);
   };
 
   const floorLabel = (f: Floor) => f.name;
@@ -509,10 +550,14 @@ export default function ProjectWizardScreen() {
               <Text style={styles.addFullBtnText}>{t('hinzufuegen')}</Text>
             </Pressable>
             {addedItems.map((it, i) => (
-              <View key={i} style={[styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: i === 0 ? 14 : 8 }]}>
+              <Pressable key={it.id} onPress={() => openEditItem(it)} style={({ pressed }) => [styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: i === 0 ? 14 : 8, opacity: pressed ? 0.7 : 1 }]}>
                 <MaterialIcons name={it.type === "defect" ? "warning" : "task-alt"} size={16} color={it.type === "defect" ? "#F59E0B" : "#818CF8"} />
                 <Text style={[styles.itemText, { color: colors.foreground }]} numberOfLines={1}>{it.title}{it.room ? `  ·  ${it.room}` : ""}</Text>
-              </View>
+                <MaterialIcons name="edit" size={15} color={colors.muted} />
+                <Pressable onPress={() => deleteItemNow(it)} hitSlop={8} style={{ paddingLeft: 6 }}>
+                  <MaterialIcons name="delete-outline" size={19} color="#F87171" />
+                </Pressable>
+              </Pressable>
             ))}
           </>
         )}
@@ -580,6 +625,36 @@ export default function ProjectWizardScreen() {
                 <Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text>
               </Pressable>
               <Pressable onPress={saveEditRoom} style={({ pressed }) => [styles.editSave, { opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('save')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit / delete a created defect or task */}
+      <Modal visible={!!editItem} transparent animationType="slide" onRequestClose={() => setEditItem(null)}>
+        <View style={styles.editOverlay}>
+          <View style={[styles.editSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.editTitle, { color: colors.foreground }]}>
+              {editItem?.type === "defect" ? t('maengel') : t('index_tool_aufgaben')}
+            </Text>
+            <TextInput
+              value={editItemTitle}
+              onChangeText={setEditItemTitle}
+              placeholder={t('titel')}
+              placeholderTextColor={colors.muted}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={saveEditItem}
+              style={[styles.input, { marginTop: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => editItem && deleteItemNow(editItem)} style={({ pressed }) => [styles.editDelete, { opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name="delete-outline" size={18} color="#F87171" />
+                <Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text>
+              </Pressable>
+              <Pressable onPress={saveEditItem} style={({ pressed }) => [styles.editSave, { opacity: pressed ? 0.85 : 1 }]}>
                 <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('save')}</Text>
               </Pressable>
             </View>
