@@ -39,16 +39,30 @@ function isRetryableError(error: any): boolean {
 /**
  * Execute an async function with exponential backoff retry on network errors.
  */
+async function withTimeout<T>(fn: () => Promise<T>, ms: number, stepName: string): Promise<T> {
+  return await Promise.race([
+    fn(),
+    // Message intentionally avoids retry keywords (network/timeout/…) so a hung
+    // request fails fast instead of retrying a stuck oversized upload 3×.
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Verarbeitung hat zu lange gedauert (${stepName}). Bei Videos bitte eine kürzere/kleinere Datei verwenden.`)), ms),
+    ),
+  ]);
+}
+
 async function withRetry<T>(
   fn: () => Promise<T>,
   stepName: string,
   protocolId: string,
-  onRetry?: (attempt: number, maxRetries: number) => void
+  onRetry?: (attempt: number, maxRetries: number) => void,
+  timeoutMs = 120000,
 ): Promise<T> {
   let lastError: any;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await fn();
+      // A hung server request (e.g. an oversized video that never transcribes)
+      // must not leave the protocol stuck on "processing" forever.
+      return await withTimeout(fn, timeoutMs, stepName);
     } catch (error: any) {
       lastError = error;
       if (attempt < MAX_RETRIES && isRetryableError(error)) {
