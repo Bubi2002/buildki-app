@@ -5,7 +5,7 @@
  * project active and everything saved.
  */
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,6 +22,13 @@ import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, upd
 import { saveDefect, getDefects, deleteDefect } from "@/lib/defect-store";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
+const PROJECT_TYPES: { key: string; labelKey: string }[] = [
+  { key: "efh", labelKey: "wizard_type_efh" },
+  { key: "mfh", labelKey: "wizard_type_mfh" },
+  { key: "gewerbe", labelKey: "wizard_type_commercial" },
+  { key: "gutachten", labelKey: "wizard_type_survey" },
+  { key: "sonstiges", labelKey: "wizard_type_other" },
+];
 type Step = "choose" | "details" | "rooms" | "items";
 type ProjItem = { id: string; name: string; color?: string; archived?: boolean };
 
@@ -35,8 +42,12 @@ export default function ProjectWizardScreen() {
 
   // Step 1 – details
   const [name, setName] = useState("");
+  const [projectNumber, setProjectNumber] = useState("");
+  const [client, setClient] = useState("");
+  const [contact, setContact] = useState("");
   const [address, setAddress] = useState("");
   const [desc, setDesc] = useState("");
+  const [projType, setProjType] = useState<string>("");
   const [color, setColor] = useState(WIZ_COLORS[0]);
   const [projectId, setProjectId] = useState<string | null>(null);
 
@@ -98,6 +109,11 @@ export default function ProjectWizardScreen() {
         name: name.trim(),
         description: desc.trim(),
         address: address.trim() || undefined,
+        projectNumber: projectNumber.trim() || undefined,
+        client: client.trim() || undefined,
+        contact: contact.trim() || undefined,
+        projectType: projType || undefined,
+        status: "aktiv",
         color,
         createdAt: new Date().toISOString(),
       });
@@ -119,7 +135,7 @@ export default function ProjectWizardScreen() {
         const all = raw ? JSON.parse(raw) : [];
         const i = all.findIndex((p: any) => p.id === id);
         if (i >= 0) {
-          all[i] = { ...all[i], name: name.trim(), description: desc.trim(), address: address.trim() || undefined, color };
+          all[i] = { ...all[i], name: name.trim(), description: desc.trim(), address: address.trim() || undefined, projectNumber: projectNumber.trim() || undefined, client: client.trim() || undefined, contact: contact.trim() || undefined, projectType: projType || undefined, color };
           await AsyncStorage.setItem("projects", JSON.stringify(all));
         }
       } catch {}
@@ -363,16 +379,36 @@ export default function ProjectWizardScreen() {
         </Pressable>
       </View>
 
-      {/* progress dots (details/rooms/items) */}
+      {/* Labeled step indicator (details/rooms/items) */}
       {step !== "choose" && (
-        <View style={styles.dots}>
-          {[1, 2, 3].map((n) => (
-            <View key={n} style={[styles.dot, { backgroundColor: stepIndex >= n ? colors.primary : colors.border }]} />
-          ))}
+        <View style={[styles.stepper, { borderBottomColor: colors.border }]}>
+          {[
+            { n: 1, label: t('wizard_step_details' as any) },
+            { n: 2, label: t('wizard_step_rooms' as any) },
+            { n: 3, label: t('wizard_step_items' as any) },
+          ].map((s, i) => {
+            const done = stepIndex > s.n;
+            const active = stepIndex === s.n;
+            const on = active || done;
+            return (
+              <View key={s.n} style={styles.stepItem}>
+                {i > 0 && <View style={[styles.stepLine, { backgroundColor: stepIndex >= s.n ? colors.primary : colors.border }]} />}
+                <View style={[styles.stepNum, { backgroundColor: on ? colors.primary : "transparent", borderColor: on ? colors.primary : colors.border }]}>
+                  {done ? (
+                    <MaterialIcons name="check" size={13} color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 12, fontWeight: "800", color: active ? "#FFFFFF" : colors.muted }}>{s.n}</Text>
+                  )}
+                </View>
+                <Text numberOfLines={1} style={[styles.stepLabel, { color: on ? colors.foreground : colors.muted, fontWeight: active ? "800" : "600" }]}>{s.label}</Text>
+              </View>
+            );
+          })}
         </View>
       )}
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         {/* ─── Step: choose ─────────────────────────────────────────────── */}
         {step === "choose" && (
           <>
@@ -395,13 +431,44 @@ export default function ProjectWizardScreen() {
           <>
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('projektname')}</Text>
             <TextInput value={name} onChangeText={setName} placeholder={t('projektname')} placeholderTextColor={colors.muted} autoFocus style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_project_number' as any)}</Text>
+            <TextInput value={projectNumber} onChangeText={setProjectNumber} placeholder="2026-014" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_client' as any)}</Text>
+            <TextInput value={client} onChangeText={setClient} placeholder={t('wizard_client' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('adresse')}</Text>
             <TextInput value={address} onChangeText={setAddress} placeholder="Musterstraße 1, 12345 Stadt" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_contact' as any)}</Text>
+            <TextInput value={contact} onChangeText={setContact} placeholder={t('wizard_contact' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('beschreibung_optional')}</Text>
             <TextInput value={desc} onChangeText={setDesc} placeholder={t('beschreibung_optional')} placeholderTextColor={colors.muted} multiline style={[styles.input, { minHeight: 70, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_project_type' as any)}</Text>
+            <View style={styles.typeRow}>
+              {PROJECT_TYPES.map((pt) => {
+                const active = projType === pt.key;
+                return (
+                  <Pressable
+                    key={pt.key}
+                    onPress={() => setProjType(active ? "" : pt.key)}
+                    style={[styles.typeChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: active ? colors.primary : colors.muted }}>{t(pt.labelKey as any)}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_project_color' as any)}</Text>
             <View style={styles.colorRow}>
               {WIZ_COLORS.map((c) => (
-                <Pressable key={c} onPress={() => setColor(c)} style={[styles.swatch, { backgroundColor: c, borderColor: color === c ? colors.foreground : "transparent" }]} />
+                <Pressable key={c} onPress={() => setColor(c)} style={[styles.swatch, { backgroundColor: c, borderColor: color === c ? colors.foreground : "transparent" }]}>
+                  {color === c && <MaterialIcons name="check" size={16} color="#FFFFFF" />}
+                </Pressable>
               ))}
             </View>
           </>
@@ -596,6 +663,7 @@ export default function ProjectWizardScreen() {
           )}
         </View>
       )}
+      </KeyboardAvoidingView>
 
       {voiceBusy && (
         <View style={styles.voiceOverlay}>
@@ -670,10 +738,17 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: "800" },
   dots: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   dot: { flex: 1, height: 4, borderRadius: 2 },
+  stepper: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 0.5 },
+  stepItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
+  stepLine: { flex: 1, height: 2, borderRadius: 1, marginRight: 4 },
+  stepNum: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  stepLabel: { fontSize: 11, flexShrink: 1 },
   fieldLabel: { fontSize: 13, fontWeight: "700", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15, marginBottom: 4 },
-  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
-  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 3 },
+  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  typeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
+  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
+  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: "center", justifyContent: "center" },
   hint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
   floorChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
   addBtn: { width: 46, height: 46, borderRadius: 10, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" },
