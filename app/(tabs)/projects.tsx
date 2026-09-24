@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal, Alert } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -9,6 +9,7 @@ import { useTranslation } from "@/lib/language-provider";
 import {
   getProjectStructure,
   updateRoom,
+  deleteRoom,
   initializeDefaultFloors,
   type Floor,
   type Room,
@@ -62,6 +63,9 @@ export default function RundgangTab() {
   // Detail popups
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [editDefectDesc, setEditDefectDesc] = useState("");
+  const [editDefectTitle, setEditDefectTitle] = useState("");
+  const [renameRoom, setRenameRoom] = useState<Room | null>(null);
+  const [renameRoomName, setRenameRoomName] = useState("");
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState("");
   const [selectedChecklist, setSelectedChecklist] = useState<ChecklistResult | null>(null);
@@ -188,6 +192,7 @@ export default function RundgangTab() {
   };
 
   const openDefect = (d: Defect) => {
+    setEditDefectTitle(d.title || "");
     setEditDefectDesc(d.description || "");
     setSelectedDefect(d);
   };
@@ -208,10 +213,33 @@ export default function RundgangTab() {
   const saveDefectEdit = async () => {
     const d = selectedDefect;
     if (!d) return;
-    const updated = { ...d, description: editDefectDesc.trim(), updatedAt: new Date().toISOString() };
+    const updated = { ...d, title: editDefectTitle.trim() || d.title, description: editDefectDesc.trim(), updatedAt: new Date().toISOString() };
     setDefects((prev) => prev.map((x) => (x.id === d.id ? updated : x)));
     try { await saveDefect(updated as any); } catch {}
     setSelectedDefect(null);
+  };
+
+  // ── Room rename / delete ──────────────────────────────────────────────────
+  const openRoomRename = (room: Room) => { setRenameRoomName(room.name); setRenameRoom(room); };
+  const saveRoomRename = async () => {
+    const room = renameRoom;
+    const name = renameRoomName.trim();
+    if (!room || !name || !selectedProjectId) { setRenameRoom(null); return; }
+    setRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, name } : r)));
+    try { await updateRoom(selectedProjectId, room.id, { name }); } catch {}
+    setRenameRoom(null);
+  };
+  const deleteRoomNow = async (room: Room) => {
+    if (!selectedProjectId) return;
+    setRooms((prev) => prev.filter((r) => r.id !== room.id));
+    setRenameRoom(null);
+    try { await deleteRoom(selectedProjectId, room.id); } catch {}
+  };
+  const confirmDeleteRoom = (room: Room) => {
+    Alert.alert(room.name, "", [
+      { text: t('btn_abbrechen'), style: "cancel" },
+      { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteRoomNow(room) },
+    ]);
   };
   const deleteDefectNow = async (d: Defect) => {
     setDefects((prev) => prev.filter((x) => x.id !== d.id));
@@ -540,6 +568,18 @@ export default function RundgangTab() {
                                     ))}
                                   </>
                                 )}
+
+                                {/* Raum bearbeiten */}
+                                <View style={styles.roomActions}>
+                                  <Pressable onPress={() => openRoomRename(room)} style={styles.roomActionBtn} hitSlop={6}>
+                                    <MaterialIcons name="edit" size={15} color="#5DADE2" />
+                                    <Text style={styles.roomActionText}>{t('umbenennen' as any)}</Text>
+                                  </Pressable>
+                                  <Pressable onPress={() => confirmDeleteRoom(room)} style={styles.roomActionBtn} hitSlop={6}>
+                                    <MaterialIcons name="delete-outline" size={16} color="#F87171" />
+                                    <Text style={[styles.roomActionText, { color: "#F87171" }]}>{t('btn_loeschen')}</Text>
+                                  </Pressable>
+                                </View>
                               </View>
                             )}
                           </View>
@@ -611,8 +651,8 @@ export default function RundgangTab() {
           <View style={styles.taskSheet}>
             {selectedDefect && (
               <>
-                <Text style={styles.taskSheetTitle} numberOfLines={2}>{selectedDefect.title}</Text>
                 {selectedDefect.room ? <Text style={styles.taskSheetSub}>{selectedDefect.room}</Text> : null}
+                <TextInput value={editDefectTitle} onChangeText={setEditDefectTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" style={[styles.taskInput, { fontSize: 16, fontWeight: "700", marginTop: 8 }]} />
                 <View style={styles.statusRow}>
                   {([["offen", "index_offen"], ["in_bearbeitung", "index_in_arbeit"], ["erledigt", "index_erledigt"]] as const).map(([s, lbl]) => {
                     const active = selectedDefect.status === s;
@@ -676,6 +716,29 @@ export default function RundgangTab() {
                 <Pressable onPress={() => setSelectedChecklist(null)} style={[styles.taskSave, { marginTop: 18 }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rename a room */}
+      <Modal visible={!!renameRoom} transparent animationType="slide" onRequestClose={() => setRenameRoom(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            <Text style={styles.taskSheetTitle}>{t('umbenennen' as any)}</Text>
+            <TextInput
+              value={renameRoomName}
+              onChangeText={setRenameRoomName}
+              placeholder={t('rooms_add_room' as any)}
+              placeholderTextColor="#5F7590"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={saveRoomRename}
+              style={styles.taskInput}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => renameRoom && confirmDeleteRoom(renameRoom)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
+              <Pressable onPress={saveRoomRename} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -794,6 +857,9 @@ const styles = StyleSheet.create({
   taskCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" },
   taskSave: { flex: 2, paddingVertical: 12, borderRadius: 8, backgroundColor: "#5DADE2", alignItems: "center" },
   doneToggle: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },
+  roomActions: { flexDirection: "row", gap: 18, marginTop: 12, paddingHorizontal: 4, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#17293F" },
+  roomActionBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4 },
+  roomActionText: { color: "#5DADE2", fontSize: 13, fontWeight: "700" },
   entryRow: {
     flexDirection: "row",
     alignItems: "center",
