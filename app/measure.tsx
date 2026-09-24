@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +24,7 @@ import { captureRef } from "react-native-view-shot";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { exportMeasurementPdf } from "@/lib/measure-export";
 import {
   createEvidenceItem,
   createEvidenceMeasurement,
@@ -85,11 +88,16 @@ const METHODS: {
 const UNITS = ["mm", "cm", "m", "in", "ft", "yd", "m²", "ft²", "yd²", "°", "Stk."] as const;
 type Unit = (typeof UNITS)[number];
 
+const DATE_LOCALE: Record<string, string> = {
+  de: "de-DE", en: "en-GB", fr: "fr-FR", es: "es-ES", uk: "uk-UA",
+  pl: "pl-PL", ru: "ru-RU", ro: "ro-RO", bg: "bg-BG", tr: "tr-TR",
+};
+
 type ProjectRef = { id: string; name: string };
 type Point = { x: number; y: number };
 
 export default function MeasureScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const canvasRef = useRef<View>(null);
@@ -109,6 +117,8 @@ export default function MeasureScreen() {
   const [findingText, setFindingText] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [showMethodPicker, setShowMethodPicker] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -322,6 +332,57 @@ export default function MeasureScreen() {
     }
   }
 
+  async function handleExportPdf() {
+    if (!selectedEvidence) return;
+    if (!startPoint || !endPoint) {
+      Alert.alert(t('measure_alert_messstrecke_title' as any), t('measure_alert_messstrecke_msg' as any));
+      return;
+    }
+    setIsExporting(true);
+    try {
+      await ensureMeasurementDirectory();
+      const imageUri = await captureRef(canvasRef, { format: "png", quality: 1, result: "tmpfile" });
+
+      const accuracyText =
+        selectedMethod.accuracy === "estimated"
+          ? t('measure_quality_estimate' as any)
+          : `${selectedMethod.accuracy === "verified" ? t('measure_quality_verified' as any) : t('measure_quality_calibrated' as any)}`;
+      const toleranceUnit = unit === "m²" || unit === "ft²" || unit === "yd²" || unit === "Stk." ? "%" : unit;
+
+      const rows = [
+        { label: t('measure_field_value' as any), value: value.trim() ? `${value.replace(".", ",")} ${unit}` : "" },
+        { label: t('measure_field_method' as any), value: t(selectedMethod.label as any) },
+        { label: t('measure_pdf_quality' as any), value: accuracyText },
+        { label: t('measure_field_tolerance' as any), value: tolerance.trim() ? `${tolerance.replace(".", ",")} ${toleranceUnit}` : "" },
+        { label: t('measure_pdf_date' as any), value: new Date().toLocaleDateString(DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "long", year: "numeric" }) },
+      ];
+
+      const result = await exportMeasurementPdf({
+        imageUri,
+        title: t('measure_title' as any),
+        heading: project?.name || "",
+        findingLabel: t('measure_finding_label' as any),
+        findingText,
+        rows,
+        noteLabel: t('measure_field_note' as any),
+        note,
+        dialogTitle: t('measure_title' as any),
+      });
+      if (result === "unavailable") {
+        Alert.alert(t('measure_alert_messstrecke_title' as any), t('floor_plan_export_unavailable' as any));
+      } else if (result === "empty") {
+        Alert.alert(t('measure_alert_save_failed_title' as any), t('floor_plan_export_error' as any));
+      }
+    } catch (error) {
+      Alert.alert(
+        t('measure_alert_save_failed_title' as any),
+        error instanceof Error ? error.message : t('floor_plan_export_error' as any),
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const measurementLabel = value.trim()
     ? `${value.replace(".", ",")} ${unit}${selectedMethod.accuracy === "estimated" ? t('measure_label_estimate_suffix' as any) : ""}`
     : t('measure_label_messwert' as any);
@@ -338,7 +399,22 @@ export default function MeasureScreen() {
             {project?.name || t('measure_project_placeholder' as any)}
           </Text>
         </View>
-        <MaterialIcons name="straighten" size={26} color="#00ACC1" />
+        {selectedEvidence ? (
+          <Pressable
+            onPress={() => void handleExportPdf()}
+            disabled={isExporting}
+            accessibilityLabel={t('measure_export_pdf' as any)}
+            style={({ pressed }) => [{ padding: 4, opacity: pressed || isExporting ? 0.6 : 1 }]}
+          >
+            {isExporting ? (
+              <ActivityIndicator size="small" color="#00ACC1" />
+            ) : (
+              <MaterialIcons name="ios-share" size={24} color="#00ACC1" />
+            )}
+          </Pressable>
+        ) : (
+          <MaterialIcons name="straighten" size={26} color="#00ACC1" />
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -451,14 +527,16 @@ export default function MeasureScreen() {
                 </View>
 
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_method' as any)}</Text>
-                <View style={styles.methodGrid}>
-                  {METHODS.map((item) => (
-                    <Pressable key={item.value} onPress={() => setMethod(item.value)} style={[styles.methodCard, { borderColor: method === item.value ? "#00ACC1" : colors.border, backgroundColor: method === item.value ? "#00ACC118" : colors.surface }]}>
-                      <Text style={[styles.methodLabel, { color: method === item.value ? "#00ACC1" : colors.foreground }]}>{t(item.label as any)}</Text>
-                      <Text style={[styles.methodDescription, { color: colors.muted }]}>{t(item.description as any)}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+                <Pressable
+                  onPress={() => setShowMethodPicker(true)}
+                  style={({ pressed }) => [styles.methodDropdown, { borderColor: "#00ACC1", backgroundColor: colors.surface, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.methodLabel, { color: "#00ACC1" }]}>{t(selectedMethod.label as any)}</Text>
+                    <Text style={[styles.methodDescription, { color: colors.muted }]}>{t(selectedMethod.description as any)}</Text>
+                  </View>
+                  <MaterialIcons name="expand-more" size={24} color={colors.muted} />
+                </Pressable>
 
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_tolerance' as any)}</Text>
                 <TextInput
@@ -502,6 +580,33 @@ export default function MeasureScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Measurement-method picker (dropdown) */}
+      <Modal visible={showMethodPicker} transparent animationType="fade" onRequestClose={() => setShowMethodPicker(false)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setShowMethodPicker(false)}>
+          <Pressable style={[styles.pickerSheet, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.pickerTitle, { color: colors.foreground }]}>{t('measure_field_method' as any)}</Text>
+            <ScrollView>
+              {METHODS.map((item) => {
+                const active = method === item.value;
+                return (
+                  <Pressable
+                    key={item.value}
+                    onPress={() => { setMethod(item.value); setShowMethodPicker(false); }}
+                    style={({ pressed }) => [styles.pickerRow, { borderColor: active ? "#00ACC1" : colors.border, backgroundColor: active ? "#00ACC118" : colors.surface, opacity: pressed ? 0.85 : 1 }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.methodLabel, { color: active ? "#00ACC1" : colors.foreground }]}>{t(item.label as any)}</Text>
+                      <Text style={[styles.methodDescription, { color: colors.muted }]}>{t(item.description as any)}</Text>
+                    </View>
+                    {active && <MaterialIcons name="check" size={20} color="#00ACC1" />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -533,8 +638,13 @@ const styles = StyleSheet.create({
   chip: { minWidth: 48, height: 48, borderWidth: 1, paddingHorizontal: 10, alignItems: "center", justifyContent: "center" },
   methodGrid: { gap: 8 },
   methodCard: { borderWidth: 1, padding: 12 },
+  methodDropdown: { borderWidth: 1, borderRadius: 10, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 },
   methodLabel: { fontSize: 14, fontWeight: "800" },
   methodDescription: { fontSize: 12, lineHeight: 17, marginTop: 4 },
+  pickerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
+  pickerSheet: { borderWidth: 1, borderRadius: 14, padding: 16, maxHeight: "80%" },
+  pickerTitle: { fontSize: 17, fontWeight: "800", marginBottom: 12 },
+  pickerRow: { borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 8, flexDirection: "row", alignItems: "center", gap: 10 },
   qualityBanner: { marginTop: 16, borderWidth: 1, padding: 12, flexDirection: "row", gap: 10, alignItems: "flex-start" },
   qualityText: { flex: 1, fontSize: 12, lineHeight: 18 },
   saveButton: { marginTop: 18, minHeight: 54, backgroundColor: "#00ACC1", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
