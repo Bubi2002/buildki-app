@@ -74,6 +74,11 @@ import {
   removePersistedDefectVoiceNote,
 } from "@/lib/defect-voice-note";
 
+type SortKey = "status" | "prio" | "neu" | "alt" | "gewerk" | "titel";
+const STATUS_SORT_ORDER: DefectStatus[] = ["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"];
+const PRIO_SORT_ORDER: Record<DefectPriority, number> = { hoch: 0, mittel: 1, niedrig: 2 };
+const SORT_KEYS: SortKey[] = ["status", "prio", "neu", "alt", "gewerk", "titel"];
+
 export default function DefectsScreen() {
   const { t } = useTranslation();
   const colors = useColors();
@@ -99,6 +104,8 @@ export default function DefectsScreen() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [gewerkFilter, setGewerkFilter] = useState<string>("alle");
+  const [sortBy, setSortBy] = useState<SortKey>("status");
+  const [showSortPicker, setShowSortPicker] = useState(false);
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [editingDefect, setEditingDefect] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -245,6 +252,42 @@ export default function DefectsScreen() {
     if (gewerkFilter !== "alle" && (d as any).gewerk !== gewerkFilter) return false;
     return true;
   });
+
+  const dateDesc = (a: Defect, b: Defect) => (b.createdAt || "").localeCompare(a.createdAt || "");
+  const sortedDefects = [...filteredDefects].sort((a, b) => {
+    switch (sortBy) {
+      case "status": {
+        const d = STATUS_SORT_ORDER.indexOf(a.status) - STATUS_SORT_ORDER.indexOf(b.status);
+        return d !== 0 ? d : dateDesc(a, b);
+      }
+      case "prio": {
+        const d = (PRIO_SORT_ORDER[a.priority] ?? 9) - (PRIO_SORT_ORDER[b.priority] ?? 9);
+        return d !== 0 ? d : dateDesc(a, b);
+      }
+      case "neu":
+        return dateDesc(a, b);
+      case "alt":
+        return (a.createdAt || "").localeCompare(b.createdAt || "");
+      case "gewerk": {
+        const d = String((a as any).gewerk || "￿").localeCompare(String((b as any).gewerk || "￿"));
+        return d !== 0 ? d : dateDesc(a, b);
+      }
+      case "titel":
+        return String(a.title || "").localeCompare(String(b.title || ""));
+      default:
+        return 0;
+    }
+  });
+
+  const sortLabels: Record<SortKey, string> = {
+    status: t('defects_sort_status' as any),
+    prio: t('defects_sort_prio' as any),
+    neu: t('defects_sort_new' as any),
+    alt: t('defects_sort_old' as any),
+    gewerk: t('gewerk'),
+    titel: t('defects_sort_title' as any),
+  };
+
   const stats = getDefectStats(defects);
 
   const addNewDefectCameraPhoto = async () => {
@@ -811,7 +854,7 @@ export default function DefectsScreen() {
       </View>
 
       {/* Status Filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterRowContent}>
         {(["alle", "offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"] as const).map((f) => (
           <Pressable
             key={f}
@@ -830,7 +873,7 @@ export default function DefectsScreen() {
       </ScrollView>
 
       {/* Gewerk Filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterRow, { marginBottom: 12 }]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterRow, { marginBottom: 12 }]} contentContainerStyle={styles.filterRowContent}>
         <Pressable
           onPress={() => setGewerkFilter("alle")}
           style={[
@@ -856,9 +899,26 @@ export default function DefectsScreen() {
         ))}
       </ScrollView>
 
+      {/* Sort bar */}
+      <View style={styles.sortBar}>
+        <Text style={[styles.sortCount, { color: colors.muted }]}>
+          {sortedDefects.length} {t('maengel')}
+        </Text>
+        <Pressable
+          onPress={() => setShowSortPicker(true)}
+          style={({ pressed }) => [styles.sortBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}
+        >
+          <MaterialIcons name="swap-vert" size={16} color={colors.primary} />
+          <Text style={[styles.sortBtnText, { color: colors.foreground }]} numberOfLines={1}>
+            {sortLabels[sortBy]}
+          </Text>
+          <MaterialIcons name="expand-more" size={18} color={colors.muted} />
+        </Pressable>
+      </View>
+
       {/* Defect List */}
       <FlatList
-        data={filteredDefects}
+        data={sortedDefects}
         keyExtractor={(item) => item.id}
         renderItem={(p) => (
           <SwipeableRow onDelete={() => removeDefect(p.item.id)} deleteLabel={t('btn_loeschen')}>
@@ -875,6 +935,30 @@ export default function DefectsScreen() {
           </View>
         }
       />
+
+      {/* Sort picker */}
+      <Modal visible={showSortPicker} transparent animationType="fade" onRequestClose={() => setShowSortPicker(false)}>
+        <Pressable style={styles.sortBackdrop} onPress={() => setShowSortPicker(false)}>
+          <Pressable style={[styles.sortSheet, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.sortSheetTitle, { color: colors.foreground }]}>{t('defects_sort_label' as any)}</Text>
+            {SORT_KEYS.map((key) => {
+              const active = sortBy === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => { setSortBy(key); setShowSortPicker(false); }}
+                  style={({ pressed }) => [styles.sortOption, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "15" : colors.surface, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: active ? "700" : "500", color: active ? colors.primary : colors.foreground }}>
+                    {sortLabels[key]}
+                  </Text>
+                  {active && <MaterialIcons name="check" size={20} color={colors.primary} />}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Detail Modal with History */}
       <Modal visible={showDetailModal} transparent animationType="slide" onRequestClose={closeDefectDetail}>
@@ -1573,8 +1657,17 @@ const styles = StyleSheet.create({
   statBadge: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 0 },
   statNum: { fontSize: 20, fontWeight: "700" },
   statLabel: { fontSize: 11, fontWeight: "500", marginTop: 2 },
-  filterRow: { marginBottom: 12, maxHeight: 58, paddingBottom: 2 },
-  filterBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 0, borderWidth: 1, marginRight: 8, justifyContent: "center" },
+  filterRow: { marginBottom: 12, maxHeight: 68 },
+  filterRowContent: { alignItems: "center", paddingVertical: 4 },
+  sortBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 10 },
+  sortCount: { fontSize: 12, fontWeight: "600" },
+  sortBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, maxWidth: "62%" },
+  sortBtnText: { fontSize: 13, fontWeight: "700", flexShrink: 1 },
+  sortBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 },
+  sortSheet: { borderWidth: 1, borderRadius: 14, padding: 16 },
+  sortSheetTitle: { fontSize: 17, fontWeight: "800", marginBottom: 12 },
+  sortOption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 8 },
+  filterBtn: { height: 40, paddingHorizontal: 14, borderRadius: 0, borderWidth: 1, marginRight: 8, justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "500", lineHeight: 18 },
   list: { paddingBottom: 20 },
   defectCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
