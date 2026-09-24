@@ -41,6 +41,7 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
+import { exportFloorPlansPdf } from "@/lib/floor-plan-export";
 import { splitPdfIntoPages } from "@/lib/pdf-pages";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 import { persistFloorPlanMedia } from "@/lib/floor-plan-media";
@@ -107,6 +108,8 @@ export default function FloorPlanScreen() {
     title: string;
     initialIndex: number;
   } | null>(null);
+  const [movingPin, setMovingPin] = useState<PlanPin | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [editingPin, setEditingPin] = useState<PlanPin | null>(null);
   const [editPinLabel, setEditPinLabel] = useState("");
   const [editPinDescription, setEditPinDescription] = useState("");
@@ -368,6 +371,12 @@ export default function FloorPlanScreen() {
     // Map the container-normalized tap onto the actually-visible plan rectangle
     // (contentFit="contain" letterbox) so the pin lands exactly where tapped.
     const img = containerPointToImage(point);
+    // Move mode: the next tap relocates the selected marking instead of
+    // creating a new one or opening a detail.
+    if (movingPin) {
+      void finishMovePin(img);
+      return;
+    }
     const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
       const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
       return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
@@ -384,6 +393,64 @@ export default function FloorPlanScreen() {
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+  };
+
+  // --- Move an existing marking ---
+  const startMovePin = (pin: PlanPin) => {
+    setShowPinDetail(null);
+    setMovingPin(pin);
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const finishMovePin = async (img: Point) => {
+    const pin = movingPin;
+    if (!pin) return;
+    const updated: PlanPin = { ...pin, x: img.x, y: img.y };
+    await savePlanPin(updated);
+    setPins((current) => current.map((p) => (p.id === updated.id ? updated : p)));
+    setMovingPin(null);
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  // --- Export plan(s) to PDF ---
+  const runExport = async (which: FloorPlan[]) => {
+    if (which.length === 0) return;
+    setExporting(true);
+    try {
+      const pinsByPlan: Record<string, PlanPin[]> = {};
+      for (const plan of which) {
+        // Reuse the already-loaded pins for the selected plan; fetch the rest.
+        pinsByPlan[plan.id] =
+          selectedPlan?.id === plan.id ? pins : await getPlanPins(plan.id);
+      }
+      const title = which.length === 1 ? decodeUnicodeEscapes(which[0].name) : t('grundrisse');
+      const result = await exportFloorPlansPdf(which, pinsByPlan, title);
+      if (result === "unavailable") {
+        Alert.alert(t('hinweis'), t('floor_plan_export_unavailable' as any));
+      } else if (result === "empty") {
+        Alert.alert(t('hinweis'), t('floor_plan_export_empty' as any));
+      }
+    } catch (e) {
+      console.error("Floor plan export failed:", e);
+      Alert.alert(t('alert_fehler'), t('floor_plan_export_error' as any));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExport = () => {
+    if (plans.length === 0) return;
+    if (plans.length === 1) {
+      void runExport(plans);
+      return;
+    }
+    const opts: any[] = [];
+    if (selectedPlan) {
+      opts.push({ text: t('floor_plan_export_current' as any), onPress: () => void runExport([selectedPlan]) });
+    }
+    opts.push({ text: `${t('floor_plan_export_all' as any)} (${plans.length})`, onPress: () => void runExport(plans) });
+    opts.push({ text: t('btn_abbrechen'), style: "cancel" as const });
+    Alert.alert(t('floor_plan_export_title' as any), t('floor_plan_export_msg' as any), opts);
   };
 
   const startDrawingFromModal = () => {
@@ -630,6 +697,20 @@ export default function FloorPlanScreen() {
         </View>
         <View style={{ flexDirection: "row", gap: 4 }}>
           {/* Draw/annotate now lives in the "Neue Markierung" sheet (tap the plan). */}
+          {/* Export plan(s) to PDF */}
+          {plans.length > 0 && (
+            <Pressable
+              onPress={handleExport}
+              disabled={exporting}
+              style={({ pressed }) => [styles.headerAction, { backgroundColor: colors.surface }, (pressed || exporting) && { opacity: 0.6 }]}
+            >
+              {exporting ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <MaterialIcons name="ios-share" size={20} color={colors.primary} />
+              )}
+            </Pressable>
+          )}
           {/* View mode toggle */}
           <Pressable
             onPress={() => setViewMode(viewMode === "plan" ? "list" : "plan")}
@@ -699,6 +780,19 @@ export default function FloorPlanScreen() {
               </Pressable>
             );
           })}
+        </View>
+      )}
+
+      {/* Move-mode banner */}
+      {movingPin && (
+        <View style={[styles.moveBanner, { backgroundColor: colors.primary + "18", borderColor: colors.primary }]}>
+          <MaterialIcons name="open-with" size={18} color={colors.primary} />
+          <Text style={{ flex: 1, color: colors.foreground, fontSize: 13, fontWeight: "600" }}>
+            {t('floor_plan_move_hint' as any)}
+          </Text>
+          <Pressable onPress={() => setMovingPin(null)} hitSlop={8}>
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+          </Pressable>
         </View>
       )}
 
@@ -1090,13 +1184,22 @@ export default function FloorPlanScreen() {
                   </View>
                 )}
 
-                <Pressable
-                  onPress={() => beginPinEdit(showPinDetail)}
-                  style={({ pressed }) => [styles.secondaryDetailAction, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name="edit" size={18} color={colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('markierung_bearbeiten')}</Text>
-                </Pressable>
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                  <Pressable
+                    onPress={() => beginPinEdit(showPinDetail)}
+                    style={({ pressed }) => [styles.secondaryDetailAction, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="edit" size={18} color={colors.primary} />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('markierung_bearbeiten')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => startMovePin(showPinDetail)}
+                    style={({ pressed }) => [styles.secondaryDetailAction, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="open-with" size={18} color={colors.primary} />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('floor_plan_verschieben' as any)}</Text>
+                  </Pressable>
+                </View>
 
                 {/* Photos linked to this pin */}
                 {((showPinDetail.photos && showPinDetail.photos.length > 0) || showPinDetail.photoUri) && (
@@ -1346,6 +1449,17 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
+  },
+  moveBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   planTabs: { maxHeight: 44, borderBottomWidth: 0, marginTop: 8 },
   planTab: {
