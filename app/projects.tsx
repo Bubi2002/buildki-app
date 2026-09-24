@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
 import { getDefects, type Defect } from "@/lib/defect-store";
+import { Image } from "expo-image";
 
 const DATE_LOCALE: Record<string, string> = {
   de: "de-DE", en: "en-GB", fr: "fr-FR", es: "es-ES", uk: "uk-UA",
@@ -49,6 +50,7 @@ type Project = {
   status?: ProjectStatus;
   favorite?: boolean;
   archived?: boolean;
+  imageUri?: string;
 };
 
 type Protocol = {
@@ -277,7 +279,11 @@ export default function ProjectsScreen() {
           { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
         ]}
       >
-        <View style={[styles.projectColorBar, { backgroundColor: item.color }]} />
+        {item.imageUri ? (
+          <Image source={{ uri: item.imageUri }} style={styles.projectThumb} contentFit="cover" />
+        ) : (
+          <View style={[styles.projectColorBar, { backgroundColor: item.color }]} />
+        )}
         <View style={styles.projectContent}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={[styles.projectName, { color: colors.foreground, flexShrink: 1 }]} numberOfLines={1}>{item.name}</Text>
@@ -569,6 +575,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   projectCard: { flexDirection: "row", alignItems: "center", borderRadius: 0, borderWidth: 1, marginBottom: 10, overflow: "hidden" },
   projectColorBar: { width: 5, alignSelf: "stretch" },
+  projectThumb: { width: 52, alignSelf: "stretch", backgroundColor: "#00000010" },
   projectContent: { flex: 1, paddingVertical: 14, paddingHorizontal: 14 },
   projectName: { fontSize: 16, fontWeight: "600", marginBottom: 2 },
   projectDesc: { fontSize: 13, marginBottom: 6 },

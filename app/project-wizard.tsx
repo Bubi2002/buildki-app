@@ -4,7 +4,7 @@
  * optionally add first defects/tasks, then land on the tools screen with the
  * project active and everything saved.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,6 +20,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
 import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect, getDefects, deleteDefect } from "@/lib/defect-store";
+import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
 const PROJECT_TYPES: { key: string; labelKey: string }[] = [
@@ -49,6 +50,12 @@ export default function ProjectWizardScreen() {
   const [desc, setDesc] = useState("");
   const [projType, setProjType] = useState<string>("");
   const [color, setColor] = useState(WIZ_COLORS[0]);
+  const [projectImage, setProjectImage] = useState<string | null>(null);
+  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addrLoading, setAddrLoading] = useState(false);
+  const [addrFocused, setAddrFocused] = useState(false);
+  const addrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addrAbort = useRef<AbortController | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
 
   // Step 2 – rooms
@@ -78,6 +85,59 @@ export default function ProjectWizardScreen() {
   const [editItemTitle, setEditItemTitle] = useState("");
 
   const haptic = () => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
+
+  // Debounced OpenStreetMap address autocomplete.
+  const onAddressChange = (v: string) => {
+    setAddress(v);
+    if (addrTimer.current) clearTimeout(addrTimer.current);
+    if (addrAbort.current) addrAbort.current.abort();
+    if (v.trim().length < 4) { setAddrSuggestions([]); setAddrLoading(false); return; }
+    setAddrLoading(true);
+    addrTimer.current = setTimeout(async () => {
+      const ctrl = new AbortController();
+      addrAbort.current = ctrl;
+      const res = await searchAddress(v, language, ctrl.signal);
+      if (!ctrl.signal.aborted) { setAddrSuggestions(res); setAddrLoading(false); }
+    }, 450);
+  };
+  const pickAddressSuggestion = (label: string) => {
+    haptic();
+    setAddress(label);
+    setAddrSuggestions([]);
+    setAddrFocused(false);
+  };
+  useEffect(() => () => {
+    if (addrTimer.current) clearTimeout(addrTimer.current);
+    if (addrAbort.current) addrAbort.current.abort();
+  }, []);
+
+  // Pick / capture a project image (photo or plan) and persist a copy.
+  const pickProjectImage = async (source: "camera" | "library") => {
+    try {
+      const perm = source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return;
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+      if (result.canceled || !result.assets?.[0]) return;
+      const dir = `${FileSystem.documentDirectory}project-images/`;
+      const info = await FileSystem.getInfoAsync(dir);
+      if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      const ext = (result.assets[0].uri.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const dest = `${dir}proj-${Date.now()}.${ext}`;
+      await FileSystem.copyAsync({ from: result.assets[0].uri, to: dest });
+      setProjectImage(dest);
+    } catch {}
+  };
+  const chooseProjectImage = () => {
+    Alert.alert(t('wizard_project_image' as any), undefined, [
+      { text: t('wizard_image_camera' as any), onPress: () => void pickProjectImage("camera") },
+      { text: t('wizard_image_library' as any), onPress: () => void pickProjectImage("library") },
+      { text: t('btn_abbrechen'), style: "cancel" },
+    ]);
+  };
 
   useEffect(() => {
     void (async () => {
@@ -113,6 +173,7 @@ export default function ProjectWizardScreen() {
         client: client.trim() || undefined,
         contact: contact.trim() || undefined,
         projectType: projType || undefined,
+        imageUri: projectImage || undefined,
         status: "aktiv",
         color,
         createdAt: new Date().toISOString(),
@@ -135,7 +196,7 @@ export default function ProjectWizardScreen() {
         const all = raw ? JSON.parse(raw) : [];
         const i = all.findIndex((p: any) => p.id === id);
         if (i >= 0) {
-          all[i] = { ...all[i], name: name.trim(), description: desc.trim(), address: address.trim() || undefined, projectNumber: projectNumber.trim() || undefined, client: client.trim() || undefined, contact: contact.trim() || undefined, projectType: projType || undefined, color };
+          all[i] = { ...all[i], name: name.trim(), description: desc.trim(), address: address.trim() || undefined, projectNumber: projectNumber.trim() || undefined, client: client.trim() || undefined, contact: contact.trim() || undefined, projectType: projType || undefined, imageUri: projectImage || all[i].imageUri, color };
           await AsyncStorage.setItem("projects", JSON.stringify(all));
         }
       } catch {}
@@ -439,7 +500,35 @@ export default function ProjectWizardScreen() {
             <TextInput value={client} onChangeText={setClient} placeholder={t('wizard_client' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('adresse')}</Text>
-            <TextInput value={address} onChangeText={setAddress} placeholder="Musterstraße 1, 12345 Stadt" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+            <View style={{ position: "relative", zIndex: 5 }}>
+              <TextInput
+                value={address}
+                onChangeText={onAddressChange}
+                onFocus={() => setAddrFocused(true)}
+                onBlur={() => setTimeout(() => setAddrFocused(false), 200)}
+                placeholder="Musterstraße 1, 12345 Stadt"
+                placeholderTextColor={colors.muted}
+                autoCorrect={false}
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              />
+              {addrLoading && (
+                <ActivityIndicator size="small" color={colors.muted} style={{ position: "absolute", right: 12, top: 12 }} />
+              )}
+              {addrFocused && addrSuggestions.length > 0 && (
+                <View style={[styles.suggestBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  {addrSuggestions.map((s) => (
+                    <Pressable
+                      key={s.label}
+                      onPress={() => pickAddressSuggestion(s.label)}
+                      style={({ pressed }) => [styles.suggestRow, { borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="place" size={16} color={colors.muted} />
+                      <Text style={{ flex: 1, color: colors.foreground, fontSize: 13 }} numberOfLines={2}>{s.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
 
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_contact' as any)}</Text>
             <TextInput value={contact} onChangeText={setContact} placeholder={t('wizard_contact' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
@@ -471,6 +560,21 @@ export default function ProjectWizardScreen() {
                 </Pressable>
               ))}
             </View>
+
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_project_image' as any)}</Text>
+            {projectImage ? (
+              <View style={styles.imageWrap}>
+                <Image source={{ uri: projectImage }} style={styles.imagePreview} contentFit="cover" />
+                <Pressable onPress={() => setProjectImage(null)} style={styles.imageRemove}>
+                  <MaterialIcons name="close" size={16} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={chooseProjectImage} style={({ pressed }) => [styles.imageAdd, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="add-a-photo" size={22} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>{t('wizard_add_image' as any)}</Text>
+              </Pressable>
+            )}
           </>
         )}
 
@@ -747,6 +851,12 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15, marginBottom: 4 },
   typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   typeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
+  suggestBox: { position: "absolute", top: 52, left: 0, right: 0, borderWidth: 1, borderRadius: 10, overflow: "hidden", zIndex: 10, elevation: 6 },
+  suggestRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: 0.5 },
+  imageWrap: { width: 120, height: 120, borderRadius: 12, overflow: "hidden", marginTop: 4 },
+  imagePreview: { width: "100%", height: "100%" },
+  imageRemove: { position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
+  imageAdd: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderStyle: "dashed", borderRadius: 12, paddingVertical: 18, marginTop: 4 },
   colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
   swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: "center", justifyContent: "center" },
   hint: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
