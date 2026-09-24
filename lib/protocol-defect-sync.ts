@@ -30,7 +30,12 @@ export type ProtocolDefectSyncResult = {
 };
 
 const DEFECT_SECTION_PATTERN = /mängel|maengel|beanstand|schäden|schaeden|probleme|hindernisse/i;
-const NO_DEFECT_PATTERN = /keine\s+(mängel|maengel|beanstandungen|schäden|schaeden)|mängelfrei|maengelfrei/i;
+// A negation like "keine unmittelbaren sicherheitsrelevanten Mängel" must count
+// as "no defect" even with words between "keine" and the noun.
+const NO_DEFECT_PATTERN = /\bkeine\b[^.;!?]{0,60}\b(mängel|maengel|beanstandungen|schäden|schaeden|auffälligkeiten|auffaelligkeiten)\b|mängelfrei|maengelfrei|\bkeine\s+(unmittelbaren|akuten|sicherheitsrelevanten)\b/i;
+// Evaluation/summary lines (headings, overall assessments) are not individual
+// defects — they describe the finding, so they must never be saved as one.
+const SUMMARY_PREFIX_PATTERN = /^(kritische punkte|zusammenfassung|bewertung|gesamtbewertung|gesamteindruck|fazit|empfehlung|empfehlungen|hinweis|hinweise|anmerkung|anmerkungen|schlussfolgerung|einschätzung|einschaetzung|allgemein|allgemeines|gesamt|resümee|resumee|beurteilung)\b\s*:?/i;
 const DEFECT_SIGNAL_PATTERN = /\b(mangel|mängel|maengel|fehlt|fehlen|fehlend|beschädigt|beschaedigt|defekt|undicht|riss|gerissen|locker|gebrochen|kratzer|abplatzung|fehlstelle|schimmel|feuchtigkeit|rost|leck|hohlstelle|uneben|verschmutzt|nicht\s+(montiert|eingebaut|fertig|funktionsfähig|funktionsfaehig)|funktioniert\s+nicht)\b/i;
 
 function cleanText(value: unknown): string {
@@ -111,6 +116,8 @@ function findHeader(headers: string[], pattern: RegExp): number {
 function createCandidateFromText(rawText: string, confidence: number): ProtocolDefectCandidate | null {
   const text = cleanText(rawText);
   if (!text || NO_DEFECT_PATTERN.test(text)) return null;
+  // Skip evaluation/summary lines — they describe the assessment, not a defect.
+  if (SUMMARY_PREFIX_PATTERN.test(text)) return null;
 
   const locationMatch = text.match(/(?:ort|raum|bereich|geschoss)\s*:\s*([^;|,]+)(?:[;|,]|$)/i);
   const tradeMatch = text.match(/(?:gewerk|verantwortlich|firma)\s*:\s*([^;|,]+)(?:[;|,]|$)/i);

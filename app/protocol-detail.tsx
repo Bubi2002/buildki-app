@@ -1906,36 +1906,7 @@ export default function ProtocolDetailScreen() {
           )}
         </View>
 
-        {/* PDF Export Banner */}
-        <Pressable
-          onPress={exportPdf}
-          disabled={isExporting}
-          style={({ pressed }) => [
-            styles.pdfBanner,
-            {
-              backgroundColor: "#E5393520",
-              borderColor: "#E53935",
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          {isExporting ? (
-            <ActivityIndicator size="small" color="#E53935" />
-          ) : (
-            <MaterialIcons name="picture-as-pdf" size={22} color="#E53935" />
-          )}
-          <View style={styles.pdfBannerText}>
-            <Text style={[styles.pdfBannerTitle, { color: colors.foreground }]}>
-              {isExporting ? t('protocol_detail_pdf_creating' as any) : t('protocol_detail_export_pdf' as any)}
-            </Text>
-            <Text style={[styles.pdfBannerSubtitle, { color: colors.muted }]}>
-              {t('protocol_detail_pdf_subtitle' as any)}
-            </Text>
-          </View>
-          {!isExporting && (
-            <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
-          )}
-        </Pressable>
+        {/* PDF export lives in the header (single entry point) — no duplicate banner here. */}
 
         {/* Photos Gallery - only show if photos are NOT already all referenced inline in text */}
         {photos.length > 0 && !allPhotosInlined && (

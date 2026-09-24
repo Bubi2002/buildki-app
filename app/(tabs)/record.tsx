@@ -1516,6 +1516,7 @@ export default function RecordScreen() {
           protocolId,
           fileUri,
           mimeType,
+          projectName: selectedProject?.name,
           templateId: selectedTemplate.id,
           templateSystemPrompt: customTemplateInput.customSystemPrompt,
           templateName: customTemplateInput.customTemplateName,

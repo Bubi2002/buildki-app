@@ -82,6 +82,7 @@ export interface PendingJob {
   protocolId: string;
   fileUri: string;
   mimeType: string;
+  projectName?: string;
   templateId: string;
   templateSystemPrompt?: string;
   templateName?: string;
@@ -321,9 +322,23 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     notifyListeners(job.protocolId, "generating");
     await updateProtocolStep(job.protocolId, "generating");
     
+    // Give the AI the project name and the LOCAL recording time as context, so
+    // the header shows the right "Objekt/Bauvorhaben" and time (the server would
+    // otherwise miss the project entirely and format the timestamp in UTC).
+    const recordedAt = new Date(job.createdAt);
+    const localDate = isNaN(recordedAt.getTime()) ? "" : recordedAt.toLocaleDateString("de-DE");
+    const localTime = isNaN(recordedAt.getTime()) ? "" : recordedAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    const contextLines: string[] = [];
+    if (job.projectName?.trim()) contextLines.push(`Objekt/Bauvorhaben: ${job.projectName.trim()}`);
+    if (localDate) contextLines.push(`Aufnahmedatum: ${localDate}`);
+    if (localTime) contextLines.push(`Aufnahmeuhrzeit: ${localTime} Uhr (Ortszeit)`);
+    const transcriptForGeneration = contextLines.length
+      ? `[Kontext zur Aufnahme – nutze diese Angaben für Kopfdaten wie Objekt, Datum und Uhrzeit; nicht als Zitat wiedergeben]\n${contextLines.join("\n")}\n\n[Transkript]\n${transcription.text}`
+      : transcription.text;
+
     const protocol = await withRetry(
       () => apiClient.generateProtocol(
-        transcription.text,
+        transcriptForGeneration,
         job.templateId,
         job.style,
         job.format,
