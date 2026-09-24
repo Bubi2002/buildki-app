@@ -19,7 +19,9 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
 import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
-import { saveDefect, getDefects, deleteDefect } from "@/lib/defect-store";
+import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPriority } from "@/lib/defect-store";
+import { GEWERKE } from "@/lib/defect-pdf-export";
+import { DateOnlyPicker } from "@/components/date-only-picker";
 import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
@@ -30,6 +32,21 @@ const PROJECT_TYPES: { key: string; labelKey: string }[] = [
   { key: "gutachten", labelKey: "wizard_type_survey" },
   { key: "sonstiges", labelKey: "wizard_type_other" },
 ];
+const WIZ_PRIORITIES: { key: DefectPriority; labelKey: string; color: string }[] = [
+  { key: "hoch", labelKey: "prioritaet_hoch", color: "#EF4444" },
+  { key: "mittel", labelKey: "prioritaet_mittel", color: "#F59E0B" },
+  { key: "niedrig", labelKey: "prioritaet_niedrig", color: "#34D399" },
+];
+// Defect status flow (uses the real DefectStatus values so the Mängel screen stays consistent).
+const WIZ_STATUSES: { key: DefectStatus; labelKey: string }[] = [
+  { key: "offen", labelKey: "defects_status_offen" },
+  { key: "zugewiesen", labelKey: "defects_status_zugewiesen" },
+  { key: "in_bearbeitung", labelKey: "defects_status_in_bearbeitung" },
+  { key: "pruefung", labelKey: "defects_status_pruefung" },
+  { key: "erledigt", labelKey: "defects_status_erledigt" },
+];
+const DEFAULT_ROOM_SUGGESTIONS = ["Küche", "Wohnzimmer", "Schlafzimmer", "Bad", "WC", "Flur", "Treppenhaus", "Technik", "Keller", "Balkon"];
+const ROOM_SUGGESTIONS_KEY = "room-name-suggestions";
 type Step = "choose" | "details" | "rooms" | "items";
 type ProjItem = { id: string; name: string; color?: string; archived?: boolean };
 
@@ -76,6 +93,12 @@ export default function ProjectWizardScreen() {
   // Step 3 – defects/tasks
   const [itemType, setItemType] = useState<"defect" | "task">("defect");
   const [itemTitle, setItemTitle] = useState("");
+  const [itemDesc, setItemDesc] = useState("");
+  const [itemGewerk, setItemGewerk] = useState("");
+  const [itemPriority, setItemPriority] = useState<DefectPriority>("mittel");
+  const [itemStatus, setItemStatus] = useState<DefectStatus>("offen");
+  const [itemDueDate, setItemDueDate] = useState("");
+  const [roomSuggestions, setRoomSuggestions] = useState<string[]>(DEFAULT_ROOM_SUGGESTIONS);
   const [itemRoom, setItemRoom] = useState("");
   const [itemFloorId, setItemFloorId] = useState<string | null>(null);
   const [itemAssignee, setItemAssignee] = useState("");
@@ -110,6 +133,30 @@ export default function ProjectWizardScreen() {
     if (addrTimer.current) clearTimeout(addrTimer.current);
     if (addrAbort.current) addrAbort.current.abort();
   }, []);
+
+  // Remembered room names (merged with sensible defaults) for quick chips.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(ROOM_SUGGESTIONS_KEY);
+        const saved: string[] = raw ? JSON.parse(raw) : [];
+        const merged = [...new Set([...saved, ...DEFAULT_ROOM_SUGGESTIONS])];
+        setRoomSuggestions(merged);
+      } catch {}
+    })();
+  }, []);
+  const rememberRoomName = async (raw: string) => {
+    const nm = raw.trim();
+    if (!nm) return;
+    setRoomSuggestions((prev) => (prev.some((x) => x.toLowerCase() === nm.toLowerCase()) ? prev : [nm, ...prev]));
+    try {
+      const stored = await AsyncStorage.getItem(ROOM_SUGGESTIONS_KEY);
+      const saved: string[] = stored ? JSON.parse(stored) : [];
+      if (!saved.some((x) => x.toLowerCase() === nm.toLowerCase())) {
+        await AsyncStorage.setItem(ROOM_SUGGESTIONS_KEY, JSON.stringify([nm, ...saved].slice(0, 40)));
+      }
+    } catch {}
+  };
 
   // Pick / capture a project image (photo or plan) and persist a copy.
   const pickProjectImage = async (source: "camera" | "library") => {
@@ -215,6 +262,7 @@ export default function ProjectWizardScreen() {
     if (!projectId || !floorId || !roomName.trim()) return;
     haptic();
     await addRoom(projectId, floorId, roomName.trim());
+    await rememberRoomName(roomName);
     setRoomName("");
     setRooms(await getAllRooms(projectId));
   };
@@ -346,27 +394,33 @@ export default function ProjectWizardScreen() {
           id,
           projectId,
           title,
-          description: "",
-          status: "offen",
-          priority: "mittel",
-          category: "sonstiges",
+          description: itemDesc.trim(),
+          status: itemStatus,
+          priority: itemPriority,
+          category: itemGewerk || "sonstiges",
+          gewerk: itemGewerk || undefined,
           photos: itemPhotos,
           room,
           floor: floorName,
           assignee,
+          dueDate: itemDueDate || undefined,
           createdAt: now,
           updatedAt: now,
         } as any);
       } else {
         const raw = await AsyncStorage.getItem("project-tasks");
         const all = raw ? JSON.parse(raw) : [];
-        all.unshift({ id, projectId, title, room, floor: floorName, assignee, status: "offen", done: false });
+        all.unshift({ id, projectId, title, description: itemDesc.trim(), room, floor: floorName, assignee, priority: itemPriority, dueDate: itemDueDate || undefined, status: "offen", done: false });
         await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
       }
+      if (room) await rememberRoomName(room);
       setAddedItems((prev) => [{ id, type: itemType, title, room }, ...prev]);
       setItemTitle("");
+      setItemDesc("");
       setItemPhotos([]);
       setItemAssignee("");
+      setItemDueDate("");
+      // Keep gewerk/priority/status for the next entry (usually the same trade).
     } catch {}
   };
 
@@ -659,22 +713,25 @@ export default function ProjectWizardScreen() {
             </View>
             <TextInput value={itemTitle} onChangeText={setItemTitle} placeholder={t('titel')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
-            {/* Etage */}
-            {floors.length > 0 && (
-              <>
-                <Text style={styles.miniLabel}>{t('wizard_floor' as any)}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
-                  {floors.map((f) => {
-                    const active = f.id === curFloorId;
-                    return (
-                      <Pressable key={f.id} onPress={() => setItemFloorId(f.id)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
-                        <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }}>{floorLabel(f)}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </>
-            )}
+            <Text style={styles.miniLabel}>{t('beschreibung_optional')}</Text>
+            <TextInput value={itemDesc} onChangeText={setItemDesc} placeholder={t('beschreibung_optional')} placeholderTextColor={colors.muted} multiline style={[styles.input, { minHeight: 60, textAlignVertical: "top", color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+            {/* Etage (+ Etage) */}
+            <Text style={styles.miniLabel}>{t('wizard_floor' as any)}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+              {floors.map((f) => {
+                const active = f.id === curFloorId;
+                return (
+                  <Pressable key={f.id} onPress={() => setItemFloorId(f.id)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                    <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }}>{floorLabel(f)}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable onPress={() => { setNewFloorName(""); setFloorInputOpen(true); }} style={[styles.floorChip, { flexDirection: "row", alignItems: "center", gap: 4, borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <MaterialIcons name="add" size={15} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>{t('wizard_floor' as any)}</Text>
+              </Pressable>
+            </ScrollView>
 
             {/* Raum – aus den zuvor erstellten Räumen wählen */}
             {curFloorId && roomsForFloor(curFloorId).length > 0 && (
@@ -694,8 +751,64 @@ export default function ProjectWizardScreen() {
               </>
             )}
             <TextInput value={itemRoom} onChangeText={setItemRoom} placeholder={t('index_tool_raeume')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+            {/* Remembered room-name suggestions */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+              {roomSuggestions.filter((s) => s.toLowerCase() !== itemRoom.trim().toLowerCase()).slice(0, 14).map((s) => (
+                <Pressable key={s} onPress={() => setItemRoom(s)} style={[styles.suggestChip, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>{s}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {itemType === "defect" && (
+              <>
+                {/* Gewerk */}
+                <Text style={styles.miniLabel}>{t('gewerk')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+                  {GEWERKE.map((g) => {
+                    const active = itemGewerk === g;
+                    return (
+                      <Pressable key={g} onPress={() => setItemGewerk(active ? "" : g)} style={[styles.floorChip, { borderColor: active ? "#5DADE2" : colors.border, backgroundColor: active ? "#5DADE218" : colors.surface }]}>
+                        <Text style={{ color: active ? "#5DADE2" : colors.muted, fontWeight: "600", fontSize: 13 }}>{g}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Priorität */}
+                <Text style={styles.miniLabel}>{t('prioritaet')}</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
+                  {WIZ_PRIORITIES.map((p) => {
+                    const active = itemPriority === p.key;
+                    return (
+                      <Pressable key={p.key} onPress={() => setItemPriority(p.key)} style={[styles.segChip, { borderColor: active ? p.color : colors.border, backgroundColor: active ? p.color + "1A" : colors.surface }]}>
+                        <Text style={{ color: active ? p.color : colors.muted, fontWeight: "700", fontSize: 13 }}>{t(p.labelKey as any)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {/* Status */}
+                <Text style={styles.miniLabel}>{t('defects_sort_status' as any)}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+                  {WIZ_STATUSES.map((s) => {
+                    const active = itemStatus === s.key;
+                    return (
+                      <Pressable key={s.key} onPress={() => setItemStatus(s.key)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                        <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }}>{t(s.labelKey as any)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
+            {/* Frist */}
+            <Text style={styles.miniLabel}>{t('frist')}</Text>
+            <DateOnlyPicker value={itemDueDate} onChange={setItemDueDate} label={t('frist')} />
 
             {/* Zuständiger */}
+            <Text style={styles.miniLabel}>{t('zustaendig')}</Text>
             <TextInput value={itemAssignee} onChangeText={setItemAssignee} placeholder={t('zustaendig')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
             {/* Fotos */}
@@ -851,6 +964,8 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15, marginBottom: 4 },
   typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   typeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
+  suggestChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
+  segChip: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
   suggestBox: { position: "absolute", top: 52, left: 0, right: 0, borderWidth: 1, borderRadius: 10, overflow: "hidden", zIndex: 10, elevation: 6 },
   suggestRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: 0.5 },
   imageWrap: { width: 120, height: 120, borderRadius: 12, overflow: "hidden", marginTop: 4 },
