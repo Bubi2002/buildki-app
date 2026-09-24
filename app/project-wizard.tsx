@@ -5,7 +5,7 @@
  * project active and everything saved.
  */
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -18,7 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
-import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, type Floor, type Room } from "@/lib/room-store";
+import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect } from "@/lib/defect-store";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
@@ -26,7 +26,7 @@ type Step = "choose" | "details" | "rooms" | "items";
 type ProjItem = { id: string; name: string; color?: string; archived?: boolean };
 
 export default function ProjectWizardScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
 
@@ -45,6 +45,8 @@ export default function ProjectWizardScreen() {
   const [floorId, setFloorId] = useState<string | null>(null);
   const [floorInputOpen, setFloorInputOpen] = useState(false);
   const [newFloorName, setNewFloorName] = useState("");
+  const [editRoom, setEditRoom] = useState<Room | null>(null);
+  const [editRoomName, setEditRoomName] = useState("");
   const [recording, setRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -152,12 +154,36 @@ export default function ProjectWizardScreen() {
     setFloorInputOpen(false);
   };
 
+  const openEditRoom = (r: Room) => { setEditRoomName(r.name); setEditRoom(r); };
+  const saveEditRoom = async () => {
+    const r = editRoom;
+    const name = editRoomName.trim();
+    if (!r || !projectId || !name) { setEditRoom(null); return; }
+    setRooms((prev) => prev.map((x) => (x.id === r.id ? { ...x, name } : x)));
+    try { await updateRoom(projectId, r.id, { name }); } catch {}
+    setEditRoom(null);
+  };
+  const deleteRoomNow = async (r: Room) => {
+    if (!projectId) return;
+    setRooms((prev) => prev.filter((x) => x.id !== r.id));
+    setEditRoom(null);
+    try { await deleteRoom(projectId, r.id); } catch {}
+  };
+
   // Speak room names ("Küche, Bad und Schlafzimmer") → adds them to the floor.
+  // Splits on separators and strips common filler words so free speech still
+  // produces clean names (the list is also editable afterwards).
   const parseRoomNames = (text: string): string[] =>
     text
-      .split(/\s*(?:,|;|·|\/|\n|\bund\b|\bsowie\b)\s*/gi)
-      .map((s) => s.trim().replace(/[.!?]+$/g, "").trim())
-      .filter((s) => s.length >= 2)
+      .split(/\s*(?:,|;|·|\/|\n|\bund\b|\bsowie\b|\band\b)\s*/gi)
+      .map((s) =>
+        s
+          .trim()
+          .replace(/[.!?]+$/g, "")
+          .replace(/^(?:es\s+gibt\s+(?:noch\s+)?|hier\s+ist\s+|das\s+ist\s+|noch\s+|ein(?:e|en)?\s+|a\s+|an\s+|the\s+|there\s+is\s+(?:a\s+)?)/i, "")
+          .trim(),
+      )
+      .filter((s) => s.length >= 2 && !/^\d+$/.test(s) && !/^(zwei|drei|vier|eins|two|three)$/i.test(s))
       .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
       .slice(0, 25);
 
@@ -182,7 +208,7 @@ export default function ProjectWizardScreen() {
       if (!uri) throw new Error();
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       const uploaded = await uploadAudio.mutateAsync({ base64, mimeType: "audio/m4a", filename: `rooms-${Date.now()}.m4a` });
-      const transcribed = await transcribe.mutateAsync({ audioUrl: uploaded.url, language: "de" });
+      const transcribed = await transcribe.mutateAsync({ audioUrl: uploaded.url, language: language || "de" });
       const names = parseRoomNames((transcribed.text || "").trim());
       const fid = floorId ?? floors[0]?.id ?? null;
       if (fid && names.length) {
@@ -387,10 +413,14 @@ export default function ProjectWizardScreen() {
                 <View key={f.id} style={{ marginTop: 14 }}>
                   <Text style={[styles.groupLabel, { color: colors.muted }]}>{floorLabel(f)}</Text>
                   {fr.map((r) => (
-                    <View key={r.id} style={[styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Pressable key={r.id} onPress={() => openEditRoom(r)} style={({ pressed }) => [styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                       <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
-                      <Text style={[styles.itemText, { color: colors.foreground }]}>{r.name}</Text>
-                    </View>
+                      <Text style={[styles.itemText, { color: colors.foreground }]} numberOfLines={1}>{r.name}</Text>
+                      <MaterialIcons name="edit" size={15} color={colors.muted} />
+                      <Pressable onPress={() => deleteRoomNow(r)} hitSlop={8} style={{ paddingLeft: 6 }}>
+                        <MaterialIcons name="delete-outline" size={19} color="#F87171" />
+                      </Pressable>
+                    </Pressable>
                   ))}
                 </View>
               );
@@ -528,6 +558,34 @@ export default function ProjectWizardScreen() {
           <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600", marginTop: 12 }}>{t('wizard_voice_processing' as any)}</Text>
         </View>
       )}
+
+      {/* Edit / delete a room */}
+      <Modal visible={!!editRoom} transparent animationType="slide" onRequestClose={() => setEditRoom(null)}>
+        <View style={styles.editOverlay}>
+          <View style={[styles.editSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.editTitle, { color: colors.foreground }]}>{t('rooms_add_room' as any)}</Text>
+            <TextInput
+              value={editRoomName}
+              onChangeText={setEditRoomName}
+              placeholder={t('rooms_add_room' as any)}
+              placeholderTextColor={colors.muted}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={saveEditRoom}
+              style={[styles.input, { marginTop: 12, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => editRoom && deleteRoomNow(editRoom)} style={({ pressed }) => [styles.editDelete, { opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name="delete-outline" size={18} color="#F87171" />
+                <Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text>
+              </Pressable>
+              <Pressable onPress={saveEditRoom} style={({ pressed }) => [styles.editSave, { opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('save')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -564,4 +622,9 @@ const styles = StyleSheet.create({
   footerPrimary: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#2563EB", borderRadius: 12, paddingVertical: 14 },
   footerPrimaryText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
   voiceOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.72)" },
+  editOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
+  editSheet: { borderTopLeftRadius: 18, borderTopRightRadius: 18, borderWidth: 1, padding: 20, paddingBottom: 34 },
+  editTitle: { fontSize: 18, fontWeight: "800" },
+  editDelete: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#7F1D1D" },
+  editSave: { flex: 2, alignItems: "center", justifyContent: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: "#2563EB" },
 });
