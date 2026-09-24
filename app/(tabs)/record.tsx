@@ -1511,23 +1511,37 @@ export default function RecordScreen() {
 
       // Start background processing (fire and forget)
       const { startBackgroundProcessing } = require("@/lib/background-processor");
+      const jobConfig = {
+        protocolId,
+        fileUri,
+        mimeType,
+        projectName: selectedProject?.name,
+        templateId: selectedTemplate.id,
+        templateSystemPrompt: customTemplateInput.customSystemPrompt,
+        templateName: customTemplateInput.customTemplateName,
+        style: settings.style || "formal",
+        format: settings.format || "bullets",
+        createdAt: placeholderProtocol.createdAt,
+        markers: markers.length > 0 ? markers : undefined,
+        photos: capturedPhotos.length > 0 ? capturedPhotos : undefined,
+        photoTimestamps: photoTimestamps.length > 0 ? photoTimestamps : undefined,
+        status: "queued" as const,
+      };
+
+      // Persist a retry snapshot so a failed protocol can be re-processed later
+      // (needs the original file + template/style/markers to re-run the pipeline).
+      try {
+        const pStr = await AsyncStorage.getItem("protocols");
+        const pArr = pStr ? JSON.parse(pStr) : [];
+        const pIdx = pArr.findIndex((p: any) => p.id === protocolId);
+        if (pIdx !== -1) {
+          pArr[pIdx].retryJob = jobConfig;
+          await AsyncStorage.setItem("protocols", JSON.stringify(pArr));
+        }
+      } catch {}
+
       startBackgroundProcessing(
-        {
-          protocolId,
-          fileUri,
-          mimeType,
-          projectName: selectedProject?.name,
-          templateId: selectedTemplate.id,
-          templateSystemPrompt: customTemplateInput.customSystemPrompt,
-          templateName: customTemplateInput.customTemplateName,
-          style: settings.style || "formal",
-          format: settings.format || "bullets",
-          createdAt: placeholderProtocol.createdAt,
-          markers: markers.length > 0 ? markers : undefined,
-          photos: capturedPhotos.length > 0 ? capturedPhotos : undefined,
-          photoTimestamps: photoTimestamps.length > 0 ? photoTimestamps : undefined,
-          status: "queued",
-        },
+        jobConfig,
         {
           upload: (base64: string, mime: string, filename: string) =>
             uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),

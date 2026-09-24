@@ -169,6 +169,7 @@ export default function ProtocolDetailScreen() {
   const [showTranscription, setShowTranscription] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
@@ -954,6 +955,56 @@ export default function ProtocolDetailScreen() {
   // Multi-output: Regenerate with different template
   const protocolMutation = trpc.protocol.generate.useMutation();
   const todosMutation = trpc.protocol.extractTodos.useMutation();
+  const uploadMutation = trpc.upload.audio.useMutation();
+  const transcribeMutation = trpc.voice.transcribe.useMutation();
+
+  // Re-run the whole processing pipeline for a failed protocol using the
+  // snapshot stored at recording time (original file + template/style/markers).
+  const retryProcessing = async () => {
+    if (!protocol) return;
+    const job = (protocol as any).retryJob;
+    if (!job?.fileUri) {
+      Alert.alert(t('hinweis'), t('protocol_retry_unavailable' as any));
+      return;
+    }
+    try {
+      const info = await FileSystem.getInfoAsync(job.fileUri);
+      if (!info.exists) {
+        Alert.alert(t('hinweis'), t('protocol_retry_no_file' as any));
+        return;
+      }
+    } catch {}
+    setIsRetrying(true);
+    try {
+      const pStr = await AsyncStorage.getItem("protocols");
+      const pArr = pStr ? JSON.parse(pStr) : [];
+      const i = pArr.findIndex((p: any) => p.id === protocol.id);
+      if (i !== -1) {
+        pArr[i] = { ...pArr[i], status: "processing", processingStep: "queued", processingError: undefined };
+        await AsyncStorage.setItem("protocols", JSON.stringify(pArr));
+      }
+      setProtocol({ ...(protocol as any), status: "processing", processingStep: "queued", processingError: undefined } as any);
+
+      const { startBackgroundProcessing } = require("@/lib/background-processor");
+      startBackgroundProcessing(
+        { ...job, status: "queued" },
+        {
+          upload: (base64: string, mime: string, filename: string) =>
+            uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),
+          transcribe: (audioUrl: string, language: string) =>
+            transcribeMutation.mutateAsync({ audioUrl, language }),
+          generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: { time: number; label: string }[], photoCount?: number, jobPhotoTimestamps?: number[], customSystemPrompt?: string, customTemplateName?: string) =>
+            protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount, photoTimestamps: jobPhotoTimestamps, customSystemPrompt, customTemplateName }),
+          extractTodos: (transcription: string, protocolText: string) =>
+            todosMutation.mutateAsync({ transcription, protocolText }),
+        }
+      );
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('protocol_retry_unavailable' as any));
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   const regenerateWithTemplate = async (templateId: string, templateName?: string) => {
     if (!protocol) return;
@@ -1843,12 +1894,25 @@ export default function ProtocolDetailScreen() {
                         ? t('tipp_internetverbindung')
                         : t('protocol_detail_tip_audio_mode' as any)}
                     </Text>
-                    <Pressable
-                      onPress={() => router.push("/(tabs)" as any)}
-                      style={({ pressed }) => [{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#FF9800", borderRadius: 0, alignSelf: "flex-start", opacity: pressed ? 0.7 : 1 }]}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>{t('neue_aufnahme_starten')}</Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                      {(protocol as any).retryJob?.fileUri && (
+                        <Pressable
+                          onPress={retryProcessing}
+                          disabled={isRetrying}
+                          style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: "#FF9800", borderRadius: 0, opacity: pressed || isRetrying ? 0.7 : 1 }]}
+                        >
+                          {isRetrying && <ActivityIndicator size="small" color="#FFFFFF" />}
+                          <MaterialIcons name="refresh" size={16} color="#FFFFFF" />
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: "#FFFFFF" }}>{t('protocol_retry_button' as any)}</Text>
+                        </Pressable>
+                      )}
+                      <Pressable
+                        onPress={() => router.push("/(tabs)" as any)}
+                        style={({ pressed }) => [{ paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: "#FF9800", borderRadius: 0, opacity: pressed ? 0.7 : 1 }]}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#E65100" }}>{t('neue_aufnahme_starten')}</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 )}
               </View>

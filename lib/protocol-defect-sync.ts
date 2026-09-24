@@ -218,6 +218,22 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
   return [...unique.values()];
 }
 
+// Attach the RIGHT photo to a protocol-derived defect instead of dumping every
+// protocol photo onto every defect (which showed unrelated images):
+//  - an explicit "[FOTO N]" / "Foto N" reference → that photo only
+//  - a protocol with exactly one photo → that photo
+//  - otherwise (several photos, no reference) → none, so nothing is mis-assigned
+function photosForCandidate(candidate: ProtocolDefectCandidate, protocolPhotos: string[]): string[] {
+  if (protocolPhotos.length === 0) return [];
+  const text = `${candidate.title} ${candidate.description}`;
+  const match = text.match(/\bfotos?\s*\.?\s*(\d+)/i);
+  if (match) {
+    const index = parseInt(match[1], 10) - 1;
+    return index >= 0 && index < protocolPhotos.length ? [protocolPhotos[index]] : [];
+  }
+  return protocolPhotos.length === 1 ? [protocolPhotos[0]] : [];
+}
+
 function categoryFromTrade(trade?: string): string {
   const normalized = normalizeFingerprintPart(trade);
   if (normalized.includes("elektr")) return "Elektrik";
@@ -290,7 +306,7 @@ export async function syncProtocolDefects(protocol: StoredProtocolForDefectSync)
       priority: candidate.priority,
       category: categoryFromTrade(candidate.trade),
       gewerk: candidate.trade,
-      photos: protocol.photos || [],
+      photos: photosForCandidate(candidate, protocol.photos || []),
       dueDate: candidate.dueDate,
       location: candidate.location,
       createdAt: timestamp,
