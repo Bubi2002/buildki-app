@@ -25,6 +25,18 @@ const DATE_LOCALE: Record<string, string> = {
 // A defect still counts as "open" unless it is resolved, rejected or closed.
 const OPEN_DEFECT = (d: Defect) => d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt";
 
+type ProjectStatus = "aktiv" | "pausiert" | "abgeschlossen";
+const PROJECT_STATUSES: ProjectStatus[] = ["aktiv", "pausiert", "abgeschlossen"];
+const STATUS_COLOR: Record<ProjectStatus, string> = {
+  aktiv: "#43A047",
+  pausiert: "#FB8C00",
+  abgeschlossen: "#78909C",
+};
+
+type SortKey = "name" | "recent" | "defects" | "status";
+const SORT_KEYS: SortKey[] = ["name", "recent", "defects", "status"];
+const STATUS_SORT: Record<ProjectStatus, number> = { aktiv: 0, pausiert: 1, abgeschlossen: 2 };
+
 type Project = {
   id: string;
   name: string;
@@ -33,6 +45,10 @@ type Project = {
   createdAt: string;
   protocolPrefix?: string;
   protocolCounter?: number;
+  address?: string;
+  status?: ProjectStatus;
+  favorite?: boolean;
+  archived?: boolean;
 };
 
 type Protocol = {
@@ -56,9 +72,14 @@ export default function ProjectsScreen() {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("recent");
+  const [showSortPicker, setShowSortPicker] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newAddress, setNewAddress] = useState("");
+  const [newStatus, setNewStatus] = useState<ProjectStatus>("aktiv");
   const [selectedColor, setSelectedColor] = useState(PROJECT_COLORS[0]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [newPrefix, setNewPrefix] = useState("");
@@ -96,7 +117,7 @@ export default function ProjectsScreen() {
       if (editingProject) {
         const updated = existing.map((p: Project) =>
           p.id === editingProject.id
-            ? { ...p, name: newName.trim(), description: newDescription.trim(), color: selectedColor, protocolPrefix: newPrefix.trim().toUpperCase() || undefined }
+            ? { ...p, name: newName.trim(), description: newDescription.trim(), address: newAddress.trim() || undefined, status: newStatus, color: selectedColor, protocolPrefix: newPrefix.trim().toUpperCase() || undefined }
             : p
         );
         await AsyncStorage.setItem("projects", JSON.stringify(updated));
@@ -106,6 +127,8 @@ export default function ProjectsScreen() {
           id: Date.now().toString(),
           name: newName.trim(),
           description: newDescription.trim(),
+          address: newAddress.trim() || undefined,
+          status: newStatus,
           color: selectedColor,
           createdAt: new Date().toISOString(),
           protocolPrefix: newPrefix.trim().toUpperCase() || undefined,
@@ -119,6 +142,8 @@ export default function ProjectsScreen() {
       setShowCreateModal(false);
       setNewName("");
       setNewDescription("");
+      setNewAddress("");
+      setNewStatus("aktiv");
       setNewPrefix("");
       setSelectedColor(PROJECT_COLORS[0]);
       setEditingProject(null);
@@ -163,31 +188,81 @@ export default function ProjectsScreen() {
   const getOpenDefectCount = (projectId: string) =>
     defects.filter((d) => d.projectId === projectId && OPEN_DEFECT(d)).length;
 
-  const getLastInspection = (projectId: string): string | null => {
+  const lastInspectionISO = (projectId: string): string | null => {
     const dates = protocols
       .filter((p) => p.projectId === projectId && p.createdAt)
       .map((p) => p.createdAt as string)
       .sort((a, b) => b.localeCompare(a));
-    if (dates.length === 0) return null;
-    const d = new Date(dates[0]);
+    return dates[0] || null;
+  };
+
+  const getLastInspection = (projectId: string): string | null => {
+    const iso = lastInspectionISO(projectId);
+    if (!iso) return null;
+    const d = new Date(iso);
     if (isNaN(d.getTime())) return null;
     return d.toLocaleDateString(DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
-
-  const query = search.trim().toLowerCase();
-  const filteredProjects = query
-    ? projects.filter((p) =>
-        p.name.toLowerCase().includes(query) || (p.description || "").toLowerCase().includes(query))
-    : projects;
 
   const openEdit = (project: Project) => {
     setEditingProject(project);
     setNewName(project.name);
     setNewDescription(project.description);
+    setNewAddress(project.address || "");
+    setNewStatus(project.status || "aktiv");
     setSelectedColor(project.color);
     setNewPrefix(project.protocolPrefix || "");
     setShowCreateModal(true);
   };
+
+  const patchProject = async (projectId: string, patch: Partial<Project>) => {
+    const updated = projects.map((p) => (p.id === projectId ? { ...p, ...patch } : p));
+    setProjects(updated);
+    await AsyncStorage.setItem("projects", JSON.stringify(updated));
+  };
+
+  const toggleFavorite = (project: Project) => patchProject(project.id, { favorite: !project.favorite });
+  const toggleArchive = (project: Project) => patchProject(project.id, { archived: !project.archived });
+
+  const archivedCount = projects.filter((p) => p.archived).length;
+
+  const visibleProjects = (() => {
+    const q = search.trim().toLowerCase();
+    let list = projects.filter((p) => (showArchived ? p.archived : !p.archived));
+    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q) || (p.address || "").toLowerCase().includes(q));
+    const byRecent = (a: Project, b: Project) => {
+      const la = lastInspectionISO(a.id) || a.createdAt || "";
+      const lb = lastInspectionISO(b.id) || b.createdAt || "";
+      return lb.localeCompare(la);
+    };
+    list.sort((a, b) => {
+      // Favorites always float to the top within the current sort.
+      if (!!a.favorite !== !!b.favorite) return a.favorite ? -1 : 1;
+      switch (sortBy) {
+        case "name": return a.name.localeCompare(b.name);
+        case "defects": {
+          const d = getOpenDefectCount(b.id) - getOpenDefectCount(a.id);
+          return d !== 0 ? d : byRecent(a, b);
+        }
+        case "status": {
+          const d = (STATUS_SORT[a.status || "aktiv"]) - (STATUS_SORT[b.status || "aktiv"]);
+          return d !== 0 ? d : byRecent(a, b);
+        }
+        case "recent":
+        default: return byRecent(a, b);
+      }
+    });
+    return list;
+  })();
+
+  const sortLabels: Record<SortKey, string> = {
+    name: t('projects_sort_name' as any),
+    recent: t('projects_sort_recent' as any),
+    defects: t('projects_sort_defects' as any),
+    status: t('projects_sort_status' as any),
+  };
+  const statusLabel = (s?: ProjectStatus) =>
+    t((s === "pausiert" ? "projects_status_paused" : s === "abgeschlossen" ? "projects_status_done" : "projects_status_active") as any);
 
   const renderProject = ({ item }: { item: Project }) => {
     const count = getProtocolCount(item.id);
@@ -204,8 +279,19 @@ export default function ProjectsScreen() {
       >
         <View style={[styles.projectColorBar, { backgroundColor: item.color }]} />
         <View style={styles.projectContent}>
-          <Text style={[styles.projectName, { color: colors.foreground }]}>{item.name}</Text>
-          {item.description ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={[styles.projectName, { color: colors.foreground, flexShrink: 1 }]} numberOfLines={1}>{item.name}</Text>
+            <View style={[styles.statusPill, { backgroundColor: STATUS_COLOR[item.status || "aktiv"] + "22" }]}>
+              <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[item.status || "aktiv"] }]} />
+              <Text style={{ fontSize: 10, fontWeight: "700", color: STATUS_COLOR[item.status || "aktiv"] }}>{statusLabel(item.status)}</Text>
+            </View>
+          </View>
+          {item.address ? (
+            <View style={[styles.projectMeta, { marginTop: 2 }]}>
+              <MaterialIcons name="place" size={13} color={colors.muted} />
+              <Text style={[styles.projectMetaText, { color: colors.muted }]} numberOfLines={1}>{item.address}</Text>
+            </View>
+          ) : item.description ? (
             <Text style={[styles.projectDesc, { color: colors.muted }]} numberOfLines={1}>
               {item.description}
             </Text>
@@ -233,12 +319,29 @@ export default function ProjectsScreen() {
             </View>
           )}
         </View>
-        <Pressable
-          onPress={() => deleteProject(item)}
-          style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}
-        >
-          <MaterialIcons name="delete-outline" size={20} color={colors.muted} />
-        </Pressable>
+        <View style={{ alignItems: "center", gap: 2 }}>
+          <Pressable
+            onPress={() => toggleFavorite(item)}
+            hitSlop={6}
+            style={({ pressed }) => [{ padding: 6, opacity: pressed ? 0.5 : 1 }]}
+          >
+            <MaterialIcons name={item.favorite ? "star" : "star-border"} size={20} color={item.favorite ? "#FDD835" : colors.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() => toggleArchive(item)}
+            hitSlop={6}
+            style={({ pressed }) => [{ padding: 6, opacity: pressed ? 0.5 : 1 }]}
+          >
+            <MaterialIcons name={item.archived ? "unarchive" : "archive"} size={19} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() => deleteProject(item)}
+            hitSlop={6}
+            style={({ pressed }) => [{ padding: 6, opacity: pressed ? 0.5 : 1 }]}
+          >
+            <MaterialIcons name="delete-outline" size={19} color={colors.muted} />
+          </Pressable>
+        </View>
       </Pressable>
     );
   };
@@ -289,9 +392,33 @@ export default function ProjectsScreen() {
           </View>
         )}
 
+        {/* Sort + archive bar */}
+        {(projects.length > 1 || archivedCount > 0) && (
+          <View style={styles.toolbar}>
+            <Pressable
+              onPress={() => setShowSortPicker(true)}
+              style={({ pressed }) => [styles.toolBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="swap-vert" size={16} color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{sortLabels[sortBy]}</Text>
+            </Pressable>
+            {archivedCount > 0 && (
+              <Pressable
+                onPress={() => setShowArchived((v) => !v)}
+                style={({ pressed }) => [styles.toolBtn, { borderColor: showArchived ? colors.primary : colors.border, backgroundColor: showArchived ? colors.primary + "15" : colors.surface, opacity: pressed ? 0.8 : 1 }]}
+              >
+                <MaterialIcons name={showArchived ? "unarchive" : "archive"} size={16} color={showArchived ? colors.primary : colors.muted} />
+                <Text style={{ fontSize: 13, fontWeight: "600", color: showArchived ? colors.primary : colors.muted }}>
+                  {t('projects_archive' as any)} ({archivedCount})
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Projects list */}
         <FlatList
-          data={filteredProjects}
+          data={visibleProjects}
           keyExtractor={(item) => item.id}
           renderItem={renderProject}
           contentContainerStyle={styles.list}
@@ -328,6 +455,14 @@ export default function ProjectsScreen() {
               />
 
               <TextInput
+                value={newAddress}
+                onChangeText={setNewAddress}
+                placeholder={t('projects_address_placeholder' as any)}
+                placeholderTextColor={colors.muted}
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              />
+
+              <TextInput
                 value={newDescription}
                 onChangeText={setNewDescription}
                 placeholder={t('beschreibung_optional')}
@@ -336,6 +471,23 @@ export default function ProjectsScreen() {
                 numberOfLines={2}
                 style={[styles.input, styles.textArea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               />
+
+              <Text style={[styles.colorLabel, { color: colors.muted }]}>{t('projects_status_label' as any)}</Text>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
+                {PROJECT_STATUSES.map((s) => {
+                  const active = newStatus === s;
+                  return (
+                    <Pressable
+                      key={s}
+                      onPress={() => setNewStatus(s)}
+                      style={({ pressed }) => [styles.statusChoice, { borderColor: active ? STATUS_COLOR[s] : colors.border, backgroundColor: active ? STATUS_COLOR[s] + "1A" : colors.surface, opacity: pressed ? 0.85 : 1 }]}
+                    >
+                      <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[s] }]} />
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: active ? STATUS_COLOR[s] : colors.muted }}>{statusLabel(s)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
               <TextInput
                 value={newPrefix}
@@ -383,6 +535,28 @@ export default function ProjectsScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Sort picker */}
+        <Modal visible={showSortPicker} transparent animationType="fade" onRequestClose={() => setShowSortPicker(false)}>
+          <Pressable style={styles.sortBackdrop} onPress={() => setShowSortPicker(false)}>
+            <Pressable style={[styles.sortSheet, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
+              <Text style={[styles.sortSheetTitle, { color: colors.foreground }]}>{t('defects_sort_label' as any)}</Text>
+              {SORT_KEYS.map((key) => {
+                const active = sortBy === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => { setSortBy(key); setShowSortPicker(false); }}
+                    style={({ pressed }) => [styles.sortOption, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "15" : colors.surface, opacity: pressed ? 0.85 : 1 }]}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: active ? "700" : "500", color: active ? colors.primary : colors.foreground }}>{sortLabels[key]}</Text>
+                    {active && <MaterialIcons name="check" size={20} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     </ScreenContainer>
   );
@@ -402,6 +576,15 @@ const styles = StyleSheet.create({
   projectMetaText: { fontSize: 12 },
   unassignedBanner: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 0, borderWidth: 1 },
   searchBar: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginBottom: 12, paddingHorizontal: 12, height: 44, borderRadius: 10, borderWidth: 1 },
+  toolbar: { flexDirection: "row", gap: 8, marginHorizontal: 16, marginBottom: 12 },
+  toolBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  statusPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusChoice: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingVertical: 10 },
+  sortBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 },
+  sortSheet: { borderWidth: 1, borderRadius: 14, padding: 16 },
+  sortSheetTitle: { fontSize: 17, fontWeight: "800", marginBottom: 12 },
+  sortOption: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 8 },
   unassignedText: { fontSize: 13 },
   emptyState: { alignItems: "center", paddingTop: 80, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: "600" },
