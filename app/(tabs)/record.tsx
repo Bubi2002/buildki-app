@@ -45,6 +45,7 @@ import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { useTranslation } from "@/lib/language-provider";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { getPrivacyChoices } from "@/lib/privacy-consent";
@@ -868,6 +869,78 @@ export default function RecordScreen() {
     }
   };
 
+  // The whole file is uploaded and transcribed server-side (no on-device audio
+  // extraction), so large videos can exceed the upload timeout. Audio is far
+  // smaller and more reliable, so keep the video cap tight and offer audio too.
+  const MAX_VIDEO_BYTES = 40 * 1024 * 1024; // ~40 MB → a short clip
+  const MAX_AUDIO_BYTES = 60 * 1024 * 1024; // ~60 MB → a long voice recording
+
+  // Let the user pick which source to import. Audio is listed first because it
+  // is the reliable path; video stays available for short clips.
+  const openImportChooser = () => {
+    if (!selectedProject) {
+      setShowProjectPicker(true);
+      Alert.alert(t('record_select_project_title' as any), t('record_process_needs_project' as any));
+      return;
+    }
+    Alert.alert(
+      t('record_import_title' as any),
+      t('record_import_msg' as any),
+      [
+        { text: t('record_import_audio' as any), onPress: () => { importAudioFromFiles(); } },
+        { text: t('record_import_video' as any), onPress: () => { importVideoFromGallery(); } },
+        { text: t('cancel' as any), style: "cancel" as const },
+      ],
+    );
+  };
+
+  // Import an audio file (m4a/mp3/wav/…) and run it through the same
+  // upload + transcription + protocol pipeline as a live recording.
+  const importAudioFromFiles = async () => {
+    try {
+      if (!selectedProject) {
+        setShowProjectPicker(true);
+        Alert.alert(t('record_select_project_title' as any), t('record_process_needs_project' as any));
+        return;
+      }
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+
+      if (asset.size && asset.size > MAX_AUDIO_BYTES) {
+        Alert.alert(t('hinweis'), t('record_audio_too_large_msg' as any));
+        return;
+      }
+
+      // Normalise to an extension the transcription service can pull audio from.
+      const lower = (asset.name || asset.uri || "").toLowerCase();
+      const m = lower.match(/\.(wav|mp3|m4a|aac|caf|mp4)$/);
+      const ext = m ? (m[1] === "mp3" ? "mp3" : m[1] === "wav" ? "wav" : "m4a") : "m4a";
+      const mime = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : (asset.mimeType || "audio/m4a");
+
+      const audioDir = `${FileSystem.documentDirectory}audio-imports/`;
+      const dirInfo = await FileSystem.getInfoAsync(audioDir);
+      if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(audioDir, { intermediates: true });
+      const dest = `${audioDir}audio-${Date.now()}.${ext}`;
+      await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
+      setIsProcessing(true);
+      setProcessingSource("audio");
+      await processRecording(dest, mime);
+    } catch (error) {
+      console.error("Audio import error:", error);
+      setIsProcessing(false);
+      setProcessingSource(null);
+      Alert.alert(t('alert_fehler'), t('record_audio_import_error_msg' as any));
+    }
+  };
+
   // Import a video from the gallery and turn it into a protocol: the video is
   // run through the same upload + transcription + protocol pipeline as a normal
   // recording (its spoken content becomes the protocol text).
@@ -888,8 +961,9 @@ export default function RecordScreen() {
       if (result.canceled || !result.assets[0]) return;
       const asset = result.assets[0];
 
-      // Reading very large videos as base64 can exhaust memory — keep it short.
-      if (asset.fileSize && asset.fileSize > 100 * 1024 * 1024) {
+      // Video is uploaded whole and often times out; keep the cap tight and
+      // point the user to audio import for anything longer.
+      if (asset.fileSize && asset.fileSize > MAX_VIDEO_BYTES) {
         Alert.alert(t('hinweis'), t('record_video_too_large_msg' as any));
         return;
       }
@@ -2580,14 +2654,14 @@ export default function RecordScreen() {
               </Pressable>
             ) : (
               <Pressable
-                onPress={importVideoFromGallery}
+                onPress={openImportChooser}
                 style={({ pressed }) => [
                   styles.actionButtonLarge,
                   { backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
-                <MaterialIcons name="video-library" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>{t('video')}</Text>
+                <MaterialIcons name="library-add" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>{t('record_import_label' as any)}</Text>
               </Pressable>
             )}
           </View>
