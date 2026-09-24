@@ -5,7 +5,7 @@
  * project active and everything saved.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -21,6 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPriority } from "@/lib/defect-store";
 import { GEWERKE } from "@/lib/defect-pdf-export";
+import { getFloorPlans, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
 
@@ -47,6 +48,19 @@ const WIZ_STATUSES: { key: DefectStatus; labelKey: string }[] = [
 ];
 const DEFAULT_ROOM_SUGGESTIONS = ["Küche", "Wohnzimmer", "Schlafzimmer", "Bad", "WC", "Flur", "Treppenhaus", "Technik", "Keller", "Balkon"];
 const ROOM_SUGGESTIONS_KEY = "room-name-suggestions";
+const DEFECT_PIN_COLOR = "#F44336";
+const SCREEN_W = Dimensions.get("window").width;
+const SCREEN_H = Dimensions.get("window").height;
+const PLAN_BOX_W = SCREEN_W - 64;
+const PLAN_BOX_H = Math.min(SCREEN_H * 0.5, PLAN_BOX_W * 1.3);
+function planMetrics(plan: FloorPlan) {
+  const aspect = plan.width > 0 && plan.height > 0 ? plan.width / plan.height : 1.414;
+  const boxAspect = PLAN_BOX_W / PLAN_BOX_H;
+  let dispW: number, dispH: number;
+  if (aspect > boxAspect) { dispW = PLAN_BOX_W; dispH = PLAN_BOX_W / aspect; }
+  else { dispH = PLAN_BOX_H; dispW = PLAN_BOX_H * aspect; }
+  return { dispW, dispH, offX: (PLAN_BOX_W - dispW) / 2, offY: (PLAN_BOX_H - dispH) / 2 };
+}
 type Step = "choose" | "details" | "rooms" | "items";
 type ProjItem = { id: string; name: string; color?: string; archived?: boolean };
 
@@ -98,6 +112,11 @@ export default function ProjectWizardScreen() {
   const [itemPriority, setItemPriority] = useState<DefectPriority>("mittel");
   const [itemStatus, setItemStatus] = useState<DefectStatus>("offen");
   const [itemDueDate, setItemDueDate] = useState("");
+  const [plans, setPlans] = useState<FloorPlan[]>([]);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planModalPlan, setPlanModalPlan] = useState<FloorPlan | null>(null);
+  const [tempPos, setTempPos] = useState<{ x: number; y: number } | null>(null);
+  const [pendingPos, setPendingPos] = useState<{ planId: string; planName: string; x: number; y: number } | null>(null);
   const [roomSuggestions, setRoomSuggestions] = useState<string[]>(DEFAULT_ROOM_SUGGESTIONS);
   const [itemRoom, setItemRoom] = useState("");
   const [itemFloorId, setItemFloorId] = useState<string | null>(null);
@@ -186,6 +205,30 @@ export default function ProjectWizardScreen() {
     ]);
   };
 
+  // ─── Plan position (mark the defect on the floor plan) ──────────────────────
+  const openPlanModal = () => {
+    if (plans.length === 0) return;
+    const startPlan = (pendingPos && plans.find((p) => p.id === pendingPos.planId)) || plans[0];
+    setPlanModalPlan(startPlan);
+    setTempPos(pendingPos && pendingPos.planId === startPlan.id ? { x: pendingPos.x, y: pendingPos.y } : null);
+    setShowPlanModal(true);
+  };
+  const onPlanTap = (e: any) => {
+    if (!planModalPlan) return;
+    const { locationX, locationY } = e.nativeEvent;
+    const { dispW, dispH, offX, offY } = planMetrics(planModalPlan);
+    setTempPos({
+      x: Math.min(1, Math.max(0, (locationX - offX) / dispW)),
+      y: Math.min(1, Math.max(0, (locationY - offY) / dispH)),
+    });
+  };
+  const confirmPlanPos = () => {
+    if (planModalPlan && tempPos) {
+      setPendingPos({ planId: planModalPlan.id, planName: planModalPlan.name, x: tempPos.x, y: tempPos.y });
+    }
+    setShowPlanModal(false);
+  };
+
   useEffect(() => {
     void (async () => {
       try {
@@ -251,9 +294,10 @@ export default function ProjectWizardScreen() {
       id = await createProject();
     }
     if (!id) return;
-    const [fl, rm] = await Promise.all([getFloors(id), getAllRooms(id)]);
+    const [fl, rm, pl] = await Promise.all([getFloors(id), getAllRooms(id), getFloorPlans(id)]);
     setFloors(fl);
     setRooms(rm);
+    setPlans(pl);
     setFloorId((prev) => prev || fl[0]?.id || null);
     setStep("rooms");
   };
@@ -407,6 +451,24 @@ export default function ProjectWizardScreen() {
           createdAt: now,
           updatedAt: now,
         } as any);
+        // Optional plan position → create a linked pin on the floor plan.
+        if (pendingPos) {
+          try {
+            await savePlanPin({
+              id: `pin-${Date.now()}`,
+              planId: pendingPos.planId,
+              projectId,
+              x: pendingPos.x,
+              y: pendingPos.y,
+              type: "defect",
+              label: title,
+              description: itemDesc.trim() || undefined,
+              defectId: id,
+              color: DEFECT_PIN_COLOR,
+              createdAt: now,
+            } as any);
+          } catch {}
+        }
       } else {
         const raw = await AsyncStorage.getItem("project-tasks");
         const all = raw ? JSON.parse(raw) : [];
@@ -420,6 +482,7 @@ export default function ProjectWizardScreen() {
       setItemPhotos([]);
       setItemAssignee("");
       setItemDueDate("");
+      setPendingPos(null);
       // Keep gewerk/priority/status for the next entry (usually the same trade).
     } catch {}
   };
@@ -800,6 +863,26 @@ export default function ProjectWizardScreen() {
                     );
                   })}
                 </ScrollView>
+
+                {/* Planposition */}
+                <Text style={styles.miniLabel}>{t('wizard_plan_position' as any)}</Text>
+                {plans.length === 0 ? (
+                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>{t('wizard_plan_none' as any)}</Text>
+                ) : pendingPos ? (
+                  <View style={[styles.planPosRow, { borderColor: colors.primary, backgroundColor: colors.primary + "12" }]}>
+                    <MaterialIcons name="place" size={18} color={colors.primary} />
+                    <Text style={{ flex: 1, color: colors.foreground, fontSize: 13, fontWeight: "600" }} numberOfLines={1}>
+                      {pendingPos.planName} · {(pendingPos.x * 100).toFixed(0)}% / {(pendingPos.y * 100).toFixed(0)}%
+                    </Text>
+                    <Pressable onPress={openPlanModal} hitSlop={6}><MaterialIcons name="edit" size={18} color={colors.primary} /></Pressable>
+                    <Pressable onPress={() => setPendingPos(null)} hitSlop={6} style={{ marginLeft: 10 }}><MaterialIcons name="close" size={18} color={colors.muted} /></Pressable>
+                  </View>
+                ) : (
+                  <Pressable onPress={openPlanModal} style={({ pressed }) => [styles.photoBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="add-location-alt" size={18} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('wizard_plan_mark' as any)}</Text>
+                  </Pressable>
+                )}
               </>
             )}
 
@@ -881,6 +964,53 @@ export default function ProjectWizardScreen() {
         </View>
       )}
       </KeyboardAvoidingView>
+
+      {/* ─── Plan position picker ─────────────────────────────────────── */}
+      <Modal visible={showPlanModal} transparent animationType="fade" onRequestClose={() => setShowPlanModal(false)}>
+        <View style={styles.planOverlay}>
+          <View style={[styles.planSheet, { backgroundColor: colors.background }]}>
+            <View style={styles.planHeaderRow}>
+              <Text style={[styles.planTitle, { color: colors.foreground }]}>{t('wizard_plan_position' as any)}</Text>
+              <Pressable onPress={() => setShowPlanModal(false)} hitSlop={8}>
+                <MaterialIcons name="close" size={22} color={colors.muted} />
+              </Pressable>
+            </View>
+            {plans.length > 1 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
+                {plans.map((p) => {
+                  const active = planModalPlan?.id === p.id;
+                  return (
+                    <Pressable key={p.id} onPress={() => { setPlanModalPlan(p); setTempPos(null); }} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                      <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>{p.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>{t('wizard_plan_hint' as any)}</Text>
+            {planModalPlan && (() => {
+              const m = planMetrics(planModalPlan);
+              return (
+                <Pressable onPress={onPlanTap} style={{ width: PLAN_BOX_W, height: PLAN_BOX_H, backgroundColor: "#0B1220", alignSelf: "center", overflow: "hidden" }}>
+                  <Image source={{ uri: planModalPlan.imageUri }} style={{ position: "absolute", left: m.offX, top: m.offY, width: m.dispW, height: m.dispH }} contentFit="fill" />
+                  {tempPos && (
+                    <View pointerEvents="none" style={{ position: "absolute", left: m.offX + tempPos.x * m.dispW - 9, top: m.offY + tempPos.y * m.dispH - 9, width: 18, height: 18, borderRadius: 9, borderWidth: 3, borderColor: "#FFFFFF", backgroundColor: DEFECT_PIN_COLOR }} />
+                  )}
+                </Pressable>
+              );
+            })()}
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+              <Pressable onPress={() => setShowPlanModal(false)} style={({ pressed }) => [styles.footerGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('btn_abbrechen')}</Text>
+              </Pressable>
+              <Pressable onPress={confirmPlanPos} disabled={!tempPos} style={({ pressed }) => [styles.footerPrimary, { flex: 2, opacity: !tempPos ? 0.4 : pressed ? 0.85 : 1 }]}>
+                <MaterialIcons name="check" size={20} color="#FFFFFF" />
+                <Text style={styles.footerPrimaryText}>{t('wizard_plan_apply' as any)}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {voiceBusy && (
         <View style={styles.voiceOverlay}>
@@ -966,6 +1096,11 @@ const styles = StyleSheet.create({
   typeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
   suggestChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
   segChip: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  planPosRow: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 6 },
+  planOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 },
+  planSheet: { borderRadius: 16, padding: 16 },
+  planHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  planTitle: { fontSize: 17, fontWeight: "800" },
   suggestBox: { position: "absolute", top: 52, left: 0, right: 0, borderWidth: 1, borderRadius: 10, overflow: "hidden", zIndex: 10, elevation: 6 },
   suggestRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: 0.5 },
   imageWrap: { width: 120, height: 120, borderRadius: 12, overflow: "hidden", marginTop: 4 },
