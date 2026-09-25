@@ -22,7 +22,7 @@ import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { FullscreenPhotoViewer } from "@/components/fullscreen-photo-viewer";
-import { ZoomableCanvas } from "@/components/zoomable-canvas";
+import { ZoomableCanvas, type ZoomableCanvasHandle } from "@/components/zoomable-canvas";
 import { PhotoAnnotator, type Annotation } from "@/components/photo-annotator";
 import { PdfRasterizer, type RasterResult } from "@/components/pdf-rasterizer";
 import { useColors } from "@/hooks/use-colors";
@@ -120,6 +120,8 @@ export default function FloorPlanScreen() {
   const [protocolPickerPin, setProtocolPickerPin] = useState<PlanPin | null>(null);
   const [protocolOptions, setProtocolOptions] = useState<FloorPlanProtocolReference[]>([]);
   const [loadingProtocols, setLoadingProtocols] = useState(false);
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const canvasRef = useRef<ZoomableCanvasHandle>(null);
   const rasterResolveRef = useRef<((r: RasterResult | null) => void) | null>(null);
   const mountedRef = useRef(true);
   const plansLoadRequestRef = useRef(0);
@@ -752,30 +754,46 @@ export default function FloorPlanScreen() {
         </View>
       </View>
 
-      {/* Plan Tabs */}
+      {/* Plan selector: compact dropdown for many plans, tab strip for a few */}
       {plans.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.planTabs} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          {plans.map((plan) => (
+        plans.length > 4 ? (
+          <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
             <Pressable
-              key={plan.id}
-              onPress={() => selectPlan(plan)}
-              onLongPress={() => removePlan(plan.id)}
-              style={({ pressed }) => [
-                styles.planTab,
-                {
-                  borderColor: selectedPlan?.id === plan.id ? colors.primary : colors.border,
-                  backgroundColor: selectedPlan?.id === plan.id ? colors.primary + "12" : colors.surface,
-                },
-                pressed && { opacity: 0.7 },
-              ]}
+              onPress={() => setShowPlanPicker(true)}
+              style={({ pressed }) => [styles.planDropdown, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.7 }]}
             >
-              <MaterialIcons name="layers" size={14} color={selectedPlan?.id === plan.id ? colors.primary : colors.muted} />
-              <Text style={[styles.planTabText, { color: selectedPlan?.id === plan.id ? colors.primary : colors.foreground }]}>
-                {decodeUnicodeEscapes(plan.name)}
+              <MaterialIcons name="layers" size={16} color={colors.primary} />
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>
+                {selectedPlan ? decodeUnicodeEscapes(selectedPlan.name) : t('floor_plan_plan_waehlen' as any)}
               </Text>
+              <Text style={{ fontSize: 11, color: colors.muted, marginRight: 6 }}>{plans.length}</Text>
+              <MaterialIcons name="arrow-drop-down" size={22} color={colors.muted} />
             </Pressable>
-          ))}
-        </ScrollView>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.planTabs} contentContainerStyle={{ paddingHorizontal: 16 }}>
+            {plans.map((plan) => (
+              <Pressable
+                key={plan.id}
+                onPress={() => selectPlan(plan)}
+                onLongPress={() => removePlan(plan.id)}
+                style={({ pressed }) => [
+                  styles.planTab,
+                  {
+                    borderColor: selectedPlan?.id === plan.id ? colors.primary : colors.border,
+                    backgroundColor: selectedPlan?.id === plan.id ? colors.primary + "12" : colors.surface,
+                  },
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <MaterialIcons name="layers" size={14} color={selectedPlan?.id === plan.id ? colors.primary : colors.muted} />
+                <Text style={[styles.planTabText, { color: selectedPlan?.id === plan.id ? colors.primary : colors.foreground }]}>
+                  {decodeUnicodeEscapes(plan.name)}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )
       )}
 
       {/* Filter Bar */}
@@ -843,6 +861,7 @@ export default function FloorPlanScreen() {
             <View style={[styles.planImageContainer, { borderColor: colors.border }]}>
               <ZoomableCanvas
                 key={`${selectedPlan.id}-${zoomResetKey}`}
+                ref={canvasRef}
                 width={containerWidth}
                 height={containerHeight}
                 maxScale={4}
@@ -913,15 +932,33 @@ export default function FloorPlanScreen() {
                   <Text style={styles.planLoadingText}>{t('floor_plan_wird_geladen' as any)}</Text>
                 </View>
               ) : null}
-              <Pressable
-                onPress={() => setZoomResetKey((value) => value + 1)}
-                accessibilityRole="button"
-                accessibilityLabel={t('floor_plan_zoom_zuruecksetzen' as any)}
-                style={({ pressed }) => [styles.resetZoomButton, pressed && { opacity: 0.65 }]}
-              >
-                <MaterialIcons name="fit-screen" size={18} color="#FFFFFF" />
-                <Text style={styles.resetZoomText}>{t('floor_plan_ansicht' as any)}</Text>
-              </Pressable>
+              <View style={styles.zoomControls} pointerEvents="box-none">
+                <Pressable
+                  onPress={() => canvasRef.current?.zoomBy(1.4)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('floor_plan_zoom_in' as any)}
+                  style={({ pressed }) => [styles.zoomBtn, pressed && { opacity: 0.65 }]}
+                >
+                  <MaterialIcons name="add" size={20} color="#FFFFFF" />
+                </Pressable>
+                <Pressable
+                  onPress={() => canvasRef.current?.zoomBy(1 / 1.4)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('floor_plan_zoom_out' as any)}
+                  style={({ pressed }) => [styles.zoomBtn, pressed && { opacity: 0.65 }]}
+                >
+                  <MaterialIcons name="remove" size={20} color="#FFFFFF" />
+                </Pressable>
+                <Pressable
+                  onPress={() => { canvasRef.current?.reset(); setZoomResetKey((value) => value + 1); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('floor_plan_zoom_zuruecksetzen' as any)}
+                  style={({ pressed }) => [styles.zoomBtnWide, pressed && { opacity: 0.65 }]}
+                >
+                  <MaterialIcons name="fit-screen" size={18} color="#FFFFFF" />
+                  <Text style={styles.resetZoomText}>{t('floor_plan_ansicht' as any)}</Text>
+                </Pressable>
+              </View>
             </View>
 
             {/* Instruction */}
@@ -1464,6 +1501,40 @@ export default function FloorPlanScreen() {
           <Text style={styles.convertText}>{t('floor_plan_pdf_converting' as any)}</Text>
         </View>
       </Modal>
+
+      {/* Plan picker (used when there are many plans) */}
+      <Modal visible={showPlanPicker} transparent animationType="slide" onRequestClose={() => setShowPlanPicker(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }} onPress={() => setShowPlanPicker(false)}>
+          <Pressable style={{ backgroundColor: colors.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingBottom: 24, maxHeight: "80%" }} onPress={() => {}}>
+            <View style={{ flexDirection: "row", alignItems: "center", padding: 16 }}>
+              <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: colors.foreground }}>{t('floor_plan_plan_waehlen' as any)}</Text>
+              <Pressable onPress={() => setShowPlanPicker(false)} style={{ padding: 6 }}>
+                <MaterialIcons name="close" size={22} color={colors.muted} />
+              </Pressable>
+            </View>
+            <ScrollView>
+              {plans.map((plan) => {
+                const active = selectedPlan?.id === plan.id;
+                const count = plan.id === selectedPlan?.id ? pins.length : undefined;
+                return (
+                  <Pressable
+                    key={plan.id}
+                    onPress={() => { setShowPlanPicker(false); if (!active) selectPlan(plan); }}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: active ? colors.primary + "12" : "transparent" }, pressed && { opacity: 0.7 }]}
+                  >
+                    <MaterialIcons name="layers" size={20} color={active ? colors.primary : colors.muted} />
+                    <Text style={{ flex: 1, fontSize: 15, fontWeight: active ? "700" : "500", color: active ? colors.primary : colors.foreground }} numberOfLines={1}>
+                      {decodeUnicodeEscapes(plan.name)}
+                    </Text>
+                    {count != null ? <Text style={{ fontSize: 12, color: colors.muted }}>{count}</Text> : null}
+                    {active ? <MaterialIcons name="check" size={20} color={colors.primary} /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -1508,6 +1579,15 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   planTabText: { fontSize: 13, fontWeight: "600" },
+  planDropdown: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
   filterBar: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -1575,6 +1655,36 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "800",
+  },
+  zoomControls: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    alignItems: "flex-end",
+    gap: 8,
+    zIndex: 40,
+  },
+  zoomBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(4, 19, 32, 0.9)",
+    borderWidth: 1,
+    borderColor: "#58B7EF",
+    borderRadius: 8,
+  },
+  zoomBtnWide: {
+    minHeight: 40,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(4, 19, 32, 0.9)",
+    borderWidth: 1,
+    borderColor: "#58B7EF",
+    borderRadius: 8,
   },
   pin: {
     position: "absolute",

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, useImperativeHandle, type ReactNode } from "react";
 import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -41,7 +41,13 @@ type ZoomableCanvasProps = {
   testID?: string;
 };
 
-export function ZoomableCanvas({
+/** Imperative controls exposed via ref: step zoom, or reset to fit (scale 1). */
+export type ZoomableCanvasHandle = {
+  zoomBy: (factor: number) => void;
+  reset: () => void;
+};
+
+export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasProps>(function ZoomableCanvas({
   width,
   height,
   children,
@@ -49,7 +55,7 @@ export function ZoomableCanvas({
   onSingleTap,
   onInteractionChange,
   testID,
-}: ZoomableCanvasProps) {
+}: ZoomableCanvasProps, ref) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -141,6 +147,22 @@ export function ZoomableCanvas({
   const taps = onSingleTap ? Gesture.Exclusive(doubleTap, singleTap) : doubleTap;
   const gesture = Gesture.Simultaneous(pinch, pan, taps);
 
+  // Imperative zoom controls (buttons). Setting shared values from the JS thread
+  // with withTiming is safe; the clamp helpers are plain functions here.
+  useImperativeHandle(ref, () => ({
+    zoomBy: (factor: number) => {
+      const next = wClampScale(scale.value * factor, 1, maxScale);
+      scale.value = withTiming(next, { duration: 160 });
+      translateX.value = withTiming(wClampTranslation(translateX.value, width, next), { duration: 160 });
+      translateY.value = withTiming(wClampTranslation(translateY.value, height, next), { duration: 160 });
+    },
+    reset: () => {
+      scale.value = withTiming(1, { duration: 180 });
+      translateX.value = withTiming(0, { duration: 180 });
+      translateY.value = withTiming(0, { duration: 180 });
+    },
+  }), [width, height, maxScale, scale, translateX, translateY]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: translateX.value },
@@ -158,4 +180,4 @@ export function ZoomableCanvas({
       </GestureDetector>
     </View>
   );
-}
+});
