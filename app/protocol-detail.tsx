@@ -2823,7 +2823,8 @@ export default function ProtocolDetailScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Action buttons - disabled while processing */}
+      {/* Action buttons — hidden while the PDF preview is open (avoids competing share paths) */}
+      {!showPdfPreview && (
       <View style={[styles.actionsContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         {protocol.status === "processing" && (
           <View style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}>
@@ -2887,6 +2888,7 @@ export default function ProtocolDetailScreen() {
           </>
         )}
       </View>
+      )}
 
       {/* Photo Caption Edit Modal */}
       <Modal
