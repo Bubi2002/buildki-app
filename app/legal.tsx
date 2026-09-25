@@ -432,7 +432,7 @@ function KIHinweisContent() {
   const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">{t('legal_ki_transparenz')}</Text>
+      <Text className="text-xl font-bold text-foreground">{t('legal_tab_ki_hinweis')}</Text>
 
       <View className="bg-warning/10 border border-warning/30 p-4">
         <Text className="text-sm font-bold text-foreground mb-2">{t('legal_ki_menschliche_pruefung')}</Text>

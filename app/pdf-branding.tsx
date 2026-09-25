@@ -21,11 +21,12 @@ export default function PdfBrandingScreen() {
   const colors = useColors();
   const [branding, setBranding] = useState<PdfBranding>(DEFAULT_BRANDING);
   const [hasChanges, setHasChanges] = useState(false);
-  const [tab, setTab] = useState<"design" | "inhalt" | "email" | "vorlagen">("design");
+  const [tab, setTab] = useState<"branding" | "layout" | "inhalte" | "versand" | "vorlagen">("branding");
   const TABS: { key: typeof tab; labelKey: string; icon: string }[] = [
-    { key: "design", labelKey: "pdf_tab_design", icon: "palette" },
-    { key: "inhalt", labelKey: "pdf_tab_content", icon: "list-alt" },
-    { key: "email", labelKey: "pdf_tab_email", icon: "send" },
+    { key: "branding", labelKey: "pdf_tab_branding", icon: "palette" },
+    { key: "layout", labelKey: "pdf_tab_layout", icon: "view-quilt" },
+    { key: "inhalte", labelKey: "pdf_tab_content", icon: "list-alt" },
+    { key: "versand", labelKey: "pdf_tab_send", icon: "send" },
     { key: "vorlagen", labelKey: "pdf_tab_templates", icon: "folder-copy" },
   ];
 
@@ -221,7 +222,7 @@ export default function PdfBrandingScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {tab === "design" && (
+        {tab === "branding" && (
         <>
         {/* Company identity (logo, name, address, contact) is managed centrally
             in Settings → Firmendaten and mirrored into this store automatically,
@@ -286,7 +287,11 @@ export default function PdfBrandingScreen() {
             ))}
           </View>
         </View>
+        </>
+        )}
 
+        {tab === "layout" && (
+        <>
         {/* Options */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('optionen')}</Text>
@@ -396,7 +401,7 @@ export default function PdfBrandingScreen() {
         </>
         )}
 
-        {tab === "email" && (
+        {tab === "versand" && (
         <>
         {/* E-Mail-Versand → moved to its own screen */}
         <View style={styles.section}>
@@ -415,7 +420,7 @@ export default function PdfBrandingScreen() {
         </>
         )}
 
-        {tab === "inhalt" && (
+        {tab === "inhalte" && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('layoutanpassung')}</Text>
           <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('feineinstellungen_fu00fcr_das_gewu00e4hl')}</Text>
@@ -498,7 +503,7 @@ export default function PdfBrandingScreen() {
         </View>
         )}
 
-        {tab === "design" && (
+        {tab === "layout" && (
         <View style={[styles.previewBox, { backgroundColor: "#FFFFFF", borderColor: colors.border }]}>
           <Text style={{ fontSize: 12, fontWeight: "600", color: "#666", marginBottom: 8 }}>{t('vorschau')}</Text>
           {/* Header Preview */}
