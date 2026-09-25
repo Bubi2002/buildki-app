@@ -55,6 +55,7 @@ import { SignaturePad } from "@/components/signature-pad";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { TradePicker } from "@/components/trade-picker";
 import { GEWERKE , generateDefectPdfHtml } from "@/lib/defect-pdf-export";
+import { STATUS_COLORS, defectStatusColor } from "@/lib/status-colors";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
@@ -426,15 +427,17 @@ export default function DefectsScreen() {
     ]);
   };
 
+    // Functional status colors (see lib/status-colors): orange = open, green =
+    // done, gray = closed/rejected. Overdue open defects go red via defectStatusColor.
     const statusColors: Record<DefectStatus, string> = {
-    offen: colors.error,
-    zugewiesen: "#FF9800",
-    in_bearbeitung: colors.warning,
-    nachbesserung: "#E91E63",
-    pruefung: "#9C27B0",
-    erledigt: colors.success,
-    abgelehnt: "#795548",
-    geschlossen: "#607D8B",
+    offen: STATUS_COLORS.open,
+    zugewiesen: STATUS_COLORS.open,
+    in_bearbeitung: STATUS_COLORS.open,
+    nachbesserung: STATUS_COLORS.open,
+    pruefung: STATUS_COLORS.open,
+    erledigt: STATUS_COLORS.done,
+    abgelehnt: STATUS_COLORS.inactive,
+    geschlossen: STATUS_COLORS.inactive,
   };
   const statusLabels: Record<DefectStatus, string> = {
     offen: t('defects_status_offen' as any),
@@ -729,13 +732,14 @@ export default function DefectsScreen() {
     ].filter(Boolean).join(" · ");
     const photo = item.photos && item.photos.length > 0 ? item.photos[0] : undefined;
     const overdue = item.dueDate && item.dueDate <= new Date().toISOString().slice(0, 10) && item.status !== "erledigt" && item.status !== "geschlossen";
+    const dotColor = defectStatusColor(item.status, { dueDate: item.dueDate });
     return (
       <Pressable
         onPress={() => openDetail(item)}
         onLongPress={() => removeDefect(item.id)}
         style={({ pressed }) => [styles.compactRow, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
       >
-        <View style={[styles.compactDot, { backgroundColor: statusColors[item.status] }]} />
+        <View style={[styles.compactDot, { backgroundColor: dotColor }]} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             {item.priority === "hoch" && <MaterialIcons name="priority-high" size={15} color={colors.error} />}

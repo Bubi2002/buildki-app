@@ -15,6 +15,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getFloorPlans, getPlanPins, type FloorPlan, type PlanPin } from "@/lib/floor-plan-store";
 import { getDefects, type Defect } from "@/lib/defect-store";
+import { STATUS_COLORS, defectStatusColor } from "@/lib/status-colors";
 import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 import { getTimeEntries, getTimeTrackingSettings, type TimeEntry } from "@/lib/time-tracking-store";
 
@@ -125,10 +126,10 @@ export default function ProjectOverviewScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {/* Dashboard */}
         <View style={styles.statRow}>
-          <StatTile n={statOpen} label={t('po_stat_open' as any)} color="#F97316" />
-          <StatTile n={statDue} label={t('po_stat_due' as any)} color="#EF4444" />
-          <StatTile n={statDone} label={t('po_stat_done' as any)} color="#10B981" />
-          <StatTile n={statCrit} label={t('po_stat_critical' as any)} color="#B91C1C" />
+          <StatTile n={statOpen} label={t('po_stat_open' as any)} color={STATUS_COLORS.open} />
+          <StatTile n={statDue} label={t('po_stat_due' as any)} color={STATUS_COLORS.critical} />
+          <StatTile n={statDone} label={t('po_stat_done' as any)} color={STATUS_COLORS.done} />
+          <StatTile n={statCrit} label={t('po_stat_critical' as any)} color={STATUS_COLORS.critical} />
         </View>
 
         {/* Primary action */}
@@ -211,7 +212,7 @@ export default function ProjectOverviewScreen() {
                 style={[styles.defectRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={[styles.dot, { backgroundColor: d.status === "erledigt" || d.status === "geschlossen" ? "#10B981" : "#F97316" }]} />
+                  <View style={[styles.dot, { backgroundColor: defectStatusColor(d.status, { dueDate: d.dueDate }) }]} />
                   <Text style={[styles.itemName, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>{d.title || d.description || t('maengel' as any)}</Text>
                   {d.room ? <Text style={{ color: colors.muted, fontSize: 12 }} numberOfLines={1}>{d.room}</Text> : null}
                 </View>
