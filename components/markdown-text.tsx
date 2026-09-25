@@ -131,6 +131,43 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
   const scale = tableWidth / totalWidth;
   const scaledWidths = colWidths.map(w => Math.floor(w * scale));
 
+  // Defect-style tables render as cards on screen (the PDF keeps the table).
+  const findCol = (re: RegExp) => headerRow.findIndex((h) => re.test(h.toLowerCase()));
+  const iNr = findCol(/^(nr\.?|#|pos\.?)$/);
+  const iOrt = findCol(/ort|raum|etage|geschoss/);
+  const iDesc = findCol(/beschreib|mangel|befund|leistung/);
+  const iGewerk = findCol(/gewerk|verantwort|firma/);
+  const iPrio = findCol(/priorit|schwere|dringlich/);
+  const iFrist = findCol(/frist|beseitig|datum|termin/);
+
+  if (iDesc >= 0) {
+    const val = (row: string[], i: number) => (i >= 0 && i < row.length ? row[i].trim() : "");
+    return (
+      <View style={{ gap: 8 }}>
+        {dataRows.map((row, rowIdx) => {
+          const nr = val(row, iNr), ort = val(row, iOrt), desc = val(row, iDesc);
+          const top = [nr, ort].filter(Boolean).join(" · ");
+          const fields: [string, string][] = [];
+          if (iGewerk >= 0 && val(row, iGewerk)) fields.push([headerRow[iGewerk], val(row, iGewerk)]);
+          if (iPrio >= 0 && val(row, iPrio)) fields.push([headerRow[iPrio], val(row, iPrio)]);
+          if (iFrist >= 0 && val(row, iFrist)) fields.push([headerRow[iFrist], val(row, iFrist)]);
+          return (
+            <View key={`card-${rowIdx}`} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }}>
+              {top ? <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginBottom: 2 }}>{top}</Text> : null}
+              {desc ? <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginBottom: fields.length ? 6 : 0 }}>{desc}</Text> : null}
+              {fields.map(([label, value], i) => (
+                <View key={i} style={{ flexDirection: "row", marginTop: 2 }}>
+                  <Text style={{ fontSize: 13, color: colors.muted, width: 92 }}>{label}:</Text>
+                  <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{value}</Text>
+                </View>
+              ))}
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ borderWidth: 1, borderColor: colors.border }}>
       <View style={{ width: tableWidth }}>
