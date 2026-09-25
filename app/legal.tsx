@@ -336,8 +336,26 @@ function ImpressumContent() {
   );
 }
 
+function AGBPlain() {
+  const { t } = useTranslation();
+  const parts = [1, 2, 3, 4, 5, 6, 7];
+  return (
+    <View className="gap-5 pb-8">
+      <H1 text={t('legal_agb_pruefentwurf')} />
+      {parts.map((n) => (
+        <Section key={n} title={t(`legal_agb_p${n}_title` as any)}>
+          <P>{t(`legal_agb_p${n}_body` as any)}</P>
+        </Section>
+      ))}
+    </View>
+  );
+}
+
 function AGBContent() {
   const { t } = useTranslation();
+  const internal = useContext(LegalModeContext);
+  // User view: plain, readable terms. Internal view: full draft with markers.
+  if (!internal) return <AGBPlain />;
   return (
     <View className="gap-5 pb-8">
       <H1 text={t('legal_agb_pruefentwurf')} />
