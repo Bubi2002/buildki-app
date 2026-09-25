@@ -58,6 +58,71 @@ type BautagebuchEntry = {
 
 const BAUTAGEBUCH_KEY = "bautagebuch_entries";
 
+type ReportSection = { title: string; body: string };
+
+/** Split a generated Bautagebuch markdown report into its `## N. Title` sections. */
+function parseReportSections(md: string): ReportSection[] {
+  if (!md) return [];
+  const sections: ReportSection[] = [];
+  let cur: { title: string; body: string[] } | null = null;
+  for (const line of md.split(/\r?\n/)) {
+    const m = line.match(/^##\s+(.*)$/);
+    if (m) {
+      if (cur) sections.push({ title: cur.title, body: cur.body.join("\n").trim() });
+      cur = { title: m[1].replace(/^\d+\.\s*/, "").trim(), body: [] };
+    } else if (cur) {
+      const trimmed = line.trim();
+      if (trimmed === "---") continue;
+      if (/^\*Erstellt mit BuildKI/.test(trimmed)) continue;
+      cur.body.push(line);
+    }
+  }
+  if (cur) sections.push({ title: cur.title, body: cur.body.join("\n").trim() });
+  return sections;
+}
+
+/** Icon + accent colour for a section, matched by its (German) title. */
+function sectionStyle(title: string): { icon: any; color: string } {
+  const t = title.toLowerCase();
+  if (t.includes("witterung") || t.includes("wetter")) return { icon: "wb-sunny", color: "#B45309" };
+  if (t.includes("anwesen")) return { icon: "groups", color: "#2563EB" };
+  if (t.includes("arbeit")) return { icon: "construction", color: "#475569" };
+  if (t.includes("mängel") || t.includes("maengel") || t.includes("mangel")) return { icon: "warning", color: "#DC2626" };
+  if (t.includes("vorkommnis")) return { icon: "report-problem", color: "#EA580C" };
+  if (t.includes("lieferung") || t.includes("material")) return { icon: "local-shipping", color: "#0E7490" };
+  if (t.includes("entscheidung") || t.includes("anweisung")) return { icon: "gavel", color: "#7C3AED" };
+  if (t.includes("planung")) return { icon: "event", color: "#0891B2" };
+  return { icon: "sticky-note-2", color: "#64748B" };
+}
+
+function StatCard({ icon, value, label, color, colors }: { icon: any; value: string | number; label: string; color: string; colors: any }) {
+  return (
+    <View style={{ flexGrow: 1, flexBasis: "30%", minWidth: 96, backgroundColor: colors.surface, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <MaterialIcons name={icon} size={16} color={color} />
+        <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>{label}</Text>
+      </View>
+      <Text style={{ fontSize: 16, fontWeight: "800", color }} numberOfLines={1}>{value}</Text>
+    </View>
+  );
+}
+
+function SectionCard({ title, body, colors }: { title: string; body: string; colors: any }) {
+  if (!body.trim()) return null;
+  const st = sectionStyle(title);
+  return (
+    <View style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: st.color + "1A", alignItems: "center", justifyContent: "center" }}>
+          <MaterialIcons name={st.icon} size={18} color={st.color} />
+        </View>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, flex: 1 }}>{title}</Text>
+      </View>
+      <ReportMarkdownPreview markdown={body} />
+    </View>
+  );
+}
+
 export default function BautagebuchScreen() {
   const { t } = useTranslation();
   const colors = useColors();
@@ -335,6 +400,12 @@ export default function BautagebuchScreen() {
 
   // Detail view
   if (selectedEntry) {
+    const sections = parseReportSections(selectedEntry.fullReport || "");
+    const findSec = (kw: string) => sections.find((s) => s.title.toLowerCase().includes(kw));
+    const incSec = findSec("vorkommnis");
+    const incidentsCount = incSec ? incSec.body.split(/\r?\n/).filter((l) => l.trim().startsWith("- ")).length : 0;
+    const mangelSec = findSec("mängel") || findSec("maengel");
+    const resolvedToday = mangelSec ? mangelSec.body.match(/Behoben heute:\s*(\d+)/)?.[1] : undefined;
     return (
       <ScreenContainer className="p-4">
         <View className="flex-row items-center mb-4">
@@ -369,55 +440,52 @@ export default function BautagebuchScreen() {
         </View>
 
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {/* Stats bar */}
-          <View className="flex-row gap-3 mb-4">
-            {selectedEntry.weather && (
-              <View className="flex-1 bg-surface rounded-xl p-3">
-                <Text className="text-xs text-muted">{t('weather_title')}</Text>
-                <Text className="text-sm font-medium text-foreground" numberOfLines={1}>
-                  {selectedEntry.weather}
-                </Text>
-              </View>
-            )}
-          </View>
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1 bg-surface rounded-xl p-3 items-center">
-              <Text className="text-xs text-muted">{t('bautagebuch_present' as any)}</Text>
-              <Text className="text-lg font-bold text-foreground">{selectedEntry.attendanceCount || 0}</Text>
-            </View>
-            <View className="flex-1 bg-surface rounded-xl p-3 items-center">
-              <Text className="text-xs text-muted">{t('offene_maengel')}</Text>
-              <Text className="text-lg font-bold text-error">{selectedEntry.defectsCount || 0}</Text>
-            </View>
-          </View>
-
-          {/* Full report */}
-          {selectedEntry.fullReport && (
+          {editingReport ? (
             <View className="bg-surface rounded-xl p-4 mb-4">
-              {editingReport ? (
-                <>
-                  <TextInput
-                    value={reportDraft}
-                    onChangeText={setReportDraft}
-                    multiline
-                    textAlignVertical="top"
-                    style={{ minHeight: 320, fontSize: 14, lineHeight: 21, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12 }}
-                    placeholder={t('bautagebuch') as any}
-                    placeholderTextColor={colors.muted}
-                  />
-                  <View className="flex-row justify-end mt-3" style={{ gap: 10 }}>
-                    <TouchableOpacity onPress={() => setEditingReport(false)} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
-                      <Text style={{ color: colors.muted, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={saveReport} style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.primary }}>
-                      <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('save')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              ) : (
-                <ReportMarkdownPreview markdown={selectedEntry.fullReport} />
-              )}
+              <TextInput
+                value={reportDraft}
+                onChangeText={setReportDraft}
+                multiline
+                textAlignVertical="top"
+                style={{ minHeight: 320, fontSize: 14, lineHeight: 21, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12 }}
+                placeholder={t('bautagebuch') as any}
+                placeholderTextColor={colors.muted}
+              />
+              <View className="flex-row justify-end mt-3" style={{ gap: 10 }}>
+                <TouchableOpacity onPress={() => setEditingReport(false)} style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ color: colors.muted, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveReport} style={{ paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.primary }}>
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t('save')}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+          ) : (
+            <>
+              {/* Dashboard – Tagesübersicht */}
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {selectedEntry.weather ? (
+                  <StatCard icon="wb-sunny" value={selectedEntry.weather.split(",")[0]} label={t('weather_title')} color="#B45309" colors={colors} />
+                ) : null}
+                <StatCard icon="groups" value={selectedEntry.attendanceCount ?? 0} label={t('bautagebuch_present' as any)} color="#2563EB" colors={colors} />
+                <StatCard icon="warning" value={selectedEntry.defectsCount ?? 0} label={t('offene_maengel')} color="#DC2626" colors={colors} />
+                {resolvedToday != null ? (
+                  <StatCard icon="check-circle" value={resolvedToday} label={t('btb_dash_resolved' as any)} color="#16A34A" colors={colors} />
+                ) : null}
+                {incidentsCount > 0 ? (
+                  <StatCard icon="report-problem" value={incidentsCount} label={t('btb_dash_incidents' as any)} color="#EA580C" colors={colors} />
+                ) : null}
+              </View>
+
+              {/* Sections as separate cards */}
+              {sections.length > 0 ? (
+                sections.map((s, i) => <SectionCard key={i} title={s.title} body={s.body} colors={colors} />)
+              ) : selectedEntry.fullReport ? (
+                <View className="bg-surface rounded-xl p-4 mb-4">
+                  <ReportMarkdownPreview markdown={selectedEntry.fullReport} />
+                </View>
+              ) : null}
+            </>
           )}
 
           {/* Optional export details printed into the PDF header */}
