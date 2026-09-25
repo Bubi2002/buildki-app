@@ -82,7 +82,7 @@ type ProjectItem = {
 };
 
 type SortOption = "date_desc" | "date_asc" | "name_asc" | "name_desc" | "duration_desc";
-type FilterOption = "all" | "favorites" | "archived";
+type FilterOption = "all" | "processing" | "ready" | "favorites" | "archived";
 
 export default function ProtocolsScreen() {
   const { t } = useTranslation();
@@ -505,6 +505,12 @@ export default function ProtocolsScreen() {
 
     // Filter by category
     switch (filterBy) {
+      case "processing":
+        filtered = filtered.filter((p) => !p.isArchived && p.status === "processing");
+        break;
+      case "ready":
+        filtered = filtered.filter((p) => !p.isArchived && (p.status === "ready" || p.status === "sent"));
+        break;
       case "favorites":
         filtered = filtered.filter((p) => p.isFavorite);
         break;
@@ -655,16 +661,10 @@ export default function ProtocolsScreen() {
           {item.isFavorite && !batchMode && (
             <MaterialIcons name="star" size={18} color="#FFC107" />
           )}
-          <MaterialIcons
-            name={item.recordingMode === "audio" ? "mic" : item.recordingMode === "audio-photo" ? "photo-camera" : "edit-note"}
-            size={18}
-            color={colors.primary}
-          />
-          <Text
-            style={[styles.cardTitle, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {item.title || t('kein_titel')}
+          <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>
+            {item.status === "processing"
+              ? (item.projectName || item.title || t('kein_titel'))
+              : `${item.title || t('kein_titel')}${item.projectName ? ` – ${item.projectName}` : ""}`}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + "20" }]}>
@@ -674,62 +674,32 @@ export default function ProtocolsScreen() {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {item.protocolNumber && (
-          <View style={[styles.numberBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '40' }]}>
-            <Text style={[styles.numberBadgeText, { color: colors.primary }]}>{item.protocolNumber}</Text>
-          </View>
-        )}
-        {item.templateName && (
-          <Text style={[styles.templateBadge, { color: colors.primary }]}>
-            {item.templateName}
+      {item.status === "processing" ? (
+        <Text style={[styles.cardMetaText, { color: getStatusColor("processing"), marginTop: 6 }]} numberOfLines={1}>
+          {t('protocols_ai_working' as any)}
+        </Text>
+      ) : (
+        <>
+          <Text style={[styles.cardMetaText, { color: colors.muted, marginTop: 6 }]} numberOfLines={1}>
+            {[
+              formatDate(item.createdAt),
+              new Date(item.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+              formatDuration(item.duration),
+            ].filter(Boolean).join(" · ")}
           </Text>
-        )}
-      </View>
-
-      <Text
-        style={[styles.cardPreview, { color: colors.muted }]}
-        numberOfLines={2}
-      >
-        {getProtocolPreview(item, 120)}
-      </Text>
-
-      {/* Tags */}
-      {item.tags && item.tags.length > 0 && (
-        <View style={styles.tagRow}>
-          {item.tags.slice(0, 3).map((tag) => (
-            <View key={tag} style={[styles.tagChip, { backgroundColor: colors.primary + "15" }]}>
-              <Text style={[styles.tagChipText, { color: colors.primary }]}>{tag}</Text>
-            </View>
-          ))}
-          {item.tags.length > 3 && (
-            <Text style={[styles.moreTagsText, { color: colors.muted }]}>+{item.tags.length - 3}</Text>
-          )}
-        </View>
+          {(() => {
+            const photos = (item as any).photos?.length || 0;
+            const openTodos = item.todos ? item.todos.filter((td: any) => !td.done).length : 0;
+            const parts = [
+              photos > 0 ? `${photos} ${t('fotos' as any)}` : "",
+              openTodos > 0 ? `${openTodos} ${t('protocols_offen' as any)}` : "",
+            ].filter(Boolean);
+            return parts.length ? (
+              <Text style={[styles.cardMetaText, { color: colors.muted, marginTop: 2 }]} numberOfLines={1}>{parts.join(" · ")}</Text>
+            ) : null;
+          })()}
+        </>
       )}
-
-      <View style={styles.cardFooter}>
-        <View style={styles.cardMeta}>
-          <MaterialIcons name="event" size={14} color={colors.muted} />
-          <Text style={[styles.cardMetaText, { color: colors.muted }]}>
-            {formatDate(item.createdAt)}
-          </Text>
-        </View>
-        <View style={styles.cardMeta}>
-          <MaterialIcons name="timer" size={14} color={colors.muted} />
-          <Text style={[styles.cardMetaText, { color: colors.muted }]}>
-            {formatDuration(item.duration)}
-          </Text>
-        </View>
-        {item.todos && item.todos.filter((t: any) => !t.done).length > 0 && (
-          <View style={styles.cardMeta}>
-            <MaterialIcons name="check-box" size={14} color={colors.warning} />
-            <Text style={[styles.cardMetaText, { color: colors.warning }]}>
-              {item.todos.filter((t: any) => !t.done).length} {t('protocols_offen' as any)}
-            </Text>
-          </View>
-        )}
-      </View>
     </Pressable>
     </Swipeable>
   );
@@ -869,6 +839,8 @@ export default function ProtocolsScreen() {
         <View style={styles.filterRow}>
           {([
             { key: "all" as FilterOption, label: t('filter_alle'), icon: "list" },
+            { key: "processing" as FilterOption, label: t('status_verarbeitung'), icon: "autorenew" },
+            { key: "ready" as FilterOption, label: t('status_fertig'), icon: "check-circle" },
             { key: "favorites" as FilterOption, label: t('favoriten'), icon: "star" },
             { key: "archived" as FilterOption, label: t('label_archiv'), icon: "archive" },
           ]).map((f) => (
@@ -1094,7 +1066,7 @@ const styles = StyleSheet.create({
   todoBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "700" },
   screenTitle: { fontSize: 26, fontWeight: "700" },
   screenSubtitle: { fontSize: 13, marginTop: 2 },
-  filterRow: { flexDirection: "row", gap: 8, marginTop: 12, alignItems: "center" },
+  filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, alignItems: "center" },
   filterTab: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 0, borderWidth: 1 },
   filterTabText: { fontSize: 12, fontWeight: "500" },
   projectFilterBanner: { flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 0, borderWidth: 1 },
