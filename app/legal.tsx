@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { DataRightsSection } from "@/components/data-rights-section";
 import { LegalModeContext, sanitizeLegal } from "@/lib/legal-mode";
@@ -33,13 +34,13 @@ type LegalSection =
   | "lizenzen"
   | "dsgvo-export";
 
-const SECTIONS: { key: LegalSection; titleKey: string }[] = [
-  { key: "datenschutz", titleKey: "legal_tab_datenschutz" },
-  { key: "impressum", titleKey: "legal_tab_impressum" },
-  { key: "agb", titleKey: "legal_tab_nutzungsbedingungen" },
-  { key: "ki-hinweis", titleKey: "legal_tab_ki_hinweis" },
-  { key: "lizenzen", titleKey: "legal_tab_lizenzen" },
-  { key: "dsgvo-export", titleKey: "legal_tab_meine_daten" },
+const SECTIONS: { key: LegalSection; titleKey: string; icon: string }[] = [
+  { key: "datenschutz", titleKey: "legal_tab_datenschutz", icon: "privacy-tip" },
+  { key: "impressum", titleKey: "legal_tab_impressum", icon: "info-outline" },
+  { key: "agb", titleKey: "legal_tab_nutzungsbedingungen", icon: "gavel" },
+  { key: "ki-hinweis", titleKey: "legal_tab_ki_hinweis", icon: "smart-toy" },
+  { key: "lizenzen", titleKey: "legal_tab_lizenzen", icon: "code" },
+  { key: "dsgvo-export", titleKey: "legal_tab_meine_daten", icon: "folder-shared" },
 ];
 
 
@@ -47,8 +48,9 @@ export default function LegalScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ section?: string }>();
-  const [activeSection, setActiveSection] = useState<LegalSection>(
-    (params.section as LegalSection) || "datenschutz",
+  // null = show the list; a key = show that page.
+  const [activeSection, setActiveSection] = useState<LegalSection | null>(
+    (params.section as LegalSection) || null,
   );
   const [internal, setInternal] = useState(false);
 
@@ -57,15 +59,24 @@ export default function LegalScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  const current = activeSection ? SECTIONS.find((s) => s.key === activeSection) : null;
+  const handleBack = () => {
+    if (activeSection) setActiveSection(null); // back to the list
+    else router.back();
+  };
+
   return (
     <ScreenContainer className="p-0">
       <View className="flex-row items-center px-4 py-3 border-b border-border">
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.6}>
-          <Text className="text-primary text-base">{t('legal_zurueck')}</Text>
+        <TouchableOpacity onPress={handleBack} activeOpacity={0.6} className="flex-row items-center">
+          <MaterialIcons name="arrow-back-ios" size={18} color="#5BA7D9" />
+          <Text className="text-primary text-base">{activeSection ? t('legal_rechtliches') : t('legal_zurueck')}</Text>
         </TouchableOpacity>
         {/* Long-press the title to toggle the internal compliance view. */}
-        <TouchableOpacity onLongPress={toggleInternal} delayLongPress={600} activeOpacity={1} className="ml-4 flex-row items-center">
-          <Text className="text-lg font-bold text-foreground">{t('legal_rechtliches')}</Text>
+        <TouchableOpacity onLongPress={toggleInternal} delayLongPress={600} activeOpacity={1} className="ml-3 flex-1 flex-row items-center">
+          <Text className="text-lg font-bold text-foreground" numberOfLines={1}>
+            {current ? t(current.titleKey as any) : t('legal_rechtliches')}
+          </Text>
           {internal && (
             <View className="ml-2 px-2 py-0.5 bg-error/20 border border-error rounded">
               <Text className="text-error text-xs font-bold">{t('legal_mode_internal' as any)}</Text>
@@ -73,57 +84,6 @@ export default function LegalScreen() {
           )}
         </TouchableOpacity>
       </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{
-          flexGrow: 0,
-          maxHeight: 54,
-          borderBottomWidth: 1,
-          borderBottomColor: "#223A55",
-        }}
-        contentContainerStyle={{
-          minHeight: 53,
-          paddingHorizontal: 8,
-          paddingVertical: 5,
-          gap: 6,
-          alignItems: "center",
-        }}
-      >
-        {SECTIONS.map((section) => {
-          const isActive = activeSection === section.key;
-          return (
-            <TouchableOpacity
-              key={section.key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={t(section.titleKey as any)}
-              onPress={() => setActiveSection(section.key)}
-              activeOpacity={0.65}
-              style={{
-                height: 42,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderColor: isActive ? "#5BA7D9" : "#223A55",
-                backgroundColor: isActive ? "#5BA7D9" : "#12233D",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: isActive ? "#06111D" : "#F4F7FA",
-                  fontSize: 13,
-                  fontWeight: "700",
-                }}
-              >
-                {t(section.titleKey as any)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
 
       <ScrollView
         style={{ flex: 1 }}
@@ -135,13 +95,34 @@ export default function LegalScreen() {
         showsVerticalScrollIndicator={false}
       >
         <LegalModeContext.Provider value={internal}>
-          {internal && <DraftBanner />}
-          {activeSection === "datenschutz" && <DatenschutzContent />}
-          {activeSection === "impressum" && <ImpressumContent />}
-          {activeSection === "agb" && <AGBContent />}
-          {activeSection === "ki-hinweis" && <KIHinweisContent />}
-          {activeSection === "lizenzen" && <LizenzenContent />}
-          {activeSection === "dsgvo-export" && <DataRightsSection />}
+          {activeSection === null ? (
+            <View className="gap-2">
+              {SECTIONS.map((section) => (
+                <TouchableOpacity
+                  key={section.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(section.titleKey as any)}
+                  onPress={() => setActiveSection(section.key)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center px-4 py-4 border border-border bg-surface rounded-lg"
+                >
+                  <MaterialIcons name={section.icon as any} size={22} color="#5BA7D9" />
+                  <Text className="text-foreground text-base font-semibold flex-1 ml-3">{t(section.titleKey as any)}</Text>
+                  <MaterialIcons name="chevron-right" size={22} color="#7A8794" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <>
+              {internal && <DraftBanner />}
+              {activeSection === "datenschutz" && <DatenschutzContent />}
+              {activeSection === "impressum" && <ImpressumContent />}
+              {activeSection === "agb" && <AGBContent />}
+              {activeSection === "ki-hinweis" && <KIHinweisContent />}
+              {activeSection === "lizenzen" && <LizenzenContent />}
+              {activeSection === "dsgvo-export" && <DataRightsSection />}
+            </>
+          )}
         </LegalModeContext.Provider>
       </ScrollView>
     </ScreenContainer>
