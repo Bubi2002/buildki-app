@@ -78,6 +78,8 @@ type SortKey = "status" | "prio" | "neu" | "alt" | "gewerk" | "titel";
 const STATUS_SORT_ORDER: DefectStatus[] = ["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"];
 const PRIO_SORT_ORDER: Record<DefectPriority, number> = { hoch: 0, mittel: 1, niedrig: 2 };
 const SORT_KEYS: SortKey[] = ["status", "prio", "neu", "alt", "gewerk", "titel"];
+type GroupKey = "none" | "etage" | "gewerk" | "verantwortlich" | "status";
+const GROUP_KEYS: GroupKey[] = ["none", "etage", "gewerk", "verantwortlich", "status"];
 
 export default function DefectsScreen() {
   const { t } = useTranslation();
@@ -106,6 +108,9 @@ export default function DefectsScreen() {
   const [gewerkFilter, setGewerkFilter] = useState<string>("alle");
   const [sortBy, setSortBy] = useState<SortKey>("status");
   const [showSortPicker, setShowSortPicker] = useState(false);
+  const [search, setSearch] = useState("");
+  const [groupBy, setGroupBy] = useState<GroupKey>("none");
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [editingDefect, setEditingDefect] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -247,9 +252,15 @@ export default function DefectsScreen() {
     return loaded;
   }
 
+  const query = search.trim().toLowerCase();
   const filteredDefects = defects.filter((d) => {
     if (filter !== "alle" && d.status !== filter) return false;
     if (gewerkFilter !== "alle" && (d as any).gewerk !== gewerkFilter) return false;
+    if (query) {
+      const hay = [d.title, d.description, d.location, d.floor, d.room, (d as any).gewerk, (d as any).assignee]
+        .filter(Boolean).join(" ").toLowerCase();
+      if (!hay.includes(query)) return false;
+    }
     return true;
   });
 
@@ -286,6 +297,13 @@ export default function DefectsScreen() {
     alt: t('defects_sort_old' as any),
     gewerk: t('gewerk'),
     titel: t('defects_sort_title' as any),
+  };
+  const groupLabels: Record<GroupKey, string> = {
+    none: t('defects_group_none_opt' as any),
+    etage: t('wizard_floor' as any),
+    gewerk: t('gewerk'),
+    verantwortlich: t('zustaendig'),
+    status: t('defects_sort_status' as any),
   };
 
   const stats = getDefectStats(defects);
@@ -445,6 +463,35 @@ export default function DefectsScreen() {
     hoch: colors.error,
     mittel: colors.warning,
     niedrig: colors.muted,
+  };
+
+  // Flatten into headers + items when grouping is active (needs statusLabels).
+  type DefectRow = Defect | { __header: string; __count: number };
+  const groupedList: DefectRow[] = (() => {
+    if (groupBy === "none") return sortedDefects;
+    const keyOf = (d: Defect): string => {
+      switch (groupBy) {
+        case "etage": return d.floor || t('defects_group_none' as any);
+        case "gewerk": return (d as any).gewerk || d.category || t('defects_group_none' as any);
+        case "verantwortlich": return (d as any).assignee || t('defects_group_none' as any);
+        case "status": return statusLabels[d.status];
+        default: return "";
+      }
+    };
+    const map = new Map<string, Defect[]>();
+    for (const d of sortedDefects) {
+      const k = keyOf(d);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(d);
+    }
+    const out: DefectRow[] = [];
+    for (const [k, arr] of map) { out.push({ __header: k, __count: arr.length }); out.push(...arr); }
+    return out;
+  })();
+  const fmtFrist = (iso?: string): string => {
+    if (!iso) return "";
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}.${m[2]}.` : "";
   };
 
   const openDetail = async (defect: Defect) => {
@@ -671,81 +718,54 @@ export default function DefectsScreen() {
     ]);
   };
 
-  const renderDefect = ({ item }: { item: Defect }) => (
-    <Pressable
-      onPress={() => openDetail(item)}
-      onLongPress={() => removeDefect(item.id)}
-      style={({ pressed }) => [
-        styles.defectCard,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      <View style={[styles.statusDot, { backgroundColor: statusColors[item.status] }]} />
-      <View style={styles.defectContent}>
-        <View style={styles.defectHeader}>
-          <Text style={[styles.defectTitle, { color: colors.foreground }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <MaterialIcons name={priorityIcons[item.priority] as any} size={18} color={item.priority === "hoch" ? colors.error : colors.muted} />
-        </View>
-        <Text style={[styles.defectMeta, { color: colors.muted }]}>
-          {item.positionCode ? `[${item.positionCode}] ` : ""}{(item as any).gewerk || item.category} {item.location ? `• ${item.location}` : ""} • {statusLabels[item.status]}
-        </Text>
-        {(item.floor || item.room || (item as any).assignee) ? (
-          <View style={styles.defectSubMeta}>
-            {(item.floor || item.room) ? (
-              <View style={styles.subMetaItem}>
-                <MaterialIcons name="place" size={13} color={colors.muted} />
-                <Text style={[styles.subMetaText, { color: colors.muted }]} numberOfLines={1}>
-                  {[item.floor, item.room].filter(Boolean).join(" · ")}
-                </Text>
-              </View>
-            ) : null}
-            {(item as any).assignee ? (
-              <View style={styles.subMetaItem}>
-                <MaterialIcons name="person" size={13} color={colors.muted} />
-                <Text style={[styles.subMetaText, { color: colors.muted }]} numberOfLines={1}>
-                  {(item as any).assignee}{(item as any).assigneeFirma ? ` (${(item as any).assigneeFirma})` : ""}
-                </Text>
-              </View>
-            ) : null}
+  // Compact single row: dot + title, one meta line (Raum · Gewerk · Frist),
+  // status pill and a small thumbnail — so many defects fit on screen.
+  const renderDefect = ({ item }: { item: Defect }) => {
+    const meta = [
+      [item.floor, item.room].filter(Boolean).join(" "),
+      (item as any).gewerk || item.category,
+      (item as any).assignee,
+      item.dueDate ? `${t('frist')} ${fmtFrist(item.dueDate)}` : "",
+    ].filter(Boolean).join(" · ");
+    const photo = item.photos && item.photos.length > 0 ? item.photos[0] : undefined;
+    const overdue = item.dueDate && item.dueDate <= new Date().toISOString().slice(0, 10) && item.status !== "erledigt" && item.status !== "geschlossen";
+    return (
+      <Pressable
+        onPress={() => openDetail(item)}
+        onLongPress={() => removeDefect(item.id)}
+        style={({ pressed }) => [styles.compactRow, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+      >
+        <View style={[styles.compactDot, { backgroundColor: statusColors[item.status] }]} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            {item.priority === "hoch" && <MaterialIcons name="priority-high" size={15} color={colors.error} />}
+            <Text style={[styles.compactTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
           </View>
-        ) : null}
-        {item.description ? (
-          <Text style={[styles.defectDesc, { color: colors.muted }]} numberOfLines={2}>
-            {item.description}
-          </Text>
-        ) : null}
-        {/* Quick status bar — tap to change status directly from the list. */}
-        <View style={styles.statusChipRow}>
-          {(() => {
-            const QUICK: DefectStatus[] = ["offen", "in_bearbeitung", "erledigt"];
-            const chips = QUICK.includes(item.status) ? QUICK : [item.status, ...QUICK];
-            return chips.map((s) => {
-              const active = item.status === s;
-              return (
-                <Pressable
-                  key={s}
-                  onPress={async () => {
-                    if (active) return;
-                    if (Platform.OS !== "web") void Haptics.selectionAsync();
-                    await updateDefectStatus(item.id, s);
-                    await loadDefects();
-                  }}
-                  style={[styles.statusChip, { borderColor: active ? statusColors[s] : colors.border, backgroundColor: active ? statusColors[s] + "22" : "transparent" }]}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: active ? "700" : "600", color: active ? statusColors[s] : colors.muted }}>
-                    {statusLabels[s]}
-                  </Text>
-                </Pressable>
-              );
-            });
-          })()}
+          {meta ? (
+            <Text style={[styles.compactMeta, { color: overdue ? colors.error : colors.muted }]} numberOfLines={1}>{meta}</Text>
+          ) : null}
         </View>
-      </View>
-    </Pressable>
-  );
+        <View style={[styles.compactPill, { backgroundColor: statusColors[item.status] + "22" }]}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: statusColors[item.status] }} numberOfLines={1}>{statusLabels[item.status]}</Text>
+        </View>
+        {photo ? (
+          <Image source={{ uri: photo }} style={styles.compactThumb} resizeMode="cover" />
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderRow = ({ item }: { item: DefectRow }) => {
+    if ("__header" in item) {
+      return (
+        <View style={styles.groupHeader}>
+          <Text style={[styles.groupHeaderText, { color: colors.foreground }]}>{item.__header}</Text>
+          <Text style={{ fontSize: 12, color: colors.muted }}>{item.__count}</Text>
+        </View>
+      );
+    }
+    return renderDefect({ item });
+  };
 
   return (
     <ScreenContainer className="p-4">
@@ -899,11 +919,35 @@ export default function DefectsScreen() {
         ))}
       </ScrollView>
 
-      {/* Sort bar */}
+      {/* Search */}
+      <View style={[styles.searchBar, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+        <MaterialIcons name="search" size={18} color={colors.muted} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('defects_search_placeholder' as any)}
+          placeholderTextColor={colors.muted}
+          style={{ flex: 1, color: colors.foreground, fontSize: 15, paddingVertical: 0 }}
+        />
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch("")} hitSlop={8}><MaterialIcons name="close" size={18} color={colors.muted} /></Pressable>
+        )}
+      </View>
+
+      {/* Sort + group bar */}
       <View style={styles.sortBar}>
         <Text style={[styles.sortCount, { color: colors.muted }]}>
           {sortedDefects.length} {t('maengel')}
         </Text>
+        <Pressable
+          onPress={() => setShowGroupPicker(true)}
+          style={({ pressed }) => [styles.sortBtn, { borderColor: groupBy !== "none" ? colors.primary : colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}
+        >
+          <MaterialIcons name="segment" size={16} color={groupBy !== "none" ? colors.primary : colors.muted} />
+          <Text style={[styles.sortBtnText, { color: groupBy !== "none" ? colors.primary : colors.foreground }]} numberOfLines={1}>
+            {groupBy === "none" ? t('defects_group_label' as any) : groupLabels[groupBy]}
+          </Text>
+        </Pressable>
         <Pressable
           onPress={() => setShowSortPicker(true)}
           style={({ pressed }) => [styles.sortBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}
@@ -912,18 +956,17 @@ export default function DefectsScreen() {
           <Text style={[styles.sortBtnText, { color: colors.foreground }]} numberOfLines={1}>
             {sortLabels[sortBy]}
           </Text>
-          <MaterialIcons name="expand-more" size={18} color={colors.muted} />
         </Pressable>
       </View>
 
       {/* Defect List */}
       <FlatList
-        data={sortedDefects}
-        keyExtractor={(item) => item.id}
+        data={groupedList}
+        keyExtractor={(item) => ("__header" in item ? `h:${item.__header}` : item.id)}
         renderItem={(p) => (
-          <SwipeableRow onDelete={() => removeDefect(p.item.id)} deleteLabel={t('btn_loeschen')}>
-            {renderDefect(p)}
-          </SwipeableRow>
+          "__header" in p.item
+            ? renderRow(p)
+            : <SwipeableRow onDelete={() => removeDefect((p.item as Defect).id)} deleteLabel={t('btn_loeschen')}>{renderDefect({ item: p.item as Defect })}</SwipeableRow>
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
@@ -935,6 +978,28 @@ export default function DefectsScreen() {
           </View>
         }
       />
+
+      {/* Group picker */}
+      <Modal visible={showGroupPicker} transparent animationType="fade" onRequestClose={() => setShowGroupPicker(false)}>
+        <Pressable style={styles.sortBackdrop} onPress={() => setShowGroupPicker(false)}>
+          <Pressable style={[styles.sortSheet, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.sortSheetTitle, { color: colors.foreground }]}>{t('defects_group_label' as any)}</Text>
+            {GROUP_KEYS.map((key) => {
+              const active = groupBy === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => { setGroupBy(key); setShowGroupPicker(false); }}
+                  style={({ pressed }) => [styles.sortOption, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "15" : colors.surface, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: active ? "700" : "500", color: active ? colors.primary : colors.foreground }}>{groupLabels[key]}</Text>
+                  {active && <MaterialIcons name="check" size={20} color={colors.primary} />}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Sort picker */}
       <Modal visible={showSortPicker} transparent animationType="fade" onRequestClose={() => setShowSortPicker(false)}>
@@ -1644,6 +1709,15 @@ export default function DefectsScreen() {
 }
 
 const styles = StyleSheet.create({
+  compactRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 12, marginBottom: 6 },
+  compactDot: { width: 9, height: 9, borderRadius: 5 },
+  compactTitle: { fontSize: 14, fontWeight: "700", flexShrink: 1 },
+  compactMeta: { fontSize: 12, marginTop: 2 },
+  compactPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, maxWidth: 96 },
+  compactThumb: { width: 40, height: 40, borderRadius: 6, backgroundColor: "#00000010" },
+  searchBar: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 42, marginBottom: 8 },
+  groupHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6, paddingHorizontal: 2, marginTop: 4 },
+  groupHeaderText: { fontSize: 13, fontWeight: "800" },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   backBtn: { padding: 8, marginRight: 8 },
   title: { fontSize: 22, fontWeight: "700", flex: 1 },
