@@ -1,12 +1,16 @@
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import {
+  Alert,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { DataRightsSection } from "@/components/data-rights-section";
@@ -467,25 +471,117 @@ function KIHinweisContent() {
   );
 }
 
+const LIC_GROUP_ORDER = ["MIT", "Apache-2.0", "BSD", "__other"] as const;
+function licenseCategory(license: string): string {
+  const l = (license || "").toLowerCase();
+  if (l.includes("mit")) return "MIT";
+  if (l.includes("apache")) return "Apache-2.0";
+  if (l.includes("bsd")) return "BSD";
+  return "__other";
+}
+
 function LizenzenContent() {
   const { t } = useTranslation();
+  const [search, setSearch] = useState("");
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+
+  const groups = useMemo(() => {
+    const g: Record<string, typeof THIRD_PARTY_LICENSES> = { MIT: [], "Apache-2.0": [], BSD: [], __other: [] };
+    for (const lib of THIRD_PARTY_LICENSES) g[licenseCategory(lib.license)].push(lib);
+    return g;
+  }, []);
+
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? THIRD_PARTY_LICENSES.filter((l) => l.name.toLowerCase().includes(q) || l.license.toLowerCase().includes(q))
+    : null;
+
+  const exportAll = async () => {
+    try {
+      const lines: string[] = [t('legal_lizenzen_titel'), `${THIRD_PARTY_LICENSE_COUNT} ${t('legal_lic_components' as any)}`, ""];
+      for (const cat of LIC_GROUP_ORDER) {
+        const arr = groups[cat];
+        if (!arr.length) continue;
+        lines.push(`## ${cat === "__other" ? t('legal_lic_other' as any) : cat} (${arr.length})`);
+        for (const lib of arr) lines.push(`${lib.name}@${lib.version} — ${lib.license}`);
+        lines.push("");
+      }
+      const uri = `${FileSystem.cacheDirectory}open-source-lizenzen.txt`;
+      await FileSystem.writeAsStringAsync(uri, lines.join("\n"));
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "text/plain", dialogTitle: t('legal_lizenzen_titel') });
+      }
+    } catch {
+      Alert.alert(t('hinweis'), t('legal_lic_export_error' as any));
+    }
+  };
+
   return (
-    <View className="gap-4 pb-8">
-      <Text className="text-xl font-bold text-foreground">{t('legal_lizenzen_titel')}</Text>
-      <P>
-        {t('legal_lizenzen_text')}
-      </P>
-      <Text className="text-xs text-muted">
-        {THIRD_PARTY_LICENSE_COUNT} Open-Source-Komponenten (Produktions-Abhängigkeiten).
-      </Text>
-      {THIRD_PARTY_LICENSES.map((lib) => (
-        <LicenseItem
-          key={`${lib.name}@${lib.version}`}
-          name={lib.name}
-          version={lib.version}
-          license={lib.license}
+    <View className="gap-3 pb-8">
+      <H1 text={t('legal_lizenzen_titel')} />
+      <Text className="text-sm text-muted">{THIRD_PARTY_LICENSE_COUNT} {t('legal_lic_components' as any)}</Text>
+
+      <View className="flex-row items-center border border-border bg-surface rounded-lg px-3" style={{ height: 44 }}>
+        <MaterialIcons name="search" size={18} color="#7A8794" />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t('legal_lic_search' as any)}
+          placeholderTextColor="#7A8794"
+          autoCapitalize="none"
+          className="flex-1 text-foreground ml-2"
+          style={{ paddingVertical: 0 }}
         />
-      ))}
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
+            <MaterialIcons name="close" size={18} color="#7A8794" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <TouchableOpacity onPress={exportAll} activeOpacity={0.7} className="flex-row items-center justify-center gap-2 border border-primary rounded-lg py-3">
+        <MaterialIcons name="ios-share" size={18} color="#5BA7D9" />
+        <Text className="text-primary font-semibold">{t('legal_lic_export' as any)}</Text>
+      </TouchableOpacity>
+
+      {filtered ? (
+        filtered.length === 0 ? (
+          <Text className="text-sm text-muted mt-2">{t('legal_lic_none' as any)}</Text>
+        ) : (
+          <View className="mt-1">
+            {filtered.slice(0, 300).map((lib) => (
+              <LicenseItem key={`${lib.name}@${lib.version}`} name={lib.name} version={lib.version} license={lib.license} />
+            ))}
+          </View>
+        )
+      ) : (
+        LIC_GROUP_ORDER.map((cat) => {
+          const arr = groups[cat];
+          if (!arr.length) return null;
+          const label = cat === "__other" ? t('legal_lic_other' as any) : cat;
+          const isOpen = openGroup === cat;
+          return (
+            <View key={cat}>
+              <TouchableOpacity
+                onPress={() => setOpenGroup(isOpen ? null : cat)}
+                activeOpacity={0.7}
+                className="flex-row items-center border border-border bg-surface rounded-lg px-4 py-3"
+              >
+                <MaterialIcons name={isOpen ? "expand-less" : "expand-more"} size={22} color="#5BA7D9" />
+                <Text className="text-foreground font-semibold flex-1 ml-2">{label}</Text>
+                <Text className="text-muted text-sm">{arr.length}</Text>
+              </TouchableOpacity>
+              {isOpen && (
+                <View className="mt-1 mb-2">
+                  {arr.map((lib) => (
+                    <LicenseItem key={`${lib.name}@${lib.version}`} name={lib.name} version={lib.version} license={lib.license} />
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })
+      )}
     </View>
   );
 }
