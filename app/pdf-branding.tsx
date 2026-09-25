@@ -21,6 +21,13 @@ export default function PdfBrandingScreen() {
   const colors = useColors();
   const [branding, setBranding] = useState<PdfBranding>(DEFAULT_BRANDING);
   const [hasChanges, setHasChanges] = useState(false);
+  const [tab, setTab] = useState<"design" | "inhalt" | "email" | "vorlagen">("design");
+  const TABS: { key: typeof tab; labelKey: string; icon: string }[] = [
+    { key: "design", labelKey: "pdf_tab_design", icon: "palette" },
+    { key: "inhalt", labelKey: "pdf_tab_content", icon: "list-alt" },
+    { key: "email", labelKey: "pdf_tab_email", icon: "send" },
+    { key: "vorlagen", labelKey: "pdf_tab_templates", icon: "folder-copy" },
+  ];
 
   async function loadBranding() {
     const b = await getPdfBranding();
@@ -196,7 +203,26 @@ export default function PdfBrandingScreen() {
         </Pressable>
       </View>
 
+      {/* Tabs */}
+      <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        {TABS.map((tb) => {
+          const active = tab === tb.key;
+          return (
+            <Pressable
+              key={tb.key}
+              onPress={() => setTab(tb.key)}
+              style={{ flex: 1, alignItems: "center", paddingVertical: 10, gap: 2, borderBottomWidth: 2, borderBottomColor: active ? colors.primary : "transparent" }}
+            >
+              <MaterialIcons name={tb.icon as any} size={20} color={active ? colors.primary : colors.muted} />
+              <Text style={{ fontSize: 11, fontWeight: active ? "700" : "500", color: active ? colors.primary : colors.muted }}>{t(tb.labelKey as any)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {tab === "design" && (
+        <>
         {/* Company identity (logo, name, address, contact) is managed centrally
             in Settings → Firmendaten and mirrored into this store automatically,
             so it isn't duplicated here. */}
@@ -367,6 +393,11 @@ export default function PdfBrandingScreen() {
           )}
         </View>
 
+        </>
+        )}
+
+        {tab === "email" && (
+        <>
         {/* E-Mail-Versand → moved to its own screen */}
         <View style={styles.section}>
           <Pressable
@@ -381,8 +412,10 @@ export default function PdfBrandingScreen() {
             <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
           </Pressable>
         </View>
+        </>
+        )}
 
-        {/* Custom Layout Editor */}
+        {tab === "inhalt" && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('layoutanpassung')}</Text>
           <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('feineinstellungen_fu00fcr_das_gewu00e4hl')}</Text>
@@ -463,8 +496,9 @@ export default function PdfBrandingScreen() {
             </View>
           </View>
         </View>
+        )}
 
-        {/* Preview */}
+        {tab === "design" && (
         <View style={[styles.previewBox, { backgroundColor: "#FFFFFF", borderColor: colors.border }]}>
           <Text style={{ fontSize: 12, fontWeight: "600", color: "#666", marginBottom: 8 }}>{t('vorschau')}</Text>
           {/* Header Preview */}
@@ -491,8 +525,9 @@ export default function PdfBrandingScreen() {
             </Text>
           </View>
         </View>
+        )}
 
-        {/* Import/Export */}
+        {tab === "vorlagen" && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('einstellungen_sichern')}</Text>
           <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('pdfbrandingeinstellungen_exportieren_ode')}</Text>
@@ -513,6 +548,7 @@ export default function PdfBrandingScreen() {
             </Pressable>
           </View>
         </View>
+        )}
       </ScrollView>
     </ScreenContainer>
   );
