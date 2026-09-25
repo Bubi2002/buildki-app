@@ -307,13 +307,9 @@ export function generatePdfHtml(
       const dataUri = evidenceDataUris[index];
       const source = escapeHtml(formatEvidenceSource(snapshot));
       const measurements = snapshot.measurements || [];
-      if (!dataUri) {
-        return `
-                <article class="evidence-block evidence-block-missing">
-                  <p class="evidence-finding"><strong>Abbildung ${index + 1}: Visueller Nachweis konnte nicht geladen werden.</strong></p>
-                  <p class="evidence-source"><strong>${source}</strong></p>
-                </article>`;
-      }
+      // A final customer document must never contain a technical error. When the
+      // image can't be loaded, keep the finding text and use a neutral note
+      // instead of an alarming "konnte nicht geladen werden" line.
       // BUG 3a: resolve a finding caption. Fall back to the spoken sentence (video frames), then a
       // neutral room · trade line, and finally omit the finding line entirely — never the alarming
       // "Beleg ohne Befundtext" literal.
@@ -340,13 +336,16 @@ export function generatePdfHtml(
                     .join("")}
                 </div>`
         : "";
-      return `
-              <article class="evidence-block" data-evidence-id="${escapeHtml(snapshot.evidenceId)}">
-                ${findingHtml}
-                <div class="evidence-image-wrap">
+      const imageBlock = dataUri
+        ? `<div class="evidence-image-wrap">
                   <img src="${dataUri}" class="evidence-image" />
                   ${watermarkOverlay}
-                </div>
+                </div>`
+        : `<p class="evidence-no-image">Zum Mangel liegt kein Bildnachweis vor.</p>`;
+      return `
+              <article class="evidence-block${dataUri ? "" : " evidence-block-noimage"}" data-evidence-id="${escapeHtml(snapshot.evidenceId)}">
+                ${findingHtml}
+                ${imageBlock}
                 <p class="evidence-number"><strong>Abbildung ${index + 1}</strong></p>
                 <p class="evidence-source"><strong>${source}</strong></p>
                 ${measurementsHtml}
@@ -731,9 +730,19 @@ export function generatePdfHtml(
       border: 1px solid #d8dde3;
       background: #fff;
     }
-    .evidence-block-missing {
-      border-color: #b91c1c;
-      background: #fff5f5;
+    .evidence-block-noimage {
+      background: #fafbfc;
+    }
+    .evidence-no-image {
+      margin: 4px 0 2px 0;
+      padding: 12px;
+      font-size: 11px;
+      font-style: italic;
+      color: #64748b;
+      text-align: center;
+      background: #f4f6f8;
+      border: 1px dashed #d8dde3;
+      border-radius: 6px;
     }
     .evidence-finding {
       margin: 0 0 10px 0;

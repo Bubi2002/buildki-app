@@ -86,19 +86,24 @@ describe("allgemeine PDF-Belegintegration", () => {
     );
 
     const firstFinding = html.indexOf("Türklinke abgenutzt.");
-    const missingSecond = html.indexOf("Abbildung 2: Visueller Nachweis konnte nicht geladen werden.");
+    // The second snapshot has no image: its finding text is still kept, and a
+    // neutral note replaces the (former) technical error line.
+    const secondFinding = html.indexOf("Lichtschacht in falscher Farbe.");
+    const neutralNote = html.indexOf("Zum Mangel liegt kein Bildnachweis vor.");
     const thirdFinding = html.indexOf("Heizkabel muss gestrichen werden.");
     const thirdImage = html.indexOf(IMAGE_C);
     const thirdNumber = html.indexOf("Abbildung 3", thirdFinding);
     const thirdTimecode = html.indexOf("Zeitcode 01:23", thirdFinding);
 
     expect(firstFinding).toBeGreaterThan(-1);
-    expect(missingSecond).toBeGreaterThan(firstFinding);
-    expect(thirdFinding).toBeGreaterThan(missingSecond);
+    expect(secondFinding).toBeGreaterThan(firstFinding);
+    expect(neutralNote).toBeGreaterThan(secondFinding);
+    expect(thirdFinding).toBeGreaterThan(neutralNote);
     expect(thirdImage).toBeGreaterThan(thirdFinding);
     expect(thirdNumber).toBeGreaterThan(thirdImage);
     expect(thirdTimecode).toBeGreaterThan(thirdNumber);
-    expect(html).not.toContain("Abbildung 2</strong></p>\n                <p class=\"evidence-source\"><strong>Videostandbild");
+    // A final customer document must never contain a technical load error.
+    expect(html).not.toContain("Visueller Nachweis konnte nicht geladen werden");
   });
 
   it("verwendet den Projektnamen als PDF-Überschrift und beginnt Haupttitel auf neuen Seiten", () => {

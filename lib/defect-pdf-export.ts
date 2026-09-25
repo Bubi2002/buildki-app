@@ -112,6 +112,18 @@ export async function generateDefectPdfHtml(
 
   const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // Render limited markdown (bold/italic/line breaks) safely: escape first, then
+  // convert **bold** / *italic* and strip stray heading/list markers. Prevents raw
+  // markdown like "**Anzahl Mängel:** 1" from leaking into the final PDF.
+  const richText = (s: string) => {
+    let out = esc(s ?? "").trim();
+    out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
+    out = out.replace(/^\s*#{1,6}\s+/gm, "");
+    out = out.replace(/^\s*[-*•]\s+/gm, "• ");
+    out = out.replace(/\r?\n/g, "<br/>");
+    return out;
+  };
   const NAVY = "#0F2744";
   const { resolveBrandingLogo, premiumIcons } = await import("./pdf-premium");
   const logoDataUri = await resolveBrandingLogo(branding);
@@ -274,13 +286,13 @@ export async function generateDefectPdfHtml(
       </div>`;
 
       if (d.description) {
-        html += `<div class="defect-description">${d.description}</div>`;
+        html += `<div class="defect-description">${richText(d.description)}</div>`;
       }
 
       // AI Summary (from defect-store, Single Source of Truth)
       if (d.aiSummary) {
         html += `<div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-left: 3px solid ${accentColor}; border-radius: 4px; font-size: 11px;">
-          <strong style="color: ${accentColor};">KI-Zusammenfassung:</strong> ${d.aiSummary}
+          <strong style="color: ${accentColor};">KI-Zusammenfassung:</strong> ${richText(d.aiSummary)}
         </div>`;
       }
 

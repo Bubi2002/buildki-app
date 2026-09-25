@@ -204,7 +204,8 @@ export default function ProjectExportScreen() {
 
       if (selected.protocols) {
         const raw = await AsyncStorage.getItem("protocols");
-        const proto = (raw ? JSON.parse(raw) : []).filter((p: any) => p.projectId === projectId);
+        // Never export protocols that are still processing — only finished ones.
+        const proto = (raw ? JSON.parse(raw) : []).filter((p: any) => p.projectId === projectId && p.status !== "processing");
         if (proto.length) {
           sections.push({
             title: `${t('project_export_protocols' as any)} (${proto.length})`,
@@ -221,12 +222,19 @@ export default function ProjectExportScreen() {
         const structure = await getProjectStructure(projectId);
         if (structure.rooms.length) {
           const floorName = (fid: string) => structure.floors.find((f) => f.id === fid)?.name || "-";
+          // Human-readable room status — never the raw code (nicht_begonnen, in_arbeit, ...).
+          const roomStatusLabels: Record<string, string> = {
+            nicht_begonnen: "Nicht begonnen",
+            in_arbeit: "In Arbeit",
+            fertig: "Fertig",
+            abgenommen: "Abgenommen",
+          };
           sections.push({
             title: `${t('index_tool_raeume' as any)} (${structure.rooms.length})`,
             content: "",
             table: {
               headers: ["Geschoss", "Raum", "Status"],
-              rows: structure.rooms.map((r) => [floorName(r.floorId), r.name, r.status || "-"]),
+              rows: structure.rooms.map((r) => [floorName(r.floorId), r.name, roomStatusLabels[r.status as string] || r.status || "-"]),
             },
           });
         }
