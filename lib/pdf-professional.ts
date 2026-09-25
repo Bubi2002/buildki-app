@@ -112,34 +112,61 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     accentColor = "#0a7ea4",
   } = options;
 
-  const logoHtml = companyInfo?.logoBase64
-    ? `<img src="${companyInfo.logoBase64}" style="height: 40px; object-fit: contain;" />`
-    : "";
+  const NAVY = "#0F2744";
+  const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const ico = (path: string) => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+  const icoBuilding = ico(`<rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 8h5a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5"/><path d="M7 7h.01M7 11h.01M7 15h.01M10 7h.01M10 11h.01"/>`);
+  const icoCal = ico(`<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>`);
+  const icoTag = ico(`<path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82Z"/><circle cx="7.5" cy="7.5" r="1.5"/>`);
+  const icoHash = ico(`<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>`);
 
-  const companyInfoHtml = companyInfo
-    ? `<div class="company-info">
-        <strong>${companyInfo.name}</strong>
-        ${companyInfo.address ? `<br/>${companyInfo.address}` : ""}
-        ${companyInfo.phone ? `<br/>Tel: ${companyInfo.phone}` : ""}
-        ${companyInfo.email ? `<br/>${companyInfo.email}` : ""}
-      </div>`
+  const logoHtml = companyInfo?.logoBase64
+    ? `<img src="${companyInfo.logoBase64}" alt="" />`
+    : "";
+  const coName = esc(companyInfo?.name || "");
+
+  // Compact report meta shown in the navy band (top-right).
+  const bandMeta = [reportType ? esc(reportType) : "", projekt ? esc(projekt) : "", esc(datum)]
+    .filter(Boolean).join("<br/>");
+
+  // Info grid (icon-labelled project meta).
+  const infoCols: string[] = [];
+  if (projekt) infoCols.push(`<div class="infocol"><div class="lbl">${icoBuilding} Projekt</div><div class="val">${esc(projekt)}</div></div>`);
+  infoCols.push(`<div class="infocol"><div class="lbl">${icoCal} Datum</div><div class="val">${esc(datum)}</div></div>`);
+  if (reportType) infoCols.push(`<div class="infocol"><div class="lbl">${icoTag} Berichtstyp</div><div class="val">${esc(reportType)}</div></div>`);
+  if (projektNummer) infoCols.push(`<div class="infocol"><div class="lbl">${icoHash} Projekt-Nr.</div><div class="val">${esc(projektNummer)}</div></div>`);
+  const infoHtml = `<div class="infogrid">${infoCols.join("")}</div>`;
+
+  // Auto-dashboard: sections whose title ends with "(N)" become stat cards.
+  const palette = ["#334155", "#2563EB", "#0E7490", "#B45309", "#7C3AED", "#16A34A"];
+  const dash = sections
+    .map((s) => { const m = s.title.match(/^(.*?)\s*\((\d+)\)\s*$/); return m ? { label: m[1].trim(), value: Number(m[2]) } : null; })
+    .filter((d): d is { label: string; value: number } => d !== null);
+  const dashHtml = dash.length >= 2
+    ? `<div class="summary-band"><div class="stats-grid">${dash.map((d, i) =>
+        `<div class="stat-box" style="border-top:3px solid ${palette[i % palette.length]};"><div class="stat-number" style="color:${palette[i % palette.length]};">${d.value}</div><div class="stat-label">${esc(d.label)}</div></div>`
+      ).join("")}</div></div>`
     : "";
 
   const tocHtml = includeTableOfContents && sections.length > 3
     ? `<div class="toc">
-        <h3>Inhaltsverzeichnis</h3>
+        <div class="toc-h">Inhalt</div>
         <ol>
-          ${sections.map((s, i) => `<li><a href="#section-${i}">${s.title}</a></li>`).join("")}
-          ${signatures && signatures.length > 0 ? `<li><a href="#signatures">Unterschriften</a></li>` : ""}
+          ${sections.map((s, i) => `<li>${esc(s.title)}</li>`).join("")}
+          ${signatures && signatures.length > 0 ? `<li>Unterschriften</li>` : ""}
         </ol>
-      </div>
-      <div class="page-break"></div>`
+      </div>`
     : "";
 
   const sectionsHtml = sections.map((section, i) => {
+    // Strip a trailing "(N)" count from the heading \u2014 it already appears in the dashboard.
+    const heading = section.title.replace(/\s*\(\d+\)\s*$/, "");
     let sectionContent = `<div class="section" id="section-${i}">
-      <h2 class="section-title"><span class="section-number">${i + 1}</span> ${section.title}</h2>
-      <div class="section-content">${markdownToHtml(section.content)}</div>`;
+      <div class="section-chip"><span class="num">${i + 1}</span><span class="txt">${esc(heading)}</span></div>`;
+
+    const contentHtml = markdownToHtml(section.content);
+    if (contentHtml) sectionContent += `<div class="section-content">${contentHtml}</div>`;
 
     // Add images
     if (section.images && section.images.length > 0) {
@@ -147,8 +174,8 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       for (const img of section.images) {
         sectionContent += `<div class="image-container" style="width: ${img.width || 48}%;">
           <img src="${img.base64}" class="section-image" />
-          ${img.caption ? `<p class="image-caption">${img.caption}</p>` : ""}
-          ${img.annotation ? `<p class="image-annotation">${img.annotation}</p>` : ""}
+          ${img.caption ? `<p class="image-caption">${esc(img.caption)}</p>` : ""}
+          ${img.annotation ? `<p class="image-annotation">${esc(img.annotation)}</p>` : ""}
         </div>`;
       }
       sectionContent += `</div>`;
@@ -157,8 +184,8 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     // Add table
     if (section.table) {
       sectionContent += `<table class="data-table">
-        <thead><tr>${section.table.headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
-        <tbody>${section.table.rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>
+        <thead><tr>${section.table.headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${section.table.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
       </table>`;
     }
 
@@ -168,7 +195,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
 
   const signaturesHtml = signatures && signatures.length > 0
     ? `<div class="signatures-section" id="signatures">
-        <h2 class="section-title">Unterschriften</h2>
+        <div class="section-chip"><span class="num">\u2713</span><span class="txt">Unterschriften</span></div>
         <div class="signatures-grid">
           ${signatures.map(sig => `
             <div class="signature-box">
@@ -176,9 +203,9 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
                 ${sig.signatureBase64 ? `<img src="${sig.signatureBase64}" class="signature-img" />` : `<div class="signature-line"></div>`}
               </div>
               <div class="signature-info">
-                <strong>${sig.name}</strong>
-                <span class="signature-role">${sig.role}</span>
-                <span class="signature-date">${sig.date}</span>
+                <strong>${esc(sig.name)}</strong>
+                <span class="signature-role">${esc(sig.role)}</span>
+                <span class="signature-date">${esc(sig.date)}</span>
               </div>
             </div>
           `).join("")}
@@ -186,228 +213,108 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       </div>`
     : "";
 
+  const footerLeft = escCss(footerText || (projekt ? `Projekt: ${projekt}` : "BuildKI"));
+
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
     @page {
-      margin: 16mm 12mm 20mm 12mm;
-      @bottom-center {
-        content: counter(page) " / " counter(pages);
-        font-size: 9px;
-        color: #666;
-      }
+      margin: 15mm 12mm 16mm 12mm;
+      @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; }
+      @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 11px;
-      line-height: 1.5;
-      color: #1a1a1a;
-      padding: 0 18px;
+      line-height: 1.55;
+      color: #1f2937;
     }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2px solid ${accentColor};
-      padding-bottom: 12px;
-      margin-bottom: 20px;
+    .band {
+      display: flex; align-items: center; gap: 12px;
+      background: ${NAVY}; color: #fff;
+      padding: 14px 18px; border-radius: 10px;
     }
-    .header-left { flex: 1; }
-    .header-right { text-align: right; }
-    .company-info { font-size: 9px; color: #555; line-height: 1.4; }
-    .report-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: ${accentColor};
-      margin-bottom: 4px;
-    }
-    .report-subtitle { font-size: 12px; color: #555; }
-    .meta-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0 20px;
-      font-size: 10px;
-    }
-    .meta-table td {
-      padding: 4px 8px;
-      border: 1px solid #e0e0e0;
-    }
-    .meta-table td:first-child {
-      font-weight: 600;
-      width: 120px;
-      background: #f8f9fa;
-    }
-    .toc {
-      margin: 20px 0;
-      padding: 16px 18px;
-      background: #f8f9fa;
-      border-left: 4px solid ${accentColor};
-      border-radius: 0 4px 4px 0;
-    }
-    .toc h3 { font-size: 14px; margin-bottom: 8px; color: ${accentColor}; }
+    .band img { max-height: 34px; max-width: 150px; object-fit: contain; }
+    .band .co { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+    .band .meta { margin-left: auto; text-align: right; font-size: 8.5px; line-height: 1.5; color: #cbd5e1; }
+    .title { font-size: 26px; font-weight: 800; color: ${NAVY}; margin: 20px 0 0; letter-spacing: -.4px; }
+    .title-rule { width: 54px; height: 4px; background: ${accentColor}; border-radius: 2px; margin: 8px 0 10px; }
+    .subtitle { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+    .infogrid { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 4px; }
+    .infocol { flex: 1; min-width: 130px; background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 10px; padding: 10px 12px; }
+    .infocol .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+    .infocol .val { font-size: 12px; font-weight: 600; color: #1f2937; }
+    .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 14px; margin: 14px 0 4px; }
+    .stats-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .stat-box { flex: 1; min-width: 90px; background: #fff; border: 1px solid #eef1f5; border-radius: 8px; padding: 10px 6px; text-align: center; }
+    .stat-number { font-size: 22px; font-weight: 800; }
+    .stat-label { font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: .3px; }
+    .toc { margin: 16px 0; padding: 12px 16px; background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 10px; }
+    .toc-h { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: ${accentColor}; font-weight: 700; margin-bottom: 6px; }
     .toc ol { padding-left: 20px; }
-    .toc li { margin: 5px 0; font-size: 11px; }
-    .toc a { color: #1a1a1a; text-decoration: none; }
-    .section { margin-bottom: 22px; }
-    .section-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #1a1a1a;
-      background: ${accentColor}14;
-      border-left: 4px solid ${accentColor};
-      padding: 8px 12px;
-      margin-bottom: 12px;
-      border-radius: 0 4px 4px 0;
-    }
-    .section-number {
-      display: inline-block;
-      width: 22px;
-      height: 22px;
-      line-height: 22px;
-      text-align: center;
-      background: ${accentColor};
-      color: white;
-      border-radius: 50%;
-      font-size: 10px;
-      margin-right: 8px;
-    }
-    .section-content { font-size: 11px; line-height: 1.6; padding: 2px 4px; }
-    .section-content p { margin-bottom: 8px; }
-    .section-content ul, .section-content ol { padding-left: 20px; margin-bottom: 8px; }
-    .section-content li { margin-bottom: 4px; }
-    .section-content strong { font-weight: 600; }
-    .images-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 12px 0;
-    }
+    .toc li { margin: 3px 0; font-size: 11px; color: #334155; }
+    .section { margin-bottom: 20px; }
+    .section-chip { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; }
+    .section-chip .num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: ${NAVY}; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .section-chip .txt { font-size: 15px; font-weight: 700; color: ${NAVY}; }
+    .section-content { font-size: 11px; line-height: 1.6; }
+    .section-content p { margin-bottom: 7px; }
+    .section-content h2, .section-content h3, .section-content h4 { color: ${NAVY}; margin: 8px 0 5px; }
+    .section-content h2 { font-size: 13px; }
+    .section-content h3 { font-size: 12px; }
+    .section-content h4 { font-size: 11px; }
+    .section-content ul { padding-left: 18px; margin-bottom: 7px; }
+    .section-content li { margin-bottom: 3px; }
+    .section-content strong { font-weight: 700; }
+    .images-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
     .image-container { text-align: center; }
-    .section-image {
-      width: 100%;
-      max-height: 200px;
-      object-fit: contain;
-      border: 1px solid #e0e0e0;
-      border-radius: 2px;
-    }
-    .image-caption {
-      font-size: 9px;
-      color: #555;
-      margin-top: 4px;
-      font-style: italic;
-    }
-    .image-annotation {
-      font-size: 9px;
-      color: ${accentColor};
-      margin-top: 2px;
-    }
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0;
-      font-size: 10px;
-    }
-    .data-table th {
-      background: ${accentColor};
-      color: white;
-      padding: 6px 8px;
-      text-align: left;
-      font-weight: 600;
-    }
-    .data-table td {
-      padding: 5px 8px;
-      border: 1px solid #e0e0e0;
-    }
-    .data-table tr:nth-child(even) td { background: #f8f9fa; }
-    .signatures-section { margin-top: 30px; }
-    .signatures-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-top: 12px;
-    }
-    .signature-box {
-      width: 45%;
-      border: 1px solid #e0e0e0;
-      padding: 12px;
-      border-radius: 4px;
-    }
-    .signature-image {
-      height: 60px;
-      display: flex;
-      align-items: flex-end;
-      margin-bottom: 8px;
-    }
+    .section-image { width: 100%; max-height: 200px; object-fit: contain; border: 1px solid #e8ecf1; border-radius: 6px; }
+    .image-caption { font-size: 9px; color: #64748b; margin-top: 4px; font-style: italic; }
+    .image-annotation { font-size: 9px; color: ${accentColor}; margin-top: 2px; }
+    .data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
+    .data-table th { background: #f8fafc; color: #334155; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid #e2e8f0; }
+    .data-table td { padding: 7px 10px; border-bottom: 1px solid #eef1f5; color: #334155; }
+    .data-table tr:nth-child(even) td { background: #fbfcfd; }
+    .signatures-section { margin-top: 24px; }
+    .signatures-grid { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 10px; }
+    .signature-box { width: 46%; border: 1px solid #e8ecf1; border-radius: 8px; padding: 12px; }
+    .signature-image { height: 56px; display: flex; align-items: flex-end; margin-bottom: 8px; }
     .signature-img { max-height: 50px; max-width: 100%; }
-    .signature-line {
-      width: 100%;
-      border-bottom: 1px solid #333;
-    }
+    .signature-line { width: 100%; border-bottom: 1px solid #94a3b8; }
     .signature-info { font-size: 9px; }
-    .signature-role { display: block; color: #555; }
-    .signature-date { display: block; color: #888; font-size: 8px; }
+    .signature-role { display: block; color: #64748b; }
+    .signature-date { display: block; color: #94a3b8; font-size: 8px; }
     .page-break { page-break-after: always; }
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      text-align: center;
-      font-size: 8px;
-      color: #888;
-      border-top: 1px solid #e0e0e0;
-      padding-top: 4px;
-    }
-    ${watermark ? `.watermark {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-45deg);
-      font-size: 60px;
-      color: rgba(0,0,0,0.03);
-      font-weight: 700;
-      pointer-events: none;
-    }` : ""}
+    ${watermark ? `.watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 60px; color: rgba(15,39,68,0.04); font-weight: 800; pointer-events: none; }` : ""}
   </style>
 </head>
 <body>
-  ${watermark ? `<div class="watermark">${watermark}</div>` : ""}
-  
-  <div class="header">
-    <div class="header-left">
-      ${logoHtml}
-      <h1 class="report-title">${title}</h1>
-      ${subtitle ? `<p class="report-subtitle">${subtitle}</p>` : ""}
-    </div>
-    <div class="header-right">
-      ${companyInfoHtml}
-    </div>
+  ${watermark ? `<div class="watermark">${esc(watermark)}</div>` : ""}
+
+  <div class="band">
+    ${logoHtml}
+    ${coName ? `<div class="co">${coName}</div>` : ""}
+    ${bandMeta ? `<div class="meta">${bandMeta}</div>` : ""}
   </div>
 
-  <table class="meta-table">
-    <tr><td>Datum</td><td>${datum}</td></tr>
-    ${projekt ? `<tr><td>Projekt</td><td>${projekt}</td></tr>` : ""}
-    ${projektNummer ? `<tr><td>Projekt-Nr.</td><td>${projektNummer}</td></tr>` : ""}
-    ${reportType ? `<tr><td>Berichtstyp</td><td>${reportType}</td></tr>` : ""}
-    ${options.matterportLink ? `<tr><td>3D-Modell</td><td><a href="${options.matterportLink}" style="color:${accentColor};text-decoration:none;">${options.matterportLink}</a></td></tr>` : ""}
-  </table>
+  <h1 class="title">${esc(title)}</h1>
+  <div class="title-rule"></div>
+  ${subtitle ? `<p class="subtitle">${esc(subtitle)}</p>` : ""}
 
+  ${infoHtml}
+  ${dashHtml}
+  ${options.matterportLink ? `<p style="font-size:10px;color:#64748b;margin-top:8px;">3D-Modell: <a href="${options.matterportLink}" style="color:${accentColor};text-decoration:none;">${esc(options.matterportLink)}</a></p>` : ""}
   ${tocHtml}
   ${sectionsHtml}
   ${signaturesHtml}
   ${options.qrCodeBase64 ? `
-  <div style="text-align:center;margin-top:30px;padding:20px;border-top:1px solid #e0e0e0;">
-    <img src="${options.qrCodeBase64}" style="width:100px;height:100px;" />
-    <p style="font-size:9px;color:#666;margin-top:6px;">${options.qrCodeLabel || "QR-Code scannen f\u00fcr digitale Version"}</p>
-    ${options.matterportLink ? `<p style="font-size:8px;color:#888;margin-top:2px;">3D-Modell: <a href="${options.matterportLink}" style="color:${accentColor};">${options.matterportLink}</a></p>` : ""}
+  <div style="text-align:center;margin-top:26px;padding:18px;border-top:1px solid #e8ecf1;">
+    <img src="${options.qrCodeBase64}" style="width:96px;height:96px;" />
+    <p style="font-size:9px;color:#64748b;margin-top:6px;">${esc(options.qrCodeLabel || "QR-Code scannen f\u00fcr digitale Version")}</p>
   </div>` : ""}
-
-  <div class="footer">
-    ${footerText || `Erstellt mit protoKI \u2022 ${datum}`}
-  </div>
 </body>
 </html>`;
 }
@@ -417,21 +324,27 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
  */
 function markdownToHtml(md: string): string {
   if (!md) return "";
-  let html = md
-    .replace(/^### (.+)$/gm, "<h4>$1</h4>")
-    .replace(/^## (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^# (.+)$/gm, "<h2>$1</h2>")
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Escape first, then render a safe subset — never leak raw markdown into the PDF.
+  const inline = (s: string) => esc(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/^(\d+)\. (.+)$/gm, "<li>$2</li>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br/>");
-
-  // Wrap loose <li> in <ul>
-  html = html.replace(/(<li>.*?<\/li>)+/gs, (match) => `<ul>${match}</ul>`);
-
-  return `<p>${html}</p>`;
+    .replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
+  let html = "";
+  let inList = false;
+  const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+  for (const raw of md.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    let m: RegExpMatchArray | null;
+    if ((m = line.match(/^###\s+(.+)$/))) { closeList(); html += `<h4>${inline(m[1])}</h4>`; }
+    else if ((m = line.match(/^##\s+(.+)$/))) { closeList(); html += `<h3>${inline(m[1])}</h3>`; }
+    else if ((m = line.match(/^#\s+(.+)$/))) { closeList(); html += `<h2>${inline(m[1])}</h2>`; }
+    else if ((m = line.match(/^[-*•]\s+(.+)$/))) { if (!inList) { html += "<ul>"; inList = true; } html += `<li>${inline(m[1])}</li>`; }
+    else if ((m = line.match(/^\d+\.\s+(.+)$/))) { if (!inList) { html += "<ul>"; inList = true; } html += `<li>${inline(m[1])}</li>`; }
+    else { closeList(); html += `<p>${inline(line)}</p>`; }
+  }
+  closeList();
+  return html;
 }
 
 /**
