@@ -318,21 +318,22 @@ export default function BautagebuchScreen() {
       const ic = premiumIcons(accent);
       const reportHtml = markdownReportToHtml(entry.fullReport);
 
+      // Header (Kopf): Projektname · Datum · Wetter · Erstellt am
       const info: InfoCol[] = [];
       if (entry.projectName) info.push({ label: t('projekt' as any), value: entry.projectName, icon: ic.building });
       info.push({ label: t('datum' as any), value: dateLabel, icon: ic.calendar });
-      if (entry.weather) info.push({ label: t('wetter' as any), value: entry.weather, icon: ic.warning });
+      if (entry.weather) info.push({ label: t('wetter' as any), value: entry.weather, icon: ic.cloud });
+      info.push({ label: t('erstellt_am' as any), value: new Date(entry.createdAt).toLocaleDateString("de-DE"), icon: ic.calendarClock });
 
+      // Kennzahlenleiste: Anwesend · Neue Mängel · Behobene Mängel · Offene Mängel
+      const parseNum = (re: RegExp) => { const m = entry.fullReport?.match(re); return m ? Number(m[1]) : null; };
+      const newToday = parseNum(/Neu heute:\s*(\d+)/);
+      const resolvedToday = parseNum(/Behoben heute:\s*(\d+)/);
       const bandItems: { value: string | number; label: string; color: string; icon?: string }[] = [];
-      const wd = entry.weatherData;
       const gi = (color: string) => premiumIcons(color, 22);
-      if (wd) {
-        bandItems.push({ value: wd.description || "—", label: t('wetter' as any), color: "#334155", icon: gi("#64748b").cloud });
-        if (typeof wd.temperature === "number") bandItems.push({ value: `${Math.round(wd.temperature)} °C`, label: t('temperatur' as any), color: "#B45309", icon: gi("#B45309").thermometer });
-        if (typeof wd.humidity === "number") bandItems.push({ value: `${Math.round(wd.humidity)} %`, label: t('luftfeuchte' as any), color: "#0E7490", icon: gi("#0E7490").droplet });
-        if (typeof wd.windSpeed === "number") bandItems.push({ value: `${wd.windSpeed.toFixed(1).replace(".", ",")} km/h`, label: t('wind' as any), color: "#475569", icon: gi("#64748b").wind });
-      }
       if (entry.attendanceCount != null) bandItems.push({ value: entry.attendanceCount, label: t('bautagebuch_present' as any), color: "#334155", icon: gi("#64748b").people });
+      if (newToday != null) bandItems.push({ value: newToday, label: t('btb_dash_new' as any), color: "#EA580C", icon: gi("#EA580C").warning });
+      if (resolvedToday != null) bandItems.push({ value: resolvedToday, label: t('btb_dash_resolved' as any), color: "#16A34A", icon: gi("#16A34A").check });
       if (entry.defectsCount != null) bandItems.push({ value: entry.defectsCount, label: t('offene_maengel'), color: "#B91C1C", icon: gi("#B91C1C").warning });
       const band = bandItems.length ? statBand(bandItems) : "";
 
