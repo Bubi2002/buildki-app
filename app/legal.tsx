@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   ScrollView,
   Text,
@@ -6,8 +6,10 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 import { DataRightsSection } from "@/components/data-rights-section";
+import { LegalModeContext, sanitizeLegal } from "@/lib/legal-mode";
 import { ScreenContainer } from "@/components/screen-container";
 import { useTranslation } from "@/lib/language-provider";
 import {
@@ -40,6 +42,7 @@ const SECTIONS: { key: LegalSection; titleKey: string }[] = [
   { key: "dsgvo-export", titleKey: "legal_tab_meine_daten" },
 ];
 
+
 export default function LegalScreen() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -47,6 +50,12 @@ export default function LegalScreen() {
   const [activeSection, setActiveSection] = useState<LegalSection>(
     (params.section as LegalSection) || "datenschutz",
   );
+  const [internal, setInternal] = useState(false);
+
+  const toggleInternal = () => {
+    setInternal((v) => !v);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
 
   return (
     <ScreenContainer className="p-0">
@@ -54,7 +63,15 @@ export default function LegalScreen() {
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.6}>
           <Text className="text-primary text-base">{t('legal_zurueck')}</Text>
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-foreground ml-4">{t('legal_rechtliches')}</Text>
+        {/* Long-press the title to toggle the internal compliance view. */}
+        <TouchableOpacity onLongPress={toggleInternal} delayLongPress={600} activeOpacity={1} className="ml-4 flex-row items-center">
+          <Text className="text-lg font-bold text-foreground">{t('legal_rechtliches')}</Text>
+          {internal && (
+            <View className="ml-2 px-2 py-0.5 bg-error/20 border border-error rounded">
+              <Text className="text-error text-xs font-bold">{t('legal_mode_internal' as any)}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -117,13 +134,15 @@ export default function LegalScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <DraftBanner />
-        {activeSection === "datenschutz" && <DatenschutzContent />}
-        {activeSection === "impressum" && <ImpressumContent />}
-        {activeSection === "agb" && <AGBContent />}
-        {activeSection === "ki-hinweis" && <KIHinweisContent />}
-        {activeSection === "lizenzen" && <LizenzenContent />}
-        {activeSection === "dsgvo-export" && <DataRightsSection />}
+        <LegalModeContext.Provider value={internal}>
+          {internal && <DraftBanner />}
+          {activeSection === "datenschutz" && <DatenschutzContent />}
+          {activeSection === "impressum" && <ImpressumContent />}
+          {activeSection === "agb" && <AGBContent />}
+          {activeSection === "ki-hinweis" && <KIHinweisContent />}
+          {activeSection === "lizenzen" && <LizenzenContent />}
+          {activeSection === "dsgvo-export" && <DataRightsSection />}
+        </LegalModeContext.Provider>
       </ScrollView>
     </ScreenContainer>
   );
@@ -146,7 +165,7 @@ function DatenschutzContent() {
   const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">{t('legal_datenschutz_pruefentwurf')}</Text>
+      <H1 text={t('legal_datenschutz_pruefentwurf')} />
 
       <Section title={t('legal_ds_1_verantwortlicher')}>
         <OpenLine label={t('legal_name_firma')} value={LEGAL_PROVIDER.legalName} />
@@ -247,7 +266,7 @@ function ImpressumContent() {
   const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">{t('legal_impressum_pruefentwurf')}</Text>
+      <H1 text={t('legal_impressum_pruefentwurf')} />
       <Section title={t('legal_imp_angaben')}>
         <OpenLine label={t('legal_name_firma')} value={LEGAL_PROVIDER.legalName} />
         <OpenLine label={t('legal_rechtsform')} value={LEGAL_PROVIDER.legalForm} />
@@ -282,7 +301,7 @@ function AGBContent() {
   const { t } = useTranslation();
   return (
     <View className="gap-5 pb-8">
-      <Text className="text-xl font-bold text-foreground">{t('legal_agb_pruefentwurf')}</Text>
+      <H1 text={t('legal_agb_pruefentwurf')} />
 
       <Section title={t('legal_agb_1_anbieter')}>
         <OpenLine label={t('legal_agb_vertragspartner')} value={LEGAL_PROVIDER.legalName} />
@@ -414,6 +433,11 @@ function LizenzenContent() {
   );
 }
 
+function H1({ text }: { text: string }) {
+  const internal = useContext(LegalModeContext);
+  return <Text className="text-xl font-bold text-foreground">{internal ? text : sanitizeLegal(text)}</Text>;
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View className="gap-2">
@@ -428,22 +452,30 @@ function P({ children }: { children: React.ReactNode }) {
 }
 
 function Bullet({ text }: { text: string }) {
+  const internal = useContext(LegalModeContext);
+  const shown = internal ? text : sanitizeLegal(text);
+  if (!shown) return null;
   return (
     <View className="flex-row pl-2">
       <Text className="text-sm text-muted mr-2">•</Text>
-      <Text className="text-sm text-foreground leading-5 flex-1">{text}</Text>
+      <Text className="text-sm text-foreground leading-5 flex-1">{shown}</Text>
     </View>
   );
 }
 
 function OpenValue() {
+  const internal = useContext(LegalModeContext);
+  if (!internal) return null; // never show open-point markers to users
   return (
     <Text className="text-sm text-error font-bold leading-5">{LEGAL_DRAFT_MARKER}</Text>
   );
 }
 
 function OpenLine({ label, value }: { label: string; value: string }) {
+  const internal = useContext(LegalModeContext);
   const isOpen = value.includes(LEGAL_DRAFT_MARKER);
+  // Hide unfilled (open) fields from the user-facing view entirely.
+  if (!internal && isOpen) return null;
   return (
     <View className="border-l-2 border-border pl-3 py-1">
       <Text className="text-xs text-muted font-semibold">{label}</Text>

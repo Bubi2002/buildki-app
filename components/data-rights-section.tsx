@@ -1,6 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/lib/language-provider";
 import { deleteAllLocalUserData, shareCombinedDataExport } from "@/lib/data-rights";
 import { LEGAL_CONTACT_EMAIL, LEGAL_DRAFT_MARKER } from "@/lib/legal-draft";
+import { LegalModeContext } from "@/lib/legal-mode";
 import { trpc } from "@/lib/trpc";
 
 const DELETE_CONFIRMATION = "KONTO ENDGÜLTIG LÖSCHEN";
@@ -33,6 +34,7 @@ export function DataRightsSection() {
   const [confirmation, setConfirmation] = useState("");
   const [acknowledgeProviderResiduals, setAcknowledgeProviderResiduals] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const internalLegal = useContext(LegalModeContext);
 
   const handleExport = async () => {
     if (!isAuthenticated) {
@@ -80,7 +82,7 @@ export function DataRightsSection() {
         t('data_rights_section_deleted_title' as any),
         `${t('data_rights_section_deleted_p1' as any)}${localResult.removedStorageKeys}${t('data_rights_section_deleted_p2' as any)}${localResult.removedDocumentEntries}${t('data_rights_section_deleted_p3' as any)}${localResult.removedCacheEntries}${t('data_rights_section_deleted_p4' as any)}${
           residualCount > 0
-            ? `\n\n${residualCount}${t('data_rights_section_residual' as any)}${LEGAL_DRAFT_MARKER}.`
+            ? `\n\n${residualCount}${t('data_rights_section_residual' as any)}${internalLegal ? LEGAL_DRAFT_MARKER : ""}.`
             : ""
         }`,
         [{ text: t('ok'), onPress: () => router.replace("/login" as any) }],
@@ -106,9 +108,11 @@ export function DataRightsSection() {
         <Text className="text-sm text-foreground leading-5">
           {t('data_rights_section_export_desc' as any)}
         </Text>
-        <Text className="text-xs text-warning leading-4">
-          {t('data_rights_section_export_binary_prefix' as any)}{LEGAL_DRAFT_MARKER}
-        </Text>
+        {internalLegal && (
+          <Text className="text-xs text-warning leading-4">
+            {t('data_rights_section_export_binary_prefix' as any)}{LEGAL_DRAFT_MARKER}
+          </Text>
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('data_rights_section_export_title' as any)}
@@ -129,9 +133,11 @@ export function DataRightsSection() {
         <Text className="text-sm text-foreground leading-5">
           {t('data_rights_section_delete_desc' as any)}
         </Text>
-        <Text className="text-xs text-warning leading-4">
-          {t('data_rights_section_delete_residual_prefix' as any)}{LEGAL_DRAFT_MARKER}
-        </Text>
+        {internalLegal && (
+          <Text className="text-xs text-warning leading-4">
+            {t('data_rights_section_delete_residual_prefix' as any)}{LEGAL_DRAFT_MARKER}
+          </Text>
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('data_rights_section_delete_title' as any)}
