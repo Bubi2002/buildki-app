@@ -1,6 +1,7 @@
 import { getDefects, type Defect, type DefectStatus, type DefectPriority } from "./defect-store";
 import { getPdfBranding } from "./pdf-branding-store";
 import * as FileSystem from "expo-file-system/legacy";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TRADE_NAMES, type TradeName } from "./trades";
 
 /**
@@ -25,6 +26,12 @@ export async function generateDefectPdfHtml(
   }
 ): Promise<string> {
   const branding = await getPdfBranding();
+  // Load project meta (address, client) to enrich the cover page.
+  let projectMeta: { address?: string; client?: string; contact?: string; contactName?: string } | null = null;
+  try {
+    const raw = await AsyncStorage.getItem("projects");
+    if (raw) projectMeta = (JSON.parse(raw) as any[]).find((p) => p.id === projectId) || null;
+  } catch {}
   let defects = await getDefects(projectId);
 
   // Apply filters
@@ -165,6 +172,10 @@ export async function generateDefectPdfHtml(
   const icoBuilding = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 8h5a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5"/><path d="M7 7h.01M7 11h.01M7 15h.01M10 7h.01M10 11h.01M10 15h.01"/></svg>`;
   const icoCal = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>`;
   const icoWarn = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>`;
+  const icoPin = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>`;
+  const icoUser = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>`;
+  const projAddress = projectMeta?.address ? esc(projectMeta.address) : "";
+  const projContact = esc(projectMeta?.client || projectMeta?.contact || projectMeta?.contactName || "");
 
   let html = `<!DOCTYPE html>
 <html>
@@ -224,7 +235,9 @@ export async function generateDefectPdfHtml(
 
     <div class="infogrid">
       <div class="infocol"><div class="lbl">${icoBuilding} Projekt</div><div class="val">${esc(projectName)}</div></div>
-      <div class="infocol"><div class="lbl">${icoCal} Datum</div><div class="val">${dateStr}</div></div>
+      ${projAddress ? `<div class="infocol"><div class="lbl">${icoPin} Adresse</div><div class="val">${projAddress}</div></div>` : ""}
+      <div class="infocol"><div class="lbl">${icoCal} Erstellt am</div><div class="val">${dateStr}</div></div>
+      ${projContact ? `<div class="infocol"><div class="lbl">${icoUser} Ansprechpartner</div><div class="val">${projContact}</div></div>` : ""}
       <div class="infocol"><div class="lbl">${icoWarn} Mängel gesamt</div><div class="val">${stats.total}</div></div>
     </div>
 
