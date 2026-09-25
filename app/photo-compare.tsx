@@ -8,6 +8,7 @@ import {
   Platform,
   Alert,
   TextInput,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -27,6 +28,7 @@ import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/co
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 type ComparisonPair = {
   id: string;
@@ -71,6 +73,7 @@ export default function PhotoCompareScreen() {
   // Optional project/floor/room/notes for the PDF export; initialized from the
   // selected pair so previously entered values are remembered.
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
+  const [zoomUri, setZoomUri] = useState<string | null>(null);
   useEffect(() => {
     setExportDetails(selectedPair?.exportDetails || EMPTY_EXPORT_DETAILS);
   }, [selectedPair?.id]);
@@ -237,6 +240,9 @@ export default function PhotoCompareScreen() {
   if (selectedPair) {
     const imgWidth = SCREEN_WIDTH - 32;
     const imgHeight = imgWidth * 0.75;
+    // Split view: two equal tiles side by side, large and prominent
+    const colWidth = (imgWidth - 8) / 2;
+    const splitHeight = Math.min(SCREEN_HEIGHT * 0.55, colWidth * 1.5);
 
     return (
       <ScreenContainer className="flex-1">
@@ -267,28 +273,38 @@ export default function PhotoCompareScreen() {
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-            {/* Side-by-side comparison */}
+            {/* Split view: before left, after right — equal size */}
             <View ref={compareRef} style={{ backgroundColor: colors.background }}>
-              <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.error, marginBottom: 4, textAlign: "center" }}>{t('vorher')}</Text>
-                  <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 0 }} contentFit="cover" />
-                  <Text style={{ fontSize: 10, color: colors.muted, textAlign: "center", marginTop: 4 }}>{formatDate(selectedPair.beforeDate)}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error }} />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.error }}>{t('vorher')}</Text>
+                  </View>
+                  <Pressable onPress={() => setZoomUri(selectedPair.beforeUri)}>
+                    <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="cover" />
+                  </Pressable>
+                  <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 6 }}>{formatDate(selectedPair.beforeDate)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.success, marginBottom: 4, textAlign: "center" }}>{t('nachher')}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.success }}>{t('nachher')}</Text>
+                  </View>
                   {selectedPair.afterUri ? (
                     <>
-                      <Image source={{ uri: selectedPair.afterUri }} style={{ width: "100%", height: imgHeight / 2, borderRadius: 0 }} contentFit="cover" />
-                      <Text style={{ fontSize: 10, color: colors.muted, textAlign: "center", marginTop: 4 }}>{formatDate(selectedPair.afterDate!)}</Text>
+                      <Pressable onPress={() => setZoomUri(selectedPair.afterUri!)}>
+                        <Image source={{ uri: selectedPair.afterUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="cover" />
+                      </Pressable>
+                      <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 6 }}>{formatDate(selectedPair.afterDate!)}</Text>
                     </>
                   ) : (
                     <Pressable
                       onPress={() => addAfterPhoto(selectedPair)}
                       style={({ pressed }) => [{
                         width: "100%",
-                        height: imgHeight / 2,
-                        borderRadius: 0,
+                        height: splitHeight,
+                        borderRadius: 8,
                         borderWidth: 2,
                         borderStyle: "dashed",
                         borderColor: colors.border,
@@ -305,24 +321,28 @@ export default function PhotoCompareScreen() {
               </View>
             </View>
 
-            {/* Full-size images */}
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>{t('vollansicht')}</Text>
-            <View style={{ gap: 12 }}>
-              <View>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.error, marginBottom: 4 }}>{t('vorher')} – {formatDate(selectedPair.beforeDate)}</Text>
-                <Image source={{ uri: selectedPair.beforeUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 0 }} contentFit="contain" />
-              </View>
-              {selectedPair.afterUri && (
-                <View>
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: colors.success, marginBottom: 4 }}>{t('nachher')} – {formatDate(selectedPair.afterDate!)}</Text>
-                  <Image source={{ uri: selectedPair.afterUri }} style={{ width: imgWidth, height: imgHeight, borderRadius: 0 }} contentFit="contain" />
-                </View>
-              )}
-            </View>
+            {selectedPair.afterUri && (
+              <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 12 }}>{t('photo_compare_tap_zoom' as any)}</Text>
+            )}
 
             {/* Optional details printed into the PDF export header */}
             <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
           </ScrollView>
+
+          {/* Fullscreen zoom overlay */}
+          <Modal visible={!!zoomUri} transparent animationType="fade" onRequestClose={() => setZoomUri(null)}>
+            <Pressable
+              onPress={() => setZoomUri(null)}
+              style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" }}
+            >
+              {zoomUri && (
+                <Image source={{ uri: zoomUri }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.8 }} contentFit="contain" />
+              )}
+              <View style={{ position: "absolute", top: 48, right: 20 }}>
+                <MaterialIcons name="close" size={32} color="#fff" />
+              </View>
+            </Pressable>
+          </Modal>
         </View>
       </ScreenContainer>
     );

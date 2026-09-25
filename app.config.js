@@ -3,7 +3,7 @@ const config = {
   name: "BuildKI",
   slug: "protokoll-app",
   owner: "iserlohs-team",
-  version: "1.11.6",
+  version: "1.11.7",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "manus20250614001800",
