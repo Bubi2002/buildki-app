@@ -208,6 +208,23 @@ interface LayoutOptions {
   photoSize?: "klein" | "mittel" | "gro\u00df";
 }
 
+// Status / priority label → colour, for rendering coloured pills in tables.
+const PILL_COLORS: Record<string, string> = {
+  "offen": "#DC2626",
+  "zugewiesen": "#EA580C",
+  "in arbeit": "#2563EB",
+  "in bearbeitung": "#D97706",
+  "nachbesserung": "#DB2777",
+  "prüfung": "#7C3AED",
+  "pruefung": "#7C3AED",
+  "erledigt": "#16A34A",
+  "abgelehnt": "#78716C",
+  "geschlossen": "#475569",
+  "hoch": "#B91C1C",
+  "mittel": "#B45309",
+  "niedrig": "#6B7280",
+};
+
 export function generatePdfHtml(
   protocol: PdfProtocol,
   company: CompanySettings,
@@ -429,11 +446,11 @@ export function generatePdfHtml(
           }
         }
         // Build HTML table
-        let tableHtml = '<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10px;">';
+        let tableHtml = '<table class="doc-table">';
         // Header
-        tableHtml += '<thead><tr style="background-color: #f0f0f0;">';
+        tableHtml += '<thead><tr>';
         for (const cell of headerCells) {
-          tableHtml += `<th style="padding: 6px 8px; border: 1px solid #ddd; font-weight: 600; text-align: left; font-size: 10px;">${cell.trim().replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</th>`;
+          tableHtml += `<th>${cell.trim().replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</th>`;
         }
         tableHtml += '</tr></thead><tbody>';
         // Data rows (skip header and separator)
@@ -444,7 +461,15 @@ export function generatePdfHtml(
           tableHtml += '<tr>';
           for (let c = 0; c < headerCells.length; c++) {
             const cellText = (cells[c] || '').trim().replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            tableHtml += `<td style="padding: 5px 8px; border: 1px solid #ddd; font-size: 10px; word-wrap: break-word;">${cellText}</td>`;
+            const headerName = (headerCells[c] || '').trim().toLowerCase();
+            let cellHtml = cellText;
+            // Colour-code status / priority cells as pills (like the reference layout).
+            if (headerName.includes('status') || headerName.includes('priorit')) {
+              const plain = cellText.replace(/<[^>]+>/g, '').trim();
+              const pc = PILL_COLORS[plain.toLowerCase()];
+              if (pc) cellHtml = `<span class="pill" style="background:${pc}1A;color:${pc};border:1px solid ${pc}44;">${plain}</span>`;
+            }
+            tableHtml += `<td>${cellHtml}</td>`;
           }
           tableHtml += '</tr>';
         }
@@ -676,15 +701,15 @@ export function generatePdfHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     @page {
-      margin: 20mm 15mm 25mm 15mm;
+      margin: 17mm 18mm 20mm 18mm;
     }
     * {
       box-sizing: border-box;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #222;
+      font-size: 11.5px;
+      color: #1f2937;
       line-height: 1.6;
       margin: 0;
       padding: 0;
@@ -711,12 +736,24 @@ export function generatePdfHtml(
       padding-top: 0;
     }
     .document-chapter > h2 {
-      margin: 0 0 14px 0;
-      padding-bottom: 7px;
-      border-bottom: 2px solid #333;
-      color: #111;
-      font-size: 18px;
+      position: relative;
+      margin: 0 0 16px 0;
+      padding: 1px 0 11px 34px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #0F2744;
+      font-size: 17px;
       font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+    .document-chapter > h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 23px;
+      height: 23px;
+      background: #0F2744;
+      border-radius: 6px;
     }
     .evidence-section {
       break-before: page;
@@ -793,45 +830,102 @@ export function generatePdfHtml(
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 3px solid ${accentColor || protocol.projectColor || '#0E7490'};
-      padding-bottom: 12px;
-      margin-bottom: 20px;
+      padding-bottom: 14px;
+      margin-bottom: 8px;
     }
     .header-left {
-      flex: 1;
+      flex: 1.4;
     }
     .header-right {
       flex: 1;
       text-align: right;
     }
     .doc-title {
-      font-size: 26px;
+      font-size: 30px;
       font-weight: 800;
       color: #0F2744;
-      letter-spacing: 0.3px;
-      margin: 0 0 4px 0;
+      letter-spacing: -0.6px;
+      line-height: 1.1;
+      margin: 8px 0 2px 0;
     }
     .doc-subtitle {
-      font-size: 12px;
-      color: #444;
+      font-size: 12.5px;
+      color: #64748b;
+      font-weight: 600;
       margin: 0;
+    }
+    .title-rule {
+      width: 56px;
+      height: 4px;
+      border-radius: 2px;
+      background: ${accentColor || protocol.projectColor || '#0E7490'};
+      margin: 12px 0 18px 0;
     }
     .meta-table {
       width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-bottom: 22px;
       font-size: 11px;
+      background: #f8fafc;
+      border: 1px solid #e8ecf1;
+      border-radius: 10px;
+      overflow: hidden;
     }
     .meta-table td {
-      padding: 8px 12px;
-      border: 1px solid #d0d0d0;
-      color: #222;
+      padding: 9px 14px;
+      border-bottom: 1px solid #eef1f5;
+    }
+    .meta-table tr:last-child td {
+      border-bottom: none;
     }
     .meta-table td:first-child {
+      font-weight: 700;
+      width: 150px;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 9.5px;
+      letter-spacing: 0.4px;
+      vertical-align: top;
+    }
+    .meta-table td:last-child {
+      color: #1f2937;
       font-weight: 600;
-      width: 140px;
-      background-color: #f5f5f5;
-      color: #333;
+    }
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 10.5px;
+    }
+    .doc-table th {
+      background: #f8fafc;
+      color: #334155;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.3px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .doc-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #eef1f5;
+      color: #334155;
+      vertical-align: top;
+      word-wrap: break-word;
+    }
+    .doc-table tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 11px;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
     }
     .content {
       margin-bottom: 20px;
@@ -854,10 +948,10 @@ export function generatePdfHtml(
       left: 0;
       right: 0;
       text-align: center;
-      font-size: 9px;
-      color: #999;
-      border-top: 1px solid #eee;
-      padding-top: 8px;
+      font-size: 8.5px;
+      color: #94a3b8;
+      border-top: 1px solid #e8ecf1;
+      padding: 7px 4px 0;
     }
     .watermark {
       position: fixed;
@@ -950,13 +1044,14 @@ export function generatePdfHtml(
   <div class="header">
     <div class="header-left">
       ${logoHtml}
-      <h1 class="doc-title">${escapeHtml(protocol.projectName || "Projekt")}</h1>
       <p class="doc-subtitle"><strong>${escapeHtml(protocol.templateName || "Protokoll")}</strong></p>
+      <h1 class="doc-title">${escapeHtml(protocol.projectName || "Projekt")}</h1>
     </div>
     <div class="header-right">
       ${companyInfoHtml}
     </div>
   </div>
+  <div class="title-rule"></div>
   `}
 
   ${layoutShowMetadata ? `<table class="meta-table">
