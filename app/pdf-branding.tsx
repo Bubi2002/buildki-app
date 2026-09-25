@@ -12,7 +12,7 @@ import { useTranslation } from "@/lib/language-provider";
 
 // Muted accent palette — same hues, less neon/saturation.
 const ACCENT_COLORS = [
-  "#0E7490", "#2C4A8C", "#6D45B0", "#B23B3B",
+  "#1E3A5F", "#2C4A8C", "#6D45B0", "#B23B3B",
   "#2E7D5B", "#BC6B24", "#3F4855", "#172033",
 ];
 

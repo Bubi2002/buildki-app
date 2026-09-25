@@ -91,9 +91,9 @@ function sectionStyle(title: string): { icon: any; color: string } {
   if (t.includes("arbeit")) return { icon: "construction", color: "#475569" };
   if (t.includes("mängel") || t.includes("maengel") || t.includes("mangel")) return { icon: "warning", color: "#DC2626" };
   if (t.includes("vorkommnis")) return { icon: "report-problem", color: "#EA580C" };
-  if (t.includes("lieferung") || t.includes("material")) return { icon: "local-shipping", color: "#0E7490" };
+  if (t.includes("lieferung") || t.includes("material")) return { icon: "local-shipping", color: "#4F46E5" };
   if (t.includes("entscheidung") || t.includes("anweisung")) return { icon: "gavel", color: "#7C3AED" };
-  if (t.includes("planung")) return { icon: "event", color: "#0891B2" };
+  if (t.includes("planung")) return { icon: "event", color: "#0369A1" };
   return { icon: "sticky-note-2", color: "#64748B" };
 }
 
@@ -365,7 +365,7 @@ export default function BautagebuchScreen() {
         year: "numeric",
       });
       const branding = await getPdfBranding();
-      const accent = branding.accentColor || "#0E7490";
+      const accent = branding.accentColor || "#1E3A5F";
       const logoDataUri = await resolveBrandingLogo(branding);
       const ic = premiumIcons(accent);
       const reportHtml = markdownReportToHtml(entry.fullReport);

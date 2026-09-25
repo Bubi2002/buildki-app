@@ -1385,12 +1385,12 @@ export default function DefectsScreen() {
                     style={({ pressed }) => [{
                       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
                       paddingVertical: 12, marginBottom: 12, borderWidth: 1,
-                      borderColor: "#0E749040", backgroundColor: "#0E749010",
+                      borderColor: "#1E3A5F40", backgroundColor: "#1E3A5F10",
                       opacity: pressed ? 0.7 : 1,
                     }]}
                   >
-                    <MaterialIcons name="place" size={18} color="#0E7490" />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#0E7490" }}>{t('defects_auf_plan_zeigen' as any)}</Text>
+                    <MaterialIcons name="place" size={18} color="#1E3A5F" />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#1E3A5F" }}>{t('defects_auf_plan_zeigen' as any)}</Text>
                   </Pressable>
                 )}
 

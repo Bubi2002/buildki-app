@@ -133,7 +133,7 @@ export default function ChecklistsScreen() {
       const esc = (s: unknown) =>
         String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const branding = await getPdfBranding();
-      const accent = branding.accentColor || "#0E7490";
+      const accent = branding.accentColor || "#1E3A5F";
       const ic = premiumIcons(accent);
       const dateStr = new Date(result.createdAt).toLocaleDateString("de-DE");
       const done = result.results.filter((r) => r.checked).length;

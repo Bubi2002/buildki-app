@@ -55,7 +55,7 @@ export function markdownReportToHtml(markdown: string): string {
 
 /** CSS for the report body — calm navy house style with numbered section
  * blocks and a short accent underline (matches the premium report look). */
-export function markdownReportStyles(accent = "#0E7490"): string {
+export function markdownReportStyles(accent = "#1E3A5F"): string {
   const NAVY = "#0F2744";
   return `
     .md-report { counter-reset: sec; }

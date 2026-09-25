@@ -139,7 +139,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   const infoHtml = `<div class="infogrid">${infoCols.join("")}</div>`;
 
   // Auto-dashboard: sections whose title ends with "(N)" become stat cards.
-  const palette = ["#334155", "#2563EB", "#0E7490", "#B45309", "#7C3AED", "#16A34A"];
+  const palette = ["#334155", "#2563EB", "#1E3A5F", "#B45309", "#7C3AED", "#16A34A"];
   const dash = sections
     .map((s) => { const m = s.title.match(/^(.*?)\s*\((\d+)\)\s*$/); return m ? { label: m[1].trim(), value: Number(m[2]) } : null; })
     .filter((d): d is { label: string; value: number } => d !== null);

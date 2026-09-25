@@ -53,7 +53,7 @@ export async function generateDefectPdfHtml(
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const accentColor = branding.accentColor || "#0E7490";
+  const accentColor = branding.accentColor || "#1E3A5F";
   const now = new Date();
   const dateStr = now.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 

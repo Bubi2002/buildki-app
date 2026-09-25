@@ -51,7 +51,7 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showPageNumbers: true,
   showDate: true,
   showProjectName: true,
-  accentColor: "#0E7490",
+  accentColor: "#1E3A5F",
   filenameSchema: "project_date_nr",
   pdfTemplate: "standard" as PdfTemplate,
   photoWatermark: true,
@@ -112,6 +112,10 @@ export async function getPdfBranding(): Promise<PdfBranding> {
       // Migrate the legacy boolean to the new 3-state mode if not set yet.
       if (!JSON.parse(stored).autoSendMode) {
         merged.autoSendMode = merged.autoSendEmail ? "auto" : "off";
+      }
+      // Migrate the old teal default accent to the new navy default.
+      if (merged.accentColor === "#0E7490") {
+        merged.accentColor = "#1E3A5F";
       }
       return merged;
     }
@@ -272,7 +276,7 @@ export function generateCoverPage(
   },
   logoBase64?: string | null
 ): string {
-  const accentColor = branding.accentColor || protocol.projectColor || "#0E7490";
+  const accentColor = branding.accentColor || protocol.projectColor || "#1E3A5F";
   const date = new Date(protocol.createdAt);
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });

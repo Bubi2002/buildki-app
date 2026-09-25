@@ -858,7 +858,7 @@ export function generatePdfHtml(
       width: 56px;
       height: 4px;
       border-radius: 2px;
-      background: ${accentColor || protocol.projectColor || '#0E7490'};
+      background: ${accentColor || protocol.projectColor || '#1E3A5F'};
       margin: 12px 0 18px 0;
     }
     .meta-table {
