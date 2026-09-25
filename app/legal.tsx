@@ -264,8 +264,45 @@ function DatenschutzContent() {
   );
 }
 
+function PlainLine({ label, value }: { label: string; value: string }) {
+  const open = !value || value.includes(LEGAL_DRAFT_MARKER);
+  return (
+    <View className="flex-row justify-between py-2 border-b border-border">
+      <Text className="text-sm text-muted pr-4">{label}</Text>
+      <Text className="text-sm text-foreground font-medium text-right flex-1">{open ? "—" : value}</Text>
+    </View>
+  );
+}
+
+function ImpressumPlain() {
+  const { t } = useTranslation();
+  const address = [LEGAL_PROVIDER.streetAddress, LEGAL_PROVIDER.postalCodeAndCity]
+    .filter((v) => v && !v.includes(LEGAL_DRAFT_MARKER))
+    .join(", ");
+  return (
+    <View className="gap-1 pb-8">
+      <H1 text={t('legal_impressum_pruefentwurf')} />
+      <View className="mt-3">
+        <PlainLine label={t('legal_imp_field_company' as any)} value={LEGAL_PROVIDER.legalName} />
+        <PlainLine label={t('legal_rechtsform')} value={LEGAL_PROVIDER.legalForm} />
+        <PlainLine label={t('legal_anschrift')} value={address} />
+        <PlainLine label={t('legal_imp_field_representative' as any)} value={LEGAL_PROVIDER.representative} />
+        <PlainLine label={t('legal_imp_field_phone' as any)} value={LEGAL_PROVIDER.phone} />
+        <PlainLine label={t('legal_imp_field_email' as any)} value={LEGAL_CONTACT_EMAIL} />
+        <PlainLine label={t('legal_imp_registergericht')} value={LEGAL_PROVIDER.registerCourt} />
+        <PlainLine label={t('legal_imp_registernummer')} value={LEGAL_PROVIDER.registerNumber} />
+        <PlainLine label={t('legal_imp_ustid')} value={LEGAL_PROVIDER.vatOrBusinessId} />
+      </View>
+    </View>
+  );
+}
+
 function ImpressumContent() {
   const { t } = useTranslation();
+  const internal = useContext(LegalModeContext);
+  // User view: plain Impressum list (no red markers, no AI notice). Internal
+  // view: full draft with open-point markers.
+  if (!internal) return <ImpressumPlain />;
   return (
     <View className="gap-5 pb-8">
       <H1 text={t('legal_impressum_pruefentwurf')} />
