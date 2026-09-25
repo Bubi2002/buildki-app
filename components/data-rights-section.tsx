@@ -20,8 +20,13 @@ import { trpc } from "@/lib/trpc";
 
 const DELETE_CONFIRMATION = "KONTO ENDGÜLTIG LÖSCHEN";
 
+const DR_DATE_LOCALE: Record<string, string> = {
+  de: "de-DE", en: "en-GB", fr: "fr-FR", es: "es-ES", uk: "uk-UA",
+  pl: "pl-PL", ru: "ru-RU", ro: "ro-RO", bg: "bg-BG", tr: "tr-TR",
+};
+
 export function DataRightsSection() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const accountExport = trpc.account.exportData.useQuery(undefined, {
@@ -34,6 +39,7 @@ export function DataRightsSection() {
   const [confirmation, setConfirmation] = useState("");
   const [acknowledgeProviderResiduals, setAcknowledgeProviderResiduals] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exportReadyAt, setExportReadyAt] = useState<string | null>(null);
   const internalLegal = useContext(LegalModeContext);
 
   const handleExport = async () => {
@@ -47,6 +53,7 @@ export function DataRightsSection() {
       if (result.error) throw result.error;
       if (!result.data) throw new Error(t('data_rights_section_export_no_data' as any));
       await shareCombinedDataExport(result.data);
+      setExportReadyAt(new Date().toLocaleDateString(DR_DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }));
     } catch (error: any) {
       Alert.alert(t('data_rights_section_export_failed' as any), error?.message || t('data_rights_section_export_failed_msg' as any));
     } finally {
@@ -108,6 +115,19 @@ export function DataRightsSection() {
         <Text className="text-sm text-foreground leading-5">
           {t('data_rights_section_export_desc' as any)}
         </Text>
+        {/* What the export contains */}
+        <View className="border border-border bg-surface p-3 gap-1">
+          <Text className="text-xs font-semibold text-muted mb-1">{t('dr_export_contains' as any)}</Text>
+          {[
+            "dr_export_i_account", "dr_export_i_projects", "dr_export_i_protocols",
+            "dr_export_i_defects", "dr_export_i_tasks", "dr_export_i_photos",
+          ].map((k) => (
+            <View key={k} className="flex-row items-center">
+              <MaterialIcons name="check" size={14} color="#5BA7D9" />
+              <Text className="text-sm text-foreground ml-2">{t(k as any)}</Text>
+            </View>
+          ))}
+        </View>
         {internalLegal && (
           <Text className="text-xs text-warning leading-4">
             {t('data_rights_section_export_binary_prefix' as any)}{LEGAL_DRAFT_MARKER}
@@ -126,6 +146,15 @@ export function DataRightsSection() {
             <Text className="text-background text-center font-semibold">{t('data_rights_section_export_button' as any)}</Text>
           )}
         </Pressable>
+        {/* Status */}
+        {exporting ? (
+          <Text className="text-xs text-muted mt-1">{t('dr_export_preparing' as any)}</Text>
+        ) : exportReadyAt ? (
+          <View className="flex-row items-center mt-1">
+            <MaterialIcons name="check-circle" size={14} color="#0E9F6E" />
+            <Text className="text-xs text-muted ml-1">{t('dr_export_ready_prefix' as any)}{exportReadyAt}</Text>
+          </View>
+        ) : null}
       </View>
 
       <View className="gap-2 border border-error p-4">
@@ -165,6 +194,17 @@ export function DataRightsSection() {
             <Text className="text-sm text-foreground leading-5">
               {t('data_rights_section_dialog_instruction' as any)}
             </Text>
+            {/* What will be deleted (explain the consequences clearly) */}
+            <View className="border border-border bg-surface p-3 gap-1">
+              <Text className="text-xs font-semibold text-muted mb-1">{t('dr_delete_what_title' as any)}</Text>
+              {["dr_delete_what_1", "dr_delete_what_2", "dr_delete_what_3"].map((k) => (
+                <View key={k} className="flex-row items-start">
+                  <MaterialIcons name="delete-outline" size={14} color="#EF4444" style={{ marginTop: 2 }} />
+                  <Text className="text-sm text-foreground ml-2 flex-1 leading-5">{t(k as any)}</Text>
+                </View>
+              ))}
+              <Text className="text-xs text-muted leading-4 mt-2">{t('dr_delete_retention' as any)}</Text>
+            </View>
             <Text className="text-sm font-bold text-foreground">{DELETE_CONFIRMATION}</Text>
             <TextInput
               value={confirmation}
