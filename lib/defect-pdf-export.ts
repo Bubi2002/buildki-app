@@ -59,6 +59,26 @@ export async function generateDefectPdfHtml(
     hoch: defects.filter(d => d.priority === "hoch" && d.status !== "erledigt").length,
   };
 
+  // Management-summary aggregates (Kurzüberblick)
+  const CLOSED: DefectStatus[] = ["erledigt", "abgelehnt", "geschlossen"];
+  const openDefects = defects.filter(d => !CLOSED.includes(d.status));
+  const prio = {
+    hoch: defects.filter(d => d.priority === "hoch").length,
+    mittel: defects.filter(d => d.priority === "mittel").length,
+    niedrig: defects.filter(d => d.priority === "niedrig").length,
+  };
+  const roomsAffected = Array.from(new Set(
+    defects.map(d => [d.floor, d.room].filter(Boolean).join(" · ") || d.location || "").filter(Boolean)
+  ));
+  const gewerkeAffected = Array.from(new Set(
+    defects.map(d => ((d as any).gewerk || d.category || "").toString().trim()).filter(Boolean)
+  ));
+  const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+  const weekAhead = new Date(today0); weekAhead.setDate(weekAhead.getDate() + 7);
+  const overdueCount = openDefects.filter(d => d.dueDate && new Date(d.dueDate) < today0).length;
+  const dueSoonCount = openDefects.filter(d => { if (!d.dueDate) return false; const dd = new Date(d.dueDate); return dd >= today0 && dd <= weekAhead; }).length;
+  const noDueCount = openDefects.filter(d => !d.dueDate).length;
+
   // Convert photos to base64
   const photoCache: Record<string, string> = {};
   if (options?.includePhotos !== false) {
@@ -215,6 +235,22 @@ export async function generateDefectPdfHtml(
       <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-icon">${siDone}</div><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
       <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-icon">${siHigh}</div><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
     </div></div>
+
+    <div style="display:flex; gap:10px; margin:14px 0 2px;">
+      <div style="flex:1; background:#f8fafc; border:1px solid #e8ecf1; border-radius:10px; padding:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; font-weight:700; margin-bottom:6px;">Prioritäten</div>
+        <div style="font-size:12px; color:#334155;"><span style="color:#B91C1C; font-weight:700;">${prio.hoch} Hoch</span> · <span style="color:#B45309; font-weight:700;">${prio.mittel} Mittel</span> · <span style="color:#6B7280; font-weight:700;">${prio.niedrig} Niedrig</span></div>
+      </div>
+      <div style="flex:1; background:#f8fafc; border:1px solid #e8ecf1; border-radius:10px; padding:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; font-weight:700; margin-bottom:6px;">Betroffen</div>
+        <div style="font-size:12px; color:#334155;">${roomsAffected.length} Räume · ${gewerkeAffected.length} Gewerke</div>
+        ${gewerkeAffected.length ? `<div style="font-size:10px; color:#94a3b8; margin-top:3px;">${esc(gewerkeAffected.slice(0, 4).join(", "))}${gewerkeAffected.length > 4 ? " …" : ""}</div>` : ""}
+      </div>
+      <div style="flex:1; background:#f8fafc; border:1px solid #e8ecf1; border-radius:10px; padding:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; font-weight:700; margin-bottom:6px;">Fristen (offen)</div>
+        <div style="font-size:12px; color:#334155;"><span style="color:#B91C1C; font-weight:700;">${overdueCount} überfällig</span> · ${dueSoonCount} diese Woche · ${noDueCount} ohne Frist</div>
+      </div>
+    </div>
 
     <div class="legend">
       <div class="legend-item"><span class="legend-dot" style="border-color: ${statusColors.offen};"></span>Offen</div>
