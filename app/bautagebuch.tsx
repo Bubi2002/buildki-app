@@ -21,6 +21,7 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as Print from "expo-print";
@@ -38,6 +39,7 @@ import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { buildPremiumHtml, statBand, premiumIcons, resolveBrandingLogo, type InfoCol } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 import { BusyOverlay } from "@/components/busy-overlay";
@@ -107,18 +109,67 @@ function StatCard({ icon, value, label, color, colors }: { icon: any; value: str
   );
 }
 
-function SectionCard({ title, body, colors }: { title: string; body: string; colors: any }) {
-  if (!body.trim()) return null;
+function SectionCard({ title, body, colors, onOpenDefects }: { title: string; body: string; colors: any; onOpenDefects?: () => void }) {
   const st = sectionStyle(title);
+  const trimmed = body.trim();
+  if (!trimmed) return null;
+
+  // Empty/placeholder sections ("Keine ... dokumentiert") → compact one-liner, not a big card.
+  const isPlaceholder = /^keine\b/i.test(trimmed) && trimmed.split(/\r?\n/).length <= 2;
+  if (isPlaceholder) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, paddingHorizontal: 12, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, opacity: 0.7 }}>
+        <MaterialIcons name={st.icon} size={15} color={colors.muted} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground }}>{title}</Text>
+        <Text style={{ fontSize: 12, color: colors.muted, flex: 1 }} numberOfLines={1}> · {trimmed}</Text>
+      </View>
+    );
+  }
+
+  const isPlanning = /planung/i.test(title);
+  const isMangel = /mängel|maengel|mangel/i.test(title);
+
+  // Critical defects → clickable cards, separated from the rest of the section body.
+  let criticalCards: any = null;
+  let bodyForMd = trimmed;
+  if (isMangel) {
+    const lines = trimmed.split(/\r?\n/);
+    const crit: string[] = [];
+    const rest: string[] = [];
+    let inCrit = false;
+    for (const l of lines) {
+      if (/kritische mängel/i.test(l)) { inCrit = true; continue; }
+      if (inCrit && /^\s*[-*]\s+/.test(l)) { crit.push(l.replace(/^\s*[-*]\s+/, "").replace(/^⚠️\s*/, "").trim()); continue; }
+      if (inCrit && !l.trim()) { inCrit = false; }
+      rest.push(l);
+    }
+    bodyForMd = rest.join("\n").trim();
+    if (crit.length) {
+      criticalCards = (
+        <View style={{ marginTop: 10, gap: 6 }}>
+          <Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626", marginBottom: 2 }}>Kritische Mängel</Text>
+          {crit.map((c: string, i: number) => (
+            <TouchableOpacity key={i} onPress={onOpenDefects} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 8, backgroundColor: "#DC262212", borderWidth: 1, borderColor: "#DC262633" }}>
+              <MaterialIcons name="error" size={16} color="#DC2626" />
+              <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>{c}</Text>
+              <MaterialIcons name="chevron-right" size={18} color="#DC2626" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+  }
+
   return (
-    <View style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border }}>
+    <View style={{ borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: isPlanning ? st.color : colors.border, borderLeftWidth: isPlanning ? 4 : 1, borderLeftColor: isPlanning ? st.color : colors.border, backgroundColor: isPlanning ? st.color + "0D" : colors.surface }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
         <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: st.color + "1A", alignItems: "center", justifyContent: "center" }}>
           <MaterialIcons name={st.icon} size={18} color={st.color} />
         </View>
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, flex: 1 }}>{title}</Text>
       </View>
-      <ReportMarkdownPreview markdown={body} />
+      {bodyForMd ? <ReportMarkdownPreview markdown={bodyForMd} /> : null}
+      {criticalCards}
     </View>
   );
 }
@@ -134,6 +185,7 @@ export default function BautagebuchScreen() {
   const [manualNotes, setManualNotes] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [editingReport, setEditingReport] = useState(false);
   const [reportDraft, setReportDraft] = useState("");
 
@@ -337,6 +389,15 @@ export default function BautagebuchScreen() {
       if (entry.defectsCount != null) bandItems.push({ value: entry.defectsCount, label: t('offene_maengel'), color: "#B91C1C", icon: gi("#B91C1C").warning });
       const band = bandItems.length ? statBand(bandItems) : "";
 
+      // Optional export details (entered in the modal) → header block in the PDF.
+      const detailsHeader = buildExportDetailsHeaderHtml(exportDetails, {
+        bauvorhaben: t('export_bauvorhaben'),
+        adresse: t('export_adresse'),
+        etage: t('export_etage'),
+        raum: t('export_raum'),
+        notizen: t('export_notizen'),
+      });
+
       const html = buildPremiumHtml({
         branding,
         accentColor: accent,
@@ -344,7 +405,7 @@ export default function BautagebuchScreen() {
         reportTag: t('bautagebuch_report_tag' as any),
         subtitle: esc(dateLabel),
         info,
-        body: `${band}<div class="md-report" style="margin-top:18px;">${reportHtml}</div>`,
+        body: `${band}${detailsHeader ? `<div style="margin-top:14px;">${detailsHeader}</div>` : ""}<div class="md-report" style="margin-top:18px;">${reportHtml}</div>`,
         extraCss: markdownReportStyles(accent),
         logoDataUri,
         footerLeft: entry.projectName ? `Projekt: ${entry.projectName}` : undefined,
@@ -403,10 +464,9 @@ export default function BautagebuchScreen() {
   if (selectedEntry) {
     const sections = parseReportSections(selectedEntry.fullReport || "");
     const findSec = (kw: string) => sections.find((s) => s.title.toLowerCase().includes(kw));
-    const incSec = findSec("vorkommnis");
-    const incidentsCount = incSec ? incSec.body.split(/\r?\n/).filter((l) => l.trim().startsWith("- ")).length : 0;
     const mangelSec = findSec("mängel") || findSec("maengel");
     const resolvedToday = mangelSec ? mangelSec.body.match(/Behoben heute:\s*(\d+)/)?.[1] : undefined;
+    const newToday = mangelSec ? mangelSec.body.match(/Neu heute:\s*(\d+)/)?.[1] : undefined;
     return (
       <ScreenContainer className="p-4">
         <View className="flex-row items-center mb-4">
@@ -429,7 +489,7 @@ export default function BautagebuchScreen() {
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
-            onPress={() => exportPdf(selectedEntry)}
+            onPress={() => setShowExportModal(true)}
             style={{ padding: 8 }}
             accessibilityLabel={t('pdf_teilen')}
           >
@@ -463,24 +523,17 @@ export default function BautagebuchScreen() {
             </View>
           ) : (
             <>
-              {/* Dashboard – Tagesübersicht */}
+              {/* Kennzahlen: Anwesend · Neu · Behoben · Offen */}
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                {selectedEntry.weather ? (
-                  <StatCard icon="wb-sunny" value={selectedEntry.weather.split(",")[0]} label={t('weather_title')} color="#B45309" colors={colors} />
-                ) : null}
                 <StatCard icon="groups" value={selectedEntry.attendanceCount ?? 0} label={t('bautagebuch_present' as any)} color="#2563EB" colors={colors} />
+                <StatCard icon="add-alert" value={newToday ?? 0} label={t('btb_dash_new' as any)} color="#EA580C" colors={colors} />
+                <StatCard icon="check-circle" value={resolvedToday ?? 0} label={t('btb_dash_resolved' as any)} color="#16A34A" colors={colors} />
                 <StatCard icon="warning" value={selectedEntry.defectsCount ?? 0} label={t('offene_maengel')} color="#DC2626" colors={colors} />
-                {resolvedToday != null ? (
-                  <StatCard icon="check-circle" value={resolvedToday} label={t('btb_dash_resolved' as any)} color="#16A34A" colors={colors} />
-                ) : null}
-                {incidentsCount > 0 ? (
-                  <StatCard icon="report-problem" value={incidentsCount} label={t('btb_dash_incidents' as any)} color="#EA580C" colors={colors} />
-                ) : null}
               </View>
 
               {/* Sections as separate cards */}
               {sections.length > 0 ? (
-                sections.map((s, i) => <SectionCard key={i} title={s.title} body={s.body} colors={colors} />)
+                sections.map((s, i) => <SectionCard key={i} title={s.title} body={s.body} colors={colors} onOpenDefects={() => router.push("/defects")} />)
               ) : selectedEntry.fullReport ? (
                 <View className="bg-surface rounded-xl p-4 mb-4">
                   <ReportMarkdownPreview markdown={selectedEntry.fullReport} />
@@ -488,10 +541,31 @@ export default function BautagebuchScreen() {
               ) : null}
             </>
           )}
-
-          {/* Optional export details printed into the PDF header */}
-          <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
         </ScrollView>
+
+        {/* Export details as a small modal (opened from the PDF button), not inline on the page */}
+        <Modal visible={showExportModal} transparent animationType="slide" onRequestClose={() => setShowExportModal(false)}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 16, maxHeight: "88%" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: colors.foreground }}>{t('bautagebuch_export_details_title' as any)}</Text>
+                <TouchableOpacity onPress={() => setShowExportModal(false)} style={{ padding: 6 }}>
+                  <MaterialIcons name="close" size={22} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{t('bautagebuch_export_details_hint' as any)}</Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
+              </ScrollView>
+              <TouchableOpacity
+                onPress={() => { setShowExportModal(false); if (selectedEntry) exportPdf(selectedEntry); }}
+                style={{ marginTop: 12, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14, alignItems: "center" }}
+              >
+                <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>{t('pdf_exportieren' as any)}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScreenContainer>
     );
   }
