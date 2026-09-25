@@ -497,6 +497,24 @@ export default function DefectsScreen() {
     return m ? `${m[3]}.${m[2]}.` : "";
   };
 
+  // Send only this responsible person's open defects as a shareable list.
+  const sendAssigneeList = async (assignee: string) => {
+    const isOpen = (d: Defect) => d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt";
+    const items = defects.filter((d) => (d as any).assignee === assignee && isOpen(d));
+    if (items.length === 0) return;
+    const lines: string[] = [`${t('maengel')} – ${assignee}`, `${items.length} ${t('po_stat_open' as any)}`, ""];
+    for (const d of items) {
+      const loc = [d.floor, d.room].filter(Boolean).join(" ");
+      const frist = d.dueDate ? ` · ${t('frist')} ${fmtFrist(d.dueDate)}` : "";
+      lines.push(`• ${d.title || d.description || ""}${loc ? ` – ${loc}` : ""}${frist}`);
+    }
+    try {
+      const uri = `${FileSystem.cacheDirectory}maengel-${assignee.replace(/[^a-z0-9]/gi, "_")}.txt`;
+      await FileSystem.writeAsStringAsync(uri, lines.join("\n"));
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "text/plain", dialogTitle: assignee });
+    } catch {}
+  };
+
   const openDetail = async (defect: Defect) => {
     setSelectedDefect(defect);
     setEditingDefect(false);
@@ -761,10 +779,17 @@ export default function DefectsScreen() {
 
   const renderRow = ({ item }: { item: DefectRow }) => {
     if ("__header" in item) {
+      const canSend = groupBy === "verantwortlich" && item.__header !== t('defects_group_none' as any);
       return (
         <View style={styles.groupHeader}>
           <Text style={[styles.groupHeaderText, { color: colors.foreground }]}>{item.__header}</Text>
           <Text style={{ fontSize: 12, color: colors.muted }}>{item.__count}</Text>
+          {canSend && (
+            <Pressable onPress={() => sendAssigneeList(item.__header)} hitSlop={6} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}>
+              <MaterialIcons name="send" size={13} color={colors.primary} />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>{t('senden' as any)}</Text>
+            </Pressable>
+          )}
         </View>
       );
     }
