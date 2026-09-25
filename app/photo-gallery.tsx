@@ -47,7 +47,8 @@ type PhotoItem = {
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const GRID_GAP = 2;
-const COLUMNS = 3;
+// Denser grid on wider screens (iPad) so photos don't look sparse.
+const COLUMNS = SCREEN_WIDTH >= 1000 ? 6 : SCREEN_WIDTH >= 700 ? 4 : 3;
 const PHOTO_SIZE = (SCREEN_WIDTH - 40 - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
 
 export default function PhotoGalleryScreen() {
