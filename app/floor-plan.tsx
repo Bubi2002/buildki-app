@@ -80,8 +80,9 @@ export default function FloorPlanScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams<{ projectId?: string }>();
+  const params = useLocalSearchParams<{ projectId?: string; focusDefect?: string; focusPin?: string }>();
   const projectId = params.projectId || "";
+  const focusHandledRef = useRef(false);
 
   const [plans, setPlans] = useState<FloorPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<FloorPlan | null>(null);
@@ -121,6 +122,7 @@ export default function FloorPlanScreen() {
   const [protocolOptions, setProtocolOptions] = useState<FloorPlanProtocolReference[]>([]);
   const [loadingProtocols, setLoadingProtocols] = useState(false);
   const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [highlightPinId, setHighlightPinId] = useState<string | null>(null);
   const canvasRef = useRef<ZoomableCanvasHandle>(null);
   const rasterResolveRef = useRef<((r: RasterResult | null) => void) | null>(null);
   const mountedRef = useRef(true);
@@ -191,6 +193,25 @@ export default function FloorPlanScreen() {
       };
     }, [loadPlans])
   );
+
+  // Deep-link: jump to the plan pin of a specific defect (Mangel → Plan).
+  useEffect(() => {
+    const target = params.focusDefect || params.focusPin;
+    if (!target || plans.length === 0 || focusHandledRef.current) return;
+    focusHandledRef.current = true;
+    (async () => {
+      const all = await getPlanPins();
+      const pin = params.focusPin
+        ? all.find((p) => p.id === params.focusPin)
+        : all.find((p) => p.defectId === params.focusDefect);
+      if (!pin) return;
+      const plan = plans.find((p) => p.id === pin.planId);
+      if (plan) await selectPlan(plan);
+      setHighlightPinId(pin.id);
+      setShowPinDetail(pin);
+      setTimeout(() => setHighlightPinId(null), 4000);
+    })();
+  }, [params.focusDefect, params.focusPin, plans, selectPlan]);
 
   // Rasterize one PDF (single page) to a sharp image via the PdfRasterizer.
   const rasterizeOne = (uri: string): Promise<RasterResult | null> =>
@@ -901,7 +922,7 @@ export default function FloorPlanScreen() {
                         },
                       ]}
                     >
-                      <View style={[styles.pinMarker, { backgroundColor: pinColor(pin) }]}>
+                      <View style={[styles.pinMarker, { backgroundColor: pinColor(pin) }, pin.id === highlightPinId && styles.pinMarkerHighlight]}>
                         <MaterialIcons name={PIN_ICONS[pin.type] as any} size={14} color="#FFF" />
                       </View>
                       <View style={[styles.pinTail, { borderTopColor: pinColor(pin) }]} />
@@ -1690,6 +1711,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
     zIndex: 10,
+  },
+  pinMarkerHighlight: {
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    transform: [{ scale: 1.4 }],
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
   },
   pinMarker: {
     width: 28,

@@ -42,6 +42,7 @@ import {
   type DefectSignature,
 } from "@/lib/defect-store";
 import { syncStoredProtocolDefects } from "@/lib/protocol-defect-sync";
+import { getPinsForProject } from "@/lib/floor-plan-store";
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -113,6 +114,7 @@ export default function DefectsScreen() {
   const [groupBy, setGroupBy] = useState<GroupKey>("none");
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
+  const [pinnedDefectIds, setPinnedDefectIds] = useState<Set<string>>(new Set());
   const [editingDefect, setEditingDefect] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -250,6 +252,13 @@ export default function DefectsScreen() {
     if (projectId) await syncStoredProtocolDefects(projectId);
     const loaded = await getDefects(projectId || undefined);
     setDefects(loaded);
+    // Which defects have a pin on a floor plan → enables "Auf Plan zeigen".
+    if (projectId) {
+      try {
+        const pins = await getPinsForProject(projectId);
+        setPinnedDefectIds(new Set(pins.map((p) => p.defectId).filter((id): id is string => !!id)));
+      } catch {}
+    }
     return loaded;
   }
 
@@ -1362,6 +1371,26 @@ export default function DefectsScreen() {
                   >
                     <MaterialIcons name="view-in-ar" size={18} color="#00B0FF" />
                     <Text style={{ fontSize: 14, fontWeight: "600", color: "#00B0FF" }}>{t('defects_im_3d_modell_anzeigen' as any)}</Text>
+                  </Pressable>
+                )}
+
+                {/* Auf Plan zeigen (Mangel → Plan springt auf Pin) */}
+                {pinnedDefectIds.has(selectedDefect.id) && (
+                  <Pressable
+                    onPress={() => {
+                      if (voiceNoteMode !== "idle") { requestFinishDefectVoiceNote(); return; }
+                      setShowDetailModal(false);
+                      router.push(`/floor-plan?projectId=${selectedDefect.projectId}&focusDefect=${selectedDefect.id}` as any);
+                    }}
+                    style={({ pressed }) => [{
+                      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                      paddingVertical: 12, marginBottom: 12, borderWidth: 1,
+                      borderColor: "#0E749040", backgroundColor: "#0E749010",
+                      opacity: pressed ? 0.7 : 1,
+                    }]}
+                  >
+                    <MaterialIcons name="place" size={18} color="#0E7490" />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#0E7490" }}>{t('defects_auf_plan_zeigen' as any)}</Text>
                   </Pressable>
                 )}
 
