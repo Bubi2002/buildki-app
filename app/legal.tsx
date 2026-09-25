@@ -142,8 +142,29 @@ function DraftBanner() {
   );
 }
 
+function DatenschutzPlain() {
+  const { t } = useTranslation();
+  const questions = [1, 2, 3, 4, 5, 6, 7];
+  return (
+    <View className="gap-5 pb-8">
+      <H1 text={t('legal_datenschutz_pruefentwurf')} />
+      {questions.map((n) => (
+        <Section key={n} title={t(`legal_ds_q${n}_title` as any)}>
+          <P>
+            {t(`legal_ds_q${n}_body` as any)}
+            {(n === 1 || n === 7) ? LEGAL_CONTACT_EMAIL : ""}
+          </P>
+        </Section>
+      ))}
+    </View>
+  );
+}
+
 function DatenschutzContent() {
   const { t } = useTranslation();
+  const internal = useContext(LegalModeContext);
+  // User-facing view: plain, structured Q&A. Internal view: full draft below.
+  if (!internal) return <DatenschutzPlain />;
   return (
     <View className="gap-5 pb-8">
       <H1 text={t('legal_datenschutz_pruefentwurf')} />
