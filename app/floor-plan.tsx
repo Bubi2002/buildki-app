@@ -41,6 +41,8 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
+import { getDefects, type Defect } from "@/lib/defect-store";
+import { defectStatusColor } from "@/lib/status-colors";
 import { exportFloorPlansPdf } from "@/lib/floor-plan-export";
 import { splitPdfIntoPages } from "@/lib/pdf-pages";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
@@ -96,6 +98,8 @@ export default function FloorPlanScreen() {
   const [imageSize, setImageSize] = useState({ width: 1, height: 1 });
   const [viewMode, setViewMode] = useState<"plan" | "list">("plan");
   const [filterType, setFilterType] = useState<PlanPin["type"] | "all">("all");
+  const [defectsById, setDefectsById] = useState<Record<string, Defect>>({});
+  const [hideDone, setHideDone] = useState(false);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [planInteractionActive, setPlanInteractionActive] = useState(false);
   const [zoomResetKey, setZoomResetKey] = useState(0);
@@ -141,6 +145,11 @@ export default function FloorPlanScreen() {
       selectedPlanRef.current = plan;
       setSelectedPlan(plan);
       setPins(loadedPins);
+      // Load defects to color status pins and hide resolved ones.
+      try {
+        const defs = await getDefects(projectId || undefined);
+        if (mountedRef.current) setDefectsById(Object.fromEntries(defs.map((d) => [d.id, d])));
+      } catch {}
       setImageSize({ width: Math.max(1, plan.width), height: Math.max(1, plan.height) });
       setPendingPin(null);
       setZoomResetKey((value) => value + 1);
@@ -544,7 +553,23 @@ export default function FloorPlanScreen() {
     };
   };
 
-  const filteredPins = filterType === "all" ? pins : pins.filter((p) => p.type === filterType);
+  // Color a defect pin by its linked defect's status (falls back to pin.color).
+  const pinColor = (pin: PlanPin): string => {
+    if (pin.type === "defect" && pin.defectId && defectsById[pin.defectId]) {
+      const d = defectsById[pin.defectId];
+      return defectStatusColor(d.status, { dueDate: d.dueDate });
+    }
+    return pin.color;
+  };
+  const isPinDone = (pin: PlanPin): boolean => {
+    const d = pin.defectId ? defectsById[pin.defectId] : undefined;
+    return !!d && (d.status === "erledigt" || d.status === "geschlossen");
+  };
+  const filteredPins = pins.filter((p) => {
+    if (filterType !== "all" && p.type !== filterType) return false;
+    if (hideDone && isPinDone(p)) return false;
+    return true;
+  });
 
   const pinTypeOptions: { type: PlanPin["type"]; label: string; icon: string; color: string }[] = [
     { type: "task", label: t('floor_plan_typ_aufgabe' as any), icon: "task-alt", color: PIN_COLORS.task },
@@ -780,6 +805,16 @@ export default function FloorPlanScreen() {
               </Pressable>
             );
           })}
+          {/* Hide resolved pins */}
+          <Pressable
+            onPress={() => setHideDone((v) => !v)}
+            style={[styles.filterChip, { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: "auto", backgroundColor: hideDone ? colors.primary + "15" : "transparent", borderColor: hideDone ? colors.primary : colors.border }]}
+          >
+            <MaterialIcons name={hideDone ? "visibility-off" : "visibility"} size={12} color={hideDone ? colors.primary : colors.muted} />
+            <Text style={{ fontSize: 11, fontWeight: "600", color: hideDone ? colors.primary : colors.muted }}>
+              {t('floor_plan_hide_done' as any)}
+            </Text>
+          </Pressable>
         </View>
       )}
 
@@ -847,10 +882,10 @@ export default function FloorPlanScreen() {
                         },
                       ]}
                     >
-                      <View style={[styles.pinMarker, { backgroundColor: pin.color }]}>
+                      <View style={[styles.pinMarker, { backgroundColor: pinColor(pin) }]}>
                         <MaterialIcons name={PIN_ICONS[pin.type] as any} size={14} color="#FFF" />
                       </View>
-                      <View style={[styles.pinTail, { borderTopColor: pin.color }]} />
+                      <View style={[styles.pinTail, { borderTopColor: pinColor(pin) }]} />
                     </View>
                   ))}
                   {pendingPin && (
