@@ -4,7 +4,7 @@
  * defects (with photos) and protocols. Read-only; export lives in /project-export.
  */
 import { useCallback, useState, type ReactNode } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions, Alert } from "react-native";
 import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -70,6 +70,29 @@ export default function ProjectOverviewScreen() {
   const totalCost = (totalSeconds / 3600) * rate;
   const isEmpty = plans.length === 0 && defects.length === 0 && checklists.length === 0 && time.length === 0 && protocols.length === 0;
 
+  // Defect dashboard stats
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const isDone = (d: Defect) => d.status === "erledigt" || d.status === "geschlossen" || d.status === "abgelehnt";
+  const statOpen = defects.filter((d) => !isDone(d)).length;
+  const statDone = defects.filter((d) => d.status === "erledigt" || d.status === "geschlossen").length;
+  const statDue = defects.filter((d) => !isDone(d) && d.dueDate && d.dueDate <= todayISO).length;
+  const statCrit = defects.filter((d) => !isDone(d) && d.priority === "hoch").length;
+
+  const addChooser = () => {
+    Alert.alert(t('hinzufuegen'), undefined, [
+      { text: t('po_add_defect' as any), onPress: () => router.push(`/defects?projectId=${projectId}` as any) },
+      { text: t('po_add_task' as any), onPress: () => router.push(`/tasks?projectId=${projectId}` as any) },
+      { text: t('btn_abbrechen'), style: "cancel" },
+    ]);
+  };
+
+  const StatTile = ({ n, label, color }: { n: number; label: string; color: string }) => (
+    <View style={[styles.statTile, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+      <Text style={{ fontSize: 20, fontWeight: "800", color }}>{n}</Text>
+      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted, marginTop: 1 }}>{label}</Text>
+    </View>
+  );
+
   const Section = ({ icon, title, count, children }: { icon: string; title: string; count?: number; children: ReactNode }) => (
     <View style={{ marginBottom: 22 }}>
       <View style={styles.secHead}>
@@ -100,6 +123,20 @@ export default function ProjectOverviewScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {/* Dashboard */}
+        <View style={styles.statRow}>
+          <StatTile n={statOpen} label={t('po_stat_open' as any)} color="#F97316" />
+          <StatTile n={statDue} label={t('po_stat_due' as any)} color="#EF4444" />
+          <StatTile n={statDone} label={t('po_stat_done' as any)} color="#10B981" />
+          <StatTile n={statCrit} label={t('po_stat_critical' as any)} color="#B91C1C" />
+        </View>
+
+        {/* Primary action */}
+        <Pressable onPress={addChooser} style={({ pressed }) => [styles.primaryAction, { opacity: pressed ? 0.85 : 1 }]}>
+          <MaterialIcons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.primaryActionText}>{t('po_main_action' as any)}</Text>
+        </Pressable>
+
         {isEmpty && (
           <View style={{ alignItems: "center", paddingTop: 60, gap: 10 }}>
             <MaterialIcons name="folder-open" size={44} color={colors.muted} />
@@ -207,15 +244,7 @@ export default function ProjectOverviewScreen() {
           </Section>
         )}
 
-        {!isEmpty && (
-          <Pressable
-            onPress={() => router.push(`/project-export?projectId=${projectId}&projectName=${encodeURIComponent(projectName || "")}` as any)}
-            style={({ pressed }) => [styles.exportBtn, { opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="picture-as-pdf" size={20} color="#FFFFFF" />
-            <Text style={styles.exportBtnText}>{t('home_dossier_export' as any)}</Text>
-          </Pressable>
-        )}
+        {/* PDF export lives in the header (top-right) — not a big primary button here. */}
       </ScrollView>
     </ScreenContainer>
   );
@@ -238,4 +267,8 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5 },
   exportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#2563EB", borderRadius: 12, paddingVertical: 15, marginTop: 8 },
   exportBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  statRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  statTile: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, borderWidth: 1 },
+  primaryAction: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#2563EB", borderRadius: 12, paddingVertical: 14, marginBottom: 20 },
+  primaryActionText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
 });
