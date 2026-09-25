@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, TextInput, Pressable, Alert, Switch, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Alert, Switch, StyleSheet, Modal } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -7,7 +7,7 @@ import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { getPdfBranding, savePdfBranding, applyBrandingVariables, type PdfBranding, type FilenameSchema, type PdfTemplate, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
+import { getPdfBranding, savePdfBranding, applyBrandingVariables, getBrandingProfiles, saveBrandingProfile, deleteBrandingProfile, type PdfBranding, type BrandingProfile, type FilenameSchema, type PdfTemplate, DEFAULT_BRANDING } from "@/lib/pdf-branding-store";
 import { useTranslation } from "@/lib/language-provider";
 
 // Muted accent palette — same hues, less neon/saturation.
@@ -29,10 +29,31 @@ export default function PdfBrandingScreen() {
     { key: "versand", labelKey: "pdf_tab_send", icon: "send" },
     { key: "vorlagen", labelKey: "pdf_tab_templates", icon: "folder-copy" },
   ];
+  const [profiles, setProfiles] = useState<BrandingProfile[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState("");
+
+  const saveProfile = async () => {
+    setProfiles(await saveBrandingProfile(profileName, branding));
+    setShowProfileModal(false);
+    setProfileName("");
+  };
+  const applyProfile = (p: BrandingProfile) => {
+    setBranding({ ...DEFAULT_BRANDING, ...p.branding });
+    setHasChanges(true);
+    Alert.alert(p.name, t('pdf_profiles_applied' as any));
+  };
+  const removeProfile = (p: BrandingProfile) => {
+    Alert.alert(t('pdf_profiles_delete_confirm' as any), p.name, [
+      { text: t('btn_abbrechen'), style: "cancel" },
+      { text: t('btn_loeschen'), style: "destructive", onPress: async () => setProfiles(await deleteBrandingProfile(p.id)) },
+    ]);
+  };
 
   async function loadBranding() {
     const b = await getPdfBranding();
     setBranding(b);
+    setProfiles(await getBrandingProfiles());
   }
 
   useEffect(() => {
@@ -533,6 +554,35 @@ export default function PdfBrandingScreen() {
         )}
 
         {tab === "vorlagen" && (
+        <>
+        {/* Named branding profiles */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdf_profiles_title' as any)}</Text>
+          <Pressable
+            onPress={() => { setProfileName(""); setShowProfileModal(true); }}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "12", opacity: pressed ? 0.8 : 1, marginBottom: 12 }]}
+          >
+            <MaterialIcons name="bookmark-add" size={18} color={colors.primary} />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('pdf_profiles_save' as any)}</Text>
+          </Pressable>
+          {profiles.length === 0 ? (
+            <Text style={{ fontSize: 12, color: colors.muted }}>{t('pdf_profiles_empty' as any)}</Text>
+          ) : (
+            profiles.map((p) => (
+              <View key={p.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8 }}>
+                <MaterialIcons name="palette" size={18} color={colors.muted} />
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{p.name}</Text>
+                <Pressable onPress={() => applyProfile(p)} style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFF" }}>{t('pdf_profiles_apply' as any)}</Text>
+                </Pressable>
+                <Pressable onPress={() => removeProfile(p)} hitSlop={6} style={{ padding: 4 }}>
+                  <MaterialIcons name="delete-outline" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
+            ))
+          )}
+        </View>
+
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('einstellungen_sichern')}</Text>
           <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('pdfbrandingeinstellungen_exportieren_ode')}</Text>
@@ -553,8 +603,34 @@ export default function PdfBrandingScreen() {
             </Pressable>
           </View>
         </View>
+        </>
         )}
       </ScrollView>
+
+      {/* Save-as-profile name dialog */}
+      <Modal visible={showProfileModal} transparent animationType="fade" onRequestClose={() => setShowProfileModal(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 24 }}>
+          <View style={{ backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.foreground, marginBottom: 12 }}>{t('pdf_profiles_save' as any)}</Text>
+            <TextInput
+              value={profileName}
+              onChangeText={setProfileName}
+              placeholder={t('pdf_profiles_name' as any)}
+              placeholderTextColor={colors.muted}
+              autoFocus
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+              <Pressable onPress={() => setShowProfileModal(false)} style={({ pressed }) => [{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={{ color: colors.muted, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
+              </Pressable>
+              <Pressable onPress={saveProfile} style={({ pressed }) => [{ flex: 2, alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
+                <Text style={{ color: "#FFF", fontWeight: "700" }}>{t('btn_speichern')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }

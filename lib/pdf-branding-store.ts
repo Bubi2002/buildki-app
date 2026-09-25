@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PDF_BRANDING_KEY = "pdf-branding";
+const PDF_BRANDING_PROFILES_KEY = "pdf-branding-profiles";
 
 export type FilenameSchema = "project_date_nr" | "nr_project_date" | "date_project_nr" | "project_nr" | "date_nr";
 
@@ -126,6 +127,37 @@ export async function savePdfBranding(branding: Partial<PdfBranding>): Promise<v
     const updated = { ...current, ...branding };
     await AsyncStorage.setItem(PDF_BRANDING_KEY, JSON.stringify(updated));
   } catch {}
+}
+
+// ─── Named branding profiles (multiple templates) ───────────────────────────
+export type BrandingProfile = { id: string; name: string; branding: PdfBranding; createdAt: string };
+
+export async function getBrandingProfiles(): Promise<BrandingProfile[]> {
+  try {
+    const raw = await AsyncStorage.getItem(PDF_BRANDING_PROFILES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveBrandingProfile(name: string, branding: PdfBranding): Promise<BrandingProfile[]> {
+  const profiles = await getBrandingProfiles();
+  const trimmed = name.trim() || `Vorlage ${profiles.length + 1}`;
+  const existing = profiles.find((p) => p.name.toLowerCase() === trimmed.toLowerCase());
+  if (existing) {
+    existing.branding = branding;
+  } else {
+    profiles.unshift({ id: Date.now().toString(), name: trimmed, branding, createdAt: new Date().toISOString() });
+  }
+  await AsyncStorage.setItem(PDF_BRANDING_PROFILES_KEY, JSON.stringify(profiles));
+  return profiles;
+}
+
+export async function deleteBrandingProfile(id: string): Promise<BrandingProfile[]> {
+  const profiles = (await getBrandingProfiles()).filter((p) => p.id !== id);
+  await AsyncStorage.setItem(PDF_BRANDING_PROFILES_KEY, JSON.stringify(profiles));
+  return profiles;
 }
 
 /**
