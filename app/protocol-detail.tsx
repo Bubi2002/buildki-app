@@ -173,6 +173,7 @@ export default function ProtocolDetailScreen() {
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [showAiTools, setShowAiTools] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [targetLang, setTargetLang] = useState("en");
@@ -2345,12 +2346,14 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* KI-Werkzeuge */}
+        {/* KI-Werkzeuge (collapsed by default to reduce clutter) */}
         <View style={styles.section}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <Pressable onPress={() => setShowAiTools((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: showAiTools ? 14 : 0 }}>
             <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('kiwerkzeuge')}</Text>
-          </View>
+            <MaterialIcons name={showAiTools ? "expand-less" : "expand-more"} size={22} color={colors.muted} style={{ marginLeft: "auto" }} />
+          </Pressable>
+          {showAiTools && (
           <View style={{ gap: 8 }}>
             {/* Zusammenfassung */}
             <Pressable
@@ -2410,6 +2413,7 @@ export default function ProtocolDetailScreen() {
             </Pressable>
 
           </View>
+          )}
           {/* Summary result display */}
           {summary && (
             <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 0, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
