@@ -9,6 +9,7 @@ import {
   TextInput,
   Animated,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Swipeable, RectButton } from "react-native-gesture-handler";
 import * as Sharing from "expo-sharing";
@@ -96,6 +97,7 @@ export default function ProtocolsScreen() {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [merging, setMerging] = useState(false);
   const [featureFlags, setFeatureFlags] = useState({ protocolCompare: false, csvExport: true, statistics: true });
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
@@ -292,6 +294,43 @@ export default function ProtocolsScreen() {
   const selectAll = () => {
     const allIds = new Set(getDisplayedProtocols().map((p) => p.id));
     setSelectedIds(allIds);
+  };
+
+  // One-tap: merge all currently displayed protocols into a single PDF report.
+  const mergeDisplayedToPdf = () => {
+    if (merging) return;
+    const displayed = getDisplayedProtocols();
+    if (displayed.length < 2) {
+      Alert.alert(t('alert_mindestens_2'), t('msg_bitte_waehle_mindestens_2_protokolle'));
+      return;
+    }
+    const projectId = activeProjectId || displayed.find((p) => p.projectId)?.projectId;
+    if (!projectId) {
+      Alert.alert(t('hinweis'), t('protocols_merge_needs_project' as any));
+      return;
+    }
+    Alert.alert(
+      t('protocols_merge_all_title' as any),
+      t('protocols_merge_all_msg' as any).replace('{count}', String(displayed.length)),
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        {
+          text: t('btn_gesamtdokument'),
+          onPress: async () => {
+            setMerging(true);
+            try {
+              const { mergeAndShare } = await import("@/lib/protocol-merge");
+              const ok = await mergeAndShare({ projectId, protocolIds: displayed.map((p) => p.id), includePhotos: true, includeTodos: true, includeWeather: true });
+              if (!ok) Alert.alert(t('alert_fehler'), t('msg_gesamtbericht_konnte_nicht_erstellt_werden'));
+            } catch (e: any) {
+              Alert.alert(t('alert_fehler'), e?.message || t('protocol_merge_unbekannter_fehler' as any));
+            } finally {
+              setMerging(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const batchDelete = () => {
@@ -796,6 +835,17 @@ export default function ProtocolsScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
+            {/* Merge all displayed protocols into one PDF */}
+            {displayedProtocols.length >= 2 && (
+              <Pressable
+                onPress={mergeDisplayedToPdf}
+                disabled={merging}
+                accessibilityLabel={t('protocols_merge_all_title' as any)}
+                style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.primary + "18", opacity: pressed || merging ? 0.7 : 1 }]}
+              >
+                {merging ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />}
+              </Pressable>
+            )}
             {/* Dashboard */}
             {featureFlags.statistics && <Pressable
               onPress={() => router.push("/dashboard" as any)}
