@@ -35,6 +35,7 @@ import {
   type MeasurementAccuracy,
   type MeasurementMethod,
 } from "@/lib/evidence-store";
+import { getDefects, type Defect } from "@/lib/defect-store";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CANVAS_WIDTH = Math.max(280, SCREEN_WIDTH - 32);
@@ -88,6 +89,12 @@ const METHODS: {
 const UNITS = ["mm", "cm", "m", "in", "ft", "yd", "m²", "ft²", "yd²", "°", "Stk."] as const;
 type Unit = (typeof UNITS)[number];
 
+const STEP_DEFS = [
+  { n: 1 as const, labelKey: "measure_step_evidence" },
+  { n: 2 as const, labelKey: "measure_step_measure" },
+  { n: 3 as const, labelKey: "measure_step_document" },
+];
+
 const DATE_LOCALE: Record<string, string> = {
   de: "de-DE", en: "en-GB", fr: "fr-FR", es: "es-ES", uk: "uk-UA",
   pl: "pl-PL", ru: "ru-RU", ro: "ro-RO", bg: "bg-BG", tr: "tr-TR",
@@ -117,8 +124,11 @@ export default function MeasureScreen() {
   const [findingText, setFindingText] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [showMethodPicker, setShowMethodPicker] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [selectedDefectId, setSelectedDefectId] = useState<string | null>(null);
+  const [showDefectPicker, setShowDefectPicker] = useState(false);
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -135,9 +145,11 @@ export default function MeasureScreen() {
       const active = projects.find((item) => item.id === selectedProjectId) || null;
       setProject(active);
       setEvidence(active ? await getEvidence(active.id) : []);
+      setDefects(active ? await getDefects(active.id) : []);
     } catch {
       setProject(null);
       setEvidence([]);
+      setDefects([]);
     }
   }
 
@@ -150,6 +162,7 @@ export default function MeasureScreen() {
   const selectEvidence = (item: EvidenceItem) => {
     setSelectedEvidence(item);
     setFindingText(item.findingText || "");
+    setSelectedDefectId((item as any).defectId || null);
     setStartPoint(null);
     setEndPoint(null);
   };
@@ -304,8 +317,9 @@ export default function MeasureScreen() {
         previewUri: destination,
         findingText,
         reviewStatus: "approved",
+        defectId: selectedDefectId || undefined,
         measurements: [...(selectedEvidence.measurements || []), measurement],
-      });
+      } as any);
       if (!updated) throw new Error(t('measure_error_update_failed' as any));
       setSelectedEvidence(updated);
       setEvidence((current) =>
@@ -322,6 +336,7 @@ export default function MeasureScreen() {
       setValue("");
       setTolerance("");
       setNote("");
+      setStep(1);
     } catch (error) {
       Alert.alert(
         t('measure_alert_save_failed_title' as any),
@@ -399,7 +414,7 @@ export default function MeasureScreen() {
             {project?.name || t('measure_project_placeholder' as any)}
           </Text>
         </View>
-        {selectedEvidence ? (
+        {selectedEvidence && step >= 2 ? (
           <Pressable
             onPress={() => void handleExportPdf()}
             disabled={isExporting}
@@ -425,7 +440,24 @@ export default function MeasureScreen() {
           </View>
         ) : (
           <>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_section_select_record' as any)}</Text>
+            <View style={styles.stepBar}>
+              {STEP_DEFS.map((s) => {
+                const active = step === s.n;
+                const done = step > s.n;
+                return (
+                  <View key={s.n} style={styles.stepItem}>
+                    <View style={[styles.stepDot, { backgroundColor: active || done ? "#00ACC1" : colors.surface, borderColor: active || done ? "#00ACC1" : colors.border }]}>
+                      {done ? <MaterialIcons name="check" size={13} color="#FFFFFF" /> : <Text style={{ color: active ? "#FFFFFF" : colors.muted, fontWeight: "800", fontSize: 11 }}>{s.n}</Text>}
+                    </View>
+                    <Text style={[styles.stepLabel, { color: active ? colors.foreground : colors.muted }]} numberOfLines={1}>{t(s.labelKey as any)}</Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            {step === 1 && (
+            <>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_step_evidence' as any)}</Text>
             <View style={styles.sourceButtons}>
               <Pressable style={[styles.sourceButton, { borderColor: colors.border }]} onPress={() => void addPhoto("camera")}>
                 <MaterialIcons name="photo-camera" size={22} color="#00ACC1" />
@@ -461,56 +493,55 @@ export default function MeasureScreen() {
             )}
 
             {selectedEvidence && (
+              <Image
+                source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
+                style={styles.bigPreview}
+                contentFit="contain"
+              />
+            )}
+
+            <View style={styles.navRow}>
+              <View style={{ flex: 1 }} />
+              <Pressable
+                onPress={() => selectedEvidence && setStep(2)}
+                disabled={!selectedEvidence}
+                style={({ pressed }) => [styles.navNext, { opacity: !selectedEvidence ? 0.4 : pressed ? 0.85 : 1 }]}
+              >
+                <Text style={styles.navNextText}>{t('btn_weiter')}</Text>
+                <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
+              </Pressable>
+            </View>
+            </>
+            )}
+
+            {/* STEP 2 – Messung */}
+            {step === 2 && selectedEvidence && (
               <>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_section_draw_line' as any)}</Text>
                 <Text style={[styles.helpText, { color: colors.muted }]}>{t('measure_help_text' as any)}</Text>
                 <GestureDetector gesture={drawingGesture}>
                   <View ref={canvasRef} collapsable={false} style={styles.canvas}>
-                    <Image
-                      source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="contain"
-                    />
+                    <Image source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
                     <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
                       {startPoint && endPoint && (
                         <>
                           <Line x1={startPoint.x} y1={startPoint.y} x2={endPoint.x} y2={endPoint.y} stroke="#FF3B30" strokeWidth={4} />
-                          {/* Larger translucent grab rings signal that both ends are draggable. */}
                           <Circle cx={startPoint.x} cy={startPoint.y} r={20} fill="rgba(255,59,48,0.18)" />
                           <Circle cx={endPoint.x} cy={endPoint.y} r={20} fill="rgba(255,59,48,0.18)" />
                           <Circle cx={startPoint.x} cy={startPoint.y} r={9} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
                           <Circle cx={endPoint.x} cy={endPoint.y} r={9} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
                           <Rect x={Math.max(4, (startPoint.x + endPoint.x) / 2 - 58)} y={Math.max(4, (startPoint.y + endPoint.y) / 2 - 30)} width={116} height={25} rx={4} fill="rgba(0,0,0,0.72)" />
-                          <SvgText x={(startPoint.x + endPoint.x) / 2} y={Math.max(21, (startPoint.y + endPoint.y) / 2 - 13)} fill="#FFFFFF" fontSize={12} fontWeight="700" textAnchor="middle">
-                            {measurementLabel}
-                          </SvgText>
+                          <SvgText x={(startPoint.x + endPoint.x) / 2} y={Math.max(21, (startPoint.y + endPoint.y) / 2 - 13)} fill="#FFFFFF" fontSize={12} fontWeight="700" textAnchor="middle">{measurementLabel}</SvgText>
                         </>
                       )}
                     </Svg>
                   </View>
                 </GestureDetector>
 
-                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_finding_label' as any)}</Text>
-                <TextInput
-                  value={findingText}
-                  onChangeText={setFindingText}
-                  placeholder={t('measure_finding_placeholder' as any)}
-                  placeholderTextColor={colors.muted}
-                  multiline
-                  style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                />
-
                 <View style={styles.valueRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_value' as any)}</Text>
-                    <TextInput
-                      value={value}
-                      onChangeText={setValue}
-                      keyboardType="decimal-pad"
-                      placeholder="0,00"
-                      placeholderTextColor={colors.muted}
-                      style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                    />
+                    <TextInput value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder="0,00" placeholderTextColor={colors.muted} style={[styles.input, styles.valueInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_unit' as any)}</Text>
@@ -527,36 +558,75 @@ export default function MeasureScreen() {
                 </View>
 
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_method' as any)}</Text>
-                <Pressable
-                  onPress={() => setShowMethodPicker(true)}
-                  style={({ pressed }) => [styles.methodDropdown, { borderColor: "#00ACC1", backgroundColor: colors.surface, opacity: pressed ? 0.85 : 1 }]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.methodLabel, { color: "#00ACC1" }]}>{t(selectedMethod.label as any)}</Text>
-                    <Text style={[styles.methodDescription, { color: colors.muted }]}>{t(selectedMethod.description as any)}</Text>
-                  </View>
-                  <MaterialIcons name="expand-more" size={24} color={colors.muted} />
-                </Pressable>
+                <View style={styles.methodChips}>
+                  {METHODS.map((item) => {
+                    const active = method === item.value;
+                    return (
+                      <Pressable key={item.value} onPress={() => setMethod(item.value)} style={[styles.methodChip, { borderColor: active ? "#00ACC1" : colors.border, backgroundColor: active ? "#00ACC118" : colors.surface }]}>
+                        <Text style={{ color: active ? "#00ACC1" : colors.foreground, fontWeight: active ? "800" : "600", fontSize: 13 }}>{t(item.label as any)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.navRow}>
+                  <Pressable onPress={() => setStep(1)} style={({ pressed }) => [styles.navBack, { opacity: pressed ? 0.7 : 1, borderColor: colors.border }]}>
+                    <MaterialIcons name="arrow-back" size={20} color={colors.foreground} />
+                    <Text style={[styles.navBackText, { color: colors.foreground }]}>{t('btn_zurueck')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setStep(3)}
+                    disabled={!(startPoint && endPoint) || !value.trim()}
+                    style={({ pressed }) => [styles.navNext, { flex: 1, opacity: (!(startPoint && endPoint) || !value.trim()) ? 0.4 : pressed ? 0.85 : 1 }]}
+                  >
+                    <Text style={styles.navNextText}>{t('btn_weiter')}</Text>
+                    <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
+                  </Pressable>
+                </View>
+              </>
+            )}
+
+            {/* STEP 3 – Dokumentation */}
+            {step === 3 && selectedEvidence && (
+              <>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_step_document' as any)}</Text>
+
+                <View ref={canvasRef} collapsable={false} style={styles.canvas}>
+                  <Image source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
+                  <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
+                    {startPoint && endPoint && (
+                      <>
+                        <Line x1={startPoint.x} y1={startPoint.y} x2={endPoint.x} y2={endPoint.y} stroke="#FF3B30" strokeWidth={4} />
+                        <Circle cx={startPoint.x} cy={startPoint.y} r={7} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
+                        <Circle cx={endPoint.x} cy={endPoint.y} r={7} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
+                        <Rect x={Math.max(4, (startPoint.x + endPoint.x) / 2 - 58)} y={Math.max(4, (startPoint.y + endPoint.y) / 2 - 30)} width={116} height={25} rx={4} fill="rgba(0,0,0,0.72)" />
+                        <SvgText x={(startPoint.x + endPoint.x) / 2} y={Math.max(21, (startPoint.y + endPoint.y) / 2 - 13)} fill="#FFFFFF" fontSize={12} fontWeight="700" textAnchor="middle">{measurementLabel}</SvgText>
+                      </>
+                    )}
+                  </Svg>
+                </View>
+
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_finding_label' as any)}</Text>
+                <TextInput value={findingText} onChangeText={setFindingText} placeholder={t('measure_finding_placeholder' as any)} placeholderTextColor={colors.muted} multiline style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_tolerance' as any)}</Text>
-                <TextInput
-                  value={tolerance}
-                  onChangeText={setTolerance}
-                  keyboardType="decimal-pad"
-                  placeholder={t('measure_tolerance_placeholder' as any)}
-                  placeholderTextColor={colors.muted}
-                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                />
+                <TextInput value={tolerance} onChangeText={setTolerance} keyboardType="decimal-pad" placeholder={t('measure_tolerance_placeholder' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_note' as any)}</Text>
-                <TextInput
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder={t('measure_note_placeholder' as any)}
-                  placeholderTextColor={colors.muted}
-                  multiline
-                  style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                />
+                <TextInput value={note} onChangeText={setNote} placeholder={t('measure_note_placeholder' as any)} placeholderTextColor={colors.muted} multiline style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_assign_label' as any)}</Text>
+                <Pressable onPress={() => setShowDefectPicker(true)} style={({ pressed }) => [styles.methodDropdown, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.85 : 1 }]}>
+                  <MaterialIcons name="link" size={18} color={selectedDefectId ? "#00ACC1" : colors.muted} />
+                  <Text style={{ flex: 1, color: selectedDefectId ? colors.foreground : colors.muted, fontWeight: "600" }} numberOfLines={1}>
+                    {selectedDefectId ? (defects.find((d) => d.id === selectedDefectId)?.title || t('measure_assign_label' as any)) : t('measure_assign_none' as any)}
+                  </Text>
+                  {selectedDefectId ? (
+                    <Pressable onPress={() => setSelectedDefectId(null)} hitSlop={8}><MaterialIcons name="close" size={18} color={colors.muted} /></Pressable>
+                  ) : (
+                    <MaterialIcons name="expand-more" size={22} color={colors.muted} />
+                  )}
+                </Pressable>
 
                 <View style={[styles.qualityBanner, { borderColor: selectedMethod.accuracy === "estimated" ? colors.warning : "#00ACC1" }]}>
                   <MaterialIcons name={selectedMethod.accuracy === "estimated" ? "warning-amber" : "verified"} size={22} color={selectedMethod.accuracy === "estimated" ? colors.warning : "#00ACC1"} />
@@ -567,42 +637,55 @@ export default function MeasureScreen() {
                   </Text>
                 </View>
 
-                <Pressable
-                  onPress={() => void saveMeasurement()}
-                  disabled={isSaving}
-                  style={({ pressed }) => [styles.saveButton, { opacity: isSaving ? 0.5 : pressed ? 0.8 : 1 }]}
-                >
-                  <MaterialIcons name="save" size={22} color="#FFFFFF" />
-                  <Text style={styles.saveButtonText}>{isSaving ? t('measure_saving' as any) : t('measure_save_record' as any)}</Text>
-                </Pressable>
+                <View style={styles.navRow}>
+                  <Pressable onPress={() => setStep(2)} style={({ pressed }) => [styles.navBack, { opacity: pressed ? 0.7 : 1, borderColor: colors.border }]}>
+                    <MaterialIcons name="arrow-back" size={20} color={colors.foreground} />
+                    <Text style={[styles.navBackText, { color: colors.foreground }]}>{t('btn_zurueck')}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => void saveMeasurement()} disabled={isSaving} style={({ pressed }) => [styles.saveButton, { flex: 1, marginTop: 0, opacity: isSaving ? 0.5 : pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="save" size={22} color="#FFFFFF" />
+                    <Text style={styles.saveButtonText}>{isSaving ? t('measure_saving' as any) : t('measure_save_record' as any)}</Text>
+                  </Pressable>
+                </View>
               </>
             )}
           </>
         )}
       </ScrollView>
 
-      {/* Measurement-method picker (dropdown) */}
-      <Modal visible={showMethodPicker} transparent animationType="fade" onRequestClose={() => setShowMethodPicker(false)}>
-        <Pressable style={styles.pickerBackdrop} onPress={() => setShowMethodPicker(false)}>
+      {/* Zuordnung zu Mangel / Aufgabe */}
+      <Modal visible={showDefectPicker} transparent animationType="fade" onRequestClose={() => setShowDefectPicker(false)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setShowDefectPicker(false)}>
           <Pressable style={[styles.pickerSheet, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
-            <Text style={[styles.pickerTitle, { color: colors.foreground }]}>{t('measure_field_method' as any)}</Text>
+            <Text style={[styles.pickerTitle, { color: colors.foreground }]}>{t('measure_assign_label' as any)}</Text>
             <ScrollView>
-              {METHODS.map((item) => {
-                const active = method === item.value;
+              <Pressable
+                onPress={() => { setSelectedDefectId(null); setShowDefectPicker(false); }}
+                style={({ pressed }) => [styles.pickerRow, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={{ flex: 1, color: colors.muted, fontWeight: "600" }}>{t('measure_assign_none' as any)}</Text>
+                {!selectedDefectId && <MaterialIcons name="check" size={20} color="#00ACC1" />}
+              </Pressable>
+              {defects.map((d) => {
+                const active = selectedDefectId === d.id;
+                const sub = [d.floor, d.room].filter(Boolean).join(" · ") || d.location || "";
                 return (
                   <Pressable
-                    key={item.value}
-                    onPress={() => { setMethod(item.value); setShowMethodPicker(false); }}
+                    key={d.id}
+                    onPress={() => { setSelectedDefectId(d.id); setShowDefectPicker(false); }}
                     style={({ pressed }) => [styles.pickerRow, { borderColor: active ? "#00ACC1" : colors.border, backgroundColor: active ? "#00ACC118" : colors.surface, opacity: pressed ? 0.85 : 1 }]}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.methodLabel, { color: active ? "#00ACC1" : colors.foreground }]}>{t(item.label as any)}</Text>
-                      <Text style={[styles.methodDescription, { color: colors.muted }]}>{t(item.description as any)}</Text>
+                      <Text style={[styles.methodLabel, { color: active ? "#00ACC1" : colors.foreground }]} numberOfLines={1}>{d.title}</Text>
+                      {sub ? <Text style={[styles.methodDescription, { color: colors.muted }]} numberOfLines={1}>{sub}</Text> : null}
                     </View>
                     {active && <MaterialIcons name="check" size={20} color="#00ACC1" />}
                   </Pressable>
                 );
               })}
+              {defects.length === 0 && (
+                <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 20 }}>{t('measure_no_project_text' as any)}</Text>
+              )}
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -636,8 +719,6 @@ const styles = StyleSheet.create({
   valueRow: { flexDirection: "row", gap: 12 },
   chipRow: { flexDirection: "row", gap: 6 },
   chip: { minWidth: 48, height: 48, borderWidth: 1, paddingHorizontal: 10, alignItems: "center", justifyContent: "center" },
-  methodGrid: { gap: 8 },
-  methodCard: { borderWidth: 1, padding: 12 },
   methodDropdown: { borderWidth: 1, borderRadius: 10, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 },
   methodLabel: { fontSize: 14, fontWeight: "800" },
   methodDescription: { fontSize: 12, lineHeight: 17, marginTop: 4 },
@@ -649,4 +730,17 @@ const styles = StyleSheet.create({
   qualityText: { flex: 1, fontSize: 12, lineHeight: 18 },
   saveButton: { marginTop: 18, minHeight: 54, backgroundColor: "#00ACC1", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   saveButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+  stepBar: { flexDirection: "row", alignItems: "flex-start", marginBottom: 6 },
+  stepItem: { flex: 1, alignItems: "center", gap: 5 },
+  stepDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  stepLabel: { fontSize: 11, fontWeight: "700" },
+  bigPreview: { width: "100%", height: 280, borderRadius: 12, backgroundColor: "#111827", marginTop: 14 },
+  valueInput: { fontSize: 22, fontWeight: "800" },
+  methodChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  methodChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9 },
+  navRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 20 },
+  navNext: { minHeight: 50, borderRadius: 10, backgroundColor: "#00ACC1", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 22 },
+  navNextText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
+  navBack: { minHeight: 50, borderRadius: 10, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 16 },
+  navBackText: { fontSize: 15, fontWeight: "700" },
 });
