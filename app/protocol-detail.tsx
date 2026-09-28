@@ -1143,26 +1143,33 @@ export default function ProtocolDetailScreen() {
       ...versions.map(v => ({ name: v.templateName, text: v.text, todos: v.todos || [] })),
     ];
     
-    const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-      body { font-family: -apple-system, sans-serif; padding: 20px; }
-      .version { page-break-after: always; margin-bottom: 40px; }
-      .version:last-child { page-break-after: avoid; }
-      h1 { color: #1a1a1a; border-bottom: 2px solid #0a7ea4; padding-bottom: 8px; }
-      h2 { color: #0a7ea4; margin-top: 24px; }
-      .todo { padding: 4px 0; }
-      .todo-done { text-decoration: line-through; color: #999; }
-    </style></head><body>
-      <h1>${protocol.title} - Alle Versionen</h1>
-      ${allVersions.map(v => `
-        <div class="version">
-          <h2>${v.name}</h2>
-          <div style="white-space: pre-wrap;">${v.text}</div>
-          ${v.todos.length > 0 ? `<h3>{t('team_tasks')}</h3>${v.todos.map((t: any) => `<div class="todo ${t.done ? 'todo-done' : ''}">${t.done ? '☑' : '☐'} ${t.text}${t.assignee ? ' → ' + t.assignee : ''}</div>`).join('')}` : ''}
-        </div>
-      `).join('')}
-    </body></html>`;
-
     try {
+      const { getPdfBranding } = await import("@/lib/pdf-branding-store");
+      const { buildPremiumHtml, resolveBrandingLogo, sectionChip, escHtml } = await import("@/lib/pdf-premium");
+      const branding = await getPdfBranding().catch(() => null);
+      const accent = branding?.accentColor || "#1E3A5F";
+      const logoDataUri = await resolveBrandingLogo(branding);
+
+      const body = allVersions
+        .map((v, i) => {
+          const todosHtml = v.todos.length > 0
+            ? `<p style="font-size:11px;color:#64748b;font-weight:700;margin:12px 0 6px;">${escHtml(t('team_tasks'))}</p>${v.todos
+                .map((td: any) => `<div style="padding:3px 0;font-size:12px;${td.done ? 'color:#94a3b8;text-decoration:line-through;' : ''}">${td.done ? '☑' : '☐'} ${escHtml(td.text || '')}${td.assignee ? ' → ' + escHtml(td.assignee) : ''}</div>`)
+                .join('')}`
+            : "";
+          return `${i > 0 ? '<div class="page-break"></div>' : ''}${sectionChip(i + 1, v.name)}<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.6;">${escHtml(v.text || '')}</div>${todosHtml}`;
+        })
+        .join('');
+
+      const htmlContent = buildPremiumHtml({
+        branding: branding || ({} as any),
+        accentColor: accent,
+        title: protocol.title || t('protokoll'),
+        reportTag: "Alle Versionen",
+        body,
+        logoDataUri,
+      });
+
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Alle Versionen exportieren" });

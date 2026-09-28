@@ -20,6 +20,8 @@ import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { generateProtocolPdf } from "@/lib/pdf-generator";
+import { buildPremiumHtml, resolveBrandingLogo, sectionChip, escHtml } from "@/lib/pdf-premium";
+import { getPdfBranding } from "@/lib/pdf-branding-store";
 import { exportAndShareTasks } from "@/lib/excel-export";
 import { generateDefectPdfHtml } from "@/lib/defect-pdf-export";
 import { getDefects } from "@/lib/defect-store";
@@ -194,81 +196,43 @@ export default function ProjectDetailScreen() {
         }
       }
 
-      // Generate combined HTML for all protocols
-      let combinedHtml = `
-        <html><head><meta charset="utf-8"/>
-        <style>
-          body { font-family: -apple-system, sans-serif; padding: 20px; color: #333; }
-          .page-break { page-break-after: always; }
-          .protocol-section { margin-bottom: 30px; }
-          .protocol-header { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
-          .protocol-header h2 { margin: 0 0 8px 0; font-size: 18px; color: #1a1a1a; }
-          .protocol-meta { font-size: 12px; color: #666; }
-          .protocol-body { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
-          .project-cover { text-align: center; padding: 80px 20px; }
-          .project-cover h1 { font-size: 28px; margin-bottom: 12px; }
-          .project-cover p { font-size: 16px; color: #666; }
-          .toc { margin: 30px 0; }
-          .toc-item { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
-          .toc-number { color: #E53935; font-weight: 700; margin-right: 8px; }
-          .photos-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-          .photos-grid img { width: 48%; height: auto; max-height: 200px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
-          .photos-label { font-size: 12px; color: #666; margin-top: 16px; margin-bottom: 8px; font-weight: 600; }
-        </style></head><body>
-        <div class="project-cover">
-          <h1>${project?.name || t('project_detail_projekt' as any)}</h1>
-          <p>${project?.description || ''}</p>
-          <p style="margin-top: 20px; font-size: 14px; color: #999;">
-            ${protocols.length} ${protocols.length !== 1 ? t('project_detail_protokolle' as any) : t('project_detail_protokoll_singular' as any)} &bull;
-            ${t('project_detail_exportiert_am' as any)}${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-        <div class="page-break"></div>
-        <div class="toc">
-          <h2>${t('inhaltsverzeichnis' as any)}</h2>
-          ${protocols.map((p, i) => `
-            <div class="toc-item">
-              ${p.protocolNumber ? `<span class="toc-number">${p.protocolNumber}</span>` : `<span class="toc-number">#${i + 1}</span>`}
-              ${p.title} &mdash; ${new Date(p.createdAt).toLocaleDateString('de-DE')}
-            </div>
-          `).join('')}
-        </div>
-        <div class="page-break"></div>
-      `;
-
-      for (let i = 0; i < protocols.length; i++) {
-        const p = protocols[i];
-        const date = new Date(p.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
-        const time = new Date(p.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
-        combinedHtml += `
-          <div class="protocol-section">
-            <div class="protocol-header">
-              <h2>${p.protocolNumber ? `${p.protocolNumber} – ` : ''}${p.templateName || t('project_detail_protokoll' as any)}</h2>
-              <div class="protocol-meta">
-                ${date} ${t('project_detail_um' as any)} ${time}
-                ${p.duration ? ` &bull; ${t('project_detail_dauer' as any)}${Math.floor((p.duration || 0) / 60)}:${String((p.duration || 0) % 60).padStart(2, '0')}` : ''}
-                ${p.weather ? ` &bull; ${p.weather}` : ''}
-              </div>
-            </div>
-            <div class="protocol-body">${(p.protocol || '').replace(/\n/g, '<br/>')}</div>
-            ${photoBase64Map[p.id] && photoBase64Map[p.id].length > 0 ? `
-              <p class="photos-label">${t('project_detail_fotos' as any)} (${photoBase64Map[p.id].length})</p>
-              <div class="photos-grid">
-                ${photoBase64Map[p.id].map(b64 => `<img src="${b64}" />`).join('')}
-              </div>
-            ` : ''}
-          </div>
-          ${i < protocols.length - 1 ? '<div class="page-break"></div>' : ''}
-        `;
-      }
-
-      combinedHtml += '</body></html>';
-
       if (Platform.OS === 'web') {
         Alert.alert(t('hinweis'), t('msg_pdfexport_ist_nur_auf_dem_2'));
         return;
       }
+
+      const branding = await getPdfBranding().catch(() => null);
+      const accent = branding?.accentColor || "#1E3A5F";
+      const logoDataUri = await resolveBrandingLogo(branding);
+
+      const tocHtml = protocols.length > 1
+        ? `<div class="card"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.4px;color:#94a3b8;font-weight:700;margin-bottom:8px;">${escHtml(t('inhaltsverzeichnis' as any))}</div>${protocols
+            .map((p, i) => `<div style="padding:6px 0;border-bottom:1px solid #eef1f5;font-size:12px;color:#334155;"><strong style="color:${accent};margin-right:8px;">${p.protocolNumber || `#${i + 1}`}</strong>${escHtml(p.title || "")} — ${new Date(p.createdAt).toLocaleDateString('de-DE')}</div>`)
+            .join('')}</div>`
+        : "";
+
+      const sectionsHtml = protocols
+        .map((p, i) => {
+          const date = new Date(p.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+          const time = new Date(p.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+          const meta = `${date} ${t('project_detail_um' as any)} ${time}${p.duration ? ` · ${t('project_detail_dauer' as any)}${Math.floor((p.duration || 0) / 60)}:${String((p.duration || 0) % 60).padStart(2, '0')}` : ''}${p.weather ? ` · ${escHtml(p.weather)}` : ''}`;
+          const photos = photoBase64Map[p.id] && photoBase64Map[p.id].length > 0
+            ? `<p style="font-size:11px;color:#64748b;font-weight:700;margin:14px 0 6px;">${escHtml(t('project_detail_fotos' as any))} (${photoBase64Map[p.id].length})</p><div style="display:flex;flex-wrap:wrap;gap:8px;">${photoBase64Map[p.id].map(b64 => `<img src="${b64}" style="width:48%;max-height:200px;object-fit:cover;border-radius:8px;border:1px solid #e8ecf1;" />`).join('')}</div>`
+            : "";
+          return `${i > 0 ? '<div class="page-break"></div>' : ''}${sectionChip(p.protocolNumber || i + 1, p.templateName || t('project_detail_protokoll' as any))}<div style="font-size:11px;color:#64748b;margin:-6px 0 10px;">${meta}</div><div style="font-size:12.5px;line-height:1.6;white-space:pre-wrap;">${escHtml(p.protocol || '')}</div>${photos}`;
+        })
+        .join('');
+
+      const body = `${tocHtml}${sectionsHtml}`;
+      const combinedHtml = buildPremiumHtml({
+        branding: branding || ({} as any),
+        accentColor: accent,
+        title: project?.name || t('project_detail_projekt' as any),
+        reportTag: `${protocols.length} ${protocols.length !== 1 ? t('project_detail_protokolle' as any) : t('project_detail_protokoll_singular' as any)}`,
+        subtitle: escHtml(`${t('project_detail_exportiert_am' as any)}${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}`),
+        body,
+        logoDataUri,
+      });
 
       const { uri: pdfUri } = await Print.printToFileAsync({
         html: combinedHtml,
