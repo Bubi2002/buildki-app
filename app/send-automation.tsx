@@ -6,8 +6,23 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getPdfBranding, savePdfBranding, type PdfBranding } from "@/lib/pdf-branding-store";
+import { ContactPickerModal } from "@/components/contact-picker-modal";
 
 type Mode = "off" | "prepare" | "auto";
+
+/** Merge picked emails into a comma-separated field, de-duplicated. */
+function appendEmails(current: string, emails: string[]): string {
+  const existing = (current || "").split(",").map((e) => e.trim()).filter(Boolean);
+  const seen = new Set(existing.map((e) => e.toLowerCase()));
+  for (const e of emails) {
+    const trimmed = e.trim();
+    if (trimmed && !seen.has(trimmed.toLowerCase())) {
+      existing.push(trimmed);
+      seen.add(trimmed.toLowerCase());
+    }
+  }
+  return existing.join(", ");
+}
 
 export default function SendAutomationScreen() {
   const { t } = useTranslation();
@@ -15,6 +30,14 @@ export default function SendAutomationScreen() {
   const router = useRouter();
   const [branding, setBranding] = useState<PdfBranding | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<null | "to" | "cc" | "bcc">(null);
+
+  const handleContactSelect = (emails: string[]) => {
+    if (!emails.length) return;
+    if (pickerTarget === "to") update({ defaultEmailAddress: appendEmails(branding?.defaultEmailAddress || "", emails) });
+    else if (pickerTarget === "cc") update({ emailCc: appendEmails(branding?.emailCc || "", emails) });
+    else if (pickerTarget === "bcc") update({ emailBcc: appendEmails(branding?.emailBcc || "", emails) });
+  };
 
   useEffect(() => {
     void (async () => setBranding(await getPdfBranding()))();
@@ -34,6 +57,17 @@ export default function SendAutomationScreen() {
   };
 
   const mode: Mode = (branding?.autoSendMode as Mode) || "off";
+
+  const contactBtn = (target: "to" | "cc" | "bcc") => (
+    <Pressable
+      onPress={() => setPickerTarget(target)}
+      hitSlop={8}
+      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 8, backgroundColor: colors.primary + "14", opacity: pressed ? 0.7 : 1 }]}
+    >
+      <MaterialIcons name="person-add-alt" size={15} color={colors.primary} />
+      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>{t("contacts_from_contacts" as any)}</Text>
+    </Pressable>
+  );
 
   const MODES: { key: Mode; icon: string; titleKey: string; descKey: string; tint: string }[] = [
     { key: "off", icon: "block", titleKey: "send_mode_off", descKey: "send_mode_off_desc", tint: colors.muted },
@@ -86,7 +120,10 @@ export default function SendAutomationScreen() {
             </View>
 
             {/* Recipients */}
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>{t("send_recipients_label" as any)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 20, marginBottom: 10 }}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t("send_recipients_label" as any)}</Text>
+              {contactBtn("to")}
+            </View>
             <TextInput
               value={branding?.defaultEmailAddress || ""}
               onChangeText={(v) => update({ defaultEmailAddress: v })}
@@ -119,7 +156,10 @@ export default function SendAutomationScreen() {
               style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground, minHeight: 80, textAlignVertical: "top" }]}
             />
 
-            <Text style={[styles.fieldHint, { color: colors.muted }]}>{t("cc_kommagetrennt")}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 4 }}>
+              <Text style={[styles.fieldHint, { color: colors.muted, marginTop: 0, marginBottom: 0 }]}>{t("cc_kommagetrennt")}</Text>
+              {contactBtn("cc")}
+            </View>
             <TextInput
               value={branding?.emailCc || ""}
               onChangeText={(v) => update({ emailCc: v })}
@@ -130,7 +170,10 @@ export default function SendAutomationScreen() {
               style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
             />
 
-            <Text style={[styles.fieldHint, { color: colors.muted }]}>{t("bcc_kommagetrennt")}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 4 }}>
+              <Text style={[styles.fieldHint, { color: colors.muted, marginTop: 0, marginBottom: 0 }]}>{t("bcc_kommagetrennt")}</Text>
+              {contactBtn("bcc")}
+            </View>
             <TextInput
               value={branding?.emailBcc || ""}
               onChangeText={(v) => update({ emailBcc: v })}
@@ -143,6 +186,12 @@ export default function SendAutomationScreen() {
           </>
         )}
       </ScrollView>
+
+      <ContactPickerModal
+        visible={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelect={handleContactSelect}
+      />
     </ScreenContainer>
   );
 }

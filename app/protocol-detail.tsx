@@ -40,6 +40,7 @@ import { matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
 import { saveDelegation, formatDelegationNotification } from "@/lib/task-delegation";
 import { generateTimeline, getTimelineIcon, getTimelineColor, TimelineEntry } from "@/lib/protocol-timeline";
 import { getTeamContacts, saveTeamContact, markContactUsed, updateTeamContact, TeamContact, sortContactsByRecent } from "@/lib/team-contacts";
+import { ContactPickerModal } from "@/components/contact-picker-modal";
 // expo-contacts is imported dynamically to avoid web crashes
 import { getSpeakerName, updateSpeakerName } from "@/lib/speaker-names";
 import { SpeakerSegment, getSpeakerColor, getUniqueSpeakers, SPEAKER_COLORS } from "@/lib/speaker-colors";
@@ -228,7 +229,21 @@ export default function ProtocolDetailScreen() {
   const [newContactEmail, setNewContactEmail] = useState("");
   const [newContactRole, setNewContactRole] = useState("");
   const [showPdfRecipientPicker, setShowPdfRecipientPicker] = useState(false);
+  const [showPdfContactsModal, setShowPdfContactsModal] = useState(false);
   const [pdfRecipientEmail, setPdfRecipientEmail] = useState("");
+
+  // Merge picked phone-contact emails into the recipient field (comma-separated, deduped).
+  const addRecipientEmails = (emails: string[]) => {
+    setPdfRecipientEmail((prev) => {
+      const existing = (prev || "").split(",").map((e) => e.trim()).filter(Boolean);
+      const seen = new Set(existing.map((e) => e.toLowerCase()));
+      for (const e of emails) {
+        const x = e.trim();
+        if (x && !seen.has(x.toLowerCase())) { existing.push(x); seen.add(x.toLowerCase()); }
+      }
+      return existing.join(", ");
+    });
+  };
   const [editingContact, setEditingContact] = useState<TeamContact | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -820,44 +835,6 @@ export default function ProtocolDetailScreen() {
   };
 
   // Pick a recipient straight from the device address book (fills the field)
-  const pickDeviceContactForPdf = async () => {
-    try {
-      if (Platform.OS === "web") {
-        Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
-        return;
-      }
-      const ContactsModule = await import("expo-contacts/legacy");
-      const { status } = await ContactsModule.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
-        return;
-      }
-      const { data } = await ContactsModule.getContactsAsync({
-        fields: [ContactsModule.Fields.Emails, ContactsModule.Fields.Name],
-        sort: ContactsModule.SortTypes?.FirstName || undefined,
-      });
-      const withEmail = (data || []).filter((c) => c.name && c.emails && c.emails.length > 0);
-      if (withEmail.length === 0) {
-        Alert.alert(t('alert_keine_kontakte'), t('msg_es_wurden_keine_kontakte_auf'));
-        return;
-      }
-      const sorted = withEmail.sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 12);
-      Alert.alert(
-        t('alert_kontakt_importieren'),
-        t('waehle_kontakt'),
-        [
-          ...sorted.map((c) => ({
-            text: `${c.name} (${c.emails![0].email})`,
-            onPress: () => setPdfRecipientEmail(c.emails![0].email || ""),
-          })),
-          { text: t('btn_abbrechen'), style: "cancel" as const },
-        ]
-      );
-    } catch (e: any) {
-      Alert.alert(t('alert_fehler'), `Kontakte konnten nicht geladen werden: ${e?.message || t('protocol_detail_unknown_error' as any)}`);
-    }
-  };
-
   const sendPdfToSelectedRecipient = async (email: string) => {
     if (!previewPdfUri || !protocol || !email) return;
     setShowPdfRecipientPicker(false);
@@ -3600,12 +3577,17 @@ export default function ProtocolDetailScreen() {
                 </ScrollView>
               )}
               <Pressable
-                onPress={pickDeviceContactForPdf}
+                onPress={() => setShowPdfContactsModal(true)}
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, paddingVertical: 12, borderRadius: 0, borderWidth: 1, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="contacts" size={18} color={colors.primary} />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('aus_kontakten')}</Text>
               </Pressable>
+              <ContactPickerModal
+                visible={showPdfContactsModal}
+                onClose={() => setShowPdfContactsModal(false)}
+                onSelect={addRecipientEmails}
+              />
               <Pressable
                 onPress={() => sendPdfToSelectedRecipient(pdfRecipientEmail)}
                 disabled={!pdfRecipientEmail.trim()}
