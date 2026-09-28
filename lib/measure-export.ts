@@ -1,6 +1,8 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
+import { buildPremiumHtml, resolveBrandingLogo, escHtml } from "./pdf-premium";
+import { getPdfBranding } from "./pdf-branding-store";
 
 async function fileToDataUri(uri: string): Promise<string | null> {
   try {
@@ -13,14 +15,6 @@ async function fileToDataUri(uri: string): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-function esc(s: string): string {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export type MeasureExportRow = { label: string; value: string };
@@ -43,43 +37,43 @@ export async function exportMeasurementPdf(params: {
   const dataUri = await fileToDataUri(params.imageUri);
   if (!dataUri) return "empty";
 
+  const branding = await getPdfBranding();
+  const accent = branding.accentColor || "#1E3A5F";
+  const logoDataUri = await resolveBrandingLogo(branding);
+
+  const sub = (label: string) =>
+    `<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.4px;color:#94a3b8;font-weight:700;margin:20px 0 6px;">${escHtml(label)}</div>`;
+
   const rowsHtml = params.rows
     .filter((r) => r.value && r.value.trim())
-    .map((r) => `<tr><td class="k">${esc(r.label)}</td><td class="v">${esc(r.value)}</td></tr>`)
+    .map((r) => `<tr><td style="color:#64748b;width:42%;">${escHtml(r.label)}</td><td><strong>${escHtml(r.value)}</strong></td></tr>`)
     .join("");
 
   const findingHtml =
     params.findingText && params.findingText.trim()
-      ? `<div class="block"><div class="blabel">${esc(params.findingLabel || "")}</div><div class="btext">${esc(params.findingText)}</div></div>`
+      ? `${sub(params.findingLabel || "")}<div class="note" style="white-space:pre-wrap;">${escHtml(params.findingText)}</div>`
       : "";
   const noteHtml =
     params.note && params.note.trim()
-      ? `<div class="block"><div class="blabel">${esc(params.noteLabel || "")}</div><div class="btext">${esc(params.note)}</div></div>`
+      ? `${sub(params.noteLabel || "")}<div class="note" style="white-space:pre-wrap;">${escHtml(params.note)}</div>`
       : "";
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    @page { size: A4 portrait; margin: 28px; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: -apple-system, Helvetica, Arial, sans-serif; color: #111; }
-    .head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid #00ACC1; padding-bottom: 8px; margin-bottom: 14px; }
-    .title { font-size: 20px; font-weight: 800; }
-    .heading { font-size: 13px; color: #555; }
-    .imgwrap { width: 100%; border: 1px solid #ddd; margin-bottom: 16px; text-align: center; background: #f6f6f6; }
-    .imgwrap img { max-width: 100%; max-height: 420px; display: inline-block; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-    td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: top; }
-    td.k { color: #666; width: 40%; }
-    td.v { font-weight: 700; }
-    .block { margin-bottom: 12px; }
-    .blabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; margin-bottom: 3px; }
-    .btext { font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
-  </style></head><body>
-    <div class="head"><div class="title">${esc(params.title)}</div><div class="heading">${esc(params.heading)}</div></div>
-    <div class="imgwrap"><img src="${dataUri}" /></div>
+  const body = `
+    <div class="card" style="text-align:center;padding:12px;background:#f8fafc;">
+      <img src="${dataUri}" style="max-width:100%;max-height:430px;object-fit:contain;display:inline-block;" />
+    </div>
     ${findingHtml}
-    <table>${rowsHtml}</table>
-    ${noteHtml}
-  </body></html>`;
+    <table class="prem-table" style="margin-top:14px;"><tbody>${rowsHtml}</tbody></table>
+    ${noteHtml}`;
+
+  const html = buildPremiumHtml({
+    branding,
+    accentColor: accent,
+    title: params.title,
+    subtitle: escHtml(params.heading),
+    body,
+    logoDataUri,
+  });
 
   const { uri } = await Print.printToFileAsync({ html });
   if (!(await Sharing.isAvailableAsync())) return "unavailable";
