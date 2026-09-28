@@ -940,11 +940,28 @@ export default function ProtocolDetailScreen() {
   // snapshot stored at recording time (original file + template/style/markers).
   const retryProcessing = async () => {
     if (!protocol) return;
-    const job = (protocol as any).retryJob;
-    if (!job?.fileUri) {
+    const stored = (protocol as any).retryJob;
+    // Fall back to the audio kept on the protocol (drafts don't store a retryJob).
+    const audioUri = stored?.fileUri || (protocol as any).sourceAudioUri;
+    if (!audioUri) {
       Alert.alert(t('hinweis'), t('protocol_retry_unavailable' as any));
       return;
     }
+    const job = stored || {
+      protocolId: protocol.id,
+      fileUri: audioUri,
+      mimeType: "audio/m4a",
+      projectName: protocol.projectName,
+      templateId: protocol.templateId,
+      templateName: protocol.templateName,
+      style: "formal",
+      format: "bullets",
+      createdAt: protocol.createdAt,
+      markers: (protocol as any).markers,
+      photos: protocol.photos,
+      photoTimestamps: (protocol as any).photoTimestamps,
+      status: "queued" as const,
+    };
     try {
       const info = await FileSystem.getInfoAsync(job.fileUri);
       if (!info.exists) {
@@ -982,6 +999,29 @@ export default function ProtocolDetailScreen() {
     } finally {
       setIsRetrying(false);
     }
+  };
+
+  // Draft = recorded but never transcribed because AI processing / cloud sync
+  // was off. Ask for explicit consent, enable it, then run the pipeline.
+  const processDraftNow = () => {
+    Alert.alert(
+      t('protocol_process_now_title' as any),
+      t('protocol_process_now_msg' as any),
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        {
+          text: t('protocol_process_now_confirm' as any),
+          onPress: async () => {
+            try {
+              const { updateConsentChoice } = await import("@/lib/privacy-consent");
+              await updateConsentChoice("aiProcessing", true, "draft-process");
+              await updateConsentChoice("cloudSync", true, "draft-process");
+            } catch {}
+            await retryProcessing();
+          },
+        },
+      ],
+    );
   };
 
   const regenerateWithTemplate = async (templateId: string, templateName?: string) => {
@@ -1863,6 +1903,31 @@ export default function ProtocolDetailScreen() {
                 <Text style={{ fontSize: 11, color: colors.primary }}>{tag}</Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* Draft banner: recorded but not yet transcribed (AI processing was off) */}
+        {protocol.status === "draft" && (
+          <View style={[styles.metaCard, { backgroundColor: "#FFF3E0", borderColor: "#FF9800", marginBottom: 12 }]}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+              <MaterialIcons name="graphic-eq" size={22} color="#FB8C00" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#E65100" }}>{t('protocol_draft_title' as any)}</Text>
+                <Text style={{ fontSize: 12, color: "#EF6C00", marginTop: 3, lineHeight: 17 }}>{t('protocol_draft_msg' as any)}</Text>
+                {((protocol as any).sourceAudioUri || (protocol as any).retryJob?.fileUri) ? (
+                  <Pressable
+                    onPress={processDraftNow}
+                    disabled={isRetrying}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: "#FB8C00", borderRadius: 8, alignSelf: "flex-start", opacity: pressed || isRetrying ? 0.7 : 1 }]}
+                  >
+                    {isRetrying ? <ActivityIndicator size="small" color="#FFFFFF" /> : <MaterialIcons name="auto-awesome" size={16} color="#FFFFFF" />}
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF" }}>{t('protocol_process_now_title' as any)}</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={{ fontSize: 11, color: "#EF6C00", marginTop: 8, fontStyle: "italic" }}>{t('protocol_draft_no_audio' as any)}</Text>
+                )}
+              </View>
+            </View>
           </View>
         )}
 
