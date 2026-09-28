@@ -3,6 +3,7 @@ import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 import type { FloorPlan, PlanPin } from "@/lib/floor-plan-store";
+import { getPdfBranding } from "@/lib/pdf-branding-store";
 
 const PIN_HEX: Record<PlanPin["type"], string> = {
   photo: "#2196F3",
@@ -49,11 +50,14 @@ function pinsHtml(pins: PlanPin[]): string {
     .join("");
 }
 
-function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boolean): string {
+function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boolean, company: string): string {
   const pinCount = pins.length;
   return `<section class="page" style="${isLast ? "" : "page-break-after:always;"}">
     <div class="head">
-      <div class="name">${esc(decodeUnicodeEscapes(plan.name))}</div>
+      <div>
+        ${company ? `<div class="brand">${esc(company)}</div>` : ""}
+        <div class="name">${esc(decodeUnicodeEscapes(plan.name))}</div>
+      </div>
       <div class="meta">${pinCount} ${pinCount === 1 ? "Markierung" : "Markierungen"}</div>
     </div>
     <div class="wrap">
@@ -63,19 +67,20 @@ function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boo
   </section>`;
 }
 
-const STYLE = `
-  @page { size: A4 landscape; margin: 16px; }
+const styleFor = (accent: string) => `
+  @page { size: A4 landscape; margin: 12mm 12mm 12mm; @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; } }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, Helvetica, Arial, sans-serif; color: #111; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2937; }
   .page { width: 100%; }
-  .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
-  .name { font-size: 18px; font-weight: 700; }
-  .meta { font-size: 12px; color: #666; }
-  .wrap { position: relative; width: 100%; border: 1px solid #ddd; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid ${accent}; padding-bottom: 8px; margin-bottom: 10px; }
+  .brand { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+  .name { font-size: 19px; font-weight: 800; color: #0F2744; letter-spacing: -0.2px; }
+  .meta { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .wrap { position: relative; width: 100%; border: 1px solid #e8ecf1; border-radius: 8px; overflow: hidden; }
   .wrap img { width: 100%; display: block; }
   .pin { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px; white-space: nowrap; }
   .pin .dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.25); flex: 0 0 auto; }
-  .pin .lbl { font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.92); border: 1px solid; border-radius: 4px; padding: 1px 4px; color: #111; }
+  .pin .lbl { font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.92); border: 1px solid; border-radius: 4px; padding: 1px 4px; color: #1f2937; }
 `;
 
 /**
@@ -91,16 +96,20 @@ export async function exportFloorPlansPdf(
   pinsByPlan: Record<string, PlanPin[]>,
   dialogTitle: string,
 ): Promise<"shared" | "unavailable" | "empty"> {
+  const branding = await getPdfBranding().catch(() => null);
+  const accent = branding?.accentColor || "#1E3A5F";
+  const company = branding?.companyName || "";
+
   const pages: string[] = [];
   for (let i = 0; i < plans.length; i++) {
     const plan = plans[i];
     const dataUri = await fileToDataUri(plan.imageUri);
     if (!dataUri) continue;
-    pages.push(planPage(plan, pinsByPlan[plan.id] || [], dataUri, i === plans.length - 1));
+    pages.push(planPage(plan, pinsByPlan[plan.id] || [], dataUri, i === plans.length - 1, company));
   }
   if (pages.length === 0) return "empty";
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${STYLE}</style></head><body>${pages.join("")}</body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${styleFor(accent)}</style></head><body>${pages.join("")}</body></html>`;
   const { uri } = await Print.printToFileAsync({ html });
 
   if (!(await Sharing.isAvailableAsync())) return "unavailable";

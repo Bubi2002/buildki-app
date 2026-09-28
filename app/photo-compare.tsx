@@ -26,6 +26,8 @@ import { pickImagesWithSource } from "@/lib/import-picker";
 import { Swipeable } from "react-native-gesture-handler";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
+import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
+import { getPdfBranding } from "@/lib/pdf-branding-store";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -184,7 +186,6 @@ export default function PhotoCompareScreen() {
   const shareComparison = async () => {
     if (!selectedPair) return;
     try {
-      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const toDataUri = async (uri?: string | null): Promise<string | null> => {
         if (!uri) return null;
         try {
@@ -210,18 +211,26 @@ export default function PhotoCompareScreen() {
       const cell = (label: string, color: string, date: string, img: string | null) => `
         <td style="width:50%; vertical-align:top; padding:6px;">
           <div style="font-weight:700; color:${color}; text-align:center; margin-bottom:6px; font-size:13px;">${label}</div>
-          ${img ? `<img src="${img}" style="width:100%; border:1px solid #E5E7EB; border-radius:6px;"/>` : `<div style="height:200px; border:1px dashed #E5E7EB; border-radius:6px;"></div>`}
-          <div style="text-align:center; color:#6B7280; font-size:11px; margin-top:6px;">${date}</div>
+          ${img ? `<img src="${img}" style="width:100%; border:1px solid #e8ecf1; border-radius:8px;"/>` : `<div style="height:200px; border:1px dashed #e8ecf1; border-radius:8px;"></div>`}
+          <div style="text-align:center; color:#64748b; font-size:11px; margin-top:6px;">${date}</div>
         </td>`;
-      const html = `<html><head><meta charset="utf-8"></head>
-        <body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
-          <h1 style="font-size:20px; margin:0 0 12px;">${esc(selectedPair.label || t('vergleich'))}</h1>
-          ${metaHeader}
-          <table style="width:100%; border-collapse:collapse;"><tr>
-            ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
-            ${cell(t('nachher'), "#22C55E", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
-          </tr></table>
-        </body></html>`;
+      const branding = await getPdfBranding().catch(() => null);
+      const accent = branding?.accentColor || "#1E3A5F";
+      const logoDataUri = await resolveBrandingLogo(branding);
+      const body = `
+        ${metaHeader}
+        <table style="width:100%; border-collapse:collapse; margin-top:14px;"><tr>
+          ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
+          ${cell(t('nachher'), "#4E8B6B", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
+        </tr></table>`;
+      const html = buildPremiumHtml({
+        branding: branding || ({} as any),
+        accentColor: accent,
+        title: selectedPair.label || t('vergleich'),
+        reportTag: t('vergleich'),
+        body,
+        logoDataUri,
+      });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
