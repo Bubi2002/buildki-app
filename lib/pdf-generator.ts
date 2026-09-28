@@ -363,15 +363,18 @@ export function generatePdfHtml(
         : "";
       const measurementsHtml = measurements.length > 0
         ? `<div class="evidence-measurements">
+                  <p class="meas-title">Messung</p>
                   ${measurements
                     .map((measurement) => `
-                      <p><strong>Messung: ${escapeHtml(formatMeasurementForDocument(measurement))}</strong></p>
+                      <p><strong>Messwert: ${escapeHtml(formatMeasurementForDocument(measurement))}</strong></p>
                       <p><strong>Methode: ${escapeHtml(formatMeasurementMethod(measurement.method))}${measurement.note ? ` · ${escapeHtml(measurement.note)}` : ""}</strong></p>`)
                     .join("")}
                 </div>`
         : "";
+      const badge = `<span class="evidence-badge">${String(index + 1).padStart(2, "0")}</span>`;
       const imageBlock = dataUri
         ? `<div class="evidence-image-wrap">
+                  ${badge}
                   <img src="${dataUri}" class="evidence-image" />
                   ${watermarkOverlay}
                 </div>`
@@ -390,8 +393,8 @@ export function generatePdfHtml(
   const evidenceHtml = evidenceArticles.length > 0
     ? `
       <section class="document-chapter evidence-section">
-        <h2>Visuelle Belege und Messungen</h2>
-        ${evidenceArticles.join("")}
+        <h2>Fotodokumentation &amp; Messungen</h2>
+        <div class="evidence-grid">${evidenceArticles.join("")}</div>
       </section>`
     : "";
 
@@ -776,47 +779,69 @@ export function generatePdfHtml(
       break-before: page;
       page-break-before: always;
     }
+    .evidence-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
     .evidence-block {
       break-inside: avoid;
       page-break-inside: avoid;
-      margin: 0 0 20px 0;
-      padding: 12px;
-      border: 1px solid #d8dde3;
+      width: calc(50% - 7px);
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #e8ecf1;
+      border-radius: 12px;
       background: #fff;
+      overflow: hidden;
     }
     .evidence-block-noimage {
       background: #fafbfc;
     }
+    .evidence-image-wrap {
+      order: 1;
+      position: relative;
+      width: 100%;
+      height: 155px;
+      background: #f4f6f8;
+    }
+    .evidence-image {
+      display: block;
+      width: 100%;
+      height: 155px;
+      object-fit: cover;
+    }
+    .evidence-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 2;
+      background: rgba(15,39,68,0.92);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
     .evidence-no-image {
-      margin: 4px 0 2px 0;
-      padding: 12px;
+      order: 1;
+      margin: 0;
+      padding: 24px 12px;
       font-size: 11px;
       font-style: italic;
       color: #64748b;
       text-align: center;
       background: #f4f6f8;
-      border: 1px dashed #d8dde3;
-      border-radius: 6px;
     }
     .evidence-finding {
-      margin: 0 0 10px 0;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #111;
-    }
-    .evidence-image-wrap {
-      position: relative;
-      width: 100%;
-      text-align: center;
-    }
-    .evidence-image {
-      display: block;
-      width: 100%;
-      max-width: 520px;
-      max-height: 360px;
-      margin: 0 auto;
-      object-fit: contain;
-      page-break-inside: avoid;
+      order: 2;
+      margin: 10px 12px 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #1f2937;
     }
     .evidence-watermark {
       position: absolute;
@@ -827,18 +852,41 @@ export function generatePdfHtml(
       color: #fff;
       font-size: 8px;
     }
-    .evidence-number,
-    .evidence-source,
-    .evidence-measurements p {
-      margin: 5px 0 0 0;
-      color: #333;
-      font-size: 10px;
+    .evidence-number {
+      order: 3;
+      margin: 6px 12px 0;
+      color: #94a3b8;
+      font-size: 9px;
+      line-height: 1.4;
+    }
+    .evidence-source {
+      order: 4;
+      margin: 2px 12px 10px;
+      color: #64748b;
+      font-size: 9.5px;
       line-height: 1.4;
     }
     .evidence-measurements {
-      margin-top: 7px;
-      padding-top: 6px;
-      border-top: 1px solid #e5e7eb;
+      order: 5;
+      margin: 0 12px 12px;
+      padding: 9px 11px;
+      border: 1px solid #e8ecf1;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .evidence-measurements .meas-title {
+      font-size: 8.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #64748b;
+      margin: 0 0 4px 0;
+    }
+    .evidence-measurements p {
+      margin: 2px 0;
+      color: #334155;
+      font-size: 9.5px;
+      line-height: 1.4;
     }
     tr {
       page-break-inside: avoid;
