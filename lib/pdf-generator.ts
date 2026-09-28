@@ -398,6 +398,32 @@ export function generatePdfHtml(
       </section>`
     : "";
 
+  // ── Freigabe / Unterschriften ──────────────────────────────────────────────
+  // Always render a signing block (created-by + acknowledged), with signature
+  // lines to sign by hand when no digital signature is present.
+  const sigSvg = (paths: string[]) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="70" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet" style="max-width:100%;overflow:visible;">${paths.map((d) => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join("")}</svg>`;
+  const coSuffix = company.companyName ? ` ${escapeHtml(company.companyName)}` : "";
+  const sigCols: { role: string; svg: string; caption: string }[] = [];
+  if (protocol.signatures && protocol.signatures.length > 0) {
+    for (const sig of protocol.signatures) {
+      sigCols.push({ role: escapeHtml(sig.role || `Erstellt durch${coSuffix}`), svg: sig.paths?.length ? sigSvg(sig.paths) : "", caption: escapeHtml(sig.signedAt || "Ort, Datum") });
+    }
+  } else if (protocol.signaturePaths && protocol.signaturePaths.length > 0) {
+    sigCols.push({ role: `Erstellt durch${coSuffix}`, svg: sigSvg(protocol.signaturePaths), caption: date });
+  } else {
+    sigCols.push({ role: `Erstellt durch${coSuffix}`, svg: "", caption: "Ort, Datum" });
+  }
+  sigCols.push({ role: "Zur Kenntnis genommen", svg: "", caption: "Ort, Datum" });
+  const freigabeHtml = layoutShowSignatures
+    ? `<section class="freigabe-section">
+        <h2>Freigabe</h2>
+        <div class="sign-grid">
+          ${sigCols.map((c) => `<div class="sign-col"><div class="sign-role">${c.role}</div><div class="sign-area">${c.svg}</div><div class="sign-line"></div><div class="sign-caption">${c.caption}</div></div>`).join("")}
+        </div>
+      </section>`
+    : "";
+
   const logoHtml = company.logoBase64
     ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 180px; object-fit: contain; display: block;" />`
     : "";
@@ -888,6 +914,60 @@ export function generatePdfHtml(
       font-size: 9.5px;
       line-height: 1.4;
     }
+    .freigabe-section {
+      margin-top: 26px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .freigabe-section > h2 {
+      position: relative;
+      margin: 0 0 16px 0;
+      padding: 1px 0 11px 34px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #0F2744;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+    .freigabe-section > h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 23px;
+      height: 23px;
+      background: #0F2744;
+      border-radius: 6px;
+    }
+    .sign-grid {
+      display: flex;
+      gap: 22px;
+      margin-top: 10px;
+    }
+    .sign-col {
+      flex: 1;
+    }
+    .sign-role {
+      font-size: 11px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 6px;
+    }
+    .sign-area {
+      height: 68px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .sign-line {
+      border-bottom: 1px solid #94a3b8;
+      margin-top: 2px;
+    }
+    .sign-caption {
+      font-size: 9.5px;
+      color: #64748b;
+      margin-top: 5px;
+    }
     tr {
       page-break-inside: avoid;
     }
@@ -1241,35 +1321,7 @@ export function generatePdfHtml(
   </div>
   ` : ''}
 
-  ${protocol.signatures && protocol.signatures.length > 0 && layoutShowSignatures ? `
-  <div style="margin-top: 30px; page-break-inside: avoid;">
-    <h3 style="font-size: 14px; color: #333; margin-bottom: 16px;">Unterschriften</h3>
-    <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-      ${protocol.signatures.map(sig => `
-        <div style="border: 2px solid #000000; padding: 12px; background: #ffffff; width: 45%; box-sizing: border-box;">
-          <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 8px;">${sig.role}</div>
-          <div style="display: flex; align-items: center; justify-content: center; min-height: 100px; overflow: visible;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; overflow: visible;">
-              ${sig.paths.map(d => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join('\n              ')}
-            </svg>
-          </div>
-          <div style="border-top: 1px solid #000; margin-top: 8px; padding-top: 4px; font-size: 10px; color: #555;">${sig.signedAt}</div>
-        </div>
-      `).join('')}
-    </div>
-  </div>
-  ` : protocol.signaturePaths && protocol.signaturePaths.length > 0 && layoutShowSignatures ? `
-  <div style="margin-top: 30px; page-break-inside: avoid;">
-    <h3 style="font-size: 14px; color: #333; margin-bottom: 16px;">Unterschrift</h3>
-    <div style="border: 2px solid #000000; padding: 12px; background: #ffffff; display: inline-block; min-width: 300px;">
-      <div style="display: flex; align-items: center; justify-content: center; min-height: 100px; overflow: visible;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; overflow: visible;">
-          ${protocol.signaturePaths.map(d => `<path d="${d}" stroke="#1a1a1a" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join('\n          ')}
-        </svg>
-      </div>
-    </div>
-  </div>
-  ` : ''}
+  ${freigabeHtml}
 
   ${company.watermarkEnabled && company.watermarkText ? `<div class="watermark">${company.watermarkText}</div>` : ''}
 
