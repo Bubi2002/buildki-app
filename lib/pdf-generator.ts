@@ -217,7 +217,7 @@ const PILL_COLORS: Record<string, string> = {
   "nachbesserung": "#DB2777",
   "prüfung": "#7C3AED",
   "pruefung": "#7C3AED",
-  "erledigt": "#16A34A",
+  "erledigt": "#5E8B6F",
   "abgelehnt": "#78716C",
   "geschlossen": "#475569",
   "hoch": "#B91C1C",
@@ -276,13 +276,13 @@ export function generatePdfHtml(
   const kpiTodosOpen = (protocol.todos || []).filter((tdo) => !tdo.done).length;
   const kpiCards: { value: string | number; label: string; color: string }[] = [];
   if (kpiTodosTotal > 0) {
-    kpiCards.push({ value: kpiTodosOpen, label: "Offene Aufgaben", color: kpiTodosOpen > 0 ? "#B45309" : "#16A34A" });
-    kpiCards.push({ value: kpiTodosTotal - kpiTodosOpen, label: "Erledigt", color: "#16A34A" });
+    kpiCards.push({ value: kpiTodosOpen, label: "Offene Aufgaben", color: kpiTodosOpen > 0 ? "#B0763F" : "#5E8B6F" });
+    kpiCards.push({ value: kpiTodosTotal - kpiTodosOpen, label: "Erledigt", color: "#5E8B6F" });
   }
   if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: "Fotos", color: "#1E3A5F" });
-  if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? "Beleg" : "Belege", color: "#475569" });
+  if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? "Beleg" : "Belege", color: "#64748B" });
   const kpiBandHtml = kpiCards.length > 0
-    ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card" style="border-top:3px solid ${cd.color};"><div class="num" style="color:${cd.color};">${cd.value}</div><div class="lbl">${cd.label}</div></div>`).join("")}</div>`
+    ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
     : "";
 
   // Which legacy photos are placed inline via [FOTO X]? (used for evidence de-duplication + the
@@ -759,6 +759,7 @@ export function generatePdfHtml(
       line-height: 1.6;
       margin: 0;
       padding: 0;
+      counter-reset: chapter;
     }
     /* Intelligent page breaks */
     h2, h3 {
@@ -780,6 +781,7 @@ export function generatePdfHtml(
       page-break-before: always;
       margin-top: 0;
       padding-top: 0;
+      counter-increment: chapter;
     }
     .document-chapter > h2 {
       position: relative;
@@ -792,14 +794,19 @@ export function generatePdfHtml(
       letter-spacing: -0.2px;
     }
     .document-chapter > h2::before {
-      content: "";
+      content: counter(chapter);
       position: absolute;
       left: 0;
       top: 0;
-      width: 23px;
-      height: 23px;
-      background: #0F2744;
+      width: 24px;
+      height: 24px;
+      background: #1E3A5F;
       border-radius: 6px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 24px;
     }
     .evidence-section {
       break-before: page;
@@ -918,6 +925,7 @@ export function generatePdfHtml(
       margin-top: 26px;
       page-break-inside: avoid;
       break-inside: avoid;
+      counter-increment: chapter;
     }
     .freigabe-section > h2 {
       position: relative;
@@ -930,14 +938,19 @@ export function generatePdfHtml(
       letter-spacing: -0.2px;
     }
     .freigabe-section > h2::before {
-      content: "";
+      content: counter(chapter);
       position: absolute;
       left: 0;
       top: 0;
-      width: 23px;
-      height: 23px;
-      background: #0F2744;
+      width: 24px;
+      height: 24px;
+      background: #1E3A5F;
       border-radius: 6px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 24px;
     }
     .sign-grid {
       display: flex;
@@ -1074,29 +1087,36 @@ export function generatePdfHtml(
     }
     .stat-band {
       display: flex;
-      gap: 10px;
-      margin: 0 0 22px 0;
+      align-items: stretch;
+      margin: 0 0 20px 0;
+      background: #f8fafc;
+      border: 1px solid #e8ecf1;
+      border-radius: 10px;
+      overflow: hidden;
     }
     .stat-card {
       flex: 1;
-      background: #f8fafc;
-      border: 1px solid #e8ecf1;
-      border-radius: 12px;
-      padding: 13px 10px;
-      text-align: center;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 8px;
+      border-left: 1px solid #eef1f5;
+    }
+    .stat-card:first-child {
+      border-left: none;
     }
     .stat-card .num {
-      font-size: 26px;
+      font-size: 19px;
       font-weight: 800;
       line-height: 1;
     }
     .stat-card .lbl {
-      font-size: 9px;
+      font-size: 8.5px;
       color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.3px;
       font-weight: 700;
-      margin-top: 6px;
     }
     .content {
       margin-bottom: 20px;
