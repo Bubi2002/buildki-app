@@ -18,6 +18,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { onJobUpdate } from "@/lib/background-processor";
 import { useTranslation } from "@/lib/language-provider";
@@ -98,6 +99,12 @@ export default function ProtocolsScreen() {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [merging, setMerging] = useState(false);
+  const [processingDrafts, setProcessingDrafts] = useState(false);
+  const [draftProgress, setDraftProgress] = useState({ done: 0, total: 0 });
+  const uploadMutation = trpc.upload.audio.useMutation();
+  const transcribeMutation = trpc.voice.transcribe.useMutation();
+  const protocolMutation = trpc.protocol.generate.useMutation();
+  const todosMutation = trpc.protocol.extractTodos.useMutation();
   const [featureFlags, setFeatureFlags] = useState({ protocolCompare: false, csvExport: true, statistics: true });
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
@@ -327,6 +334,72 @@ export default function ProtocolsScreen() {
             } finally {
               setMerging(false);
             }
+          },
+        },
+      ]
+    );
+  };
+
+  // Transcribe every draft that still has its audio, one after another.
+  const draftsToProcess = () =>
+    getDisplayedProtocols().filter((p: any) => p.status === "draft" && (p.sourceAudioUri || p.retryJob?.fileUri));
+
+  const processAllDrafts = () => {
+    if (processingDrafts) return;
+    const drafts = draftsToProcess();
+    if (drafts.length === 0) {
+      Alert.alert(t('hinweis'), t('protocols_no_drafts' as any));
+      return;
+    }
+    Alert.alert(
+      t('protocols_process_drafts_title' as any),
+      t('protocols_process_drafts_msg' as any).replace('{count}', String(drafts.length)),
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        {
+          text: t('protocol_process_now_confirm' as any),
+          onPress: async () => {
+            try {
+              const { updateConsentChoice } = await import("@/lib/privacy-consent");
+              await updateConsentChoice("aiProcessing", true, "bulk-draft");
+              await updateConsentChoice("cloudSync", true, "bulk-draft");
+            } catch {}
+            const api = {
+              upload: (base64: string, mime: string, filename: string) => uploadMutation.mutateAsync({ base64, mimeType: mime, filename }),
+              transcribe: (audioUrl: string, language: string) => transcribeMutation.mutateAsync({ audioUrl, language }),
+              generateProtocol: (transcription: string, templateId: string, style: string, format: string, recordingDate?: string, jobMarkers?: { time: number; label: string }[], photoCount?: number, jobPhotoTimestamps?: number[], customSystemPrompt?: string, customTemplateName?: string) =>
+                protocolMutation.mutateAsync({ transcription, templateId, style: style as "formal" | "informal", format: format as "bullets" | "paragraphs", recordingDate, markers: jobMarkers, photoCount, photoTimestamps: jobPhotoTimestamps, customSystemPrompt, customTemplateName }),
+              extractTodos: (transcription: string, protocolText: string) => todosMutation.mutateAsync({ transcription, protocolText }),
+            };
+            const { startBackgroundProcessing } = require("@/lib/background-processor");
+            setProcessingDrafts(true);
+            setDraftProgress({ done: 0, total: drafts.length });
+            let done = 0;
+            for (const p of drafts as any[]) {
+              const audioUri = p.retryJob?.fileUri || p.sourceAudioUri;
+              try {
+                const info = await FileSystem.getInfoAsync(audioUri);
+                if (!info.exists) { done++; setDraftProgress({ done, total: drafts.length }); continue; }
+              } catch { done++; setDraftProgress({ done, total: drafts.length }); continue; }
+              // Flip to "processing" so the list shows it working.
+              try {
+                const pStr = await AsyncStorage.getItem("protocols");
+                const pArr = pStr ? JSON.parse(pStr) : [];
+                const idx = pArr.findIndex((x: any) => x.id === p.id);
+                if (idx !== -1) { pArr[idx] = { ...pArr[idx], status: "processing", processingStep: "queued", processingError: undefined }; await AsyncStorage.setItem("protocols", JSON.stringify(pArr)); }
+              } catch {}
+              const job = p.retryJob || {
+                protocolId: p.id, fileUri: audioUri, mimeType: "audio/m4a", projectName: p.projectName,
+                templateId: p.templateId, templateName: p.templateName, style: "formal", format: "bullets",
+                createdAt: p.createdAt, markers: p.markers, photos: p.photos, photoTimestamps: p.photoTimestamps, status: "queued",
+              };
+              try { await startBackgroundProcessing({ ...job, status: "queued" }, api); } catch {}
+              done++;
+              setDraftProgress({ done, total: drafts.length });
+              await loadProtocols();
+            }
+            setProcessingDrafts(false);
+            Alert.alert(t('alert_fertig'), t('protocols_process_drafts_done' as any).replace('{count}', String(done)));
           },
         },
       ]
@@ -835,6 +908,24 @@ export default function ProtocolsScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
+            {/* Process all drafts (transcribe saved audio) */}
+            {displayedProtocols.some((p: any) => p.status === "draft" && (p.sourceAudioUri || p.retryJob?.fileUri)) && (
+              <Pressable
+                onPress={processAllDrafts}
+                disabled={processingDrafts}
+                accessibilityLabel={t('protocols_process_drafts_title' as any)}
+                style={({ pressed }) => [styles.headerBtn, { backgroundColor: "#FB8C0022", opacity: pressed || processingDrafts ? 0.7 : 1 }]}
+              >
+                {processingDrafts ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <ActivityIndicator size="small" color="#FB8C00" />
+                    <Text style={{ fontSize: 10, fontWeight: "800", color: "#FB8C00" }}>{draftProgress.done}/{draftProgress.total}</Text>
+                  </View>
+                ) : (
+                  <MaterialIcons name="graphic-eq" size={20} color="#FB8C00" />
+                )}
+              </Pressable>
+            )}
             {/* Merge all displayed protocols into one PDF */}
             {displayedProtocols.length >= 2 && (
               <Pressable
