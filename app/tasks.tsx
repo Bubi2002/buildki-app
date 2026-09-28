@@ -24,6 +24,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
+import { buildPremiumHtml, resolveBrandingLogo, escHtml } from "@/lib/pdf-premium";
+import { getPdfBranding } from "@/lib/pdf-branding-store";
 import { BusyOverlay } from "@/components/busy-overlay";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from "expo-audio";
 import { trpc } from "@/lib/trpc";
@@ -315,12 +317,6 @@ export default function TasksScreen() {
       return;
     }
 
-    const esc = (s: string) =>
-      String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
     const priorityLabel = (p: ProtocolTodo["priority"]) =>
       p === "hoch"
         ? t('tasks_prioritaet_hoch' as any)
@@ -330,6 +326,10 @@ export default function TasksScreen() {
 
     setPdfBusy(true);
     try {
+      const pill = (text: string, color: string) =>
+        `<span class="badge" style="background:${color}1A;color:${color};border:1px solid ${color}44;">${escHtml(text)}</span>`;
+      const prioColor = (p: ProtocolTodo["priority"]) => (p === "hoch" ? "#B91C1C" : p === "niedrig" ? "#6B7280" : "#B45309");
+
       const rows = filteredTodos
         .map((item) => {
           const assignee =
@@ -340,13 +340,13 @@ export default function TasksScreen() {
             item.deadline && item.deadline !== t('frist_offen')
               ? item.deadline
               : "—";
-          const status = item.done ? t('status_erledigt') : t('status_offen');
+          const statusPill = item.done ? pill(t('status_erledigt'), "#5E8B6F") : pill(t('status_offen'), "#DC2626");
           return `<tr>
-            <td>${esc(item.task)}</td>
-            <td>${esc(assignee)}</td>
-            <td>${esc(priorityLabel(item.priority))}</td>
-            <td>${esc(deadline)}</td>
-            <td>${esc(status)}</td>
+            <td>${escHtml(item.task)}</td>
+            <td>${escHtml(assignee)}</td>
+            <td>${pill(priorityLabel(item.priority), prioColor(item.priority))}</td>
+            <td>${escHtml(deadline)}</td>
+            <td>${statusPill}</td>
           </tr>`;
         })
         .join("");
@@ -362,26 +362,24 @@ export default function TasksScreen() {
         etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
       });
 
-      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,Arial,sans-serif; padding:24px; color:#1F2937;">
-        <h1 style="font-size:22px; margin:0 0 4px;">${esc(t('tasks_aufgaben' as any))}</h1>
+      const branding = await getPdfBranding().catch(() => null);
+      const accent = branding?.accentColor || "#1E3A5F";
+      const logoDataUri = await resolveBrandingLogo(branding);
+      const body = `
         ${metaHeader}
-        <p style="font-size:12px; color:#6B7280; margin:0 0 20px;">${esc(generated)}</p>
-        <table style="width:100%; border-collapse:collapse; font-size:12px;">
-          <thead>
-            <tr style="background:#F3F4F6; text-align:left;">
-              <th style="padding:8px; border:1px solid #E5E7EB;">Aufgabe</th>
-              <th style="padding:8px; border:1px solid #E5E7EB;">Zuständig</th>
-              <th style="padding:8px; border:1px solid #E5E7EB;">Priorität</th>
-              <th style="padding:8px; border:1px solid #E5E7EB;">Fällig</th>
-              <th style="padding:8px; border:1px solid #E5E7EB;">Status</th>
-            </tr>
-          </thead>
+        <table class="prem-table" style="margin-top:14px;">
+          <thead><tr><th>Aufgabe</th><th>Zuständig</th><th>Priorität</th><th>Fällig</th><th>Status</th></tr></thead>
           <tbody>${rows}</tbody>
-        </table>
-      </body></html>`.replace(
-        /<td>/g,
-        '<td style="padding:8px; border:1px solid #E5E7EB;">'
-      );
+        </table>`;
+      const html = buildPremiumHtml({
+        branding: branding || ({} as any),
+        accentColor: accent,
+        title: t('tasks_aufgaben' as any),
+        reportTag: t('tasks_aufgaben' as any),
+        subtitle: escHtml(generated),
+        body,
+        logoDataUri,
+      });
 
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
