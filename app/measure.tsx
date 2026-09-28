@@ -18,7 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Svg, { Circle, Line, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Line, Rect, Text as SvgText, G } from "react-native-svg";
 import { captureRef } from "react-native-view-shot";
 
 import { ScreenContainer } from "@/components/screen-container";
@@ -129,6 +129,7 @@ export default function MeasureScreen() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [selectedDefectId, setSelectedDefectId] = useState<string | null>(null);
   const [showDefectPicker, setShowDefectPicker] = useState(false);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -215,9 +216,22 @@ export default function MeasureScreen() {
     selectEvidence(item);
   }
 
-  const clampToCanvas = (p: Point): Point => ({
-    x: Math.min(CANVAS_WIDTH, Math.max(0, p.x)),
-    y: Math.min(CANVAS_HEIGHT, Math.max(0, p.y)),
+  // The image is drawn contentFit="contain", so it occupies a letterboxed
+  // sub-rect of the canvas. Measurement handles are clamped to THIS rect so a
+  // line can never land on the empty letterbox area outside the actual photo.
+  const imageRect = useMemo(() => {
+    const iw = imageSize.width;
+    const ih = imageSize.height;
+    if (!iw || !ih) return { x: 0, y: 0, w: CANVAS_WIDTH, h: CANVAS_HEIGHT };
+    const scale = Math.min(CANVAS_WIDTH / iw, CANVAS_HEIGHT / ih);
+    const w = iw * scale;
+    const h = ih * scale;
+    return { x: (CANVAS_WIDTH - w) / 2, y: (CANVAS_HEIGHT - h) / 2, w, h };
+  }, [imageSize]);
+
+  const clampToImage = (p: Point): Point => ({
+    x: Math.min(imageRect.x + imageRect.w, Math.max(imageRect.x, p.x)),
+    y: Math.min(imageRect.y + imageRect.h, Math.max(imageRect.y, p.y)),
   });
 
   const drawingGesture = Gesture.Pan()
@@ -241,14 +255,15 @@ export default function MeasureScreen() {
           return;
         }
       }
-      // New line.
+      // New line (clamped to the image area, not the letterbox).
       activeHandleRef.current = "new";
       grabOffsetRef.current = { x: 0, y: 0 };
-      setStartPoint(touch);
-      setEndPoint(touch);
+      const clamped = clampToImage(touch);
+      setStartPoint(clamped);
+      setEndPoint(clamped);
     })
     .onUpdate((event) => {
-      const p = clampToCanvas({
+      const p = clampToImage({
         x: event.x + grabOffsetRef.current.x,
         y: event.y + grabOffsetRef.current.y,
       });
@@ -256,6 +271,59 @@ export default function MeasureScreen() {
       else setEndPoint(p);
     })
     .runOnJS(true);
+
+  const measurementsList: any[] = selectedEvidence?.measurements || [];
+
+  const fmtMeasureValue = (m: any) => {
+    const n = Number(m.value);
+    const num = Number.isFinite(n)
+      ? n.toLocaleString(language === "de" ? "de-DE" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : String(m.value);
+    return `${num} ${m.unit}`;
+  };
+  const methodShortLabel = (mv: string) => {
+    const found = METHODS.find((x) => x.value === mv);
+    return found ? t(found.label as any) : mv;
+  };
+
+  // Existing saved measurements rendered as numbered teal lines (M1, M2, ...).
+  const savedMeasurementLines = (small = false) =>
+    measurementsList.map((m, i) => {
+      const pts = m.geometry?.points;
+      if (!pts || pts.length < 2) return null;
+      const a = { x: pts[0].x * CANVAS_WIDTH, y: pts[0].y * CANVAS_HEIGHT };
+      const b = { x: pts[1].x * CANVAS_WIDTH, y: pts[1].y * CANVAS_HEIGHT };
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      return (
+        <G key={m.id}>
+          <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#00ACC1" strokeWidth={small ? 2.5 : 3} />
+          <Circle cx={a.x} cy={a.y} r={small ? 3.5 : 4.5} fill="#00ACC1" />
+          <Circle cx={b.x} cy={b.y} r={small ? 3.5 : 4.5} fill="#00ACC1" />
+          <Rect x={mx - 15} y={my - 10} width={30} height={18} rx={9} fill="#00ACC1" />
+          <SvgText x={mx} y={my + 3} fill="#FFFFFF" fontSize={11} fontWeight="800" textAnchor="middle">{`M${i + 1}`}</SvgText>
+        </G>
+      );
+    });
+
+  const deleteMeasurement = (id: string) => {
+    if (!selectedEvidence) return;
+    Alert.alert(t('btn_loeschen'), t('measure_delete_confirm' as any), [
+      { text: t('btn_abbrechen'), style: "cancel" },
+      {
+        text: t('btn_loeschen'),
+        style: "destructive",
+        onPress: async () => {
+          const next = (selectedEvidence.measurements || []).filter((x) => x.id !== id);
+          const updated = await updateEvidence(selectedEvidence.id, { measurements: next });
+          if (updated) {
+            setSelectedEvidence(updated);
+            setEvidence((cur) => cur.map((e) => (e.id === updated.id ? updated : e)));
+          }
+        },
+      },
+    ]);
+  };
 
   async function ensureMeasurementDirectory() {
     if (!FileSystem.documentDirectory) {
@@ -493,11 +561,40 @@ export default function MeasureScreen() {
             )}
 
             {selectedEvidence && (
-              <Image
-                source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
-                style={styles.bigPreview}
-                contentFit="contain"
-              />
+              <>
+                <View style={styles.canvas}>
+                  <Image
+                    source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="contain"
+                    onLoad={(e: any) => { const s = e?.source; if (s?.width && s?.height) setImageSize({ width: s.width, height: s.height }); }}
+                  />
+                  <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
+                    {savedMeasurementLines()}
+                  </Svg>
+                </View>
+
+                {measurementsList.length > 0 && (
+                  <View style={[styles.measTable, { borderColor: colors.border }]}>
+                    <View style={styles.measHeadRow}>
+                      <Text style={[styles.measHeadCell, styles.measColTag, { color: colors.muted }]}>{t('measure_step_measure' as any)}</Text>
+                      <Text style={[styles.measHeadCell, styles.measColVal, { color: colors.muted }]}>{t('measure_col_value' as any)}</Text>
+                      <Text style={[styles.measHeadCell, styles.measColMethod, { color: colors.muted }]}>{t('measure_col_method' as any)}</Text>
+                      <View style={styles.measColDel} />
+                    </View>
+                    {measurementsList.map((m, i) => (
+                      <View key={m.id} style={[styles.measDataRow, { borderTopColor: colors.border }]}>
+                        <Text style={[styles.measTag, styles.measColTag]}>{`M${i + 1}`}</Text>
+                        <Text style={[styles.measCell, styles.measColVal, { color: colors.foreground }]}>{fmtMeasureValue(m)}</Text>
+                        <Text style={[styles.measCell, styles.measColMethod, { color: colors.muted }]} numberOfLines={1}>{methodShortLabel(m.method)}</Text>
+                        <Pressable onPress={() => deleteMeasurement(m.id)} hitSlop={6} style={styles.measColDel}>
+                          <MaterialIcons name="delete-outline" size={18} color="#DC2626" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
 
             <View style={styles.navRow}>
@@ -521,8 +618,14 @@ export default function MeasureScreen() {
                 <Text style={[styles.helpText, { color: colors.muted }]}>{t('measure_help_text' as any)}</Text>
                 <GestureDetector gesture={drawingGesture}>
                   <View ref={canvasRef} collapsable={false} style={styles.canvas}>
-                    <Image source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
+                    <Image
+                      source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="contain"
+                      onLoad={(e: any) => { const s = e?.source; if (s?.width && s?.height) setImageSize({ width: s.width, height: s.height }); }}
+                    />
                     <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
+                      {savedMeasurementLines()}
                       {startPoint && endPoint && (
                         <>
                           <Line x1={startPoint.x} y1={startPoint.y} x2={endPoint.x} y2={endPoint.y} stroke="#FF3B30" strokeWidth={4} />
@@ -594,6 +697,7 @@ export default function MeasureScreen() {
                 <View ref={canvasRef} collapsable={false} style={styles.canvas}>
                   <Image source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
                   <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
+                    {savedMeasurementLines(true)}
                     {startPoint && endPoint && (
                       <>
                         <Line x1={startPoint.x} y1={startPoint.y} x2={endPoint.x} y2={endPoint.y} stroke="#FF3B30" strokeWidth={4} />
@@ -734,8 +838,17 @@ const styles = StyleSheet.create({
   stepItem: { flex: 1, alignItems: "center", gap: 5 },
   stepDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   stepLabel: { fontSize: 11, fontWeight: "700" },
-  bigPreview: { width: "100%", height: 280, borderRadius: 12, backgroundColor: "#111827", marginTop: 14 },
   valueInput: { fontSize: 22, fontWeight: "800" },
+  measTable: { marginTop: 12, borderWidth: 1, borderRadius: 10, overflow: "hidden" },
+  measHeadRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8 },
+  measHeadCell: { fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3 },
+  measDataRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1 },
+  measTag: { fontSize: 13, fontWeight: "800", color: "#00ACC1" },
+  measCell: { fontSize: 13 },
+  measColTag: { width: 46 },
+  measColVal: { flex: 1 },
+  measColMethod: { flex: 1.3 },
+  measColDel: { width: 30, alignItems: "flex-end" },
   methodChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   methodChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9 },
   navRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 20 },
