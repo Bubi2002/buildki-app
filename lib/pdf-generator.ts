@@ -268,6 +268,23 @@ export function generatePdfHtml(
   const durationStr = `${durationMins}:${durationSecs.toString().padStart(2, "0")} Min.`;
   const evidenceSnapshots = protocol.evidenceSnapshots || [];
 
+  // ── Cover key figures (Kennzahlen-Karten) ─────────────────────────────────
+  // Built from the data a single protocol actually has: tasks, photos, evidence.
+  const kpiPhotoCount = photoDataUris.filter(Boolean).length;
+  const kpiEvidenceCount = evidenceSnapshots.length;
+  const kpiTodosTotal = (protocol.todos || []).length;
+  const kpiTodosOpen = (protocol.todos || []).filter((tdo) => !tdo.done).length;
+  const kpiCards: { value: string | number; label: string; color: string }[] = [];
+  if (kpiTodosTotal > 0) {
+    kpiCards.push({ value: kpiTodosOpen, label: "Offene Aufgaben", color: kpiTodosOpen > 0 ? "#B45309" : "#16A34A" });
+    kpiCards.push({ value: kpiTodosTotal - kpiTodosOpen, label: "Erledigt", color: "#16A34A" });
+  }
+  if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: "Fotos", color: "#1E3A5F" });
+  if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? "Beleg" : "Belege", color: "#475569" });
+  const kpiBandHtml = kpiCards.length > 0
+    ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card" style="border-top:3px solid ${cd.color};"><div class="num" style="color:${cd.color};">${cd.value}</div><div class="lbl">${cd.label}</div></div>`).join("")}</div>`
+    : "";
+
   // Which legacy photos are placed inline via [FOTO X]? (used for evidence de-duplication + the
   // Fotodokumentation appendix further below). Computed once up front so the evidence section can
   // avoid re-rendering an image that already appears inline.
@@ -927,6 +944,32 @@ export function generatePdfHtml(
       font-weight: 700;
       white-space: nowrap;
     }
+    .stat-band {
+      display: flex;
+      gap: 10px;
+      margin: 0 0 22px 0;
+    }
+    .stat-card {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #e8ecf1;
+      border-radius: 12px;
+      padding: 13px 10px;
+      text-align: center;
+    }
+    .stat-card .num {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .stat-card .lbl {
+      font-size: 9px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
     .content {
       margin-bottom: 20px;
     }
@@ -1084,6 +1127,8 @@ export function generatePdfHtml(
         : ""
     }
   </table>` : ''}
+
+  ${kpiBandHtml}
 
   ${todos.length > 0 && layoutShowTodos ? `
   <div style="margin-bottom: 20px;">
