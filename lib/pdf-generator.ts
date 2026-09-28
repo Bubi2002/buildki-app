@@ -1124,6 +1124,34 @@ export function generatePdfHtml(
       border-top: 1px solid #e8ecf1;
       padding: 7px 4px 0;
     }
+    .running-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      font-size: 8.5px;
+      color: #94a3b8;
+      border-bottom: 1px solid #e8ecf1;
+      padding: 0 0 6px 0;
+    }
+    .running-header .rh-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+      color: #334155;
+    }
+    .running-header .rh-left img {
+      max-height: 15px;
+      max-width: 56px;
+      object-fit: contain;
+    }
+    .running-header .rh-right {
+      margin-left: auto;
+      text-align: right;
+    }
     .watermark {
       position: fixed;
       top: 50%;
@@ -1198,6 +1226,10 @@ export function generatePdfHtml(
   </style>
 </head>
 <body>
+  <div class="running-header">
+    <div class="rh-left">${company.logoBase64 ? `<img src="${company.logoBase64}" alt="" />` : ""}${company.companyName ? escapeHtml(company.companyName) : ""}</div>
+    <div class="rh-right">${escapeHtml(protocol.templateName || "Protokoll")}${protocol.projectName ? " · " + escapeHtml(protocol.projectName) : ""} · ${date}</div>
+  </div>
   ${isGutachten ? `
   <div style="border-bottom: 3px solid #0F2744; padding-bottom: 16px; margin-bottom: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1503,11 +1535,13 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   const printResult = await withTimeout(
     Print.printToFileAsync({
       html: finalHtml,
+      // Generous page margins so content never sits at the edge. These override
+      // the CSS @page margin, so they are the single source of truth here.
       margins: {
-        left: 20,
-        top: 20,
-        right: 20,
-        bottom: 30,
+        left: 48,
+        top: 46,
+        right: 48,
+        bottom: 56,
       },
     }),
     30000, // 30 second timeout for PDF generation
