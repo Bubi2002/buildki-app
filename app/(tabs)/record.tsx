@@ -80,6 +80,9 @@ export default function RecordScreen() {
   const [showZoomBadge, setShowZoomBadge] = useState(false);
   const zoomBadgeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashMode, setFlashMode] = useState<"off" | "on" | "auto">("auto");
+  // Briefly drops enableTorch after a still capture so the torch is re-armed
+  // (iOS turns the continuous torch off when a photo is taken).
+  const [torchSuppress, setTorchSuppress] = useState(false);
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<"front" | "back">("back");
   const [photoTimer, setPhotoTimer] = useState<0 | 3 | 5 | 10>(0);
@@ -775,6 +778,13 @@ export default function RecordScreen() {
         quality: 0.8,
         skipProcessing: false,
       });
+
+      // Keep the flashlight on: re-arm the torch after the still capture
+      // (iOS drops the continuous torch when a photo is taken).
+      if (cameraFacing === "back" && flashMode === "on") {
+        setTorchSuppress(true);
+        setTimeout(() => setTorchSuppress(false), 60);
+      }
 
       if (photo?.uri) {
         // Copy to persistent directory
@@ -2199,8 +2209,8 @@ export default function RecordScreen() {
             facing={cameraFacing}
             mode="picture"
             zoom={cameraZoom}
-            flash={flashMode}
-            enableTorch={cameraFacing === "back" && flashMode === "on"}
+            flash={flashMode === "on" ? "off" : flashMode}
+            enableTorch={cameraFacing === "back" && flashMode === "on" && !torchSuppress}
             active={isFocused}
             onCameraReady={() => setCameraReady(true)}
             onMountError={(e) => console.warn("Camera mount error:", e?.message)}
