@@ -394,6 +394,17 @@ export default function ProtocolsScreen() {
             {
               text: t('btn_gesamtdokument'),
               onPress: async () => {
+                // Prefer the proper merge engine (cover, TOC, per-protocol
+                // sections, combined todos, navy look) when the selection
+                // belongs to a project.
+                const mergeProjectId = selected.find((p) => p.projectId)?.projectId;
+                if (mergeProjectId) {
+                  try {
+                    const { mergeAndShare } = await import("@/lib/protocol-merge");
+                    const ok = await mergeAndShare({ projectId: mergeProjectId, protocolIds: selected.map((p) => p.id), includePhotos: true, includeTodos: true, includeWeather: true });
+                    if (ok) { setBatchMode(false); setSelectedIds(new Set()); return; }
+                  } catch { /* fall through to the combined-markdown fallback */ }
+                }
                 const combinedContent = selected.map((item, idx) => {
                   const activeVersion = getActiveExportVersion(item);
                   const date = new Date(item.createdAt).toLocaleDateString("de-DE");
