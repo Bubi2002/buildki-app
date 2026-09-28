@@ -109,7 +109,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     includeTableOfContents,
     watermark,
     footerText,
-    accentColor = "#0a7ea4",
+    accentColor = "#1E3A5F",
   } = options;
 
   const NAVY = "#0F2744";

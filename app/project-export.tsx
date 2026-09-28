@@ -296,7 +296,7 @@ export default function ProjectExportScreen() {
         projekt: projectName || undefined,
         sections,
         includeTableOfContents: sections.length > 3,
-        accentColor: "#2563EB",
+        accentColor: "#1E3A5F",
       });
       if (exportedUri) {
         try {
