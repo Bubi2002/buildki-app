@@ -276,63 +276,45 @@ export function generateCoverPage(
   },
   logoBase64?: string | null
 ): string {
+  const NAVY = "#0F2744";
   const accentColor = branding.accentColor || protocol.projectColor || "#1E3A5F";
   const date = new Date(protocol.createdAt);
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
+  const rows: { label: string; value: string }[] = [
+    { label: "Datum", value: dateStr },
+    { label: "Uhrzeit", value: `${timeStr} Uhr` },
+  ];
+  if (protocol.location?.address) rows.push({ label: "Ort", value: `${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}` });
+  if (protocol.protocolNumber) rows.push({ label: "Protokoll-Nr.", value: String(protocol.protocolNumber) });
+  if (branding.companyName) rows.push({ label: "Erstellt von", value: branding.companyName });
+
+  const rowsHtml = rows
+    .map((r, i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:11px 16px; ${i < rows.length - 1 ? "border-bottom:1px solid #eef1f5;" : ""}"><span style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#64748b; font-weight:700;">${r.label}</span><span style="font-size:13px; color:#1f2937; font-weight:600; text-align:right;">${r.value}</span></div>`)
+    .join("");
+
+  const footer = branding.footerText
+    ? applyBrandingVariables(branding.footerText, { projekt: protocol.projectName, firma: branding.companyName, datum: dateStr, dokumenttyp: protocol.templateName })
+    : "Erstellt mit BuildKI";
+
   return `
-  <div style="page-break-after: always; padding: 60px 40px; text-align: center;">
-    <!-- Logo -->
-    ${logoBase64 ? `<div style="margin-bottom: 32px; text-align: center;"><img src="${logoBase64}" style="height: 80px; width: auto; max-width: 200px; object-fit: contain; display: inline-block;" /></div>` : ""}
-    ${!logoBase64 && branding.companyName ? `<div style="font-size: 28px; font-weight: 800; color: ${accentColor}; margin-bottom: 32px; letter-spacing: -0.5px;">${branding.companyName}</div>` : ""}
-    
-    <!-- Accent line -->
-    <div style="width: 80px; height: 4px; background: ${accentColor}; margin-bottom: 40px;"></div>
-    
-    <!-- Document type -->
-    <div style="font-size: 14px; color: #444; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; font-weight: 600;">
-      ${protocol.templateName || "Protokoll"}
+  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
+    <div style="display:flex; align-items:center; gap:14px; background:${NAVY}; color:#ffffff; padding:16px 22px; border-radius:10px;">
+      ${logoBase64 ? `<img src="${logoBase64}" style="max-height:36px; max-width:150px; object-fit:contain;" />` : ""}
+      ${branding.companyName ? `<div style="font-size:16px; font-weight:800; letter-spacing:0.2px;">${branding.companyName}</div>` : ""}
     </div>
-    
-    <!-- Title (Project name as main title, fallback to template name) -->
-    <div style="font-size: 28px; font-weight: 700; color: #111; margin: 0 auto 8px; max-width: 80%; line-height: 1.3; text-align: center;">
-      ${protocol.projectName || protocol.templateName || "Protokoll"}
-    </div>
-    
-    <!-- Protocol number -->
-    ${protocol.protocolNumber ? `<div style="font-size: 14px; color: #333; margin-top: 8px; font-weight: 500;">Nr. ${protocol.protocolNumber}</div>` : ""}
-    
-    <!-- Spacer -->
-    <div style="height: 80px;"></div>
-    
-    <!-- Meta info -->
-    <div style="width: 100%; max-width: 400px; margin: 0 auto; border-top: 2px solid #333; padding-top: 20px; text-align: left;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <span style="font-size: 12px; color: #555; font-weight: 500;">Datum:</span>
-        <span style="font-size: 12px; color: #111; font-weight: 600;">${dateStr}</span>
+
+    <div style="padding:52px 6px 0;">
+      <div style="font-size:13px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:1.4px;">${protocol.templateName || "Protokoll"}</div>
+      <div style="font-size:36px; font-weight:800; color:${NAVY}; letter-spacing:-0.8px; line-height:1.1; margin-top:8px;">${protocol.projectName || protocol.templateName || "Protokoll"}</div>
+      <div style="width:64px; height:4px; border-radius:2px; background:${accentColor}; margin:18px 0 0;"></div>
+
+      <div style="margin-top:44px; background:#f8fafc; border:1px solid #e8ecf1; border-radius:12px; overflow:hidden;">
+        ${rowsHtml}
       </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <span style="font-size: 12px; color: #555; font-weight: 500;">Uhrzeit:</span>
-        <span style="font-size: 12px; color: #111; font-weight: 600;">${timeStr} Uhr</span>
-      </div>
-      ${protocol.location?.address ? `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <span style="font-size: 12px; color: #555; font-weight: 500;">Ort:</span>
-        <span style="font-size: 12px; color: #111; font-weight: 600;">${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}</span>
-      </div>` : ""}
-      ${branding.companyName ? `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <span style="font-size: 12px; color: #555; font-weight: 500;">Erstellt von:</span>
-        <span style="font-size: 12px; color: #111; font-weight: 600;">${branding.companyName}</span>
-      </div>` : ""}
-    </div>
-    
-    <!-- Footer -->
-    <div style="margin-top: 24px; font-size: 10px; color: #666;">
-      ${branding.footerText
-        ? applyBrandingVariables(branding.footerText, { projekt: protocol.projectName, firma: branding.companyName, datum: dateStr, dokumenttyp: protocol.templateName })
-        : "Erstellt mit BuildKI"}
+
+      <div style="margin-top:28px; font-size:10px; color:#94a3b8;">${footer}</div>
     </div>
   </div>`;
 }
