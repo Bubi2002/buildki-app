@@ -55,7 +55,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="mehr"
         options={{
           title: t("nav_mehr" as any),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
@@ -63,6 +63,7 @@ export default function TabLayout() {
       />
 
       {/* ── Still routable, but no longer their own bottom-bar tab ── */}
+      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="start" options={{ href: null }} />
       <Tabs.Screen name="protocols" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
