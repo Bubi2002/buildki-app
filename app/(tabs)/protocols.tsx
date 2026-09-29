@@ -913,35 +913,6 @@ export default function ProtocolsScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
-            {/* Process all drafts (transcribe saved audio) */}
-            {displayedProtocols.some((p: any) => p.status === "draft" && (p.sourceAudioUri || p.retryJob?.fileUri)) && (
-              <Pressable
-                onPress={processAllDrafts}
-                disabled={processingDrafts}
-                accessibilityLabel={t('protocols_process_drafts_title' as any)}
-                style={({ pressed }) => [styles.headerBtn, { backgroundColor: "#FB8C0022", opacity: pressed || processingDrafts ? 0.7 : 1 }]}
-              >
-                {processingDrafts ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <ActivityIndicator size="small" color="#FB8C00" />
-                    <Text style={{ fontSize: 10, fontWeight: "800", color: "#FB8C00" }}>{draftProgress.done}/{draftProgress.total}</Text>
-                  </View>
-                ) : (
-                  <MaterialIcons name="graphic-eq" size={20} color="#FB8C00" />
-                )}
-              </Pressable>
-            )}
-            {/* Merge all displayed protocols into one PDF */}
-            {displayedProtocols.length >= 2 && (
-              <Pressable
-                onPress={mergeDisplayedToPdf}
-                disabled={merging}
-                accessibilityLabel={t('protocols_merge_all_title' as any)}
-                style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.primary + "18", opacity: pressed || merging ? 0.7 : 1 }]}
-              >
-                {merging ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />}
-              </Pressable>
-            )}
             {/* Dashboard */}
             {featureFlags.statistics && <Pressable
               onPress={() => router.push("/dashboard" as any)}
@@ -991,6 +962,39 @@ export default function ProtocolsScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* Prominent, labelled actions: process drafts + merge to PDF */}
+        {(() => {
+          const draftCount = displayedProtocols.filter((p: any) => p.status === "draft" && (p.sourceAudioUri || p.retryJob?.fileUri)).length;
+          const canMerge = displayedProtocols.length >= 2;
+          if (draftCount === 0 && !canMerge) return null;
+          return (
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+              {draftCount > 0 && (
+                <Pressable
+                  onPress={processAllDrafts}
+                  disabled={processingDrafts}
+                  style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, backgroundColor: "#FB8C00", opacity: pressed || processingDrafts ? 0.75 : 1 }]}
+                >
+                  {processingDrafts ? <ActivityIndicator size="small" color="#FFFFFF" /> : <MaterialIcons name="graphic-eq" size={18} color="#FFFFFF" />}
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#FFFFFF" }} numberOfLines={1}>
+                    {processingDrafts ? `${draftProgress.done}/${draftProgress.total}` : `${t('protocols_process_drafts_title' as any)} (${draftCount})`}
+                  </Text>
+                </Pressable>
+              )}
+              {canMerge && (
+                <Pressable
+                  onPress={mergeDisplayedToPdf}
+                  disabled={merging}
+                  style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, borderWidth: 1.5, borderColor: colors.primary, backgroundColor: colors.primary + "12", opacity: pressed || merging ? 0.75 : 1 }]}
+                >
+                  {merging ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="picture-as-pdf" size={18} color={colors.primary} />}
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: colors.primary }} numberOfLines={1}>{t('protocols_merge_all_title' as any)}</Text>
+                </Pressable>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Filter Tabs */}
         <View style={styles.filterRow}>
