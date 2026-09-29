@@ -2916,8 +2916,20 @@ export default function RecordScreen() {
                     </Pressable>
                   )}
                 </View>
-                {/* Text-note + Draw ("Markieren") buttons */}
+                {/* Text-note + Draw + more (Messen / Im Plan markieren) */}
                 <View style={{ position: "absolute", top: 6, right: 6, flexDirection: "row", gap: 4 }}>
+                  <Pressable
+                    onPress={() => {
+                      Alert.alert(t('foto_aktion' as any), undefined, [
+                        { text: t('index_tool_messen' as any), onPress: () => { setShowPhotoGallery(false); router.push(`/measure?projectId=${selectedProject?.id || ""}` as any); } },
+                        { text: t('foto_im_plan' as any), onPress: () => { setShowPhotoGallery(false); router.push(`/floor-plan?projectId=${selectedProject?.id || ""}` as any); } },
+                        { text: t('cancel'), style: "cancel" },
+                      ]);
+                    }}
+                    style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 0, padding: 6, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="more-horiz" size={16} color="#FFFFFF" />
+                  </Pressable>
                   <Pressable
                     onPress={() => setDrawPhotoIndex(index)}
                     style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 0, padding: 6, opacity: pressed ? 0.7 : 1 }]}
