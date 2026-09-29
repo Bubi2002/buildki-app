@@ -1519,7 +1519,7 @@ export default function RecordScreen() {
           t('record_saved_locally_title' as any),
           t('record_saved_locally_msg' as any),
         );
-        router.push("/(tabs)/protocols" as any);
+        router.push(`/begehung-review?protocolId=${protocolId}` as any);
         return;
       }
 
@@ -1556,7 +1556,7 @@ export default function RecordScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
         alert(t('record_offline_saved' as any));
-        router.push("/(tabs)/protocols" as any);
+        router.push(`/begehung-review?protocolId=${protocolId}` as any);
         return;
       }
 
@@ -1571,8 +1571,9 @@ export default function RecordScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      // Navigate to protocols tab (the list will show the placeholder with "processing" status)
-      router.push("/(tabs)/protocols" as any);
+      // Show the "Begehung prüfen" review screen (rooms/photos/tasks summary);
+      // the placeholder keeps processing in the background.
+      router.push(`/begehung-review?protocolId=${protocolId}` as any);
 
       // Get settings for protocol style
       const settingsStr = await AsyncStorage.getItem("protokoll-settings");
