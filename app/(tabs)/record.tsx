@@ -27,6 +27,7 @@ import { useRealtimeTranscription } from "@/lib/realtime-transcription";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useIsFocused } from "expo-router/react-navigation";
 import { ScreenContainer } from "@/components/screen-container";
+import { PhotoAnnotator } from "@/components/photo-annotator";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -92,6 +93,8 @@ export default function RecordScreen() {
   const [showAnnotation, setShowAnnotation] = useState(false);
   const [annotationText, setAnnotationText] = useState("");
   const [annotatingPhotoIndex, setAnnotatingPhotoIndex] = useState<number | null>(null);
+  // Index of the photo currently open in the drawing annotator ("Markieren").
+  const [drawPhotoIndex, setDrawPhotoIndex] = useState<number | null>(null);
   const [photoAnnotations, setPhotoAnnotations] = useState<Record<number, string>>({});
   const [showGrid, setShowGrid] = useState(false);
   const [showRecordingTips, setShowRecordingTips] = useState(false);
@@ -2912,20 +2915,28 @@ export default function RecordScreen() {
                     </Pressable>
                   )}
                 </View>
-                {/* Annotation button */}
-                <Pressable
-                  onPress={() => {
-                    setAnnotatingPhotoIndex(index);
-                    setAnnotationText(photoAnnotations[index] || "");
-                    setShowAnnotation(true);
-                  }}
-                  style={({ pressed }) => [{ position: "absolute", top: 6, right: 6, backgroundColor: photoAnnotations[index] ? "#4CAF50" : "rgba(0,0,0,0.6)", borderRadius: 0, padding: 6, opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name={photoAnnotations[index] ? "edit-note" : "add-comment"} size={16} color="#FFFFFF" />
-                </Pressable>
+                {/* Text-note + Draw ("Markieren") buttons */}
+                <View style={{ position: "absolute", top: 6, right: 6, flexDirection: "row", gap: 4 }}>
+                  <Pressable
+                    onPress={() => setDrawPhotoIndex(index)}
+                    style={({ pressed }) => [{ backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 0, padding: 6, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="gesture" size={16} color="#FFFFFF" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setAnnotatingPhotoIndex(index);
+                      setAnnotationText(photoAnnotations[index] || "");
+                      setShowAnnotation(true);
+                    }}
+                    style={({ pressed }) => [{ backgroundColor: photoAnnotations[index] ? "#4CAF50" : "rgba(0,0,0,0.6)", borderRadius: 0, padding: 6, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name={photoAnnotations[index] ? "edit-note" : "add-comment"} size={16} color="#FFFFFF" />
+                  </Pressable>
+                </View>
                 {/* Show annotation preview */}
                 {photoAnnotations[index] && (
-                  <View style={{ position: "absolute", top: 6, left: 6, right: 34, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 0, paddingHorizontal: 6, paddingVertical: 3 }}>
+                  <View style={{ position: "absolute", top: 30, left: 6, right: 6, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 0, paddingHorizontal: 6, paddingVertical: 3 }}>
                     <Text style={{ fontSize: 10, color: "#FFFFFF" }} numberOfLines={1}>{photoAnnotations[index]}</Text>
                   </View>
                 )}
@@ -2934,6 +2945,22 @@ export default function RecordScreen() {
           />
         </View>
       </Modal>
+
+      {/* Drawing annotator ("Markieren") — bakes arrows/circles/freehand into the photo */}
+      {drawPhotoIndex !== null && capturedPhotos[drawPhotoIndex] && (
+        <PhotoAnnotator
+          visible
+          photoUri={capturedPhotos[drawPhotoIndex]}
+          onClose={() => setDrawPhotoIndex(null)}
+          onSave={(_annotations, flattenedUri) => {
+            if (flattenedUri && drawPhotoIndex !== null) {
+              const idx = drawPhotoIndex;
+              setCapturedPhotos((prev) => prev.map((p, i) => (i === idx ? flattenedUri : p)));
+            }
+            setDrawPhotoIndex(null);
+          }}
+        />
+      )}
 
       {/* Photo Annotation Modal */}
       <Modal visible={showAnnotation} animationType="fade" transparent>
