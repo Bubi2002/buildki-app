@@ -1394,6 +1394,26 @@ export default function RecordScreen() {
       const privacyChoices = await getPrivacyChoices();
       const canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync;
       const protocolId = Date.now().toString();
+
+      // Persist the source audio to a durable location. expo-audio records into
+      // the cache directory, which iOS can purge — so a "draft" recording that
+      // was never uploaded would otherwise lose its audio (photos are already
+      // copied to documentDirectory; the recording must be too).
+      let audioUri = fileUri;
+      try {
+        const docDir = FileSystem.documentDirectory || "";
+        if (docDir && !fileUri.startsWith(docDir)) {
+          const recDir = `${docDir}recordings/`;
+          const dirInfo = await FileSystem.getInfoAsync(recDir);
+          if (!dirInfo.exists) await FileSystem.makeDirectoryAsync(recDir, { intermediates: true });
+          const ext = mimeType.includes("mp4") || mimeType.includes("mpeg4") ? "mp4" : (mimeType.includes("quicktime") || mimeType.includes("mov")) ? "mov" : "m4a";
+          const dest = `${recDir}rec-${protocolId}.${ext}`;
+          await FileSystem.copyAsync({ from: fileUri, to: dest });
+          audioUri = dest;
+        }
+      } catch (e) {
+        console.warn("Persist recording failed, using original URI:", e);
+      }
       const createdAt = new Date().toISOString();
       const protocolNumber = await getNextProtocolNumber(activeProject.id);
       const placeholderProtocol = {
@@ -1423,7 +1443,7 @@ export default function RecordScreen() {
         weather: weatherData ? formatWeatherForProtocol(weatherData) : null,
         status: canProcessWithServer ? ("processing" as const) : ("draft" as const),
         processingStep: canProcessWithServer ? "queued" : "consent_required",
-        sourceAudioUri: fileUri,
+        sourceAudioUri: audioUri,
         projectId: activeProject.id,
         projectName: activeProject.name,
         protocolNumber: protocolNumber || undefined,
@@ -1468,7 +1488,7 @@ export default function RecordScreen() {
       if (!online) {
         await addToQueue({
           id: protocolId,
-          fileUri,
+          fileUri: audioUri,
           mimeType,
           templateId: selectedTemplate.id,
           templateSystemPrompt: customTemplateInput.customSystemPrompt,
@@ -1523,7 +1543,7 @@ export default function RecordScreen() {
       const { startBackgroundProcessing } = require("@/lib/background-processor");
       const jobConfig = {
         protocolId,
-        fileUri,
+        fileUri: audioUri,
         mimeType,
         projectName: selectedProject?.name,
         templateId: selectedTemplate.id,
