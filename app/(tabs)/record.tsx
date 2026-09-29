@@ -1392,7 +1392,37 @@ export default function RecordScreen() {
       const activeProject = selectedProject;
       const customTemplateInput = getCustomTemplateGenerationInput(selectedTemplate);
       const privacyChoices = await getPrivacyChoices();
-      const canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync;
+      let canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync;
+
+      // One-time: if transcription is off, ask the user once whether to turn it
+      // on, so recordings aren't silently saved as un-transcribed drafts. A "no"
+      // is respected and never asked again.
+      if (!canProcessWithServer) {
+        try {
+          const asked = await AsyncStorage.getItem("transcription_consent_prompted");
+          if (!asked) {
+            await AsyncStorage.setItem("transcription_consent_prompted", "1");
+            const enable = await new Promise<boolean>((resolve) => {
+              Alert.alert(
+                t('record_enable_transcription_title' as any),
+                t('record_enable_transcription_msg' as any),
+                [
+                  { text: t('record_enable_transcription_no' as any), style: "cancel", onPress: () => resolve(false) },
+                  { text: t('record_enable_transcription_yes' as any), onPress: () => resolve(true) },
+                ],
+                { cancelable: false },
+              );
+            });
+            if (enable) {
+              const { updateConsentChoice } = await import("@/lib/privacy-consent");
+              await updateConsentChoice("aiProcessing", true, "record-prompt");
+              await updateConsentChoice("cloudSync", true, "record-prompt");
+              canProcessWithServer = true;
+            }
+          }
+        } catch {}
+      }
+
       const protocolId = Date.now().toString();
 
       // Persist the source audio to a durable location. expo-audio records into

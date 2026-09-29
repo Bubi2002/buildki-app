@@ -374,13 +374,13 @@ export default function ProtocolsScreen() {
             const { startBackgroundProcessing } = require("@/lib/background-processor");
             setProcessingDrafts(true);
             setDraftProgress({ done: 0, total: drafts.length });
-            let done = 0;
+            let processed = 0;
+            let skipped = 0;
             for (const p of drafts as any[]) {
               const audioUri = p.retryJob?.fileUri || p.sourceAudioUri;
-              try {
-                const info = await FileSystem.getInfoAsync(audioUri);
-                if (!info.exists) { done++; setDraftProgress({ done, total: drafts.length }); continue; }
-              } catch { done++; setDraftProgress({ done, total: drafts.length }); continue; }
+              let exists = false;
+              try { exists = (await FileSystem.getInfoAsync(audioUri)).exists; } catch {}
+              if (!exists) { skipped++; setDraftProgress({ done: processed + skipped, total: drafts.length }); continue; }
               // Flip to "processing" so the list shows it working.
               try {
                 const pStr = await AsyncStorage.getItem("protocols");
@@ -394,12 +394,17 @@ export default function ProtocolsScreen() {
                 createdAt: p.createdAt, markers: p.markers, photos: p.photos, photoTimestamps: p.photoTimestamps, status: "queued",
               };
               try { await startBackgroundProcessing({ ...job, status: "queued" }, api); } catch {}
-              done++;
-              setDraftProgress({ done, total: drafts.length });
+              processed++;
+              setDraftProgress({ done: processed + skipped, total: drafts.length });
               await loadProtocols();
             }
             setProcessingDrafts(false);
-            Alert.alert(t('alert_fertig'), t('protocols_process_drafts_done' as any).replace('{count}', String(done)));
+            Alert.alert(
+              t('alert_fertig'),
+              skipped > 0
+                ? t('protocols_process_drafts_summary' as any).replace('{ok}', String(processed)).replace('{skip}', String(skipped))
+                : t('protocols_process_drafts_done' as any).replace('{count}', String(processed)),
+            );
           },
         },
       ]
