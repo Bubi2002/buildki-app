@@ -64,6 +64,7 @@ export default function ProjectDetailScreen() {
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [planCount, setPlanCount] = useState(0);
   const [defectCount, setDefectCount] = useState({ open: 0, resolved: 0, total: 0 });
+  const [activeTab, setActiveTab] = useState<"overview" | "begehungen" | "vorgaenge" | "dokumente">("overview");
 
   async function loadData() {
     try {
@@ -404,9 +405,33 @@ export default function ProjectDetailScreen() {
           </Pressable>
         </View>
 
+        {/* Segmented tabs: Übersicht · Begehungen · Vorgänge · Dokumente */}
+        <View style={styles.segmentRow}>
+          {([
+            { key: "overview", label: t('pd_tab_overview' as any) },
+            { key: "begehungen", label: t('pd_tab_begehungen' as any) },
+            { key: "vorgaenge", label: t('pd_tab_vorgaenge' as any) },
+            { key: "dokumente", label: t('pd_tab_dokumente' as any) },
+          ] as const).map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                style={({ pressed }) => [
+                  styles.segment,
+                  { backgroundColor: active ? colors.primary : colors.surface, borderColor: active ? colors.primary : colors.border, opacity: pressed ? 0.8 : 1 },
+                ]}
+              >
+                <Text style={[styles.segmentLabel, { color: active ? "#FFFFFF" : colors.muted }]} numberOfLines={1}>{tab.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* Gesamter Projektinhalt nutzt einen einzigen vertikalen Scrollcontainer. */}
         <FlatList
-          data={protocols}
+          data={activeTab === "begehungen" ? protocols : []}
           keyExtractor={(item) => item.id}
           style={styles.projectScroll}
           contentContainerStyle={styles.projectScrollContent}
@@ -414,6 +439,8 @@ export default function ProjectDetailScreen() {
           showsVerticalScrollIndicator
           ListHeaderComponent={(
             <>
+        {/* ══════════ ÜBERSICHT ══════════ */}
+        {activeTab === "overview" && (<>
         {project.description ? (
           <Text style={[styles.description, { color: colors.muted }]}>{project.description}</Text>
         ) : null}
@@ -436,8 +463,10 @@ export default function ProjectDetailScreen() {
             </View>
           </View>
         )}
+        </>)}
 
-        {/* Export buttons */}
+        {/* ══════════ DOKUMENTE (Berichte & Exporte) ══════════ */}
+        {activeTab === "dokumente" && (<>
         <Pressable
           onPress={exportAllAsPdf}
           disabled={isExporting || protocols.length === 0}
@@ -485,6 +514,54 @@ export default function ProjectDetailScreen() {
           {!isExportingZip && <MaterialIcons name="chevron-right" size={18} color="#4CAF50" />}
         </Pressable>
 
+        <Pressable onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#7C3AED10', borderColor: '#7C3AED40', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="merge-type" size={20} color="#7C3AED" />
+          <Text style={[styles.exportButtonText, { color: '#7C3AED' }]}>{t('bericht')}</Text>
+          <MaterialIcons name="chevron-right" size={18} color="#7C3AED" />
+        </Pressable>
+        <Pressable onPress={() => router.push(`/project-export?id=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#43A04710', borderColor: '#43A04740', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="ios-share" size={20} color="#43A047" />
+          <Text style={[styles.exportButtonText, { color: '#43A047' }]}>{t('export')}</Text>
+          <MaterialIcons name="chevron-right" size={18} color="#43A047" />
+        </Pressable>
+        <Pressable onPress={handleExcelExport} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#2E7D3210', borderColor: '#2E7D3240', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="table-chart" size={20} color="#2E7D32" />
+          <Text style={[styles.exportButtonText, { color: '#2E7D32' }]}>{t('excel')}</Text>
+          <MaterialIcons name="chevron-right" size={18} color="#2E7D32" />
+        </Pressable>
+        <Pressable onPress={handleDefectsExport} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#EF444410', borderColor: '#EF444440', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="picture-as-pdf" size={20} color="#EF4444" />
+          <Text style={[styles.exportButtonText, { color: '#EF4444' }]}>{t('maengelpdf')}</Text>
+          <MaterialIcons name="chevron-right" size={18} color="#EF4444" />
+        </Pressable>
+        </>)}
+
+        {/* ══════════ VORGÄNGE (Mängel · Aufgaben · Nachprüfungen) ══════════ */}
+        {activeTab === "vorgaenge" && (<>
+        <Pressable onPress={() => router.push(`/defects?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#FF980010', borderColor: '#FF980040', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="warning" size={20} color="#FF9800" />
+          <Text style={[styles.exportButtonText, { color: colors.foreground }]}>{t('maengel')}</Text>
+          {defectCount.open > 0 && (
+            <View style={{ minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.error, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: 4 }}>
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>{defectCount.open}</Text>
+            </View>
+          )}
+          <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable onPress={() => router.push(`/tasks?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#5DADE210', borderColor: '#5DADE240', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="checklist" size={20} color="#5DADE2" />
+          <Text style={[styles.exportButtonText, { color: colors.foreground }]}>{t('nav_aufgaben' as any)}</Text>
+          <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable onPress={() => router.push(`/follow-up?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#26A69A10', borderColor: '#26A69A40', opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="fact-check" size={20} color="#26A69A" />
+          <Text style={[styles.exportButtonText, { color: colors.foreground }]}>{t('pd_nachpruefungen' as any)}</Text>
+          <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
+        </>)}
+
+        {/* ══════════ ÜBERSICHT · Werkzeuge ══════════ */}
+        {activeTab === "overview" && (<>
                 {/* Tools Grid - Professional 3-column layout */}
         <View style={styles.toolsSection}>
           <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>{t('werkzeuge')}</Text>
@@ -507,20 +584,6 @@ export default function ProjectDetailScreen() {
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('grundriss')}</Text>
               {planCount > 0 && <Text style={[styles.toolCardBadge, { color: colors.muted }]}>{planCount}</Text>}
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/defects?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#FF980015' }]}>
-                <MaterialIcons name="warning" size={22} color="#FF9800" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengel')}</Text>
-              {defectCount.open > 0 && (
-                <View style={[styles.toolBadge, { backgroundColor: colors.error }]}>
-                  <Text style={styles.toolBadgeText}>{defectCount.open}</Text>
-                </View>
-              )}
             </Pressable>
             <Pressable
               onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
@@ -604,42 +667,6 @@ export default function ProjectDetailScreen() {
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('cloud')}</Text>
             </Pressable>
             <Pressable
-              onPress={() => router.push(`/project-export?id=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#43A04715' }]}>
-                <MaterialIcons name="ios-share" size={22} color="#43A047" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('export')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleExcelExport}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#2E7D3215' }]}>
-                <MaterialIcons name="table-chart" size={22} color="#2E7D32" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('excel')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleDefectsExport}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#EF444415' }]}>
-                <MaterialIcons name="picture-as-pdf" size={22} color="#EF4444" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('maengelpdf')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#7C3AED15' }]}>
-                <MaterialIcons name="merge-type" size={22} color="#7C3AED" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('bericht')}</Text>
-            </Pressable>
-            <Pressable
               onPress={() => router.push(`/photo-compare?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
@@ -673,6 +700,7 @@ export default function ProjectDetailScreen() {
             <Text style={[styles.statLabel, { color: colors.muted }]}>{t('project_sort_created')}</Text>
           </View>
         </View>
+        </>)}
             </>
           )}
           renderItem={({ item }) => (
@@ -698,12 +726,14 @@ export default function ProjectDetailScreen() {
             </SwipeableRow>
           )}
           ListEmptyComponent={
+            activeTab === "begehungen" ? (
             <View style={styles.emptyState}>
               <MaterialIcons name="note-add" size={48} color={colors.border} />
               <Text style={[styles.emptyText, { color: colors.muted }]}>
                 {t('project_detail_keine_protokolle_zugeordnet' as any)}{"\n"}{t('project_detail_tippe_hinzufuegen' as any)}
               </Text>
             </View>
+            ) : null
           }
         />
 
@@ -769,6 +799,9 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 20, fontWeight: "800" },
   statLabel: { fontSize: 12, marginTop: 2 },
   statDivider: { width: 1, alignSelf: "stretch" },
+  segmentRow: { flexDirection: "row", gap: 6, paddingHorizontal: 16, marginBottom: 12 },
+  segment: { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: "center" },
+  segmentLabel: { fontSize: 12, fontWeight: "700" },
   projectScroll: { flex: 1 },
   projectScrollContent: { paddingBottom: 120 },
   protocolItem: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginHorizontal: 16, marginBottom: 8 },
