@@ -69,7 +69,8 @@ export default function RecordScreen() {
     quickAction,
     projectId: routeProjectId,
     planPinId: routePlanPinId,
-  } = useLocalSearchParams<{ quickAction?: string; projectId?: string; planPinId?: string }>();
+    rooms: routeRoomsMode,
+  } = useLocalSearchParams<{ quickAction?: string; projectId?: string; planPinId?: string; rooms?: string }>();
   const { liveText, isListening, startListening, stopListening, addLiveChunk, clearLiveText , getFullTranscript, streamingActive } = useRealtimeTranscription();
   const isFocused = useIsFocused();
   const [cameraReady, setCameraReady] = useState(false);
@@ -266,6 +267,11 @@ export default function RecordScreen() {
       setShowProjectPicker(false);
       setMode("audio-photo");
       startRecording();
+      // "Raumweise Begehung": immediately prompt for the first room name so the
+      // recording is segmented per room from the start.
+      if (routeRoomsMode === "1") {
+        setTimeout(() => startChapterMarker(), 1200);
+      }
     }, 800);
     return () => clearTimeout(timer);
   }, [quickAction, projectsLoaded, selectedProject?.id]);
@@ -2719,8 +2725,8 @@ export default function RecordScreen() {
                   { backgroundColor: "#FF9800", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
-                <MaterialIcons name="bookmark-add" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>{t('kapitel')}</Text>
+                <MaterialIcons name="meeting-room" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>{t('neuer_raum')}</Text>
                 {markers.length > 0 && (
                   <View style={[styles.photoBadge, { backgroundColor: "#E53935" }]}>
                     <Text style={styles.photoBadgeText}>{markers.length}</Text>
@@ -3235,9 +3241,9 @@ export default function RecordScreen() {
       <Modal visible={chapterPromptVisible} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 20 }}>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('neues_kapitel')}</Text>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('raum_titel')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-              {chapterListening ? t('hoere_zu_kapitelname') : t('sprich_kapitelname')}
+              {chapterListening ? t('raum_hoere') : t('raum_sprich')}
             </Text>
 
             {/* Speech indicator */}
@@ -3255,7 +3261,7 @@ export default function RecordScreen() {
               <TextInput
                 value={chapterInput}
                 onChangeText={setChapterInput}
-                placeholder={t('kapitelname')}
+                placeholder={t('raum_name_ph')}
                 placeholderTextColor={colors.muted}
                 autoFocus={false}
                 returnKeyType="done"
@@ -3281,7 +3287,7 @@ export default function RecordScreen() {
                 onPress={stopChapterSpeech}
                 style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 0, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('fertig_kapitel_setzen')}</Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('raum_fertig')}</Text>
               </Pressable>
             )}
 
@@ -3297,7 +3303,7 @@ export default function RecordScreen() {
                   onPress={() => confirmChapter(chapterInput || `${t('record_chapter' as any)} ${markers.filter(m => m.label.startsWith("KAPITEL:")).length + 1}`)}
                   style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: chapterInput.trim() ? "#FF9800" : "#FF980080", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('kapitel_setzen')}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('raum_setzen')}</Text>
                 </Pressable>
               )}
             </View>
