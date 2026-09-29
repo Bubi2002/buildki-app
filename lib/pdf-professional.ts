@@ -95,6 +95,26 @@ export async function saveCompanyInfo(info: CompanyInfo): Promise<void> {
 /**
  * Generate professional PDF HTML
  */
+// Status / priority label (German, lowercased) -> pill colour.
+const PROF_PILL_COLORS: Record<string, string> = {
+  "offen": "#DC2626",
+  "in arbeit": "#2563EB",
+  "in bearbeitung": "#D97706",
+  "zugewiesen": "#EA580C",
+  "nachbesserung": "#DB2777",
+  "prüfung": "#7C3AED",
+  "pruefung": "#7C3AED",
+  "fertig": "#5E8B6F",
+  "abgenommen": "#5E8B6F",
+  "erledigt": "#5E8B6F",
+  "geschlossen": "#475569",
+  "abgelehnt": "#78716C",
+  "nicht begonnen": "#94A3B8",
+  "hoch": "#B91C1C",
+  "mittel": "#B45309",
+  "niedrig": "#6B7280",
+};
+
 export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): string {
   const {
     title,
@@ -183,9 +203,18 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
 
     // Add table
     if (section.table) {
+      const headers = section.table.headers;
+      const pillCol = headers.map((h) => { const n = (h || "").toLowerCase(); return n.includes("status") || n.includes("priorit"); });
       sectionContent += `<table class="data-table">
-        <thead><tr>${section.table.headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>
-        <tbody>${section.table.rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+        <thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${section.table.rows.map(row => `<tr>${row.map((cell, ci) => {
+          if (pillCol[ci]) {
+            const plain = esc(cell).trim();
+            const c = PROF_PILL_COLORS[plain.toLowerCase()];
+            if (c) return `<td><span class="pill" style="background:${c}1A;color:${c};border:1px solid ${c}44;">${plain}</span></td>`;
+          }
+          return `<td>${esc(cell)}</td>`;
+        }).join("")}</tr>`).join("")}</tbody>
       </table>`;
     }
 
@@ -278,6 +307,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .data-table th { background: #f8fafc; color: #334155; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid #e2e8f0; }
     .data-table td { padding: 7px 10px; border-bottom: 1px solid #eef1f5; color: #334155; }
     .data-table tr:nth-child(even) td { background: #fbfcfd; }
+    .pill { display: inline-block; padding: 2px 9px; border-radius: 11px; font-size: 9px; font-weight: 700; white-space: nowrap; }
     .signatures-section { margin-top: 24px; }
     .signatures-grid { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 10px; }
     .signature-box { width: 46%; border: 1px solid #e8ecf1; border-radius: 8px; padding: 12px; }
