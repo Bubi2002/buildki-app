@@ -24,6 +24,8 @@ const MAPPING = {
   "figure.walk": "directions-walk",
   "square.grid.2x2.fill": "apps",
   "person.3.fill": "groups",
+  "camera.fill": "photo-camera",
+  "checklist": "checklist",
 } as const satisfies Partial<Record<SFSymbolName, MaterialIconName>>;
 
 type IconSymbolName = keyof typeof MAPPING;

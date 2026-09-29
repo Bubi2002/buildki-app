@@ -16,7 +16,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      initialRouteName="index"
+      initialRouteName="projects"
       screenOptions={{
         tabBarActiveTintColor: "#5DADE2",
         tabBarInactiveTintColor: "#7F8C9B",
@@ -32,48 +32,40 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* ── The 4 main tabs: Projekte · Begehung · Aufgaben · Mehr ── */}
       <Tabs.Screen
-        name="start"
+        name="projects"
         options={{
-          title: t("nav_start" as any),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t("werkzeuge"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
+          title: t("nav_projekte" as any),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="record"
         options={{
-          title: t("nav_home"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="mic.fill" color={color} />,
+          title: t("nav_begehung" as any),
+          tabBarIcon: ({ color }) => <IconSymbol size={32} name="camera.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="protocols"
+        name="aufgaben"
         options={{
-          title: t("nav_protocols"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.fill" color={color} />,
+          title: t("nav_aufgaben" as any),
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="checklist" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="projects"
+        name="index"
         options={{
-          title: t("rundgang"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.walk" color={color} />,
+          title: t("nav_mehr" as any),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: t("nav_settings"),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
-        }}
-      />
+
+      {/* ── Still routable, but no longer their own bottom-bar tab ── */}
+      <Tabs.Screen name="start" options={{ href: null }} />
+      <Tabs.Screen name="protocols" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

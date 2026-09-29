@@ -98,6 +98,8 @@ interface ToolGroup {
 // Flat, compact tool grid (iOS-home-screen style). Räume (in Rundgang),
 // Matterport, the KI tools, Fortschritt and the report tools were removed.
 const TOOLS: ToolItem[] = [
+  { key: "protokolle", labelKey: "nav_protocols", icon: "description", color: "#5DADE2", route: "/protocols" },
+  { key: "einstellungen", labelKey: "nav_settings", icon: "settings", color: "#7F8C9B", route: "/settings" },
   { key: "fotos", labelKey: "index_tool_fotos", icon: "photo-library", color: "#EC407A", route: "/photo-gallery" },
   { key: "vergleich", labelKey: "index_tool_vergleich", icon: "compare", color: "#5C6BC0", route: "/photo-compare" },
   { key: "notizen", labelKey: "index_tool_notizen", icon: "edit-note", color: "#78909C", route: "/quick-note" },
