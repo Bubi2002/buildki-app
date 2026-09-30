@@ -49,6 +49,24 @@ export function MarkdownText({ text, style, color = "#000" }: MarkdownTextProps)
       continue;
     }
 
+    // Horizontal rule (---, ***, ___)
+    if (/^([-*_])\1{2,}$/.test(trimmed)) {
+      elements.push(<View key={`hr-${i}`} style={[styles.hr, { backgroundColor: color, opacity: 0.15 }]} />);
+      i++;
+      continue;
+    }
+
+    // Check for ### sub-sub-heading (rendered before ##/# so it isn't shown raw)
+    if (trimmed.startsWith("### ")) {
+      elements.push(
+        <Text key={`h3-${i}`} style={[styles.heading, { color }]}>
+          {renderInlineMarkdown(trimmed.substring(4), color, true)}
+        </Text>
+      );
+      i++;
+      continue;
+    }
+
     // Check for # chapter heading (large, bold)
     if (trimmed.startsWith("# ") && !trimmed.startsWith("## ")) {
       const headingText = trimmed.substring(2);
@@ -302,5 +320,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginTop: 14,
     marginBottom: 6,
+  },
+  hr: {
+    height: StyleSheet.hairlineWidth * 2,
+    marginVertical: 12,
+    borderRadius: 1,
   },
 });

@@ -175,6 +175,7 @@ export default function ProtocolDetailScreen() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [showAiTools, setShowAiTools] = useState(false);
+  const [showPlanPreview, setShowPlanPreview] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [targetLang, setTargetLang] = useState("en");
@@ -1804,49 +1805,23 @@ export default function ProtocolDetailScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
-          {protocol.templateName || t('protokoll')}
+          {(protocol as any).projectName || protocol.title || protocol.templateName || t('protokoll')}
         </Text>
-        <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-          {/* Favorite toggle */}
-          <Pressable
-            onPress={toggleFavorite}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <MaterialIcons name={isFavorite ? "star" : "star-outline"} size={24} color={isFavorite ? "#FFC107" : colors.muted} />
-          </Pressable>
-          {/* Tags */}
-          <Pressable
-            onPress={() => setShowTagEditor(!showTagEditor)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <MaterialIcons name="label" size={24} color={tags.length > 0 ? colors.primary : colors.muted} />
-          </Pressable>
-          {/* Duplicate button */}
-          <Pressable
-            onPress={duplicateProtocol}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <MaterialIcons name="content-copy" size={22} color={colors.muted} />
-          </Pressable>
-          {/* PDF Export button in header */}
-          <Pressable
-            onPress={exportPdf}
-            disabled={isExporting}
-            style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.5 : 1 }]}
-          >
-            {isExporting ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <MaterialIcons name="picture-as-pdf" size={24} color={colors.primary} />
-            )}
-          </Pressable>
-        
-            <Pressable
-              onPress={() => setShowEmailModal(true)}
-              style={({ pressed }) => [{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0, backgroundColor: "#3B82F6" + "15", opacity: pressed ? 0.5 : 1, marginLeft: 8 }]}
-            >
-              <Text style={{ fontSize: 11, color: "#3B82F6", fontWeight: "600" }}>📧 Senden</Text>
-            </Pressable></View>
+        {/* Overflow menu keeps rarely-used actions without cluttering the header */}
+        <Pressable
+          onPress={() => {
+            Alert.alert(protocol.templateName || t('protokoll'), undefined, [
+              { text: isFavorite ? t('protocol_more_unfav' as any) : t('protocol_more_fav' as any), onPress: toggleFavorite },
+              { text: t('tags'), onPress: () => setShowTagEditor(true) },
+              { text: t('protocol_more_duplicate' as any), onPress: duplicateProtocol },
+              { text: showTranscription ? t('transkription_ausblenden') : t('transkription_anzeigen'), onPress: () => setShowTranscription((v) => !v) },
+              { text: t('cancel'), style: "cancel" },
+            ]);
+          }}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+        >
+          <MaterialIcons name="more-vert" size={24} color={colors.foreground} />
+        </Pressable>
       </View>
 
       <ScrollView
@@ -2346,130 +2321,6 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* Werkzeuge & Projekt-Ergebnisse */}
-        {protocol?.projectId && (
-          <View style={styles.section}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <MaterialIcons name="build" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('werkzeuge')}</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
-              {[
-                { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
-                { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
-                { icon: "photo-library", label: t('index_tool_fotos' as any), route: "/photo-gallery", color: "#EC407A" },
-                { icon: "checklist", label: t('index_tool_checklisten' as any), route: "/checklists", color: "#AB47BC" },
-                { icon: "timer", label: t('index_tool_zeiterfassung' as any), route: "/time-tracking", color: "#FF5722" },
-              ].map((tool) => (
-                <Pressable
-                  key={tool.route}
-                  onPress={() => router.push(`${tool.route}?projectId=${protocol.projectId}` as any)}
-                  style={({ pressed }) => [styles.toolChip, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name={tool.icon as any} size={20} color={tool.color} />
-                  <Text style={[styles.toolChipText, { color: colors.foreground }]}>{tool.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {projPlans.slice(0, 1).map(({ plan, pins }) => (
-              <Pressable key={plan.id} onPress={() => router.push(`/floor-plan?projectId=${protocol.projectId}` as any)} style={{ marginTop: 14 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted, marginBottom: 6 }}>{plan.name}{pins.length ? `  ·  ${pins.length}` : ""}</Text>
-                <PlanWithPins plan={plan} pins={pins} width={SCREEN_WIDTH - 64} maxHeight={320} />
-              </Pressable>
-            ))}
-
-            {projDefects.length > 0 && (
-              <Pressable onPress={() => router.push(`/defects?projectId=${protocol.projectId}` as any)} style={[styles.embedRow, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 12 }]}>
-                <MaterialIcons name="warning" size={18} color="#F97316" />
-                <Text style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 14 }}>{projDefects.length} {t('maengel')}</Text>
-                <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-              </Pressable>
-            )}
-
-            <Pressable onPress={() => router.push(`/project-overview?projectId=${protocol.projectId}` as any)} style={[styles.embedRow, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "12", marginTop: 8 }]}>
-              <MaterialIcons name="visibility" size={18} color={colors.primary} />
-              <Text style={{ flex: 1, color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('project_overview_title' as any)}</Text>
-              <MaterialIcons name="chevron-right" size={20} color={colors.primary} />
-            </Pressable>
-          </View>
-        )}
-
-        {/* KI-Werkzeuge (collapsed by default to reduce clutter) */}
-        <View style={styles.section}>
-          <Pressable onPress={() => setShowAiTools((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: showAiTools ? 14 : 0 }}>
-            <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('kiwerkzeuge')}</Text>
-            <MaterialIcons name={showAiTools ? "expand-less" : "expand-more"} size={22} color={colors.muted} style={{ marginLeft: "auto" }} />
-          </Pressable>
-          {showAiTools && (
-          <View style={{ gap: 8 }}>
-            {/* Zusammenfassung */}
-            <Pressable
-              onPress={generateSummary}
-              disabled={isGeneratingSummary}
-              style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
-                backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "25",
-                opacity: pressed || isGeneratingSummary ? 0.7 : 1,
-              }]}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
-                {isGeneratingSummary ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="summarize" size={20} color={colors.primary} />}
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('zusammenfassung')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('kernpunkte_auf_einen_blick')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-            {/* Neu generieren */}
-            <Pressable
-              onPress={() => setShowRegenerateModal(true)}
-              style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
-                backgroundColor: "#8B5CF6" + "08", borderWidth: 1, borderColor: "#8B5CF6" + "25",
-                opacity: pressed ? 0.7 : 1,
-              }]}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#8B5CF6" + "15", alignItems: "center", justifyContent: "center" }}>
-                <MaterialIcons name="refresh" size={20} color="#8B5CF6" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('neu_generieren')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('anderes_template_oder_format')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-            {/* Sprecher erkennen */}
-            <Pressable
-              onPress={identifySpeakers}
-              disabled={isIdentifyingSpeakers}
-              style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
-                backgroundColor: "#059669" + "08", borderWidth: 1, borderColor: "#059669" + "25",
-                opacity: pressed || isIdentifyingSpeakers ? 0.7 : 1,
-              }]}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#059669" + "15", alignItems: "center", justifyContent: "center" }}>
-                {isIdentifyingSpeakers ? <ActivityIndicator size="small" color="#059669" /> : <MaterialIcons name="record-voice-over" size={20} color="#059669" />}
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('sprecher_erkennen')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('personen_im_gespraech_identifizieren')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-
-          </View>
-          )}
-          {/* Summary result display */}
-          {summary && (
-            <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 0, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
-              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 21 }}>{summary}</Text>
-            </View>
-          )}
-        </View>
         {/* Protocol content with multi-output versions */}
         <View style={styles.section}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -2843,26 +2694,130 @@ export default function ProtocolDetailScreen() {
           )}
         </View>
 
-        {/* Transcription toggle */}
-        <Pressable
-          onPress={() => setShowTranscription(!showTranscription)}
-          style={({ pressed }) => [
-            styles.toggleButton,
-            { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          <MaterialIcons
-            name={showTranscription ? "expand-less" : "expand-more"}
-            size={20}
-            color={colors.muted}
-          />
-          <Text style={[styles.toggleText, { color: colors.muted }]}>
-            {showTranscription ? t('transkription_ausblenden') : t('transkription_anzeigen')}
-          </Text>
-        </Pressable>
+        {/* Werkzeuge & KI — unten, damit der Protokoll-Inhalt oben steht */}
+        {/* Werkzeuge & Projekt-Ergebnisse */}
+        {protocol?.projectId && (
+          <View style={styles.section}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <MaterialIcons name="build" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('werkzeuge')}</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+              {[
+                { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
+                { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
+                { icon: "photo-library", label: t('index_tool_fotos' as any), route: "/photo-gallery", color: "#EC407A" },
+                { icon: "checklist", label: t('index_tool_checklisten' as any), route: "/checklists", color: "#AB47BC" },
+                { icon: "timer", label: t('index_tool_zeiterfassung' as any), route: "/time-tracking", color: "#FF5722" },
+              ].map((tool) => (
+                <Pressable
+                  key={tool.route}
+                  onPress={() => router.push(`${tool.route}?projectId=${protocol.projectId}` as any)}
+                  style={({ pressed }) => [styles.toolChip, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={tool.icon as any} size={20} color={tool.color} />
+                  <Text style={[styles.toolChipText, { color: colors.foreground }]}>{tool.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
 
+            {projPlans.slice(0, 1).map(({ plan, pins }) => (
+              <View key={plan.id} style={{ marginTop: 14 }}>
+                <Pressable onPress={() => setShowPlanPreview((v) => !v)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, opacity: pressed ? 0.7 : 1 }]}>
+                  <MaterialIcons name={showPlanPreview ? "expand-less" : "expand-more"} size={20} color={colors.muted} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>{t('grundriss')}: {plan.name}{pins.length ? `  ·  ${pins.length}` : ""}</Text>
+                </Pressable>
+                {showPlanPreview && (
+                  <Pressable onPress={() => router.push(`/floor-plan?projectId=${protocol.projectId}` as any)} style={{ marginTop: 10 }}>
+                    <PlanWithPins plan={plan} pins={pins} width={SCREEN_WIDTH - 64} maxHeight={320} />
+                  </Pressable>
+                )}
+              </View>
+            ))}
+
+          </View>
+        )}
+
+        {/* KI-Werkzeuge (collapsed by default to reduce clutter) */}
+        <View style={styles.section}>
+          <Pressable onPress={() => setShowAiTools((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: showAiTools ? 14 : 0 }}>
+            <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('kiwerkzeuge')}</Text>
+            <MaterialIcons name={showAiTools ? "expand-less" : "expand-more"} size={22} color={colors.muted} style={{ marginLeft: "auto" }} />
+          </Pressable>
+          {showAiTools && (
+          <View style={{ gap: 8 }}>
+            {/* Zusammenfassung */}
+            <Pressable
+              onPress={generateSummary}
+              disabled={isGeneratingSummary}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
+                backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "25",
+                opacity: pressed || isGeneratingSummary ? 0.7 : 1,
+              }]}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
+                {isGeneratingSummary ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="summarize" size={20} color={colors.primary} />}
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('zusammenfassung')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('kernpunkte_auf_einen_blick')}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            </Pressable>
+            {/* Neu generieren */}
+            <Pressable
+              onPress={() => setShowRegenerateModal(true)}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
+                backgroundColor: "#8B5CF6" + "08", borderWidth: 1, borderColor: "#8B5CF6" + "25",
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#8B5CF6" + "15", alignItems: "center", justifyContent: "center" }}>
+                <MaterialIcons name="refresh" size={20} color="#8B5CF6" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('neu_generieren')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('anderes_template_oder_format')}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            </Pressable>
+            {/* Sprecher erkennen */}
+            <Pressable
+              onPress={identifySpeakers}
+              disabled={isIdentifyingSpeakers}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
+                backgroundColor: "#059669" + "08", borderWidth: 1, borderColor: "#059669" + "25",
+                opacity: pressed || isIdentifyingSpeakers ? 0.7 : 1,
+              }]}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#059669" + "15", alignItems: "center", justifyContent: "center" }}>
+                {isIdentifyingSpeakers ? <ActivityIndicator size="small" color="#059669" /> : <MaterialIcons name="record-voice-over" size={20} color="#059669" />}
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('sprecher_erkennen')}</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('personen_im_gespraech_identifizieren')}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+            </Pressable>
+
+          </View>
+          )}
+          {/* Summary result display */}
+          {summary && (
+            <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 0, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 21 }}>{summary}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Transcription (toggled from the ••• header menu) */}
         {showTranscription && (
           <View style={[styles.transcriptionBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 6 }]}>{t('transkription_anzeigen')}</Text>
             <Text style={[styles.transcriptionText, { color: colors.muted }]}>
               {protocol.transcription}
             </Text>
@@ -2883,58 +2838,30 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
         {protocol.status !== "processing" && (
-          <>
         <Pressable
-          onPress={shareViaWhatsApp}
-          disabled={isSendingWhatsApp}
+          onPress={() => {
+            Alert.alert(t('protocol_export_btn' as any), undefined, [
+              { text: t('protocol_export_pdf' as any), onPress: exportPdf },
+              { text: t('email'), onPress: shareViaEmail },
+              { text: "WhatsApp", onPress: shareViaWhatsApp },
+              { text: t('kopieren'), onPress: copyToClipboard },
+              { text: t('protocol_share'), onPress: shareGeneric },
+              { text: t('cancel'), style: "cancel" },
+            ]);
+          }}
+          disabled={isExporting || isSendingWhatsApp}
           style={({ pressed }) => [
             styles.actionButton,
-            { backgroundColor: "#25D366", opacity: (pressed || isSendingWhatsApp) ? 0.6 : 1 },
+            { flex: 1, backgroundColor: colors.primary, opacity: (pressed || isExporting || isSendingWhatsApp) ? 0.7 : 1 },
           ]}
         >
-          {isSendingWhatsApp ? (
+          {(isExporting || isSendingWhatsApp) ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <MaterialIcons name="chat" size={20} color="#FFFFFF" />
+            <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
           )}
-          <Text style={styles.actionButtonText}>
-            {isSendingWhatsApp ? "PDF..." : "WhatsApp"}
-          </Text>
+          <Text style={styles.actionButtonText}>{t('protocol_export_btn' as any)}</Text>
         </Pressable>
-
-        <Pressable
-          onPress={shareViaEmail}
-          style={({ pressed }) => [
-            styles.actionButton,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <MaterialIcons name="email" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>{t('email')}</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={copyToClipboard}
-          style={({ pressed }) => [
-            styles.actionButton,
-            { backgroundColor: colors.muted, opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <MaterialIcons name="content-copy" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>{t('kopieren')}</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={shareGeneric}
-          style={({ pressed }) => [
-            styles.actionButton,
-            { backgroundColor: colors.foreground, opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <MaterialIcons name="share" size={20} color={colors.background} />
-          <Text style={[styles.actionButtonText, { color: colors.background }]}>{t('protocol_share')}</Text>
-        </Pressable>
-          </>
         )}
       </View>
       )}
