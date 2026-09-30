@@ -12,10 +12,11 @@ import { timelineEngine } from "@/lib/timeline-engine";
 import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
 import { PROTOCOL_TEMPLATES } from "@/shared/templates";
 
-// Picks the best-fitting built-in template from the transcript when the user
-// chose "Automatisch" (templateId "auto"). Keyword-based, German construction
-// vocabulary; order matters (Abnahme before Mängel, since an Abnahme often
-// mentions Mängel too).
+// Picks the best-fitting template from the transcript when the user chose
+// "Automatisch" (templateId "auto"). Limited to the three core construction
+// templates so the output is always one of the few formats the user knows.
+// Keyword-based; order matters (Abnahme before Mängel, since an Abnahme often
+// mentions Mängel too). Everything else defaults to the Baustellenbericht.
 function classifyTemplate(text: string): { id: string; name: string } {
   const t = (text || "").toLowerCase();
   const nameOf = (id: string) => PROTOCOL_TEMPLATES.find((x) => x.id === id)?.name || id;
@@ -25,10 +26,6 @@ function classifyTemplate(text: string): { id: string; name: string } {
     id = "abnahmeprotokoll";
   else if (has("mangel", "mängel", "maengel", "defekt", "beschädigt", "beschaedigt", "riss", "undicht", "feuchtigkeit", "schimmel", "beanstand", "fehlerhaft", "nachbesser"))
     id = "maengelliste";
-  else if (has("besprechung", "meeting", "beschluss", "beschlüsse", "tagesordnung", "agenda", "teilnehmer", "protokollführ", "abgestimmt"))
-    id = "besprechungsnotiz";
-  else if (has("baustelle", "baufortschritt", "gewerk", "material", "lieferung", "wetter", "personal", "kran", "beton", "rohbau"))
-    id = "baustellenbericht";
   return { id, name: nameOf(id) };
 }
 

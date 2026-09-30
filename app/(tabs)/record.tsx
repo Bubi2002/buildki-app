@@ -324,10 +324,14 @@ export default function RecordScreen() {
 
           setCustomTemplates(templates);
           const settings = settingsStr ? JSON.parse(settingsStr) : {};
+          // Only "Automatisch" + the three core templates are offered now, so
+          // ignore any older stored preference outside that set.
+          const allowedIds = ["auto", "baustellenbericht", "maengelliste", "abnahmeprotokoll"];
           const preferredId = lastUsedId || settings.templateId;
-          const allAvailable = [AUTO_TEMPLATE, ...PROTOCOL_TEMPLATES, ...templates];
-          const preferred = allAvailable.find((template) => template.id === preferredId);
-          // Default to "Automatisch" (KI wählt) when nothing was explicitly chosen.
+          const preferred = preferredId && allowedIds.includes(preferredId)
+            ? [AUTO_TEMPLATE, ...PROTOCOL_TEMPLATES].find((template) => template.id === preferredId)
+            : undefined;
+          // Default to "Automatisch" (KI wählt) when nothing valid was chosen.
           setSelectedTemplate(preferred || AUTO_TEMPLATE);
         } catch {
           if (active) {
@@ -2598,84 +2602,39 @@ export default function RecordScreen() {
                   </View>
                   {selectedTemplate.id === "auto" && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
                 </Pressable>
-                {groupedTemplates.map((group) => (
-                  <View key={group.id} style={{ marginBottom: 8 }}>
-                    <Pressable
-                      onPress={() => toggleCategory(group.id)}
-                      style={({ pressed }) => [styles.templateCategoryHeader, { opacity: pressed ? 0.7 : 1 }]}
-                    >
-                      <MaterialIcons name={group.icon as any} size={18} color={colors.muted} />
-                      <Text style={[styles.templateCategoryTitle, { color: colors.muted }]}>{group.name}</Text>
-                      <MaterialIcons
-                        name={expandedCategories.includes(group.id) ? "expand-less" : "expand-more"}
-                        size={20}
-                        color={colors.muted}
-                      />
-                    </Pressable>
-                    {expandedCategories.includes(group.id) && group.templates.map((template) => (
-                      <Pressable
-                        key={template.id}
-                        onPress={() => selectTemplate(template)}
-                        style={({ pressed }) => [
-                          styles.templateListItem,
-                          {
-                            backgroundColor:
-                              selectedTemplate.id === template.id
-                                ? colors.primary + "15"
-                                : "transparent",
-                            borderColor:
-                              selectedTemplate.id === template.id
-                                ? colors.primary
-                                : colors.border,
-                            opacity: pressed ? 0.7 : 1,
-                          },
-                        ]}
-                      >
-                        <MaterialIcons
-                          name={template.icon as any}
-                          size={22}
-                          color={
-                            selectedTemplate.id === template.id
-                              ? colors.primary
-                              : colors.muted
-                          }
-                        />
-                        <View style={styles.templateListText}>
-                          <Text
-                            style={[
-                              styles.templateListName,
-                              {
-                                color:
-                                  selectedTemplate.id === template.id
-                                    ? colors.primary
-                                    : colors.foreground,
-                              },
-                            ]}
-                          >
-                            {localizedLabel(t, templateNameKey(template.id), template.name)}
-                          </Text>
-                          <Text
-                            style={[styles.templateListDesc, { color: colors.muted }]}
-                            numberOfLines={1}
-                          >
-                            {localizedLabel(t, templateDescKey(template.id), template.description)}
-                          </Text>
-                        </View>
-                        {selectedTemplate.id === template.id && (
-                          <MaterialIcons name="check-circle" size={20} color={colors.primary} />
-                        )}
-                      </Pressable>
-                    ))}
-                  </View>
+                {/* Only the three core construction templates — kept short on
+                    purpose so there is little to review. "Automatisch" above
+                    covers the rest. */}
+                {PROTOCOL_TEMPLATES.filter((tpl) =>
+                  ["baustellenbericht", "maengelliste", "abnahmeprotokoll"].includes(tpl.id) &&
+                  (!templateSearch.trim() ||
+                    localizedLabel(t, templateNameKey(tpl.id), tpl.name).toLowerCase().includes(templateSearch.trim().toLowerCase()))
+                ).map((template) => (
+                  <Pressable
+                    key={template.id}
+                    onPress={() => selectTemplate(template)}
+                    style={({ pressed }) => [
+                      styles.templateListItem,
+                      {
+                        marginBottom: 8,
+                        backgroundColor: selectedTemplate.id === template.id ? colors.primary + "15" : "transparent",
+                        borderColor: selectedTemplate.id === template.id ? colors.primary : colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name={template.icon as any} size={22} color={selectedTemplate.id === template.id ? colors.primary : colors.muted} />
+                    <View style={styles.templateListText}>
+                      <Text style={[styles.templateListName, { color: selectedTemplate.id === template.id ? colors.primary : colors.foreground }]}>
+                        {localizedLabel(t, templateNameKey(template.id), template.name)}
+                      </Text>
+                      <Text style={[styles.templateListDesc, { color: colors.muted }]} numberOfLines={1}>
+                        {localizedLabel(t, templateDescKey(template.id), template.description)}
+                      </Text>
+                    </View>
+                    {selectedTemplate.id === template.id && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
+                  </Pressable>
                 ))}
-                {/* Create custom template button */}
-                <Pressable
-                  onPress={() => { setShowTemplateSelector(false); setShowCreateTemplate(true); }}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14, paddingHorizontal: 16, marginTop: 8, borderRadius: 0, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name="add-circle-outline" size={22} color={colors.primary} />
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>{t('eigene_vorlage_erstellen')}</Text>
-                </Pressable>
               </ScrollView>
             </View>
           </View>
