@@ -148,6 +148,7 @@ export async function generateDefectPdfHtml(
     out = out.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
     out = out.replace(/^\s*#{1,6}\s+/gm, "");
     out = out.replace(/^\s*[-*•]\s+/gm, "• ");
+    out = out.replace(/\*/g, ""); // drop stray/unbalanced asterisks
     out = out.replace(/\r?\n/g, "<br/>");
     return out;
   };

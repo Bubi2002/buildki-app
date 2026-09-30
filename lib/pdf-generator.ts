@@ -111,6 +111,16 @@ function escapeHtml(value?: string): string {
     .replace(/'/g, "&#039;");
 }
 
+// Renders inline Markdown for the PDF body: **bold** and *italic* become tags,
+// and any leftover/unbalanced asterisks the AI produced are removed so the PDF
+// never shows raw "*" or "**".
+function formatInline(value?: string): string {
+  return (value || "")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\*/g, "");
+}
+
 function formatEvidenceSource(snapshot: DocumentEvidenceSnapshot): string {
   const parts = [snapshot.sourceLabel];
   // A timecode is only meaningful for a real video frame. A still photo's
@@ -570,8 +580,8 @@ export function generatePdfHtml(
         }
         // Remove [Foto X ...] from text and render the text
         let cleanedText = trimmed.replace(/\[Foto\s*\d+(?:\s*[\u2013\-–][^\]]*)?\]/gi, '').trim();
-        // Handle **bold** in the cleaned text
-        cleanedText = cleanedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Handle **bold**/*italic* and drop stray asterisks in the cleaned text
+        cleanedText = formatInline(cleanedText);
         let htmlResult = cleanedText ? `<p style="margin: 4px 0; line-height: 1.6;">${cleanedText}</p>` : '';
         // Embed referenced photos as a grid below the text
         const validPhotos = referencedPhotos.filter(idx => idx >= 0 && idx < photoDataUris.length && photoDataUris[idx]);
@@ -600,7 +610,7 @@ export function generatePdfHtml(
         return htmlResult;
       }
       if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
-        return `<li>${trimmed.substring(2)}</li>`;
+        return `<li>${formatInline(trimmed.substring(2))}</li>`;
       }
       // Gutachten-specific: numbered chapter headings
       if (isGutachten && /^\d+\.\s+\*\*/.test(trimmed)) {
@@ -623,20 +633,22 @@ export function generatePdfHtml(
       // "## " check (third char is '#', not a space) and fall through to <p>,
       // printing the literal "###".
       if (trimmed.startsWith("#### ")) {
-        return `<h4 style="margin-top: 14px; margin-bottom: 6px; color: #222; font-size: 12px; font-weight: 600;">${trimmed.substring(5).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</h4>`;
+        return `<h4 style="margin-top: 14px; margin-bottom: 6px; color: #222; font-size: 12px; font-weight: 600;">${formatInline(trimmed.substring(5))}</h4>`;
       }
       if (trimmed.startsWith("### ")) {
-        return `<h4 style="margin-top: 16px; margin-bottom: 6px; color: #111; font-size: 13px; font-weight: 600;">${trimmed.substring(4).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</h4>`;
+        return `<h4 style="margin-top: 16px; margin-bottom: 6px; color: #111; font-size: 13px; font-weight: 600;">${formatInline(trimmed.substring(4))}</h4>`;
       }
       if (trimmed.startsWith("## ")) {
-        return `<h3 style="margin-top: 18px; margin-bottom: 8px; color: #111; font-size: 14px; font-weight: 600;">${trimmed.substring(3)}</h3>`;
+        return `<h3 style="margin-top: 18px; margin-bottom: 8px; color: #111; font-size: 14px; font-weight: 600;">${formatInline(trimmed.substring(3))}</h3>`;
       }
       if (trimmed.startsWith("# ")) {
-        return `<section class="document-chapter"><h2>${trimmed.substring(2)}</h2></section>`;
+        return `<section class="document-chapter"><h2>${formatInline(trimmed.substring(2))}</h2></section>`;
       }
       if (trimmed === "") return "<br/>";
-      // Handle **bold** inline
-      let processed = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      // Horizontal rule (---, ***, ___)
+      if (/^([-*_])\1{2,}$/.test(trimmed)) return '<hr style="border:none;border-top:1px solid #E2E8F0;margin:14px 0;" />';
+      // Handle **bold** / *italic* inline, then drop any stray asterisks
+      let processed = formatInline(trimmed);
       // Handle | table rows (fallback for any remaining pipe rows not caught by pre-processing)
       if (processed.startsWith('|') && processed.endsWith('|')) {
         const cells = processed.split('|').filter(c => c.trim() !== '');

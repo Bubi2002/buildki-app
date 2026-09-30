@@ -1595,17 +1595,36 @@ export default function ProtocolDetailScreen() {
     await Linking.openURL(url);
   };
 
+  // A clean, human title for shares/copies — "<Projekt/Vorlage> – <Datum>",
+  // used instead of the raw first transcript line.
+  const cleanShareTitle = () => {
+    const base = (protocol as any)?.projectName || protocol?.templateName || t('protokoll');
+    const d = protocol?.createdAt ? new Date(protocol.createdAt).toLocaleDateString("de-DE") : "";
+    return d ? `${base} – ${d}` : base;
+  };
+
+  // Shared/copied text: a clean title line, then the body with the [FOTO n]
+  // placeholders and stray markdown asterisks removed.
+  const getShareText = () => {
+    const body = (protocol?.protocol || "")
+      .replace(/\[FOTO\s*\d+\]/gi, "")
+      .replace(/\*/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    return `${cleanShareTitle()}\n\n${body}`;
+  };
+
   const copyToClipboard = async () => {
     if (!protocol) return;
-    await Clipboard.setStringAsync(protocol.protocol);
+    await Clipboard.setStringAsync(getShareText());
     Alert.alert(t('alert_kopiert'), t('msg_protokoll_in_die_zwischenablage_kopiert'));
   };
 
   const shareGeneric = async () => {
     if (!protocol) return;
     await Share.share({
-      message: protocol.protocol,
-      title: protocol.templateName || t('protokoll_teilen'),
+      message: getShareText(),
+      title: cleanShareTitle(),
     });
   };
 
@@ -3074,10 +3093,7 @@ export default function ProtocolDetailScreen() {
               <Text style={{ fontSize: 16, color: colors.primary }}>{t('close')}</Text>
             </Pressable>
             <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>{t('pdfvorschau')}</Text>
-            <Pressable onPress={sharePdfFromPreview} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
-              <MaterialIcons name="share" size={20} color={colors.primary} />
-              <Text style={{ fontSize: 16, color: colors.primary }}>{t('protocol_share')}</Text>
-            </Pressable>
+            <View style={{ width: 60 }} />
           </View>
           {Platform.OS === "web" && previewHtml ? (
             <View style={{ flex: 1 }}>
@@ -3097,26 +3113,13 @@ export default function ProtocolDetailScreen() {
                   </View>
                 </View>
               </ScrollView>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
                 <Pressable
                   onPress={sharePdfFromPreview}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <MaterialIcons name="share" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('pdf_teilen_herunterladen')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={openPdfEmailPicker}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <MaterialIcons name="email" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('email_senden')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setShowPdfPreview(false)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <Text style={{ fontSize: 16, color: colors.foreground }}>{t('back')}</Text>
+                  <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('protocol_share')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -3139,26 +3142,13 @@ export default function ProtocolDetailScreen() {
                   )}
                 />
               </View>
-              <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
                 <Pressable
                   onPress={sharePdfFromPreview}
                   style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <MaterialIcons name="share" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('pdf_teilen')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={openPdfEmailPicker}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: "#059669", opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <MaterialIcons name="email" size={20} color="#FFFFFF" />
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('email_senden')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setShowPdfPreview(false)}
-                  style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <Text style={{ fontSize: 16, color: colors.foreground }}>{t('back')}</Text>
+                  <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>{t('protocol_share')}</Text>
                 </Pressable>
               </View>
             </View>

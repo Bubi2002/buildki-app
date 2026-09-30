@@ -358,7 +358,8 @@ function markdownToHtml(md: string): string {
   // Escape first, then render a safe subset — never leak raw markdown into the PDF.
   const inline = (s: string) => esc(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
+    .replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>")
+    .replace(/\*/g, ""); // drop stray/unbalanced asterisks so no raw * leaks
   let html = "";
   let inList = false;
   const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
