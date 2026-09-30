@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   FlatList,
+  SectionList,
+  ScrollView,
   Pressable,
   StyleSheet,
   ActivityIndicator,
@@ -23,6 +25,7 @@ import { timelineEngine } from "@/lib/timeline-engine";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
+import { ContactPickerModal } from "@/components/contact-picker-modal";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { buildPremiumHtml, resolveBrandingLogo, escHtml } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
@@ -46,11 +49,13 @@ type ProtocolTodo = TodoItem & {
   protocolTitle: string;
   protocolDate: string;
   todoIndex: number;
-  source?: "protocol" | "project-task";
+  source?: "protocol" | "project-task" | "defect";
   taskId?: string;
   status?: "offen" | "in_arbeit" | "erledigt";
   floor?: string;
   room?: string;
+  projectId?: string;
+  projectLabel?: string;
 };
 
 type FilterType = "all" | "open" | "in_progress" | "done";
@@ -75,6 +80,67 @@ export default function TasksScreen() {
   const [newStatus, setNewStatus] = useState<"offen" | "in_arbeit" | "erledigt">("offen");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projectId || null);
+  // Share flow (one "Teilen" button)
+  const [showShare, setShowShare] = useState(false);
+  const [shareFormat, setShareFormat] = useState<"pdf" | "csv">("pdf");
+  const [shareExcluded, setShareExcluded] = useState<Set<string>>(new Set());
+  const [showContacts, setShowContacts] = useState(false);
+
+  const taskKey = (it: ProtocolTodo) => `${it.source}-${it.taskId || it.protocolId}-${it.todoIndex}`;
+
+  const openShareSheet = () => {
+    // Prefill project data from the selected project so it's already saved.
+    const proj = projects.find((p) => p.id === selectedProjectId);
+    if (proj) setExportDetails((prev) => ({ ...prev, bauvorhaben: prev.bauvorhaben || proj.name }));
+    setShareExcluded(new Set());
+    setShowShare(true);
+  };
+
+  const getShareTasks = () => filteredTodos.filter((it) => !shareExcluded.has(taskKey(it)));
+
+  const shareCsvSelected = async () => {
+    const sel = getShareTasks();
+    if (sel.length === 0) { Alert.alert(t('alert_fehler'), t('tasks_keine_aufgaben' as any)); return; }
+    setShowShare(false);
+    await exportTasksAsCSV(sel.map((it) => ({ task: it.task, done: it.done, status: it.status, deadline: it.deadline, priority: it.priority, floor: it.floor, room: it.room, source: it.protocolTitle })));
+  };
+
+  const shareSelected = async () => {
+    const sel = getShareTasks();
+    if (sel.length === 0) { Alert.alert(t('alert_fehler'), t('tasks_keine_aufgaben' as any)); return; }
+    setShowShare(false);
+    if (shareFormat === "csv") await shareCsvSelected();
+    else await exportPdf(sel);
+  };
+
+  const emailSelected = async (emails: string[]) => {
+    setShowContacts(false);
+    const sel = getShareTasks();
+    if (sel.length === 0 || emails.length === 0) return;
+    setShowShare(false);
+    try {
+      setPdfBusy(true);
+      const html = await buildTasksPdfHtml(sel);
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const MailComposer = await import("expo-mail-composer");
+      if (await MailComposer.isAvailableAsync()) {
+        await MailComposer.composeAsync({
+          recipients: emails,
+          subject: `${t('tasks_aufgaben' as any)}${exportDetails.bauvorhaben ? " – " + exportDetails.bauvorhaben : ""}`,
+          body: t('tasks_email_body' as any),
+          attachments: [uri],
+        });
+      } else if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+      }
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || "");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const resetTaskForm = () => {
     setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
@@ -94,6 +160,8 @@ export default function TasksScreen() {
       setNewRoom(item.room || "");
       setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
       setShowCreate(true);
+    } else if (item.source === "defect") {
+      router.push(`/defects?projectId=${item.projectId || ""}` as any);
     } else {
       router.push(`/protocol-detail?id=${item.protocolId}` as any);
     }
@@ -212,6 +280,11 @@ export default function TasksScreen() {
         (await AsyncStorage.getItem("protocols")) || "[]"
       );
 
+      // Project id → name, so every task can show which project it belongs to.
+      const projectsList = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
+      const projectName = (pid?: string) => projectsList.find((p: any) => p.id === pid)?.name || undefined;
+      setProjects(projectsList.filter((p: any) => !p.archived).map((p: any) => ({ id: p.id, name: p.name })));
+
       const todos: ProtocolTodo[] = [];
       for (const protocol of protocols) {
         if (protocol.todos && protocol.todos.length > 0) {
@@ -223,10 +296,41 @@ export default function TasksScreen() {
               protocolDate: protocol.createdAt,
               todoIndex: index,
               source: "protocol",
+              projectId: protocol.projectId,
+              projectLabel: protocol.projectName || projectName(protocol.projectId),
             });
           });
         }
       }
+
+      // Mängel aus allen Projekten als Aufgaben mit aufnehmen (im richtigen Projekt).
+      try {
+        const { getDefects } = await import("@/lib/defect-store");
+        const defects = await getDefects();
+        const doneStatus = ["erledigt", "geschlossen"];
+        const inArbeitStatus = ["zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung"];
+        for (const d of defects) {
+          const done = doneStatus.includes(d.status);
+          todos.push({
+            task: d.title,
+            assignee: d.gewerk || "",
+            priority: (d.priority as any) || "mittel",
+            deadline: d.dueDate || "",
+            done,
+            protocolId: d.id,
+            protocolTitle: t('maengel'),
+            protocolDate: (d as any).createdAt || new Date().toISOString(),
+            todoIndex: 0,
+            source: "defect",
+            taskId: d.id,
+            status: done ? "erledigt" : inArbeitStatus.includes(d.status) ? "in_arbeit" : "offen",
+            floor: d.floor || undefined,
+            room: d.room || d.location || undefined,
+            projectId: d.projectId,
+            projectLabel: projectName(d.projectId),
+          });
+        }
+      } catch {}
 
       // Auch eigenstaendige Projekt-Tasks laden (z. B. aus KI-Analyse "Add as task")
       try {
@@ -249,6 +353,8 @@ export default function TasksScreen() {
             status: pt.status || (pt.done ? "erledigt" : "offen"),
             floor: pt.floor || undefined,
             room: pt.room || undefined,
+            projectId: pt.projectId || undefined,
+            projectLabel: projectName(pt.projectId),
           });
         }
       } catch {}
@@ -281,6 +387,20 @@ export default function TasksScreen() {
   const toggleTodo = async (item: ProtocolTodo) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    // Mängel: Status im Defect-Store umschalten (offen ↔ erledigt)
+    if (item.source === "defect") {
+      try {
+        const { updateDefectStatus } = await import("@/lib/defect-store");
+        await updateDefectStatus(item.taskId!, item.done ? "offen" : "erledigt");
+      } catch (error) {
+        console.error("Error toggling defect:", error);
+      }
+      setAllTodos((prev) =>
+        prev.map((tt) => (tt.source === "defect" && tt.taskId === item.taskId ? { ...tt, done: !tt.done, status: !tt.done ? "erledigt" : "offen" } : tt))
+      );
+      return;
     }
 
     // Eigenstaendige Projekt-Tasks im eigenen Speicher abhaken
@@ -350,87 +470,77 @@ export default function TasksScreen() {
   };
 
   const filteredTodos = allTodos.filter((tt) => {
+    if (selectedProjectId && tt.projectId !== selectedProjectId) return false;
     if (filter === "open") return !tt.done && tt.status !== "in_arbeit";
     if (filter === "in_progress") return !tt.done && tt.status === "in_arbeit";
     if (filter === "done") return tt.done;
     return true;
   });
 
-  const openCount = allTodos.filter((tt) => !tt.done).length;
-  const doneCount = allTodos.filter((tt) => tt.done).length;
+  // Group by Geschoss/Raum ("wie im Rundgang"); tasks without a room go last.
+  const sections = useMemo(() => {
+    const groups = new Map<string, ProtocolTodo[]>();
+    for (const tt of filteredTodos) {
+      const key = [tt.floor, tt.room].filter(Boolean).join(" · ");
+      const g = groups.get(key) || [];
+      g.push(tt);
+      groups.set(key, g);
+    }
+    const entries = Array.from(groups.entries());
+    entries.sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
+    return entries.map(([key, data]) => ({ title: key || t('tasks_no_room' as any), data }));
+  }, [filteredTodos]);
 
-  const exportPdf = async () => {
+  // Count only tasks in the selected project scope.
+  const scopedTodos = allTodos.filter((tt) => !selectedProjectId || tt.projectId === selectedProjectId);
+  const openCount = scopedTodos.filter((tt) => !tt.done).length;
+  const doneCount = scopedTodos.filter((tt) => tt.done).length;
+
+  const buildTasksPdfHtml = async (exportTasks: ProtocolTodo[]): Promise<string> => {
+    const priorityLabel = (p: ProtocolTodo["priority"]) =>
+      p === "hoch" ? t('tasks_prioritaet_hoch' as any) : p === "niedrig" ? t('prioritaet_niedrig') : t('prioritaet_mittel');
+    const pill = (text: string, color: string) =>
+      `<span class="badge" style="background:${color}1A;color:${color};border:1px solid ${color}44;">${escHtml(text)}</span>`;
+    const prioColor = (p: ProtocolTodo["priority"]) => (p === "hoch" ? "#B91C1C" : p === "niedrig" ? "#6B7280" : "#B45309");
+    const rows = exportTasks
+      .map((item) => {
+        const assignee = item.assignee && item.assignee !== t('nicht_zugewiesen') ? item.assignee : "—";
+        const deadline = item.deadline && item.deadline !== t('frist_offen') ? item.deadline : "—";
+        const ort = [item.floor, item.room].filter(Boolean).join(" · ") || "—";
+        const statusPill = item.done ? pill(t('status_erledigt'), "#5E8B6F") : item.status === "in_arbeit" ? pill(t('tasks_status_in_arbeit' as any), "#B45309") : pill(t('status_offen'), "#DC2626");
+        return `<tr><td>${escHtml(item.task)}</td><td>${escHtml(assignee)}</td><td>${escHtml(ort)}</td><td>${pill(priorityLabel(item.priority), prioColor(item.priority))}</td><td>${escHtml(deadline)}</td><td>${statusPill}</td></tr>`;
+      })
+      .join("");
+    const generated = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
+      bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
+      etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
+    });
+    const branding = await getPdfBranding().catch(() => null);
+    const accent = branding?.accentColor || "#1E3A5F";
+    const logoDataUri = await resolveBrandingLogo(branding);
+    const body = `${metaHeader}<table class="prem-table" style="margin-top:14px;"><thead><tr><th>Aufgabe</th><th>Zuständig</th><th>Ort</th><th>Priorität</th><th>Fällig</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+    return buildPremiumHtml({
+      branding: branding || ({} as any),
+      accentColor: accent,
+      title: t('tasks_aufgaben' as any),
+      reportTag: t('tasks_aufgaben' as any),
+      subtitle: escHtml(generated),
+      body,
+      logoDataUri,
+    });
+  };
+
+  const exportPdf = async (tasksArg?: ProtocolTodo[]) => {
     if (pdfBusy) return;
-    // Respect the currently active filter (open / done / all)
-    if (filteredTodos.length === 0) {
+    const exportTasks = tasksArg && tasksArg.length ? tasksArg : filteredTodos;
+    if (exportTasks.length === 0) {
       Alert.alert(t('alert_fehler'), t('tasks_keine_aufgaben' as any));
       return;
     }
-
-    const priorityLabel = (p: ProtocolTodo["priority"]) =>
-      p === "hoch"
-        ? t('tasks_prioritaet_hoch' as any)
-        : p === "niedrig"
-        ? t('prioritaet_niedrig')
-        : t('prioritaet_mittel');
-
     setPdfBusy(true);
     try {
-      const pill = (text: string, color: string) =>
-        `<span class="badge" style="background:${color}1A;color:${color};border:1px solid ${color}44;">${escHtml(text)}</span>`;
-      const prioColor = (p: ProtocolTodo["priority"]) => (p === "hoch" ? "#B91C1C" : p === "niedrig" ? "#6B7280" : "#B45309");
-
-      const rows = filteredTodos
-        .map((item) => {
-          const assignee =
-            item.assignee && item.assignee !== t('nicht_zugewiesen')
-              ? item.assignee
-              : "—";
-          const deadline =
-            item.deadline && item.deadline !== t('frist_offen')
-              ? item.deadline
-              : "—";
-          const statusPill = item.done ? pill(t('status_erledigt'), "#5E8B6F") : pill(t('status_offen'), "#DC2626");
-          return `<tr>
-            <td>${escHtml(item.task)}</td>
-            <td>${escHtml(assignee)}</td>
-            <td>${pill(priorityLabel(item.priority), prioColor(item.priority))}</td>
-            <td>${escHtml(deadline)}</td>
-            <td>${statusPill}</td>
-          </tr>`;
-        })
-        .join("");
-
-      const generated = new Date().toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-
-      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
-        bauvorhaben: t('export_bauvorhaben'), adresse: t('export_adresse'),
-        etage: t('export_etage'), raum: t('export_raum'), notizen: t('export_notizen'),
-      });
-
-      const branding = await getPdfBranding().catch(() => null);
-      const accent = branding?.accentColor || "#1E3A5F";
-      const logoDataUri = await resolveBrandingLogo(branding);
-      const body = `
-        ${metaHeader}
-        <table class="prem-table" style="margin-top:14px;">
-          <thead><tr><th>Aufgabe</th><th>Zuständig</th><th>Priorität</th><th>Fällig</th><th>Status</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      const html = buildPremiumHtml({
-        branding: branding || ({} as any),
-        accentColor: accent,
-        title: t('tasks_aufgaben' as any),
-        reportTag: t('tasks_aufgaben' as any),
-        subtitle: escHtml(generated),
-        body,
-        logoDataUri,
-      });
-
+      const html = await buildTasksPdfHtml(exportTasks);
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
@@ -582,16 +692,6 @@ export default function TasksScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           {t('tasks_aufgaben' as any)}
         </Text>
-        {csvEnabled && <Pressable onPress={() => exportTasksAsCSV(filteredTodos.map((it) => ({ task: it.task, done: it.done, status: it.status, deadline: it.deadline, priority: it.priority, floor: it.floor, room: it.room, source: it.protocolTitle })))} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}>
-          <MaterialIcons name="file-download" size={22} color={colors.primary} />
-        </Pressable>}
-        <Pressable
-          onPress={exportPdf}
-          accessibilityLabel={t('pdf_teilen')}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
-        </Pressable>
         <Pressable
           onPress={() => setShowVoiceCreate(true)}
           accessibilityLabel={t('tasks_voice_title' as any)}
@@ -673,11 +773,35 @@ export default function TasksScreen() {
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
           <Text style={[styles.statNumber, { color: colors.foreground }]}>
-            {allTodos.length}
+            {scopedTodos.length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.muted }]}>{t('gesamt')}</Text>
         </View>
       </View>
+
+      {/* Project selector */}
+      {projects.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44 }} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: "center" }}>
+          <Pressable
+            onPress={() => setSelectedProjectId(null)}
+            style={[styles.projChip, { backgroundColor: !selectedProjectId ? colors.primary + "20" : colors.surface, borderColor: !selectedProjectId ? colors.primary : colors.border }]}
+          >
+            <Text style={{ fontSize: 13, fontWeight: "600", color: !selectedProjectId ? colors.primary : colors.muted }}>{t('all')}</Text>
+          </Pressable>
+          {projects.map((p) => {
+            const active = selectedProjectId === p.id;
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => setSelectedProjectId(p.id)}
+                style={[styles.projChip, { backgroundColor: active ? colors.primary + "20" : colors.surface, borderColor: active ? colors.primary : colors.border }]}
+              >
+                <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: active ? colors.primary : colors.foreground, maxWidth: 160 }}>{p.name}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Filter tabs */}
       <View style={[styles.filterRow, { borderColor: colors.border }]}>
@@ -723,19 +847,101 @@ export default function TasksScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredTodos}
+        <SectionList
+          sections={sections}
           renderItem={renderTodo}
-          keyExtractor={(item, index) =>
-            `${item.protocolId}-${item.todoIndex}-${index}`
+          keyExtractor={(item, index) => `${item.protocolId}-${item.todoIndex}-${index}`}
+          renderSectionHeader={({ section }) =>
+            sections.length <= 1 ? null : (
+              <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
+                <MaterialIcons name="meeting-room" size={14} color={colors.muted} />
+                <Text style={[styles.sectionHeaderText, { color: colors.muted }]}>{section.title}</Text>
+                <Text style={[styles.sectionCount, { color: colors.muted }]}>{section.data.length}</Text>
+              </View>
+            )
           }
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          ListFooterComponent={
-            <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
-          }
         />
       )}
+
+      {/* One "Teilen" button (replaces the old export box + header icons) */}
+      {filteredTodos.length > 0 && (
+        <View style={[styles.shareBar, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+          <Pressable onPress={openShareSheet} style={({ pressed }) => [styles.shareBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
+            <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 16 }}>{t('protocol_share')}</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Share sheet — centered popup */}
+      <Modal visible={showShare} transparent animationType="fade" onRequestClose={() => setShowShare(false)}>
+        <View style={styles.createOverlay}>
+          <View style={[styles.createSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('tasks_share_title' as any)}</Text>
+              <Pressable onPress={() => setShowShare(false)} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {/* Format */}
+              <Text style={[styles.createLabel, { color: colors.muted }]}>{t('tasks_share_format' as any)}</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(["pdf", "csv"] as const).map((f) => {
+                  const active = shareFormat === f;
+                  return (
+                    <Pressable key={f} onPress={() => setShareFormat(f)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}>
+                      <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{f.toUpperCase()}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Task selection */}
+              <Text style={[styles.createLabel, { color: colors.muted, marginTop: 14 }]}>{t('tasks_share_select' as any)} ({getShareTasks().length}/{filteredTodos.length})</Text>
+              <View style={{ maxHeight: 220, borderWidth: 1, borderColor: colors.border, borderRadius: 10 }}>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  {filteredTodos.map((it) => {
+                    const key = taskKey(it);
+                    const sel = !shareExcluded.has(key);
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => setShareExcluded((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; })}
+                        style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9, paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}
+                      >
+                        <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, alignItems: "center", justifyContent: "center", borderColor: sel ? colors.primary : colors.muted, backgroundColor: sel ? colors.primary : "transparent" }}>
+                          {sel && <MaterialIcons name="check" size={13} color="#FFFFFF" />}
+                        </View>
+                        <Text numberOfLines={1} style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{it.task}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Project data (prefilled) */}
+              <View style={{ marginTop: 14 }}>
+                <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                <Pressable onPress={() => setShowContacts(true)} style={[styles.createBtn, { borderWidth: 1, borderColor: colors.border, flexDirection: "row", gap: 6 }]}>
+                  <MaterialIcons name="email" size={18} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>{t('tasks_email' as any)}</Text>
+                </Pressable>
+                <Pressable onPress={shareSelected} style={[styles.createBtn, { flex: 2, backgroundColor: colors.primary, flexDirection: "row", gap: 6 }]}>
+                  <MaterialIcons name="ios-share" size={18} color="#FFFFFF" />
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>{t('protocol_share')}</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <ContactPickerModal visible={showContacts} onClose={() => setShowContacts(false)} onSelect={emailSelected} />
 
       {/* Create / edit task — centered popup */}
       <Modal visible={showCreate} transparent animationType="fade" onRequestClose={() => { setShowCreate(false); resetTaskForm(); }}>
@@ -844,6 +1050,12 @@ const styles = StyleSheet.create({
   createLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
   createInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   createBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: "center" },
+  projChip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
+  shareBar: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14, borderTopWidth: 0.5 },
+  shareBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
+  sectionHeaderText: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
+  sectionCount: { fontSize: 12, fontWeight: "700" },
   voiceOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
   voiceSheet: { borderRadius: 18, borderWidth: 1, padding: 20, maxWidth: 560, width: "100%", alignSelf: "center" },
   voiceGuide: { borderWidth: 1, borderRadius: 10, padding: 14 },
