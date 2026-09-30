@@ -598,7 +598,6 @@ export default function ChecklistsScreen() {
                     <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{t('label_pruefpunkt_hinzufuegen')}</Text>
                   </Pressable>
                 )}
-                <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
                 <View style={styles.modalButtons}>
                   <Pressable
                     onPress={() => { setActiveResult(null); setSelectedChecklist(null); Keyboard.dismiss(); }}
