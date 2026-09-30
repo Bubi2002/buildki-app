@@ -48,9 +48,12 @@ type ProtocolTodo = TodoItem & {
   todoIndex: number;
   source?: "protocol" | "project-task";
   taskId?: string;
+  status?: "offen" | "in_arbeit" | "erledigt";
+  floor?: string;
+  room?: string;
 };
 
-type FilterType = "all" | "open" | "done";
+type FilterType = "all" | "open" | "in_progress" | "done";
 
 export default function TasksScreen() {
   const { t } = useTranslation();
@@ -66,7 +69,35 @@ export default function TasksScreen() {
   const [newTitle, setNewTitle] = useState("");
   const [newTrade, setNewTrade] = useState("");
   const [newPriority, setNewPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [newDeadline, setNewDeadline] = useState("");
+  const [newFloor, setNewFloor] = useState("");
+  const [newRoom, setNewRoom] = useState("");
+  const [newStatus, setNewStatus] = useState<"offen" | "in_arbeit" | "erledigt">("offen");
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+
+  const resetTaskForm = () => {
+    setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
+    setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewStatus("offen");
+    setEditingTaskId(null);
+  };
+
+  // Row tap: open the project task for editing, or the source protocol.
+  const openTask = (item: ProtocolTodo) => {
+    if (item.source === "project-task") {
+      setEditingTaskId(item.taskId || null);
+      setNewTitle(item.task);
+      setNewTrade(item.assignee && item.assignee !== t('nicht_zugewiesen') ? item.assignee : "");
+      setNewPriority(item.priority);
+      setNewDeadline(item.deadline && item.deadline !== t('frist_offen') ? item.deadline : "");
+      setNewFloor(item.floor || "");
+      setNewRoom(item.room || "");
+      setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
+      setShowCreate(true);
+    } else {
+      router.push(`/protocol-detail?id=${item.protocolId}` as any);
+    }
+  };
 
   // Voice-create: speak a task, AI pre-fills the form (still editable).
   const aiRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -113,6 +144,9 @@ export default function TasksScreen() {
       const ex = extractDefectFromText(text);
       if (ex.title || ex.description) setNewTitle(ex.title || ex.description || "");
       if (ex.priority) setNewPriority(ex.priority);
+      if (ex.dueDate) setNewDeadline(ex.dueDate);
+      if (ex.floor) setNewFloor(ex.floor);
+      if (ex.room) setNewRoom(ex.room);
       if (ex.gewerk) {
         const g = ex.gewerk.toLowerCase();
         const match = GEWERKE.find((x) => x.toLowerCase() === g || x.toLowerCase().includes(g) || g.includes(x.toLowerCase()));
@@ -141,19 +175,31 @@ export default function TasksScreen() {
     try {
       const raw = await AsyncStorage.getItem("project-tasks");
       const tasks = raw ? JSON.parse(raw) : [];
-      tasks.push({
-        id: `task_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
-        projectId: projectId || undefined,
+      const fields = {
         title: newTitle.trim(),
         trade: newTrade.trim() || undefined,
         priority: newPriority,
-        status: "offen",
-        createdAt: new Date().toISOString(),
-      });
+        deadline: newDeadline.trim() || undefined,
+        floor: newFloor.trim() || undefined,
+        room: newRoom.trim() || undefined,
+        status: newStatus,
+        done: newStatus === "erledigt",
+      };
+      if (editingTaskId) {
+        const idx = tasks.findIndex((x: any) => x.id === editingTaskId);
+        if (idx !== -1) tasks[idx] = { ...tasks[idx], ...fields };
+      } else {
+        tasks.push({
+          id: `task_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
+          projectId: projectId || undefined,
+          createdAt: new Date().toISOString(),
+          ...fields,
+        });
+      }
       await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
       if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowCreate(false);
-      setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
+      resetTaskForm();
       loadAllTodos();
     } catch {
       Alert.alert(t('alert_fehler'));
@@ -195,11 +241,14 @@ export default function TasksScreen() {
             deadline: pt.deadline || "",
             done: pt.status === "erledigt" || pt.done === true,
             protocolId: pt.id,
-            protocolTitle: "KI-Analyse",
+            protocolTitle: t('tasks_source_manual' as any),
             protocolDate: pt.createdAt || new Date().toISOString(),
             todoIndex: 0,
             source: "project-task",
             taskId: pt.id,
+            status: pt.status || (pt.done ? "erledigt" : "offen"),
+            floor: pt.floor || undefined,
+            room: pt.room || undefined,
           });
         }
       } catch {}
@@ -300,14 +349,15 @@ export default function TasksScreen() {
     }
   };
 
-  const filteredTodos = allTodos.filter((t) => {
-    if (filter === "open") return !t.done;
-    if (filter === "done") return t.done;
+  const filteredTodos = allTodos.filter((tt) => {
+    if (filter === "open") return !tt.done && tt.status !== "in_arbeit";
+    if (filter === "in_progress") return !tt.done && tt.status === "in_arbeit";
+    if (filter === "done") return tt.done;
     return true;
   });
 
-  const openCount = allTodos.filter((t) => !t.done).length;
-  const doneCount = allTodos.filter((t) => t.done).length;
+  const openCount = allTodos.filter((tt) => !tt.done).length;
+  const doneCount = allTodos.filter((tt) => tt.done).length;
 
   const exportPdf = async () => {
     if (pdfBusy) return;
@@ -407,28 +457,30 @@ export default function TasksScreen() {
 
     return (
       <Pressable
-        onPress={() => toggleTodo(item)}
-        onLongPress={() =>
-          router.push(`/protocol-detail?id=${item.protocolId}` as any)
-        }
+        onPress={() => openTask(item)}
         style={({ pressed }) => [
           styles.todoItem,
           { borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
         ]}
       >
-        <View
+        {/* Only the checkbox toggles done — tapping the row opens the task. */}
+        <Pressable
+          onPress={() => toggleTodo(item)}
+          hitSlop={12}
           style={[
             styles.checkbox,
             {
-              borderColor: item.done ? colors.primary : colors.muted,
+              borderColor: item.done ? colors.primary : item.status === "in_arbeit" ? "#F59E0B" : colors.muted,
               backgroundColor: item.done ? colors.primary : "transparent",
             },
           ]}
         >
-          {item.done && (
+          {item.done ? (
             <MaterialIcons name="check" size={14} color="#FFFFFF" />
-          )}
-        </View>
+          ) : item.status === "in_arbeit" ? (
+            <MaterialIcons name="hourglass-empty" size={12} color="#F59E0B" />
+          ) : null}
+        </Pressable>
         <View style={styles.todoContent}>
           <Text
             style={[
@@ -490,11 +542,19 @@ export default function TasksScreen() {
                 {item.protocolTitle} ({date})
               </Text>
             </View>
-            {item.deadline !== t('frist_offen') && (
+            {item.deadline && item.deadline !== t('frist_offen') && (
               <View style={[styles.badge, { backgroundColor: colors.surface }]}>
                 <MaterialIcons name="schedule" size={11} color={colors.muted} />
                 <Text style={[styles.badgeText, { color: colors.muted }]}>
                   {item.deadline}
+                </Text>
+              </View>
+            )}
+            {(item.floor || item.room) && (
+              <View style={[styles.badge, { backgroundColor: colors.surface }]}>
+                <MaterialIcons name="place" size={11} color={colors.muted} />
+                <Text style={[styles.badgeText, { color: colors.muted }]}>
+                  {[item.floor, item.room].filter(Boolean).join(" · ")}
                 </Text>
               </View>
             )}
@@ -522,7 +582,7 @@ export default function TasksScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           {t('tasks_aufgaben' as any)}
         </Text>
-        {csvEnabled && <Pressable onPress={exportTasksAsCSV} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}>
+        {csvEnabled && <Pressable onPress={() => exportTasksAsCSV(filteredTodos.map((it) => ({ task: it.task, done: it.done, status: it.status, deadline: it.deadline, priority: it.priority, floor: it.floor, room: it.room, source: it.protocolTitle })))} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}>
           <MaterialIcons name="file-download" size={22} color={colors.primary} />
         </Pressable>}
         <Pressable
@@ -549,7 +609,7 @@ export default function TasksScreen() {
       </View>
 
       {/* Voice-create task */}
-      <Modal visible={showVoiceCreate} transparent animationType="slide" onRequestClose={cancelVoiceCreate}>
+      <Modal visible={showVoiceCreate} transparent animationType="fade" onRequestClose={cancelVoiceCreate}>
         <View style={styles.voiceOverlay}>
           <View style={[styles.voiceSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -567,6 +627,7 @@ export default function TasksScreen() {
                 <View style={[styles.voiceGuide, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   {[
                     t('defects_voice_g_title' as any), t('defects_voice_g_gewerk' as any), t('defects_voice_g_prio' as any),
+                    t('tasks_voice_g_wann' as any), t('tasks_voice_g_wo' as any),
                   ].map((g, i) => (
                     <View key={i} style={{ flexDirection: "row", gap: 8, alignItems: "flex-start", marginBottom: 6 }}>
                       <MaterialIcons name="chevron-right" size={16} color={colors.primary} style={{ marginTop: 1 }} />
@@ -620,7 +681,7 @@ export default function TasksScreen() {
 
       {/* Filter tabs */}
       <View style={[styles.filterRow, { borderColor: colors.border }]}>
-        {(["open", "all", "done"] as FilterType[]).map((f) => (
+        {(["open", "in_progress", "all", "done"] as FilterType[]).map((f) => (
           <Pressable
             key={f}
             onPress={() => setFilter(f)}
@@ -634,8 +695,9 @@ export default function TasksScreen() {
                 styles.filterText,
                 { color: filter === f ? colors.primary : colors.muted },
               ]}
+              numberOfLines={1}
             >
-              {f === "open" ? t('status_offen') : f === "done" ? t('status_erledigt') : t('filter_alle')}
+              {f === "open" ? t('status_offen') : f === "in_progress" ? t('tasks_status_in_arbeit' as any) : f === "done" ? t('status_erledigt') : t('filter_alle')}
             </Text>
           </Pressable>
         ))}
@@ -675,24 +737,24 @@ export default function TasksScreen() {
         />
       )}
 
-      {/* Create task */}
-      <Modal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
+      {/* Create / edit task — centered popup */}
+      <Modal visible={showCreate} transparent animationType="fade" onRequestClose={() => { setShowCreate(false); resetTaskForm(); }}>
         <View style={styles.createOverlay}>
           <View style={[styles.createSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('tasks_add' as any)}</Text>
-              <Pressable onPress={() => setShowCreate(false)} hitSlop={8}>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>{editingTaskId ? t('tasks_edit' as any) : t('tasks_add' as any)}</Text>
+              <Pressable onPress={() => { setShowCreate(false); resetTaskForm(); }} hitSlop={8}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
               </Pressable>
             </View>
 
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={[styles.createLabel, { color: colors.muted }]}>{t('titel' as any)}</Text>
             <TextInput
               value={newTitle}
               onChangeText={setNewTitle}
               placeholder={t('tasks_title_placeholder' as any)}
               placeholderTextColor={colors.muted}
-              autoFocus
               style={[styles.createInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
             />
 
@@ -712,14 +774,61 @@ export default function TasksScreen() {
               })}
             </View>
 
+            {/* Status */}
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('status' as any)}</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {([
+                { key: "offen" as const, label: t('status_offen'), col: "#DC2626" },
+                { key: "in_arbeit" as const, label: t('tasks_status_in_arbeit' as any), col: "#F59E0B" },
+                { key: "erledigt" as const, label: t('status_erledigt'), col: "#5E8B6F" },
+              ]).map((s) => {
+                const active = newStatus === s.key;
+                return (
+                  <Pressable key={s.key} onPress={() => setNewStatus(s.key)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: active ? s.col : colors.border, backgroundColor: active ? s.col + "18" : "transparent" }}>
+                    <Text style={{ fontSize: 12.5, fontWeight: active ? "700" : "600", color: active ? s.col : colors.muted }}>{s.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Wann (Frist) */}
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_wann' as any)}</Text>
+            <TextInput
+              value={newDeadline}
+              onChangeText={setNewDeadline}
+              placeholder={t('tasks_wann_placeholder' as any)}
+              placeholderTextColor={colors.muted}
+              style={[styles.createInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+            />
+
+            {/* Wo (Geschoss / Raum) */}
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_wo' as any)}</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                value={newFloor}
+                onChangeText={setNewFloor}
+                placeholder={t('export_etage')}
+                placeholderTextColor={colors.muted}
+                style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              />
+              <TextInput
+                value={newRoom}
+                onChangeText={setNewRoom}
+                placeholder={t('export_raum')}
+                placeholderTextColor={colors.muted}
+                style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+              />
+            </View>
+
             <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
-              <Pressable onPress={() => setShowCreate(false)} style={[styles.createBtn, { borderWidth: 1, borderColor: colors.border }]}>
+              <Pressable onPress={() => { setShowCreate(false); resetTaskForm(); }} style={[styles.createBtn, { borderWidth: 1, borderColor: colors.border }]}>
                 <Text style={{ color: colors.muted, fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
               </Pressable>
               <Pressable onPress={saveNewTask} style={[styles.createBtn, { flex: 2, backgroundColor: colors.primary }]}>
                 <Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text>
               </Pressable>
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -730,13 +839,13 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  createOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  createSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 24, paddingBottom: 40 },
+  createOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 20 },
+  createSheet: { borderRadius: 18, borderWidth: 1, padding: 22, maxHeight: "86%", maxWidth: 560, width: "100%", alignSelf: "center" },
   createLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
   createInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   createBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: "center" },
-  voiceOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  voiceSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, paddingBottom: 34 },
+  voiceOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
+  voiceSheet: { borderRadius: 18, borderWidth: 1, padding: 20, maxWidth: 560, width: "100%", alignSelf: "center" },
   voiceGuide: { borderWidth: 1, borderRadius: 10, padding: 14 },
   voiceRecBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52, borderRadius: 12, marginTop: 14 },
   voiceRecText: { color: "#fff", fontSize: 16, fontWeight: "800" },

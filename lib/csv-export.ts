@@ -28,40 +28,55 @@ function escapeCSV(value: string): string {
   return value;
 }
 
-export async function exportTasksAsCSV(): Promise<void> {
-  try {
-    const protocols: Protocol[] = JSON.parse(
-      (await AsyncStorage.getItem("protocols")) || "[]"
-    );
+export type TaskExportRow = {
+  task: string;
+  done: boolean;
+  status?: string;
+  deadline?: string;
+  priority?: string;
+  floor?: string;
+  room?: string;
+  source?: string;
+};
 
+export async function exportTasksAsCSV(tasks?: TaskExportRow[]): Promise<void> {
+  try {
     const rows: string[] = [];
     // Header
-    rows.push("Aufgabe,Status,Fälligkeitsdatum,Priorität,Protokoll,Protokoll-Nr.,Erstellt am");
+    rows.push("Aufgabe,Status,Fälligkeitsdatum,Priorität,Ort,Quelle");
 
-    for (const protocol of protocols) {
-      if (!protocol.todos || protocol.status !== "ready") continue;
-
-      for (const todo of protocol.todos) {
-        const status = todo.done ? "Erledigt" : "Offen";
-        const dueDate = todo.dueDate
-          ? new Date(todo.dueDate).toLocaleDateString("de-DE")
-          : "-";
-        const priority = todo.priority || "Normal";
-        const protocolName = protocol.templateName || protocol.title || "Protokoll";
-        const protocolNum = protocol.protocolNumber || "-";
-        const createdAt = new Date(protocol.createdAt).toLocaleDateString("de-DE");
-
+    // Preferred: the exact tasks the screen is showing (incl. standalone tasks).
+    if (tasks && tasks.length > 0) {
+      for (const it of tasks) {
+        const status = it.status === "in_arbeit" ? "In Arbeit" : it.done ? "Erledigt" : "Offen";
+        const deadline = it.deadline && it.deadline !== "Offen" ? it.deadline : "-";
+        const ort = [it.floor, it.room].filter(Boolean).join(" / ") || "-";
         rows.push(
           [
-            escapeCSV(todo.text),
+            escapeCSV(it.task),
             status,
-            dueDate,
-            priority,
-            escapeCSV(protocolName),
-            protocolNum,
-            createdAt,
+            escapeCSV(deadline),
+            it.priority || "Normal",
+            escapeCSV(ort),
+            escapeCSV(it.source || "-"),
           ].join(",")
         );
+      }
+    } else {
+      const protocols: Protocol[] = JSON.parse(
+        (await AsyncStorage.getItem("protocols")) || "[]"
+      );
+      for (const protocol of protocols) {
+        if (!protocol.todos || protocol.status !== "ready") continue;
+        for (const todo of protocol.todos) {
+          const status = todo.done ? "Erledigt" : "Offen";
+          const dueDate = todo.dueDate ? new Date(todo.dueDate).toLocaleDateString("de-DE") : "-";
+          const priority = todo.priority || "Normal";
+          const protocolName = protocol.templateName || protocol.title || "Protokoll";
+          rows.push(
+            [escapeCSV(todo.text), status, dueDate, priority, "-", escapeCSV(protocolName)].join(",")
+          );
+        }
       }
     }
 
