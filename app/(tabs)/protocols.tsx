@@ -128,6 +128,49 @@ export default function ProtocolsScreen() {
     }
   }
 
+  // Long-press a project chip to delete the project. Its protocols are kept —
+  // they move to "Ohne Projekt" — so nothing is lost by accident.
+  function deleteProject(project: ProjectItem) {
+    Alert.alert(
+      t('projekt_loeschen_title' as any),
+      t('projekt_loeschen_msg' as any).replace('{name}', project.name),
+      [
+        { text: t('cancel'), style: "cancel" },
+        {
+          text: t('btn_loeschen'),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const stored = await AsyncStorage.getItem("projects");
+              const all: ProjectItem[] = stored ? JSON.parse(stored) : [];
+              const remaining = all.filter((p) => p.id !== project.id);
+              await AsyncStorage.setItem("projects", JSON.stringify(remaining));
+              // Keep the protocols, just detach them from the deleted project.
+              const protoStr = await AsyncStorage.getItem("protocols");
+              if (protoStr) {
+                const protos = JSON.parse(protoStr);
+                let changed = false;
+                for (const p of protos) {
+                  if (p.projectId === project.id) { p.projectId = undefined; changed = true; }
+                }
+                if (changed) await AsyncStorage.setItem("protocols", JSON.stringify(protos));
+              }
+              if (activeProjectId === project.id) {
+                setActiveProjectId(null);
+                setActiveProjectName(null);
+                setShowAllProjects(true);
+              }
+              setProjects(remaining.filter((p) => !p.archived));
+              await loadProtocols();
+            } catch {
+              Alert.alert(t('alert_fehler'), t('msg_zuordnung_fehlgeschlagen'));
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function loadActiveProject() {
     try {
       const lastId = await AsyncStorage.getItem("last-selected-project-id");
@@ -927,25 +970,8 @@ export default function ProtocolsScreen() {
             >
               <MaterialIcons name="edit-note" size={20} color={colors.primary} />
             </Pressable>
-            {/* Projects */}
-            <Pressable
-              onPress={() => router.push("/projects" as any)}
-              style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="folder" size={20} color={colors.primary} />
-            </Pressable>
-            {/* Tasks */}
-            <Pressable
-              onPress={() => router.push("/tasks" as any)}
-              style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="checklist" size={20} color={colors.primary} />
-              {openTodosCount > 0 && (
-                <View style={[styles.todoBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.todoBadgeText}>{openTodosCount}</Text>
-                </View>
-              )}
-            </Pressable>
+            {/* Projekte & Aufgaben sind jetzt eigene Tabs unten — kein doppeltes
+                Icon mehr im Header. */}
             {/* Compare */}
             {featureFlags.protocolCompare && <Pressable
               onPress={() => router.push("/protocol-compare" as any)}
@@ -1002,7 +1028,6 @@ export default function ProtocolsScreen() {
             { key: "all" as FilterOption, label: t('filter_alle'), icon: "list" },
             { key: "processing" as FilterOption, label: t('status_verarbeitung'), icon: "autorenew" },
             { key: "ready" as FilterOption, label: t('status_fertig'), icon: "check-circle" },
-            { key: "favorites" as FilterOption, label: t('favoriten'), icon: "star" },
             { key: "archived" as FilterOption, label: t('label_archiv'), icon: "archive" },
           ]).map((f) => (
             <Pressable
@@ -1113,6 +1138,8 @@ export default function ProtocolsScreen() {
                     setShowAllProjects(false);
                     AsyncStorage.setItem("last-selected-project-id", project.id);
                   }}
+                  onLongPress={() => deleteProject(project)}
+                  delayLongPress={450}
                   style={({ pressed }) => [
                     styles.projectChip,
                     {
