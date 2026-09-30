@@ -222,6 +222,13 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
   );
 }
 
+// Removes stray/unbalanced Markdown asterisks the AI sometimes leaves behind
+// (e.g. "*Datum:** 30.09." → "Datum: 30.09."). Balanced **bold**/*italic* are
+// consumed by the regex before this runs, so only orphan "*" reach here.
+function stripStars(s: string): string {
+  return s.replace(/\*/g, "");
+}
+
 function renderInlineMarkdown(text: string, color: string, isHeading: boolean): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
   // Match **bold** and *italic* patterns
@@ -235,7 +242,7 @@ function renderInlineMarkdown(text: string, color: string, isHeading: boolean): 
     if (match.index > lastIndex) {
       elements.push(
         <Text key={key++} style={{ color }}>
-          {text.slice(lastIndex, match.index)}
+          {stripStars(text.slice(lastIndex, match.index))}
         </Text>
       );
     }
@@ -263,7 +270,7 @@ function renderInlineMarkdown(text: string, color: string, isHeading: boolean): 
   if (lastIndex < text.length) {
     elements.push(
       <Text key={key++} style={{ color }}>
-        {text.slice(lastIndex)}
+        {stripStars(text.slice(lastIndex))}
       </Text>
     );
   }

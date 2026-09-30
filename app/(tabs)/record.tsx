@@ -62,6 +62,17 @@ import {
 
 type RecordingMode = "audio-photo";
 
+// Pseudo-template: the AI picks the real template from the transcript during
+// background processing (see classifyTemplate in background-processor.ts).
+const AUTO_TEMPLATE: ProtocolTemplate = {
+  id: "auto",
+  name: "Automatisch",
+  icon: "auto-awesome",
+  description: "KI wählt die passende Vorlage",
+  category: "allgemein",
+  systemPrompt: "",
+};
+
 export default function RecordScreen() {
   const { t } = useTranslation();
   const colors = useColors();
@@ -124,9 +135,7 @@ export default function RecordScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [previewProtocol, setPreviewProtocol] = useState<any>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<ProtocolTemplate>(
-    PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]
-  );
+  const [selectedTemplate, setSelectedTemplate] = useState<ProtocolTemplate>(AUTO_TEMPLATE);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [templateSearch, setTemplateSearch] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<TemplateCategory[]>(["bau", "meeting", "gutachten", "allgemein"]);
@@ -316,13 +325,14 @@ export default function RecordScreen() {
           setCustomTemplates(templates);
           const settings = settingsStr ? JSON.parse(settingsStr) : {};
           const preferredId = lastUsedId || settings.templateId;
-          const allAvailable = [...PROTOCOL_TEMPLATES, ...templates];
+          const allAvailable = [AUTO_TEMPLATE, ...PROTOCOL_TEMPLATES, ...templates];
           const preferred = allAvailable.find((template) => template.id === preferredId);
-          setSelectedTemplate(preferred || PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
+          // Default to "Automatisch" (KI wählt) when nothing was explicitly chosen.
+          setSelectedTemplate(preferred || AUTO_TEMPLATE);
         } catch {
           if (active) {
             setCustomTemplates([]);
-            setSelectedTemplate(PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1]);
+            setSelectedTemplate(AUTO_TEMPLATE);
           }
         }
       })();
@@ -1399,7 +1409,9 @@ export default function RecordScreen() {
       }
 
       const activeProject = selectedProject;
-      const customTemplateInput = getCustomTemplateGenerationInput(selectedTemplate);
+      // "auto" is a pseudo-template — no custom prompt; the background processor
+      // classifies the transcript and picks a real built-in template.
+      const customTemplateInput = selectedTemplate.id === "auto" ? {} : getCustomTemplateGenerationInput(selectedTemplate);
       const privacyChoices = await getPrivacyChoices();
       let canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync;
 
@@ -2562,6 +2574,30 @@ export default function RecordScreen() {
               </View>
               {/* Categorized list */}
               <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
+                {/* Automatisch — KI wählt die passende Vorlage aus der Aufnahme */}
+                <Pressable
+                  onPress={() => selectTemplate(AUTO_TEMPLATE)}
+                  style={({ pressed }) => [
+                    styles.templateListItem,
+                    {
+                      marginBottom: 10,
+                      backgroundColor: selectedTemplate.id === "auto" ? colors.primary + "15" : "#8B5CF6" + "10",
+                      borderColor: selectedTemplate.id === "auto" ? colors.primary : "#8B5CF6" + "55",
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name="auto-awesome" size={22} color={selectedTemplate.id === "auto" ? colors.primary : "#8B5CF6"} />
+                  <View style={styles.templateListText}>
+                    <Text style={[styles.templateListName, { color: selectedTemplate.id === "auto" ? colors.primary : colors.foreground }]}>
+                      {t('template_auto' as any)}
+                    </Text>
+                    <Text style={[styles.templateListDesc, { color: colors.muted }]} numberOfLines={1}>
+                      {t('template_auto_desc' as any)}
+                    </Text>
+                  </View>
+                  {selectedTemplate.id === "auto" && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
+                </Pressable>
                 {groupedTemplates.map((group) => (
                   <View key={group.id} style={{ marginBottom: 8 }}>
                     <Pressable

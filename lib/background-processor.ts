@@ -10,6 +10,27 @@ import * as FileSystem from "expo-file-system/legacy";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { timelineEngine } from "@/lib/timeline-engine";
 import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
+import { PROTOCOL_TEMPLATES } from "@/shared/templates";
+
+// Picks the best-fitting built-in template from the transcript when the user
+// chose "Automatisch" (templateId "auto"). Keyword-based, German construction
+// vocabulary; order matters (Abnahme before Mängel, since an Abnahme often
+// mentions Mängel too).
+function classifyTemplate(text: string): { id: string; name: string } {
+  const t = (text || "").toLowerCase();
+  const nameOf = (id: string) => PROTOCOL_TEMPLATES.find((x) => x.id === id)?.name || id;
+  const has = (...ws: string[]) => ws.some((w) => t.includes(w));
+  let id = "baustellenbericht";
+  if (has("abnahme", "übergabe", "uebergabe", "abgenommen", "mängelfrei", "maengelfrei", "schlussbegehung", "wohnungsübergabe"))
+    id = "abnahmeprotokoll";
+  else if (has("mangel", "mängel", "maengel", "defekt", "beschädigt", "beschaedigt", "riss", "undicht", "feuchtigkeit", "schimmel", "beanstand", "fehlerhaft", "nachbesser"))
+    id = "maengelliste";
+  else if (has("besprechung", "meeting", "beschluss", "beschlüsse", "tagesordnung", "agenda", "teilnehmer", "protokollführ", "abgestimmt"))
+    id = "besprechungsnotiz";
+  else if (has("baustelle", "baufortschritt", "gewerk", "material", "lieferung", "wetter", "personal", "kran", "beton", "rohbau"))
+    id = "baustellenbericht";
+  return { id, name: nameOf(id) };
+}
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -360,18 +381,27 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
       ? `[Kontext zur Aufnahme – nutze diese Angaben für Kopfdaten wie Objekt, Datum und Uhrzeit; nicht als Zitat wiedergeben]\n${contextLines.join("\n")}\n\n[Transkript]\n${transcription.text}`
       : transcription.text;
 
+    // "Automatisch": let the AI pick the fitting template from the transcript.
+    let effectiveTemplateId = job.templateId;
+    let effectiveTemplateName = job.templateName;
+    if (job.templateId === "auto") {
+      const picked = classifyTemplate(transcription.text);
+      effectiveTemplateId = picked.id;
+      effectiveTemplateName = picked.name;
+    }
+
     const protocol = await withRetry(
       () => apiClient.generateProtocol(
         transcriptForGeneration,
-        job.templateId,
+        effectiveTemplateId,
         job.style,
         job.format,
         job.createdAt,
         job.markers,
         job.photos?.length || 0,
         job.photoTimestamps,
-        job.templateSystemPrompt,
-        job.templateName,
+        job.templateId === "auto" ? undefined : job.templateSystemPrompt,
+        job.templateId === "auto" ? undefined : job.templateName,
       ),
       "Protocol generation",
       job.protocolId,
@@ -409,6 +439,8 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         transcription: transcription.text,
         transcriptionSegments: transcriptionSegments.length > 0 ? transcriptionSegments.map(s => ({ start: s.start, end: s.end, text: s.text })) : undefined,
         protocol: protocol.protocol,
+        // Persist the template the AI actually used when "Automatisch" was chosen.
+        ...(job.templateId === "auto" ? { templateId: effectiveTemplateId, templateName: effectiveTemplateName } : {}),
         title: transcription.text.trim().length > 0
           ? transcription.text.substring(0, 50) + (transcription.text.length > 50 ? "…" : "")
           : "Ohne erkannte Sprache",
