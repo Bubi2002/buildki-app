@@ -63,6 +63,19 @@ export default function RundgangTab() {
     try { await AsyncStorage.setItem("last-selected-project-id", selectedProjectId); } catch {}
     router.push("/record" as any);
   };
+  // "Was willst du tun?" after picking a project (project-scoped start step).
+  const [showWhatDo, setShowWhatDo] = useState(false);
+  const whatDoOverview = () => {
+    setShowWhatDo(false);
+    if (selectedProjectId) router.push(`/project-detail?id=${selectedProjectId}` as any);
+  };
+  const whatDoRecord = async (roomwise: boolean) => {
+    setShowWhatDo(false);
+    if (!selectedProjectId) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { await AsyncStorage.setItem("last-selected-project-id", selectedProjectId); } catch {}
+    router.push(`/record${roomwise ? "?rooms=1" : ""}` as any);
+  };
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -957,7 +970,7 @@ export default function RundgangTab() {
                 .map((p) => {
                   const active = p.id === selectedProjectId;
                   return (
-                    <Pressable key={p.id} onPress={() => { pickProject(p.id); setShowProjectDropdown(false); }} style={styles.dropdownRow}>
+                    <Pressable key={p.id} onPress={() => { pickProject(p.id); setShowProjectDropdown(false); setShowWhatDo(true); }} style={styles.dropdownRow}>
                       <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
                       <Text style={[styles.dropdownRowText, active && { color: "#5DADE2", fontWeight: "800" }]} numberOfLines={1}>{p.name}</Text>
                       {active && <MaterialIcons name="check" size={18} color="#5DADE2" />}
@@ -971,6 +984,29 @@ export default function RundgangTab() {
             <Pressable onPress={() => { setShowProjectDropdown(false); router.push("/project-wizard" as any); }} style={styles.dropdownNew}>
               <MaterialIcons name="add" size={20} color="#5DADE2" />
               <Text style={{ color: "#5DADE2", fontWeight: "800" }}>{t("rundgang_new_project" as any)}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* "Was willst du tun?" — project-scoped start step */}
+      <Modal visible={showWhatDo} transparent animationType="fade" onRequestClose={() => setShowWhatDo(false)}>
+        <Pressable style={styles.dropdownOverlay} onPress={() => setShowWhatDo(false)}>
+          <Pressable style={styles.whatDoCard} onPress={() => {}}>
+            <Text style={styles.whatDoTitle}>{t('whatdo_title' as any)}</Text>
+            <Pressable onPress={whatDoOverview} style={({ pressed }) => [styles.whatDoBtn, { opacity: pressed ? 0.85 : 1 }]}>
+              <MaterialIcons name="dashboard" size={22} color="#5DADE2" />
+              <Text style={styles.whatDoBtnText}>{t('whatdo_overview' as any)}</Text>
+              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
+            </Pressable>
+            <Pressable onPress={() => whatDoRecord(false)} style={({ pressed }) => [styles.whatDoBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}>
+              <MaterialIcons name="videocam" size={22} color="#FFFFFF" />
+              <Text style={styles.whatDoBtnPrimaryText}>{t('whatdo_record_full' as any)}</Text>
+            </Pressable>
+            <Pressable onPress={() => whatDoRecord(true)} style={({ pressed }) => [styles.whatDoBtn, { opacity: pressed ? 0.85 : 1 }]}>
+              <MaterialIcons name="meeting-room" size={22} color="#5DADE2" />
+              <Text style={styles.whatDoBtnText}>{t('whatdo_record_rooms' as any)}</Text>
+              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
             </Pressable>
           </Pressable>
         </Pressable>
@@ -1008,6 +1044,12 @@ const styles = StyleSheet.create({
   baustelleMeta: { color: "#8FA3B8", fontSize: 12, fontWeight: "600", marginTop: 6 },
   startBegehungBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#5DADE2", borderRadius: 12, paddingVertical: 14, marginTop: 14 },
   startBegehungText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+  whatDoCard: { width: "86%", maxWidth: 420, backgroundColor: "#0F2235", borderRadius: 18, borderWidth: 1, borderColor: "#1E3A5F", padding: 20, gap: 10 },
+  whatDoTitle: { color: "#F0F4F8", fontSize: 20, fontWeight: "800", marginBottom: 6 },
+  whatDoBtn: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#13293D", borderRadius: 12, borderWidth: 1, borderColor: "#1E3A5F", paddingVertical: 15, paddingHorizontal: 14 },
+  whatDoBtnText: { flex: 1, color: "#E8EEF4", fontSize: 15, fontWeight: "700" },
+  whatDoBtnPrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#5DADE2", borderRadius: 12, paddingVertical: 15, paddingHorizontal: 14 },
+  whatDoBtnPrimaryText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
   baustelleRecent: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#1E3A5F" },
   baustelleRecentText: { flex: 1, color: "#8FA3B8", fontSize: 13, fontWeight: "600" },
   projectSelect: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
