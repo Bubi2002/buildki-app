@@ -47,6 +47,8 @@ export default function RundgangTab() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -420,28 +422,19 @@ export default function RundgangTab() {
         </View>
       ) : (
         <>
-          {/* Project selector */}
+          {/* Project selector — searchable dropdown (scales to many projects) */}
           <View style={styles.pickerWrap}>
             <Text style={styles.pickerLabel}>{t("rundgang_pick_project" as any)}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-              {projects.map((p) => {
-                const active = p.id === selectedProjectId;
-                return (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => pickProject(p.id)}
-                    onLongPress={() => deleteProject(p)}
-                    delayLongPress={450}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
-                    <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
-                      {p.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <Pressable
+              onPress={() => { setProjectSearch(""); setShowProjectDropdown(true); }}
+              style={styles.projectSelect}
+            >
+              <View style={[styles.chipDot, { backgroundColor: projects.find((p) => p.id === selectedProjectId)?.color || "#5DADE2" }]} />
+              <Text style={styles.projectSelectText} numberOfLines={1}>
+                {projects.find((p) => p.id === selectedProjectId)?.name || t("rundgang_pick_project" as any)}
+              </Text>
+              <MaterialIcons name="expand-more" size={22} color="#8FA3B8" />
+            </Pressable>
           </View>
 
           {/* Progress bar */}
@@ -805,6 +798,46 @@ export default function RundgangTab() {
           </View>
         </View>
       </Modal>
+
+      {/* Project dropdown with search */}
+      <Modal visible={showProjectDropdown} transparent animationType="fade" onRequestClose={() => setShowProjectDropdown(false)}>
+        <Pressable style={styles.dropdownOverlay} onPress={() => setShowProjectDropdown(false)}>
+          <Pressable style={styles.dropdownCard} onPress={() => {}}>
+            <View style={styles.dropdownSearch}>
+              <MaterialIcons name="search" size={20} color="#8FA3B8" />
+              <TextInput
+                value={projectSearch}
+                onChangeText={setProjectSearch}
+                placeholder={t("rundgang_search_project" as any)}
+                placeholderTextColor="#8FA3B8"
+                style={styles.dropdownSearchInput}
+                autoFocus
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
+              {projects
+                .filter((p) => !projectSearch.trim() || p.name.toLowerCase().includes(projectSearch.trim().toLowerCase()))
+                .map((p) => {
+                  const active = p.id === selectedProjectId;
+                  return (
+                    <Pressable key={p.id} onPress={() => { pickProject(p.id); setShowProjectDropdown(false); }} style={styles.dropdownRow}>
+                      <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
+                      <Text style={[styles.dropdownRowText, active && { color: "#5DADE2", fontWeight: "800" }]} numberOfLines={1}>{p.name}</Text>
+                      {active && <MaterialIcons name="check" size={18} color="#5DADE2" />}
+                      <Pressable onPress={() => deleteProject(p)} hitSlop={8} style={{ padding: 4, marginLeft: 4 }}>
+                        <MaterialIcons name="delete-outline" size={18} color="#E57373" />
+                      </Pressable>
+                    </Pressable>
+                  );
+                })}
+            </ScrollView>
+            <Pressable onPress={() => { setShowProjectDropdown(false); router.push("/project-wizard" as any); }} style={styles.dropdownNew}>
+              <MaterialIcons name="add" size={20} color="#5DADE2" />
+              <Text style={{ color: "#5DADE2", fontWeight: "800" }}>{t("rundgang_new_project" as any)}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -831,6 +864,15 @@ const styles = StyleSheet.create({
     borderColor: "#166534",
   },
   doneBadgeText: { color: "#8FE3BE", fontSize: 12, fontWeight: "700" },
+  projectSelect: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  projectSelectText: { flex: 1, color: "#F0F4F8", fontSize: 16, fontWeight: "700" },
+  dropdownOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 20 },
+  dropdownCard: { backgroundColor: "#0B1A2A", borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 16, padding: 12, maxWidth: 560, width: "100%", alignSelf: "center" },
+  dropdownSearch: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 8 },
+  dropdownSearchInput: { flex: 1, color: "#F0F4F8", fontSize: 15 },
+  dropdownRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#1E3A5F" },
+  dropdownRowText: { flex: 1, color: "#E2E8F0", fontSize: 15, fontWeight: "600" },
+  dropdownNew: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, marginTop: 8, borderRadius: 10, borderWidth: 1, borderStyle: "dashed", borderColor: "#5DADE2" },
   pickerWrap: { paddingHorizontal: 16, marginBottom: 10 },
   pickerLabel: { color: "#7F8C9B", fontSize: 12, fontWeight: "700", textTransform: "uppercase", marginBottom: 8, letterSpacing: 0.5 },
   chipsRow: { gap: 8, paddingRight: 8 },
