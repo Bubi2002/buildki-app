@@ -16,6 +16,7 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
 import { DateOnlyPicker } from "@/components/date-only-picker";
+import { AssigneeInput } from "@/components/assignee-input";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -980,13 +981,10 @@ export default function TasksScreen() {
             <TradePicker value={newTrade} onChange={setNewTrade} placeholder={t('tasks_trade_placeholder' as any)} accessibilityLabel={t('gewerk' as any)} />
 
             <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_responsible' as any)}</Text>
-            <TextInput
+            <AssigneeInput
               value={newAssignee}
-              onChangeText={setNewAssignee}
+              onChange={setNewAssignee}
               placeholder={t('tasks_responsible_placeholder' as any)}
-              placeholderTextColor={colors.muted}
-              autoCapitalize="none"
-              keyboardType="email-address"
               style={[styles.createInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
             />
 

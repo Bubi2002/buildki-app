@@ -23,6 +23,7 @@ import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPri
 import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getFloorPlans, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
 import { DateOnlyPicker } from "@/components/date-only-picker";
+import { AssigneeInput } from "@/components/assignee-input";
 import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
@@ -147,6 +148,23 @@ export default function ProjectWizardScreen() {
     setAddress(label);
     setAddrSuggestions([]);
     setAddrFocused(false);
+  };
+
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const useCurrentLocationForAddress = async () => {
+    if (gpsBusy) return;
+    setGpsBusy(true);
+    try {
+      const { getCurrentLocation } = await import("@/lib/location-service");
+      const loc = await getCurrentLocation();
+      const addr = loc?.address ? (loc.country ? loc.address.replace(`, ${loc.country}`, "") : loc.address) : null;
+      if (addr) { setAddress(addr); setAddrSuggestions([]); }
+      else Alert.alert(t('alert_fehler'), t('wizard_gps_failed' as any));
+    } catch {
+      Alert.alert(t('alert_fehler'), t('wizard_gps_failed' as any));
+    } finally {
+      setGpsBusy(false);
+    }
   };
   useEffect(() => () => {
     if (addrTimer.current) clearTimeout(addrTimer.current);
@@ -616,7 +634,13 @@ export default function ProjectWizardScreen() {
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_client' as any)}</Text>
             <TextInput value={client} onChangeText={setClient} placeholder={t('wizard_client' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('adresse')}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('adresse')}</Text>
+              <Pressable onPress={useCurrentLocationForAddress} hitSlop={8} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
+                {gpsBusy ? <ActivityIndicator size="small" color="#5DADE2" /> : <MaterialIcons name="my-location" size={16} color="#5DADE2" />}
+                <Text style={{ color: "#5DADE2", fontSize: 12, fontWeight: "700" }}>{t('wizard_use_location' as any)}</Text>
+              </Pressable>
+            </View>
             <View style={{ position: "relative", zIndex: 5 }}>
               <TextInput
                 value={address}
@@ -894,7 +918,7 @@ export default function ProjectWizardScreen() {
 
             {/* Zuständiger */}
             <Text style={styles.miniLabel}>{t('zustaendig')}</Text>
-            <TextInput value={itemAssignee} onChangeText={setItemAssignee} placeholder={t('zustaendig')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+            <AssigneeInput value={itemAssignee} onChange={setItemAssignee} placeholder={t('zustaendig')} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
             {/* Fotos */}
             <Pressable onPress={pickItemPhotos} style={({ pressed }) => [styles.photoBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
