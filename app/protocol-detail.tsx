@@ -185,6 +185,17 @@ export default function ProtocolDetailScreen() {
   const [showTagEditor, setShowTagEditor] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
+  const [editSel, setEditSel] = useState({ start: 0, end: 0 });
+
+  // Insert a [FOTO n] marker at the current cursor position in the editor,
+  // so a photo appears inline exactly where the user wants it.
+  const insertPhotoMarker = (photoIdx: number) => {
+    const marker = `\n[FOTO ${photoIdx + 1}]\n`;
+    const pos = Math.min(Math.max(editSel.start, 0), editedText.length);
+    const next = editedText.slice(0, pos) + marker + editedText.slice(pos);
+    setEditedText(next);
+    setEditSel({ start: pos + marker.length, end: pos + marker.length });
+  };
   const [tableEdit, setTableEdit] = useState<null | { before: string; after: string; header: string[]; rows: string[][] }>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -2415,10 +2426,26 @@ export default function ProtocolDetailScreen() {
               <TextInput
                 value={editedText}
                 onChangeText={setEditedText}
+                onSelectionChange={(e) => setEditSel(e.nativeEvent.selection)}
                 multiline
                 scrollEnabled
                 style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, maxHeight: 320, textAlignVertical: "top" }]}
               />
+
+              {/* Insert a photo inline at the cursor */}
+              {photos.length > 0 && (
+                <View style={{ marginTop: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 6 }}>{t('protocol_insert_photo' as any)}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {photos.map((uri, idx) => (
+                      <Pressable key={`ins-${idx}`} onPress={() => insertPhotoMarker(idx)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, alignItems: "center" }]}>
+                        <Image source={{ uri }} style={{ width: 56, height: 56, borderRadius: 6, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
+                        <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>#{idx + 1}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
               <Modal visible={tableEdit !== null} transparent animationType="slide" onRequestClose={() => setTableEdit(null)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
                   <View style={{ backgroundColor: colors.surface, maxHeight: "88%", borderTopLeftRadius: 14, borderTopRightRadius: 14, padding: 16 }}>
