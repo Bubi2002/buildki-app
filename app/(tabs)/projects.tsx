@@ -14,6 +14,7 @@ import {
   type Floor,
   type Room,
 } from "@/lib/room-store";
+import { syncRoomsFromProtocols } from "@/lib/room-sync";
 import { getDefects, updateDefectStatus, saveDefect, deleteDefect, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 
@@ -95,6 +96,8 @@ export default function RundgangTab() {
   const loadRundgang = useCallback(async (pid: string) => {
     try {
       await initializeDefaultFloors(pid);
+      // Pull rooms recorded during Begehungen ("Geschoss · Raum") into the structure.
+      try { await syncRoomsFromProtocols(pid); } catch {}
       const structure = await getProjectStructure(pid);
       const sortedFloors = structure.floors.sort((a, b) => a.number - b.number);
       setFloors(sortedFloors);

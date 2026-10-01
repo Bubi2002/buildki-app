@@ -38,6 +38,7 @@ import {
   deleteFloor,
   initializeDefaultFloors,
 } from "@/lib/room-store";
+import { syncRoomsFromProtocols } from "@/lib/room-sync";
 import { getDefects, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { getChecklistResults, type ChecklistResult } from "@/lib/checklist-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -126,6 +127,8 @@ export default function RoomsScreen() {
     if (!projectId) return;
     // Initialize default floors if none exist
     await initializeDefaultFloors(projectId);
+    // Pull rooms recorded during Begehungen ("Geschoss · Raum") into the structure.
+    try { await syncRoomsFromProtocols(projectId); } catch {}
     const structure = await getProjectStructure(projectId);
     setFloors(structure.floors.sort((a, b) => a.number - b.number));
     setRooms(structure.rooms);
