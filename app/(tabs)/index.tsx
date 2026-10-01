@@ -116,10 +116,6 @@ const TOOLS: ToolItem[] = [
 
 const TOOL_COLS = Dimensions.get("window").width >= 600 ? 5 : 4;
 
-// Reset on every cold start (module state is re-created when the JS bundle
-// reloads), so the startup chooser appears once per app launch.
-let startChooserShownThisLaunch = false;
-
 export default function AIWorkbenchScreen() {
   const router = useRouter();
   const { t } = useTranslation();
