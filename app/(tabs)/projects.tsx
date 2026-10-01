@@ -60,15 +60,11 @@ export default function RundgangTab() {
   const startBegehung = async () => {
     if (!selectedProjectId) { setShowProjectDropdown(true); return; }
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    try { await AsyncStorage.setItem("last-selected-project-id", selectedProjectId); } catch {}
-    router.push("/record" as any);
+    // Ask: whole walk or room-by-room.
+    setShowWhatDo(true);
   };
   // "Was willst du tun?" after picking a project (project-scoped start step).
   const [showWhatDo, setShowWhatDo] = useState(false);
-  const whatDoOverview = () => {
-    setShowWhatDo(false);
-    if (selectedProjectId) router.push(`/project-detail?id=${selectedProjectId}` as any);
-  };
   const whatDoRecord = async (roomwise: boolean) => {
     setShowWhatDo(false);
     if (!selectedProjectId) return;
@@ -223,10 +219,6 @@ export default function RundgangTab() {
   const roomTasks = (room: Room) =>
     tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && tk.status !== "erledigt" && tk.done !== true).length;
 
-  const openRoom = (room: Room) => {
-    if (!selectedProjectId) return;
-    router.push(`/rooms?projectId=${selectedProjectId}&openRoom=${room.id}` as any);
-  };
 
   const toggleRoomExpand = (id: string) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -535,15 +527,6 @@ export default function RundgangTab() {
             </Pressable>
           </View>
 
-          {selectedProjectId && (
-            <Pressable
-              onPress={() => router.push(`/rooms?projectId=${selectedProjectId}` as any)}
-              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginBottom: 10, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: "#5DADE2", backgroundColor: "#5DADE2" + "18", opacity: pressed ? 0.8 : 1 }]}
-            >
-              <MaterialIcons name="mic" size={18} color="#5DADE2" />
-              <Text style={{ color: "#5DADE2", fontWeight: "800", fontSize: 14 }}>{t("rundgang_add_rooms" as any)}</Text>
-            </Pressable>
-          )}
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
             {floors.map((floor) => {
@@ -970,7 +953,7 @@ export default function RundgangTab() {
                 .map((p) => {
                   const active = p.id === selectedProjectId;
                   return (
-                    <Pressable key={p.id} onPress={() => { pickProject(p.id); setShowProjectDropdown(false); setShowWhatDo(true); }} style={styles.dropdownRow}>
+                    <Pressable key={p.id} onPress={() => { pickProject(p.id); setShowProjectDropdown(false); }} style={styles.dropdownRow}>
                       <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
                       <Text style={[styles.dropdownRowText, active && { color: "#5DADE2", fontWeight: "800" }]} numberOfLines={1}>{p.name}</Text>
                       {active && <MaterialIcons name="check" size={18} color="#5DADE2" />}
@@ -994,11 +977,6 @@ export default function RundgangTab() {
         <Pressable style={styles.dropdownOverlay} onPress={() => setShowWhatDo(false)}>
           <Pressable style={styles.whatDoCard} onPress={() => {}}>
             <Text style={styles.whatDoTitle}>{t('whatdo_title' as any)}</Text>
-            <Pressable onPress={whatDoOverview} style={({ pressed }) => [styles.whatDoBtn, { opacity: pressed ? 0.85 : 1 }]}>
-              <MaterialIcons name="dashboard" size={22} color="#5DADE2" />
-              <Text style={styles.whatDoBtnText}>{t('whatdo_overview' as any)}</Text>
-              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-            </Pressable>
             <Pressable onPress={() => whatDoRecord(false)} style={({ pressed }) => [styles.whatDoBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}>
               <MaterialIcons name="videocam" size={22} color="#FFFFFF" />
               <Text style={styles.whatDoBtnPrimaryText}>{t('whatdo_record_full' as any)}</Text>

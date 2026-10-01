@@ -188,7 +188,7 @@ export default function DocumentAIScreen() {
             t('document_ai_plan_hint_title' as any),
             t('document_ai_plan_hint_msg' as any),
             [
-              { text: t('document_ai_plan_open_rooms' as any), onPress: () => { resolve("rooms"); if (activeProject) router.push(`/rooms?projectId=${activeProject.id}` as any); } },
+              { text: t('document_ai_plan_open_rooms' as any), onPress: () => { resolve("rooms"); if (activeProject) router.push(`/project-detail?id=${activeProject.id}` as any); } },
               { text: t('document_ai_plan_analyze_anyway' as any), onPress: () => resolve("vision") },
               { text: t('cancel'), style: "cancel", onPress: () => resolve("cancel") },
             ],

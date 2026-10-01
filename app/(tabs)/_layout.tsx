@@ -32,7 +32,7 @@ export default function TabLayout() {
         },
       }}
     >
-      {/* ── The 4 main tabs: Projekte · Begehung · Aufgaben · Mehr ── */}
+      {/* ── 3 main tabs: Projekte · Begehung · Mehr (kept simple) ── */}
       <Tabs.Screen
         name="projects"
         options={{
@@ -48,13 +48,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="aufgaben"
-        options={{
-          title: t("nav_aufgaben" as any),
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="checklist" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="mehr"
         options={{
           title: t("nav_mehr" as any),
@@ -63,6 +56,7 @@ export default function TabLayout() {
       />
 
       {/* ── Still routable, but no longer their own bottom-bar tab ── */}
+      <Tabs.Screen name="aufgaben" options={{ href: null }} />
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="protocols" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
