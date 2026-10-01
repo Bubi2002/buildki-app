@@ -57,6 +57,7 @@ export default function RundgangTab() {
   const [projectSearch, setProjectSearch] = useState("");
   const [begehungCount, setBegehungCount] = useState(0);
   const [lastBegehung, setLastBegehung] = useState<string | null>(null);
+  const [protocolList, setProtocolList] = useState<{ id: string; title?: string; templateName?: string; createdAt: string }[]>([]);
 
   // Start a Begehung: make sure this project is active, then open the camera tab.
   const startBegehung = async () => {
@@ -149,7 +150,8 @@ export default function RundgangTab() {
         setBegehungCount(mine.length);
         const last = mine.map((p: any) => p.createdAt).filter(Boolean).sort().slice(-1)[0] || null;
         setLastBegehung(last);
-      } catch { setBegehungCount(0); setLastBegehung(null); }
+        setProtocolList(mine.slice().sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || "")));
+      } catch { setBegehungCount(0); setLastBegehung(null); setProtocolList([]); }
     } catch {}
   }, []);
 
@@ -746,6 +748,46 @@ export default function RundgangTab() {
                 <Text style={styles.emptyHint}>{t("rooms_empty_hint" as any)}</Text>
               </View>
             )}
+
+            {selectedProjectId && (
+              <>
+                {/* Protokolle */}
+                <Text style={styles.sectionHead}>{t('nav_protocols' as any)}</Text>
+                {protocolList.length === 0 ? (
+                  <Text style={styles.sectionEmpty}>—</Text>
+                ) : (
+                  protocolList.slice(0, 5).map((p) => (
+                    <Pressable key={p.id} onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)} style={styles.protoRow}>
+                      <MaterialIcons name="description" size={18} color="#8FA3B8" />
+                      <Text style={styles.protoText} numberOfLines={1}>{p.title || p.templateName || t('protokoll')} · {new Date(p.createdAt).toLocaleDateString("de-DE")}</Text>
+                      <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
+                    </Pressable>
+                  ))
+                )}
+
+                {/* Tools (4) */}
+                <Text style={styles.sectionHead}>{t('werkzeuge')}</Text>
+                <View style={styles.toolRow}>
+                  {([
+                    { icon: "map", label: t('grundriss'), route: `/floor-plan?projectId=${selectedProjectId}` },
+                    { icon: "photo-library", label: t('gallery_photos'), route: `/photo-gallery?projectId=${selectedProjectId}` },
+                    { icon: "checklist", label: t('checklist_title'), route: `/checklists?projectId=${selectedProjectId}` },
+                    { icon: "menu-book", label: t('tagebuch'), route: `/diary?projectId=${selectedProjectId}` },
+                  ] as const).map((tool) => (
+                    <Pressable key={tool.label} onPress={() => router.push(tool.route as any)} style={styles.toolBox}>
+                      <MaterialIcons name={tool.icon as any} size={22} color="#5DADE2" />
+                      <Text style={styles.toolBoxText} numberOfLines={1}>{tool.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* PDF Export */}
+                <Pressable onPress={() => router.push(`/project-export?id=${selectedProjectId}` as any)} style={styles.pdfExportBtn}>
+                  <MaterialIcons name="picture-as-pdf" size={20} color="#FFFFFF" />
+                  <Text style={styles.pdfExportText}>{t('export')}</Text>
+                </Pressable>
+              </>
+            )}
           </ScrollView>
         </>
       )}
@@ -1134,6 +1176,15 @@ const styles = StyleSheet.create({
   addRoomRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 14 },
   addRoomText: { color: "#5DADE2", fontSize: 13, fontWeight: "700" },
   addFloorRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 6, marginBottom: 8, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", borderStyle: "dashed" },
+  sectionHead: { color: "#8FA3B8", fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5, marginHorizontal: 16, marginTop: 22, marginBottom: 8 },
+  sectionEmpty: { color: "#5F7590", fontSize: 14, marginHorizontal: 16 },
+  protoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 6, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235" },
+  protoText: { flex: 1, color: "#E8EEF4", fontSize: 14, fontWeight: "600" },
+  toolRow: { flexDirection: "row", gap: 8, marginHorizontal: 16 },
+  toolBox: { flex: 1, alignItems: "center", gap: 6, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235" },
+  toolBoxText: { color: "#E8EEF4", fontSize: 11, fontWeight: "600" },
+  pdfExportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 14, paddingVertical: 14, borderRadius: 12, backgroundColor: "#1E3A5F" },
+  pdfExportText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
   addFloorText: { color: "#5DADE2", fontSize: 14, fontWeight: "800" },
   taskOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" },
   taskSheet: { backgroundColor: "#0F1E30", borderRadius: 18, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: "#1E3A5F" },
