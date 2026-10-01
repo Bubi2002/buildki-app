@@ -65,9 +65,21 @@ export default function PhotoGalleryScreen() {
   const [description, setDescription] = useState("");
   const [trade, setTrade] = useState("");
   const [location, setLocation] = useState("");
+  const [projectRooms, setProjectRooms] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     void loadPhotos();
+  }, [projectId]);
+
+  // Load the project's rooms so a photo can be assigned to one.
+  useEffect(() => {
+    if (!projectId) { setProjectRooms([]); return; }
+    (async () => {
+      try {
+        const { getAllRooms } = await import("@/lib/room-store");
+        setProjectRooms(await getAllRooms(projectId));
+      } catch {}
+    })();
   }, [projectId]);
 
   async function loadPhotos() {
@@ -573,6 +585,21 @@ export default function PhotoGalleryScreen() {
                         placeholder={t('photo_gallery_trade_placeholder' as any)}
                         accessibilityLabel={t('photo_gallery_trade_a11y' as any)}
                       />
+                      {projectRooms.length > 0 && (
+                        <>
+                          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700" }}>{t('photo_assign_room' as any)}</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                            {projectRooms.map((r) => {
+                              const active = location.trim().toLowerCase() === r.name.trim().toLowerCase();
+                              return (
+                                <Pressable key={r.id} onPress={() => setLocation(active ? "" : r.name)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: active ? "#5DADE2" : "rgba(255,255,255,0.25)", backgroundColor: active ? "#5DADE233" : "transparent" }}>
+                                  <Text style={{ color: active ? "#5DADE2" : "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "700" }}>{r.name}</Text>
+                                </Pressable>
+                              );
+                            })}
+                          </ScrollView>
+                        </>
+                      )}
                       <TextInput
                         value={location}
                         onChangeText={setLocation}
