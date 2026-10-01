@@ -124,12 +124,6 @@ export default function BegehungReviewScreen() {
           <MaterialIcons name="description" size={20} color="#FFFFFF" />
           <Text style={styles.primaryBtnText}>{t("review_open_protocol" as any)}</Text>
         </Pressable>
-        <Pressable
-          onPress={() => router.replace("/(tabs)/protocols" as any)}
-          style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <Text style={[styles.secondaryBtnText, { color: colors.muted }]}>{t("review_to_list" as any)}</Text>
-        </Pressable>
       </ScrollView>
     </ScreenContainer>
   );
