@@ -129,6 +129,40 @@ export default function RundgangTab() {
     setSelectedProjectId(id);
   };
 
+  // Long-press a project chip to delete it; its protocols are kept (Ohne Projekt).
+  const deleteProject = (project: ProjectItem) => {
+    Alert.alert(
+      t('projekt_loeschen_title' as any),
+      t('projekt_loeschen_msg' as any).replace('{name}', project.name),
+      [
+        { text: t('cancel'), style: "cancel" },
+        {
+          text: t('btn_loeschen'),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const stored = await AsyncStorage.getItem("projects");
+              const all: ProjectItem[] = stored ? JSON.parse(stored) : [];
+              const remaining = all.filter((p) => p.id !== project.id);
+              await AsyncStorage.setItem("projects", JSON.stringify(remaining));
+              const protoStr = await AsyncStorage.getItem("protocols");
+              if (protoStr) {
+                const protos = JSON.parse(protoStr);
+                let changed = false;
+                for (const p of protos) { if (p.projectId === project.id) { p.projectId = undefined; changed = true; } }
+                if (changed) await AsyncStorage.setItem("protocols", JSON.stringify(protos));
+              }
+              if (selectedProjectId === project.id) setSelectedProjectId(null);
+              loadProjects();
+            } catch {
+              Alert.alert(t('alert_fehler'), t('msg_zuordnung_fehlgeschlagen'));
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const toggleFloor = (id: string) =>
     setExpandedFloors((prev) => {
       const next = new Set(prev);
@@ -353,19 +387,36 @@ export default function RundgangTab() {
   return (
     <ScreenContainer className="flex-1">
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t("rundgang" as any)}</Text>
-        {totalRooms > 0 && (
-          <View style={styles.doneBadge}>
-            <MaterialIcons name="check-circle" size={14} color="#10B981" />
-            <Text style={styles.doneBadgeText}>{doneText}</Text>
-          </View>
-        )}
+        <Text style={styles.headerTitle}>{t("nav_projekte" as any)}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          {totalRooms > 0 && (
+            <View style={styles.doneBadge}>
+              <MaterialIcons name="check-circle" size={14} color="#10B981" />
+              <Text style={styles.doneBadgeText}>{doneText}</Text>
+            </View>
+          )}
+          <Pressable
+            onPress={() => router.push("/project-wizard" as any)}
+            hitSlop={8}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#5DADE2", opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="add" size={18} color="#FFFFFF" />
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13 }}>{t("rundgang_new_project" as any)}</Text>
+          </Pressable>
+        </View>
       </View>
 
       {projects.length === 0 ? (
         <View style={styles.empty}>
           <MaterialIcons name="folder-open" size={48} color="#4A5568" />
           <Text style={styles.emptyHint}>{t("rundgang_no_projects" as any)}</Text>
+          <Pressable
+            onPress={() => router.push("/project-wizard" as any)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 12, backgroundColor: "#5DADE2", opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="add" size={20} color="#FFFFFF" />
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 15 }}>{t("rundgang_new_project" as any)}</Text>
+          </Pressable>
         </View>
       ) : (
         <>
@@ -379,6 +430,8 @@ export default function RundgangTab() {
                   <Pressable
                     key={p.id}
                     onPress={() => pickProject(p.id)}
+                    onLongPress={() => deleteProject(p)}
+                    delayLongPress={450}
                     style={[styles.chip, active && styles.chipActive]}
                   >
                     <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
@@ -396,6 +449,16 @@ export default function RundgangTab() {
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
             </View>
+          )}
+
+          {selectedProjectId && (
+            <Pressable
+              onPress={() => router.push(`/rooms?projectId=${selectedProjectId}` as any)}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginBottom: 10, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: "#5DADE2", backgroundColor: "#5DADE2" + "18", opacity: pressed ? 0.8 : 1 }]}
+            >
+              <MaterialIcons name="mic" size={18} color="#5DADE2" />
+              <Text style={{ color: "#5DADE2", fontWeight: "800", fontSize: 14 }}>{t("rundgang_add_rooms" as any)}</Text>
+            </Pressable>
           )}
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
