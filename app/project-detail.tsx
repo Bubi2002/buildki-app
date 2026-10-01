@@ -62,6 +62,7 @@ export default function ProjectDetailScreen() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
+  const [isSavingDropbox, setIsSavingDropbox] = useState(false);
   const [planCount, setPlanCount] = useState(0);
   const [defectCount, setDefectCount] = useState({ open: 0, resolved: 0, total: 0 });
   const [activeTab, setActiveTab] = useState<"overview" | "begehungen" | "vorgaenge" | "dokumente">("overview");
@@ -168,13 +169,13 @@ export default function ProjectDetailScreen() {
     }
   };
 
-  const exportAllAsPdf = async () => {
+  const exportAllAsPdf = async (target: "share" | "dropbox" = "share") => {
     if (protocols.length === 0) {
       Alert.alert(t('hinweis'), t('msg_keine_protokolle_zum_exportieren_vorhanden'));
       return;
     }
 
-    setIsExporting(true);
+    if (target === "dropbox") setIsSavingDropbox(true); else setIsExporting(true);
     try {
       // Convert photos to base64 for embedding
       const photoBase64Map: Record<string, string[]> = {};
@@ -241,19 +242,31 @@ export default function ProjectDetailScreen() {
         base64: false,
       });
 
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(pdfUri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `${project?.name || t('project_detail_projekt' as any)} – ${t('project_detail_alle_protokolle' as any)}`,
-          UTI: 'com.adobe.pdf',
+      if (target === "dropbox") {
+        const { uploadPdfToDropbox } = await import("@/lib/dropbox-integration");
+        const res = await uploadPdfToDropbox(pdfUri, {
+          projectName: project?.name,
+          protocolTitle: t('project_detail_alle_protokolle' as any),
+          protocolDate: new Date().toISOString(),
         });
+        if (res.success) Alert.alert(t('dropbox_saved_title' as any), t('dropbox_saved_msg' as any));
+        else Alert.alert(t('alert_fehler'), res.error || t('msg_pdf_konnte_nicht_erstellt_werden'));
+      } else {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(pdfUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `${project?.name || t('project_detail_projekt' as any)} – ${t('project_detail_alle_protokolle' as any)}`,
+            UTI: 'com.adobe.pdf',
+          });
+        }
       }
     } catch (error) {
       console.error('Export error:', error);
       Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden'));
     } finally {
       setIsExporting(false);
+      setIsSavingDropbox(false);
     }
   };
 
@@ -513,6 +526,22 @@ export default function ProjectDetailScreen() {
             {isExportingZip ? t('project_detail_wird_erstellt' as any) : `${t('project_detail_einzelne_pdfs_exportieren' as any)} (${protocols.length})`}
           </Text>
           {!isExportingZip && <MaterialIcons name="chevron-right" size={18} color="#4CAF50" />}
+        </Pressable>
+
+        <Pressable
+          onPress={() => exportAllAsPdf("dropbox")}
+          disabled={isSavingDropbox || protocols.length === 0}
+          style={({ pressed }) => [styles.exportButton, { backgroundColor: '#0061FF10', borderColor: '#0061FF40', opacity: pressed || isSavingDropbox ? 0.7 : 1, marginTop: 8 }]}
+        >
+          {isSavingDropbox ? (
+            <ActivityIndicator size="small" color="#0061FF" />
+          ) : (
+            <MaterialIcons name="cloud-upload" size={20} color="#0061FF" />
+          )}
+          <Text style={[styles.exportButtonText, { color: '#0061FF' }]}>
+            {isSavingDropbox ? t('project_detail_wird_erstellt' as any) : t('pd_save_dropbox' as any)}
+          </Text>
+          {!isSavingDropbox && <MaterialIcons name="chevron-right" size={18} color="#0061FF" />}
         </Pressable>
 
         <Pressable onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#7C3AED10', borderColor: '#7C3AED40', opacity: pressed ? 0.7 : 1 }]}>

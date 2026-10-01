@@ -588,7 +588,6 @@ export default function ProjectWizardScreen() {
             const on = active || done;
             return (
               <View key={s.n} style={styles.stepItem}>
-                {i > 0 && <View style={[styles.stepLine, { backgroundColor: stepIndex >= s.n ? colors.primary : colors.border }]} />}
                 <View style={[styles.stepNum, { backgroundColor: on ? colors.primary : "transparent", borderColor: on ? colors.primary : colors.border }]}>
                   {done ? (
                     <MaterialIcons name="check" size={13} color="#FFFFFF" />
@@ -914,7 +913,7 @@ export default function ProjectWizardScreen() {
             )}
 
             {/* Frist */}
-            <DateOnlyPicker value={itemDueDate} onChange={setItemDueDate} label={t('frist')} />
+            <DateOnlyPicker value={itemDueDate} onChange={setItemDueDate} label={t('frist')} withTime />
 
             {/* Zuständiger */}
             <Text style={styles.miniLabel}>{t('zustaendig')}</Text>
@@ -1111,11 +1110,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: "800" },
   dots: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingTop: 12 },
   dot: { flex: 1, height: 4, borderRadius: 2 },
-  stepper: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 0.5 },
-  stepItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
-  stepLine: { flex: 1, height: 2, borderRadius: 1, marginRight: 4 },
-  stepNum: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  stepLabel: { fontSize: 11, flexShrink: 1 },
+  stepper: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 0.5 },
+  stepItem: { flex: 1, flexDirection: "column", alignItems: "center", gap: 5 },
+  stepNum: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  stepLabel: { fontSize: 11, textAlign: "center" },
   fieldLabel: { fontSize: 13, fontWeight: "700", marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15, marginBottom: 4 },
   typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },

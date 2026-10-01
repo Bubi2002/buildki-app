@@ -16,6 +16,7 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
 import { DateOnlyPicker } from "@/components/date-only-picker";
+import { formatDateTime } from "@/lib/date-only";
 import { AssigneeInput } from "@/components/assignee-input";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -669,7 +670,7 @@ export default function TasksScreen() {
               <View style={[styles.badge, { backgroundColor: colors.surface }]}>
                 <MaterialIcons name="schedule" size={11} color={colors.muted} />
                 <Text style={[styles.badgeText, { color: colors.muted }]}>
-                  {item.deadline}
+                  {formatDateTime(item.deadline)}
                 </Text>
               </View>
             )}
@@ -1020,7 +1021,7 @@ export default function TasksScreen() {
 
             {/* Wann (Frist) — date wheel */}
             <View style={{ marginTop: 12 }}>
-              <DateOnlyPicker value={newDeadline} onChange={setNewDeadline} label={t('tasks_field_wann' as any)} />
+              <DateOnlyPicker value={newDeadline} onChange={setNewDeadline} label={t('tasks_field_wann' as any)} withTime />
             </View>
 
             {/* Wo (Geschoss / Raum) */}

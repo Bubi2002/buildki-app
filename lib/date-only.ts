@@ -26,9 +26,17 @@ export function todayDateOnly(now: Date = new Date()): string {
 }
 
 export function parseDateOnly(value: string): Date | null {
-  const match = DATE_ONLY_PATTERN.exec(value);
+  // Tolerate an optional "THH:mm" time suffix — only the date part matters here.
+  const match = DATE_ONLY_PATTERN.exec((value || "").slice(0, 10));
   if (!match) return null;
   return createValidatedDate(Number(match[1]), Number(match[2]), Number(match[3]));
+}
+
+/** "DD.MM.YYYY" or, when the value carries a THH:mm suffix, "DD.MM.YYYY · HH:mm". */
+export function formatDateTime(value: string, locale = "de-DE"): string {
+  const base = formatDateOnly(value, locale);
+  const time = value && value.length >= 16 && value[10] === "T" ? value.slice(11, 16) : "";
+  return time ? `${base} · ${time} ${locale.startsWith("de") ? "Uhr" : ""}`.trim() : base;
 }
 
 export function parseGermanDateInput(value: string): string | null {

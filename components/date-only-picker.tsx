@@ -18,8 +18,14 @@ type DateOnlyPickerProps = {
   label?: string;
   minimumDate?: string;
   allowClear?: boolean;
+  /** Also let the user pick a time of day (value becomes "YYYY-MM-DDTHH:mm"). */
+  withTime?: boolean;
   testID?: string;
 };
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const datePart = (v: string) => (v || "").slice(0, 10);
+const timePart = (v: string) => ((v || "").length >= 16 && v[10] === "T" ? v.slice(11, 16) : "");
 
 const WEEKDAY_KEYS = [
   "date_only_picker_weekday_mo",
@@ -42,15 +48,31 @@ export function DateOnlyPicker({
   label,
   minimumDate = todayDateOnly(),
   allowClear = true,
+  withTime = false,
   testID,
 }: DateOnlyPickerProps) {
   const { t } = useTranslation();
   const colors = useColors();
   const displayLabel = label ?? t('date_only_picker_genaues_datum' as any);
   const [expanded, setExpanded] = useState(false);
-  const [cursor, setCursor] = useState(() => monthStart(value || minimumDate));
-  const [manualValue, setManualValue] = useState(value ? formatDateOnly(value) : "");
+  const dPart = datePart(value);
+  const tPart = timePart(value);
+  const [cursor, setCursor] = useState(() => monthStart(dPart || minimumDate));
+  const [manualValue, setManualValue] = useState(dPart ? formatDateOnly(dPart) : "");
   const [manualError, setManualError] = useState("");
+
+  // Default time when the user turns on a time for a date that has none yet.
+  const effectiveTime = tPart || "08:00";
+  const [th, tm] = effectiveTime.split(":").map((n) => parseInt(n, 10) || 0);
+  const emitWithTime = (dateValue: string, time: string) => onChange(`${dateValue}T${time}`);
+  const stepTime = (deltaH: number, deltaM: number) => {
+    if (!dPart) return;
+    let h = (th + deltaH + 24) % 24;
+    let m = tm + deltaM;
+    if (m >= 60) m -= 60;
+    if (m < 0) m += 60;
+    emitWithTime(dPart, `${pad2(h)}:${pad2(m)}`);
+  };
 
   const cursorDate = parseDateOnly(cursor)!;
   const year = cursorDate.getFullYear();
@@ -74,10 +96,12 @@ export function DateOnlyPicker({
 
   const chooseDate = (dateValue: string) => {
     if (!isDateOnOrAfter(dateValue, minimumDate)) return;
-    onChange(dateValue);
+    if (withTime) emitWithTime(dateValue, effectiveTime);
+    else onChange(dateValue);
     setManualValue(formatDateOnly(dateValue));
     setManualError("");
-    setExpanded(false);
+    // With a time picker the calendar stays open so the user can set the time.
+    if (!withTime) setExpanded(false);
   };
 
   const applyManualDate = () => {
@@ -100,22 +124,22 @@ export function DateOnlyPicker({
         onPress={() => {
           setManualError("");
           if (!expanded) {
-            setManualValue(value ? formatDateOnly(value) : "");
-            setCursor(monthStart(value || minimumDate));
+            setManualValue(dPart ? formatDateOnly(dPart) : "");
+            setCursor(monthStart(dPart || minimumDate));
           }
           setExpanded((current) => !current);
         }}
         accessibilityRole="button"
-        accessibilityLabel={`${displayLabel}: ${value ? formatDateOnly(value) : t('date_only_picker_nicht_gesetzt' as any)}`}
+        accessibilityLabel={`${displayLabel}: ${dPart ? formatDateOnly(dPart) : t('date_only_picker_nicht_gesetzt' as any)}`}
         style={({ pressed }) => [
           styles.trigger,
-          { borderColor: expanded || value ? colors.primary : colors.border, backgroundColor: colors.background },
+          { borderColor: expanded || dPart ? colors.primary : colors.border, backgroundColor: colors.background },
           pressed && { opacity: 0.75 },
         ]}
       >
-        <MaterialIcons name="calendar-month" size={20} color={value ? colors.primary : colors.muted} />
-        <Text style={[styles.triggerText, { color: value ? colors.foreground : colors.muted }]}>
-          {value ? formatDateOnly(value) : t('date_only_picker_datum_waehlen' as any)}
+        <MaterialIcons name="calendar-month" size={20} color={dPart ? colors.primary : colors.muted} />
+        <Text style={[styles.triggerText, { color: dPart ? colors.foreground : colors.muted }]}>
+          {dPart ? `${formatDateOnly(dPart)}${withTime && tPart ? ` · ${tPart}` : ""}` : t('date_only_picker_datum_waehlen' as any)}
         </Text>
         <MaterialIcons name={expanded ? "expand-less" : "expand-more"} size={20} color={colors.muted} />
       </Pressable>
@@ -149,7 +173,7 @@ export function DateOnlyPicker({
               if (!day) return <View key={`blank-${index}`} style={styles.dayCell} />;
               const dateValue = toDateOnlyValue(new Date(year, month, day, 12));
               const disabled = !isDateOnOrAfter(dateValue, minimumDate);
-              const selected = dateValue === value;
+              const selected = dateValue === dPart;
               return (
                 <Pressable
                   key={dateValue}
@@ -169,6 +193,24 @@ export function DateOnlyPicker({
             })}
           </View>
 
+          {withTime && dPart ? (
+            <View style={[styles.timeRow, { borderColor: colors.border }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <MaterialIcons name="schedule" size={18} color={colors.primary} />
+                <Text style={[styles.timeLabel, { color: colors.foreground }]}>{t('date_only_picker_uhrzeit' as any)}</Text>
+              </View>
+              <View style={styles.timeControls}>
+                <Pressable onPress={() => stepTime(-1, 0)} style={({ pressed }) => [styles.timeStep, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}><MaterialIcons name="remove" size={18} color={colors.primary} /></Pressable>
+                <Text style={[styles.timeValue, { color: colors.foreground }]}>{pad2(th)}</Text>
+                <Pressable onPress={() => stepTime(1, 0)} style={({ pressed }) => [styles.timeStep, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}><MaterialIcons name="add" size={18} color={colors.primary} /></Pressable>
+                <Text style={[styles.timeColon, { color: colors.muted }]}>:</Text>
+                <Pressable onPress={() => stepTime(0, -5)} style={({ pressed }) => [styles.timeStep, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}><MaterialIcons name="remove" size={18} color={colors.primary} /></Pressable>
+                <Text style={[styles.timeValue, { color: colors.foreground }]}>{pad2(tm)}</Text>
+                <Pressable onPress={() => stepTime(0, 5)} style={({ pressed }) => [styles.timeStep, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}><MaterialIcons name="add" size={18} color={colors.primary} /></Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <Text style={[styles.manualLabel, { color: colors.muted }]}>{t('date_only_picker_oder_direkt' as any)}</Text>
           <View style={styles.manualRow}>
             <TextInput
@@ -187,7 +229,7 @@ export function DateOnlyPicker({
           </View>
           {manualError ? <Text style={[styles.errorText, { color: colors.error }]}>{manualError}</Text> : null}
 
-          {allowClear && value ? (
+          {allowClear && dPart ? (
             <Pressable
               onPress={() => { onChange(""); setManualValue(""); setManualError(""); setExpanded(false); }}
               style={({ pressed }) => [styles.clearButton, { borderColor: colors.border }, pressed && { opacity: 0.65 }]}
@@ -215,6 +257,12 @@ const styles = StyleSheet.create({
   weekday: { width: `${100 / 7}%`, textAlign: "center", fontSize: 11, fontWeight: "700" },
   daysGrid: { flexDirection: "row", flexWrap: "wrap" },
   dayCell: { width: `${100 / 7}%`, aspectRatio: 1.15, alignItems: "center", justifyContent: "center" },
+  timeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, marginTop: 10, paddingTop: 12 },
+  timeLabel: { fontSize: 13, fontWeight: "700" },
+  timeControls: { flexDirection: "row", alignItems: "center", gap: 4 },
+  timeStep: { width: 32, height: 32, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  timeValue: { fontSize: 16, fontWeight: "800", minWidth: 26, textAlign: "center" },
+  timeColon: { fontSize: 16, fontWeight: "800", marginHorizontal: 2 },
   manualLabel: { fontSize: 12, fontWeight: "600", marginTop: 12, marginBottom: 6 },
   manualRow: { flexDirection: "row", gap: 8 },
   manualInput: { flex: 1, minHeight: 44, borderWidth: 1, paddingHorizontal: 12, fontSize: 14 },
