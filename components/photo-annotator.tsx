@@ -7,6 +7,7 @@ import {
   Dimensions,
   Modal,
   Platform,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -15,14 +16,14 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
 } from "react-native-reanimated";
-import Svg, { Path, Circle, Rect, Line } from "react-native-svg";
+import Svg, { Path, Circle, Rect, Line, Text as SvgText } from "react-native-svg";
 import { captureRef } from "react-native-view-shot";
 import { createLocalId } from "@/lib/id";
 import { useTranslation } from "@/lib/language-provider";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-type AnnotationType = "arrow" | "circle" | "rect" | "freehand" | "text";
+type AnnotationType = "arrow" | "circle" | "rect" | "freehand" | "text" | "measure";
 type AnnotationColor = "#EF4444" | "#F59E0B" | "#22C55E" | "#3B82F6" | "#FFFFFF";
 
 type Annotation = {
@@ -49,6 +50,7 @@ const TOOLS: { type: AnnotationType; icon: string; label: string }[] = [
   { type: "arrow", icon: "arrow-forward", label: "photo_annotator_tool_arrow" },
   { type: "circle", icon: "radio-button-unchecked", label: "photo_annotator_tool_circle" },
   { type: "rect", icon: "crop-square", label: "photo_annotator_tool_rect" },
+  { type: "measure", icon: "straighten", label: "photo_annotator_tool_measure" },
 ];
 
 export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnnotations = [] }: Props) {
@@ -99,7 +101,25 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
     setStartPoint(null);
     setIsDrawing(false);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Measure: ask for the real-world length and label the line.
+    if (currentTool === "measure") promptMeasure(newAnnotation.id);
   }, [isDrawing, currentPath, currentTool, currentColor]);
+
+  const promptMeasure = (id: string) => {
+    const apply = (val?: string) => {
+      const v = (val || "").trim();
+      setAnnotations(prev => prev.map(a => (a.id === id ? { ...a, text: v } : a)));
+    };
+    if (Platform.OS === "ios" && (Alert as any).prompt) {
+      (Alert as any).prompt(
+        t('photo_annotator_measure_title' as any),
+        t('photo_annotator_measure_msg' as any),
+        apply,
+        "plain-text",
+        "",
+      );
+    }
+  };
 
   const undoLast = () => {
     setAnnotations(prev => prev.slice(0, -1));
@@ -128,7 +148,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   };
 
   const renderAnnotation = (annotation: Annotation) => {
-    const { type, color, points, id } = annotation;
+    const { type, color, points, id, text } = annotation;
     if (points.length < 2) return null;
 
     switch (type) {
@@ -173,6 +193,31 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
         const w = Math.abs(end.x - start.x);
         const h = Math.abs(end.y - start.y);
         return <Rect key={id} x={x} y={y} width={w} height={h} stroke={color} strokeWidth={3} fill="none" />;
+      }
+      case "measure": {
+        const start = points[0];
+        const end = points[points.length - 1];
+        const midx = (start.x + end.x) / 2;
+        const midy = (start.y + end.y) / 2;
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        const perp = angle + Math.PI / 2;
+        const tick = 9;
+        const tdx = tick * Math.cos(perp), tdy = tick * Math.sin(perp);
+        const label = text || "";
+        const boxW = Math.max(34, label.length * 8 + 12);
+        return (
+          <React.Fragment key={id}>
+            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={3} />
+            <Line x1={start.x - tdx} y1={start.y - tdy} x2={start.x + tdx} y2={start.y + tdy} stroke={color} strokeWidth={3} />
+            <Line x1={end.x - tdx} y1={end.y - tdy} x2={end.x + tdx} y2={end.y + tdy} stroke={color} strokeWidth={3} />
+            {label ? (
+              <>
+                <Rect x={midx - boxW / 2} y={midy - 24} width={boxW} height={18} rx={4} fill="rgba(0,0,0,0.65)" />
+                <SvgText x={midx} y={midy - 11} fill="#FFFFFF" fontSize={12} fontWeight="bold" textAnchor="middle">{label}</SvgText>
+              </>
+            ) : null}
+          </React.Fragment>
+        );
       }
       default:
         return null;
