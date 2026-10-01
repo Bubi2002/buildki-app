@@ -66,7 +66,7 @@ import { generatePositionCode } from "@/lib/position-numbering";
 import { trpc } from "@/lib/trpc";
 import * as FileSystem from "expo-file-system/legacy";
 import { extractDefectFromText } from "@/lib/defect-extraction";
-import { PhotoAnnotator } from "@/components/photo-annotator";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BusyOverlay } from "@/components/busy-overlay";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
@@ -122,8 +122,6 @@ export default function DefectsScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
-  const [annotatingPhoto, setAnnotatingPhoto] = useState<string | null>(null);
-  const [annotateTarget, setAnnotateTarget] = useState<"detail" | "create">("detail");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [signatureRole, setSignatureRole] = useState<string>(t('defects_rolle_auftraggeber' as any));
   const defectVoiceRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -330,16 +328,14 @@ export default function DefectsScreen() {
       quality: 0.85,
     });
     if (!result.canceled && result.assets[0]) {
-      setAnnotateTarget("create");
-      setAnnotatingPhoto(result.assets[0].uri);
+      openDefectAnnotator(result.assets[0].uri, "create");
     }
   };
 
   const addNewDefectLibraryPhotos = async () => {
     const picked = await pickImagesWithSource({ t, multiple: true });
     if (picked.length === 1) {
-      setAnnotateTarget("create");
-      setAnnotatingPhoto(picked[0].uri);
+      openDefectAnnotator(picked[0].uri, "create");
     } else if (picked.length > 1) {
       setNewPhotos((photos) => [...photos, ...picked.map((image) => image.uri)]);
     }
@@ -544,6 +540,34 @@ export default function DefectsScreen() {
     await loadDefects();
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
+
+  // Open the shared photo editor (/photo-annotate) and apply the result on return.
+  const pendingDefectAnnotate = useRef<{ key: string; target: "detail" | "create" } | null>(null);
+  const openDefectAnnotator = (uri: string, target: "detail" | "create") => {
+    const key = `defect-${Date.now()}`;
+    pendingDefectAnnotate.current = { key, target };
+    router.push(`/photo-annotate?photoUri=${encodeURIComponent(uri)}&returnKey=${key}` as any);
+  };
+  useFocusEffect(
+    useCallback(() => {
+      const pend = pendingDefectAnnotate.current;
+      if (!pend) return;
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem(`annotate-result-${pend.key}`);
+          if (raw) {
+            const { uri } = JSON.parse(raw);
+            if (uri) {
+              if (pend.target === "create") setNewPhotos((photos) => [...photos, uri]);
+              else await finalizeDefectPhoto(uri);
+            }
+            await AsyncStorage.removeItem(`annotate-result-${pend.key}`);
+          }
+        } catch {}
+        pendingDefectAnnotate.current = null;
+      })();
+    }, [selectedDefect?.id]),
+  );
 
   const startEditDefect = () => {
     if (!selectedDefect) return;
@@ -1210,8 +1234,7 @@ export default function DefectsScreen() {
                           quality: 0.8,
                         });
                         if (!result.canceled && result.assets[0]) {
-                          setAnnotateTarget("detail");
-                          setAnnotatingPhoto(result.assets[0].uri);
+                          openDefectAnnotator(result.assets[0].uri, "detail");
                         }
                       }}
                       style={({ pressed }) => [{
@@ -1229,8 +1252,7 @@ export default function DefectsScreen() {
                       onPress={async () => {
                         const picked = await pickImagesWithSource({ t, multiple: true });
                         if (picked.length === 1) {
-                          setAnnotateTarget("detail");
-                          setAnnotatingPhoto(picked[0].uri);
+                          openDefectAnnotator(picked[0].uri, "detail");
                         } else if (picked.length > 1) {
                           for (const image of picked) await finalizeDefectPhoto(image.uri);
                         }
@@ -1468,25 +1490,6 @@ export default function DefectsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-
-      {/* Mark up a newly added photo before saving it */}
-      {annotatingPhoto && (
-        <PhotoAnnotator
-          visible={!!annotatingPhoto}
-          photoUri={annotatingPhoto}
-          onClose={() => setAnnotatingPhoto(null)}
-          onSave={async (_annotations, flattenedUri) => {
-            const uri = flattenedUri || annotatingPhoto;
-            const target = annotateTarget;
-            setAnnotatingPhoto(null);
-            if (target === "create") {
-              setNewPhotos((photos) => [...photos, uri]);
-            } else {
-              await finalizeDefectPhoto(uri);
-            }
-          }}
-        />
-      )}
 
       <BusyOverlay visible={exportingPdf} label={t('pdf_wird_erstellt' as any)} />
 

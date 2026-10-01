@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import { TradePicker } from "@/components/trade-picker";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { formatDateTime } from "@/lib/date-only";
 import { AssigneeInput } from "@/components/assignee-input";
+import { Image } from "expo-image";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -81,6 +83,9 @@ export default function TasksScreen() {
   const [newDeadline, setNewDeadline] = useState("");
   const [newFloor, setNewFloor] = useState("");
   const [newRoom, setNewRoom] = useState("");
+  const [newPhotos, setNewPhotos] = useState<string[]>([]);
+  // Pending re-annotation: which photo index is being edited in /photo-annotate.
+  const pendingPhotoAnnotate = useRef<{ key: string; index: number } | null>(null);
   const [newStatus, setNewStatus] = useState<"offen" | "in_arbeit" | "erledigt">("offen");
   const [newAssignee, setNewAssignee] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -164,9 +169,46 @@ export default function TasksScreen() {
   const resetTaskForm = () => {
     setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
     setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewStatus("offen"); setNewAssignee("");
+    setNewPhotos([]);
     setEditingTaskId(null);
     setEditingProtocol(null);
   };
+
+  // ── Task photos (add + annotate with the shared editor) ───────────────────
+  const addTaskPhoto = async () => {
+    try {
+      const imgs = await pickImagesWithSource({ t });
+      if (imgs.length) setNewPhotos((prev) => [...prev, ...imgs.map((i) => i.uri)]);
+    } catch {}
+  };
+  const annotateTaskPhoto = (index: number) => {
+    const uri = newPhotos[index];
+    if (!uri) return;
+    const key = `task-photo-${Date.now()}`;
+    pendingPhotoAnnotate.current = { key, index };
+    router.push(`/photo-annotate?photoUri=${encodeURIComponent(uri)}&returnKey=${key}` as any);
+  };
+  const removeTaskPhoto = (index: number) =>
+    setNewPhotos((prev) => prev.filter((_, i) => i !== index));
+
+  // Pick up the annotated image when returning from the editor.
+  useFocusEffect(
+    useCallback(() => {
+      const pend = pendingPhotoAnnotate.current;
+      if (!pend) return;
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem(`annotate-result-${pend.key}`);
+          if (raw) {
+            const { uri } = JSON.parse(raw);
+            if (uri) setNewPhotos((prev) => prev.map((p, i) => (i === pend.index ? uri : p)));
+            await AsyncStorage.removeItem(`annotate-result-${pend.key}`);
+          }
+        } catch {}
+        pendingPhotoAnnotate.current = null;
+      })();
+    }, []),
+  );
 
   // Row tap: open the project task for editing, or the source protocol.
   const openTask = (item: ProtocolTodo) => {
@@ -180,6 +222,7 @@ export default function TasksScreen() {
       setNewRoom(item.room || "");
       setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
       setNewAssignee((item as any).responsible || "");
+      setNewPhotos((item as any).photos || []);
       setEditingProtocol(null);
       setShowCreate(true);
     } else if (item.source === "defect") {
@@ -197,6 +240,7 @@ export default function TasksScreen() {
       setNewRoom(item.room || "");
       setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
       setNewAssignee((item as any).responsible || "");
+      setNewPhotos([]);
       setShowCreate(true);
     }
   };
@@ -312,6 +356,7 @@ export default function TasksScreen() {
         responsible: newAssignee.trim() || undefined,
         status: newStatus,
         done: newStatus === "erledigt",
+        photos: newPhotos.length ? newPhotos : undefined,
       };
       if (editingTaskId) {
         const idx = tasks.findIndex((x: any) => x.id === editingTaskId);
@@ -414,6 +459,7 @@ export default function TasksScreen() {
             floor: pt.floor || undefined,
             room: pt.room || undefined,
             responsible: pt.responsible || undefined,
+            photos: pt.photos || undefined,
             projectId: pt.projectId || undefined,
             projectLabel: projectName(pt.projectId),
           });
@@ -1094,6 +1140,22 @@ export default function TasksScreen() {
                 placeholderTextColor={colors.muted}
                 style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
               />
+            </View>
+
+            {/* Fotos (hinzufügen + markieren) */}
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('gallery_photos' as any)}</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {newPhotos.map((uri, i) => (
+                <Pressable key={`${uri}-${i}`} onPress={() => annotateTaskPhoto(i)} onLongPress={() => removeTaskPhoto(i)} style={{ width: 72, height: 72 }}>
+                  <Image source={{ uri }} style={{ width: 72, height: 72, borderRadius: 8, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
+                  <View style={{ position: "absolute", right: 2, bottom: 2, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, padding: 2 }}>
+                    <MaterialIcons name="edit" size={13} color="#FFFFFF" />
+                  </View>
+                </Pressable>
+              ))}
+              <Pressable onPress={addTaskPhoto} style={{ width: 72, height: 72, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                <MaterialIcons name="add-a-photo" size={22} color={colors.primary} />
+              </Pressable>
             </View>
 
             <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>

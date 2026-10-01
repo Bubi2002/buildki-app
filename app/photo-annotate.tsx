@@ -77,10 +77,13 @@ type DrawElement = {
 
 export default function PhotoAnnotateScreen() {
   const { t } = useTranslation();
-  const { photoUri, protocolId, photoIndex } = useLocalSearchParams<{
+  const { photoUri, protocolId, photoIndex, returnKey } = useLocalSearchParams<{
     photoUri: string;
     protocolId: string;
     photoIndex: string;
+    // Generic mode: when set, the flattened URI is written to
+    // "annotate-result-<returnKey>" and the caller picks it up on focus.
+    returnKey?: string;
   }>();
   const colors = useColors();
   const router = useRouter();
@@ -378,7 +381,7 @@ export default function PhotoAnnotateScreen() {
   };
 
   const saveAnnotation = async () => {
-    if (!canvasRef.current || !protocolId) return;
+    if (!canvasRef.current || (!protocolId && !returnKey)) return;
 
     setIsSaving(true);
     try {
@@ -387,7 +390,7 @@ export default function PhotoAnnotateScreen() {
       if (Platform.OS === "web") {
         annotatedUri = photoUri || "";
         const annotationData = { elements, photoUri, protocolId, photoIndex };
-        await AsyncStorage.setItem(
+        if (protocolId) await AsyncStorage.setItem(
           `annotation-${protocolId}-${photoIndex}`,
           JSON.stringify(annotationData)
         );
@@ -406,6 +409,13 @@ export default function PhotoAnnotateScreen() {
         const destPath = `${annotDir}${filename}`;
         await FileSystem.copyAsync({ from: annotatedUri, to: destPath });
         annotatedUri = destPath;
+      }
+
+      // Generic mode: hand the annotated URI back to the caller and return.
+      if (returnKey) {
+        await AsyncStorage.setItem(`annotate-result-${returnKey}`, JSON.stringify({ uri: annotatedUri }));
+        router.back();
+        return;
       }
 
       // Update the protocol's photos array with the annotated version
