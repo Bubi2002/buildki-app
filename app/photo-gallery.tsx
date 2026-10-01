@@ -509,7 +509,7 @@ export default function PhotoGalleryScreen() {
           ))}
         </ScrollView>
 
-        <Modal visible={!!selectedPhoto} animationType="fade" transparent onRequestClose={closePhoto}>
+        <Modal visible={!!selectedPhoto && !annotating} animationType="fade" transparent onRequestClose={closePhoto}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.96)" }}

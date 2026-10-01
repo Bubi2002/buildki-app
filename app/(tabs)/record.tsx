@@ -2799,7 +2799,7 @@ export default function RecordScreen() {
       </View>
 
       {/* Photo Gallery Modal */}
-      <Modal visible={showPhotoGallery} animationType="slide" transparent>
+      <Modal visible={showPhotoGallery && drawPhotoIndex === null} animationType="slide" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12 }}>
             <View>
