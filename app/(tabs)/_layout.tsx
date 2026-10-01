@@ -63,9 +63,7 @@ export default function TabLayout() {
       />
 
       {/* ── Still routable, but no longer their own bottom-bar tab ── */}
-      <Tabs.Screen name="begehung" options={{ href: null }} />
       <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="start" options={{ href: null }} />
       <Tabs.Screen name="protocols" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>

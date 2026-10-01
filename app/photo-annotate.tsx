@@ -24,6 +24,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { captureRef } from "react-native-view-shot";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
+import { getEvidence, updateEvidence } from "@/lib/evidence-store";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -54,7 +55,7 @@ function getDefaultTextTemplates(t: (key: any) => string) { return [
 
 const ANNOTATION_STORAGE_KEY = 'annotation-custom-templates';
 
-type ToolType = "pen" | "arrow" | "text" | "zoom" | "move";
+type ToolType = "pen" | "arrow" | "text" | "move";
 
 type DrawElement = {
   type: "path" | "arrow" | "text";
@@ -126,9 +127,16 @@ export default function PhotoAnnotateScreen() {
   const imageWidth = SCREEN_WIDTH;
   const imageHeight = SCREEN_HEIGHT - 180;
 
-  // Pinch gesture for zoom
+  // Last position the user touched on the image – used to drop template labels
+  // exactly where the finger was set instead of always in the center.
+  const [lastTap, setLastTap] = useState<{ x: number; y: number }>({
+    x: imageWidth / 2,
+    y: imageHeight / 2,
+  });
+
+  // Pinch gesture for zoom – always active (two fingers), regardless of tool,
+  // so the user can zoom at any time while drawing.
   const pinchGesture = Gesture.Pinch()
-    .enabled(selectedTool === "zoom")
     .onStart(() => {
       setBaseScale(scale);
     })
@@ -138,9 +146,10 @@ export default function PhotoAnnotateScreen() {
     })
     .runOnJS(true);
 
-  // Pan gesture for zoom navigation
+  // Pan gesture for zoom navigation – two fingers only, so one-finger drawing
+  // is never hijacked. Always active alongside the drawing tools.
   const zoomPanGesture = Gesture.Pan()
-    .enabled(selectedTool === "zoom")
+    .minPointers(2)
     .onStart(() => {
       setBaseTranslateX(translateX);
       setBaseTranslateY(translateY);
@@ -159,10 +168,12 @@ export default function PhotoAnnotateScreen() {
     setTranslateY(0);
   };
 
-  // Pan gesture for pen drawing
+  // Pan gesture for pen drawing – one finger only (two fingers = zoom/pan).
   const penGesture = Gesture.Pan()
     .enabled(selectedTool === "pen")
+    .maxPointers(1)
     .onStart((e) => {
+      setLastTap({ x: e.x, y: e.y });
       setCurrentPath(`M ${e.x} ${e.y}`);
     })
     .onUpdate((e) => {
@@ -179,10 +190,12 @@ export default function PhotoAnnotateScreen() {
     })
     .runOnJS(true);
 
-  // Pan gesture for arrow drawing
+  // Pan gesture for arrow drawing – one finger only (two fingers = zoom/pan).
   const arrowGesture = Gesture.Pan()
     .enabled(selectedTool === "arrow")
+    .maxPointers(1)
     .onStart((e) => {
+      setLastTap({ x: e.x, y: e.y });
       setArrowStart({ x: e.x, y: e.y });
       setArrowEnd({ x: e.x, y: e.y });
     })
@@ -209,26 +222,38 @@ export default function PhotoAnnotateScreen() {
     })
     .runOnJS(true);
 
-  // Tap gesture for text placement
+  // Tap gesture for text placement (text tool only – opens the input modal)
   const tapGesture = Gesture.Tap()
     .enabled(selectedTool === "text")
+    .maxPointers(1)
     .onEnd((e) => {
+      setLastTap({ x: e.x, y: e.y });
       setTextPosition({ x: e.x, y: e.y });
       setTextInputValue("");
       setShowTextInput(true);
     })
     .runOnJS(true);
 
+  // Always-on single-finger tap recorder: remembers where the user last touched
+  // the image so template labels can be dropped at that exact point.
+  const recordTapGesture = Gesture.Tap()
+    .maxPointers(1)
+    .onEnd((e) => {
+      setLastTap({ x: e.x, y: e.y });
+    })
+    .runOnJS(true);
+
   const addTemplateText = (label: string) => {
-    // Place template text at center of current view
-    const centerX = imageWidth / 2 - 30;
-    const centerY = imageHeight / 2;
+    // Place template text where the user last touched the image (not the center),
+    // clamped to stay on-screen. It stays draggable via the "move" tool.
+    const x = Math.min(Math.max(lastTap.x - 20, 4), imageWidth - 40);
+    const y = Math.min(Math.max(lastTap.y, 20), imageHeight - 10);
     setElements((prev) => [
       ...prev,
       {
         type: "text",
-        x: centerX,
-        y: centerY,
+        x,
+        y,
         text: label,
         color: selectedColor,
         strokeWidth: selectedSize,
@@ -237,10 +262,12 @@ export default function PhotoAnnotateScreen() {
     ]);
   };
 
-  // Move gesture for repositioning text/arrow elements
+  // Move gesture for repositioning text/arrow elements – one finger only.
   const moveGesture = Gesture.Pan()
     .enabled(selectedTool === "move")
+    .maxPointers(1)
     .onStart((e) => {
+      setLastTap({ x: e.x, y: e.y });
       // Find the closest text element to the tap point
       let closestIdx = -1;
       let closestDist = 40; // max tap distance threshold
@@ -295,8 +322,16 @@ export default function PhotoAnnotateScreen() {
     })
     .runOnJS(true);
 
-  const zoomComposed = Gesture.Simultaneous(pinchGesture, zoomPanGesture);
-  const composedGesture = Gesture.Race(penGesture, arrowGesture, tapGesture, moveGesture, zoomComposed);
+  // One finger draws with the active tool; two fingers always zoom/pan. The
+  // drawing tools (Race) run simultaneously with the always-on pinch + 2-finger
+  // pan + tap recorder so zooming never requires switching tools.
+  const drawingGesture = Gesture.Race(penGesture, arrowGesture, tapGesture, moveGesture);
+  const composedGesture = Gesture.Simultaneous(
+    drawingGesture,
+    pinchGesture,
+    zoomPanGesture,
+    recordTapGesture,
+  );
 
   const addTextElement = () => {
     if (textInputValue.trim()) {
@@ -374,6 +409,7 @@ export default function PhotoAnnotateScreen() {
       }
 
       // Update the protocol's photos array with the annotated version
+      // (kept for backward compatibility with any legacy photos[] readers).
       const protocolsData = await AsyncStorage.getItem("protocols");
       if (protocolsData) {
         const protocols = JSON.parse(protocolsData);
@@ -385,6 +421,26 @@ export default function PhotoAnnotateScreen() {
             await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
           }
         }
+      }
+
+      // protocol-detail renders photos from the evidence store (protocol.photos
+      // is migrated into evidence on load). Update the matching evidence item so
+      // the annotated image is what gets shown and used in generated documents.
+      try {
+        if (photoUri) {
+          const evidence = await getEvidence();
+          const match = evidence.find(
+            (e) => e.protocolId === protocolId && e.originalUri === photoUri,
+          );
+          if (match) {
+            await updateEvidence(match.id, {
+              originalUri: annotatedUri,
+              previewUri: undefined,
+            });
+          }
+        }
+      } catch (evErr) {
+        console.error("Evidence annotation update error:", evErr);
       }
 
       Alert.alert(t('alert_gespeichert'), t('msg_die_annotation_wurde_gespeichert'), [
@@ -588,16 +644,6 @@ export default function PhotoAnnotateScreen() {
             <MaterialIcons name="open-with" size={20} color={selectedTool === "move" ? colors.primary : colors.muted} />
             <Text style={[styles.toolTabText, { color: selectedTool === "move" ? colors.primary : colors.muted }]}>{t('bewegen')}</Text>
           </Pressable>
-          <Pressable
-            onPress={() => setSelectedTool("zoom")}
-            style={[
-              styles.toolTab,
-              selectedTool === "zoom" && { backgroundColor: colors.primary + "20" },
-            ]}
-          >
-            <MaterialIcons name="zoom-in" size={20} color={selectedTool === "zoom" ? colors.primary : colors.muted} />
-            <Text style={[styles.toolTabText, { color: selectedTool === "zoom" ? colors.primary : colors.muted }]}>{t('zoom')}</Text>
-          </Pressable>
         </View>
         {/* Zoom reset indicator */}
         {scale > 1 && (
@@ -642,7 +688,8 @@ export default function PhotoAnnotateScreen() {
             <View style={[styles.colorIndicator, { backgroundColor: selectedColor }]} />
           </Pressable>
 
-          {/* Pen size toggle */}
+          {/* Pen size toggle – a filled circle plus a label so it reads clearly
+              as the brush-strength control, not a generic square. */}
           <Pressable
             onPress={() => { setShowSizePicker(!showSizePicker); setShowColorPicker(false); }}
             style={({ pressed }) => [
@@ -650,7 +697,18 @@ export default function PhotoAnnotateScreen() {
               { opacity: pressed ? 0.7 : 1 },
             ]}
           >
-            <View style={[styles.sizeIndicator, { width: selectedSize + 8, height: selectedSize + 8, backgroundColor: colors.foreground }]} />
+            <View
+              style={[
+                styles.sizeIndicator,
+                {
+                  width: selectedSize + 8,
+                  height: selectedSize + 8,
+                  borderRadius: (selectedSize + 8) / 2,
+                  backgroundColor: colors.foreground,
+                },
+              ]}
+            />
+            <Text style={[styles.toolButtonLabel, { color: colors.muted }]}>{t('stiftstaerke')}</Text>
           </Pressable>
 
           {/* Undo */}
@@ -832,6 +890,11 @@ const styles = StyleSheet.create({
     padding: 8,
     alignItems: "center",
     justifyContent: "center",
+  },
+  toolButtonLabel: {
+    fontSize: 9,
+    fontWeight: "600",
+    marginTop: 3,
   },
   colorIndicator: {
     width: 28,

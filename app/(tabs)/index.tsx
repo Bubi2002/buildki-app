@@ -134,10 +134,7 @@ export default function AIWorkbenchScreen() {
           router.push("/get-started" as any);
           return;
         }
-        if (!startChooserShownThisLaunch) {
-          startChooserShownThisLaunch = true;
-          router.push("/start-chooser" as any);
-        }
+        // "Was möchtest du tun?" chooser removed — the Projekte tab is the start point.
       } catch {}
     })();
   }, []);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   TextInput,
 } from "react-native";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { MarkdownText } from "@/components/markdown-text";
 import { useColors } from "@/hooks/use-colors";
@@ -174,7 +174,6 @@ export default function ProtocolDetailScreen() {
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
-  const [showAiTools, setShowAiTools] = useState(false);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -197,8 +196,6 @@ export default function ProtocolDetailScreen() {
     setEditSel({ start: pos + marker.length, end: pos + marker.length });
   };
   const [tableEdit, setTableEdit] = useState<null | { before: string; after: string; header: string[]; rows: string[][] }>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
   const [signaturePaths, setSignaturePaths] = useState<string[]>([]);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -284,30 +281,41 @@ export default function ProtocolDetailScreen() {
   const [isDelegating, setIsDelegating] = useState(false);  // Mindmap
 
   useEffect(() => {
-    loadProtocol();
     loadTeamContacts();
     loadFeatureFlags();
     loadTemplates();
   }, [id]);
+
+  // Reload whenever the screen regains focus (e.g. returning from the photo
+  // annotation screen, which saves the edited image back to storage). Without
+  // this the annotated photo would still look unchanged. The processing
+  // auto-refresh interval below is independent and is not affected here.
+  useFocusEffect(
+    useCallback(() => {
+      loadProtocol();
+      void loadProjectToolResults(protocol?.projectId);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, protocol?.projectId])
+  );
 
   async function loadTemplates() {
     setAvailableTemplates(await getAllProtocolTemplates());
   }
 
   // Load the project's tool results (plans with pins, defects) to embed here.
-  useEffect(() => {
-    const pid = protocol?.projectId;
+  const loadProjectToolResults = useCallback(async (pid?: string) => {
     if (!pid) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const [fp, def] = await Promise.all([getFloorPlans(pid), getDefects(pid)]);
-        const withPins = await Promise.all(fp.map(async (p) => ({ plan: p, pins: await getPlanPins(p.id) })));
-        if (!cancelled) { setProjPlans(withPins); setProjDefects(def); }
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [protocol?.projectId]);
+    try {
+      const [fp, def] = await Promise.all([getFloorPlans(pid), getDefects(pid)]);
+      const withPins = await Promise.all(fp.map(async (p) => ({ plan: p, pins: await getPlanPins(p.id) })));
+      setProjPlans(withPins);
+      setProjDefects(def);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    void loadProjectToolResults(protocol?.projectId);
+  }, [protocol?.projectId, loadProjectToolResults]);
 
   // Auto-refresh while protocol is still processing in background
   useEffect(() => {
@@ -611,23 +619,6 @@ export default function ProtocolDetailScreen() {
     const parts = [tableEdit.before, table, tableEdit.after].filter((s) => s && s.length > 0);
     setEditedText(parts.join("\n\n").replace(/\n{3,}/g, "\n\n"));
     setTableEdit(null);
-  };
-
-  // Generate AI summary
-  const generateSummary = async () => {
-    if (!protocol) return;
-    setIsGeneratingSummary(true);
-    try {
-      const result = await translateMutation.mutateAsync({
-        text: t('ki_zusammenfassung_prompt') + protocol.protocol,
-        targetLanguage: "de",
-      });
-      setSummary(result.translated);
-    } catch (error) {
-      console.error("Error generating summary:", error);
-    } finally {
-      setIsGeneratingSummary(false);
-    }
   };
 
   // Speaker Identification
@@ -2021,19 +2012,6 @@ export default function ProtocolDetailScreen() {
             </View>
           )}
 
-          {/* Recording Mode Badge */}
-          {protocol.recordingMode && (
-            <View style={styles.metaRow}>
-              <MaterialIcons 
-                name={protocol.recordingMode === "audio-photo" ? "photo-camera" : "mic"} 
-                size={18} 
-                color={colors.primary} 
-              />
-              <Text style={[styles.metaText, { color: colors.primary, fontWeight: "500" }]}>
-                {protocol.recordingMode === "audio-photo" ? t('protocol_detail_mode_audio_photo' as any) : t('protocol_detail_mode_audio' as any)}
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* PDF export lives in the header (single entry point) — no duplicate banner here. */}
@@ -2552,7 +2530,7 @@ export default function ProtocolDetailScreen() {
                         return (
                           <View key={`inline-photo-${idx}`} style={{ marginVertical: 8, alignItems: "center" }}>
                             <Pressable onPress={() => { setGalleryIndex(photoIdx); setShowGallery(true); }}>
-                              <Image source={{ uri: photoUri }} style={{ width: SCREEN_WIDTH - 64, height: 180, borderRadius: 0 }} contentFit="cover" />
+                              <Image source={{ uri: photoUri }} style={{ width: SCREEN_WIDTH - 64, height: 260, borderRadius: 0, backgroundColor: colors.surface }} contentFit="contain" />
                             </Pressable>
                             <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>Foto {photoIdx + 1}</Text>
                           </View>
@@ -2736,83 +2714,6 @@ export default function ProtocolDetailScreen() {
           {showTranslation && translatedText && (
             <View style={[styles.transcriptionBox, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
               <MarkdownText text={translatedText} color={colors.foreground} />
-            </View>
-          )}
-        </View>
-
-        {/* Werkzeuge & KI — unten, damit der Protokoll-Inhalt oben steht */}
-        {/* KI-Werkzeuge (collapsed by default to reduce clutter) */}
-        <View style={styles.section}>
-          <Pressable onPress={() => setShowAiTools((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: showAiTools ? 14 : 0 }}>
-            <MaterialIcons name="auto-awesome" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('kiwerkzeuge')}</Text>
-            <MaterialIcons name={showAiTools ? "expand-less" : "expand-more"} size={22} color={colors.muted} style={{ marginLeft: "auto" }} />
-          </Pressable>
-          {showAiTools && (
-          <View style={{ gap: 8 }}>
-            {/* Zusammenfassung */}
-            <Pressable
-              onPress={generateSummary}
-              disabled={isGeneratingSummary}
-              style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
-                backgroundColor: colors.primary + "08", borderWidth: 1, borderColor: colors.primary + "25",
-                opacity: pressed || isGeneratingSummary ? 0.7 : 1,
-              }]}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center" }}>
-                {isGeneratingSummary ? <ActivityIndicator size="small" color={colors.primary} /> : <MaterialIcons name="summarize" size={20} color={colors.primary} />}
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('zusammenfassung')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('kernpunkte_auf_einen_blick')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-            {/* Neu generieren */}
-            <Pressable
-              onPress={() => setShowRegenerateModal(true)}
-              style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
-                backgroundColor: "#8B5CF6" + "08", borderWidth: 1, borderColor: "#8B5CF6" + "25",
-                opacity: pressed ? 0.7 : 1,
-              }]}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#8B5CF6" + "15", alignItems: "center", justifyContent: "center" }}>
-                <MaterialIcons name="refresh" size={20} color="#8B5CF6" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('neu_generieren')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('anderes_template_oder_format')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-            {/* Sprecher erkennen */}
-            <Pressable
-              onPress={identifySpeakers}
-              disabled={isIdentifyingSpeakers}
-              style={({ pressed }) => [{
-                flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0,
-                backgroundColor: "#059669" + "08", borderWidth: 1, borderColor: "#059669" + "25",
-                opacity: pressed || isIdentifyingSpeakers ? 0.7 : 1,
-              }]}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 0, backgroundColor: "#059669" + "15", alignItems: "center", justifyContent: "center" }}>
-                {isIdentifyingSpeakers ? <ActivityIndicator size="small" color="#059669" /> : <MaterialIcons name="record-voice-over" size={20} color="#059669" />}
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('sprecher_erkennen')}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 1 }}>{t('personen_im_gespraech_identifizieren')}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-            </Pressable>
-
-          </View>
-          )}
-          {/* Summary result display */}
-          {summary && (
-            <View style={{ marginTop: 12, backgroundColor: colors.primary + "06", borderRadius: 0, padding: 14, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
-              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 21 }}>{summary}</Text>
             </View>
           )}
         </View>
