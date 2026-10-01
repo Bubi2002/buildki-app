@@ -19,6 +19,8 @@ import {
 } from "@/lib/room-store";
 import { syncRoomsFromProtocols } from "@/lib/room-sync";
 import { getDefects, updateDefectStatus, saveDefect, deleteDefect, type Defect, type DefectStatus } from "@/lib/defect-store";
+import { AssigneeInput } from "@/components/assignee-input";
+import { DateOnlyPicker } from "@/components/date-only-picker";
 import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
@@ -89,6 +91,8 @@ export default function RundgangTab() {
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [editDefectDesc, setEditDefectDesc] = useState("");
   const [editDefectTitle, setEditDefectTitle] = useState("");
+  const [editDefectAssignee, setEditDefectAssignee] = useState("");
+  const [editDefectDue, setEditDefectDue] = useState("");
   const [renameRoom, setRenameRoom] = useState<Room | null>(null);
   const [renameRoomName, setRenameRoomName] = useState("");
   const [addFloorOpen, setAddFloorOpen] = useState(false);
@@ -263,6 +267,8 @@ export default function RundgangTab() {
   const openDefect = (d: Defect) => {
     setEditDefectTitle(d.title || "");
     setEditDefectDesc(d.description || "");
+    setEditDefectAssignee(d.assignee || "");
+    setEditDefectDue(d.dueDate || "");
     setSelectedDefect(d);
   };
   const openTaskDetail = (tk: ProjectTask) => {
@@ -282,7 +288,7 @@ export default function RundgangTab() {
   const saveDefectEdit = async () => {
     const d = selectedDefect;
     if (!d) return;
-    const updated = { ...d, title: editDefectTitle.trim() || d.title, description: editDefectDesc.trim(), updatedAt: new Date().toISOString() };
+    const updated = { ...d, title: editDefectTitle.trim() || d.title, description: editDefectDesc.trim(), assignee: editDefectAssignee.trim() || undefined, dueDate: editDefectDue.trim() || undefined, updatedAt: new Date().toISOString() };
     setDefects((prev) => prev.map((x) => (x.id === d.id ? updated : x)));
     try { await saveDefect(updated as any); } catch {}
     setSelectedDefect(null);
@@ -807,8 +813,13 @@ export default function RundgangTab() {
                     );
                   })}
                 </View>
-                <TextInput value={editDefectDesc} onChangeText={setEditDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 80, textAlignVertical: "top", marginTop: 12 }]} />
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                <TextInput value={editDefectDesc} onChangeText={setEditDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top", marginTop: 12 }]} />
+                <Text style={[styles.createLabelSm]}>{t('zustaendig')}</Text>
+                <AssigneeInput value={editDefectAssignee} onChange={setEditDefectAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
+                <View style={{ marginTop: 12 }}>
+                  <DateOnlyPicker value={editDefectDue} onChange={setEditDefectDue} label={t('frist')} withTime />
+                </View>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                   <Pressable onPress={() => deleteDefectNow(selectedDefect)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
                   <Pressable onPress={saveDefectEdit} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
                 </View>
@@ -1127,6 +1138,7 @@ const styles = StyleSheet.create({
   taskOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" },
   taskSheet: { backgroundColor: "#0F1E30", borderRadius: 18, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: "#1E3A5F" },
   taskSheetTitle: { color: "#F0F4F8", fontSize: 18, fontWeight: "800" },
+  createLabelSm: { color: "#8FA3B8", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
   taskSheetSub: { color: "#8FA3B8", fontSize: 13, marginTop: 2 },
   taskInput: { marginTop: 14, borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 8, padding: 12, color: "#F0F4F8", fontSize: 15, backgroundColor: "#0C1826" },
   taskCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" },
