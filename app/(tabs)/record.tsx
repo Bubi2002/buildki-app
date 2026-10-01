@@ -3322,14 +3322,15 @@ export default function RecordScreen() {
               />
             )}
 
-            {/* Mic button to restart speech */}
+            {/* Direct microphone — speak the room name; result lands in the
+                editable field above, so it can be corrected if misheard. */}
             {!chapterListening && (
               <Pressable
                 onPress={startChapterSpeech}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 0, backgroundColor: "#FF9800" + "15", borderWidth: 1, borderColor: "#FF9800" + "40", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 10, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.85 : 1 }]}
               >
-                <MaterialIcons name="mic" size={20} color="#FF9800" />
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#FF9800" }}>{t('erneut_einsprechen')}</Text>
+                <MaterialIcons name="mic" size={22} color="#FFFFFF" />
+                <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{chapterInput.trim() ? t('erneut_einsprechen') : t('raum_einsprechen' as any)}</Text>
               </Pressable>
             )}
 
