@@ -2714,49 +2714,6 @@ export default function ProtocolDetailScreen() {
         </View>
 
         {/* Werkzeuge & KI — unten, damit der Protokoll-Inhalt oben steht */}
-        {/* Werkzeuge & Projekt-Ergebnisse */}
-        {protocol?.projectId && (
-          <View style={styles.section}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <MaterialIcons name="build" size={20} color={colors.primary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('werkzeuge')}</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
-              {[
-                { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
-                { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
-                { icon: "photo-library", label: t('index_tool_fotos' as any), route: "/photo-gallery", color: "#EC407A" },
-                { icon: "checklist", label: t('index_tool_checklisten' as any), route: "/checklists", color: "#AB47BC" },
-                { icon: "timer", label: t('index_tool_zeiterfassung' as any), route: "/time-tracking", color: "#FF5722" },
-              ].map((tool) => (
-                <Pressable
-                  key={tool.route}
-                  onPress={() => router.push(`${tool.route}?projectId=${protocol.projectId}` as any)}
-                  style={({ pressed }) => [styles.toolChip, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <MaterialIcons name={tool.icon as any} size={20} color={tool.color} />
-                  <Text style={[styles.toolChipText, { color: colors.foreground }]}>{tool.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {projPlans.slice(0, 1).map(({ plan, pins }) => (
-              <View key={plan.id} style={{ marginTop: 14 }}>
-                <Pressable onPress={() => setShowPlanPreview((v) => !v)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, opacity: pressed ? 0.7 : 1 }]}>
-                  <MaterialIcons name={showPlanPreview ? "expand-less" : "expand-more"} size={20} color={colors.muted} />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>{t('grundriss')}: {plan.name}{pins.length ? `  ·  ${pins.length}` : ""}</Text>
-                </Pressable>
-                {showPlanPreview && (
-                  <Pressable onPress={() => router.push(`/floor-plan?projectId=${protocol.projectId}` as any)} style={{ marginTop: 10 }}>
-                    <PlanWithPins plan={plan} pins={pins} width={SCREEN_WIDTH - 64} maxHeight={320} />
-                  </Pressable>
-                )}
-              </View>
-            ))}
-
-          </View>
-        )}
-
         {/* KI-Werkzeuge (collapsed by default to reduce clutter) */}
         <View style={styles.section}>
           <Pressable onPress={() => setShowAiTools((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: showAiTools ? 14 : 0 }}>
@@ -2832,6 +2789,53 @@ export default function ProtocolDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Werkzeuge & Projekt-Ergebnisse */}
+        {protocol?.projectId && (
+          <View style={styles.section}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <MaterialIcons name="build" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>{t('werkzeuge')}</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+              {[
+                { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
+                { icon: "checklist", label: t('nav_aufgaben' as any), route: "/tasks", color: "#5DADE2" },
+                { icon: "straighten", label: t('index_tool_messen' as any), route: "/measure", color: "#26A69A" },
+                { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
+                { icon: "photo-library", label: t('index_tool_fotos' as any), route: "/photo-gallery", color: "#EC407A" },
+                { icon: "fact-check", label: t('index_tool_checklisten' as any), route: "/checklists", color: "#AB47BC" },
+                { icon: "how-to-reg", label: t('anwesenheit' as any), route: "/attendance", color: "#00897B" },
+                { icon: "timer", label: t('index_tool_zeiterfassung' as any), route: "/time-tracking", color: "#FF5722" },
+              ].map((tool) => (
+                <Pressable
+                  key={tool.route}
+                  onPress={() => router.push(`${tool.route}?projectId=${protocol.projectId}` as any)}
+                  style={({ pressed }) => [styles.toolChip, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name={tool.icon as any} size={20} color={tool.color} />
+                  <Text style={[styles.toolChipText, { color: colors.foreground }]} numberOfLines={2}>{tool.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {projPlans.slice(0, 1).map(({ plan, pins }) => (
+              <View key={plan.id} style={{ marginTop: 14 }}>
+                <Pressable onPress={() => setShowPlanPreview((v) => !v)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, opacity: pressed ? 0.7 : 1 }]}>
+                  <MaterialIcons name={showPlanPreview ? "expand-less" : "expand-more"} size={20} color={colors.muted} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>{t('grundriss')}: {plan.name}{pins.length ? `  ·  ${pins.length}` : ""}</Text>
+                </Pressable>
+                {showPlanPreview && (
+                  <Pressable onPress={() => router.push(`/floor-plan?projectId=${protocol.projectId}` as any)} style={{ marginTop: 10 }}>
+                    <PlanWithPins plan={plan} pins={pins} width={SCREEN_WIDTH - 64} maxHeight={320} />
+                  </Pressable>
+                )}
+              </View>
+            ))}
+
+          </View>
+        )}
+
 
         {/* Transcription (toggled from the ••• header menu) */}
         {showTranscription && (
@@ -3826,13 +3830,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    width: 78,
-    paddingVertical: 12,
+    width: 82,
+    minHeight: 72,
+    paddingVertical: 10,
     paddingHorizontal: 6,
     borderWidth: 1,
     borderRadius: 12,
   },
-  toolChipText: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  toolChipText: { fontSize: 11, fontWeight: "600", textAlign: "center", lineHeight: 14 },
   embedRow: {
     flexDirection: "row",
     alignItems: "center",
