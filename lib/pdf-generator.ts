@@ -1323,30 +1323,34 @@ export function generatePdfHtml(
   ${kpiBandHtml}
 
   ${todos.length > 0 && layoutShowTodos ? `
-  <div style="margin-bottom: 20px;">
-    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
-      Aufgaben (${todos.filter(t => t.done).length}/${todos.length} erledigt)
-    </h3>
-    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-      <thead>
-        <tr style="background-color: #f8f8f8;">
-          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left; width: 30px;">✓</th>
-          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left;">Aufgabe</th>
-          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left; width: 100px;">Verantwortlich</th>
-          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: center; width: 70px;">Priorit\u00e4t</th>
-          <th style="padding: 8px; border: 1px solid #e0e0e0; text-align: left; width: 80px;">Frist</th>
-        </tr>
-      </thead>
+  <div class="section-block" style="margin: 24px 0;">
+    <h3 style="font-size:15px;font-weight:800;color:#1b2430;letter-spacing:-0.2px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #E6EBF1;">Mängel &amp; Aufgaben <span style="font-weight:600;color:#6B7A8D;font-size:11px;">(${todos.filter(t => t.done).length}/${todos.length} erledigt)</span></h3>
+    <table style="width:100%;border-collapse:collapse;font-size:10.5px;">
+      <thead><tr>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:34px;">Nr.</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;">Beschreibung</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:78px;">Status</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:72px;">Priorität</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;">Verantwortlich</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:82px;">Frist</th>
+      </tr></thead>
       <tbody>
-        ${todos.map(todo => `
-          <tr style="${todo.done ? 'opacity: 0.6;' : ''}">
-            <td style="padding: 8px; border: 1px solid #e0e0e0; text-align: center;">${todo.done ? '☑' : '☐'}</td>
-            <td style="padding: 8px; border: 1px solid #e0e0e0; ${todo.done ? 'text-decoration: line-through;' : ''}">${todo.task}</td>
-            <td style="padding: 8px; border: 1px solid #e0e0e0;">${todo.assignee}</td>
-            <td style="padding: 8px; border: 1px solid #e0e0e0; text-align: center; color: ${todo.priority === 'hoch' ? '#E53935' : todo.priority === 'mittel' ? '#FF9800' : '#666'};">${todo.priority}</td>
-            <td style="padding: 8px; border: 1px solid #e0e0e0;">${todo.deadline}</td>
-          </tr>
-        `).join('')}
+        ${todos.map((todo, i) => {
+          const tds = 'padding:9px 10px;border:1px solid #E6EBF1;color:#1b2430;vertical-align:middle;';
+          const st = todo.done ? { t: 'Erledigt', c: '#2F855A', b: '#E4F3EA' } : ((todo as any).status === 'in_arbeit' ? { t: 'In Arbeit', c: '#2B6CB0', b: '#E7F0FB' } : { t: 'Offen', c: '#D64545', b: '#FBE9E9' });
+          const pr = todo.priority === 'hoch' ? { t: 'Hoch', c: '#D64545', b: '#FBE9E9' } : todo.priority === 'mittel' ? { t: 'Mittel', c: '#B7791F', b: '#FBF0DD' } : { t: 'Niedrig', c: '#6B7A8D', b: '#EEF1F5' };
+          const pill = (x: { t: string; c: string; b: string }) => `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:800;background:${x.b};color:${x.c};">${x.t}</span>`;
+          const frist = (todo.deadline && String(todo.deadline).trim() && todo.deadline !== 'offen') ? String(todo.deadline) : '–';
+          const resp = (todo.assignee && todo.assignee !== 'Nicht zugewiesen') ? todo.assignee : '–';
+          return `<tr>
+            <td style="${tds}">${i + 1}</td>
+            <td style="${tds}">${escapeHtml(todo.task)}</td>
+            <td style="${tds}">${pill(st)}</td>
+            <td style="${tds}">${pill(pr)}</td>
+            <td style="${tds}">${escapeHtml(resp)}</td>
+            <td style="${tds}">${escapeHtml(frist)}</td>
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
   </div>
@@ -1552,7 +1556,20 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
           console.warn("[PDF-Gen] Logo conversion failed or timed out, skipping logo");
         }
       }
-      coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64);
+      // Cover KPIs + hero image from this protocol's own data.
+      const _todos = resolvedProtocol.todos || [];
+      const _open = _todos.filter((x: any) => !x.done).length;
+      const _photoN = photoDataUris.filter(Boolean).length;
+      const _durMin = Math.round((resolvedProtocol.duration || 0) / 60);
+      const kpiCards: any[] = [];
+      if (_todos.length > 0) {
+        kpiCards.push({ value: _open, label: "Offene Aufgaben", sub: _open > 0 ? `${_open} offen` : undefined, subWarn: _open > 0, color: _open > 0 ? "#B7791F" : "#2F855A", bg: _open > 0 ? "#FBF0DD" : "#E4F3EA", icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' });
+        kpiCards.push({ value: _todos.length - _open, label: "Erledigt", color: "#2F855A", bg: "#E4F3EA", icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' });
+      }
+      if (_photoN > 0) kpiCards.push({ value: _photoN, label: "Fotos", color: "#1E3A5F", bg: "#EEF1F5", icon: '<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/>' });
+      if (_durMin > 0) kpiCards.push({ value: `${_durMin} Min`, label: "Dauer", color: "#2B6CB0", bg: "#E7F0FB", icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' });
+      const heroDataUri = photoDataUris.find(Boolean) || null;
+      coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64, { kpiCards, heroDataUri });
     } catch (e) {
       console.warn("[PDF-Gen] Cover page generation failed:", e);
     }

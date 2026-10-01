@@ -274,47 +274,95 @@ export function generateCoverPage(
     protocolNumber?: string;
     location?: { address?: string | null; city?: string | null } | null;
   },
-  logoBase64?: string | null
+  logoBase64?: string | null,
+  extras?: {
+    kpiCards?: { value: string | number; label: string; sub?: string; subWarn?: boolean; color: string; bg: string; icon: string }[];
+    heroDataUri?: string | null;
+  }
 ): string {
-  const NAVY = "#0F2744";
-  const accentColor = branding.accentColor || protocol.projectColor || "#1E3A5F";
+  const NAVY = "#1E3A5F";
+  const INK = "#1b2430";
+  const MUTED = "#6B7A8D";
+  const accentColor = branding.accentColor || protocol.projectColor || NAVY;
   const date = new Date(protocol.createdAt);
-  const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
-  const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const dateLong = date.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const dateShort = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const title = protocol.templateName || "Protokoll";
+  const subtitle = protocol.projectName || "";
+  const slogan = (branding as any).companySlogan || "";
 
-  const rows: { label: string; value: string }[] = [
-    { label: "Datum", value: dateStr },
-    { label: "Uhrzeit", value: `${timeStr} Uhr` },
-  ];
-  if (protocol.location?.address) rows.push({ label: "Ort", value: `${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}` });
-  if (protocol.protocolNumber) rows.push({ label: "Protokoll-Nr.", value: String(protocol.protocolNumber) });
-  if (branding.companyName) rows.push({ label: "Erstellt von", value: branding.companyName });
+  // SVG icon helper (stroked, navy).
+  const ic = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="${NAVY}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex:0 0 auto;">${d}</svg>`;
+  const ICONS = {
+    project: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>',
+    report: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+    date: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    pin: '<path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+  };
 
-  const rowsHtml = rows
-    .map((r, i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:11px 16px; ${i < rows.length - 1 ? "border-bottom:1px solid #eef1f5;" : ""}"><span style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#64748b; font-weight:700;">${r.label}</span><span style="font-size:13px; color:#1f2937; font-weight:600; text-align:right;">${r.value}</span></div>`)
+  const meta: { icon: string; k: string; v: string }[] = [];
+  if (subtitle) meta.push({ icon: ICONS.project, k: "Projekt", v: subtitle });
+  meta.push({ icon: ICONS.report, k: "Berichtstyp", v: title });
+  meta.push({ icon: ICONS.date, k: "Datum", v: dateLong });
+  if (protocol.location?.address) meta.push({ icon: ICONS.pin, k: "Adresse", v: `${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}` });
+  if (branding.companyName) meta.push({ icon: ICONS.user, k: "Erstellt durch", v: branding.companyName });
+  const metaHtml = meta
+    .map((m) => `<div style="display:flex;align-items:center;gap:9px;">${ic(m.icon)}<span style="font-size:11px;color:${MUTED};font-weight:600;">${m.k}</span></div><div style="font-size:11.5px;color:${INK};font-weight:700;">${m.v}</div>`)
     .join("");
 
-  const footer = branding.footerText
-    ? applyBrandingVariables(branding.footerText, { projekt: protocol.projectName, firma: branding.companyName, datum: dateStr, dokumenttyp: protocol.templateName })
-    : "Erstellt mit BuildKI";
+  const companyHtml = (branding.companyName || branding.companyAddress || branding.companyPhone || branding.companyEmail)
+    ? `<div style="font-size:9px;color:${MUTED};text-align:right;line-height:1.55;">${[
+        branding.companyName ? `<b style="color:${INK};font-size:9.5px;">${branding.companyName}</b>` : "",
+        branding.companyAddress || "",
+        branding.companyPhone ? `Tel: ${branding.companyPhone}` : "",
+        branding.companyEmail || "",
+      ].filter(Boolean).join("<br>")}</div>`
+    : "";
+
+  const brandHtml = `<div style="display:flex;align-items:center;gap:9px;">${
+    logoBase64
+      ? `<img src="${logoBase64}" style="max-height:34px;max-width:150px;object-fit:contain;" />`
+      : `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg><div><div style="font-size:19px;font-weight:800;color:${NAVY};letter-spacing:-.2px;">${branding.companyName || "BuildKI"}</div>${slogan ? `<div style="font-size:8.5px;color:${MUTED};font-weight:600;">${slogan}</div>` : ""}</div>`
+  }</div>`;
+
+  const kpiCards = extras?.kpiCards || [];
+  const statsHtml = kpiCards.length > 0
+    ? `<div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">${kpiCards.map((c) => `
+      <div style="border:1px solid #E6EBF1;border-radius:12px;padding:14px 16px;display:flex;gap:13px;align-items:flex-start;">
+        <div style="width:34px;height:34px;border-radius:9px;background:${c.bg};display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg viewBox="0 0 24 24" fill="none" stroke="${c.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">${c.icon}</svg></div>
+        <div><div style="font-size:24px;font-weight:800;color:${INK};line-height:1;">${c.value}</div><div style="font-size:11px;font-weight:700;color:${INK};margin-top:3px;">${c.label}</div>${c.sub ? `<div style="font-size:9.5px;color:${c.subWarn ? "#D64545" : MUTED};margin-top:2px;font-weight:${c.subWarn ? 600 : 400};">${c.sub}</div>` : ""}</div>
+      </div>`).join("")}</div>`
+    : "";
+
+  const heroHtml = extras?.heroDataUri
+    ? `<img src="${extras.heroDataUri}" style="margin-top:22px;width:100%;height:150px;border-radius:12px;object-fit:cover;display:block;" />`
+    : "";
 
   return `
-  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
-    <div style="display:flex; align-items:center; gap:14px; background:${NAVY}; color:#ffffff; padding:16px 22px; border-radius:10px;">
-      ${logoBase64 ? `<img src="${logoBase64}" style="max-height:36px; max-width:150px; object-fit:contain;" />` : ""}
-      ${branding.companyName ? `<div style="font-size:16px; font-weight:800; letter-spacing:0.2px;">${branding.companyName}</div>` : ""}
+  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:${INK}; position:relative; min-height:960px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      ${brandHtml}
+      ${companyHtml}
     </div>
 
-    <div style="padding:52px 6px 0;">
-      <div style="font-size:13px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:1.4px;">${protocol.templateName || "Protokoll"}</div>
-      <div style="font-size:36px; font-weight:800; color:${NAVY}; letter-spacing:-0.8px; line-height:1.1; margin-top:8px;">${protocol.projectName || protocol.templateName || "Protokoll"}</div>
-      <div style="width:64px; height:4px; border-radius:2px; background:${accentColor}; margin:18px 0 0;"></div>
+    <div style="margin-top:34px;">
+      <div style="font-size:40px;font-weight:800;color:${INK};letter-spacing:-1px;line-height:1.05;">${title}</div>
+      ${subtitle ? `<div style="font-size:25px;font-weight:600;color:${NAVY};margin-top:2px;letter-spacing:-.4px;">${subtitle}</div>` : ""}
+      <div style="width:54px;height:4px;background:${accentColor};border-radius:2px;margin:16px 0 10px;"></div>
+      ${slogan ? `<div style="font-size:12px;color:${MUTED};font-weight:500;">${slogan}</div>` : ""}
+    </div>
 
-      <div style="margin-top:44px; background:#f8fafc; border:1px solid #e8ecf1; border-radius:12px; overflow:hidden;">
-        ${rowsHtml}
-      </div>
+    <div style="margin-top:20px;display:grid;grid-template-columns:auto 1fr;gap:9px 12px;align-items:center;">
+      ${metaHtml}
+    </div>
 
-      <div style="margin-top:28px; font-size:10px; color:#94a3b8;">${footer}</div>
+    ${heroHtml}
+    ${statsHtml}
+
+    <div style="position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #E6EBF1;padding-top:8px;font-size:8.5px;color:${MUTED};">
+      <div><b style="color:${INK};">${subtitle || title}</b><br>${title} | ${dateShort}</div>
+      <div style="text-align:right;">${branding.companyWebsite || ""}</div>
     </div>
   </div>`;
 }
