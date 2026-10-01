@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
@@ -31,15 +31,60 @@ export default function BegehungReviewScreen() {
   const router = useRouter();
   const { protocolId } = useLocalSearchParams<{ protocolId: string }>();
   const [protocol, setProtocol] = useState<Protocol | null>(null);
+  const [defects, setDefects] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     try {
       const all = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
-      setProtocol(all.find((p: Protocol) => p.id === protocolId) || null);
+      const p = all.find((x: Protocol) => x.id === protocolId) || null;
+      setProtocol(p);
+      if (p?.projectId) {
+        const { getDefects } = await import("@/lib/defect-store");
+        setDefects(await getDefects(p.projectId));
+      } else setDefects([]);
     } catch {}
   }, [protocolId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Edit the extracted Aufgaben/Mängel right here, before the report goes out.
+  const toggleTodo = async (index: number) => {
+    try {
+      const all = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = all.findIndex((x: any) => x.id === protocolId);
+      if (idx !== -1 && all[idx].todos?.[index]) {
+        all[idx].todos[index].done = !all[idx].todos[index].done;
+        await AsyncStorage.setItem("protocols", JSON.stringify(all));
+        load();
+      }
+    } catch {}
+  };
+
+  const editTodo = (index: number, current: string) => {
+    if (!(Alert as any).prompt) return;
+    (Alert as any).prompt(t("tasks_edit" as any), undefined, async (val?: string) => {
+      const v = (val || "").trim();
+      if (!v) return;
+      try {
+        const all = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+        const idx = all.findIndex((x: any) => x.id === protocolId);
+        if (idx !== -1 && all[idx].todos?.[index]) {
+          all[idx].todos[index].task = v;
+          await AsyncStorage.setItem("protocols", JSON.stringify(all));
+          load();
+        }
+      } catch {}
+    }, "plain-text", current);
+  };
+
+  const toggleDefect = async (d: any) => {
+    try {
+      const { updateDefectStatus } = await import("@/lib/defect-store");
+      const done = d.status === "erledigt" || d.status === "geschlossen";
+      await updateDefectStatus(d.id, done ? "offen" : "erledigt");
+      load();
+    } catch {}
+  };
 
   const rooms = (protocol?.markers || [])
     .filter((m) => typeof m?.label === "string" && m.label.startsWith("KAPITEL:"))
@@ -116,6 +161,63 @@ export default function BegehungReviewScreen() {
           )}
         </View>
 
+        {/* Aufgaben — editable before the report goes out */}
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>{t("nav_aufgaben" as any)}</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {(protocol?.todos || []).length === 0 ? (
+            <Text style={[styles.emptyRow, { color: colors.muted }]}>{t("review_tasks_none" as any)}</Text>
+          ) : (
+            (protocol?.todos || []).map((todo: any, i: number) => {
+              const title = todo?.task || todo?.title || todo?.text || "";
+              const done = !!todo?.done;
+              return (
+                <View key={`todo-${i}`} style={[styles.editRow, { borderTopColor: colors.border, borderTopWidth: i === 0 ? 0 : 1 }]}>
+                  <Pressable onPress={() => toggleTodo(i)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name={done ? "check-box" : "check-box-outline-blank"} size={22} color={done ? "#5E8B6F" : colors.muted} />
+                  </Pressable>
+                  <Pressable onPress={() => editTodo(i, title)} style={{ flex: 1 }}>
+                    <Text style={[styles.editLabel, { color: colors.foreground, textDecorationLine: done ? "line-through" : "none", opacity: done ? 0.6 : 1 }]}>{title}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => editTodo(i, title)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="edit" size={18} color={colors.muted} />
+                  </Pressable>
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        {/* Mängel — tap to toggle done, open full list to edit details */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.muted, marginBottom: 0 }]}>{t("review_defects" as any)}</Text>
+          <Pressable onPress={() => router.push("/defects" as any)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, flexDirection: "row", alignItems: "center", gap: 4 }]}>
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>{t("review_edit_all" as any)}</Text>
+            <MaterialIcons name="chevron-right" size={18} color={colors.primary} />
+          </Pressable>
+        </View>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {defects.length === 0 ? (
+            <Text style={[styles.emptyRow, { color: colors.muted }]}>{t("review_defects_none" as any)}</Text>
+          ) : (
+            defects.map((d: any, i: number) => {
+              const done = d?.status === "erledigt" || d?.status === "geschlossen";
+              const loc = [d?.floor, d?.room].filter(Boolean).join(" · ");
+              return (
+                <View key={d?.id || `def-${i}`} style={[styles.editRow, { borderTopColor: colors.border, borderTopWidth: i === 0 ? 0 : 1 }]}>
+                  <Pressable onPress={() => toggleDefect(d)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name={done ? "check-circle" : "radio-button-unchecked"} size={22} color={done ? "#5E8B6F" : "#E67E22"} />
+                  </Pressable>
+                  <Pressable onPress={() => router.push(`/defects?defectId=${d?.id}` as any)} style={{ flex: 1 }}>
+                    <Text style={[styles.editLabel, { color: colors.foreground, opacity: done ? 0.6 : 1 }]} numberOfLines={2}>{d?.title || d?.description || "–"}</Text>
+                    {loc ? <Text style={[styles.editSub, { color: colors.muted }]}>{loc}</Text> : null}
+                  </Pressable>
+                  <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+                </View>
+              );
+            })
+          )}
+        </View>
+
         {/* CTAs */}
         <Pressable
           onPress={() => router.replace(`/protocol-detail?id=${protocolId}` as any)}
@@ -145,6 +247,10 @@ const styles = StyleSheet.create({
   roomRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
   roomNum: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   roomLabel: { fontSize: 15, fontWeight: "600", flex: 1 },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  editRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  editLabel: { fontSize: 15, fontWeight: "500" },
+  editSub: { fontSize: 12, marginTop: 2 },
   primaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 15 },
   primaryBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
   secondaryBtn: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderRadius: 12, paddingVertical: 13, marginTop: 10 },
