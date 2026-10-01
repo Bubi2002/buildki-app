@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
@@ -116,6 +117,50 @@ export function DateOnlyPicker({
     }
     chooseDate(parsed);
   };
+
+  // ── iOS: native Apple-style compact date/time picker ──────────────────────
+  if (Platform.OS === "ios") {
+    const minDate = parseDateOnly(minimumDate) || undefined;
+    const fmt = (d: Date) =>
+      withTime ? `${toDateOnlyValue(d)}T${pad2(d.getHours())}:${pad2(d.getMinutes())}` : toDateOnlyValue(d);
+    const asDate = dPart ? new Date(`${dPart}T${withTime ? effectiveTime : "12:00"}:00`) : null;
+    return (
+      <View testID={testID} style={styles.wrapper}>
+        <Text style={[styles.label, { color: colors.muted }]}>{displayLabel}</Text>
+        {asDate ? (
+          <View style={styles.iosRow}>
+            <DateTimePicker
+              value={asDate}
+              mode={withTime ? "datetime" : "date"}
+              display="compact"
+              minimumDate={minDate}
+              themeVariant="dark"
+              accentColor={colors.primary}
+              onChange={(_e, d) => { if (d) onChange(fmt(d)); }}
+            />
+            {allowClear ? (
+              <Pressable
+                onPress={() => onChange("")}
+                hitSlop={8}
+                style={({ pressed }) => [styles.iosClear, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
+              >
+                <MaterialIcons name="event-busy" size={16} color={colors.muted} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => { const base = parseDateOnly(minimumDate) || new Date(); base.setHours(8, 0, 0, 0); onChange(fmt(base)); }}
+            style={({ pressed }) => [styles.trigger, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.75 }]}
+          >
+            <MaterialIcons name="calendar-month" size={20} color={colors.muted} />
+            <Text style={[styles.triggerText, { color: colors.muted }]}>{t('date_only_picker_datum_waehlen' as any)}</Text>
+            <MaterialIcons name="add" size={20} color={colors.primary} />
+          </Pressable>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View testID={testID} style={styles.wrapper}>
@@ -246,6 +291,8 @@ export function DateOnlyPicker({
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: 16 },
+  iosRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  iosClear: { width: 36, height: 36, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   label: { fontSize: 12, fontWeight: "700", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
   trigger: { minHeight: 48, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14 },
   triggerText: { flex: 1, fontSize: 14, fontWeight: "600" },

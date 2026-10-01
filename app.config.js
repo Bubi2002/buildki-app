@@ -3,7 +3,7 @@ const config = {
   name: "BuildKI",
   slug: "protokoll-app",
   owner: "iserlohs-team",
-  version: "1.12.36",
+  version: "1.12.37",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "manus20250614001800",
@@ -135,6 +135,7 @@ const config = {
     favicon: "./assets/images/favicon.png",
   },
   plugins: [
+    "@react-native-community/datetimepicker",
     "expo-asset",
     "expo-font",
     "expo-image",
