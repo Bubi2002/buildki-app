@@ -2447,8 +2447,8 @@ export default function ProtocolDetailScreen() {
                 </View>
               )}
               <Modal visible={tableEdit !== null} transparent animationType="slide" onRequestClose={() => setTableEdit(null)}>
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
-                  <View style={{ backgroundColor: colors.surface, maxHeight: "88%", borderTopLeftRadius: 14, borderTopRightRadius: 14, padding: 16 }}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center" }}>
+                  <View style={{ backgroundColor: colors.surface, maxHeight: "88%", borderRadius: 14, padding: 16 }}>
                     <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Tabelle bearbeiten</Text>
                     <ScrollView style={{ maxHeight: "82%" }}>
                       {tableEdit?.rows.map((row, rIdx) => (
@@ -3287,8 +3287,8 @@ export default function ProtocolDetailScreen() {
 
         {/* Regenerate Template Modal */}
         <Modal visible={showRegenerateModal} animationType="slide" transparent onRequestClose={() => setShowRegenerateModal(false)}>
-          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
-            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: "80%" }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center" }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 24, padding: 20, maxHeight: "80%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <Text style={{ fontSize: 20, fontWeight: "800", color: colors.foreground }}>{t('kiausgabeformat_waehlen')}</Text>
                 <Pressable onPress={() => setShowRegenerateModal(false)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.5 : 1 }]}>
@@ -3383,8 +3383,8 @@ export default function ProtocolDetailScreen() {
     
         {/* Email Action Items Modal */}
         <Modal visible={showEmailModal} animationType="slide" transparent>
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "60%" }}>
+          <View style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 20, padding: 20, maxHeight: "60%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('aufgaben_per_email_senden')}</Text>
                 <Pressable onPress={() => setShowEmailModal(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
@@ -3555,8 +3555,8 @@ export default function ProtocolDetailScreen() {
 
         {/* PDF Recipient Picker Modal */}
         <Modal visible={showPdfRecipientPicker} animationType="slide" transparent onRequestClose={() => setShowPdfRecipientPicker(false)}>
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "70%" }}>
+          <View style={{ flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 20, padding: 20, maxHeight: "70%" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground }}>{t('empfu00e4nger_wu00e4hlen')}</Text>
                 <Pressable onPress={() => setShowPdfRecipientPicker(false)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>

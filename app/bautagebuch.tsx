@@ -545,8 +545,8 @@ export default function BautagebuchScreen() {
 
         {/* Export details as a small modal (opened from the PDF button), not inline on the page */}
         <Modal visible={showExportModal} transparent animationType="slide" onRequestClose={() => setShowExportModal(false)}>
-          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
-            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 16, maxHeight: "88%" }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 18, padding: 16, maxHeight: "88%" }}>
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
                 <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: colors.foreground }}>{t('bautagebuch_export_details_title' as any)}</Text>
                 <TouchableOpacity onPress={() => setShowExportModal(false)} style={{ padding: 6 }}>

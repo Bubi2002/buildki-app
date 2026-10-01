@@ -836,8 +836,8 @@ export default function RoomsScreen() {
 }
 
 const styles = StyleSheet.create({
-  detailOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  detailSheet: { backgroundColor: "#0F1E30", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "85%" },
+  detailOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center" },
+  detailSheet: { backgroundColor: "#0F1E30", borderRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "85%" },
   detailTitle: { fontSize: 20, fontWeight: "800", color: "#F0F4F8" },
   detailSubtitle: { fontSize: 13, color: "#8FA3B8", marginTop: 2 },
   detailLabel: { fontSize: 12, fontWeight: "700", color: "#5F7590", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },

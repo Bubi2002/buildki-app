@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
   modalKeyboardAvoider: {
     width: "100%",
@@ -703,8 +703,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "#0F1E30",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 24,
     paddingBottom: 40,
     maxHeight: "90%",

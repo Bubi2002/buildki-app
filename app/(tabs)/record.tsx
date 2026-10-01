@@ -3473,11 +3473,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
   templateSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 40,
@@ -3498,14 +3497,13 @@ const styles = StyleSheet.create({
   templateModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
   templateModalDismiss: {
     flex: 1,
   },
   templateModalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 40,

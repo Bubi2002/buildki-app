@@ -255,6 +255,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "700" },
   versionCard: { borderWidth: 1, borderRadius: 0, padding: 14, marginBottom: 10 },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 0, borderWidth: 1 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "80%" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center" },
+  modalContent: { borderRadius: 20, padding: 24, paddingBottom: 40, maxHeight: "80%" },
 });

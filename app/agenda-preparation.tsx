@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
   cancelBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 0, borderWidth: 1 },
   confirmBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 0 },
-  savedModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 0.5, maxHeight: "80%", position: "absolute", bottom: 0, left: 0, right: 0 },
+  savedModal: { borderRadius: 20, borderWidth: 0.5, maxHeight: "80%", position: "absolute", bottom: 0, left: 0, right: 0 },
   savedHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 0.5, borderBottomColor: "#e5e7eb" },
   savedCard: { flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 0.5, gap: 12 },
   savedInfo: { flex: 1 },

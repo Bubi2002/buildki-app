@@ -1086,7 +1086,7 @@ export default function FloorPlanScreen() {
       <Modal visible={showPinModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}>
           <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "flex-end" }}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "center" }}>
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={styles.modalHandle} />
@@ -1371,7 +1371,7 @@ export default function FloorPlanScreen() {
       >
         <TouchableWithoutFeedback onPress={cancelPinEdit}>
           <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "flex-end" }}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "center" }}>
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
                   <View style={styles.modalHandle} />
@@ -1525,8 +1525,8 @@ export default function FloorPlanScreen() {
 
       {/* Plan picker (used when there are many plans) */}
       <Modal visible={showPlanPicker} transparent animationType="slide" onRequestClose={() => setShowPlanPicker(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }} onPress={() => setShowPlanPicker(false)}>
-          <Pressable style={{ backgroundColor: colors.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingBottom: 24, maxHeight: "80%" }} onPress={() => {}}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" }} onPress={() => setShowPlanPicker(false)}>
+          <Pressable style={{ backgroundColor: colors.background, borderRadius: 18, paddingBottom: 24, maxHeight: "80%" }} onPress={() => {}}>
             <View style={{ flexDirection: "row", alignItems: "center", padding: 16 }}>
               <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: colors.foreground }}>{t('floor_plan_plan_waehlen' as any)}</Text>
               <Pressable onPress={() => setShowPlanPicker(false)} style={{ padding: 6 }}>
@@ -1806,10 +1806,9 @@ const styles = StyleSheet.create({
     borderRadius: 0,
   },
   uploadBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" },
   modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     padding: 24,
     paddingBottom: 40,
   },
@@ -1850,8 +1849,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   detailModalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     padding: 24,
     paddingBottom: 40,
   },

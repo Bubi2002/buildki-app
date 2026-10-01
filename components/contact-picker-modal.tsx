@@ -76,8 +76,8 @@ export function ContactPickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
-        <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: "85%", paddingBottom: 16 }}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" }}>
+        <View style={{ backgroundColor: colors.background, borderRadius: 18, maxHeight: "85%", paddingBottom: 16 }}>
           {/* Header */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: 16, gap: 8 }}>
             <MaterialIcons name="contacts" size={20} color={colors.primary} />
