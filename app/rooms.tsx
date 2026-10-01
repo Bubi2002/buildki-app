@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
@@ -168,6 +169,37 @@ export default function RoomsScreen() {
     roomDefects(room).filter((d) => !!(d as any).followUpDate && d.status !== "erledigt" && d.status !== "geschlossen");
   const roomTasks = (room: Room) =>
     projectTasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && tk.status !== "erledigt" && tk.done !== true);
+  // Photos linked to the room — currently from the room's defects.
+  const roomPhotos = (room: Room) =>
+    roomDefects(room).flatMap((d) => (d.photos || [])).filter(Boolean).slice(0, 12);
+
+  const renameRoom = (room: Room) => {
+    if (!(Alert as any).prompt) return;
+    (Alert as any).prompt(
+      t('rooms_rename_title' as any),
+      undefined,
+      async (val?: string) => {
+        const name = (val || "").trim();
+        if (!name) return;
+        await updateRoom(projectId, room.id, { name });
+        setSelectedRoom((prev) => (prev ? { ...prev, name } : prev));
+        loadData();
+      },
+      "plain-text",
+      room.name,
+    );
+  };
+
+  const removeRoom = (room: Room) => {
+    Alert.alert(
+      t('rooms_rename_title' as any),
+      `"${room.name}" ${t('rooms_delete_room_q' as any)}`,
+      [
+        { text: t('cancel'), style: "cancel" },
+        { text: t('btn_loeschen'), style: "destructive", onPress: async () => { await deleteRoom(projectId, room.id); setSelectedRoom(null); loadData(); } },
+      ],
+    );
+  };
 
   const createRoomTask = async () => {
     const room = taskRoom;
@@ -589,6 +621,12 @@ export default function RoomsScreen() {
                       <Text style={styles.detailTitle}>{selectedRoom.name}</Text>
                       <Text style={styles.detailSubtitle}>{localizeFloorName(t, floorName)}{selectedRoom.trade ? ` · ${selectedRoom.trade}` : ""}</Text>
                     </View>
+                    <Pressable onPress={() => renameRoom(selectedRoom)} hitSlop={8} style={{ padding: 6 }}>
+                      <MaterialIcons name="edit" size={22} color="#5DADE2" />
+                    </Pressable>
+                    <Pressable onPress={() => removeRoom(selectedRoom)} hitSlop={8} style={{ padding: 6 }}>
+                      <MaterialIcons name="delete-outline" size={22} color="#E57373" />
+                    </Pressable>
                     <Pressable onPress={() => setSelectedRoom(null)} hitSlop={8} style={styles.roomDetailClose}>
                       <MaterialIcons name="close" size={26} color="#8FA3B8" />
                     </Pressable>
@@ -609,6 +647,21 @@ export default function RoomsScreen() {
                       );
                     })}
                   </View>
+
+                  {/* Fotos (aus den Mängeln dieses Raums) */}
+                  {(() => {
+                    const ph = roomPhotos(selectedRoom);
+                    return ph.length > 0 ? (
+                      <View style={{ marginBottom: 18 }}>
+                        <Text style={styles.detailLabel}>{t('gallery_photos')} ({ph.length})</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
+                          {ph.map((uri, i) => (
+                            <Image key={i} source={{ uri }} style={{ width: 96, height: 96, borderRadius: 8 }} contentFit="cover" />
+                          ))}
+                        </ScrollView>
+                      </View>
+                    ) : null;
+                  })()}
 
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <Text style={styles.detailLabel}>{t('maengel')} ({rd.length})</Text>
