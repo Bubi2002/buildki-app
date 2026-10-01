@@ -10,7 +10,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import type { PdfBranding } from "./pdf-branding-store";
 
-const NAVY = "#0F2744";
+const NAVY = "#1E3A5F";
 
 /**
  * The branding logo is stored as a local file URI, which expo-print's WebView
@@ -116,9 +116,18 @@ export function buildPremiumHtml(opts: {
   logoDataUri?: string;
 }): string {
   const { branding, accentColor, title, subtitle, reportTag, info, body, extraCss, logoDataUri } = opts;
-  const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : "";
+  const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
+  const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : houseSvg;
   const coName = escHtml(branding.companyName || "BuildKI");
   const coSub = escHtml(reportTag || branding.headerText || "Baudokumentation");
+  const companyBlock = (branding.companyName || branding.companyAddress || branding.companyPhone || branding.companyEmail)
+    ? `<div class="company">${[
+        branding.companyName ? `<b>${escHtml(branding.companyName)}</b>` : "",
+        escHtml(branding.companyAddress || ""),
+        branding.companyPhone ? `Tel: ${escHtml(branding.companyPhone)}` : "",
+        escHtml(branding.companyEmail || ""),
+      ].filter(Boolean).join("<br>")}</div>`
+    : "";
   const footerLeft = escCss(opts.footerLeft || branding.footerText || "BuildKI");
   const pageBox = branding.showPageNumbers
     ? `@bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
@@ -141,12 +150,15 @@ export function buildPremiumHtml(opts: {
   @page { margin: 12mm 0 15mm 0; ${pageBox} @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 14mm; } }
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
-  .band { background: ${NAVY}; color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 16px; }
-  .band img { height: 40px; width: auto; object-fit: contain; }
-  .band .co { font-size: 17px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.2; }
-  .band .co small { display: block; font-size: 9px; font-weight: 600; color: #8FB0CF; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 3px; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 28px 14px; border-bottom: 1px solid #E6EBF1; }
+  .topbar .brand { display: flex; align-items: center; gap: 10px; }
+  .topbar .brand img { height: 32px; width: auto; object-fit: contain; }
+  .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -0.2px; line-height: 1.15; }
+  .topbar .brand .co small { display: block; font-size: 8.5px; font-weight: 600; color: #6B7A8D; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .topbar .company { font-size: 9px; color: #6B7A8D; text-align: right; line-height: 1.55; }
+  .topbar .company b { color: #1b2430; font-size: 9.5px; }
   .wrap { padding: 24px 28px 12px; }
-  .title { font-size: 28px; font-weight: 800; color: ${NAVY}; margin: 0; letter-spacing: 0.4px; }
+  .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 0; letter-spacing: -0.6px; }
   .title-rule { height: 3px; background: ${accentColor}; margin: 10px 0 0; border-radius: 2px; }
   .subtitle { font-size: 12px; color: #64748b; margin: 12px 0 0; }
   .infogrid { display: flex; margin: 18px 0 2px; border: 1px solid #e8ecf1; border-radius: 10px; overflow: hidden; }
@@ -185,7 +197,10 @@ export function buildPremiumHtml(opts: {
 </style>
 </head>
 <body>
-  <div class="band">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
+  <div class="topbar">
+    <div class="brand">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
+    ${companyBlock}
+  </div>
   <div class="wrap">
     <h1 class="title">${escHtml(title)}</h1>
     <div class="title-rule"></div>
