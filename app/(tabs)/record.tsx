@@ -265,6 +265,26 @@ export default function RecordScreen() {
     })();
   }, [routeProjectId]);
 
+  // The camera is now the Begehung tab (stays mounted), so re-sync to the
+  // project selected on the Projekte tab whenever this tab regains focus —
+  // but never while a recording is running.
+  useFocusEffect(
+    useCallback(() => {
+      if (isRecording || isProcessing) return;
+      (async () => {
+        try {
+          const lastId = await AsyncStorage.getItem("last-selected-project-id");
+          if (lastId && lastId !== selectedProject?.id) {
+            const projectsData = await AsyncStorage.getItem("projects");
+            const all: ProjectItem[] = JSON.parse(projectsData || "[]");
+            const proj = all.find((p) => p.id === lastId);
+            if (proj) { setSelectedProject(proj as any); setShowProjectPicker(false); }
+          }
+        } catch {}
+      })();
+    }, [isRecording, isProcessing, selectedProject?.id])
+  );
+
   // Handle Quick Action only after a valid project context was restored.
   useEffect(() => {
     if (!quickAction || !projectsLoaded || quickActionHandledRef.current) return;

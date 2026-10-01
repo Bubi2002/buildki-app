@@ -41,7 +41,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="begehung"
+        name="record"
         options={{
           title: t("nav_begehung" as any),
           tabBarIcon: ({ color }) => <IconSymbol size={32} name="camera.fill" color={color} />,
@@ -63,7 +63,7 @@ export default function TabLayout() {
       />
 
       {/* ── Still routable, but no longer their own bottom-bar tab ── */}
-      <Tabs.Screen name="record" options={{ href: null }} />
+      <Tabs.Screen name="begehung" options={{ href: null }} />
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="start" options={{ href: null }} />
       <Tabs.Screen name="protocols" options={{ href: null }} />
