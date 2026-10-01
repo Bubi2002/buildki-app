@@ -1367,8 +1367,11 @@ export default function RecordScreen() {
     }
 
     startAudioRecording();
-    // Right at the start of every Begehung, ask which Geschoss + Raum.
-    setTimeout(() => startChapterMarker(), 700);
+    // Ask which Geschoss + Raum at the start — unless the user already set one
+    // with the "Neuer Raum" button before starting.
+    setTimeout(() => {
+      if (!markers.some((m) => m.label.startsWith("KAPITEL:"))) startChapterMarker();
+    }, 700);
   };
 
   function startRecording() {
@@ -2757,8 +2760,22 @@ export default function RecordScreen() {
                 )}
               </Pressable>
             ) : (
-              // Spacer keeps the Start button centred (Import button removed).
-              <View style={styles.actionButtonLarge} pointerEvents="none" />
+              // Pre-recording: set the (first) room before you start.
+              <Pressable
+                onPress={startChapterMarker}
+                style={({ pressed }) => [
+                  styles.actionButtonLarge,
+                  { backgroundColor: "#FF9800", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                ]}
+              >
+                <MaterialIcons name="meeting-room" size={32} color="#FFFFFF" />
+                <Text style={styles.actionButtonLabel}>{t('neuer_raum')}</Text>
+                {markers.filter((m) => m.label.startsWith("KAPITEL:")).length > 0 && (
+                  <View style={[styles.photoBadge, { backgroundColor: "#E53935" }]}>
+                    <Text style={styles.photoBadgeText}>{markers.filter((m) => m.label.startsWith("KAPITEL:")).length}</Text>
+                  </View>
+                )}
+              </Pressable>
             )}
           </View>
 
