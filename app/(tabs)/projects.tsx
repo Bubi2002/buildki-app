@@ -50,6 +50,16 @@ export default function RundgangTab() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
+  const [begehungCount, setBegehungCount] = useState(0);
+  const [lastBegehung, setLastBegehung] = useState<string | null>(null);
+
+  // Start a Begehung: make sure this project is active, then open the camera tab.
+  const startBegehung = async () => {
+    if (!selectedProjectId) { setShowProjectDropdown(true); return; }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { await AsyncStorage.setItem("last-selected-project-id", selectedProjectId); } catch {}
+    router.push("/record" as any);
+  };
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -112,6 +122,14 @@ export default function RundgangTab() {
       setChecklistResults(allResults);
       const allTasks: ProjectTask[] = tasksRaw ? JSON.parse(tasksRaw) : [];
       setTasks(allTasks.filter((tk) => !tk.projectId || tk.projectId === pid));
+      // Begehungen (protocols) of this project, for the home card.
+      try {
+        const protos = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+        const mine = protos.filter((p: any) => p.projectId === pid);
+        setBegehungCount(mine.length);
+        const last = mine.map((p: any) => p.createdAt).filter(Boolean).sort().slice(-1)[0] || null;
+        setLastBegehung(last);
+      } catch { setBegehungCount(0); setLastBegehung(null); }
     } catch {}
   }, []);
 
@@ -425,27 +443,40 @@ export default function RundgangTab() {
         </View>
       ) : (
         <>
-          {/* Project selector — searchable dropdown (scales to many projects) */}
-          <View style={styles.pickerWrap}>
-            <Text style={styles.pickerLabel}>{t("rundgang_pick_project" as any)}</Text>
-            <Pressable
-              onPress={() => { setProjectSearch(""); setShowProjectDropdown(true); }}
-              style={styles.projectSelect}
-            >
-              <View style={[styles.chipDot, { backgroundColor: projects.find((p) => p.id === selectedProjectId)?.color || "#5DADE2" }]} />
-              <Text style={styles.projectSelectText} numberOfLines={1}>
+          {/* Prominent Baustelle card — the clear starting point */}
+          <View style={styles.baustelleCard}>
+            <Pressable onPress={() => { setProjectSearch(""); setShowProjectDropdown(true); }} style={styles.baustelleHead}>
+              <View style={[styles.baustelleDot, { backgroundColor: projects.find((p) => p.id === selectedProjectId)?.color || "#5DADE2" }]} />
+              <Text style={styles.baustelleName} numberOfLines={1}>
                 {projects.find((p) => p.id === selectedProjectId)?.name || t("rundgang_pick_project" as any)}
               </Text>
-              <MaterialIcons name="expand-more" size={22} color="#8FA3B8" />
+              <MaterialIcons name="unfold-more" size={22} color="#8FA3B8" />
+            </Pressable>
+
+            {totalRooms > 0 && (
+              <>
+                <View style={[styles.progressTrack, { marginHorizontal: 0, marginTop: 4 }]}>
+                  <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                </View>
+                <Text style={styles.baustelleMeta}>{doneText}</Text>
+              </>
+            )}
+
+            {/* Begehung starten */}
+            <Pressable onPress={startBegehung} style={({ pressed }) => [styles.startBegehungBtn, { opacity: pressed ? 0.9 : 1 }]}>
+              <MaterialIcons name="videocam" size={22} color="#FFFFFF" />
+              <Text style={styles.startBegehungText}>{t("rundgang_start_begehung" as any)}</Text>
+            </Pressable>
+
+            {/* Letzte Begehungen */}
+            <Pressable onPress={() => router.push(`/project-detail?id=${selectedProjectId}` as any)} style={styles.baustelleRecent}>
+              <MaterialIcons name="history" size={16} color="#8FA3B8" />
+              <Text style={styles.baustelleRecentText} numberOfLines={1}>
+                {begehungCount} {t("nav_begehung" as any)}{lastBegehung ? ` · ${new Date(lastBegehung).toLocaleDateString("de-DE")}` : ""}
+              </Text>
+              <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
             </Pressable>
           </View>
-
-          {/* Progress bar */}
-          {totalRooms > 0 && (
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
-            </View>
-          )}
 
           {selectedProjectId && (
             <Pressable
@@ -867,6 +898,15 @@ const styles = StyleSheet.create({
     borderColor: "#166534",
   },
   doneBadgeText: { color: "#8FE3BE", fontSize: 12, fontWeight: "700" },
+  baustelleCard: { marginHorizontal: 16, marginTop: 8, marginBottom: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235" },
+  baustelleHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  baustelleDot: { width: 14, height: 14, borderRadius: 7 },
+  baustelleName: { flex: 1, color: "#F0F4F8", fontSize: 22, fontWeight: "800" },
+  baustelleMeta: { color: "#8FA3B8", fontSize: 12, fontWeight: "600", marginTop: 6 },
+  startBegehungBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#5DADE2", borderRadius: 12, paddingVertical: 14, marginTop: 14 },
+  startBegehungText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+  baustelleRecent: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#1E3A5F" },
+  baustelleRecentText: { flex: 1, color: "#8FA3B8", fontSize: 13, fontWeight: "600" },
   projectSelect: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   projectSelectText: { flex: 1, color: "#F0F4F8", fontSize: 16, fontWeight: "700" },
   dropdownOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 20 },
