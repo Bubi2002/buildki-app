@@ -666,7 +666,7 @@ export default function ProjectWizardScreen() {
             <TextInput value={projectNumber} onChangeText={setProjectNumber} placeholder="2026-014" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('wizard_client' as any)}</Text>
-            <TextInput value={client} onChangeText={setClient} placeholder={t('wizard_client' as any)} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+            <AssigneeInput value={client} onChange={setClient} placeholder={t('wizard_client' as any)} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('adresse')}</Text>
