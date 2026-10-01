@@ -34,20 +34,6 @@ export default function MehrScreen() {
       ],
     },
     {
-      titleKey: "mehr_sec_tools",
-      muted: true,
-      items: [
-        { labelKey: "index_tool_fotos", icon: "photo-library", route: "/photo-gallery" },
-        { labelKey: "index_tool_messen", icon: "straighten", route: "/measure" },
-        { labelKey: "index_tool_grundriss", icon: "map", route: "/floor-plan" },
-        { labelKey: "index_tool_checklisten", icon: "checklist", route: "/checklists" },
-        { labelKey: "index_tool_bautagebuch", icon: "menu-book", route: "/bautagebuch" },
-        { labelKey: "index_tool_anwesenheit", icon: "how-to-reg", route: "/attendance" },
-        { labelKey: "index_tool_zeiterfassung", icon: "timer", route: "/time-tracking" },
-        { labelKey: "index_tool_kalender", icon: "calendar-today", route: "/calendar-view" },
-      ],
-    },
-    {
       titleKey: "mehr_sec_app",
       items: [
         { labelKey: "nav_settings", icon: "settings", route: "/settings" },

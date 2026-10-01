@@ -30,9 +30,19 @@ export async function getCurrentLocation(): Promise<LocationData | null> {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) return null;
 
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
+    // High accuracy can hang for a long time. Use Balanced, cap it with a
+    // timeout, and fall back to the last known position so it never "takes forever".
+    const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+      Promise.race([p, new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))]);
+
+    let position = await withTimeout(
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      8000,
+    );
+    if (!position) {
+      try { position = await Location.getLastKnownPositionAsync(); } catch {}
+    }
+    if (!position) return null;
 
     const { latitude, longitude } = position.coords;
 

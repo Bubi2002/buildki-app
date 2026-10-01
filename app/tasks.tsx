@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -84,6 +84,20 @@ export default function TasksScreen() {
   const [newStatus, setNewStatus] = useState<"offen" | "in_arbeit" | "erledigt">("offen");
   const [newAssignee, setNewAssignee] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  // When editing a task that lives inside a protocol's todos[] (not a standalone task).
+  const [editingProtocol, setEditingProtocol] = useState<{ protocolId: string; todoIndex: number } | null>(null);
+
+  // Opened from the Aufgaben tab (no projectId param): default to the current
+  // Baustelle so you don't see every project's tasks at once.
+  useEffect(() => {
+    if (projectId) return;
+    (async () => {
+      try {
+        const last = await AsyncStorage.getItem("last-selected-project-id");
+        if (last) setSelectedProjectId((cur) => cur ?? last);
+      } catch {}
+    })();
+  }, [projectId]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projectId || null);
@@ -151,6 +165,7 @@ export default function TasksScreen() {
     setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
     setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewStatus("offen"); setNewAssignee("");
     setEditingTaskId(null);
+    setEditingProtocol(null);
   };
 
   // Row tap: open the project task for editing, or the source protocol.
@@ -165,11 +180,24 @@ export default function TasksScreen() {
       setNewRoom(item.room || "");
       setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
       setNewAssignee((item as any).responsible || "");
+      setEditingProtocol(null);
       setShowCreate(true);
     } else if (item.source === "defect") {
-      router.push(`/defects?projectId=${item.projectId || ""}` as any);
+      // Open exactly this Mangel, not the whole defect list.
+      router.push(`/defects?projectId=${item.projectId || ""}&defectId=${item.taskId || item.protocolId}` as any);
     } else {
-      router.push(`/protocol-detail?id=${item.protocolId}` as any);
+      // Protocol todo: edit it inline instead of jumping into the protocol.
+      setEditingTaskId(null);
+      setEditingProtocol({ protocolId: item.protocolId, todoIndex: item.todoIndex ?? 0 });
+      setNewTitle(item.task);
+      setNewTrade(item.assignee && item.assignee !== t('nicht_zugewiesen') ? item.assignee : "");
+      setNewPriority(item.priority);
+      setNewDeadline(item.deadline && item.deadline !== t('frist_offen') ? item.deadline : "");
+      setNewFloor(item.floor || "");
+      setNewRoom(item.room || "");
+      setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
+      setNewAssignee((item as any).responsible || "");
+      setShowCreate(true);
     }
   };
 
@@ -247,6 +275,31 @@ export default function TasksScreen() {
   const saveNewTask = async () => {
     if (!newTitle.trim()) return;
     try {
+      // Editing a task that lives inside a protocol's todos[].
+      if (editingProtocol) {
+        const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+        const pIdx = protocols.findIndex((p: any) => p.id === editingProtocol.protocolId);
+        if (pIdx !== -1 && protocols[pIdx].todos?.[editingProtocol.todoIndex]) {
+          protocols[pIdx].todos[editingProtocol.todoIndex] = {
+            ...protocols[pIdx].todos[editingProtocol.todoIndex],
+            task: newTitle.trim(),
+            assignee: newAssignee.trim() || newTrade.trim() || protocols[pIdx].todos[editingProtocol.todoIndex].assignee,
+            priority: newPriority,
+            deadline: newDeadline.trim() || undefined,
+            dueDate: newDeadline.trim() || undefined,
+            status: newStatus,
+            done: newStatus === "erledigt",
+            floor: newFloor.trim() || undefined,
+            room: newRoom.trim() || undefined,
+          };
+          await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        }
+        if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setShowCreate(false);
+        resetTaskForm();
+        loadAllTodos();
+        return;
+      }
       const raw = await AsyncStorage.getItem("project-tasks");
       const tasks = raw ? JSON.parse(raw) : [];
       const fields = {
@@ -266,7 +319,7 @@ export default function TasksScreen() {
       } else {
         tasks.push({
           id: `task_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
-          projectId: projectId || undefined,
+          projectId: projectId || selectedProjectId || undefined,
           createdAt: new Date().toISOString(),
           ...fields,
         });
@@ -962,7 +1015,7 @@ export default function TasksScreen() {
         <View style={styles.createOverlay}>
           <View style={[styles.createSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>{editingTaskId ? t('tasks_edit' as any) : t('tasks_add' as any)}</Text>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>{editingTaskId || editingProtocol ? t('tasks_edit' as any) : t('tasks_add' as any)}</Text>
               <Pressable onPress={() => { setShowCreate(false); resetTaskForm(); }} hitSlop={8}>
                 <MaterialIcons name="close" size={24} color={colors.muted} />
               </Pressable>

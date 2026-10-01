@@ -343,6 +343,41 @@ export default function ProjectWizardScreen() {
     setFloorInputOpen(false);
   };
 
+  const addStandardRooms = async () => {
+    const fid = floorId ?? floors[0]?.id ?? null;
+    if (!projectId || !fid) return;
+    haptic();
+    const existing = new Set(rooms.filter((r) => r.floorId === fid).map((r) => r.name.trim().toLowerCase()));
+    const standard = ["Wohnzimmer", "Küche", "Bad", "Schlafzimmer", "Flur"];
+    for (const name of standard) {
+      if (!existing.has(name.toLowerCase())) {
+        try { await addRoom(projectId, fid, name); } catch {}
+      }
+    }
+    const rm = await getAllRooms(projectId);
+    setRooms(rm);
+  };
+
+  const confirmDeleteFloor = (f: Floor) => {
+    if (!projectId) return;
+    const roomsOnFloor = rooms.filter((r) => r.floorId === f.id).length;
+    Alert.alert(
+      f.name,
+      roomsOnFloor > 0 ? t('rundgang_delete_floor_msg' as any).replace("{n}", String(roomsOnFloor)) : "",
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        { text: t('btn_loeschen'), style: "destructive", onPress: async () => {
+          const { deleteFloor } = await import("@/lib/room-store");
+          try { await deleteFloor(projectId, f.id); } catch {}
+          const fl = await getFloors(projectId);
+          setFloors(fl);
+          setFloorId((prev) => (prev === f.id ? fl[0]?.id || null : prev));
+          setItemFloorId((prev) => (prev === f.id ? null : prev));
+        } },
+      ],
+    );
+  };
+
   const openEditRoom = (r: Room) => { setEditRoomName(r.name); setEditRoom(r); };
   const saveEditRoom = async () => {
     const r = editRoom;
@@ -726,7 +761,7 @@ export default function ProjectWizardScreen() {
               {floors.map((f) => {
                 const active = f.id === floorId;
                 return (
-                  <Pressable key={f.id} onPress={() => setFloorId(f.id)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                  <Pressable key={f.id} onPress={() => setFloorId(f.id)} onLongPress={() => confirmDeleteFloor(f)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
                     <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }}>{floorLabel(f)}</Text>
                   </Pressable>
                 );
@@ -736,6 +771,13 @@ export default function ProjectWizardScreen() {
                 <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>{t('wizard_floor' as any)}</Text>
               </Pressable>
             </ScrollView>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6, marginBottom: 2 }}>
+              <Text style={[styles.hint, { color: colors.muted, marginBottom: 0, flex: 1 }]}>{t('wizard_floor_delete_hint' as any)}</Text>
+              <Pressable onPress={addStandardRooms} hitSlop={6} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
+                <MaterialIcons name="auto-awesome" size={15} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 12.5 }}>{t('wizard_standard_rooms' as any)}</Text>
+              </Pressable>
+            </View>
 
             {floorInputOpen && (
               <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
@@ -808,7 +850,7 @@ export default function ProjectWizardScreen() {
               {floors.map((f) => {
                 const active = f.id === curFloorId;
                 return (
-                  <Pressable key={f.id} onPress={() => setItemFloorId(f.id)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                  <Pressable key={f.id} onPress={() => setItemFloorId(f.id)} onLongPress={() => confirmDeleteFloor(f)} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
                     <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }}>{floorLabel(f)}</Text>
                   </Pressable>
                 );
