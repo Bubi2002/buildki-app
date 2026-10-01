@@ -15,6 +15,7 @@ import {
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { TradePicker } from "@/components/trade-picker";
+import { DateOnlyPicker } from "@/components/date-only-picker";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -54,6 +55,7 @@ type ProtocolTodo = TodoItem & {
   status?: "offen" | "in_arbeit" | "erledigt";
   floor?: string;
   room?: string;
+  responsible?: string;
   projectId?: string;
   projectLabel?: string;
 };
@@ -78,6 +80,7 @@ export default function TasksScreen() {
   const [newFloor, setNewFloor] = useState("");
   const [newRoom, setNewRoom] = useState("");
   const [newStatus, setNewStatus] = useState<"offen" | "in_arbeit" | "erledigt">("offen");
+  const [newAssignee, setNewAssignee] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
@@ -144,7 +147,7 @@ export default function TasksScreen() {
 
   const resetTaskForm = () => {
     setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
-    setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewStatus("offen");
+    setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewStatus("offen"); setNewAssignee("");
     setEditingTaskId(null);
   };
 
@@ -159,6 +162,7 @@ export default function TasksScreen() {
       setNewFloor(item.floor || "");
       setNewRoom(item.room || "");
       setNewStatus(item.status || (item.done ? "erledigt" : "offen"));
+      setNewAssignee((item as any).responsible || "");
       setShowCreate(true);
     } else if (item.source === "defect") {
       router.push(`/defects?projectId=${item.projectId || ""}` as any);
@@ -250,6 +254,7 @@ export default function TasksScreen() {
         deadline: newDeadline.trim() || undefined,
         floor: newFloor.trim() || undefined,
         room: newRoom.trim() || undefined,
+        responsible: newAssignee.trim() || undefined,
         status: newStatus,
         done: newStatus === "erledigt",
       };
@@ -353,6 +358,7 @@ export default function TasksScreen() {
             status: pt.status || (pt.done ? "erledigt" : "offen"),
             floor: pt.floor || undefined,
             room: pt.room || undefined,
+            responsible: pt.responsible || undefined,
             projectId: pt.projectId || undefined,
             projectLabel: projectName(pt.projectId),
           });
@@ -613,6 +619,12 @@ export default function TasksScreen() {
                 </Text>
               </View>
             )}
+            {!!item.responsible && (
+              <View style={[styles.badge, { backgroundColor: colors.surface }]}>
+                <MaterialIcons name="assignment-ind" size={11} color={colors.muted} />
+                <Text style={[styles.badgeText, { color: colors.muted }]}>{item.responsible}</Text>
+              </View>
+            )}
             <View
               style={[
                 styles.badge,
@@ -781,7 +793,7 @@ export default function TasksScreen() {
 
       {/* Project selector */}
       {projects.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44 }} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: "center" }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginVertical: 8 }} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: "center" }}>
           <Pressable
             onPress={() => setSelectedProjectId(null)}
             style={[styles.projChip, { backgroundColor: !selectedProjectId ? colors.primary + "20" : colors.surface, borderColor: !selectedProjectId ? colors.primary : colors.border }]}
@@ -967,6 +979,17 @@ export default function TasksScreen() {
             <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('gewerk' as any)}</Text>
             <TradePicker value={newTrade} onChange={setNewTrade} placeholder={t('tasks_trade_placeholder' as any)} accessibilityLabel={t('gewerk' as any)} />
 
+            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_responsible' as any)}</Text>
+            <TextInput
+              value={newAssignee}
+              onChangeText={setNewAssignee}
+              placeholder={t('tasks_responsible_placeholder' as any)}
+              placeholderTextColor={colors.muted}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[styles.createInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+            />
+
             <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('prioritaet' as any)}</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {(["niedrig", "mittel", "hoch"] as const).map((p) => {
@@ -997,15 +1020,10 @@ export default function TasksScreen() {
               })}
             </View>
 
-            {/* Wann (Frist) */}
-            <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_wann' as any)}</Text>
-            <TextInput
-              value={newDeadline}
-              onChangeText={setNewDeadline}
-              placeholder={t('tasks_wann_placeholder' as any)}
-              placeholderTextColor={colors.muted}
-              style={[styles.createInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-            />
+            {/* Wann (Frist) — date wheel */}
+            <View style={{ marginTop: 12 }}>
+              <DateOnlyPicker value={newDeadline} onChange={setNewDeadline} label={t('tasks_field_wann' as any)} />
+            </View>
 
             {/* Wo (Geschoss / Raum) */}
             <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_wo' as any)}</Text>

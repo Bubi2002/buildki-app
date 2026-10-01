@@ -814,9 +814,12 @@ export default function ProjectWizardScreen() {
               </>
             )}
             <TextInput value={itemRoom} onChangeText={setItemRoom} placeholder={t('index_tool_raeume')} placeholderTextColor={colors.muted} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
-            {/* Remembered room-name suggestions */}
+            {/* Remembered room-name suggestions (exclude rooms already created on this floor) */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
-              {roomSuggestions.filter((s) => s.toLowerCase() !== itemRoom.trim().toLowerCase()).slice(0, 14).map((s) => (
+              {(() => {
+                const existing = new Set((curFloorId ? roomsForFloor(curFloorId) : []).map((r) => r.name.trim().toLowerCase()));
+                return roomSuggestions.filter((s) => s.toLowerCase() !== itemRoom.trim().toLowerCase() && !existing.has(s.trim().toLowerCase())).slice(0, 14);
+              })().map((s) => (
                 <Pressable key={s} onPress={() => setItemRoom(s)} style={[styles.suggestChip, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "600" }}>{s}</Text>
                 </Pressable>
@@ -887,7 +890,6 @@ export default function ProjectWizardScreen() {
             )}
 
             {/* Frist */}
-            <Text style={styles.miniLabel}>{t('frist')}</Text>
             <DateOnlyPicker value={itemDueDate} onChange={setItemDueDate} label={t('frist')} />
 
             {/* Zuständiger */}
