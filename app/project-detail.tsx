@@ -65,6 +65,7 @@ export default function ProjectDetailScreen() {
   const [planCount, setPlanCount] = useState(0);
   const [defectCount, setDefectCount] = useState({ open: 0, resolved: 0, total: 0 });
   const [activeTab, setActiveTab] = useState<"overview" | "begehungen" | "vorgaenge" | "dokumente">("overview");
+  const [showAllTools, setShowAllTools] = useState(false);
 
   async function loadData() {
     try {
@@ -566,15 +567,7 @@ export default function ProjectDetailScreen() {
         <View style={styles.toolsSection}>
           <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>{t('werkzeuge')}</Text>
           <View style={styles.toolsGrid}>
-            <Pressable
-              onPress={() => router.push(`/rooms?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
-                <MaterialIcons name="layers" size={22} color="#5C6BC0" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('matterport_raeume')}</Text>
-            </Pressable>
+            {/* ── 4 primary tools ── */}
             <Pressable
               onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
@@ -586,13 +579,13 @@ export default function ProjectDetailScreen() {
               {planCount > 0 && <Text style={[styles.toolCardBadge, { color: colors.muted }]}>{planCount}</Text>}
             </Pressable>
             <Pressable
-              onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
+              onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             >
-              <View style={[styles.toolIconBg, { backgroundColor: '#66BB6A15' }]}>
-                <MaterialIcons name="menu-book" size={22} color="#66BB6A" />
+              <View style={[styles.toolIconBg, { backgroundColor: '#EC407A15' }]}>
+                <MaterialIcons name="photo-library" size={22} color="#EC407A" />
               </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('tagebuch')}</Text>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('gallery_photos')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
@@ -603,6 +596,18 @@ export default function ProjectDetailScreen() {
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('checklist_title')}</Text>
             </Pressable>
+            <Pressable
+              onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
+              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={[styles.toolIconBg, { backgroundColor: '#66BB6A15' }]}>
+                <MaterialIcons name="menu-book" size={22} color="#66BB6A" />
+              </View>
+              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('tagebuch')}</Text>
+            </Pressable>
+
+            {/* ── secondary tools, collapsed by default ── */}
+            {showAllTools && (<>
             <Pressable
               onPress={() => router.push(`/team` as any)}
               style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
@@ -629,15 +634,6 @@ export default function ProjectDetailScreen() {
                 <MaterialIcons name="bar-chart" size={22} color="#26A69A" />
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('statistik')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#EC407A15' }]}>
-                <MaterialIcons name="photo-library" size={22} color="#EC407A" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('gallery_photos')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/qr-scanner?projectId=${project.id}` as any)}
@@ -684,7 +680,16 @@ export default function ProjectDetailScreen() {
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('kalender')}</Text>
             </Pressable>
+            </>)}
           </View>
+          {/* Show more / less toggle */}
+          <Pressable
+            onPress={() => setShowAllTools((v) => !v)}
+            style={({ pressed }) => [styles.moreToolsBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.moreToolsText, { color: colors.primary }]}>{showAllTools ? t('pd_tools_less' as any) : t('pd_tools_more' as any)}</Text>
+            <MaterialIcons name={showAllTools ? "expand-less" : "expand-more"} size={18} color={colors.primary} />
+          </Pressable>
         </View>
 {/* Stats */}
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
@@ -822,6 +827,8 @@ const styles = StyleSheet.create({
   toolsSection: { paddingHorizontal: 16, marginBottom: 16 },
   toolsSectionTitle: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   toolsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  moreToolsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10, paddingVertical: 10, borderWidth: 1, borderRadius: 8 },
+  moreToolsText: { fontSize: 13, fontWeight: "700" },
   toolCard: { width: "30.5%", alignItems: "center", paddingVertical: 14, minHeight: 72, borderRadius: 0, position: "relative" },
   toolIconBg: { width: 44, height: 44, borderRadius: 0, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   toolCardLabel: { fontSize: 12, fontWeight: "600", textAlign: "center" },

@@ -10,6 +10,9 @@ import {
   getProjectStructure,
   updateRoom,
   deleteRoom,
+  addFloor,
+  addRoom,
+  deleteFloor,
   initializeDefaultFloors,
   type Floor,
   type Room,
@@ -79,6 +82,10 @@ export default function RundgangTab() {
   const [editDefectTitle, setEditDefectTitle] = useState("");
   const [renameRoom, setRenameRoom] = useState<Room | null>(null);
   const [renameRoomName, setRenameRoomName] = useState("");
+  const [addFloorOpen, setAddFloorOpen] = useState(false);
+  const [newFloorName, setNewFloorName] = useState("");
+  const [addRoomFloor, setAddRoomFloor] = useState<Floor | null>(null);
+  const [newRoomNameInput, setNewRoomNameInput] = useState("");
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState("");
   const [selectedChecklist, setSelectedChecklist] = useState<ChecklistResult | null>(null);
@@ -298,6 +305,43 @@ export default function RundgangTab() {
       { text: t('btn_loeschen'), style: "destructive", onPress: () => deleteRoomNow(room) },
     ]);
   };
+
+  // ── Floor add / delete + room add ─────────────────────────────────────────
+  const saveAddFloor = async () => {
+    const name = newFloorName.trim();
+    if (!name || !selectedProjectId) { setAddFloorOpen(false); return; }
+    const nextNumber = floors.length ? Math.max(...floors.map((f) => f.number)) + 1 : 0;
+    try { await addFloor(selectedProjectId, name, nextNumber); } catch {}
+    setNewFloorName("");
+    setAddFloorOpen(false);
+    if (selectedProjectId) loadRundgang(selectedProjectId);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+  const confirmDeleteFloor = (floor: Floor) => {
+    if (!selectedProjectId) return;
+    const roomsOnFloor = rooms.filter((r) => r.floorId === floor.id).length;
+    Alert.alert(
+      FLOOR_NAME_KEYS[floor.name] ? t(FLOOR_NAME_KEYS[floor.name] as any) : floor.name,
+      roomsOnFloor > 0 ? t('rundgang_delete_floor_msg' as any).replace("{n}", String(roomsOnFloor)) : "",
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        { text: t('btn_loeschen'), style: "destructive", onPress: async () => {
+          try { await deleteFloor(selectedProjectId, floor.id); } catch {}
+          if (selectedProjectId) loadRundgang(selectedProjectId);
+        } },
+      ],
+    );
+  };
+  const saveAddRoom = async () => {
+    const floor = addRoomFloor;
+    const name = newRoomNameInput.trim();
+    if (!floor || !name || !selectedProjectId) { setAddRoomFloor(null); return; }
+    try { await addRoom(selectedProjectId, floor.id, name); } catch {}
+    setNewRoomNameInput("");
+    setAddRoomFloor(null);
+    if (selectedProjectId) loadRundgang(selectedProjectId);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
   const deleteDefectNow = async (d: Defect) => {
     setDefects((prev) => prev.filter((x) => x.id !== d.id));
     setSelectedDefect(null);
@@ -495,7 +539,7 @@ export default function RundgangTab() {
               const expanded = expandedFloors.has(floor.id);
               return (
                 <View key={floor.id} style={styles.floorBlock}>
-                  <Pressable onPress={() => toggleFloor(floor.id)} style={styles.floorHeader}>
+                  <Pressable onPress={() => toggleFloor(floor.id)} onLongPress={() => confirmDeleteFloor(floor)} style={styles.floorHeader}>
                     <MaterialIcons name={expanded ? "expand-more" : "chevron-right"} size={22} color="#8FA3B8" />
                     <Text style={styles.floorName}>{FLOOR_NAME_KEYS[floor.name] ? t(FLOOR_NAME_KEYS[floor.name] as any) : floor.name}</Text>
                     <Text style={styles.floorCount}>
@@ -676,9 +720,22 @@ export default function RundgangTab() {
                         );
                       })
                     ))}
+                  {expanded && (
+                    <Pressable onPress={() => { setNewRoomNameInput(""); setAddRoomFloor(floor); }} style={styles.addRoomRow} hitSlop={6}>
+                      <MaterialIcons name="add" size={16} color="#5DADE2" />
+                      <Text style={styles.addRoomText}>{t('rundgang_add_room' as any)}</Text>
+                    </Pressable>
+                  )}
                 </View>
               );
             })}
+
+            {selectedProjectId && (
+              <Pressable onPress={() => { setNewFloorName(""); setAddFloorOpen(true); }} style={styles.addFloorRow}>
+                <MaterialIcons name="add" size={18} color="#5DADE2" />
+                <Text style={styles.addFloorText}>{t('rundgang_add_floor' as any)}</Text>
+              </Pressable>
+            )}
 
             {floors.length > 0 && totalRooms === 0 && (
               <View style={styles.empty}>
@@ -828,6 +885,52 @@ export default function RundgangTab() {
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => renameRoom && confirmDeleteRoom(renameRoom)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
               <Pressable onPress={saveRoomRename} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add floor */}
+      <Modal visible={addFloorOpen} transparent animationType="slide" onRequestClose={() => setAddFloorOpen(false)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            <Text style={styles.taskSheetTitle}>{t('rundgang_add_floor' as any)}</Text>
+            <TextInput
+              value={newFloorName}
+              onChangeText={setNewFloorName}
+              placeholder={t('rundgang_add_floor' as any)}
+              placeholderTextColor="#5F7590"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={saveAddFloor}
+              style={styles.taskInput}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => setAddFloorOpen(false)} style={styles.taskCancel}><Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text></Pressable>
+              <Pressable onPress={saveAddFloor} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add room to a floor */}
+      <Modal visible={!!addRoomFloor} transparent animationType="slide" onRequestClose={() => setAddRoomFloor(null)}>
+        <View style={styles.taskOverlay}>
+          <View style={styles.taskSheet}>
+            <Text style={styles.taskSheetTitle}>{t('rundgang_add_room' as any)}</Text>
+            <TextInput
+              value={newRoomNameInput}
+              onChangeText={setNewRoomNameInput}
+              placeholder={t('rooms_add_room' as any)}
+              placeholderTextColor="#5F7590"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={saveAddRoom}
+              style={styles.taskInput}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable onPress={() => setAddRoomFloor(null)} style={styles.taskCancel}><Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text></Pressable>
+              <Pressable onPress={saveAddRoom} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
             </View>
           </View>
         </View>
@@ -997,6 +1100,10 @@ const styles = StyleSheet.create({
   },
   expandHeaderText: { color: "#7F8C9B", fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },
   expandAdd: { color: "#5DADE2", fontSize: 12, fontWeight: "700" },
+  addRoomRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 14 },
+  addRoomText: { color: "#5DADE2", fontSize: 13, fontWeight: "700" },
+  addFloorRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 6, marginBottom: 8, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", borderStyle: "dashed" },
+  addFloorText: { color: "#5DADE2", fontSize: 14, fontWeight: "800" },
   taskOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" },
   taskSheet: { backgroundColor: "#0F1E30", borderRadius: 18, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: "#1E3A5F" },
   taskSheetTitle: { color: "#F0F4F8", fontSize: 18, fontWeight: "800" },
