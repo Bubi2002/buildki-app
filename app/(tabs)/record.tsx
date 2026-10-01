@@ -278,12 +278,9 @@ export default function RecordScreen() {
     const timer = setTimeout(() => {
       setShowProjectPicker(false);
       setMode("audio-photo");
+      // Recording start always asks for Geschoss + Raum (see
+      // beginRecordingAfterNotice), so no extra room prompt needed here.
       startRecording();
-      // "Raumweise Begehung": immediately prompt for the first room name so the
-      // recording is segmented per room from the start.
-      if (routeRoomsMode === "1") {
-        setTimeout(() => startChapterMarker(), 1200);
-      }
     }, 800);
     return () => clearTimeout(timer);
   }, [quickAction, projectsLoaded, selectedProject?.id]);
@@ -1084,6 +1081,7 @@ export default function RecordScreen() {
   const [chapterMode, setChapterMode] = useState(false);
   const [chapterPromptVisible, setChapterPromptVisible] = useState(false);
   const [chapterInput, setChapterInput] = useState("");
+  const [chapterFloor, setChapterFloor] = useState("");
   const [chapterListening, setChapterListening] = useState(false);
   const [chapterRecording, setChapterRecording] = useState(false);
   const chapterRecorderActiveRef = useRef(false);
@@ -1182,12 +1180,16 @@ export default function RecordScreen() {
   };
 
   const confirmChapter = (name: string) => {
-    if (name.trim()) {
-      // Prefix with "KAPITEL:" so the LLM and renderer know it's a chapter heading
-      addMarker(`KAPITEL: ${name.trim()}`);
+    const room = name.trim();
+    if (room || chapterFloor) {
+      // Prefix with "KAPITEL:" so the LLM and renderer know it's a chapter
+      // heading; include the floor (Geschoss) when chosen: "EG · Schlafzimmer".
+      const label = [chapterFloor.trim(), room].filter(Boolean).join(" · ");
+      addMarker(`KAPITEL: ${label}`);
     }
     setChapterPromptVisible(false);
     setChapterInput("");
+    setChapterFloor("");
     setChapterListening(false);
     setChapterRecording(false);
     // Resume main recording after chapter is set
@@ -1345,6 +1347,8 @@ export default function RecordScreen() {
     }
 
     startAudioRecording();
+    // Right at the start of every Begehung, ask which Geschoss + Raum.
+    setTimeout(() => startChapterMarker(), 700);
   };
 
   function startRecording() {
@@ -2733,16 +2737,8 @@ export default function RecordScreen() {
                 )}
               </Pressable>
             ) : (
-              <Pressable
-                onPress={openImportChooser}
-                style={({ pressed }) => [
-                  styles.actionButtonLarge,
-                  { backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", transform: [{ scale: pressed ? 0.9 : 1 }] },
-                ]}
-              >
-                <MaterialIcons name="library-add" size={32} color="#FFFFFF" />
-                <Text style={styles.actionButtonLabel}>{t('record_import_label' as any)}</Text>
-              </Pressable>
+              // Spacer keeps the Start button centred (Import button removed).
+              <View style={styles.actionButtonLarge} pointerEvents="none" />
             )}
           </View>
 
@@ -3281,6 +3277,27 @@ export default function RecordScreen() {
               {chapterListening ? t('raum_hoere') : t('raum_sprich')}
             </Text>
 
+            {/* Geschoss selector */}
+            {!chapterListening && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>{t('record_geschoss' as any)}</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {["UG", "EG", "1. OG", "2. OG", "3. OG", "DG"].map((g) => {
+                    const active = chapterFloor === g;
+                    return (
+                      <Pressable
+                        key={g}
+                        onPress={() => setChapterFloor(active ? "" : g)}
+                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? "#FF9800" : colors.border, backgroundColor: active ? "#FF9800" + "22" : "transparent" }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? "#FF9800" : colors.muted }}>{g}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
             {/* Speech indicator */}
             {chapterListening && (
               <View style={{ alignItems: "center", paddingVertical: 16 }}>
@@ -3328,7 +3345,7 @@ export default function RecordScreen() {
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
-                onPress={async () => { setChapterPromptVisible(false); setChapterListening(false); setChapterRecording(false); if (chapterRecorderActiveRef.current) { try { await chapterAudioRecorder.stop(); } catch {} chapterRecorderActiveRef.current = false; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
+                onPress={async () => { setChapterPromptVisible(false); setChapterInput(""); setChapterFloor(""); setChapterListening(false); setChapterRecording(false); if (chapterRecorderActiveRef.current) { try { await chapterAudioRecorder.stop(); } catch {} chapterRecorderActiveRef.current = false; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
                 style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
@@ -3345,32 +3362,6 @@ export default function RecordScreen() {
           </View>
         </View>
       </Modal>
-      {/* Construction Brain FAB */}
-      {!isRecording && !isProcessing && (
-        <Pressable
-          onPress={() => router.push("/ai-assistant")}
-          style={({ pressed }) => [{
-            position: "absolute",
-            bottom: 100,
-            right: 16,
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: "#E040FB",
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-            opacity: pressed ? 0.8 : 1,
-            transform: [{ scale: pressed ? 0.92 : 1 }],
-          }]}
-        >
-          <MaterialIcons name="psychology" size={28} color="#FFFFFF" />
-        </Pressable>
-      )}
     </View>
   );
 }
