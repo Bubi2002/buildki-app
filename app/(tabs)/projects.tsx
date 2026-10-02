@@ -48,6 +48,10 @@ const FLOOR_NAME_KEYS: Record<string, string> = {
   "DG": "floor_dg",
 };
 
+// Reset on cold start (module state is recreated with the JS bundle): the
+// "which project?" prompt appears once per app launch.
+let launchChooserShown = false;
+
 export default function RundgangTab() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -168,6 +172,22 @@ export default function RundgangTab() {
       loadRundgang(selectedProjectId);
     }
   }, [selectedProjectId, loadRundgang]);
+
+  // On app launch: first ask which project (or create a new one), instead of
+  // dropping straight into the last project.
+  useEffect(() => {
+    if (launchChooserShown) return;
+    launchChooserShown = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("projects");
+        const all: ProjectItem[] = raw ? JSON.parse(raw) : [];
+        const active = all.filter((p) => !p.archived);
+        if (active.length > 0) setShowProjectDropdown(true);
+        else router.push("/project-wizard" as any);
+      } catch {}
+    })();
+  }, []);
 
   const pickProject = (id: string) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
