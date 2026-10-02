@@ -118,39 +118,46 @@ export function DateOnlyPicker({
     chooseDate(parsed);
   };
 
-  // ── iOS: native Apple-style compact date/time picker ──────────────────────
+  // ── iOS: native Apple-style compact picker — date required, time OPTIONAL ──
   if (Platform.OS === "ios") {
     const minDate = parseDateOnly(minimumDate) || undefined;
-    const fmt = (d: Date) =>
-      withTime ? `${toDateOnlyValue(d)}T${pad2(d.getHours())}:${pad2(d.getMinutes())}` : toDateOnlyValue(d);
-    const asDate = dPart ? new Date(`${dPart}T${withTime ? effectiveTime : "12:00"}:00`) : null;
+    const hasTime = withTime && !!tPart;
+    const dateObj = dPart ? new Date(`${dPart}T${tPart || "12:00"}:00`) : null;
+    const setDateKeepTime = (d: Date) => {
+      const dv = toDateOnlyValue(d);
+      onChange(hasTime ? `${dv}T${tPart}` : dv);
+    };
+    const setTimeOnly = (d: Date) => {
+      if (!dPart) return;
+      onChange(`${dPart}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`);
+    };
+    const toggleTime = () => {
+      if (!dPart) return;
+      onChange(hasTime ? dPart : `${dPart}T08:00`);
+    };
     return (
       <View testID={testID} style={styles.wrapper}>
         <Text style={[styles.label, { color: colors.muted }]}>{displayLabel}</Text>
-        {asDate ? (
+        {dateObj ? (
           <View style={styles.iosRow}>
-            <DateTimePicker
-              value={asDate}
-              mode={withTime ? "datetime" : "date"}
-              display="compact"
-              minimumDate={minDate}
-              themeVariant="dark"
-              accentColor={colors.primary}
-              onChange={(_e, d) => { if (d) onChange(fmt(d)); }}
-            />
+            <DateTimePicker value={dateObj} mode="date" display="compact" minimumDate={minDate} themeVariant="dark" accentColor={colors.primary} onChange={(_e, d) => { if (d) setDateKeepTime(d); }} />
+            {withTime && hasTime ? (
+              <DateTimePicker value={dateObj} mode="time" display="compact" themeVariant="dark" accentColor={colors.primary} onChange={(_e, d) => { if (d) setTimeOnly(d); }} />
+            ) : null}
+            {withTime ? (
+              <Pressable onPress={toggleTime} hitSlop={8} style={({ pressed }) => [styles.iosClear, { borderColor: hasTime ? colors.primary : colors.border }, pressed && { opacity: 0.6 }]}>
+                <MaterialIcons name="schedule" size={16} color={hasTime ? colors.primary : colors.muted} />
+              </Pressable>
+            ) : null}
             {allowClear ? (
-              <Pressable
-                onPress={() => onChange("")}
-                hitSlop={8}
-                style={({ pressed }) => [styles.iosClear, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}
-              >
+              <Pressable onPress={() => onChange("")} hitSlop={8} style={({ pressed }) => [styles.iosClear, { borderColor: colors.border }, pressed && { opacity: 0.6 }]}>
                 <MaterialIcons name="event-busy" size={16} color={colors.muted} />
               </Pressable>
             ) : null}
           </View>
         ) : (
           <Pressable
-            onPress={() => { const base = parseDateOnly(minimumDate) || new Date(); base.setHours(8, 0, 0, 0); onChange(fmt(base)); }}
+            onPress={() => { const base = parseDateOnly(minimumDate) || new Date(); onChange(toDateOnlyValue(base)); }}
             style={({ pressed }) => [styles.trigger, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.75 }]}
           >
             <MaterialIcons name="calendar-month" size={20} color={colors.muted} />

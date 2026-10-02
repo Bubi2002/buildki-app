@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Dimensions } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
@@ -475,6 +475,33 @@ export default function ProjectWizardScreen() {
       setItemPhotos((prev) => [...prev, ...uris]);
     } catch {}
   };
+
+  // Draw / mark / measure a photo in the shared editor, then apply on return.
+  const pendingPhotoAnnotate = useRef<{ key: string; index: number } | null>(null);
+  const annotateItemPhoto = (index: number) => {
+    const uri = itemPhotos[index];
+    if (!uri) return;
+    const key = `wiz-${Date.now()}`;
+    pendingPhotoAnnotate.current = { key, index };
+    router.push(`/photo-annotate?photoUri=${encodeURIComponent(uri)}&returnKey=${key}` as any);
+  };
+  useFocusEffect(
+    useCallback(() => {
+      const pend = pendingPhotoAnnotate.current;
+      if (!pend) return;
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem(`annotate-result-${pend.key}`);
+          if (raw) {
+            const { uri } = JSON.parse(raw);
+            if (uri) setItemPhotos((prev) => prev.map((p, i) => (i === pend.index ? uri : p)));
+            await AsyncStorage.removeItem(`annotate-result-${pend.key}`);
+          }
+        } catch {}
+        pendingPhotoAnnotate.current = null;
+      })();
+    }, []),
+  );
 
   const addItemNow = async () => {
     if (!projectId || !itemTitle.trim()) return;
@@ -972,7 +999,12 @@ export default function ProjectWizardScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                 {itemPhotos.map((uri, i) => (
                   <View key={i} style={{ marginRight: 8 }}>
-                    <Image source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                    <Pressable onPress={() => annotateItemPhoto(i)}>
+                      <Image source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                      <View style={{ position: "absolute", right: 3, bottom: 3, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 9, padding: 2 }}>
+                        <MaterialIcons name="edit" size={12} color="#FFFFFF" />
+                      </View>
+                    </Pressable>
                     <Pressable onPress={() => setItemPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={styles.photoRemove}>
                       <MaterialIcons name="close" size={13} color="#FFFFFF" />
                     </Pressable>

@@ -14,7 +14,7 @@ import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import Svg, { Path, Line, Polygon, G, Text as SvgText } from "react-native-svg";
+import Svg, { Path, Line, Polygon, Rect, G, Text as SvgText } from "react-native-svg";
 import {
   GestureDetector,
   Gesture,
@@ -55,10 +55,10 @@ function getDefaultTextTemplates(t: (key: any) => string) { return [
 
 const ANNOTATION_STORAGE_KEY = 'annotation-custom-templates';
 
-type ToolType = "pen" | "arrow" | "text" | "move";
+type ToolType = "pen" | "arrow" | "text" | "move" | "measure";
 
 type DrawElement = {
-  type: "path" | "arrow" | "text";
+  type: "path" | "arrow" | "text" | "measure";
   color: string;
   strokeWidth: number;
   // For path
@@ -325,10 +325,45 @@ export default function PhotoAnnotateScreen() {
     })
     .runOnJS(true);
 
+  // Measure: draw a line (reuses the arrow preview state), then ask for the
+  // real-world length and label it.
+  const promptMeasure = (cb: (v: string) => void) => {
+    if (Platform.OS === "ios" && (Alert as any).prompt) {
+      (Alert as any).prompt(
+        t('photo_annotator_measure_title' as any),
+        t('photo_annotator_measure_msg' as any),
+        (v?: string) => cb((v || "").trim()),
+        "plain-text",
+        "",
+      );
+    } else {
+      cb("");
+    }
+  };
+  const measureGesture = Gesture.Pan()
+    .enabled(selectedTool === "measure")
+    .maxPointers(1)
+    .onStart((e) => { setArrowStart({ x: e.x, y: e.y }); setArrowEnd({ x: e.x, y: e.y }); })
+    .onUpdate((e) => { setArrowEnd({ x: e.x, y: e.y }); })
+    .onEnd((e) => {
+      const s = arrowStart;
+      const end = { x: e.x, y: e.y };
+      setArrowStart(null);
+      setArrowEnd(null);
+      if (!s) return;
+      promptMeasure((val) => {
+        setElements((prev) => [
+          ...prev,
+          { type: "measure", startX: s.x, startY: s.y, endX: end.x, endY: end.y, color: selectedColor, strokeWidth: selectedSize, text: val },
+        ]);
+      });
+    })
+    .runOnJS(true);
+
   // One finger draws with the active tool; two fingers always zoom/pan. The
   // drawing tools (Race) run simultaneously with the always-on pinch + 2-finger
   // pan + tap recorder so zooming never requires switching tools.
-  const drawingGesture = Gesture.Race(penGesture, arrowGesture, tapGesture, moveGesture);
+  const drawingGesture = Gesture.Race(penGesture, arrowGesture, measureGesture, tapGesture, moveGesture);
   const composedGesture = Gesture.Simultaneous(
     drawingGesture,
     pinchGesture,
@@ -496,6 +531,27 @@ export default function PhotoAnnotateScreen() {
             />
           </G>
         );
+      case "measure": {
+        const sx = el.startX!, sy = el.startY!, ex = el.endX!, ey = el.endY!;
+        const midx = (sx + ex) / 2, midy = (sy + ey) / 2;
+        const ang = Math.atan2(ey - sy, ex - sx) + Math.PI / 2;
+        const tk = 9, tdx = tk * Math.cos(ang), tdy = tk * Math.sin(ang);
+        const label = el.text || "";
+        const boxW = Math.max(34, label.length * 8 + 12);
+        return (
+          <G key={i}>
+            <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke={el.color} strokeWidth={el.strokeWidth} />
+            <Line x1={sx - tdx} y1={sy - tdy} x2={sx + tdx} y2={sy + tdy} stroke={el.color} strokeWidth={el.strokeWidth} />
+            <Line x1={ex - tdx} y1={ey - tdy} x2={ex + tdx} y2={ey + tdy} stroke={el.color} strokeWidth={el.strokeWidth} />
+            {label ? (
+              <>
+                <Rect x={midx - boxW / 2} y={midy - 24} width={boxW} height={18} rx={4} fill="rgba(0,0,0,0.65)" />
+                <SvgText x={midx} y={midy - 11} fill="#FFFFFF" fontSize={12} fontWeight="bold" textAnchor="middle">{label}</SvgText>
+              </>
+            ) : null}
+          </G>
+        );
+      }
       case "text":
         return (
           <G key={i}>
@@ -587,7 +643,7 @@ export default function PhotoAnnotateScreen() {
                   />
                 ) : null}
                 {/* Current arrow preview */}
-                {arrowStart && arrowEnd && selectedTool === "arrow" ? (
+                {arrowStart && arrowEnd && (selectedTool === "arrow" || selectedTool === "measure") ? (
                   <G>
                     <Line
                       x1={arrowStart.x}
@@ -599,11 +655,13 @@ export default function PhotoAnnotateScreen() {
                       strokeLinecap="round"
                       strokeDasharray="5,5"
                     />
-                    <Polygon
-                      points={getArrowHead(arrowStart.x, arrowStart.y, arrowEnd.x, arrowEnd.y, selectedSize)}
-                      fill={selectedColor}
-                      opacity={0.7}
-                    />
+                    {selectedTool === "arrow" ? (
+                      <Polygon
+                        points={getArrowHead(arrowStart.x, arrowStart.y, arrowEnd.x, arrowEnd.y, selectedSize)}
+                        fill={selectedColor}
+                        opacity={0.7}
+                      />
+                    ) : null}
                   </G>
                 ) : null}
               </Svg>
@@ -653,6 +711,16 @@ export default function PhotoAnnotateScreen() {
           >
             <MaterialIcons name="open-with" size={20} color={selectedTool === "move" ? colors.primary : colors.muted} />
             <Text style={[styles.toolTabText, { color: selectedTool === "move" ? colors.primary : colors.muted }]}>{t('bewegen')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSelectedTool("measure")}
+            style={[
+              styles.toolTab,
+              selectedTool === "measure" && { backgroundColor: colors.primary + "20" },
+            ]}
+          >
+            <MaterialIcons name="straighten" size={20} color={selectedTool === "measure" ? colors.primary : colors.muted} />
+            <Text style={[styles.toolTabText, { color: selectedTool === "measure" ? colors.primary : colors.muted }]}>{t('photo_annotator_tool_measure' as any)}</Text>
           </Pressable>
         </View>
         {/* Zoom reset indicator */}

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, type TextStyle, type StyleProp } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loadPhoneContactEmails, type PhoneContactEmail } from "@/lib/phone-contacts";
+import { loadPhoneContacts, type PhoneContact } from "@/lib/phone-contacts";
 import { useColors } from "@/hooks/use-colors";
 
 const HISTORY_KEY = "assignee-history";
@@ -34,7 +34,7 @@ type Props = {
 export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
   const colors = useColors();
   const [history, setHistory] = useState<string[]>([]);
-  const [contacts, setContacts] = useState<PhoneContactEmail[]>([]);
+  const [contacts, setContacts] = useState<PhoneContact[]>([]);
   const [focused, setFocused] = useState(false);
   const loadedContacts = useRef(false);
 
@@ -51,8 +51,8 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
     if (loadedContacts.current) return;
     loadedContacts.current = true;
     try {
-      const res = await loadPhoneContactEmails();
-      if (res.ok) setContacts(res.contacts.slice(0, 500));
+      const res = await loadPhoneContacts();
+      if (res.ok) setContacts(res.contacts.slice(0, 1000));
     } catch {}
   };
 
@@ -63,8 +63,9 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
       if (h.toLowerCase().includes(q) && h.toLowerCase() !== q) suggestions.push({ label: h, value: h });
     }
     for (const c of contacts) {
-      if (c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)) {
-        suggestions.push({ label: c.name, sub: c.email, value: c.email });
+      if (c.name.toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q)) {
+        // Fill the NAME (a Zuständiger is usually a person/trade, not an email).
+        suggestions.push({ label: c.name, sub: c.email || c.phone, value: c.name });
       }
     }
   }
