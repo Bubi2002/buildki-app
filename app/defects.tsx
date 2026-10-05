@@ -81,8 +81,8 @@ type SortKey = "status" | "prio" | "neu" | "alt" | "gewerk" | "titel";
 const STATUS_SORT_ORDER: DefectStatus[] = ["offen", "zugewiesen", "in_bearbeitung", "nachbesserung", "pruefung", "erledigt", "abgelehnt", "geschlossen"];
 const PRIO_SORT_ORDER: Record<DefectPriority, number> = { hoch: 0, mittel: 1, niedrig: 2 };
 const SORT_KEYS: SortKey[] = ["status", "prio", "neu", "alt", "gewerk", "titel"];
-type GroupKey = "none" | "etage" | "gewerk" | "verantwortlich" | "status";
-const GROUP_KEYS: GroupKey[] = ["none", "etage", "gewerk", "verantwortlich", "status"];
+type GroupKey = "none" | "etage" | "raum" | "gewerk" | "verantwortlich" | "status";
+const GROUP_KEYS: GroupKey[] = ["none", "etage", "raum", "gewerk", "verantwortlich", "status"];
 
 export default function DefectsScreen() {
   const { t } = useTranslation();
@@ -338,6 +338,7 @@ export default function DefectsScreen() {
   const groupLabels: Record<GroupKey, string> = {
     none: t('defects_group_none_opt' as any),
     etage: t('wizard_floor' as any),
+    raum: t('defects_group_room' as any),
     gewerk: t('gewerk'),
     verantwortlich: t('zustaendig'),
     status: t('defects_sort_status' as any),
@@ -509,6 +510,7 @@ export default function DefectsScreen() {
     const keyOf = (d: Defect): string => {
       switch (groupBy) {
         case "etage": return d.floor || t('defects_group_none' as any);
+        case "raum": return [d.floor, d.room || d.location].filter(Boolean).join(" · ") || t('defects_group_none' as any);
         case "gewerk": return (d as any).gewerk || d.category || t('defects_group_none' as any);
         case "verantwortlich": return (d as any).assignee || t('defects_group_none' as any);
         case "status": return statusLabels[d.status];
