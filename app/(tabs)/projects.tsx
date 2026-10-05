@@ -805,7 +805,7 @@ export default function RundgangTab() {
                 </View>
 
                 {/* PDF Export */}
-                <Pressable onPress={() => router.push(`/project-export?id=${selectedProjectId}` as any)} style={styles.pdfExportBtn}>
+                <Pressable onPress={() => router.push(`/project-export?projectId=${selectedProjectId}&projectName=${encodeURIComponent(projects.find((p) => p.id === selectedProjectId)?.name || "")}` as any)} style={styles.pdfExportBtn}>
                   <MaterialIcons name="picture-as-pdf" size={20} color="#FFFFFF" />
                   <Text style={styles.pdfExportText}>{t('export')}</Text>
                 </Pressable>

@@ -549,7 +549,7 @@ export default function ProjectDetailScreen() {
           <Text style={[styles.exportButtonText, { color: '#7C3AED' }]}>{t('bericht')}</Text>
           <MaterialIcons name="chevron-right" size={18} color="#7C3AED" />
         </Pressable>
-        <Pressable onPress={() => router.push(`/project-export?id=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#43A04710', borderColor: '#43A04740', opacity: pressed ? 0.7 : 1 }]}>
+        <Pressable onPress={() => router.push(`/project-export?projectId=${project.id}&projectName=${encodeURIComponent(project.name || "")}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#43A04710', borderColor: '#43A04740', opacity: pressed ? 0.7 : 1 }]}>
           <MaterialIcons name="ios-share" size={20} color="#43A047" />
           <Text style={[styles.exportButtonText, { color: '#43A047' }]}>{t('export')}</Text>
           <MaterialIcons name="chevron-right" size={18} color="#43A047" />
