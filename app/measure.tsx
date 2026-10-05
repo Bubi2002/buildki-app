@@ -317,15 +317,19 @@ export default function MeasureScreen() {
       if (!pts || pts.length < 2) return null;
       const a = { x: pts[0].x * CANVAS_WIDTH, y: pts[0].y * CANVAS_HEIGHT };
       const b = { x: pts[1].x * CANVAS_WIDTH, y: pts[1].y * CANVAS_HEIGHT };
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2;
+      // Place the M1/M2 badge beside the START point, offset perpendicular to the
+      // line, so it never sits on top of the line or the centered value label.
+      const ang = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
+      const off = 18;
+      const bx = Math.min(CANVAS_WIDTH - 15, Math.max(15, a.x + off * Math.cos(ang)));
+      const by = Math.min(CANVAS_HEIGHT - 12, Math.max(12, a.y + off * Math.sin(ang)));
       return (
         <G key={m.id}>
           <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#00ACC1" strokeWidth={small ? 2.5 : 3} />
           <Circle cx={a.x} cy={a.y} r={small ? 3.5 : 4.5} fill="#00ACC1" />
           <Circle cx={b.x} cy={b.y} r={small ? 3.5 : 4.5} fill="#00ACC1" />
-          <Rect x={mx - 15} y={my - 10} width={30} height={18} rx={9} fill="#00ACC1" />
-          <SvgText x={mx} y={my + 3} fill="#FFFFFF" fontSize={11} fontWeight="800" textAnchor="middle">{`M${i + 1}`}</SvgText>
+          <Rect x={bx - 14} y={by - 9} width={28} height={18} rx={9} fill="#00ACC1" />
+          <SvgText x={bx} y={by + 4} fill="#FFFFFF" fontSize={11} fontWeight="800" textAnchor="middle">{`M${i + 1}`}</SvgText>
         </G>
       );
     });
@@ -623,9 +627,9 @@ export default function MeasureScreen() {
                 {measurementsList.length > 0 && (
                   <View style={[styles.measTable, { borderColor: colors.border }]}>
                     <View style={styles.measHeadRow}>
-                      <Text style={[styles.measHeadCell, styles.measColTag, { color: colors.muted }]}>{t('measure_step_measure' as any)}</Text>
-                      <Text style={[styles.measHeadCell, styles.measColVal, { color: colors.muted }]}>{t('measure_col_value' as any)}</Text>
-                      <Text style={[styles.measHeadCell, styles.measColMethod, { color: colors.muted }]}>{t('measure_col_method' as any)}</Text>
+                      <Text numberOfLines={1} style={[styles.measHeadCell, styles.measColTag, { color: colors.muted }]}>#</Text>
+                      <Text numberOfLines={1} style={[styles.measHeadCell, styles.measColVal, { color: colors.muted }]}>{t('measure_col_value' as any)}</Text>
+                      <Text numberOfLines={1} style={[styles.measHeadCell, styles.measColMethod, { color: colors.muted }]}>{t('measure_col_method' as any)}</Text>
                       <View style={styles.measColDel} />
                     </View>
                     {measurementsList.map((m, i) => (
