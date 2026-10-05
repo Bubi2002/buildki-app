@@ -1891,16 +1891,8 @@ export default function ProtocolDetailScreen() {
           </View>
         )}
 
-        {/* Tags display (when editor closed) */}
-        {!showTagEditor && tags.length > 0 && (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12, paddingHorizontal: 4 }}>
-            {tags.map((tag) => (
-              <View key={tag} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0 }}>
-                <Text style={{ fontSize: 11, color: colors.primary }}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {/* Auto-tags removed — they were often off-topic (e.g. room/day names).
+            Tags can still be managed via the ••• menu if needed. */}
 
         {/* Draft banner: recorded but not yet transcribed (AI processing was off) */}
         {protocol.status === "draft" && (

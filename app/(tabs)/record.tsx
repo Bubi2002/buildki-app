@@ -167,6 +167,8 @@ export default function RecordScreen() {
   const [recentProtocols, setRecentProtocols] = useState<any[]>([]);
   const [isOffline, setIsOffline] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Live elapsed seconds — used when stamping a photo's time (state can be stale in the capture closure).
+  const recordingDurationRef = useRef(0);
   const [waveformBars, setWaveformBars] = useState<number[]>([0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]);
   const waveformInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -747,8 +749,9 @@ export default function RecordScreen() {
 
   const startTimer = useCallback(() => {
     setRecordingDuration(0);
+    recordingDurationRef.current = 0;
     timerRef.current = setInterval(() => {
-      setRecordingDuration((prev) => prev + 1);
+      setRecordingDuration((prev) => { recordingDurationRef.current = prev + 1; return prev + 1; });
     }, 1000);
   }, []);
 
@@ -768,7 +771,7 @@ export default function RecordScreen() {
 
   const resumeTimer = useCallback(() => {
     timerRef.current = setInterval(() => {
-      setRecordingDuration((prev) => prev + 1);
+      setRecordingDuration((prev) => { recordingDurationRef.current = prev + 1; return prev + 1; });
     }, 1000);
   }, []);
 
@@ -843,7 +846,7 @@ export default function RecordScreen() {
           newPhotoIndex = prev.length; // index of the photo we're adding
           return [...prev, newUri];
         });
-        setPhotoTimestamps((prev) => [...prev, recordingDuration]);
+        setPhotoTimestamps((prev) => [...prev, recordingDurationRef.current]);
         setPhotoVoiceNotes((prev) => [...prev, null]); // placeholder for voice note
 
         // Auto-link photo to the last chapter marker (if any)
@@ -897,7 +900,7 @@ export default function RecordScreen() {
           await FileSystem.copyAsync({ from: asset.uri, to: newUri });
 
           setCapturedPhotos((prev) => [...prev, newUri]);
-          setPhotoTimestamps((prev) => [...prev, recordingDuration]);
+          setPhotoTimestamps((prev) => [...prev, recordingDurationRef.current]);
           setPhotoVoiceNotes((prev) => [...prev, null]);
 
           // Auto-link to last chapter marker
