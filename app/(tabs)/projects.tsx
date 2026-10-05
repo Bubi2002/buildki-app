@@ -785,14 +785,18 @@ export default function RundgangTab() {
                   ))
                 )}
 
-                {/* Tools (4) */}
+                {/* Tools */}
                 <Text style={styles.sectionHead}>{t('werkzeuge')}</Text>
                 <View style={styles.toolRow}>
                   {([
                     { icon: "map", label: t('grundriss'), route: `/floor-plan?projectId=${selectedProjectId}` },
                     { icon: "photo-library", label: t('gallery_photos'), route: `/photo-gallery?projectId=${selectedProjectId}` },
+                    { icon: "compare", label: t('vergleich'), route: `/photo-compare?projectId=${selectedProjectId}` },
+                    { icon: "straighten", label: t('measure_title' as any), route: `/measure` },
                     { icon: "checklist", label: t('checklist_title'), route: `/checklists?projectId=${selectedProjectId}` },
                     { icon: "menu-book", label: t('tagebuch'), route: `/diary?projectId=${selectedProjectId}` },
+                    { icon: "groups", label: t('anwesenheit'), route: `/attendance` },
+                    { icon: "schedule", label: t('zeiterfassung'), route: `/time-tracking` },
                   ] as const).map((tool) => (
                     <Pressable key={tool.label} onPress={() => router.push(tool.route as any)} style={styles.toolBox}>
                       <MaterialIcons name={tool.icon as any} size={22} color="#5DADE2" />
@@ -1223,8 +1227,8 @@ const styles = StyleSheet.create({
   sectionEmpty: { color: "#5F7590", fontSize: 14, marginHorizontal: 16 },
   protoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginBottom: 6, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235" },
   protoText: { flex: 1, color: "#E8EEF4", fontSize: 14, fontWeight: "600" },
-  toolRow: { flexDirection: "row", gap: 8, marginHorizontal: 16 },
-  toolBox: { flex: 1, alignItems: "center", gap: 6, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235" },
+  toolRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginHorizontal: 16 },
+  toolBox: { flexBasis: "22%", flexGrow: 1, minWidth: 72, alignItems: "center", gap: 6, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#1E3A5F", backgroundColor: "#0F2235" },
   toolBoxText: { color: "#E8EEF4", fontSize: 11, fontWeight: "600" },
   pdfExportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 14, paddingVertical: 14, borderRadius: 12, backgroundColor: "#1E3A5F" },
   pdfExportText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
