@@ -1,11 +1,14 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Alert, Modal, TextInput } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
+import { getDefects, saveDefect, updateDefectStatus, deleteDefect, type DefectStatus } from "@/lib/defect-store";
+import { AssigneeInput } from "@/components/assignee-input";
+import { DateOnlyPicker } from "@/components/date-only-picker";
 
 type Protocol = {
   id: string;
@@ -32,6 +35,11 @@ export default function BegehungReviewScreen() {
   const { protocolId } = useLocalSearchParams<{ protocolId: string }>();
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [defects, setDefects] = useState<any[]>([]);
+  // Inline Mangel edit popup.
+  const [editDefect, setEditDefect] = useState<any | null>(null);
+  const [edTitle, setEdTitle] = useState("");
+  const [edAssignee, setEdAssignee] = useState("");
+  const [edDue, setEdDue] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -39,7 +47,6 @@ export default function BegehungReviewScreen() {
       const p = all.find((x: Protocol) => x.id === protocolId) || null;
       setProtocol(p);
       if (p?.projectId) {
-        const { getDefects } = await import("@/lib/defect-store");
         setDefects(await getDefects(p.projectId));
       } else setDefects([]);
     } catch {}
@@ -79,12 +86,53 @@ export default function BegehungReviewScreen() {
 
   const toggleDefect = async (d: any) => {
     try {
-      const { updateDefectStatus } = await import("@/lib/defect-store");
       const done = d.status === "erledigt" || d.status === "geschlossen";
       await updateDefectStatus(d.id, done ? "offen" : "erledigt");
       load();
     } catch {}
   };
+
+  // ── Inline Mangel edit popup (like the main room overview) ────────────────
+  const openDefectEdit = (d: any) => {
+    setEdTitle(d.title || "");
+    setEdAssignee(d.assignee || "");
+    setEdDue(d.dueDate || "");
+    setEditDefect(d);
+  };
+  const setDefectStatusNow = async (status: DefectStatus) => {
+    if (!editDefect) return;
+    setEditDefect({ ...editDefect, status });
+    try { await updateDefectStatus(editDefect.id, status); } catch {}
+    load();
+  };
+  const saveDefectEdit = async () => {
+    const d = editDefect;
+    if (!d) return;
+    const updated = { ...d, title: edTitle.trim() || d.title, assignee: edAssignee.trim() || undefined, dueDate: edDue.trim() || undefined, updatedAt: new Date().toISOString() };
+    try { await saveDefect(updated as any); } catch {}
+    setEditDefect(null);
+    load();
+  };
+  const deleteDefectEdit = () => {
+    const d = editDefect;
+    if (!d) return;
+    Alert.alert(d.title || t("review_defects" as any), "", [
+      { text: t("btn_abbrechen" as any), style: "cancel" },
+      { text: t("btn_loeschen" as any), style: "destructive", onPress: async () => { try { await deleteDefect(d.id); } catch {} setEditDefect(null); load(); } },
+    ]);
+  };
+
+  // Group the project's defects by Geschoss · Raum, like the main overview.
+  const defectGroups = (() => {
+    const groups: { key: string; items: any[] }[] = [];
+    const map = new Map<string, any[]>();
+    for (const d of defects) {
+      const key = [d.floor, d.room || d.location].filter(Boolean).join(" · ") || t("review_defects_nolocation" as any);
+      if (!map.has(key)) { map.set(key, []); groups.push({ key, items: map.get(key)! }); }
+      map.get(key)!.push(d);
+    }
+    return groups;
+  })();
 
   const rooms = (protocol?.markers || [])
     .filter((m) => typeof m?.label === "string" && m.label.startsWith("KAPITEL:"))
@@ -187,34 +235,31 @@ export default function BegehungReviewScreen() {
           )}
         </View>
 
-        {/* Mängel — tap to toggle done, open full list to edit details */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: colors.muted, marginBottom: 0 }]}>{t("review_defects" as any)}</Text>
-          <Pressable onPress={() => router.push("/defects" as any)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, flexDirection: "row", alignItems: "center", gap: 4 }]}>
-            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: "700" }}>{t("review_edit_all" as any)}</Text>
-            <MaterialIcons name="chevron-right" size={18} color={colors.primary} />
-          </Pressable>
-        </View>
+        {/* Mängel — grouped by Geschoss/Raum, tap to edit in a popup */}
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>{t("review_defects" as any)}</Text>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {defects.length === 0 ? (
             <Text style={[styles.emptyRow, { color: colors.muted }]}>{t("review_defects_none" as any)}</Text>
           ) : (
-            defects.map((d: any, i: number) => {
-              const done = d?.status === "erledigt" || d?.status === "geschlossen";
-              const loc = [d?.floor, d?.room].filter(Boolean).join(" · ");
-              return (
-                <View key={d?.id || `def-${i}`} style={[styles.editRow, { borderTopColor: colors.border, borderTopWidth: i === 0 ? 0 : 1 }]}>
-                  <Pressable onPress={() => toggleDefect(d)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-                    <MaterialIcons name={done ? "check-circle" : "radio-button-unchecked"} size={22} color={done ? "#5E8B6F" : "#E67E22"} />
-                  </Pressable>
-                  <Pressable onPress={() => router.push(`/defects?defectId=${d?.id}` as any)} style={{ flex: 1 }}>
-                    <Text style={[styles.editLabel, { color: colors.foreground, opacity: done ? 0.6 : 1 }]} numberOfLines={2}>{d?.title || d?.description || "–"}</Text>
-                    {loc ? <Text style={[styles.editSub, { color: colors.muted }]}>{loc}</Text> : null}
-                  </Pressable>
-                  <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
-                </View>
-              );
-            })
+            defectGroups.map((g, gi) => (
+              <View key={g.key}>
+                <Text style={[styles.groupHead, { color: colors.muted, backgroundColor: colors.background, borderTopColor: colors.border, borderTopWidth: gi === 0 ? 0 : 1 }]}>{g.key}</Text>
+                {g.items.map((d: any, i: number) => {
+                  const done = d?.status === "erledigt" || d?.status === "geschlossen";
+                  return (
+                    <View key={d?.id || `def-${gi}-${i}`} style={[styles.editRow, { borderTopColor: colors.border, borderTopWidth: 1 }]}>
+                      <Pressable onPress={() => toggleDefect(d)} hitSlop={8} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                        <MaterialIcons name={done ? "check-circle" : "radio-button-unchecked"} size={22} color={done ? "#5E8B6F" : "#E67E22"} />
+                      </Pressable>
+                      <Pressable onPress={() => openDefectEdit(d)} style={{ flex: 1 }}>
+                        <Text style={[styles.editLabel, { color: colors.foreground, opacity: done ? 0.6 : 1 }]} numberOfLines={2}>{d?.title || d?.description || "–"}</Text>
+                      </Pressable>
+                      <MaterialIcons name="edit" size={18} color={colors.muted} />
+                    </View>
+                  );
+                })}
+              </View>
+            ))
           )}
         </View>
 
@@ -227,6 +272,41 @@ export default function BegehungReviewScreen() {
           <Text style={styles.primaryBtnText}>{t("review_open_protocol" as any)}</Text>
         </Pressable>
       </ScrollView>
+
+      {/* Mangel edit popup */}
+      <Modal visible={!!editDefect} transparent animationType="fade" onRequestClose={() => setEditDefect(null)}>
+        <Pressable style={styles.popOverlay} onPress={() => setEditDefect(null)}>
+          <Pressable style={[styles.popCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => {}}>
+            {editDefect && (
+              <>
+                {(editDefect.floor || editDefect.room || editDefect.location) ? (
+                  <Text style={[styles.editSub, { color: colors.muted, marginBottom: 6 }]}>{[editDefect.floor, editDefect.room || editDefect.location].filter(Boolean).join(" · ")}</Text>
+                ) : null}
+                <TextInput value={edTitle} onChangeText={setEdTitle} placeholder={t("titel" as any)} placeholderTextColor={colors.muted} style={[styles.popInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background, fontWeight: "700", fontSize: 16 }]} />
+                <View style={styles.statusRowPop}>
+                  {([["offen", "index_offen", "#F97316"], ["in_bearbeitung", "index_in_arbeit", "#F59E0B"], ["erledigt", "index_erledigt", "#10B981"]] as const).map(([s, lbl, col]) => {
+                    const active = editDefect.status === s;
+                    return (
+                      <Pressable key={s} onPress={() => setDefectStatusNow(s as DefectStatus)} style={[styles.statusChip, { borderColor: active ? col : colors.border, backgroundColor: active ? col + "22" : "transparent" }]}>
+                        <Text style={{ fontSize: 12, fontWeight: active ? "800" : "600", color: active ? col : colors.muted }}>{t(lbl as any)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={[styles.popLabel, { color: colors.muted }]}>{t("zustaendig" as any)}</Text>
+                <AssigneeInput value={edAssignee} onChange={setEdAssignee} placeholder={t("zustaendig" as any)} style={[styles.popInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]} />
+                <View style={{ marginTop: 12 }}>
+                  <DateOnlyPicker value={edDue} onChange={setEdDue} label={t("frist" as any)} withTime />
+                </View>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                  <Pressable onPress={deleteDefectEdit} style={[styles.popBtn, { borderWidth: 1, borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t("btn_loeschen" as any)}</Text></Pressable>
+                  <Pressable onPress={saveDefectEdit} style={[styles.popBtn, { flex: 2, backgroundColor: colors.primary }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{t("save" as any)}</Text></Pressable>
+                </View>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -251,6 +331,14 @@ const styles = StyleSheet.create({
   editRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
   editLabel: { fontSize: 15, fontWeight: "500" },
   editSub: { fontSize: 12, marginTop: 2 },
+  groupHead: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4, paddingHorizontal: 14, paddingVertical: 8 },
+  popOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", padding: 24 },
+  popCard: { borderWidth: 1, borderRadius: 16, padding: 20 },
+  popInput: { minHeight: 46, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginTop: 4 },
+  statusRowPop: { flexDirection: "row", gap: 8, marginTop: 12 },
+  statusChip: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: 8, borderWidth: 1 },
+  popLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 14, marginBottom: 2 },
+  popBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 13, borderRadius: 10 },
   primaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 15 },
   primaryBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
   secondaryBtn: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderRadius: 12, paddingVertical: 13, marginTop: 10 },
