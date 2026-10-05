@@ -28,12 +28,12 @@ function DefaultErrorFallback({
           {t('error_boundary_subtitle' as any)}
         </Text>
 
-        {__DEV__ && error && (
+        {error && (
           <ScrollView style={styles.errorBox} contentContainerStyle={{ padding: 12 }}>
-            <Text style={styles.errorTitle}>{error.name}</Text>
-            <Text style={styles.errorMessage}>{error.message}</Text>
+            <Text selectable style={styles.errorTitle}>{error.name}</Text>
+            <Text selectable style={styles.errorMessage}>{error.message}</Text>
             {errorInfo?.componentStack && (
-              <Text style={styles.errorStack}>
+              <Text selectable style={styles.errorStack}>
                 {errorInfo.componentStack.slice(0, 500)}
               </Text>
             )}
