@@ -2486,15 +2486,6 @@ export default function ProtocolDetailScreen() {
             </View>
           ) : (
             <View>
-              {extractedKeywords.length > 0 && (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                  {extractedKeywords.map((kw, i) => (
-                    <View key={i} style={{ backgroundColor: colors.primary + "15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 0 }}>
-                      <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "500" }}>{kw}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
               {showSpeakers && speakerSegments.length > 0 && (
                 <View style={{ marginBottom: 12 }}>
                   {/* Speaker Legend */}
