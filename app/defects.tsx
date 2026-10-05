@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -88,7 +88,18 @@ export default function DefectsScreen() {
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; defectId?: string }>();
-  const projectId = params.projectId || "";
+  // Always scope to a project — never show every project's Maengel at once.
+  // Fall back to the current/last-selected Baustelle when opened without one.
+  const [projectId, setProjectId] = useState(params.projectId || "");
+  useEffect(() => {
+    if (params.projectId) { setProjectId(params.projectId); return; }
+    (async () => {
+      try {
+        const last = await AsyncStorage.getItem("last-selected-project-id");
+        if (last) setProjectId((cur) => cur || last);
+      } catch {}
+    })();
+  }, [params.projectId]);
 
   const [defects, setDefects] = useState<Defect[]>([]);
   const [filter, setFilter] = useState<DefectStatus | "alle">("alle");

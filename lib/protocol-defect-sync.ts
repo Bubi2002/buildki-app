@@ -194,12 +194,16 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
     }
   }
 
-  if (transcription.trim()) {
+  // Only fall back to raw transcription sentences when the structured protocol
+  // produced NO defects — otherwise it adds messy, wordy duplicates (whole spoken
+  // sentences as "Mängel"). Keep only short, clean sentences even then.
+  if (transcription.trim() && candidates.length === 0) {
     const sentences = decodeUnicodeEscapes(transcription)
       .split(/[.!?;]\s+|\n+/)
       .map(cleanText)
       .filter(Boolean);
     for (const sentence of sentences) {
+      if (sentence.length > 80) continue; // too wordy to be a clean defect title
       if (!DEFECT_SIGNAL_PATTERN.test(sentence) || NO_DEFECT_PATTERN.test(sentence)) continue;
       const candidate = createCandidateFromText(sentence, 0.76);
       if (!candidate) continue;
@@ -218,11 +222,9 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
   return [...unique.values()];
 }
 
-// Attach the RIGHT photo to a protocol-derived defect instead of dumping every
-// protocol photo onto every defect (which showed unrelated images):
-//  - an explicit "[FOTO N]" / "Foto N" reference → that photo only
-//  - a protocol with exactly one photo → that photo
-//  - otherwise (several photos, no reference) → none, so nothing is mis-assigned
+// Attach a photo to a protocol-derived defect ONLY when the defect text
+// explicitly references it via "[FOTO N]" / "Foto N". Never auto-dump the same
+// photo onto every defect (that showed the identical image on all of them).
 function photosForCandidate(candidate: ProtocolDefectCandidate, protocolPhotos: string[]): string[] {
   if (protocolPhotos.length === 0) return [];
   const text = `${candidate.title} ${candidate.description}`;
@@ -231,7 +233,7 @@ function photosForCandidate(candidate: ProtocolDefectCandidate, protocolPhotos: 
     const index = parseInt(match[1], 10) - 1;
     return index >= 0 && index < protocolPhotos.length ? [protocolPhotos[index]] : [];
   }
-  return protocolPhotos.length === 1 ? [protocolPhotos[0]] : [];
+  return [];
 }
 
 function categoryFromTrade(trade?: string): string {
