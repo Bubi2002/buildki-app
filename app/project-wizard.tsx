@@ -258,7 +258,9 @@ export default function ProjectWizardScreen() {
     })();
   }, []);
 
-  const finish = () => router.replace("/(tabs)" as any);
+  // Land on the Projekte tab (showing the just-created/selected project),
+  // not the old (tabs) group index.
+  const finish = () => router.replace("/(tabs)/projects" as any);
 
   const pickExisting = async (id: string) => {
     haptic();
