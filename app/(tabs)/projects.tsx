@@ -1006,43 +1006,54 @@ export default function RundgangTab() {
       </Modal>
 
       {/* Project dropdown with search */}
-      <Modal visible={showProjectDropdown} transparent animationType="fade" onRequestClose={() => setShowProjectDropdown(false)}>
-        <Pressable style={styles.dropdownOverlay} onPress={() => setShowProjectDropdown(false)}>
-          <Pressable style={styles.dropdownCard} onPress={() => {}}>
-            <View style={styles.dropdownSearch}>
-              <MaterialIcons name="search" size={20} color="#8FA3B8" />
-              <TextInput
-                value={projectSearch}
-                onChangeText={setProjectSearch}
-                placeholder={t("rundgang_search_project" as any)}
-                placeholderTextColor="#8FA3B8"
-                style={styles.dropdownSearchInput}
-                autoFocus
-              />
-            </View>
-            <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-              {projects
-                .filter((p) => !projectSearch.trim() || p.name.toLowerCase().includes(projectSearch.trim().toLowerCase()))
-                .map((p) => {
-                  const active = p.id === selectedProjectId;
-                  return (
-                    <Pressable key={p.id} onPress={() => { pickProject(p.id); setShowProjectDropdown(false); }} style={styles.dropdownRow}>
-                      <View style={[styles.chipDot, { backgroundColor: p.color || "#5DADE2" }]} />
-                      <Text style={[styles.dropdownRowText, active && { color: "#5DADE2", fontWeight: "800" }]} numberOfLines={1}>{p.name}</Text>
-                      {active && <MaterialIcons name="check" size={18} color="#5DADE2" />}
-                      <Pressable onPress={() => deleteProject(p)} hitSlop={8} style={{ padding: 4, marginLeft: 4 }}>
-                        <MaterialIcons name="delete-outline" size={18} color="#E57373" />
-                      </Pressable>
-                    </Pressable>
-                  );
-                })}
-            </ScrollView>
-            <Pressable onPress={() => { setShowProjectDropdown(false); router.push("/project-wizard" as any); }} style={styles.dropdownNew}>
-              <MaterialIcons name="add" size={20} color="#5DADE2" />
-              <Text style={{ color: "#5DADE2", fontWeight: "800" }}>{t("rundgang_new_project" as any)}</Text>
+      <Modal visible={showProjectDropdown} animationType="slide" onRequestClose={() => { if (selectedProjectId) setShowProjectDropdown(false); }}>
+        <View style={styles.chooserScreen}>
+          {selectedProjectId && (
+            <Pressable onPress={() => setShowProjectDropdown(false)} hitSlop={10} style={styles.chooserClose}>
+              <MaterialIcons name="close" size={28} color="#FFFFFF" />
             </Pressable>
+          )}
+          <Text style={styles.chooserTitle}>{t("index_projekt_auswaehlen" as any)}</Text>
+          <Text style={styles.chooserSubtitle}>{t("chooser_subtitle" as any)}</Text>
+
+          <View style={styles.chooserSearch}>
+            <MaterialIcons name="search" size={20} color="#5A7892" />
+            <TextInput
+              value={projectSearch}
+              onChangeText={setProjectSearch}
+              placeholder={t("rundgang_search_project" as any)}
+              placeholderTextColor="#5A7892"
+              style={styles.chooserSearchInput}
+            />
+          </View>
+
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
+            {projects
+              .filter((p) => !projectSearch.trim() || p.name.toLowerCase().includes(projectSearch.trim().toLowerCase()))
+              .map((p) => {
+                const active = p.id === selectedProjectId;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => { pickProject(p.id); setShowProjectDropdown(false); }}
+                    style={({ pressed }) => [styles.chooserRow, active && styles.chooserRowActive, { opacity: pressed ? 0.85 : 1 }]}
+                  >
+                    <View style={[styles.chipDot, { width: 14, height: 14, borderRadius: 7, backgroundColor: p.color || "#5DADE2" }]} />
+                    <Text style={[styles.chooserRowText, active && { color: "#1E6FA8" }]} numberOfLines={1}>{p.name}</Text>
+                    {active && <MaterialIcons name="check-circle" size={22} color="#1E6FA8" />}
+                    <Pressable onPress={() => deleteProject(p)} hitSlop={10} style={{ padding: 4, marginLeft: 4 }}>
+                      <MaterialIcons name="delete-outline" size={22} color="#E57373" />
+                    </Pressable>
+                  </Pressable>
+                );
+              })}
+          </ScrollView>
+
+          <Pressable onPress={() => { setShowProjectDropdown(false); router.push("/project-wizard" as any); }} style={({ pressed }) => [styles.chooserNew, { opacity: pressed ? 0.85 : 1 }]}>
+            <MaterialIcons name="add" size={22} color="#1E6FA8" />
+            <Text style={styles.chooserNewText}>{t("rundgang_new_project" as any)}</Text>
           </Pressable>
-        </Pressable>
+        </View>
       </Modal>
 
       {/* "Was willst du tun?" — project-scoped start step */}
@@ -1112,6 +1123,18 @@ const styles = StyleSheet.create({
   dropdownRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#1E3A5F" },
   dropdownRowText: { flex: 1, color: "#E2E8F0", fontSize: 15, fontWeight: "600" },
   dropdownNew: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, marginTop: 8, borderRadius: 10, borderWidth: 1, borderStyle: "dashed", borderColor: "#5DADE2" },
+  // Full-screen light-blue project chooser (entry point).
+  chooserScreen: { flex: 1, backgroundColor: "#5DADE2", paddingTop: Platform.OS === "ios" ? 64 : 36, paddingHorizontal: 20 },
+  chooserClose: { position: "absolute", top: Platform.OS === "ios" ? 58 : 30, right: 16, padding: 6, zIndex: 2 },
+  chooserTitle: { fontSize: 30, fontWeight: "800", color: "#FFFFFF", marginBottom: 4 },
+  chooserSubtitle: { fontSize: 15, color: "#EAF6FF", marginBottom: 22 },
+  chooserSearch: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FFFFFF", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16 },
+  chooserSearchInput: { flex: 1, color: "#0B1A2A", fontSize: 16 },
+  chooserRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFFFFF", borderRadius: 14, paddingVertical: 16, paddingHorizontal: 16, marginBottom: 10 },
+  chooserRowActive: { borderWidth: 2, borderColor: "#1E6FA8" },
+  chooserRowText: { flex: 1, color: "#0B1A2A", fontSize: 17, fontWeight: "700" },
+  chooserNew: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#FFFFFF", borderRadius: 14, paddingVertical: 17, marginBottom: 24, marginTop: 4 },
+  chooserNewText: { color: "#1E6FA8", fontSize: 17, fontWeight: "800" },
   pickerWrap: { paddingHorizontal: 16, marginBottom: 10 },
   pickerLabel: { color: "#7F8C9B", fontSize: 12, fontWeight: "700", textTransform: "uppercase", marginBottom: 8, letterSpacing: 0.5 },
   chipsRow: { gap: 8, paddingRight: 8 },
