@@ -121,6 +121,51 @@ function formatInline(value?: string): string {
     .replace(/\*/g, "");
 }
 
+// Markdown tables render a [FOTO X] marker inside a cell as literal text. Lift
+// those markers OUT of the table: strip them from the cells and re-insert each
+// as its own line right after the table block, where the inline-photo renderer
+// turns it into a real image instead of the literal "[FOTO 1]".
+function liftTableRowPhotos(text: string): string {
+  const src = (text || "").split("\n");
+  const out: string[] = [];
+  const fotoRe = /\[Foto\s*\d+(?:\s*[–\-—][^\]]*)?\]/gi;
+  const isTableLine = (s: string) => {
+    const t = s.trim();
+    return t.startsWith("|") && t.endsWith("|");
+  };
+  let i = 0;
+  while (i < src.length) {
+    if (isTableLine(src[i])) {
+      const block: string[] = [];
+      while (i < src.length && isTableLine(src[i])) {
+        block.push(src[i]);
+        i++;
+      }
+      const lifted: string[] = [];
+      const cleaned = block.map((row) =>
+        row.replace(fotoRe, (m) => {
+          lifted.push(m.trim());
+          return "";
+        }),
+      );
+      out.push(...cleaned);
+      // Emit each referenced photo once, in order, on its own line.
+      const seen = new Set<string>();
+      for (const marker of lifted) {
+        const key = marker.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push("");
+        out.push(marker);
+      }
+      continue;
+    }
+    out.push(src[i]);
+    i++;
+  }
+  return out.join("\n");
+}
+
 function formatEvidenceSource(snapshot: DocumentEvidenceSnapshot): string {
   const parts = [snapshot.sourceLabel];
   // A timecode is only meaningful for a real video frame. A still photo's
