@@ -1319,7 +1319,7 @@ export default function ProtocolDetailScreen() {
     setProtocol({ ...(protocol as any), sendPrepared: false } as any);
   };
 
-  const exportPdf = async () => {
+  const exportPdf = async (directShare = false) => {
     if (!protocol) return;
 
     setIsExporting(true);
@@ -1375,9 +1375,21 @@ export default function ProtocolDetailScreen() {
         });
         setPreviewHtml(html);
       }
-      // Show PDF preview
-      setPreviewPdfUri(pdfUri);
-      setShowPdfPreview(true);
+      if (directShare && Platform.OS !== "web") {
+        // Straight to the native Apple share sheet (no custom menu / preview).
+        const avail = await Sharing.isAvailableAsync();
+        if (avail) {
+          await Sharing.shareAsync(pdfUri, {
+            mimeType: "application/pdf",
+            dialogTitle: `${protocol.templateName || t('protokoll')} – ${protocol.title || ""}`,
+            UTI: "com.adobe.pdf",
+          });
+        }
+      } else {
+        // Show PDF preview
+        setPreviewPdfUri(pdfUri);
+        setShowPdfPreview(true);
+      }
     } catch (error) {
       console.error("PDF export error:", error);
       Alert.alert(t('alert_fehler'), t('msg_pdf_konnte_nicht_erstellt_werden_2'));
@@ -2782,16 +2794,7 @@ export default function ProtocolDetailScreen() {
         )}
         {protocol.status !== "processing" && (
         <Pressable
-          onPress={() => {
-            Alert.alert(t('protocol_export_btn' as any), undefined, [
-              { text: t('protocol_export_pdf' as any), onPress: exportPdf },
-              { text: t('email'), onPress: shareViaEmail },
-              { text: "WhatsApp", onPress: shareViaWhatsApp },
-              { text: t('kopieren'), onPress: copyToClipboard },
-              { text: t('protocol_share'), onPress: shareGeneric },
-              { text: t('cancel'), style: "cancel" },
-            ]);
-          }}
+          onPress={() => exportPdf(true)}
           disabled={isExporting || isSendingWhatsApp}
           style={({ pressed }) => [
             styles.actionButton,
@@ -2803,7 +2806,7 @@ export default function ProtocolDetailScreen() {
           ) : (
             <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
           )}
-          <Text style={styles.actionButtonText}>{t('protocol_export_btn' as any)}</Text>
+          <Text style={styles.actionButtonText}>{t('protocol_share' as any)}</Text>
         </Pressable>
         )}
       </View>
