@@ -1,18 +1,21 @@
 import React from "react";
-import { Text, View, StyleSheet, ScrollView, type TextStyle, Dimensions } from "react-native";
+import { Text, View, StyleSheet, ScrollView, Pressable, type TextStyle, Dimensions } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 
 interface MarkdownTextProps {
   text: string;
   style?: TextStyle;
   color?: string;
+  /** Tap a defect card to edit that single Mangel. Receives the table's header
+   *  line and that row's raw markdown line so the caller can write it back. */
+  onEditDefect?: (headerLine: string, rowLine: string) => void;
 }
 
 /**
  * Simple Markdown renderer for protocol text.
  * Supports: # H1, ## H2, **bold**, *italic*, markdown tables (| col | col |), and line breaks.
  */
-export function MarkdownText({ text, style, color = "#000" }: MarkdownTextProps) {
+export function MarkdownText({ text, style, color = "#000", onEditDefect }: MarkdownTextProps) {
   const colors = useColors();
 
   if (!text) return null;
@@ -42,7 +45,7 @@ export function MarkdownText({ text, style, color = "#000" }: MarkdownTextProps)
       if (tableLines.length >= 2) {
         elements.push(
           <View key={`table-${i}`} style={{ marginVertical: 12 }}>
-            {renderTable(tableLines, colors, color)}
+            {renderTable(tableLines, colors, color, onEditDefect)}
           </View>
         );
       }
@@ -113,7 +116,7 @@ export function MarkdownText({ text, style, color = "#000" }: MarkdownTextProps)
   return <View>{elements}</View>;
 }
 
-function renderTable(tableLines: string[], colors: any, textColor: string): React.ReactNode {
+function renderTable(tableLines: string[], colors: any, textColor: string, onEditDefect?: (headerLine: string, rowLine: string) => void): React.ReactNode {
   // Parse cells from each line
   const rows = tableLines.map(line => 
     line.split("|").slice(1, -1).map(cell => cell.trim())
@@ -160,26 +163,40 @@ function renderTable(tableLines: string[], colors: any, textColor: string): Reac
 
   if (iDesc >= 0) {
     const val = (row: string[], i: number) => (i >= 0 && i < row.length ? row[i].trim() : "");
+    // Raw data lines (for write-back when a card is tapped to edit).
+    const rawDataLines = hasSeparator ? tableLines.slice(2) : tableLines.slice(1);
     return (
       <View style={{ gap: 8 }}>
         {dataRows.map((row, rowIdx) => {
           const nr = val(row, iNr), ort = val(row, iOrt), desc = val(row, iDesc);
           const top = [nr, ort].filter(Boolean).join(" · ");
+          // Short labels: "Gewerk / Verantwortlich" → "Gewerk", "Frist zur
+          // Beseitigung" → "Frist".
           const fields: [string, string][] = [];
-          if (iGewerk >= 0 && val(row, iGewerk)) fields.push([headerRow[iGewerk], val(row, iGewerk)]);
-          if (iPrio >= 0 && val(row, iPrio)) fields.push([headerRow[iPrio], val(row, iPrio)]);
-          if (iFrist >= 0 && val(row, iFrist)) fields.push([headerRow[iFrist], val(row, iFrist)]);
+          if (iGewerk >= 0 && val(row, iGewerk)) fields.push(["Gewerk", val(row, iGewerk)]);
+          if (iPrio >= 0 && val(row, iPrio)) fields.push(["Priorität", val(row, iPrio)]);
+          if (iFrist >= 0 && val(row, iFrist)) fields.push(["Frist", val(row, iFrist)]);
           return (
-            <View key={`card-${rowIdx}`} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }}>
-              {top ? <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginBottom: 2 }}>{top}</Text> : null}
-              {desc ? <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginBottom: fields.length ? 6 : 0 }}>{desc}</Text> : null}
-              {fields.map(([label, value], i) => (
-                <View key={i} style={{ flexDirection: "row", marginTop: 2 }}>
-                  <Text style={{ fontSize: 13, color: colors.muted, width: 92 }}>{label}:</Text>
-                  <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{value}</Text>
+            <Pressable
+              key={`card-${rowIdx}`}
+              onPress={onEditDefect ? () => onEditDefect(tableLines[0], rawDataLines[rowIdx] || "") : undefined}
+              disabled={!onEditDefect}
+              style={({ pressed }) => [{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface, opacity: pressed && onEditDefect ? 0.7 : 1 }]}
+            >
+              <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                <View style={{ flex: 1 }}>
+                  {top ? <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginBottom: 2 }}>{top}</Text> : null}
+                  {desc ? <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginBottom: fields.length ? 6 : 0 }}>{desc}</Text> : null}
+                  {fields.map(([label, value], i) => (
+                    <View key={i} style={{ flexDirection: "row", marginTop: 2 }}>
+                      <Text style={{ fontSize: 13, color: colors.muted, width: 70 }}>{label}:</Text>
+                      <Text style={{ fontSize: 13, color: textColor, flex: 1 }}>{value}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+                {onEditDefect ? <Text style={{ fontSize: 16, color: colors.muted, marginLeft: 8, marginTop: 2 }}>✎</Text> : null}
+              </View>
+            </Pressable>
           );
         })}
       </View>

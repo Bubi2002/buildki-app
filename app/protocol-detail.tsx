@@ -12,6 +12,7 @@ import {
   Modal,
   Alert,
   TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -558,6 +559,73 @@ export default function ProtocolDetailScreen() {
       console.error("Error saving edit:", error);
     }
     setIsEditing(false);
+  };
+
+  // ── Einzelnen Mangel per Karte bearbeiten (statt Rohtext) ──────────────────
+  const [editMangel, setEditMangel] = useState<null | { rowLine: string; cells: string[]; header: string[]; iDesc: number; iGewerk: number; iPrio: number; iFrist: number }>(null);
+  const [mDesc, setMDesc] = useState("");
+  const [mGewerk, setMGewerk] = useState("");
+  const [mPrio, setMPrio] = useState("");
+  const [mFrist, setMFrist] = useState("");
+
+  const handleEditMangel = (headerLine: string, rowLine: string) => {
+    if (activeVersionId) {
+      Alert.alert(t('protocol_detail_edit' as any), t('protocol_edit_original_only' as any));
+      return;
+    }
+    const header = splitTableRow(headerLine);
+    const cells = splitTableRow(rowLine);
+    const findCol = (re: RegExp) => header.findIndex((h) => re.test(h.toLowerCase()));
+    const iDesc = findCol(/beschreib|mangel|befund|leistung/);
+    const iGewerk = findCol(/gewerk|verantwort|firma/);
+    const iPrio = findCol(/priorit|schwere|dringlich/);
+    const iFrist = findCol(/frist|beseitig|datum|termin/);
+    setMDesc(iDesc >= 0 ? (cells[iDesc] || "") : "");
+    setMGewerk(iGewerk >= 0 ? (cells[iGewerk] || "") : "");
+    setMPrio(iPrio >= 0 ? (cells[iPrio] || "") : "");
+    setMFrist(iFrist >= 0 ? (cells[iFrist] || "") : "");
+    setEditMangel({ rowLine, cells, header, iDesc, iGewerk, iPrio, iFrist });
+  };
+
+  const saveMangelEdit = async () => {
+    if (!editMangel || !protocol) return;
+    const cells = [...editMangel.cells];
+    const clean = (s: string) => s.replace(/\|/g, "/").replace(/\n/g, " ").trim();
+    if (editMangel.iDesc >= 0) cells[editMangel.iDesc] = clean(mDesc);
+    if (editMangel.iGewerk >= 0) cells[editMangel.iGewerk] = clean(mGewerk);
+    if (editMangel.iPrio >= 0) cells[editMangel.iPrio] = clean(mPrio);
+    if (editMangel.iFrist >= 0) cells[editMangel.iFrist] = clean(mFrist);
+    const base = protocol.protocol || "";
+    // The displayed row came from liftTableRowPhotos (which strips [FOTO N] out of
+    // the cell), so match the stored row by its [FOTO]-free, whitespace-collapsed
+    // form — and keep any [FOTO N] marker that was in the stored description.
+    const fotoRe = /\[Foto\s*\d+\]/gi;
+    const norm = (s: string) => s.replace(fotoRe, "").replace(/\s+/g, " ").trim();
+    const baseLines = base.split("\n");
+    const targetNorm = norm(editMangel.rowLine);
+    const li = baseLines.findIndex((l) => l.trim().startsWith("|") && norm(l) === targetNorm);
+    let newText = base;
+    if (li >= 0) {
+      if (editMangel.iDesc >= 0) {
+        const origCells = splitTableRow(baseLines[li]);
+        const fotos = (origCells[editMangel.iDesc]?.match(fotoRe) || []).join(" ");
+        if (fotos && !/\[Foto/i.test(cells[editMangel.iDesc])) {
+          cells[editMangel.iDesc] = `${cells[editMangel.iDesc]} ${fotos}`.trim();
+        }
+      }
+      baseLines[li] = "| " + cells.join(" | ") + " |";
+      newText = baseLines.join("\n");
+    }
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].protocol = newText;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+        setProtocol({ ...protocol, protocol: newText });
+      }
+    } catch (e) { console.error("Mangel save failed:", e); }
+    setEditMangel(null);
   };
 
   // ── Tabellen-Editor: Markdown-Tabelle strukturiert bearbeiten ──
@@ -2536,7 +2604,7 @@ export default function ProtocolDetailScreen() {
                       }
                     }
                     if (part.trim()) {
-                      return <MarkdownText key={`text-${idx}`} text={part} color={colors.foreground} />;
+                      return <MarkdownText key={`text-${idx}`} text={part} color={colors.foreground} onEditDefect={activeVersionId ? undefined : handleEditMangel} />;
                     }
                     return null;
                   })}
@@ -2897,6 +2965,65 @@ export default function ProtocolDetailScreen() {
             </View>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Einzelnen Mangel bearbeiten (Karte angetippt) */}
+      <Modal visible={!!editMangel} transparent animationType="slide" onRequestClose={() => setEditMangel(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: "88%" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{t('index_tool_maengel' as any)}</Text>
+                <Pressable onPress={() => setEditMangel(null)} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                {editMangel?.iDesc !== undefined && editMangel.iDesc >= 0 && (
+                  <>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('beschreibung_optional')}</Text>
+                    <TextInput value={mDesc} onChangeText={setMDesc} multiline placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, minHeight: 90, textAlignVertical: "top", backgroundColor: colors.surface }} />
+                  </>
+                )}
+                {editMangel?.iGewerk !== undefined && editMangel.iGewerk >= 0 && (
+                  <>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('gewerk')}</Text>
+                    <TextInput value={mGewerk} onChangeText={setMGewerk} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
+                  </>
+                )}
+                {editMangel?.iPrio !== undefined && editMangel.iPrio >= 0 && (
+                  <>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('prioritaet')}</Text>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {["Hoch", "Mittel", "Niedrig"].map((opt) => {
+                        const active = mPrio.trim().toLowerCase() === opt.toLowerCase();
+                        const c = opt === "Hoch" ? "#DC2626" : opt === "Mittel" ? "#F59E0B" : "#16A34A";
+                        return (
+                          <Pressable key={opt} onPress={() => setMPrio(opt)} style={{ flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center", borderColor: active ? c : colors.border, backgroundColor: active ? c + "18" : colors.surface }}>
+                            <Text style={{ fontSize: 13, fontWeight: active ? "800" : "600", color: active ? c : colors.muted }}>{opt}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
+                {editMangel?.iFrist !== undefined && editMangel.iFrist >= 0 && (
+                  <>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('frist')}</Text>
+                    <TextInput value={mFrist} onChangeText={setMFrist} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
+                  </>
+                )}
+              </ScrollView>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                <Pressable onPress={() => setEditMangel(null)} style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t('btn_abbrechen')}</Text>
+                </Pressable>
+                <Pressable onPress={() => void saveMangelEdit()} style={({ pressed }) => [{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, opacity: pressed ? 0.85 : 1 }]}>
+                  <MaterialIcons name="check" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{t('save')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Full-screen photo gallery with swipe */}
