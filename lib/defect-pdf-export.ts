@@ -183,86 +183,119 @@ export async function generateDefectPdfHtml(
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { margin: 12mm 0 15mm 0; ${pageBox} @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 14mm; } }
+  @page { margin: 0 0 15mm 0; ${pageBox} @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #9aa6b4; padding: 0 0 7mm 16mm; } }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
-  .band { background: ${NAVY}; color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 16px; }
-  .band img { height: 40px; width: auto; object-fit: contain; }
-  .band .co { font-size: 17px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.2; }
-  .band .co small { display: block; font-size: 9px; font-weight: 600; color: #8FB0CF; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 3px; }
-  .wrap { padding: 24px 28px 12px; }
-  .title { font-size: 28px; font-weight: 800; color: ${NAVY}; margin: 0; letter-spacing: 0.4px; }
-  .title-rule { height: 3px; background: ${accentColor}; margin: 10px 0 0; border-radius: 2px; }
-  .subtitle { font-size: 12px; color: #64748b; margin: 12px 0 0; }
-  .infogrid { display: flex; margin: 18px 0 2px; border: 1px solid #e8ecf1; border-radius: 10px; overflow: hidden; }
-  .infocol { flex: 1; padding: 12px 14px; border-right: 1px solid #eef1f5; }
-  .infocol:last-child { border-right: none; }
-  .infocol .lbl { display: flex; align-items: center; gap: 6px; font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
-  .infocol .val { font-size: 14px; font-weight: 700; color: #1f2937; }
-  .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px; margin: 18px 0 2px; }
-  .stats-grid { display: flex; gap: 10px; }
-  .stat-box { flex: 1; min-width: 70px; padding: 12px; border-radius: 10px; text-align: center; background: #fff; border: 1px solid #e8ecf1; }
-  .stat-icon { display: flex; justify-content: center; margin-bottom: 6px; }
-  .stat-number { font-size: 20px; font-weight: 800; }
-  .stat-label { font-size: 9px; color: #64748b; margin-top: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-  .legend { display: flex; gap: 22px; flex-wrap: wrap; padding: 12px 2px 4px; }
-  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #475569; font-weight: 600; }
-  .legend-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid; }
-  .section-chip { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
-  .section-chip .num { background: ${NAVY}; color: #fff; font-size: 12px; font-weight: 800; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
-  .section-chip .txt { font-size: 15px; font-weight: 800; color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.4px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #253040; font-size: 12px; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Header band */
+  .header { background: ${NAVY}; color: #fff; padding: 20px 16mm; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .header .brand { display: flex; align-items: center; gap: 14px; }
+  .header img { height: 38px; width: auto; object-fit: contain; }
+  .header .co { font-size: 16px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.2; }
+  .header .co small { display: block; font-size: 8.5px; font-weight: 700; color: #9db8d4; letter-spacing: 1.6px; text-transform: uppercase; margin-top: 4px; }
+  .header .rtag { text-align: right; }
+  .header .rtag .t { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #9db8d4; }
+  .header .rtag .d { font-size: 13px; font-weight: 700; margin-top: 3px; }
+
+  /* Title */
+  .wrap { padding: 22px 16mm 10px; }
+  .title { font-size: 26px; font-weight: 800; color: ${NAVY}; margin: 0; letter-spacing: 0.2px; }
+  .title-rule { height: 3px; width: 56px; background: ${accentColor}; margin: 11px 0 0; border-radius: 2px; }
+  .subtitle { font-size: 11.5px; color: #64748b; margin: 10px 0 0; }
+
+  /* Meta chips */
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+  .meta-chip { flex: 1 1 0; min-width: 130px; border: 1px solid #e6eaf0; border-radius: 10px; padding: 11px 13px; background: #fff; }
+  .meta-chip .lbl { display: flex; align-items: center; gap: 6px; font-size: 8.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 5px; }
+  .meta-chip .val { font-size: 12.5px; font-weight: 700; color: #253040; line-height: 1.35; }
+
+  /* KPI cards */
+  .kpi-row { display: flex; gap: 9px; margin: 14px 0 0; }
+  .kpi { flex: 1; border: 1px solid #e6eaf0; border-radius: 12px; padding: 13px 6px 11px; text-align: center; background: #fff; }
+  .kpi .ic { display: flex; justify-content: center; margin-bottom: 5px; }
+  .kpi .n { font-size: 22px; font-weight: 800; line-height: 1; }
+  .kpi .l { font-size: 8.5px; color: #64748b; margin-top: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
+
+  /* Summary trio */
+  .trio { display: flex; gap: 9px; margin: 12px 0 0; }
+  .trio .box { flex: 1; background: #f7f9fb; border: 1px solid #e6eaf0; border-radius: 12px; padding: 12px 13px; }
+  .trio .box .h { font-size: 8.5px; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; font-weight: 800; margin-bottom: 6px; }
+  .trio .box .b { font-size: 11.5px; color: #334155; line-height: 1.5; }
+  .trio .box .sub { font-size: 9.5px; color: #94a3b8; margin-top: 3px; }
+
+  /* Legend */
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; padding: 14px 2px 2px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: #475569; font-weight: 600; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid; }
+
+  /* Section heading */
+  .section-chip { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
+  .section-chip .num { background: ${NAVY}; color: #fff; font-size: 12px; font-weight: 800; width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
+  .section-chip .txt { font-size: 14px; font-weight: 800; color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.5px; }
   .page-break { page-break-before: always; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
-  .defect-card { border: 1px solid #e8ecf1; border-radius: 10px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
-  .defect-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-  .defect-title { font-size: 14px; font-weight: 700; flex: 1; color: #1f2937; }
-  .defect-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: #475569; }
-  .defect-meta-item { display: flex; align-items: center; gap: 4px; }
-  .defect-description { font-size: 12px; color: #334155; margin-bottom: 10px; padding: 10px; background: #f8fafc; border-radius: 6px; }
-  .defect-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-  .defect-photo { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid #e8ecf1; }
-  .summary-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
-  .summary-table th, .summary-table td { padding: 9px 10px; border-bottom: 1px solid #eef1f5; text-align: left; }
-  .summary-table th { background: #f8fafc; font-weight: 700; color: #334155; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 10px; letter-spacing: 0.3px; }
-  .summary-table tr:nth-child(even) td { background: #fbfcfd; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.2px; white-space: nowrap; }
+
+  /* Overview table */
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 10.5px; border: 1px solid #e6eaf0; border-radius: 10px; overflow: hidden; }
+  .summary-table th { background: #eef2f7; font-weight: 800; color: ${NAVY}; text-align: left; text-transform: uppercase; font-size: 9px; letter-spacing: 0.4px; padding: 9px 10px; border-bottom: 1px solid #dde4ec; }
+  .summary-table td { padding: 9px 10px; border-bottom: 1px solid #eef1f5; vertical-align: top; color: #334155; }
+  .summary-table tr:last-child td { border-bottom: none; }
+  .summary-table tr:nth-child(even) td { background: #fafbfc; }
+  .summary-table .nr { color: #94a3b8; font-weight: 700; }
+  .prio-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+
+  /* Detail cards */
+  .defect-card { border: 1px solid #e6eaf0; border-radius: 12px; margin-bottom: 14px; page-break-inside: avoid; overflow: hidden; }
+  .defect-card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 13px 15px; background: #f7f9fb; border-bottom: 1px solid #eef1f5; }
+  .defect-title { font-size: 13px; font-weight: 800; color: ${NAVY}; flex: 1; line-height: 1.35; }
+  .defect-body { padding: 13px 15px; }
+  .kv { display: flex; flex-wrap: wrap; gap: 7px 10px; }
+  .kv .item { flex: 1 1 42%; min-width: 150px; display: flex; gap: 6px; font-size: 10.5px; }
+  .kv .k { color: #94a3b8; font-weight: 700; min-width: 66px; }
+  .kv .v { color: #334155; font-weight: 600; }
+  .defect-description { font-size: 11px; color: #334155; margin-top: 11px; padding: 10px 12px; background: #f7f9fb; border-left: 3px solid ${accentColor}; border-radius: 6px; line-height: 1.5; }
+  .defect-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
+  .defect-photo { width: 128px; height: 94px; object-fit: cover; border-radius: 8px; border: 1px solid #e6eaf0; }
 </style>
 </head>
 <body>
-  <div class="band">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
+  <div class="header">
+    <div class="brand">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
+    <div class="rtag"><div class="t">Bericht</div><div class="d">${dateStr}</div></div>
+  </div>
   <div class="wrap">
     <h1 class="title">Mängelbericht</h1>
     <div class="title-rule"></div>
-    <p class="subtitle">Projekt: ${esc(projectName)} &nbsp;·&nbsp; Stand: ${dateStr}</p>
+    <p class="subtitle">Projekt: ${esc(projectName)}${projAddress ? ` &nbsp;·&nbsp; ${projAddress}` : ""} &nbsp;·&nbsp; Stand: ${dateStr}</p>
 
-    <div class="infogrid">
-      <div class="infocol"><div class="lbl">${icoBuilding} Projekt</div><div class="val">${esc(projectName)}</div></div>
-      ${projAddress ? `<div class="infocol"><div class="lbl">${icoPin} Adresse</div><div class="val">${projAddress}</div></div>` : ""}
-      <div class="infocol"><div class="lbl">${icoCal} Erstellt am</div><div class="val">${dateStr}</div></div>
-      ${projContact ? `<div class="infocol"><div class="lbl">${icoUser} Ansprechpartner</div><div class="val">${projContact}</div></div>` : ""}
-      <div class="infocol"><div class="lbl">${icoWarn} Mängel gesamt</div><div class="val">${stats.total}</div></div>
+    <div class="meta-row">
+      <div class="meta-chip"><div class="lbl">${icoBuilding} Projekt</div><div class="val">${esc(projectName)}</div></div>
+      ${projAddress ? `<div class="meta-chip"><div class="lbl">${icoPin} Adresse</div><div class="val">${projAddress}</div></div>` : ""}
+      ${projContact ? `<div class="meta-chip"><div class="lbl">${icoUser} Ansprechpartner</div><div class="val">${projContact}</div></div>` : ""}
+      <div class="meta-chip"><div class="lbl">${icoCal} Erstellt am</div><div class="val">${dateStr}</div></div>
     </div>
 
-    <div class="summary-band"><div class="stats-grid">
-      <div class="stat-box" style="border-top: 3px solid #334155;"><div class="stat-icon">${siTotal}</div><div class="stat-number" style="color: #334155;">${stats.total}</div><div class="stat-label">Gesamt</div></div>
-      <div class="stat-box" style="border-top: 3px solid #DC2626;"><div class="stat-icon">${siOffen}</div><div class="stat-number" style="color: #DC2626;">${stats.offen}</div><div class="stat-label">Offen</div></div>
-      <div class="stat-box" style="border-top: 3px solid #D97706;"><div class="stat-icon">${siProg}</div><div class="stat-number" style="color: #D97706;">${stats.inBearbeitung}</div><div class="stat-label">In Bearbeitung</div></div>
-      <div class="stat-box" style="border-top: 3px solid #16A34A;"><div class="stat-icon">${siDone}</div><div class="stat-number" style="color: #16A34A;">${stats.erledigt}</div><div class="stat-label">Erledigt</div></div>
-      <div class="stat-box" style="border-top: 3px solid #B91C1C;"><div class="stat-icon">${siHigh}</div><div class="stat-number" style="color: #B91C1C;">${stats.hoch}</div><div class="stat-label">Priorität Hoch</div></div>
-    </div></div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="ic">${siTotal}</div><div class="n" style="color:#334155;">${stats.total}</div><div class="l">Gesamt</div></div>
+      <div class="kpi"><div class="ic">${siOffen}</div><div class="n" style="color:#DC2626;">${stats.offen}</div><div class="l">Offen</div></div>
+      <div class="kpi"><div class="ic">${siProg}</div><div class="n" style="color:#D97706;">${stats.inBearbeitung}</div><div class="l">In Arbeit</div></div>
+      <div class="kpi"><div class="ic">${siDone}</div><div class="n" style="color:#16A34A;">${stats.erledigt}</div><div class="l">Erledigt</div></div>
+      <div class="kpi"><div class="ic">${siHigh}</div><div class="n" style="color:#B91C1C;">${stats.hoch}</div><div class="l">Prio Hoch</div></div>
+    </div>
 
-    <div style="display:flex; gap:10px; margin:14px 0 2px;">
-      <div style="flex:1; background:#f8fafc; border:1px solid #e8ecf1; border-radius:10px; padding:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; font-weight:700; margin-bottom:6px;">Prioritäten</div>
-        <div style="font-size:12px; color:#334155;"><span style="color:#B91C1C; font-weight:700;">${prio.hoch} Hoch</span> · <span style="color:#B45309; font-weight:700;">${prio.mittel} Mittel</span> · <span style="color:#6B7280; font-weight:700;">${prio.niedrig} Niedrig</span></div>
+    <div class="trio">
+      <div class="box">
+        <div class="h">Prioritäten</div>
+        <div class="b"><span style="color:#B91C1C;font-weight:800;">${prio.hoch} Hoch</span> · <span style="color:#B45309;font-weight:800;">${prio.mittel} Mittel</span> · <span style="color:#6B7280;font-weight:800;">${prio.niedrig} Niedrig</span></div>
       </div>
-      <div style="flex:1; background:#f8fafc; border:1px solid #e8ecf1; border-radius:10px; padding:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; font-weight:700; margin-bottom:6px;">Betroffen</div>
-        <div style="font-size:12px; color:#334155;">${roomsAffected.length} Räume · ${gewerkeAffected.length} Gewerke</div>
-        ${gewerkeAffected.length ? `<div style="font-size:10px; color:#94a3b8; margin-top:3px;">${esc(gewerkeAffected.slice(0, 4).join(", "))}${gewerkeAffected.length > 4 ? " …" : ""}</div>` : ""}
+      <div class="box">
+        <div class="h">Betroffen</div>
+        <div class="b">${roomsAffected.length} Räume · ${gewerkeAffected.length} Gewerke</div>
+        ${gewerkeAffected.length ? `<div class="sub">${esc(gewerkeAffected.slice(0, 4).join(", "))}${gewerkeAffected.length > 4 ? " …" : ""}</div>` : ""}
       </div>
-      <div style="flex:1; background:#f8fafc; border:1px solid #e8ecf1; border-radius:10px; padding:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; font-weight:700; margin-bottom:6px;">Fristen (offen)</div>
-        <div style="font-size:12px; color:#334155;"><span style="color:#B91C1C; font-weight:700;">${overdueCount} überfällig</span> · ${dueSoonCount} diese Woche · ${noDueCount} ohne Frist</div>
+      <div class="box">
+        <div class="h">Fristen (offen)</div>
+        <div class="b"><span style="color:#B91C1C;font-weight:800;">${overdueCount} überfällig</span> · ${dueSoonCount} diese Woche · ${noDueCount} ohne Frist</div>
       </div>
     </div>
 
@@ -288,14 +321,14 @@ export async function generateDefectPdfHtml(
     const zust = d.assignee ? `${d.assignee}${d.assigneeFirma ? ` (${d.assigneeFirma})` : ""}` : "–";
     const sc = statusColors[d.status];
     html += `<tr>
-      <td>${i + 1}</td>
-      <td>${(d as any).positionCode ? `[${(d as any).positionCode}] ` : ''}${d.title}</td>
+      <td class="nr">${i + 1}</td>
+      <td>${(d as any).positionCode ? `<span style="font-family:monospace;color:${accentColor};">[${(d as any).positionCode}]</span> ` : ''}${d.title}</td>
       <td>${gewerk}</td>
       <td>${ort}</td>
       <td>${zust}</td>
       <td><span class="badge" style="background: ${sc}1A; color: ${sc}; border: 1px solid ${sc}44;">${statusLabels[d.status]}</span></td>
-      <td style="color: ${priorityColors[d.priority]}; font-weight: 700;">${priorityLabels[d.priority]}</td>
-      <td>${dueDate}</td>
+      <td style="white-space:nowrap;"><span class="prio-dot" style="background:${priorityColors[d.priority]};"></span><span style="color: ${priorityColors[d.priority]}; font-weight: 700;">${priorityLabels[d.priority]}</span></td>
+      <td style="white-space:nowrap;">${dueDate}</td>
     </tr>`;
   });
 
@@ -311,42 +344,44 @@ export async function generateDefectPdfHtml(
       const gewerk = (d as any).gewerk || d.category || "–";
       const dueDate = d.dueDate ? new Date(d.dueDate).toLocaleDateString("de-DE") : null;
       const createdDate = new Date(d.createdAt).toLocaleDateString("de-DE");
-
-      html += `<div class="defect-card" style="border-left: 4px solid ${statusColors[d.status]};">`;
-      html += `<div class="defect-header">
-        <div class="defect-title">${(d as any).positionCode ? `<span style="font-family:monospace;color:${accentColor};">[${(d as any).positionCode}]</span> ` : ''}${i + 1}. ${d.title}</div>
-        <span class="badge" style="background: ${statusColors[d.status]}1A; color: ${statusColors[d.status]}; border: 1px solid ${statusColors[d.status]}44;">${statusLabels[d.status]}</span>
-      </div>`;
-
+      const ort = [d.floor, d.room].filter(Boolean).join(" · ") || d.location || "";
       const followUpStr = d.followUpDate ? new Date(d.followUpDate).toLocaleDateString("de-DE") : null;
       const followUpResultStr = d.followUpResult === "behoben" ? "✅ Behoben" : d.followUpResult === "nachbesserung" ? "⚠️ Nachbesserung" : null;
+      const sc = statusColors[d.status];
+      const pc = priorityColors[d.priority];
+      const quelle = d.source ? (d.source === "matterport" ? "3D-Scan" : d.source === "ki_analysis" ? "KI-Analyse" : d.source === "checklist" ? "Checkliste" : "Manuell") : "";
 
-      html += `<div class="defect-meta">
-        <div class="defect-meta-item"><strong>Priorität:</strong> <span style="color: ${priorityColors[d.priority]};">${priorityLabels[d.priority]}</span></div>
-        <div class="defect-meta-item"><strong>Gewerk:</strong> ${gewerk}</div>
-        ${d.location ? `<div class="defect-meta-item"><strong>Ort:</strong> ${d.location}</div>` : ""}
-        ${d.room ? `<div class="defect-meta-item"><strong>Raum:</strong> ${d.room}</div>` : ""}
-        ${d.floor ? `<div class="defect-meta-item"><strong>Geschoss:</strong> ${d.floor}</div>` : ""}
-        ${d.assignee ? `<div class="defect-meta-item"><strong>Zuständig:</strong> ${d.assignee}${d.assigneeFirma ? ` (${d.assigneeFirma})` : ""}</div>` : ""}
-        <div class="defect-meta-item"><strong>Erstellt:</strong> ${createdDate}</div>
-        ${dueDate ? `<div class="defect-meta-item"><strong>Frist:</strong> ${dueDate}</div>` : ""}
-        ${followUpStr ? `<div class="defect-meta-item"><strong>Nachprüfung:</strong> ${followUpStr}${followUpResultStr ? " " + followUpResultStr : ""}</div>` : ""}
-        ${d.matterportModelId ? `<div class="defect-meta-item"><strong>3D-Modell:</strong> Verknüpft${d.matterportFloorName ? " ("+d.matterportFloorName+")" : ""}</div>` : ""}
-        ${d.source ? `<div class="defect-meta-item"><strong>Quelle:</strong> ${d.source === "matterport" ? "3D-Scan" : d.source === "ki_analysis" ? "KI-Analyse" : d.source === "checklist" ? "Checkliste" : "Manuell"}</div>` : ""}
+      html += `<div class="defect-card">`;
+      html += `<div class="top" style="border-left: 4px solid ${sc};">
+        <div class="defect-title">${(d as any).positionCode ? `<span style="font-family:monospace;color:${accentColor};">[${(d as any).positionCode}]</span> ` : ''}${i + 1}. ${d.title}</div>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <span class="badge" style="background: ${pc}1A; color: ${pc}; border: 1px solid ${pc}44;">${priorityLabels[d.priority]}</span>
+          <span class="badge" style="background: ${sc}1A; color: ${sc}; border: 1px solid ${sc}44;">${statusLabels[d.status]}</span>
+        </div>
       </div>`;
+
+      html += `<div class="defect-body">
+        <div class="kv">
+          <div class="item"><span class="k">Gewerk</span><span class="v">${gewerk}</span></div>
+          ${ort ? `<div class="item"><span class="k">Ort</span><span class="v">${ort}</span></div>` : ""}
+          ${d.assignee ? `<div class="item"><span class="k">Zuständig</span><span class="v">${d.assignee}${d.assigneeFirma ? ` (${d.assigneeFirma})` : ""}</span></div>` : ""}
+          <div class="item"><span class="k">Erstellt</span><span class="v">${createdDate}</span></div>
+          ${dueDate ? `<div class="item"><span class="k">Frist</span><span class="v">${dueDate}</span></div>` : ""}
+          ${followUpStr ? `<div class="item"><span class="k">Nachprüfung</span><span class="v">${followUpStr}${followUpResultStr ? " " + followUpResultStr : ""}</span></div>` : ""}
+          ${d.matterportModelId ? `<div class="item"><span class="k">3D-Modell</span><span class="v">Verknüpft${d.matterportFloorName ? " ("+d.matterportFloorName+")" : ""}</span></div>` : ""}
+          ${quelle ? `<div class="item"><span class="k">Quelle</span><span class="v">${quelle}</span></div>` : ""}
+        </div>`;
 
       if (d.description) {
         html += `<div class="defect-description">${richText(d.description)}</div>`;
       }
 
-      // AI Summary (from defect-store, Single Source of Truth)
       if (d.aiSummary) {
-        html += `<div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-left: 3px solid ${accentColor}; border-radius: 4px; font-size: 11px;">
+        html += `<div style="margin-top: 10px; padding: 10px 12px; background: #eef5fc; border-left: 3px solid ${accentColor}; border-radius: 6px; font-size: 10.5px; line-height: 1.5;">
           <strong style="color: ${accentColor};">KI-Zusammenfassung:</strong> ${richText(d.aiSummary)}
         </div>`;
       }
 
-      // Photos
       if (options?.includePhotos !== false && d.photos.length > 0) {
         html += `<div class="defect-photos">`;
         for (const photoUri of d.photos.slice(0, 3)) {
@@ -358,7 +393,8 @@ export async function generateDefectPdfHtml(
         html += `</div>`;
       }
 
-      html += `</div>`;
+      html += `</div>`; // .defect-body
+      html += `</div>`; // .defect-card
     }
   }
 
