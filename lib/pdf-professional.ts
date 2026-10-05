@@ -70,6 +70,7 @@ export interface ProfessionalPdfOptions {
   qrCodeBase64?: string; // Pre-generated QR code as base64 data URL
   qrCodeLabel?: string; // Label below QR code
   matterportLink?: string; // Link to Matterport 3D model
+  heroDataUri?: string; // Optional project/cover image (base64 data URI) shown on the cover
 }
 
 /**
@@ -130,9 +131,10 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     watermark,
     footerText,
     accentColor = "#1E3A5F",
+    heroDataUri,
   } = options;
 
-  const NAVY = "#0F2744";
+  const NAVY = "#1E3A5F";
   const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const ico = (path: string) => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
@@ -261,15 +263,15 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       line-height: 1.55;
       color: #1f2937;
     }
-    .band {
-      display: flex; align-items: center; gap: 12px;
-      background: ${NAVY}; color: #fff;
-      padding: 14px 18px; border-radius: 10px;
+    .topbar {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 0 0 14px; border-bottom: 1px solid #E6EBF1;
     }
-    .band img { max-height: 34px; max-width: 150px; object-fit: contain; }
-    .band .co { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
-    .band .meta { margin-left: auto; text-align: right; font-size: 8.5px; line-height: 1.5; color: #cbd5e1; }
-    .title { font-size: 26px; font-weight: 800; color: ${NAVY}; margin: 20px 0 0; letter-spacing: -.4px; }
+    .topbar .brand { display: flex; align-items: center; gap: 10px; }
+    .topbar .brand img { max-height: 32px; max-width: 150px; object-fit: contain; }
+    .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -.2px; }
+    .topbar .bandmeta { text-align: right; font-size: 9px; line-height: 1.55; color: #6B7A8D; }
+    .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 20px 0 0; letter-spacing: -.6px; }
     .title-rule { width: 54px; height: 4px; background: ${accentColor}; border-radius: 2px; margin: 8px 0 10px; }
     .subtitle { font-size: 12px; color: #64748b; margin-bottom: 4px; }
     .infogrid { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 4px; }
@@ -324,15 +326,18 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
 <body>
   ${watermark ? `<div class="watermark">${esc(watermark)}</div>` : ""}
 
-  <div class="band">
-    ${logoHtml}
-    ${coName ? `<div class="co">${coName}</div>` : ""}
-    ${bandMeta ? `<div class="meta">${bandMeta}</div>` : ""}
+  <div class="topbar">
+    <div class="brand">
+      ${logoHtml || `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`}
+      ${coName ? `<div class="co">${coName}</div>` : ""}
+    </div>
+    ${bandMeta ? `<div class="bandmeta">${bandMeta}</div>` : ""}
   </div>
 
   <h1 class="title">${esc(title)}</h1>
   <div class="title-rule"></div>
   ${subtitle ? `<p class="subtitle">${esc(subtitle)}</p>` : ""}
+  ${heroDataUri ? `<img src="${heroDataUri}" style="width:100%;height:160px;object-fit:cover;border-radius:12px;margin:14px 0 2px;display:block;" />` : ""}
 
   ${infoHtml}
   ${dashHtml}

@@ -288,6 +288,18 @@ export default function ProjectExportScreen() {
         return;
       }
 
+      // Optional project image → hero on the PDF cover.
+      let heroDataUri: string | undefined;
+      try {
+        const projRaw = await AsyncStorage.getItem("projects");
+        const proj = (projRaw ? JSON.parse(projRaw) : []).find((p: any) => p.id === projectId);
+        if (proj?.imageUri) {
+          const b64 = await FileSystem.readAsStringAsync(proj.imageUri, { encoding: FileSystem.EncodingType.Base64 });
+          const mime = String(proj.imageUri).toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+          heroDataUri = `data:${mime};base64,${b64}`;
+        }
+      } catch {}
+
       const exportedUri = await generateAndSharePdf({
         title: t('project_export_title' as any),
         subtitle: projectName || undefined,
@@ -297,6 +309,7 @@ export default function ProjectExportScreen() {
         sections,
         includeTableOfContents: sections.length > 3,
         accentColor: "#1E3A5F",
+        heroDataUri,
       });
       if (exportedUri) {
         try {
