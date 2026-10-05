@@ -185,6 +185,7 @@ export default function ProtocolDetailScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [editSel, setEditSel] = useState({ start: 0, end: 0 });
+  const [editInputHeight, setEditInputHeight] = useState(0);
 
   // Insert a [FOTO n] marker at the current cursor position in the editor,
   // so a photo appears inline exactly where the user wants it.
@@ -539,6 +540,7 @@ export default function ProtocolDetailScreen() {
   // Edit protocol text
   const startEditing = () => {
     setEditedText(protocol?.protocol || "");
+    setEditInputHeight(0);
     setIsEditing(true);
   };
 
@@ -2409,9 +2411,10 @@ export default function ProtocolDetailScreen() {
                 value={editedText}
                 onChangeText={setEditedText}
                 onSelectionChange={(e) => setEditSel(e.nativeEvent.selection)}
+                onContentSizeChange={(e) => setEditInputHeight(e.nativeEvent.contentSize.height)}
                 multiline
-                scrollEnabled
-                style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, minHeight: 200, maxHeight: 320, textAlignVertical: "top" }]}
+                scrollEnabled={false}
+                style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, height: Math.max(220, editInputHeight + 24), textAlignVertical: "top" }]}
               />
 
               {/* Insert a photo inline at the cursor */}
