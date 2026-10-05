@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
 import { getDefects, saveDefect, updateDefectStatus, deleteDefect, type DefectStatus } from "@/lib/defect-store";
+import { syncStoredProtocolDefects } from "@/lib/protocol-defect-sync";
 import { AssigneeInput } from "@/components/assignee-input";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 
@@ -47,12 +48,33 @@ export default function BegehungReviewScreen() {
       const p = all.find((x: Protocol) => x.id === protocolId) || null;
       setProtocol(p);
       if (p?.projectId) {
+        // Extract any Maengel from the (freshly generated) protocol text into the
+        // defect store first, then load them. Idempotent, so safe to call on
+        // every poll while processing finishes.
+        try { await syncStoredProtocolDefects(p.projectId); } catch {}
         setDefects(await getDefects(p.projectId));
       } else setDefects([]);
-    } catch {}
+      return p;
+    } catch { return null; }
   }, [protocolId]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  // Refresh on focus, and keep polling while the protocol is still being
+  // processed so the Maengel/Aufgaben counts fill in without leaving the screen.
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tick = async () => {
+      const p: any = await load();
+      if (!active) return;
+      const st = p?.status;
+      const stillProcessing = st !== "draft" && st !== "ready" && st !== "sent";
+      // Poll up to ~2.5 min while processing, then stop (focus re-triggers it).
+      if (stillProcessing && attempts++ < 60) timer = setTimeout(tick, 2500);
+    };
+    tick();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, [load]));
 
   // Edit the extracted Aufgaben/Mängel right here, before the report goes out.
   const toggleTodo = async (index: number) => {
