@@ -42,6 +42,7 @@ import {
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
 import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import { defectStatusColor } from "@/lib/status-colors";
 import { exportFloorPlansPdf } from "@/lib/floor-plan-export";
 import { splitPdfIntoPages } from "@/lib/pdf-pages";
@@ -719,28 +720,25 @@ export default function FloorPlanScreen() {
   };
 
   const addPhotoToPin = async (pin: PlanPin) => {
-    setShowPinDetail(null);
-    await new Promise<void>((resolve) => {
-      InteractionManager.runAfterInteractions(() => resolve());
-    });
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-    if (!result.canceled && result.assets.length > 0) {
+    // Launch the picker WITHOUT closing the detail modal first — on iOS,
+    // dismissing the modal and presenting the picker at the same time fails
+    // silently ("nothing happens"). The standard picker offers Kamera/Galerie.
+    try {
+      const picked = await pickImagesWithSource({ t, multiple: true } as any);
+      if (!picked || picked.length === 0) return;
       const newPhotos: string[] = [];
-      for (const [index, asset] of result.assets.entries()) {
+      for (const [index, asset] of picked.entries()) {
         const persisted = await persistFloorPlanMedia({
           sourceUri: asset.uri,
           projectId,
           ownerId: `${pin.id}-${(pin.photos?.length || 0) + index}`,
-          width: asset.width,
-          height: asset.height,
+          width: (asset as any).width,
+          height: (asset as any).height,
           kind: "photo",
         });
         newPhotos.push(persisted.uri);
       }
+      if (newPhotos.length === 0) return;
       const updatedPin: PlanPin = {
         ...pin,
         photos: [...(pin.photos || []), ...newPhotos],
@@ -748,9 +746,18 @@ export default function FloorPlanScreen() {
       await savePlanPin(updatedPin);
       setPins((current) => current.map((item) => item.id === pin.id ? updatedPin : item));
       setShowPinDetail(updatedPin);
+      // Keep a linked Mangel's photos in sync (PlanRadar style).
+      const linkedDefectId = (pin as any).defectId;
+      if (linkedDefectId) {
+        try {
+          const all = await getDefects(projectId);
+          const d = all.find((x) => x.id === linkedDefectId);
+          if (d) await saveDefect({ ...d, photos: [...(d.photos || []), ...newPhotos], updatedAt: new Date().toISOString() });
+        } catch {}
+      }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      setShowPinDetail(pin);
+    } catch (e) {
+      console.warn("addPhotoToPin failed:", e);
     }
   };
 
