@@ -23,7 +23,7 @@ import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
-import { Swipeable } from "react-native-gesture-handler";
+import { Swipeable, Gesture, GestureDetector } from "react-native-gesture-handler";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
@@ -41,6 +41,8 @@ type ComparisonPair = {
   afterDate: string | null;
   projectId?: string;
   exportDetails?: ExportDetails;
+  trade?: string;
+  description?: string;
 };
 
 const STORAGE_KEY = "photo-comparisons";
@@ -183,6 +185,18 @@ export default function PhotoCompareScreen() {
     await saveComparisons(updated);
   };
 
+  // Update a free-text field on the selected pair in state, then persist on blur.
+  const updateSelectedField = (field: "trade" | "description") => (text: string) => {
+    if (!selectedPair) return;
+    setSelectedPair({ ...selectedPair, [field]: text });
+  };
+  const persistSelectedPair = async () => {
+    if (!selectedPair) return;
+    const updated = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, ...selectedPair } : c));
+    setComparisons(updated);
+    await saveComparisons(updated);
+  };
+
   const shareComparison = async () => {
     if (!selectedPair) return;
     try {
@@ -199,8 +213,13 @@ export default function PhotoCompareScreen() {
       const afterImg = await toDataUri(selectedPair.afterUri);
       // Persist the entered details onto the pair so they are remembered, and
       // print them into the PDF header.
-      const updatedPairs = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, exportDetails } : c));
+      const updatedPairs = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, ...selectedPair, exportDetails } : c));
       await saveComparisons(updatedPairs);
+      const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const dataRows = [
+        selectedPair.trade ? `<p style="margin:3px 0;"><strong style="color:#1E3A5F;">${t('photo_compare_trade')}:</strong> ${escapeHtml(selectedPair.trade)}</p>` : "",
+        selectedPair.description ? `<p style="margin:3px 0;"><strong style="color:#1E3A5F;">${t('photo_compare_description')}:</strong> ${escapeHtml(selectedPair.description)}</p>` : "",
+      ].join("");
       const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
         bauvorhaben: t('export_bauvorhaben'),
         adresse: t('export_adresse'),
@@ -222,7 +241,8 @@ export default function PhotoCompareScreen() {
         <table style="width:100%; border-collapse:collapse; margin-top:14px;"><tr>
           ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
           ${cell(t('nachher'), "#4E8B6B", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
-        </tr></table>`;
+        </tr></table>
+        ${dataRows ? `<div style="margin-top:14px; padding:12px 14px; border:1px solid #e8ecf1; border-radius:8px; font-size:12px; line-height:1.5; color:#334155;">${dataRows}</div>` : ""}`;
       const html = buildPremiumHtml({
         branding: branding || ({} as any),
         accentColor: accent,
@@ -252,6 +272,15 @@ export default function PhotoCompareScreen() {
     // Split view: two equal tiles side by side, large and prominent
     const colWidth = (imgWidth - 8) / 2;
     const splitHeight = Math.min(SCREEN_HEIGHT * 0.55, colWidth * 1.5);
+    // Interactive before/after slider dimensions.
+    const sliderW = imgWidth;
+    const sliderH = Math.min(SCREEN_HEIGHT * 0.5, imgWidth * 0.8);
+    const clampPos = (v: number) => Math.max(0, Math.min(1, v));
+    const dividerX = sliderW * sliderPosition;
+    const sliderPan = Gesture.Pan()
+      .onBegin((e) => setSliderPosition(clampPos(e.x / sliderW)))
+      .onUpdate((e) => setSliderPosition(clampPos(e.x / sliderW)))
+      .runOnJS(true);
 
     return (
       <ScreenContainer className="flex-1">
@@ -282,32 +311,50 @@ export default function PhotoCompareScreen() {
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-            {/* Split view: before left, after right — equal size */}
             <View ref={compareRef} style={{ backgroundColor: colors.background }}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error }} />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.error }}>{t('vorher')}</Text>
+              {selectedPair.afterUri ? (
+                /* Interactive before/after slider: drag the handle between old & new. */
+                <GestureDetector gesture={sliderPan}>
+                  <View style={{ width: sliderW, height: sliderH, borderRadius: 8, overflow: "hidden", backgroundColor: colors.muted + "22", alignSelf: "center" }}>
+                    {/* Base layer = after (new) */}
+                    <Image source={{ uri: selectedPair.afterUri }} style={{ position: "absolute", left: 0, top: 0, width: sliderW, height: sliderH }} contentFit="cover" />
+                    {/* Overlay = before (old), clipped to the left of the divider */}
+                    <View style={{ position: "absolute", left: 0, top: 0, width: dividerX, height: sliderH, overflow: "hidden" }}>
+                      <Image source={{ uri: selectedPair.beforeUri }} style={{ width: sliderW, height: sliderH }} contentFit="cover" />
+                    </View>
+                    {/* Labels */}
+                    <View style={{ position: "absolute", top: 8, left: 8, backgroundColor: colors.error, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "800", color: "#fff" }}>{t('vorher')}</Text>
+                    </View>
+                    <View style={{ position: "absolute", top: 8, right: 8, backgroundColor: colors.success, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "800", color: "#fff" }}>{t('nachher')}</Text>
+                    </View>
+                    {/* Divider line */}
+                    <View style={{ position: "absolute", left: dividerX - 1.5, top: 0, width: 3, height: sliderH, backgroundColor: "#fff" }} />
+                    {/* Drag handle */}
+                    <View style={{ position: "absolute", left: dividerX - 20, top: sliderH / 2 - 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 4 }}>
+                      <MaterialIcons name="compare-arrows" size={24} color="#1E3A5F" />
+                    </View>
                   </View>
-                  <Pressable onPress={() => setZoomUri(selectedPair.beforeUri)}>
-                    <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="cover" />
-                  </Pressable>
-                  <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 6 }}>{formatDate(selectedPair.beforeDate)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.success }}>{t('nachher')}</Text>
+                </GestureDetector>
+              ) : (
+                /* No after photo yet: show before + add-after placeholder side by side */
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error }} />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: colors.error }}>{t('vorher')}</Text>
+                    </View>
+                    <Pressable onPress={() => setZoomUri(selectedPair.beforeUri)}>
+                      <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="cover" />
+                    </Pressable>
+                    <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 6 }}>{formatDate(selectedPair.beforeDate)}</Text>
                   </View>
-                  {selectedPair.afterUri ? (
-                    <>
-                      <Pressable onPress={() => setZoomUri(selectedPair.afterUri!)}>
-                        <Image source={{ uri: selectedPair.afterUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="cover" />
-                      </Pressable>
-                      <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 6 }}>{formatDate(selectedPair.afterDate!)}</Text>
-                    </>
-                  ) : (
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: colors.success }}>{t('nachher')}</Text>
+                    </View>
                     <Pressable
                       onPress={() => addAfterPhoto(selectedPair)}
                       style={({ pressed }) => [{
@@ -325,14 +372,57 @@ export default function PhotoCompareScreen() {
                       <MaterialIcons name="add-a-photo" size={32} color={colors.muted} />
                       <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{t('nachherfoto')}</Text>
                     </Pressable>
-                  )}
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
 
             {selectedPair.afterUri && (
-              <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 12 }}>{t('photo_compare_tap_zoom' as any)}</Text>
+              <>
+                <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 10 }}>{t('photo_compare_slider_hint' as any)}</Text>
+                <View style={{ flexDirection: "row", justifyContent: "center", gap: 18, marginTop: 8 }}>
+                  <Pressable onPress={() => setZoomUri(selectedPair.beforeUri)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="zoom-in" size={18} color={colors.error} />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.error }}>{t('vorher')}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setZoomUri(selectedPair.afterUri!)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name="zoom-in" size={18} color={colors.success} />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.success }}>{t('nachher')}</Text>
+                  </Pressable>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{formatDate(selectedPair.beforeDate)}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>{selectedPair.afterDate ? formatDate(selectedPair.afterDate) : ""}</Text>
+                </View>
+              </>
             )}
+
+            {/* Comparison data: trade + what was done */}
+            <View style={{ marginTop: 20, padding: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('photo_compare_data_title' as any)}</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('photo_compare_trade' as any)}</Text>
+              <TextInput
+                value={selectedPair.trade || ""}
+                onChangeText={updateSelectedField("trade")}
+                onEndEditing={persistSelectedPair}
+                onBlur={persistSelectedPair}
+                placeholder={t('photo_compare_trade' as any)}
+                placeholderTextColor={colors.muted}
+                style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 }}
+              />
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('photo_compare_description' as any)}</Text>
+              <TextInput
+                value={selectedPair.description || ""}
+                onChangeText={updateSelectedField("description")}
+                onEndEditing={persistSelectedPair}
+                onBlur={persistSelectedPair}
+                placeholder={t('photo_compare_description_ph' as any)}
+                placeholderTextColor={colors.muted}
+                multiline
+                numberOfLines={3}
+                style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, minHeight: 72, textAlignVertical: "top" }}
+              />
+            </View>
 
             {/* Optional details printed into the PDF export header */}
             <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
