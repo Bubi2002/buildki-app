@@ -111,7 +111,7 @@ export const appRouter = router({
         const customTemplateNote = input.customTemplateName
           ? `\n- Gewählte benutzerdefinierte Vorlage: "${input.customTemplateName}".`
           : "";
-        const systemPrompt = `${templatePrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}${customTemplateNote}\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.${chapterOverride}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
+        const systemPrompt = `${templatePrompt}\n\nZusätzliche Hinweise:\n- ${styleNote}\n- ${formatNote}${customTemplateNote}\n- MANGEL-TITEL: Formuliere JEDE Mangelbeschreibung als kurzen, prägnanten Titel – eine Substantiv-Phrase mit höchstens ~6 Wörtern (z. B. "Fehlende WC-Schüssel", "Gerissene Fensterscheibe", "Tür nicht eingebaut"). Übernimm NIEMALS den rohen gesprochenen Satz wörtlich (kein "Dann fehlt hier noch ...", keine Füllwörter wie "dann", "hier", "also"). Details/Fristen gehören in die jeweiligen Spalten/Felder, nicht in den Titel.\n- WICHTIG: Das Aufnahmedatum ist im Kontext angegeben. Verwende AUSSCHLIESSLICH dieses Datum im Protokoll. Erfinde NIEMALS ein anderes Datum.${chapterOverride}\n\nAntworte ausschließlich mit dem fertigen Protokoll.`;
 
         // Build user message with recording context
         let userMessage = "";
