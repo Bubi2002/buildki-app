@@ -69,6 +69,7 @@ import { extractDefectFromText } from "@/lib/defect-extraction";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BusyOverlay } from "@/components/busy-overlay";
 import { DateOnlyPicker } from "@/components/date-only-picker";
+import { AssigneeInput } from "@/components/assignee-input";
 import { addDaysToDateOnly, formatDateOnly, isDateOnOrAfter, todayDateOnly } from "@/lib/date-only";
 import {
   formatVoiceNoteDuration,
@@ -129,6 +130,9 @@ export default function DefectsScreen() {
   const [editingDefect, setEditingDefect] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editAssignee, setEditAssignee] = useState("");
+  const [editGewerk, setEditGewerk] = useState("");
   const [defectHistoryEntries, setDefectHistoryEntries] = useState<DefectHistoryEntry[]>([]);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
@@ -271,10 +275,24 @@ export default function DefectsScreen() {
     return loaded;
   }
 
+  // The defect's gewerk is often a free-form AI string ("Glaser / Fensterbauer",
+  // "Maler / Trockenbau"), so an exact match against a single filter chip fails.
+  // Match loosely: either string contains the other, or they share a word token.
+  const gewerkMatches = (defectGewerk: string | undefined, selected: string): boolean => {
+    if (selected === "alle") return true;
+    const dg = (defectGewerk || "").toLowerCase();
+    if (!dg) return false;
+    const f = selected.toLowerCase();
+    if (dg === f || dg.includes(f) || f.includes(dg)) return true;
+    const tokens = (s: string) => s.split(/[\/,\s]+/).map((x) => x.trim()).filter((x) => x.length >= 3);
+    const dgT = tokens(dg), fT = tokens(f);
+    return dgT.some((a) => fT.some((b) => a === b || a.includes(b) || b.includes(a)));
+  };
+
   const query = search.trim().toLowerCase();
   const filteredDefects = defects.filter((d) => {
     if (filter !== "alle" && d.status !== filter) return false;
-    if (gewerkFilter !== "alle" && (d as any).gewerk !== gewerkFilter) return false;
+    if (!gewerkMatches((d as any).gewerk, gewerkFilter)) return false;
     if (query) {
       const hay = [d.title, d.description, d.location, d.floor, d.room, (d as any).gewerk, (d as any).assignee]
         .filter(Boolean).join(" ").toLowerCase();
@@ -584,6 +602,9 @@ export default function DefectsScreen() {
     if (!selectedDefect) return;
     setEditTitle(selectedDefect.title);
     setEditDescription(selectedDefect.description || "");
+    setEditDueDate((selectedDefect as any).dueDate || "");
+    setEditAssignee((selectedDefect as any).assignee || "");
+    setEditGewerk((selectedDefect as any).gewerk || "");
     setEditingDefect(true);
   };
 
@@ -593,8 +614,11 @@ export default function DefectsScreen() {
       ...selectedDefect,
       title: editTitle.trim() || selectedDefect.title,
       description: editDescription.trim(),
+      dueDate: editDueDate.trim() || undefined,
+      assignee: editAssignee.trim() || undefined,
+      gewerk: editGewerk.trim() || undefined,
       updatedAt: new Date().toISOString(),
-    };
+    } as any;
     await saveDefect(updated);
     setSelectedDefect(updated);
     setEditingDefect(false);
@@ -1171,29 +1195,52 @@ export default function DefectsScreen() {
                   </View>
                 ) : null}
 
-                {/* Gewerk, Frist, Verantwortlicher */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                  {(selectedDefect as any).gewerk ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "12" }}>
-                      <MaterialIcons name="construction" size={14} color={colors.primary} />
-                      <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "500" }}>{(selectedDefect as any).gewerk}</Text>
+                {/* Gewerk, Frist, Verantwortlicher — editable in edit mode */}
+                {editingDefect ? (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('gewerk')}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+                      {GEWERKE.map((g) => {
+                        const active = editGewerk === g;
+                        return (
+                          <Pressable key={g} onPress={() => setEditGewerk(active ? "" : g)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
+                            <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{g}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+
+                    <View style={{ marginTop: 6 }}>
+                      <DateOnlyPicker value={editDueDate} onChange={setEditDueDate} label={t('frist')} withTime />
                     </View>
-                  ) : null}
-                  {(selectedDefect as any).dueDate ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error + "12" : colors.warning + "12" }}>
-                      <MaterialIcons name="event" size={14} color={new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning} />
-                      <Text style={{ fontSize: 12, color: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning, fontWeight: "500" }}>
-                        {t('defects_frist' as any)}: {new Date((selectedDefect as any).dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {(selectedDefect as any).assignee ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.surface }}>
-                      <MaterialIcons name="person" size={14} color={colors.muted} />
-                      <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{(selectedDefect as any).assignee}</Text>
-                    </View>
-                  ) : null}
-                </View>
+
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 10, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('zustaendig')}</Text>
+                    <AssigneeInput value={editAssignee} onChange={setEditAssignee} placeholder={t('zustaendig')} style={{ fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 }} />
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    {(selectedDefect as any).gewerk ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.primary + "12" }}>
+                        <MaterialIcons name="construction" size={14} color={colors.primary} />
+                        <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "500" }}>{(selectedDefect as any).gewerk}</Text>
+                      </View>
+                    ) : null}
+                    {(selectedDefect as any).dueDate ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error + "12" : colors.warning + "12" }}>
+                        <MaterialIcons name="event" size={14} color={new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning} />
+                        <Text style={{ fontSize: 12, color: new Date((selectedDefect as any).dueDate) < new Date() && selectedDefect.status !== "erledigt" ? colors.error : colors.warning, fontWeight: "500" }}>
+                          {t('defects_frist' as any)}: {new Date((selectedDefect as any).dueDate).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {(selectedDefect as any).assignee ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.surface }}>
+                        <MaterialIcons name="person" size={14} color={colors.muted} />
+                        <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500" }}>{(selectedDefect as any).assignee}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
 
                 {/* Photos Section */}
                 <View style={{ marginBottom: 16 }}>
