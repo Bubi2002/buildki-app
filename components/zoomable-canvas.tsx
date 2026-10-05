@@ -37,6 +37,7 @@ type ZoomableCanvasProps = {
   children: ReactNode;
   maxScale?: number;
   onSingleTap?: (point: Point) => void;
+  onLongPress?: (point: Point) => void;
   onInteractionChange?: (active: boolean) => void;
   testID?: string;
 };
@@ -53,6 +54,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   children,
   maxScale = 4,
   onSingleTap,
+  onLongPress,
   onInteractionChange,
   testID,
 }: ZoomableCanvasProps, ref) {
@@ -73,6 +75,12 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
     if (!onSingleTap) return;
     const point = screenPointToNormalized({ x, y }, { width, height }, scaleValue, { x: tx, y: ty });
     onSingleTap(point);
+  };
+
+  const emitLongPress = (x: number, y: number, scaleValue: number, tx: number, ty: number) => {
+    if (!onLongPress) return;
+    const point = screenPointToNormalized({ x, y }, { width, height }, scaleValue, { x: tx, y: ty });
+    onLongPress(point);
   };
 
   const pinch = Gesture.Pinch()
@@ -144,7 +152,20 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       runOnJS(emitTap)(event.x, event.y, scale.value, translateX.value, translateY.value);
     });
 
-  const taps = onSingleTap ? Gesture.Exclusive(doubleTap, singleTap) : doubleTap;
+  // Long-press (~350ms, finger roughly still) to "pick up" something at that
+  // point — e.g. grabbing a marker to move it on the floor plan.
+  const longPress = Gesture.LongPress()
+    .minDuration(350)
+    .maxDistance(14)
+    .onStart((event) => {
+      "worklet";
+      runOnJS(emitLongPress)(event.x, event.y, scale.value, translateX.value, translateY.value);
+    });
+
+  const tapCandidates = [doubleTap as any];
+  if (onLongPress) tapCandidates.push(longPress);
+  if (onSingleTap) tapCandidates.push(singleTap);
+  const taps = tapCandidates.length > 1 ? Gesture.Exclusive(...tapCandidates) : doubleTap;
   const gesture = Gesture.Simultaneous(pinch, pan, taps);
 
   // Imperative zoom controls (buttons). Setting shared values from the JS thread

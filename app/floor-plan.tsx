@@ -41,7 +41,7 @@ import {
   deletePlanPin,
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
-import { getDefects, type Defect } from "@/lib/defect-store";
+import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
 import { defectStatusColor } from "@/lib/status-colors";
 import { exportFloorPlansPdf } from "@/lib/floor-plan-export";
 import { splitPdfIntoPages } from "@/lib/pdf-pages";
@@ -427,6 +427,20 @@ export default function FloorPlanScreen() {
     }
   };
 
+  // Long-press on (or very near) a marker picks it up for moving — then the next
+  // tap drops it at the new position. "Stark draufdrücken und verschieben."
+  const handlePlanLongPress = (point: Point) => {
+    if (!selectedPlan || movingPin) return;
+    const img = containerPointToImage(point);
+    const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
+      const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
+      return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
+    }, null);
+    if (nearestPin && nearestPin.distance <= 0.06) {
+      startMovePin(nearestPin.pin);
+    }
+  };
+
   // --- Move an existing marking ---
   const startMovePin = (pin: PlanPin) => {
     setShowPinDetail(null);
@@ -511,6 +525,33 @@ export default function FloorPlanScreen() {
       color: PIN_COLORS[pinType],
       createdAt: new Date().toISOString(),
     };
+
+    // A "Mangel" marker also creates a real defect in the Mängel list (PlanRadar
+    // style), linked to this plan + pin so both sides stay in sync.
+    if (pinType === "defect") {
+      const defectId = `defect-${Date.now()}`;
+      (newPin as any).defectId = defectId;
+      const nowIso = new Date().toISOString();
+      try {
+        await saveDefect({
+          id: defectId,
+          projectId,
+          planId: selectedPlan.id,
+          pinId: newPin.id,
+          title: pinLabel.trim(),
+          description: pinDescription.trim() || "",
+          status: "offen",
+          priority: "mittel",
+          category: "Sonstiges",
+          photos: [],
+          location: decodeUnicodeEscapes(selectedPlan.name),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        } as Defect);
+      } catch (e) {
+        console.warn("Could not create defect for plan pin:", e);
+      }
+    }
 
     await savePlanPin(newPin);
     setPins((current) => [...current, newPin]);
@@ -887,6 +928,7 @@ export default function FloorPlanScreen() {
                 height={containerHeight}
                 maxScale={4}
                 onSingleTap={handlePlanTap}
+                onLongPress={handlePlanLongPress}
                 onInteractionChange={setPlanInteractionActive}
                 testID="floor-plan-zoom-stage"
               >
@@ -896,6 +938,7 @@ export default function FloorPlanScreen() {
                   style={{ width: containerWidth, height: containerHeight }}
                   contentFit="contain"
                   cachePolicy="memory-disk"
+                  allowDownscaling={false}
                   recyclingKey={`floor-plan-${selectedPlan.id}`}
                   onLoadStart={() => setLoadingPlanId(selectedPlan.id)}
                   onLoad={(e: any) => {
