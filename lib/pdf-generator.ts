@@ -475,8 +475,9 @@ export function generatePdfHtml(
   };
 
   // Convert protocol text to HTML (handle line breaks, bullet points, inline photo placeholders, and markdown tables)
-  // First, pre-process the protocol text to group table rows into proper HTML tables
-  const lines = getProtocolText(protocol).split("\n");
+  // Lift any [FOTO X] markers OUT of markdown table cells first, so the photo
+  // renders as an image below the table instead of showing as literal "[FOTO 1]".
+  const lines = liftTableRowPhotos(getProtocolText(protocol)).split("\n");
   const processedLines: string[] = [];
   let i = 0;
   while (i < lines.length) {

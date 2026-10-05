@@ -339,18 +339,18 @@ export function generateCoverPage(
     ? `<img src="${extras.heroDataUri}" style="margin-top:22px;width:100%;height:150px;border-radius:12px;object-fit:cover;display:block;" />`
     : "";
 
+  // The content pages carry a fixed running-header (logo + report meta) and a
+  // fixed footer on EVERY page, including this cover. So the cover itself does
+  // NOT repeat the brand/company block or a footer (that caused the overlap),
+  // and uses no min-height (that caused a blank page). Small top padding keeps
+  // the big title clear of the running-header band.
+  void brandHtml; void companyHtml; void slogan;
   return `
-  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:${INK}; position:relative; min-height:960px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      ${brandHtml}
-      ${companyHtml}
-    </div>
-
-    <div style="margin-top:34px;">
+  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:${INK}; padding-top:6mm;">
+    <div>
       <div style="font-size:40px;font-weight:800;color:${INK};letter-spacing:-1px;line-height:1.05;">${title}</div>
       ${subtitle ? `<div style="font-size:25px;font-weight:600;color:${NAVY};margin-top:2px;letter-spacing:-.4px;">${subtitle}</div>` : ""}
       <div style="width:54px;height:4px;background:${accentColor};border-radius:2px;margin:16px 0 10px;"></div>
-      ${slogan ? `<div style="font-size:12px;color:${MUTED};font-weight:500;">${slogan}</div>` : ""}
     </div>
 
     <div style="margin-top:20px;display:grid;grid-template-columns:auto 1fr;gap:9px 12px;align-items:center;">
@@ -359,10 +359,5 @@ export function generateCoverPage(
 
     ${heroHtml}
     ${statsHtml}
-
-    <div style="position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #E6EBF1;padding-top:8px;font-size:8.5px;color:${MUTED};">
-      <div><b style="color:${INK};">${subtitle || title}</b><br>${title} | ${dateShort}</div>
-      <div style="text-align:right;">${branding.companyWebsite || ""}</div>
-    </div>
   </div>`;
 }
