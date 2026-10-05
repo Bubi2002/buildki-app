@@ -21,7 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPriority } from "@/lib/defect-store";
 import { GEWERKE } from "@/lib/defect-pdf-export";
-import { getFloorPlans, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
+import { getFloorPlans, saveFloorPlan, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { AssigneeInput } from "@/components/assignee-input";
 import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
@@ -227,9 +227,40 @@ export default function ProjectWizardScreen() {
   const openPlanModal = () => {
     if (plans.length === 0) return;
     const startPlan = (pendingPos && plans.find((p) => p.id === pendingPos.planId)) || plans[0];
-    setPlanModalPlan(startPlan);
-    setTempPos(pendingPos && pendingPos.planId === startPlan.id ? { x: pendingPos.x, y: pendingPos.y } : null);
+    openPlanModalForPlan(startPlan);
+  };
+  // Open the marker modal on a specific plan (used right after importing one,
+  // where the `plans` state hasn't propagated into openPlanModal's closure yet).
+  const openPlanModalForPlan = (plan: FloorPlan) => {
+    setPlanModalPlan(plan);
+    setTempPos(pendingPos && pendingPos.planId === plan.id ? { x: pendingPos.x, y: pendingPos.y } : null);
     setShowPlanModal(true);
+  };
+  // Import a floor plan image directly in the wizard, then open the marker modal.
+  const importGrundrissAndMark = async () => {
+    if (!projectId) return;
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+      if (res.canceled || !res.assets?.[0]) return;
+      const a = res.assets[0];
+      const dir = `${FileSystem.documentDirectory}floor-plans/`;
+      try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+      let uri = a.uri;
+      try { const dest = `${dir}plan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`; await FileSystem.copyAsync({ from: a.uri, to: dest }); uri = dest; } catch {}
+      const floorName = floors.find((f) => f.id === curFloorId)?.name;
+      const plan: FloorPlan = {
+        id: `plan_${Date.now()}`,
+        projectId,
+        name: floorName ? `${t('grundriss' as any)} ${floorName}` : (t('grundriss' as any) as string),
+        imageUri: uri,
+        width: a.width || 1000,
+        height: a.height || 1000,
+        createdAt: new Date().toISOString(),
+      };
+      await saveFloorPlan(plan);
+      setPlans(await getFloorPlans(projectId));
+      openPlanModalForPlan(plan);
+    } catch {}
   };
   const onPlanTap = (e: any) => {
     if (!planModalPlan) return;
@@ -340,7 +371,7 @@ export default function ProjectWizardScreen() {
     const fl = await getFloors(projectId);
     setFloors(fl);
     const created = [...fl].reverse().find((f) => f.name === name);
-    if (created) setFloorId(created.id);
+    if (created) { setFloorId(created.id); setItemFloorId(created.id); }
     setNewFloorName("");
     setFloorInputOpen(false);
   };
@@ -650,8 +681,15 @@ export default function ProjectWizardScreen() {
             const done = stepIndex > s.n;
             const active = stepIndex === s.n;
             const on = active || done;
+            // Completed/earlier steps are tappable so you can jump back to edit.
+            const canGo = s.n <= stepIndex;
             return (
-              <View key={s.n} style={styles.stepItem}>
+              <Pressable
+                key={s.n}
+                disabled={!canGo}
+                onPress={() => setStep(s.n === 1 ? "details" : s.n === 2 ? "rooms" : "items")}
+                style={({ pressed }) => [styles.stepItem, { opacity: pressed && canGo ? 0.6 : 1 }]}
+              >
                 <View style={[styles.stepNum, { backgroundColor: on ? colors.primary : "transparent", borderColor: on ? colors.primary : colors.border }]}>
                   {done ? (
                     <MaterialIcons name="check" size={13} color="#FFFFFF" />
@@ -660,7 +698,7 @@ export default function ProjectWizardScreen() {
                   )}
                 </View>
                 <Text numberOfLines={1} style={[styles.stepLabel, { color: on ? colors.foreground : colors.muted, fontWeight: active ? "800" : "600" }]}>{s.label}</Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -898,6 +936,15 @@ export default function ProjectWizardScreen() {
               </Pressable>
             </ScrollView>
 
+            {floorInputOpen && (
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 4, marginBottom: 8 }}>
+                <TextInput value={newFloorName} onChangeText={setNewFloorName} placeholder={t('wizard_floor' as any)} placeholderTextColor={colors.muted} autoFocus returnKeyType="done" onSubmitEditing={addCustomFloor} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+                <Pressable onPress={addCustomFloor} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
+                  <MaterialIcons name="check" size={22} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            )}
+
             {/* Raum – aus den zuvor erstellten Räumen wählen */}
             {curFloorId && roomsForFloor(curFloorId).length > 0 && (
               <>
@@ -974,7 +1021,10 @@ export default function ProjectWizardScreen() {
                 {/* Planposition */}
                 <Text style={styles.miniLabel}>{t('wizard_plan_position' as any)}</Text>
                 {plans.length === 0 ? (
-                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>{t('wizard_plan_none' as any)}</Text>
+                  <Pressable onPress={importGrundrissAndMark} style={({ pressed }) => [styles.photoBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="upload-file" size={18} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('wizard_plan_import_mark' as any)}</Text>
+                  </Pressable>
                 ) : pendingPos ? (
                   <View style={[styles.planPosRow, { borderColor: colors.primary, backgroundColor: colors.primary + "12" }]}>
                     <MaterialIcons name="place" size={18} color={colors.primary} />
@@ -1052,6 +1102,10 @@ export default function ProjectWizardScreen() {
           )}
           {step === "rooms" && (
             <>
+              <Pressable onPress={() => setStep("details")} style={({ pressed }) => [styles.footerBack, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name="arrow-back" size={18} color={colors.muted} />
+                <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('btn_zurueck')}</Text>
+              </Pressable>
               <Pressable onPress={() => setStep("items")} style={({ pressed }) => [styles.footerGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('ueberspringen')}</Text>
               </Pressable>
@@ -1063,6 +1117,10 @@ export default function ProjectWizardScreen() {
           )}
           {step === "items" && (
             <>
+              <Pressable onPress={() => setStep("rooms")} style={({ pressed }) => [styles.footerBack, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name="arrow-back" size={18} color={colors.muted} />
+                <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('btn_zurueck')}</Text>
+              </Pressable>
               <Pressable onPress={finish} style={({ pressed }) => [styles.footerGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('ueberspringen')}</Text>
               </Pressable>
@@ -1238,6 +1296,7 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
   footer: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 0.5 },
   footerGhost: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 12, borderWidth: 1 },
+  footerBack: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1 },
   footerGhostText: { fontSize: 15, fontWeight: "700" },
   footerPrimary: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#2563EB", borderRadius: 12, paddingVertical: 14 },
   footerPrimaryText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
