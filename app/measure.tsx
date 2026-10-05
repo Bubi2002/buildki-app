@@ -36,6 +36,7 @@ import {
   type MeasurementMethod,
 } from "@/lib/evidence-store";
 import { getDefects, type Defect } from "@/lib/defect-store";
+import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CANVAS_WIDTH = Math.max(280, SCREEN_WIDTH - 32);
@@ -130,6 +131,10 @@ export default function MeasureScreen() {
   const [selectedDefectId, setSelectedDefectId] = useState<string | null>(null);
   const [showDefectPicker, setShowDefectPicker] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -147,10 +152,20 @@ export default function MeasureScreen() {
       setProject(active);
       setEvidence(active ? await getEvidence(active.id) : []);
       setDefects(active ? await getDefects(active.id) : []);
+      if (active) {
+        const structure = await getProjectStructure(active.id);
+        setFloors(structure.floors);
+        setRooms(structure.rooms);
+      } else {
+        setFloors([]);
+        setRooms([]);
+      }
     } catch {
       setProject(null);
       setEvidence([]);
       setDefects([]);
+      setFloors([]);
+      setRooms([]);
     }
   }
 
@@ -164,9 +179,18 @@ export default function MeasureScreen() {
     setSelectedEvidence(item);
     setFindingText(item.findingText || "");
     setSelectedDefectId((item as any).defectId || null);
+    setSelectedFloor(item.floor || null);
+    setSelectedRoom(item.room || null);
     setStartPoint(null);
     setEndPoint(null);
   };
+
+  // Rooms available for the currently chosen floor (by floor name match).
+  const floorRooms = useMemo(() => {
+    const floor = floors.find((f) => f.name === selectedFloor);
+    if (!floor) return [] as Room[];
+    return rooms.filter((r) => r.floorId === floor.id);
+  }, [floors, rooms, selectedFloor]);
 
   async function addPhoto(source: "camera" | "library") {
     if (!project) {
@@ -384,6 +408,8 @@ export default function MeasureScreen() {
       const updated = await updateEvidence(selectedEvidence.id, {
         previewUri: destination,
         findingText,
+        floor: selectedFloor || undefined,
+        room: selectedRoom || undefined,
         reviewStatus: "approved",
         defectId: selectedDefectId || undefined,
         measurements: [...(selectedEvidence.measurements || []), measurement],
@@ -404,6 +430,8 @@ export default function MeasureScreen() {
       setValue("");
       setTolerance("");
       setNote("");
+      setSelectedFloor(null);
+      setSelectedRoom(null);
       setStep(1);
     } catch (error) {
       Alert.alert(
@@ -469,6 +497,24 @@ export default function MeasureScreen() {
   const measurementLabel = value.trim()
     ? `${value.replace(".", ",")} ${unit}${selectedMethod.accuracy === "estimated" ? t('measure_label_estimate_suffix' as any) : ""}`
     : t('measure_label_messwert' as any);
+
+  // Value chip centered exactly on the line's midpoint and clamped inside the
+  // canvas, so it never drifts off to the side ("komisch versetzt").
+  const renderMeasureLabel = () => {
+    if (!startPoint || !endPoint) return null;
+    const mx = (startPoint.x + endPoint.x) / 2;
+    const my = (startPoint.y + endPoint.y) / 2;
+    const w = Math.max(54, measurementLabel.length * 7.4 + 20);
+    const h = 25;
+    const bx = Math.min(CANVAS_WIDTH - w - 4, Math.max(4, mx - w / 2));
+    const by = Math.min(CANVAS_HEIGHT - h - 4, Math.max(4, my - h / 2));
+    return (
+      <>
+        <Rect x={bx} y={by} width={w} height={h} rx={7} fill="rgba(0,0,0,0.8)" />
+        <SvgText x={bx + w / 2} y={by + h / 2 + 4.5} fill="#FFFFFF" fontSize={13} fontWeight="800" textAnchor="middle">{measurementLabel}</SvgText>
+      </>
+    );
+  };
 
   return (
     <ScreenContainer className="p-0">
@@ -633,8 +679,7 @@ export default function MeasureScreen() {
                           <Circle cx={endPoint.x} cy={endPoint.y} r={20} fill="rgba(255,59,48,0.18)" />
                           <Circle cx={startPoint.x} cy={startPoint.y} r={9} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
                           <Circle cx={endPoint.x} cy={endPoint.y} r={9} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
-                          <Rect x={Math.max(4, (startPoint.x + endPoint.x) / 2 - 58)} y={Math.max(4, (startPoint.y + endPoint.y) / 2 - 30)} width={116} height={25} rx={4} fill="rgba(0,0,0,0.72)" />
-                          <SvgText x={(startPoint.x + endPoint.x) / 2} y={Math.max(21, (startPoint.y + endPoint.y) / 2 - 13)} fill="#FFFFFF" fontSize={12} fontWeight="700" textAnchor="middle">{measurementLabel}</SvgText>
+                          {renderMeasureLabel()}
                         </>
                       )}
                     </Svg>
@@ -703,12 +748,40 @@ export default function MeasureScreen() {
                         <Line x1={startPoint.x} y1={startPoint.y} x2={endPoint.x} y2={endPoint.y} stroke="#FF3B30" strokeWidth={4} />
                         <Circle cx={startPoint.x} cy={startPoint.y} r={7} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
                         <Circle cx={endPoint.x} cy={endPoint.y} r={7} fill="#FFFFFF" stroke="#FF3B30" strokeWidth={3} />
-                        <Rect x={Math.max(4, (startPoint.x + endPoint.x) / 2 - 58)} y={Math.max(4, (startPoint.y + endPoint.y) / 2 - 30)} width={116} height={25} rx={4} fill="rgba(0,0,0,0.72)" />
-                        <SvgText x={(startPoint.x + endPoint.x) / 2} y={Math.max(21, (startPoint.y + endPoint.y) / 2 - 13)} fill="#FFFFFF" fontSize={12} fontWeight="700" textAnchor="middle">{measurementLabel}</SvgText>
+                        {renderMeasureLabel()}
                       </>
                     )}
                   </Svg>
                 </View>
+
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_floor' as any)}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.chipRow}>
+                    {floors.map((f) => (
+                      <Pressable key={f.id} onPress={() => { setSelectedFloor(f.name); setSelectedRoom(null); }} style={[styles.locChip, { borderColor: selectedFloor === f.name ? "#00ACC1" : colors.border, backgroundColor: selectedFloor === f.name ? "#00ACC122" : colors.surface }]}>
+                        <Text style={{ color: selectedFloor === f.name ? "#00ACC1" : colors.foreground, fontWeight: "700", fontSize: 13 }}>{f.name}</Text>
+                      </Pressable>
+                    ))}
+                    {floors.length === 0 && <Text style={{ color: colors.muted, fontSize: 12, paddingVertical: 10 }}>{t('measure_no_floors' as any)}</Text>}
+                  </View>
+                </ScrollView>
+
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_room' as any)}</Text>
+                {selectedFloor ? (
+                  floorRooms.length > 0 ? (
+                    <View style={styles.chipRowWrap}>
+                      {floorRooms.map((r) => (
+                        <Pressable key={r.id} onPress={() => setSelectedRoom(r.name)} style={[styles.locChip, { borderColor: selectedRoom === r.name ? "#00ACC1" : colors.border, backgroundColor: selectedRoom === r.name ? "#00ACC122" : colors.surface }]}>
+                          <Text style={{ color: selectedRoom === r.name ? "#00ACC1" : colors.foreground, fontWeight: "700", fontSize: 13 }}>{r.name}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{t('measure_no_rooms' as any)}</Text>
+                  )
+                ) : (
+                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{t('measure_pick_floor_first' as any)}</Text>
+                )}
 
                 <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_finding_label' as any)}</Text>
                 <TextInput value={findingText} onChangeText={setFindingText} placeholder={t('measure_finding_placeholder' as any)} placeholderTextColor={colors.muted} multiline style={[styles.input, styles.multiline, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
@@ -822,6 +895,8 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 84, paddingTop: 12, textAlignVertical: "top" },
   valueRow: { flexDirection: "row", gap: 12 },
   chipRow: { flexDirection: "row", gap: 6 },
+  chipRowWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
+  locChip: { minHeight: 40, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, alignItems: "center", justifyContent: "center" },
   chip: { minWidth: 48, height: 48, borderWidth: 1, paddingHorizontal: 10, alignItems: "center", justifyContent: "center" },
   methodDropdown: { borderWidth: 1, borderRadius: 10, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 },
   methodLabel: { fontSize: 14, fontWeight: "800" },

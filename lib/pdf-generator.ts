@@ -371,26 +371,30 @@ export function generatePdfHtml(
       const watermarkOverlay = photoWatermark
         ? `<div class="evidence-watermark"><strong>${escapeHtml(wmContent)}</strong></div>`
         : "";
-      const measurementsHtml = measurements.length > 0
+      const hasMeas = measurements.length > 0;
+      const ortLine = [snapshot.floor, snapshot.room].filter(Boolean).join(" · ");
+      const measurementsHtml = hasMeas
         ? `<div class="evidence-measurements">
                   <p class="meas-title">Messung</p>
+                  ${ortLine ? `<p class="meas-row"><span class="meas-k">Ort</span><span class="meas-v">${escapeHtml(ortLine)}</span></p>` : ""}
                   ${measurements
                     .map((measurement) => `
-                      <p><strong>Messwert: ${escapeHtml(formatMeasurementForDocument(measurement))}</strong></p>
-                      <p><strong>Methode: ${escapeHtml(formatMeasurementMethod(measurement.method))}${measurement.note ? ` · ${escapeHtml(measurement.note)}` : ""}</strong></p>`)
+                      <p class="meas-row"><span class="meas-k">Messwert</span><span class="meas-v">${escapeHtml(formatMeasurementForDocument(measurement))}</span></p>
+                      <p class="meas-row"><span class="meas-k">Methode</span><span class="meas-v">${escapeHtml(formatMeasurementMethod(measurement.method))}</span></p>
+                      ${measurement.note ? `<p class="meas-row"><span class="meas-k">Hinweis</span><span class="meas-v">${escapeHtml(measurement.note)}</span></p>` : ""}`)
                     .join("")}
                 </div>`
         : "";
       const badge = `<span class="evidence-badge">${String(index + 1).padStart(2, "0")}</span>`;
       const imageBlock = dataUri
-        ? `<div class="evidence-image-wrap">
+        ? `<div class="evidence-image-wrap${hasMeas ? " evidence-image-wrap-tall" : ""}">
                   ${badge}
-                  <img src="${dataUri}" class="evidence-image" />
+                  <img src="${dataUri}" class="evidence-image${hasMeas ? " evidence-image-contain" : ""}" />
                   ${watermarkOverlay}
                 </div>`
         : `<p class="evidence-no-image">Zum Mangel liegt kein Bildnachweis vor.</p>`;
       return `
-              <article class="evidence-block${dataUri ? "" : " evidence-block-noimage"}" data-evidence-id="${escapeHtml(snapshot.evidenceId)}">
+              <article class="evidence-block${dataUri ? "" : " evidence-block-noimage"}${hasMeas ? " evidence-block-measure" : ""}" data-evidence-id="${escapeHtml(snapshot.evidenceId)}">
                 ${findingHtml}
                 ${imageBlock}
                 <p class="evidence-number"><strong>Abbildung ${index + 1}</strong></p>
@@ -846,6 +850,11 @@ export function generatePdfHtml(
     .evidence-block-noimage {
       background: #fafbfc;
     }
+    /* A measured photo gets the full page width and a large, uncropped image so
+       the drawn measurement line and value chip stay fully visible. */
+    .evidence-block-measure {
+      width: 100%;
+    }
     .evidence-image-wrap {
       order: 1;
       position: relative;
@@ -853,11 +862,19 @@ export function generatePdfHtml(
       height: 155px;
       background: #f4f6f8;
     }
+    .evidence-image-wrap-tall {
+      height: 340px;
+      background: #0f1b2b;
+    }
     .evidence-image {
       display: block;
       width: 100%;
       height: 155px;
       object-fit: cover;
+    }
+    .evidence-image-contain {
+      height: 340px;
+      object-fit: contain;
     }
     .evidence-badge {
       position: absolute;
@@ -933,6 +950,21 @@ export function generatePdfHtml(
       color: #334155;
       font-size: 9.5px;
       line-height: 1.4;
+    }
+    .evidence-measurements .meas-row {
+      display: flex;
+      gap: 8px;
+      margin: 3px 0;
+    }
+    .evidence-measurements .meas-k {
+      flex: 0 0 64px;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .evidence-measurements .meas-v {
+      flex: 1;
+      color: #1f2937;
+      font-weight: 700;
     }
     .freigabe-section {
       margin-top: 26px;

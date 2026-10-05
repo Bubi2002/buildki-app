@@ -30,6 +30,7 @@ export type DocumentEvidenceSnapshot = {
   videoTimeSeconds?: number;
   videoTimecode?: string;
   capturedAt?: string;
+  floor?: string;
   room?: string;
   trade?: string;
   pixelWidth?: number;
@@ -73,6 +74,7 @@ export function createDocumentEvidenceSnapshot(
     videoTimeSeconds: item.videoTimeSeconds,
     videoTimecode: formatEvidenceTimecode(item.videoTimeSeconds),
     capturedAt: item.capturedAt,
+    floor: item.floor,
     room: item.room,
     trade: item.trade,
     pixelWidth: item.pixelWidth,

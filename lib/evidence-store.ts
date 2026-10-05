@@ -70,6 +70,7 @@ export type EvidenceItem = {
   updatedAt: string;
   /** Plain text only. Document renderers display this text in bold near media. */
   findingText?: string;
+  floor?: string;
   room?: string;
   trade?: string;
   tags?: string[];
@@ -117,6 +118,7 @@ function normalizeEvidence(item: EvidenceItem): EvidenceItem {
   return {
     ...item,
     findingText: normalizeText(item.findingText),
+    floor: normalizeText(item.floor),
     room: normalizeText(item.room),
     trade: normalizeText(item.trade),
     reviewNote: normalizeText(item.reviewNote),
