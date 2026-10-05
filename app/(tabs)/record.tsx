@@ -1104,6 +1104,38 @@ export default function RecordScreen() {
   const [chapterFloor, setChapterFloor] = useState("");
   const [chapterListening, setChapterListening] = useState(false);
   const [chapterRecording, setChapterRecording] = useState(false);
+  const [chapterFloors, setChapterFloors] = useState<any[]>([]);
+  const [chapterRooms, setChapterRooms] = useState<any[]>([]);
+
+  // Load the project's real floors + rooms whenever the "Neuer Raum" prompt opens.
+  useEffect(() => {
+    if (!chapterPromptVisible || !selectedProject?.id) return;
+    (async () => {
+      try {
+        const { getFloors, getAllRooms, initializeDefaultFloors } = await import("@/lib/room-store");
+        await initializeDefaultFloors(selectedProject.id);
+        const fl = await getFloors(selectedProject.id);
+        setChapterFloors(fl.slice().sort((a: any, b: any) => a.number - b.number));
+        setChapterRooms(await getAllRooms(selectedProject.id));
+      } catch {}
+    })();
+  }, [chapterPromptVisible, selectedProject?.id]);
+
+  const addChapterFloor = () => {
+    const pid = selectedProject?.id;
+    if (!pid || !(Alert as any).prompt) return;
+    (Alert as any).prompt(t('wizard_floor' as any), undefined, async (val?: string) => {
+      const name = (val || "").trim();
+      if (!name) return;
+      try {
+        const { addFloor, getFloors } = await import("@/lib/room-store");
+        const nextNum = chapterFloors.length ? Math.max(...chapterFloors.map((f: any) => f.number)) + 1 : 0;
+        await addFloor(pid, name, nextNum);
+        setChapterFloors((await getFloors(pid)).slice().sort((a: any, b: any) => a.number - b.number));
+        setChapterFloor(name);
+      } catch {}
+    }, "plain-text", "");
+  };
   const chapterRecorderActiveRef = useRef(false);
 
   const addMarker = (label: string) => {
@@ -1182,9 +1214,9 @@ export default function RecordScreen() {
       const transcribeResult = await transcribeMutation.mutateAsync({ audioUrl: uploadResult.url, language: "de" });
       const chapterName = (transcribeResult.text || "").trim().replace(/[.!?,;:]+$/g, "");
       if (chapterName) {
+        // Put the spoken text in the editable field so it can be corrected,
+        // then the user taps "Raum setzen" (no auto-confirm).
         setChapterInput(chapterName);
-        // Auto-confirm after successful transcription
-        confirmChapter(chapterName);
       }
     } catch  {
       // Resume main recording on error too
@@ -3308,90 +3340,98 @@ export default function RecordScreen() {
       {/* Chapter Name Input Modal */}
       <Modal visible={chapterPromptVisible} animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 0, padding: 20 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('raum_titel')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
               {chapterListening ? t('raum_hoere') : t('raum_sprich')}
             </Text>
 
-            {/* Geschoss selector */}
             {!chapterListening && (
-              <View style={{ marginBottom: 12 }}>
+              <>
+                {/* Geschoss selector + add floor */}
                 <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>{t('record_geschoss' as any)}</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                  {["UG", "EG", "1. OG", "2. OG", "3. OG", "DG"].map((g) => {
-                    const active = chapterFloor === g;
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                  {chapterFloors.map((f: any) => {
+                    const active = chapterFloor === f.name;
                     return (
-                      <Pressable
-                        key={g}
-                        onPress={() => setChapterFloor(active ? "" : g)}
-                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? "#FF9800" : colors.border, backgroundColor: active ? "#FF9800" + "22" : "transparent" }}
-                      >
-                        <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? "#FF9800" : colors.muted }}>{g}</Text>
+                      <Pressable key={f.id} onPress={() => setChapterFloor(active ? "" : f.name)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "22" : "transparent" }}>
+                        <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{f.name}</Text>
                       </Pressable>
                     );
                   })}
+                  <Pressable onPress={addChapterFloor} style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                    <MaterialIcons name="add" size={15} color={colors.primary} />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('wizard_floor' as any)}</Text>
+                  </Pressable>
                 </View>
-              </View>
-            )}
 
-            {/* Speech indicator */}
-            {chapterListening && (
-              <View style={{ alignItems: "center", paddingVertical: 16 }}>
-                <View style={{ width: 64, height: 64, borderRadius: 0, backgroundColor: "#FF9800" + "20", alignItems: "center", justifyContent: "center" }}>
-                  <MaterialIcons name="mic" size={32} color="#FF9800" />
+                {/* Existing rooms of the selected floor — tap to select */}
+                {(() => {
+                  const selFloor = chapterFloors.find((f: any) => f.name === chapterFloor);
+                  const floorRooms = selFloor ? chapterRooms.filter((r: any) => r.floorId === selFloor.id) : [];
+                  if (floorRooms.length === 0) return null;
+                  return (
+                    <>
+                      <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6, fontWeight: "600" }}>{t('index_tool_raeume' as any)}</Text>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                        {floorRooms.map((r: any) => {
+                          const active = chapterInput.trim().toLowerCase() === r.name.trim().toLowerCase();
+                          return (
+                            <Pressable key={r.id} onPress={() => setChapterInput(active ? "" : r.name)} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "22" : "transparent" }}>
+                              <MaterialIcons name="meeting-room" size={13} color={active ? colors.primary : colors.muted} />
+                              <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{r.name}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </>
+                  );
+                })()}
+
+                {/* Room name + inline mic */}
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                  <TextInput
+                    value={chapterInput}
+                    onChangeText={setChapterInput}
+                    placeholder={t('raum_name_ph')}
+                    placeholderTextColor={colors.muted}
+                    returnKeyType="done"
+                    onSubmitEditing={() => confirmChapter(chapterInput)}
+                    style={{ flex: 1, fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground }}
+                  />
+                  <Pressable onPress={startChapterSpeech} style={({ pressed }) => [{ width: 48, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.85 : 1 }]}>
+                    <MaterialIcons name="mic" size={24} color="#FFFFFF" />
+                  </Pressable>
                 </View>
-                <Text style={{ fontSize: 12, color: "#FF9800", marginTop: 8, fontWeight: "600" }}>{t('aufnahme_laeuft')}</Text>
-              </View>
+              </>
             )}
 
-            {/* Manual text input (always available as fallback) */}
-            {!chapterListening && (
-              <TextInput
-                value={chapterInput}
-                onChangeText={setChapterInput}
-                placeholder={t('raum_name_ph')}
-                placeholderTextColor={colors.muted}
-                autoFocus={false}
-                returnKeyType="done"
-                onSubmitEditing={() => confirmChapter(chapterInput)}
-                style={{ fontSize: 16, padding: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground, marginBottom: 12 }}
-              />
-            )}
-
-            {/* Direct microphone — speak the room name; result lands in the
-                editable field above, so it can be corrected if misheard. */}
-            {!chapterListening && (
-              <Pressable
-                onPress={startChapterSpeech}
-                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 10, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.85 : 1 }]}
-              >
-                <MaterialIcons name="mic" size={22} color="#FFFFFF" />
-                <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{chapterInput.trim() ? t('erneut_einsprechen') : t('raum_einsprechen' as any)}</Text>
-              </Pressable>
-            )}
-
-            {/* Stop speech button */}
+            {/* Speech indicator + stop */}
             {chapterListening && (
-              <Pressable
-                onPress={stopChapterSpeech}
-                style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 0, backgroundColor: "#FF9800", marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('raum_fertig')}</Text>
-              </Pressable>
+              <>
+                <View style={{ alignItems: "center", paddingVertical: 16 }}>
+                  <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center" }}>
+                    <MaterialIcons name="mic" size={32} color={colors.primary} />
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.primary, marginTop: 8, fontWeight: "600" }}>{t('aufnahme_laeuft')}</Text>
+                </View>
+                <Pressable onPress={stopChapterSpeech} style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('raum_fertig')}</Text>
+                </Pressable>
+              </>
             )}
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Pressable
                 onPress={async () => { setChapterPromptVisible(false); setChapterInput(""); setChapterFloor(""); setChapterListening(false); setChapterRecording(false); if (chapterRecorderActiveRef.current) { try { await chapterAudioRecorder.stop(); } catch {} chapterRecorderActiveRef.current = false; } if (isRecording) { try { audioRecorder.record(); resumeTimer(); setIsPaused(false); } catch {} } }}
-                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>{t('cancel')}</Text>
               </Pressable>
               {!chapterListening && (
                 <Pressable
                   onPress={() => confirmChapter(chapterInput || `${t('record_chapter' as any)} ${markers.filter(m => m.label.startsWith("KAPITEL:")).length + 1}`)}
-                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 0, backgroundColor: chapterInput.trim() ? "#FF9800" : "#FF980080", alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('raum_setzen')}</Text>
                 </Pressable>
