@@ -3342,11 +3342,11 @@ export default function RecordScreen() {
 
       {/* Chapter Name Input Modal */}
       <Modal visible={chapterPromptVisible} animationType="fade" transparent>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 24 }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>{t('raum_titel')}</Text>
             <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 12 }}>
-              {chapterListening ? t('raum_hoere') : t('raum_sprich')}
+              {t('raum_dictate_hint' as any)}
             </Text>
 
             {!chapterListening && (
@@ -3391,36 +3391,20 @@ export default function RecordScreen() {
                   );
                 })()}
 
-                {/* Room name + inline mic */}
-                <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+                {/* Room name — type or use the keyboard's Apple dictation mic
+                    (live, on-device, stays in the field — no record/transcribe step). */}
+                <View style={{ marginBottom: 12 }}>
                   <TextInput
                     value={chapterInput}
                     onChangeText={setChapterInput}
                     placeholder={t('raum_name_ph')}
                     placeholderTextColor={colors.muted}
+                    autoFocus
                     returnKeyType="done"
                     onSubmitEditing={() => confirmChapter(chapterInput)}
-                    style={{ flex: 1, fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground }}
+                    style={{ fontSize: 16, padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, color: colors.foreground }}
                   />
-                  <Pressable onPress={startChapterSpeech} style={({ pressed }) => [{ width: 48, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.85 : 1 }]}>
-                    <MaterialIcons name="mic" size={24} color="#FFFFFF" />
-                  </Pressable>
                 </View>
-              </>
-            )}
-
-            {/* Speech indicator + stop */}
-            {chapterListening && (
-              <>
-                <View style={{ alignItems: "center", paddingVertical: 16 }}>
-                  <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center" }}>
-                    <MaterialIcons name="mic" size={32} color={colors.primary} />
-                  </View>
-                  <Text style={{ fontSize: 12, color: colors.primary, marginTop: 8, fontWeight: "600" }}>{t('aufnahme_laeuft')}</Text>
-                </View>
-                <Pressable onPress={stopChapterSpeech} style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, marginBottom: 12, opacity: pressed ? 0.7 : 1 }]}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFF" }}>{t('raum_fertig')}</Text>
-                </Pressable>
               </>
             )}
 
@@ -3441,7 +3425,7 @@ export default function RecordScreen() {
               )}
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
