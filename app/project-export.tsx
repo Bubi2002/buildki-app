@@ -44,7 +44,7 @@ export default function ProjectExportScreen() {
   const { projectId = "", projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
 
   const [selected, setSelected] = useState<Record<SourceKey, boolean>>({
-    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: true, protocols: true, rooms: true, plans: true, photos: false,
+    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: false, protocols: true, rooms: true, plans: true, photos: false,
   });
   const [counts, setCounts] = useState<Partial<Record<SourceKey, number>>>({});
   const [busy, setBusy] = useState(false);
@@ -55,7 +55,6 @@ export default function ProjectExportScreen() {
     { key: "tasks", label: t('index_tool_aufgaben' as any), icon: "task-alt" },
     { key: "attendance", label: t('index_tool_anwesenheit' as any), icon: "how-to-reg" },
     { key: "time", label: t('index_tool_zeiterfassung' as any), icon: "timer" },
-    { key: "diary", label: t('index_tool_bautagebuch' as any), icon: "menu-book" },
     { key: "protocols", label: t('project_export_protocols' as any), icon: "description" },
     { key: "rooms", label: t('index_tool_raeume' as any), icon: "layers" },
     { key: "plans", label: t('index_tool_grundriss' as any), icon: "map" },

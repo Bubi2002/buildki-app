@@ -625,15 +625,6 @@ export default function ProjectDetailScreen() {
               </View>
               <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('checklist_title')}</Text>
             </Pressable>
-            <Pressable
-              onPress={() => router.push(`/diary?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#66BB6A15' }]}>
-                <MaterialIcons name="menu-book" size={22} color="#66BB6A" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('tagebuch')}</Text>
-            </Pressable>
 
             {/* ── secondary tools, collapsed by default ── */}
             {showAllTools && (<>

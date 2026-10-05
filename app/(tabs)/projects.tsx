@@ -794,7 +794,6 @@ export default function RundgangTab() {
                     { icon: "compare", label: t('vergleich'), route: `/photo-compare?projectId=${selectedProjectId}` },
                     { icon: "straighten", label: t('measure_title' as any), route: `/measure` },
                     { icon: "checklist", label: t('checklist_title'), route: `/checklists?projectId=${selectedProjectId}` },
-                    { icon: "menu-book", label: t('tagebuch'), route: `/diary?projectId=${selectedProjectId}` },
                     { icon: "groups", label: t('anwesenheit'), route: `/attendance` },
                     { icon: "schedule", label: t('zeiterfassung'), route: `/time-tracking` },
                   ] as const).map((tool) => (
