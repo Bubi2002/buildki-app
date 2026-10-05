@@ -800,8 +800,16 @@ export default function ProjectWizardScreen() {
                 <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>{t('wizard_floor' as any)}</Text>
               </Pressable>
             </ScrollView>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6, marginBottom: 2 }}>
-              <Text style={[styles.hint, { color: colors.muted, marginBottom: 0, flex: 1 }]}>{t('wizard_floor_delete_hint' as any)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8, marginBottom: 2 }}>
+              <Pressable
+                onPress={() => { const f = floors.find((x) => x.id === floorId) || floors[0]; if (f) confirmDeleteFloor(f); }}
+                disabled={floors.length === 0}
+                hitSlop={6}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: floors.length === 0 ? 0.4 : pressed ? 0.6 : 1 }]}
+              >
+                <MaterialIcons name="delete-outline" size={16} color="#F87171" />
+                <Text style={{ color: "#F87171", fontWeight: "700", fontSize: 12.5 }}>{t('wizard_floor_delete' as any)}</Text>
+              </Pressable>
               <Pressable onPress={addStandardRooms} hitSlop={6} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
                 <MaterialIcons name="auto-awesome" size={15} color={colors.primary} />
                 <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 12.5 }}>{t('wizard_standard_rooms' as any)}</Text>

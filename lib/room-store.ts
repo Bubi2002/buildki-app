@@ -45,6 +45,16 @@ export const DEFAULT_FLOORS: Omit<Floor, "id" | "projectId" | "createdAt">[] = [
   { name: "DG", number: 3 },
 ];
 
+// Common rooms that most floors have — pre-seeded per floor so a new project
+// already has a sensible structure (the user can delete what they don't need).
+export const DEFAULT_ROOMS_BY_FLOOR: Record<string, string[]> = {
+  "UG": ["Keller", "Technik", "Waschküche"],
+  "EG": ["Flur", "Wohnzimmer", "Küche", "Gäste-WC"],
+  "1. OG": ["Flur", "Schlafzimmer", "Bad", "Kinderzimmer"],
+  "2. OG": ["Flur", "Schlafzimmer", "Bad"],
+  "DG": ["Flur", "Zimmer", "Bad"],
+};
+
 // ─── Store Functions ─────────────────────────────────────────────────────────
 
 export async function getProjectStructure(projectId: string): Promise<ProjectStructure> {
@@ -126,8 +136,9 @@ export async function initializeDefaultFloors(projectId: string): Promise<void> 
   if (structure.floors.length > 0) return; // Already initialized
   
   for (const def of DEFAULT_FLOORS) {
+    const floorId = `floor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     structure.floors.push({
-      id: `floor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      id: floorId,
       projectId,
       name: def.name,
       number: def.number,
@@ -135,6 +146,18 @@ export async function initializeDefaultFloors(projectId: string): Promise<void> 
     });
     // Small delay to ensure unique IDs
     await new Promise(r => setTimeout(r, 1));
+    // Pre-seed the common rooms for this floor.
+    for (const roomName of DEFAULT_ROOMS_BY_FLOOR[def.name] || []) {
+      structure.rooms.push({
+        id: `room_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        projectId,
+        floorId,
+        name: roomName,
+        status: "nicht_begonnen",
+        createdAt: new Date().toISOString(),
+      });
+      await new Promise(r => setTimeout(r, 1));
+    }
   }
   await saveProjectStructure(structure);
 }
