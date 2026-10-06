@@ -809,39 +809,56 @@ export default function DefectsScreen() {
     ]);
   };
 
-  // Compact single row: dot + title, one meta line (Raum · Gewerk · Frist),
-  // status pill and a small thumbnail — so many defects fit on screen.
+  // Stable running number per defect (by creation order), like a ticket number.
+  const numberById: Record<string, number> = (() => {
+    const sorted = [...defects].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const m: Record<string, number> = {};
+    sorted.forEach((d, i) => { m[d.id] = i + 1; });
+    return m;
+  })();
+
+  // PlanRadar-style card: creator/date line, big title, a number badge + status
+  // pill + attachment/location icons, and a large photo of the defect.
   const renderDefect = ({ item }: { item: Defect }) => {
-    const meta = [
-      [item.floor, item.room].filter(Boolean).join(" "),
-      (item as any).gewerk || item.category,
-      (item as any).assignee,
-      item.dueDate ? `${t('frist')} ${fmtFrist(item.dueDate)}` : "",
-    ].filter(Boolean).join(" · ");
     const photo = item.photos && item.photos.length > 0 ? item.photos[0] : undefined;
-    const overdue = item.dueDate && item.dueDate <= new Date().toISOString().slice(0, 10) && item.status !== "erledigt" && item.status !== "geschlossen";
+    const ort = [item.floor, item.room].filter(Boolean).join(" · ") || item.location || "";
+    const gewerk = (item as any).gewerk || item.category || "";
+    const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "";
+    const num = numberById[item.id];
+    const sc = statusColors[item.status];
     const dotColor = defectStatusColor(item.status, { dueDate: item.dueDate });
     return (
       <Pressable
         onPress={() => openDetail(item)}
         onLongPress={() => removeDefect(item.id)}
-        style={({ pressed }) => [styles.compactRow, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.7 }]}
+        style={({ pressed }) => [styles.prCard, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && { opacity: 0.88 }]}
       >
-        <View style={[styles.compactDot, { backgroundColor: dotColor }]} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            {item.priority === "hoch" && <MaterialIcons name="priority-high" size={15} color={colors.error} />}
-            <Text style={[styles.compactTitle, { color: colors.foreground }]} numberOfLines={1}>{item.title}</Text>
+        <View style={styles.prHead}>
+          <Text style={[styles.prHeadText, { color: colors.muted }]} numberOfLines={1}>{gewerk || ort || t('maengel')}</Text>
+          {dateStr ? <Text style={[styles.prHeadText, { color: colors.muted }]}>{dateStr}</Text> : null}
+        </View>
+        <Text style={[styles.prTitle, { color: colors.foreground }]} numberOfLines={2}>{item.title?.trim() || "—"}</Text>
+        <View style={styles.prMetaRow}>
+          {num ? (
+            <View style={[styles.prNum, { backgroundColor: dotColor }]}>
+              <Text style={styles.prNumText}>{num}</Text>
+            </View>
+          ) : null}
+          <View style={[styles.prStatus, { borderColor: sc }]}>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: sc }}>{statusLabels[item.status]}</Text>
           </View>
-          {meta ? (
-            <Text style={[styles.compactMeta, { color: overdue ? colors.error : colors.muted }]} numberOfLines={1}>{meta}</Text>
+          {item.photos && item.photos.length > 0 ? (
+            <View style={[styles.prIcon, { borderColor: colors.border }]}><MaterialIcons name="attach-file" size={16} color={colors.muted} /></View>
+          ) : null}
+          {ort ? (
+            <View style={[styles.prIcon, { borderColor: colors.border }]}><MaterialIcons name="place" size={16} color={colors.muted} /></View>
+          ) : null}
+          {item.priority === "hoch" ? (
+            <View style={[styles.prIcon, { borderColor: colors.error }]}><MaterialIcons name="priority-high" size={16} color={colors.error} /></View>
           ) : null}
         </View>
-        <View style={[styles.compactPill, { backgroundColor: statusColors[item.status] + "22" }]}>
-          <Text style={{ fontSize: 10, fontWeight: "700", color: statusColors[item.status] }} numberOfLines={1}>{statusLabels[item.status]}</Text>
-        </View>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.compactThumb} resizeMode="cover" />
+          <Image source={{ uri: photo }} style={styles.prPhoto} resizeMode="cover" />
         ) : null}
       </Pressable>
     );
@@ -1867,6 +1884,17 @@ const styles = StyleSheet.create({
   list: { paddingBottom: 20 },
   defectCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, borderWidth: 1, marginBottom: 8 },
   statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+  // PlanRadar-style defect card
+  prCard: { borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 10 },
+  prHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 10 },
+  prHeadText: { fontSize: 12, fontWeight: "500" },
+  prTitle: { fontSize: 17, fontWeight: "800", marginBottom: 10, lineHeight: 22 },
+  prMetaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 },
+  prNum: { minWidth: 30, height: 26, borderRadius: 13, paddingHorizontal: 9, alignItems: "center", justifyContent: "center" },
+  prNumText: { color: "#FFFFFF", fontWeight: "800", fontSize: 13 },
+  prStatus: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4 },
+  prIcon: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  prPhoto: { width: "100%", height: 200, borderRadius: 10, marginTop: 12, backgroundColor: "#00000010" },
   defectContent: { flex: 1 },
   defectHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   defectTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
