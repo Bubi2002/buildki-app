@@ -228,7 +228,6 @@ export default function PhotoAnnotateScreen() {
   // Tap gesture for text placement (text tool only – opens the input modal)
   const tapGesture = Gesture.Tap()
     .enabled(selectedTool === "text")
-    .maxPointers(1)
     .onEnd((e) => {
       setLastTap({ x: e.x, y: e.y });
       setTextPosition({ x: e.x, y: e.y });
@@ -240,7 +239,6 @@ export default function PhotoAnnotateScreen() {
   // Always-on single-finger tap recorder: remembers where the user last touched
   // the image so template labels can be dropped at that exact point.
   const recordTapGesture = Gesture.Tap()
-    .maxPointers(1)
     .onEnd((e) => {
       setLastTap({ x: e.x, y: e.y });
     })
