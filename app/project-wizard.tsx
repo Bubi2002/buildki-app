@@ -18,7 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { trpc } from "@/lib/trpc";
-import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, type Floor, type Room } from "@/lib/room-store";
+import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, DEFAULT_ROOMS_BY_FLOOR, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPriority } from "@/lib/defect-store";
 import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getFloorPlans, saveFloorPlan, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
@@ -384,7 +384,10 @@ export default function ProjectWizardScreen() {
     if (!projectId || !fid) return;
     haptic();
     const existing = new Set(rooms.filter((r) => r.floorId === fid).map((r) => r.name.trim().toLowerCase()));
-    const standard = ["Wohnzimmer", "Küche", "Bad", "Schlafzimmer", "Flur"];
+    // Use floor-appropriate defaults (e.g. UG → Keller/Technik/Waschküche), not a
+    // generic living-space list. Falls back to living rooms for unknown floors.
+    const floorName = floors.find((f) => f.id === fid)?.name || "";
+    const standard = DEFAULT_ROOMS_BY_FLOOR[floorName] || ["Flur", "Wohnzimmer", "Küche", "Bad", "Schlafzimmer"];
     for (const name of standard) {
       if (!existing.has(name.toLowerCase())) {
         try { await addRoom(projectId, fid, name); } catch {}
