@@ -853,11 +853,11 @@ export default function RundgangTab() {
                     { icon: "map", label: t('grundriss'), route: `/floor-plan?projectId=${selectedProjectId}` },
                     { icon: "photo-library", label: t('gallery_photos'), route: `/photo-gallery?projectId=${selectedProjectId}` },
                     { icon: "compare", label: t('vergleich'), route: `/photo-compare?projectId=${selectedProjectId}` },
-                    { icon: "straighten", label: t('measure_title' as any), route: `/measure` },
+                    { icon: "straighten", label: t('measure_title' as any), route: `/measure?projectId=${selectedProjectId}` },
                     { icon: "auto-stories", label: t('raumbuch_title' as any), route: `/raumbuch?projectId=${selectedProjectId}` },
                     { icon: "checklist", label: t('checklist_title'), route: `/checklists?projectId=${selectedProjectId}` },
-                    { icon: "groups", label: t('anwesenheit'), route: `/attendance` },
-                    { icon: "schedule", label: t('zeiterfassung'), route: `/time-tracking` },
+                    { icon: "groups", label: t('anwesenheit'), route: `/attendance?projectId=${selectedProjectId}` },
+                    { icon: "schedule", label: t('zeiterfassung'), route: `/time-tracking?projectId=${selectedProjectId}` },
                   ] as const).map((tool) => (
                     <Pressable key={tool.label} onPress={() => router.push(tool.route as any)} style={styles.toolBox}>
                       <MaterialIcons name={tool.icon as any} size={22} color="#5DADE2" />
