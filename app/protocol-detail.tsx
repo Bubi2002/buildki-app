@@ -2968,10 +2968,9 @@ export default function ProtocolDetailScreen() {
       </Modal>
 
       {/* Einzelnen Mangel bearbeiten (Karte angetippt) */}
-      <Modal visible={!!editMangel} transparent animationType="slide" onRequestClose={() => setEditMangel(null)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: "88%" }}>
+      <Modal visible={!!editMangel} transparent animationType="fade" onRequestClose={() => setEditMangel(null)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", paddingHorizontal: 16 }}>
+            <View style={{ backgroundColor: colors.background, borderRadius: 16, padding: 20, maxHeight: "82%" }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{t('index_tool_maengel' as any)}</Text>
                 <Pressable onPress={() => setEditMangel(null)} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
@@ -3022,8 +3021,7 @@ export default function ProtocolDetailScreen() {
                 </Pressable>
               </View>
             </View>
-          </KeyboardAvoidingView>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Full-screen photo gallery with swipe */}
