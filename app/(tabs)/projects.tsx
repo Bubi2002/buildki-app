@@ -186,7 +186,7 @@ export default function RundgangTab() {
         const all: ProjectItem[] = raw ? JSON.parse(raw) : [];
         const active = all.filter((p) => !p.archived);
         if (active.length > 0) setShowProjectDropdown(true);
-        else router.push("/project-wizard" as any);
+        else router.push("/project-wizard?mode=new" as any);
       } catch {}
     })();
   }, []);
@@ -498,7 +498,7 @@ export default function RundgangTab() {
             </View>
           )}
           <Pressable
-            onPress={() => router.push("/project-wizard" as any)}
+            onPress={() => router.push("/project-wizard?mode=new" as any)}
             hitSlop={8}
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#5DADE2", opacity: pressed ? 0.85 : 1 }]}
           >
@@ -513,7 +513,7 @@ export default function RundgangTab() {
           <MaterialIcons name="folder-open" size={48} color="#4A5568" />
           <Text style={styles.emptyHint}>{t("rundgang_no_projects" as any)}</Text>
           <Pressable
-            onPress={() => router.push("/project-wizard" as any)}
+            onPress={() => router.push("/project-wizard?mode=new" as any)}
             style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 12, backgroundColor: "#5DADE2", opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="add" size={20} color="#FFFFFF" />
@@ -1055,7 +1055,7 @@ export default function RundgangTab() {
               })}
           </ScrollView>
 
-          <Pressable onPress={() => { setShowProjectDropdown(false); router.push("/project-wizard" as any); }} style={({ pressed }) => [styles.chooserNew, { opacity: pressed ? 0.85 : 1 }]}>
+          <Pressable onPress={() => { setShowProjectDropdown(false); router.push("/project-wizard?mode=new" as any); }} style={({ pressed }) => [styles.chooserNew, { opacity: pressed ? 0.85 : 1 }]}>
             <MaterialIcons name="add" size={22} color="#FFFFFF" />
             <Text style={styles.chooserNewText}>{t("rundgang_new_project" as any)}</Text>
           </Pressable>

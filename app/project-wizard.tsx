@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Dimensions } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
@@ -69,8 +69,11 @@ export default function ProjectWizardScreen() {
   const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
 
-  const [step, setStep] = useState<Step>("choose");
+  // Opened with ?mode=new (from the project chooser) → go straight to the new
+  // project form instead of showing another project-selection step.
+  const [step, setStep] = useState<Step>(params.mode === "new" ? "details" : "choose");
   const [projects, setProjects] = useState<ProjItem[]>([]);
 
   // Step 1 – details
