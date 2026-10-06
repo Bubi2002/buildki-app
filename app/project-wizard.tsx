@@ -120,6 +120,7 @@ export default function ProjectWizardScreen() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalPlan, setPlanModalPlan] = useState<FloorPlan | null>(null);
   const [tempPos, setTempPos] = useState<{ x: number; y: number } | null>(null);
+  const [planBoxW, setPlanBoxW] = useState(0);
   const [pendingPos, setPendingPos] = useState<{ planId: string; planName: string; x: number; y: number } | null>(null);
   const [roomSuggestions, setRoomSuggestions] = useState<string[]>(DEFAULT_ROOM_SUGGESTIONS);
   const [itemRoom, setItemRoom] = useState("");
@@ -266,12 +267,13 @@ export default function ProjectWizardScreen() {
     } catch {}
   };
   const onPlanTap = (e: any) => {
-    if (!planModalPlan) return;
+    if (!planModalPlan || planBoxW <= 0) return;
+    const aspect = planModalPlan.width > 0 && planModalPlan.height > 0 ? planModalPlan.width / planModalPlan.height : 1.414;
+    const h = planBoxW / aspect;
     const { locationX, locationY } = e.nativeEvent;
-    const { dispW, dispH, offX, offY } = planMetrics(planModalPlan);
     setTempPos({
-      x: Math.min(1, Math.max(0, (locationX - offX) / dispW)),
-      y: Math.min(1, Math.max(0, (locationY - offY) / dispH)),
+      x: Math.min(1, Math.max(0, locationX / planBoxW)),
+      y: Math.min(1, Math.max(0, locationY / h)),
     });
   };
   const confirmPlanPos = () => {
@@ -1150,26 +1152,31 @@ export default function ProjectWizardScreen() {
                 <MaterialIcons name="close" size={22} color={colors.muted} />
               </Pressable>
             </View>
-            {plans.length > 1 && (
+            {plans.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
                 {plans.map((p) => {
                   const active = planModalPlan?.id === p.id;
                   return (
-                    <Pressable key={p.id} onPress={() => { setPlanModalPlan(p); setTempPos(null); }} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
+                    <Pressable key={p.id} onPress={() => { setPlanModalPlan(p); setPlanBoxW(0); setTempPos(null); }} style={[styles.floorChip, { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }]}>
                       <Text style={{ color: active ? colors.primary : colors.muted, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>{p.name}</Text>
                     </Pressable>
                   );
                 })}
+                <Pressable onPress={() => void importGrundrissAndMark()} style={[styles.floorChip, { flexDirection: "row", alignItems: "center", gap: 4, borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <MaterialIcons name="add" size={15} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 13 }}>{t('grundriss' as any)}</Text>
+                </Pressable>
               </ScrollView>
             )}
             <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>{t('wizard_plan_hint' as any)}</Text>
             {planModalPlan && (() => {
-              const m = planMetrics(planModalPlan);
+              const aspect = planModalPlan.width > 0 && planModalPlan.height > 0 ? planModalPlan.width / planModalPlan.height : 1.414;
+              const h = planBoxW / aspect;
               return (
-                <Pressable onPress={onPlanTap} style={{ width: PLAN_BOX_W, height: PLAN_BOX_H, backgroundColor: "#0B1220", alignSelf: "center", overflow: "hidden" }}>
-                  <Image source={{ uri: planModalPlan.imageUri }} style={{ position: "absolute", left: m.offX, top: m.offY, width: m.dispW, height: m.dispH }} contentFit="fill" />
-                  {tempPos && (
-                    <View pointerEvents="none" style={{ position: "absolute", left: m.offX + tempPos.x * m.dispW - 9, top: m.offY + tempPos.y * m.dispH - 9, width: 18, height: 18, borderRadius: 9, borderWidth: 3, borderColor: "#FFFFFF", backgroundColor: DEFECT_PIN_COLOR }} />
+                <Pressable onPress={onPlanTap} onLayout={(e) => setPlanBoxW(e.nativeEvent.layout.width)} style={{ width: "100%", aspectRatio: aspect, maxHeight: SCREEN_H * 0.5, backgroundColor: "#0B1220", alignSelf: "center", overflow: "hidden", borderRadius: 8 }}>
+                  <Image source={{ uri: planModalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
+                  {tempPos && planBoxW > 0 && (
+                    <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * planBoxW - 9, top: tempPos.y * h - 9, width: 18, height: 18, borderRadius: 9, borderWidth: 3, borderColor: "#FFFFFF", backgroundColor: DEFECT_PIN_COLOR }} />
                   )}
                 </Pressable>
               );
