@@ -12,6 +12,28 @@ import { timelineEngine } from "@/lib/timeline-engine";
 import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
 import { PROTOCOL_TEMPLATES } from "@/shared/templates";
 
+// Build a clean, human-readable protocol title instead of dumping the first 50
+// characters of raw speech. Prefers a real heading from the generated protocol,
+// then the template name, then a short first sentence of the transcript.
+function deriveProtocolTitle(markdown: string, transcription: string, templateName?: string): string {
+  const headings = (markdown || "").match(/^#{1,3}\s+.+$/gm) || [];
+  for (const raw of headings) {
+    const h = raw.replace(/^#{1,3}\s+/, "").replace(/\*\*/g, "").replace(/[#`]/g, "").trim();
+    if (!h || h.length > 60 || h.includes("·") || h.includes("/")) continue;
+    // Skip field labels / section names / room headings — not good titles.
+    if (/^(objekt|bauvorhaben|datum|teilnehmer|anwesend|ort|allgemein|protokoll|zusammenfassung|m[aä]ngel|aufgaben|befund|allgemeines)\b/i.test(h)) continue;
+    return h;
+  }
+  const tn = (templateName || "").trim();
+  if (tn && !/^(auto|automatisch)$/i.test(tn)) return tn;
+  const sentence = (transcription || "").trim().split(/[.!?\n]/)[0].trim();
+  if (sentence && sentence.length >= 4 && sentence.length <= 60) return sentence;
+  if ((transcription || "").trim().length > 0) {
+    return transcription.trim().substring(0, 50) + (transcription.trim().length > 50 ? "…" : "");
+  }
+  return "Ohne erkannte Sprache";
+}
+
 // Picks the best-fitting template from the transcript when the user chose
 // "Automatisch" (templateId "auto"). Limited to the three core construction
 // templates so the output is always one of the few formats the user knows.
@@ -438,9 +460,7 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         protocol: protocol.protocol,
         // Persist the template the AI actually used when "Automatisch" was chosen.
         ...(job.templateId === "auto" ? { templateId: effectiveTemplateId, templateName: effectiveTemplateName } : {}),
-        title: transcription.text.trim().length > 0
-          ? transcription.text.substring(0, 50) + (transcription.text.length > 50 ? "…" : "")
-          : "Ohne erkannte Sprache",
+        title: deriveProtocolTitle(protocol.protocol || "", transcription.text || "", effectiveTemplateName),
         todos,
         status: "ready",
         processingStep: undefined,

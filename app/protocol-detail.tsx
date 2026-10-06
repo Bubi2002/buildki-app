@@ -561,6 +561,25 @@ export default function ProtocolDetailScreen() {
     setIsEditing(false);
   };
 
+  // ── Protokoll-Titel bearbeiten ─────────────────────────────────────────────
+  const [titleDraft, setTitleDraft] = useState("");
+  useEffect(() => { setTitleDraft(protocol?.title || ""); }, [protocol?.id]);
+  const saveProtocolTitle = async () => {
+    const next = titleDraft.trim();
+    if (!protocol || !next || next === (protocol.title || "")) return;
+    setProtocol({ ...(protocol as any), title: next } as any);
+    try {
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const idx = protocols.findIndex((p: Protocol) => p.id === id);
+      if (idx !== -1) {
+        protocols[idx].title = next;
+        await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+      }
+    } catch (error) {
+      console.error("Error renaming protocol:", error);
+    }
+  };
+
   // ── Einzelnen Mangel per Karte bearbeiten (statt Rohtext) ──────────────────
   const [editMangel, setEditMangel] = useState<null | { rowLine: string; cells: string[]; header: string[]; iDesc: number; iGewerk: number; iPrio: number; iFrist: number }>(null);
   const [mDesc, setMDesc] = useState("");
@@ -1934,6 +1953,24 @@ export default function ProtocolDetailScreen() {
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
       >
+        {/* Editable protocol title: the auto-generated one is often a raw speech
+            snippet, so let the user type a clean title right at the top. */}
+        {protocol.status !== "processing" && (
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('titel' as any)}</Text>
+            <TextInput
+              value={titleDraft}
+              onChangeText={setTitleDraft}
+              onBlur={() => void saveProtocolTitle()}
+              onSubmitEditing={() => void saveProtocolTitle()}
+              returnKeyType="done"
+              placeholder={t('titel' as any)}
+              placeholderTextColor={colors.muted}
+              style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface }}
+            />
+          </View>
+        )}
+
         {/* Tags */}
         {showTagEditor && (
           <View style={[styles.metaCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
