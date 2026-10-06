@@ -40,6 +40,12 @@ type ZoomableCanvasProps = {
   onLongPress?: (point: Point) => void;
   /** Long-press then drag: grab something at the point and move it live. */
   onPinDrag?: (phase: "start" | "move" | "end", point: Point) => void;
+  /**
+   * When true, a plain one-finger drag (no long press) moves the pin and takes
+   * priority over canvas panning. Used for an explicit "move mode" where the
+   * parent must also disable scrolling so the drag is never stolen.
+   */
+  dragImmediate?: boolean;
   onInteractionChange?: (active: boolean) => void;
   testID?: string;
 };
@@ -58,6 +64,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   onSingleTap,
   onLongPress,
   onPinDrag,
+  dragImmediate = false,
   onInteractionChange,
   testID,
 }: ZoomableCanvasProps, ref) {
@@ -171,14 +178,26 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       runOnJS(emitLongPress)(event.x, event.y, scale.value, translateX.value, translateY.value);
     });
 
-  // Drag a marker: a Pan that only activates after a long press, so a normal
-  // one-finger drag still pans the canvas, but press-and-hold then move grabs
-  // the marker and moves it live.
-  const pinDrag = Gesture.Pan()
-    .activateAfterLongPress(300)
-    .onStart((event) => { "worklet"; runOnJS(emitPinDrag)("start", event.x, event.y, scale.value, translateX.value, translateY.value); })
-    .onUpdate((event) => { "worklet"; runOnJS(emitPinDrag)("move", event.x, event.y, scale.value, translateX.value, translateY.value); })
-    .onEnd((event) => { "worklet"; runOnJS(emitPinDrag)("end", event.x, event.y, scale.value, translateX.value, translateY.value); });
+  // Drag a marker. Two modes:
+  // • normal: a Pan that only activates after a long press, so a casual
+  //   one-finger drag still pans the canvas, but press-and-hold then move grabs
+  //   the marker and moves it live.
+  // • dragImmediate (explicit "move mode"): a plain Pan that grabs right away.
+  //   It marks the interaction active on finger-down so the parent ScrollView
+  //   stops scrolling and can never steal the drag.
+  const pinDrag = dragImmediate
+    ? Gesture.Pan()
+        .minDistance(2)
+        .onBegin(() => { "worklet"; runOnJS(setInteraction)(true); })
+        .onStart((event) => { "worklet"; runOnJS(emitPinDrag)("start", event.x, event.y, scale.value, translateX.value, translateY.value); })
+        .onUpdate((event) => { "worklet"; runOnJS(emitPinDrag)("move", event.x, event.y, scale.value, translateX.value, translateY.value); })
+        .onEnd((event) => { "worklet"; runOnJS(emitPinDrag)("end", event.x, event.y, scale.value, translateX.value, translateY.value); })
+        .onFinalize(() => { "worklet"; runOnJS(setInteraction)(false); })
+    : Gesture.Pan()
+        .activateAfterLongPress(300)
+        .onStart((event) => { "worklet"; runOnJS(emitPinDrag)("start", event.x, event.y, scale.value, translateX.value, translateY.value); })
+        .onUpdate((event) => { "worklet"; runOnJS(emitPinDrag)("move", event.x, event.y, scale.value, translateX.value, translateY.value); })
+        .onEnd((event) => { "worklet"; runOnJS(emitPinDrag)("end", event.x, event.y, scale.value, translateX.value, translateY.value); });
 
   const tapCandidates = [doubleTap as any];
   if (onLongPress) tapCandidates.push(longPress);

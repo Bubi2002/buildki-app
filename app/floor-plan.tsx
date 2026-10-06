@@ -435,6 +435,14 @@ export default function FloorPlanScreen() {
     if (!selectedPlan) return;
     const img = containerPointToImage(point);
     if (phase === "start") {
+      // Explicit move mode (via "Verschieben"): drag the chosen pin from
+      // anywhere on the plan — it jumps to the finger and follows.
+      if (movingPin) {
+        draggingPinRef.current = movingPin.id;
+        setPins((cur) => cur.map((p) => (p.id === movingPin.id ? { ...p, x: img.x, y: img.y } : p)));
+        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        return;
+      }
       const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
         const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
         return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
@@ -460,6 +468,7 @@ export default function FloorPlanScreen() {
         if (pin) void savePlanPin({ ...pin, x: img.x, y: img.y });
         return cur.map((p) => (p.id === id ? { ...p, x: img.x, y: img.y } : p));
       });
+      if (movingPin) setMovingPin(null); // drag ended → leave move mode
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
@@ -946,7 +955,7 @@ export default function FloorPlanScreen() {
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16 }}
-            scrollEnabled={!planInteractionActive}
+            scrollEnabled={!planInteractionActive && !movingPin}
           >
             {/* Plan Image with Pins */}
             <View style={[styles.planImageContainer, { borderColor: colors.border }]}>
@@ -958,6 +967,7 @@ export default function FloorPlanScreen() {
                 maxScale={4}
                 onSingleTap={handlePlanTap}
                 onPinDrag={handlePinDrag}
+                dragImmediate={!!movingPin}
                 onInteractionChange={setPlanInteractionActive}
                 testID="floor-plan-zoom-stage"
               >
