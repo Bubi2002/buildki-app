@@ -23,7 +23,7 @@ import { useTranslation } from "@/lib/language-provider";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-type AnnotationType = "arrow" | "circle" | "rect" | "freehand" | "text" | "measure";
+type AnnotationType = "arrow" | "circle" | "rect" | "freehand" | "text" | "measure" | "marker";
 type AnnotationColor = "#EF4444" | "#F59E0B" | "#22C55E" | "#3B82F6" | "#FFFFFF";
 
 type Annotation = {
@@ -49,7 +49,7 @@ const TOOLS: { type: AnnotationType; icon: string; label: string }[] = [
   { type: "freehand", icon: "gesture", label: "photo_annotator_tool_freehand" },
   { type: "arrow", icon: "arrow-forward", label: "photo_annotator_tool_arrow" },
   { type: "circle", icon: "radio-button-unchecked", label: "photo_annotator_tool_circle" },
-  { type: "rect", icon: "crop-square", label: "photo_annotator_tool_rect" },
+  { type: "marker", icon: "place", label: "photo_annotator_tool_marker" },
   { type: "measure", icon: "straighten", label: "photo_annotator_tool_measure" },
 ];
 
@@ -82,7 +82,9 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   }, [isDrawing, currentTool, startPoint]);
 
   const handleTouchEnd = useCallback(() => {
-    if (!isDrawing || currentPath.length < 2) {
+    // A marker is a single tap (1 point); every other tool needs a drag (2+).
+    const minPoints = currentTool === "marker" ? 1 : 2;
+    if (!isDrawing || currentPath.length < minPoints) {
       setIsDrawing(false);
       setCurrentPath([]);
       setStartPoint(null);
@@ -149,6 +151,17 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
 
   const renderAnnotation = (annotation: Annotation) => {
     const { type, color, points, id, text } = annotation;
+    if (type === "marker") {
+      const p = points[0];
+      if (!p) return null;
+      return (
+        <React.Fragment key={id}>
+          <Circle cx={p.x} cy={p.y} r={13} fill={color} />
+          <Circle cx={p.x} cy={p.y} r={13} fill="none" stroke="#FFFFFF" strokeWidth={3} />
+          <Circle cx={p.x} cy={p.y} r={4.5} fill="#FFFFFF" />
+        </React.Fragment>
+      );
+    }
     if (points.length < 2) return null;
 
     switch (type) {
