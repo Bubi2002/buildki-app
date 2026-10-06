@@ -24,7 +24,6 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { Swipeable, Gesture, GestureDetector } from "react-native-gesture-handler";
-import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
@@ -40,9 +39,10 @@ type ComparisonPair = {
   beforeDate: string;
   afterDate: string | null;
   projectId?: string;
-  exportDetails?: ExportDetails;
+  exportDetails?: any;
   trade?: string;
   description?: string;
+  room?: string;
 };
 
 const STORAGE_KEY = "photo-comparisons";
@@ -74,13 +74,7 @@ export default function PhotoCompareScreen() {
   const [selectedPair, setSelectedPair] = useState<ComparisonPair | null>(null);
   const [sliderPosition, setSliderPosition] = useState(0.5);
   const compareRef = React.useRef<View>(null);
-  // Optional project/floor/room/notes for the PDF export; initialized from the
-  // selected pair so previously entered values are remembered.
-  const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
   const [zoomUri, setZoomUri] = useState<string | null>(null);
-  useEffect(() => {
-    setExportDetails(selectedPair?.exportDetails || EMPTY_EXPORT_DETAILS);
-  }, [selectedPair?.id]);
 
   async function loadComparisons() {
     try {
@@ -186,7 +180,7 @@ export default function PhotoCompareScreen() {
   };
 
   // Update a free-text field on the selected pair in state, then persist on blur.
-  const updateSelectedField = (field: "trade" | "description") => (text: string) => {
+  const updateSelectedField = (field: "trade" | "description" | "room") => (text: string) => {
     if (!selectedPair) return;
     setSelectedPair({ ...selectedPair, [field]: text });
   };
@@ -211,22 +205,37 @@ export default function PhotoCompareScreen() {
       };
       const beforeImg = await toDataUri(selectedPair.beforeUri);
       const afterImg = await toDataUri(selectedPair.afterUri);
-      // Persist the entered details onto the pair so they are remembered, and
-      // print them into the PDF header.
-      const updatedPairs = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, ...selectedPair, exportDetails } : c));
+      // Persist the entered details onto the pair so they are remembered.
+      const updatedPairs = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, ...selectedPair } : c));
       await saveComparisons(updatedPairs);
       const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const dataRows = [
         selectedPair.trade ? `<p style="margin:3px 0;"><strong style="color:#1E3A5F;">${t('photo_compare_trade')}:</strong> ${escapeHtml(selectedPair.trade)}</p>` : "",
         selectedPair.description ? `<p style="margin:3px 0;"><strong style="color:#1E3A5F;">${t('photo_compare_description')}:</strong> ${escapeHtml(selectedPair.description)}</p>` : "",
       ].join("");
-      const metaHeader = buildExportDetailsHeaderHtml(exportDetails, {
-        bauvorhaben: t('export_bauvorhaben'),
-        adresse: t('export_adresse'),
-        etage: t('export_etage'),
-        raum: t('export_raum'),
-        notizen: t('export_notizen'),
-      });
+      // Project meta (Bauvorhaben/Adresse) comes from the project itself; Raum is
+      // the one optional field entered here.
+      let projMeta: any = null;
+      try {
+        const praw = await AsyncStorage.getItem("projects");
+        projMeta = (praw ? JSON.parse(praw) : []).find((p: any) => p.id === selectedPair.projectId) || null;
+      } catch {}
+      const metaHeader = buildExportDetailsHeaderHtml(
+        {
+          bauvorhaben: projMeta?.name || "",
+          adresse: projMeta?.address || "",
+          etage: "",
+          raum: selectedPair.room || "",
+          notizen: "",
+        },
+        {
+          bauvorhaben: t('export_bauvorhaben'),
+          adresse: t('export_adresse'),
+          etage: t('export_etage'),
+          raum: t('export_raum'),
+          notizen: t('export_notizen'),
+        },
+      );
       const cell = (label: string, color: string, date: string, img: string | null) => `
         <td style="width:50%; vertical-align:top; padding:6px;">
           <div style="font-weight:700; color:${color}; text-align:center; margin-bottom:6px; font-size:13px;">${label}</div>
@@ -303,11 +312,6 @@ export default function PhotoCompareScreen() {
               />
               <MaterialIcons name="edit" size={16} color={colors.muted} />
             </View>
-            {selectedPair.afterUri && (
-              <Pressable onPress={shareComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-                <MaterialIcons name="share" size={22} color={colors.primary} />
-              </Pressable>
-            )}
           </View>
 
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
@@ -422,10 +426,24 @@ export default function PhotoCompareScreen() {
                 numberOfLines={3}
                 style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, minHeight: 72, textAlignVertical: "top" }}
               />
+              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('export_raum' as any)}</Text>
+              <TextInput
+                value={selectedPair.room || ""}
+                onChangeText={updateSelectedField("room")}
+                onEndEditing={persistSelectedPair}
+                onBlur={persistSelectedPair}
+                placeholder={t('export_raum' as any)}
+                placeholderTextColor={colors.muted}
+                style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 }}
+              />
             </View>
 
-            {/* Optional details printed into the PDF export header */}
-            <ExportDetailsBox value={exportDetails} onChange={setExportDetails} />
+            {selectedPair.afterUri && (
+              <Pressable onPress={() => void shareComparison()} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 20, paddingVertical: 15, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}>
+                <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFFFFF" }}>{t('protocol_share' as any)}</Text>
+              </Pressable>
+            )}
           </ScrollView>
 
           {/* Fullscreen zoom overlay */}
