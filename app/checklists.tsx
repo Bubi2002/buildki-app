@@ -63,6 +63,8 @@ export default function ChecklistsScreen() {
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
   const [projectRooms, setProjectRooms] = useState<ProjectRoom[]>([]);
   const [projectFloors, setProjectFloors] = useState<ProjectFloor[]>([]);
+  // Two-level room picker: pick the Etage (floor) first, then the Raum.
+  const [checklistFloorId, setChecklistFloorId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -498,30 +500,62 @@ export default function ChecklistsScreen() {
                   </View>
                 </View>
 
-                {projectRooms.length > 0 && (
-                  <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                      <MaterialIcons name="place" size={14} color={colors.muted} />
-                      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('export_raum')}</Text>
+                {projectRooms.length > 0 && (() => {
+                  // Floors that actually have rooms, for the top (Etage) row.
+                  const floorsWithRooms = projectFloors.filter((f) => projectRooms.some((r) => r.floorId === f.id));
+                  // Floor currently selected: explicit pick → floor of the chosen
+                  // room → first floor with rooms.
+                  const roomFromLocation = projectRooms.find((r) => {
+                    const fn = projectFloors.find((f) => f.id === r.floorId)?.name || "";
+                    const lbl = fn ? `${fn} · ${r.name}` : r.name;
+                    return lbl === activeResult.location;
+                  });
+                  const effFloorId = checklistFloorId || roomFromLocation?.floorId || floorsWithRooms[0]?.id || null;
+                  const roomsOfFloor = projectRooms.filter((r) => r.floorId === effFloorId);
+                  return (
+                    <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
+                        <MaterialIcons name="layers" size={14} color={colors.muted} />
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('export_etage')}</Text>
+                      </View>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                        {floorsWithRooms.map((f) => {
+                          const active = effFloorId === f.id;
+                          return (
+                            <Pressable
+                              key={f.id}
+                              onPress={() => setChecklistFloorId(f.id)}
+                              style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{f.name}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 12, marginBottom: 6 }}>
+                        <MaterialIcons name="place" size={14} color={colors.muted} />
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('export_raum')}</Text>
+                      </View>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                        {roomsOfFloor.map((room) => {
+                          const floorName = projectFloors.find((f) => f.id === room.floorId)?.name || "";
+                          const label = floorName ? `${floorName} · ${room.name}` : room.name;
+                          const active = activeResult.location === label;
+                          return (
+                            <Pressable
+                              key={room.id}
+                              onPress={() => setActiveResult({ ...activeResult, location: active ? undefined : label })}
+                              style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{room.name}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
-                      {projectRooms.map((room) => {
-                        const floorName = projectFloors.find((f) => f.id === room.floorId)?.name || "";
-                        const label = floorName ? `${floorName} · ${room.name}` : room.name;
-                        const active = activeResult.location === label;
-                        return (
-                          <Pressable
-                            key={room.id}
-                            onPress={() => setActiveResult({ ...activeResult, location: active ? undefined : label })}
-                            style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}
-                          >
-                            <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{label}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                )}
+                  );
+                })()}
                 <FlatList
                   data={selectedChecklist.items}
                   keyExtractor={(item) => item.id}
