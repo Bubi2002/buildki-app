@@ -32,6 +32,18 @@ export interface PdfSection {
   content: string; // Markdown or HTML
   images?: PdfImage[];
   table?: PdfTable;
+  /** Boxed cards (e.g. one per Mangel) with inline fields, note and photos. */
+  cards?: PdfCard[];
+  /** Force this section to start on a fresh page. */
+  pageBreakBefore?: boolean;
+}
+
+export interface PdfCard {
+  title: string;
+  badges?: { label: string; color?: string }[];
+  fields?: { label: string; value: string }[];
+  note?: string;
+  images?: PdfImage[];
 }
 
 export interface PdfImage {
@@ -184,11 +196,27 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   const sectionsHtml = sections.map((section, i) => {
     // Strip a trailing "(N)" count from the heading \u2014 it already appears in the dashboard.
     const heading = section.title.replace(/\s*\(\d+\)\s*$/, "");
-    let sectionContent = `<div class="section" id="section-${i}">
+    let sectionContent = section.pageBreakBefore ? `<div style="page-break-before:always;"></div>` : "";
+    sectionContent += `<div class="section" id="section-${i}">
       <div class="section-chip"><span class="num">${i + 1}</span><span class="txt">${esc(heading)}</span></div>`;
 
     const contentHtml = markdownToHtml(section.content);
     if (contentHtml) sectionContent += `<div class="section-content">${contentHtml}</div>`;
+
+    // Boxed cards (one per Mangel/Vergleich/Messung) \u2014 fields + photos stay together.
+    if (section.cards && section.cards.length > 0) {
+      for (const card of section.cards) {
+        sectionContent += `<div class="mcard">
+          <div class="mc-head">
+            <div class="mc-title">${esc(card.title)}</div>
+            ${card.badges && card.badges.length ? `<div class="mc-badges">${card.badges.filter(b => b.label).map((b) => { const c = b.color || "#64748b"; return `<span class="pill" style="background:${c}1A;color:${c};border:1px solid ${c}44;">${esc(b.label)}</span>`; }).join("")}</div>` : ""}
+          </div>
+          ${card.fields && card.fields.some((f) => f.value) ? `<div class="mc-fields">${card.fields.filter((f) => f.value).map((f) => `<div class="mc-field"><span class="k">${esc(f.label)}</span><span class="v">${esc(f.value)}</span></div>`).join("")}</div>` : ""}
+          ${card.note ? `<div class="mc-note">${esc(card.note)}</div>` : ""}
+          ${card.images && card.images.length ? `<div class="mc-images">${card.images.map((im) => `<div class="mc-img"><img src="${im.base64}" />${im.caption ? `<p class="image-caption">${esc(im.caption)}</p>` : ""}</div>`).join("")}</div>` : ""}
+        </div>`;
+      }
+    }
 
     // Add images
     if (section.images && section.images.length > 0) {
@@ -244,7 +272,10 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       </div>`
     : "";
 
-  const footerLeft = escCss(footerText || (projekt ? `Projekt: ${projekt}` : "BuildKI"));
+  // Footer with the author's data (company name · phone · email · address).
+  const authorLine = [companyInfo?.name, companyInfo?.phone, companyInfo?.email, companyInfo?.address]
+    .map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
+  const footerLeft = escCss(footerText || authorLine || (projekt ? `Projekt: ${projekt}` : "BuildKI"));
 
   return `<!DOCTYPE html>
 <html>
@@ -252,9 +283,9 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   <meta charset="utf-8">
   <style>
     @page {
-      margin: 15mm 12mm 16mm 12mm;
-      @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; }
+      margin: 18mm 16mm 20mm 16mm;
       @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; }
+      @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -301,9 +332,22 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .section-content li { margin-bottom: 3px; }
     .section-content strong { font-weight: 700; }
     .images-grid { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
-    .image-container { text-align: center; }
-    .section-image { width: 100%; max-height: 200px; object-fit: contain; border: 1px solid #e8ecf1; border-radius: 6px; }
+    .image-container { text-align: center; page-break-inside: avoid; break-inside: avoid; }
+    .section-image { width: 100%; max-height: 200px; object-fit: contain; border: 1px solid #e8ecf1; border-radius: 6px; page-break-inside: avoid; break-inside: avoid; }
     .image-caption { font-size: 9px; color: #64748b; margin-top: 4px; font-style: italic; }
+    /* Boxed cards (Mängel/Vergleich/Messen) — like the app, kept on one page. */
+    .mcard { border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; background: #fff; page-break-inside: avoid; break-inside: avoid; }
+    .mcard .mc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .mcard .mc-title { font-size: 12.5px; font-weight: 800; color: #1b2430; flex: 1; }
+    .mcard .mc-badges { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+    .mcard .mc-fields { margin: 7px 0 0; }
+    .mcard .mc-field { display: flex; gap: 8px; font-size: 10.5px; margin: 2px 0; }
+    .mcard .mc-field .k { color: #64748b; font-weight: 700; min-width: 70px; text-transform: uppercase; letter-spacing: .3px; font-size: 9px; padding-top: 1px; }
+    .mcard .mc-field .v { color: #1f2937; flex: 1; }
+    .mcard .mc-note { font-size: 10.5px; color: #334155; margin-top: 7px; line-height: 1.5; }
+    .mcard .mc-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+    .mcard .mc-images .mc-img { width: calc(50% - 4px); page-break-inside: avoid; break-inside: avoid; }
+    .mcard .mc-images img { width: 100%; max-height: 190px; object-fit: cover; border: 1px solid #e8ecf1; border-radius: 6px; }
     .image-annotation { font-size: 9px; color: ${accentColor}; margin-top: 2px; }
     .data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
     .data-table th { background: #f8fafc; color: #334155; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid #e2e8f0; }

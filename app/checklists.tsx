@@ -545,7 +545,13 @@ export default function ChecklistsScreen() {
                           return (
                             <Pressable
                               key={room.id}
-                              onPress={() => setActiveResult({ ...activeResult, location: active ? undefined : label })}
+                              onPress={() => {
+                                const next = { ...activeResult, location: active ? undefined : label };
+                                setActiveResult(next);
+                                // Persist immediately so the chosen Ort is always in
+                                // the saved result (and shows up in the PDF export).
+                                void saveChecklistResult(next);
+                              }}
                               style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}
                             >
                               <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{room.name}</Text>

@@ -19,10 +19,29 @@ import { getFloorPlans } from "@/lib/floor-plan-store";
 import { getTimeEntries, getTimeTrackingSettings } from "@/lib/time-tracking-store";
 import { getProjectStructure } from "@/lib/room-store";
 import { getDirectProjectPhotos } from "@/lib/project-photo-store";
-import { generateAndSharePdf, type PdfSection, type PdfImage } from "@/lib/pdf-professional";
+import { getEvidence } from "@/lib/evidence-store";
+import { generateAndSharePdf, type PdfSection, type PdfImage, type PdfCard } from "@/lib/pdf-professional";
 import * as FileSystem from "expo-file-system/legacy";
 
-type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "plans" | "photos";
+type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "plans" | "compare" | "measure" | "photos";
+
+// Pill colours matching the app (status + priority).
+const PRIO_COLOR: Record<string, string> = { hoch: "#B91C1C", mittel: "#B45309", niedrig: "#6B7280" };
+const STATUS_COLOR: Record<string, string> = {
+  offen: "#DC2626", zugewiesen: "#EA580C", in_bearbeitung: "#D97706", nachbesserung: "#DB2777",
+  pruefung: "#7C3AED", erledigt: "#5E8B6F", abgelehnt: "#78716C", geschlossen: "#475569",
+};
+
+/** Read a local image file as a base64 data URI (or null if it can't be read). */
+async function toDataUri(uri: string): Promise<string | null> {
+  try {
+    const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    const mime = uri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+    return `data:${mime};base64,${b64}`;
+  } catch {
+    return null;
+  }
+}
 
 const MAX_EXPORT_PHOTOS = 40;
 
@@ -44,7 +63,7 @@ export default function ProjectExportScreen() {
   const { projectId = "", projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
 
   const [selected, setSelected] = useState<Record<SourceKey, boolean>>({
-    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: false, protocols: true, rooms: true, plans: true, photos: false,
+    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: false, protocols: true, rooms: true, plans: true, compare: true, measure: true, photos: false,
   });
   const [counts, setCounts] = useState<Partial<Record<SourceKey, number>>>({});
   const [busy, setBusy] = useState(false);
@@ -58,28 +77,34 @@ export default function ProjectExportScreen() {
     { key: "protocols", label: t('project_export_protocols' as any), icon: "description" },
     { key: "rooms", label: t('index_tool_raeume' as any), icon: "layers" },
     { key: "plans", label: t('index_tool_grundriss' as any), icon: "map" },
+    { key: "compare", label: t('vergleich' as any), icon: "compare" },
+    { key: "measure", label: t('measure_title' as any), icon: "straighten" },
   ];
 
   useEffect(() => {
     void (async () => {
       if (!projectId) return;
       try {
-        const [defects, checklists, timeEntries, structure, projectPhotos, floorPlans, attRaw, diaryRaw, protoRaw, tasksRaw] = await Promise.all([
+        const [defects, checklists, timeEntries, structure, projectPhotos, floorPlans, evidence, attRaw, diaryRaw, protoRaw, tasksRaw, cmpRaw] = await Promise.all([
           getDefects(projectId),
           getChecklistResults(projectId),
           getTimeEntries(projectId),
           getProjectStructure(projectId),
           getDirectProjectPhotos(projectId),
           getFloorPlans(projectId),
+          getEvidence(projectId),
           AsyncStorage.getItem("attendance_records"),
           AsyncStorage.getItem("bautagebuch_entries"),
           AsyncStorage.getItem("protocols"),
           AsyncStorage.getItem("project-tasks"),
+          AsyncStorage.getItem("photo-comparisons"),
         ]);
         const att = (attRaw ? JSON.parse(attRaw) : []).filter((r: any) => r.projectId === projectId);
         const diary = (diaryRaw ? JSON.parse(diaryRaw) : []).filter((r: any) => r.projectId === projectId);
         const proto = (protoRaw ? JSON.parse(protoRaw) : []).filter((p: any) => p.projectId === projectId);
         const tasks = (tasksRaw ? JSON.parse(tasksRaw) : []).filter((tk: any) => !tk.projectId || tk.projectId === projectId);
+        const compares = (cmpRaw ? JSON.parse(cmpRaw) : []).filter((c: any) => c.projectId === projectId && c.afterUri);
+        const measures = evidence.filter((e) => (e.measurements?.length || 0) > 0 && e.previewUri);
         const defectPhotos = defects.reduce((s, d) => s + ((d.photos || []).length), 0);
         setCounts({
           defects: defects.length,
@@ -91,6 +116,8 @@ export default function ProjectExportScreen() {
           protocols: proto.length,
           rooms: structure.rooms.length,
           plans: floorPlans.length,
+          compare: compares.length,
+          measure: measures.length,
           photos: projectPhotos.length + defectPhotos,
         });
       } catch {}
@@ -108,13 +135,37 @@ export default function ProjectExportScreen() {
       if (selected.defects) {
         const defects = await getDefects(projectId);
         if (defects.length) {
+          const prioRank: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
+          const sorted = [...defects].sort((a, b) => (prioRank[a.priority] ?? 3) - (prioRank[b.priority] ?? 3));
+          const cards: PdfCard[] = [];
+          for (const d of sorted) {
+            const images: PdfImage[] = [];
+            for (const uri of (d.photos || []).slice(0, 4)) {
+              const data = await toDataUri(uri);
+              if (data) images.push({ base64: data });
+            }
+            const ort = [d.floor, d.room].map((s) => (s || "").trim()).filter(Boolean).join(" · ") || d.location || "";
+            cards.push({
+              title: d.title || "-",
+              badges: [
+                { label: STATUS_LABEL[d.status] || d.status, color: STATUS_COLOR[d.status] },
+                { label: (d.priority || "").charAt(0).toUpperCase() + (d.priority || "").slice(1), color: PRIO_COLOR[d.priority] },
+              ],
+              fields: [
+                { label: "Ort", value: ort },
+                { label: "Gewerk", value: d.gewerk || "" },
+                { label: "Zuständig", value: d.assignee || "" },
+                { label: "Frist", value: d.dueDate || "" },
+              ],
+              note: d.description || "",
+              images,
+            });
+          }
           sections.push({
             title: `${t('index_tool_maengel' as any)} (${defects.length})`,
             content: "",
-            table: {
-              headers: ["Titel", "Status", "Priorität", "Ort"],
-              rows: defects.map((d) => [d.title || "-", STATUS_LABEL[d.status] || d.status, d.priority || "-", d.room || d.location || "-"]),
-            },
+            cards,
+            pageBreakBefore: true,
           });
         }
       }
@@ -228,12 +279,20 @@ export default function ProjectExportScreen() {
             fertig: "Fertig",
             abgenommen: "Abgenommen",
           };
+          // Order by floor (Geschoss) then room name, so rooms added during a
+          // Begehung don't appear jumbled (1.OG · Keller · 1.OG …).
+          const floorRank = new Map(structure.floors.map((f, i) => [f.id, f.number ?? i]));
+          const sortedRooms = [...structure.rooms].sort((a, b) => {
+            const fa = floorRank.get(a.floorId) ?? 999, fb = floorRank.get(b.floorId) ?? 999;
+            if (fa !== fb) return fa - fb;
+            return (a.name || "").localeCompare(b.name || "", "de");
+          });
           sections.push({
             title: `${t('index_tool_raeume' as any)} (${structure.rooms.length})`,
             content: "",
             table: {
               headers: ["Geschoss", "Raum", "Status"],
-              rows: structure.rooms.map((r) => [floorName(r.floorId), r.name, roomStatusLabels[r.status as string] || r.status || "-"]),
+              rows: sortedRooms.map((r) => [floorName(r.floorId), r.name, roomStatusLabels[r.status as string] || r.status || "-"]),
             },
           });
         }
@@ -255,6 +314,52 @@ export default function ProjectExportScreen() {
             content: "",
             images,
           });
+        }
+      }
+
+      if (selected.compare) {
+        const raw = await AsyncStorage.getItem("photo-comparisons");
+        const pairs = (raw ? JSON.parse(raw) : []).filter((c: any) => c.projectId === projectId && c.afterUri);
+        if (pairs.length) {
+          const cards: PdfCard[] = [];
+          for (const p of pairs) {
+            const images: PdfImage[] = [];
+            const before = await toDataUri(p.beforeUri);
+            if (before) images.push({ base64: before, caption: "Vorher" });
+            const after = p.afterUri ? await toDataUri(p.afterUri) : null;
+            if (after) images.push({ base64: after, caption: "Nachher" });
+            cards.push({
+              title: p.label || t('vergleich' as any),
+              fields: [
+                { label: "Raum", value: p.room || "" },
+                { label: "Gewerk", value: p.trade || "" },
+              ],
+              note: p.description || "",
+              images,
+            });
+          }
+          sections.push({ title: `${t('vergleich' as any)} (${pairs.length})`, content: "", cards });
+        }
+      }
+
+      if (selected.measure) {
+        const evidence = await getEvidence(projectId);
+        const withM = evidence.filter((e) => (e.measurements?.length || 0) > 0 && e.previewUri);
+        if (withM.length) {
+          const cards: PdfCard[] = [];
+          for (const e of withM) {
+            const images: PdfImage[] = [];
+            const data = e.previewUri ? await toDataUri(e.previewUri) : null;
+            if (data) images.push({ base64: data });
+            const mText = (e.measurements || []).map((m, i) => `M${i + 1}: ${String(m.value).replace(".", ",")} ${m.unit}`).join("   ·   ");
+            cards.push({
+              title: e.findingText || t('measure_title' as any),
+              fields: [{ label: "Ort", value: [e.floor, e.room].map((s) => (s || "").trim()).filter(Boolean).join(" · ") }],
+              note: mText,
+              images,
+            });
+          }
+          sections.push({ title: `${t('measure_title' as any)} (${withM.length})`, content: "", cards });
         }
       }
 
