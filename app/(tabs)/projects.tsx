@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal, Alert } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal, Alert, KeyboardAvoidingView } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,6 +22,10 @@ import { syncRoomsFromProtocols } from "@/lib/room-sync";
 import { getDefects, updateDefectStatus, saveDefect, deleteDefect, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { AssigneeInput } from "@/components/assignee-input";
 import { DateOnlyPicker } from "@/components/date-only-picker";
+import { GEWERKE } from "@/lib/defect-pdf-export";
+import { pickImagesWithSource } from "@/lib/import-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { Image as ExpoImage } from "expo-image";
 import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
@@ -94,6 +98,11 @@ export default function RundgangTab() {
   const [defectRoom, setDefectRoom] = useState<Room | null>(null);
   const [newDefectTitle, setNewDefectTitle] = useState("");
   const [newDefectDesc, setNewDefectDesc] = useState("");
+  const [newDefectGewerk, setNewDefectGewerk] = useState("");
+  const [newDefectPriority, setNewDefectPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [newDefectAssignee, setNewDefectAssignee] = useState("");
+  const [newDefectDue, setNewDefectDue] = useState("");
+  const [newDefectPhotos, setNewDefectPhotos] = useState<string[]>([]);
   // Detail popups
   const [selectedDefect, setSelectedDefect] = useState<Defect | null>(null);
   const [editDefectDesc, setEditDefectDesc] = useState("");
@@ -393,23 +402,47 @@ export default function RundgangTab() {
   const openDefectCreate = (room: Room) => {
     setNewDefectTitle("");
     setNewDefectDesc("");
+    setNewDefectGewerk("");
+    setNewDefectPriority("mittel");
+    setNewDefectAssignee("");
+    setNewDefectDue("");
+    setNewDefectPhotos([]);
     setDefectRoom(room);
+  };
+
+  const pickDefectPhotos = async () => {
+    try {
+      const picked = await pickImagesWithSource({ t, multiple: true } as any);
+      if (!picked || picked.length === 0) return;
+      const dir = `${FileSystem.documentDirectory}defect-photos/`;
+      try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+      const uris: string[] = [];
+      for (const a of picked) {
+        try { const dest = `${dir}d-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`; await FileSystem.copyAsync({ from: a.uri, to: dest }); uris.push(dest); } catch { uris.push(a.uri); }
+      }
+      setNewDefectPhotos((prev) => [...prev, ...uris]);
+    } catch {}
   };
   const createRoomDefect = async () => {
     const room = defectRoom;
     const title = newDefectTitle.trim();
     if (!room || !title || !selectedProjectId) { setDefectRoom(null); return; }
     const now = new Date().toISOString();
+    const floorName = floors.find((f) => f.id === room.floorId)?.name;
     const newDefect = {
       id: `defect_${Date.now()}`,
       projectId: selectedProjectId,
       title,
       description: newDefectDesc.trim(),
       status: "offen" as DefectStatus,
-      priority: "mittel",
+      priority: newDefectPriority,
       category: "sonstiges",
-      photos: [] as string[],
+      gewerk: newDefectGewerk.trim() || undefined,
+      photos: [...newDefectPhotos],
+      floor: floorName,
       room: room.name,
+      assignee: newDefectAssignee.trim() || undefined,
+      dueDate: newDefectDue.trim() || undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -848,18 +881,69 @@ export default function RundgangTab() {
 
       {/* Create defect for a room (inline popup) */}
       <Modal visible={!!defectRoom} transparent animationType="slide" onRequestClose={() => setDefectRoom(null)}>
-        <View style={styles.taskOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.taskOverlay}>
           <View style={styles.taskSheet}>
             <Text style={styles.taskSheetTitle}>{t('rooms_add_defect_here' as any)}</Text>
             <Text style={styles.taskSheetSub}>{defectRoom?.name}</Text>
-            <TextInput value={newDefectTitle} onChangeText={setNewDefectTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" autoFocus returnKeyType="next" style={styles.taskInput} />
-            <TextInput value={newDefectDesc} onChangeText={setNewDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              <TextInput value={newDefectTitle} onChangeText={setNewDefectTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" autoFocus returnKeyType="next" style={styles.taskInput} />
+              <TextInput value={newDefectDesc} onChangeText={setNewDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
+
+              <Text style={styles.defLabel}>{t('gewerk')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                {GEWERKE.map((g) => {
+                  const active = newDefectGewerk === g;
+                  return (
+                    <Pressable key={g} onPress={() => setNewDefectGewerk(active ? "" : g)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? "#5DADE2" : "#1E3A5F", backgroundColor: active ? "#5DADE218" : "transparent" }}>
+                      <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? "#5DADE2" : "#8FA3B8" }}>{g}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              <Text style={styles.defLabel}>{t('prioritaet')}</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(["hoch", "mittel", "niedrig"] as const).map((p) => {
+                  const active = newDefectPriority === p;
+                  const c = p === "hoch" ? "#DC2626" : p === "mittel" ? "#F59E0B" : "#16A34A";
+                  return (
+                    <Pressable key={p} onPress={() => setNewDefectPriority(p)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: active ? c : "#1E3A5F", backgroundColor: active ? c + "18" : "transparent" }}>
+                      <Text style={{ fontSize: 13, fontWeight: active ? "800" : "600", color: active ? c : "#8FA3B8" }}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.defLabel}>{t('zustaendig')}</Text>
+              <AssigneeInput value={newDefectAssignee} onChange={setNewDefectAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
+
+              <View style={{ marginTop: 8 }}>
+                <DateOnlyPicker value={newDefectDue} onChange={setNewDefectDue} label={t('frist')} withTime />
+              </View>
+
+              <Pressable onPress={pickDefectPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
+                <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+              </Pressable>
+              {newDefectPhotos.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                  {newDefectPhotos.map((uri, i) => (
+                    <View key={i}>
+                      <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                      <Pressable onPress={() => setNewDefectPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                        <MaterialIcons name="close" size={13} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </ScrollView>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => setDefectRoom(null)} style={styles.taskCancel}><Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text></Pressable>
               <Pressable onPress={createRoomDefect} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Defect detail popup */}
@@ -1239,6 +1323,7 @@ const styles = StyleSheet.create({
   taskSheet: { backgroundColor: "#0F1E30", borderRadius: 18, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: "#1E3A5F" },
   taskSheetTitle: { color: "#F0F4F8", fontSize: 18, fontWeight: "800" },
   createLabelSm: { color: "#8FA3B8", fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
+  defLabel: { fontSize: 12, color: "#8FA3B8", fontWeight: "700", marginTop: 12, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
   taskSheetSub: { color: "#8FA3B8", fontSize: 13, marginTop: 2 },
   taskInput: { marginTop: 14, borderWidth: 1, borderColor: "#1E3A5F", borderRadius: 8, padding: 12, color: "#F0F4F8", fontSize: 15, backgroundColor: "#0C1826" },
   taskCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#1E3A5F", alignItems: "center" },
