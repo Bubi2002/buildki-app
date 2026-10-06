@@ -95,6 +95,16 @@ function descriptionsOverlap(left: string, right: string): boolean {
   return intersection / smallerSize >= 0.75;
 }
 
+// Split a location like "DG · Schlafzimmer" into floor + room so the synced
+// defect lands in the matching room on the Projekte screen (which groups by
+// floor + room). Single-part locations are treated as a room only.
+function splitLocation(location?: string): { floor?: string; room?: string } {
+  const parts = cleanText(location).split(/[·,/|]|\s[-–]\s/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) return { floor: parts[0], room: parts[parts.length - 1] };
+  if (parts.length === 1) return { room: parts[0] };
+  return {};
+}
+
 function parsePriority(value: string): DefectPriority {
   if (/hoch|kritisch|critical|major|dringend/i.test(value)) return "hoch";
   if (/niedrig|gering|minor|cosmetic/i.test(value)) return "niedrig";
@@ -151,7 +161,7 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
     if (block.type === "table") {
       const descriptionIndex = findHeader(block.headers, /mangel|beschreibung|befund|problem|schaden/);
       if (descriptionIndex < 0) continue;
-      const locationIndex = findHeader(block.headers, /ort|raum|bereich|geschoss|location/);
+      const locationIndex = findHeader(block.headers, /ort|raum|bereich|geschoss|etage|location/);
       const tradeIndex = findHeader(block.headers, /gewerk|verantwortlich|firma|trade/);
       const priorityIndex = findHeader(block.headers, /prioritat|schwere|dringlichkeit|priority/);
       const dueDateIndex = findHeader(block.headers, /frist|termin|datum|deadline/);
@@ -298,6 +308,7 @@ export async function syncProtocolDefects(protocol: StoredProtocolForDefectSync)
     }
 
     const timestamp = protocol.createdAt || new Date().toISOString();
+    const place = splitLocation(candidate.location);
     const newDefect: Defect = {
       id,
       projectId: protocol.projectId,
@@ -311,6 +322,8 @@ export async function syncProtocolDefects(protocol: StoredProtocolForDefectSync)
       photos: photosForCandidate(candidate, protocol.photos || []),
       dueDate: candidate.dueDate,
       location: candidate.location,
+      floor: place.floor,
+      room: place.room,
       createdAt: timestamp,
       updatedAt: timestamp,
       source: "speech",

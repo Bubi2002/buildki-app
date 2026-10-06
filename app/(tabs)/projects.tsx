@@ -19,6 +19,7 @@ import {
   type Room,
 } from "@/lib/room-store";
 import { syncRoomsFromProtocols } from "@/lib/room-sync";
+import { syncStoredProtocolDefects } from "@/lib/protocol-defect-sync";
 import { getDefects, updateDefectStatus, saveDefect, deleteDefect, type Defect, type DefectStatus } from "@/lib/defect-store";
 import { AssigneeInput } from "@/components/assignee-input";
 import { DateOnlyPicker } from "@/components/date-only-picker";
@@ -144,6 +145,10 @@ export default function RundgangTab() {
       await initializeDefaultFloors(pid);
       // Pull rooms recorded during Begehungen ("Geschoss · Raum") into the structure.
       try { await syncRoomsFromProtocols(pid); } catch {}
+      // Make sure Maengel detected in this project's protocols exist as defects
+      // (idempotent) so they show up under their room. Older protocols that were
+      // processed before this sync existed get backfilled here.
+      try { await syncStoredProtocolDefects(pid); } catch {}
       const structure = await getProjectStructure(pid);
       const sortedFloors = structure.floors.sort((a, b) => a.number - b.number);
       setFloors(sortedFloors);
@@ -256,8 +261,18 @@ export default function RundgangTab() {
     if (!f) return true;
     return f === roomFloorName(room).trim().toLowerCase();
   };
+  // Protocol-synced Maengel store their place in `location` (e.g. "DG · Schlafzimmer"),
+  // not in room/floor. Split it so those Maengel still land in the right room.
+  const splitLoc = (loc?: string): { floor?: string; room?: string } => {
+    const parts = (loc || "").split(/[·,/|]|\s[-–]\s/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length >= 2) return { floor: parts[0], room: parts[parts.length - 1] };
+    if (parts.length === 1) return { room: parts[0] };
+    return {};
+  };
+  const defectRoomName = (d: Defect) => ((d.room || "").trim() || splitLoc((d as any).location).room || "");
+  const defectFloorName = (d: Defect) => ((d.floor || "").trim() || splitLoc((d as any).location).floor || "");
   const roomDefects = (room: Room) =>
-    defects.filter((d) => (d.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && sameFloor((d as any).floor, room));
+    defects.filter((d) => defectRoomName(d).toLowerCase() === room.name.trim().toLowerCase() && sameFloor(defectFloorName(d), room));
   const roomOpenDefects = (room: Room) => roomDefects(room).filter((d) => OPEN_DEFECT_STATUSES.has(d.status)).length;
   const roomFollowUps = (room: Room) =>
     roomDefects(room).filter((d) => !!(d as any).followUpDate && d.status !== "erledigt" && d.status !== "geschlossen").length;
