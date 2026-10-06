@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { useTranslation } from "@/lib/language-provider";
+import { useColors } from "@/hooks/use-colors";
 import {
   getProjectStructure,
   updateRoom,
@@ -54,6 +55,7 @@ let launchChooserShown = false;
 
 export default function RundgangTab() {
   const { t } = useTranslation();
+  const colors = useColors();
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
