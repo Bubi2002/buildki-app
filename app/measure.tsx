@@ -449,28 +449,59 @@ export default function MeasureScreen() {
 
   async function handleExportPdf() {
     if (!selectedEvidence) return;
-    if (!startPoint || !endPoint) {
+    const hasActive = !!(startPoint && endPoint);
+    const hasSaved = measurementsList.length > 0;
+    // Allow exporting at any time once at least one measurement exists — either
+    // a freshly drawn one, or previously saved ones (export "nachträglich").
+    if (!hasActive && !hasSaved) {
       Alert.alert(t('measure_alert_messstrecke_title' as any), t('measure_alert_messstrecke_msg' as any));
       return;
     }
     setIsExporting(true);
     try {
       await ensureMeasurementDirectory();
-      const imageUri = await captureRef(canvasRef, { format: "png", quality: 1, result: "tmpfile" });
+      // The canvas shows the active line AND all saved lines (M1, M2…). Capture
+      // it; fall back to the stored preview image if the canvas isn't ready.
+      let imageUri: string;
+      try {
+        imageUri = await captureRef(canvasRef, { format: "png", quality: 1, result: "tmpfile" });
+      } catch {
+        imageUri = selectedEvidence.previewUri || "";
+      }
 
-      const accuracyText =
-        selectedMethod.accuracy === "estimated"
-          ? t('measure_quality_estimate' as any)
-          : `${selectedMethod.accuracy === "verified" ? t('measure_quality_verified' as any) : t('measure_quality_calibrated' as any)}`;
-      const toleranceUnit = unit === "m²" || unit === "ft²" || unit === "yd²" || unit === "Stk." ? "%" : unit;
+      const dateRow = { label: t('measure_pdf_date' as any), value: new Date().toLocaleDateString(DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "long", year: "numeric" }) };
 
-      const rows = [
-        { label: t('measure_field_value' as any), value: value.trim() ? `${value.replace(".", ",")} ${unit}` : "" },
-        { label: t('measure_field_method' as any), value: t(selectedMethod.label as any) },
-        { label: t('measure_pdf_quality' as any), value: accuracyText },
-        { label: t('measure_field_tolerance' as any), value: tolerance.trim() ? `${tolerance.replace(".", ",")} ${toleranceUnit}` : "" },
-        { label: t('measure_pdf_date' as any), value: new Date().toLocaleDateString(DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "long", year: "numeric" }) },
-      ];
+      let rows: { label: string; value: string }[];
+      if (hasActive) {
+        const accuracyText =
+          selectedMethod.accuracy === "estimated"
+            ? t('measure_quality_estimate' as any)
+            : `${selectedMethod.accuracy === "verified" ? t('measure_quality_verified' as any) : t('measure_quality_calibrated' as any)}`;
+        const toleranceUnit = unit === "m²" || unit === "ft²" || unit === "yd²" || unit === "Stk." ? "%" : unit;
+        rows = [
+          { label: t('measure_field_value' as any), value: value.trim() ? `${value.replace(".", ",")} ${unit}` : "" },
+          { label: t('measure_field_method' as any), value: t(selectedMethod.label as any) },
+          { label: t('measure_pdf_quality' as any), value: accuracyText },
+          { label: t('measure_field_tolerance' as any), value: tolerance.trim() ? `${tolerance.replace(".", ",")} ${toleranceUnit}` : "" },
+          dateRow,
+        ];
+      } else {
+        // Export the saved measurements: one row per M1, M2, … with its own value
+        // and method/quality, since each can use a different Messmethode.
+        rows = measurementsList.map((m, i) => {
+          const mMethod = METHODS.find((x) => x.value === m.method) || METHODS[0];
+          const acc =
+            mMethod.accuracy === "estimated"
+              ? t('measure_quality_estimate' as any)
+              : mMethod.accuracy === "verified"
+              ? t('measure_quality_verified' as any)
+              : t('measure_quality_calibrated' as any);
+          const valStr = `${String(m.value).replace(".", ",")} ${m.unit}`;
+          const tol = m.tolerance != null ? ` ±${String(m.tolerance).replace(".", ",")}${m.toleranceUnit || ""}` : "";
+          return { label: `M${i + 1}`, value: `${valStr}${tol} · ${t(mMethod.label as any)} (${acc})` };
+        });
+        rows.push(dateRow);
+      }
 
       const result = await exportMeasurementPdf({
         imageUri,
