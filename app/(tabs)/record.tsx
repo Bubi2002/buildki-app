@@ -1597,7 +1597,7 @@ export default function RecordScreen() {
           t('record_saved_locally_title' as any),
           t('record_saved_locally_msg' as any),
         );
-        router.push(`/begehung-review?protocolId=${protocolId}` as any);
+        router.replace(`/protocol-detail?id=${protocolId}` as any);
         return;
       }
 
@@ -1634,7 +1634,7 @@ export default function RecordScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         }
         alert(t('record_offline_saved' as any));
-        router.push(`/begehung-review?protocolId=${protocolId}` as any);
+        router.replace(`/protocol-detail?id=${protocolId}` as any);
         return;
       }
 
@@ -1649,9 +1649,11 @@ export default function RecordScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      // Show the "Begehung prüfen" review screen (rooms/photos/tasks summary);
-      // the placeholder keeps processing in the background.
-      router.push(`/begehung-review?protocolId=${protocolId}` as any);
+      // Go straight to the protocol/report; it shows a background-processing
+      // banner and refreshes live, so the user isn't left on a separate review
+      // screen that looks like nothing was recognised. Everything is editable
+      // there once processing finishes.
+      router.replace(`/protocol-detail?id=${protocolId}` as any);
 
       // Get settings for protocol style
       const settingsStr = await AsyncStorage.getItem("protokoll-settings");
