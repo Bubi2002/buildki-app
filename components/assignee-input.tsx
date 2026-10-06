@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, type TextStyle, type StyleProp } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, Linking, type TextStyle, type StyleProp } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loadPhoneContacts, type PhoneContact } from "@/lib/phone-contacts";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "@/lib/language-provider";
 
 const HISTORY_KEY = "assignee-history";
 
@@ -33,9 +34,11 @@ type Props = {
  */
 export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [history, setHistory] = useState<string[]>([]);
   const [contacts, setContacts] = useState<PhoneContact[]>([]);
   const [focused, setFocused] = useState(false);
+  const [permDenied, setPermDenied] = useState(false);
   const loadedContacts = useRef(false);
 
   useEffect(() => {
@@ -48,11 +51,18 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
   }, []);
 
   const loadContactsOnce = async () => {
-    if (loadedContacts.current) return;
-    loadedContacts.current = true;
+    // Retry until we actually have contacts (a denied/failed first attempt must
+    // not permanently block loading from the Apple Contacts app).
+    if (loadedContacts.current && contacts.length > 0) return;
     try {
       const res = await loadPhoneContacts();
-      if (res.ok) setContacts(res.contacts.slice(0, 1000));
+      if (res.ok) {
+        setContacts(res.contacts.slice(0, 1000));
+        setPermDenied(false);
+        loadedContacts.current = true;
+      } else if (res.reason === "denied") {
+        setPermDenied(true);
+      }
     } catch {}
   };
 
@@ -101,6 +111,14 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
             </Pressable>
           ))}
         </View>
+      )}
+      {focused && permDenied && contacts.length === 0 && (
+        <Pressable onPress={() => { void Linking.openSettings(); }} style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.row}>
+            <MaterialIcons name="contacts" size={16} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontSize: 13, flex: 1 }} numberOfLines={2}>{t('assignee_enable_contacts' as any)}</Text>
+          </View>
+        </Pressable>
       )}
     </View>
   );

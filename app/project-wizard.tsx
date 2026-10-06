@@ -24,6 +24,7 @@ import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getFloorPlans, saveFloorPlan, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { AssigneeInput } from "@/components/assignee-input";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
@@ -494,19 +495,16 @@ export default function ProjectWizardScreen() {
 
   const pickItemPhotos = async () => {
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-      });
-      if (res.canceled || !res.assets?.length) return;
+      // Standard picker: Kamera / Galerie / Dateien (exposes Dropbox, iCloud, Drive …).
+      const picked = await pickImagesWithSource({ t, multiple: true } as any);
+      if (!picked || picked.length === 0) return;
       const dir = `${FileSystem.documentDirectory}wizard-photos/`;
       try {
         const info = await FileSystem.getInfoAsync(dir);
         if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
       } catch {}
       const uris: string[] = [];
-      for (const a of res.assets) {
+      for (const a of picked) {
         try {
           const dest = `${dir}p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`;
           await FileSystem.copyAsync({ from: a.uri, to: dest });
