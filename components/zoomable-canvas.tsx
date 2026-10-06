@@ -38,6 +38,8 @@ type ZoomableCanvasProps = {
   maxScale?: number;
   onSingleTap?: (point: Point) => void;
   onLongPress?: (point: Point) => void;
+  /** Long-press then drag: grab something at the point and move it live. */
+  onPinDrag?: (phase: "start" | "move" | "end", point: Point) => void;
   onInteractionChange?: (active: boolean) => void;
   testID?: string;
 };
@@ -55,6 +57,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   maxScale = 4,
   onSingleTap,
   onLongPress,
+  onPinDrag,
   onInteractionChange,
   testID,
 }: ZoomableCanvasProps, ref) {
@@ -81,6 +84,12 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
     if (!onLongPress) return;
     const point = screenPointToNormalized({ x, y }, { width, height }, scaleValue, { x: tx, y: ty });
     onLongPress(point);
+  };
+
+  const emitPinDrag = (phase: "start" | "move" | "end", x: number, y: number, scaleValue: number, tx: number, ty: number) => {
+    if (!onPinDrag) return;
+    const point = screenPointToNormalized({ x, y }, { width, height }, scaleValue, { x: tx, y: ty });
+    onPinDrag(phase, point);
   };
 
   const pinch = Gesture.Pinch()
@@ -162,11 +171,22 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       runOnJS(emitLongPress)(event.x, event.y, scale.value, translateX.value, translateY.value);
     });
 
+  // Drag a marker: a Pan that only activates after a long press, so a normal
+  // one-finger drag still pans the canvas, but press-and-hold then move grabs
+  // the marker and moves it live.
+  const pinDrag = Gesture.Pan()
+    .activateAfterLongPress(300)
+    .onStart((event) => { "worklet"; runOnJS(emitPinDrag)("start", event.x, event.y, scale.value, translateX.value, translateY.value); })
+    .onUpdate((event) => { "worklet"; runOnJS(emitPinDrag)("move", event.x, event.y, scale.value, translateX.value, translateY.value); })
+    .onEnd((event) => { "worklet"; runOnJS(emitPinDrag)("end", event.x, event.y, scale.value, translateX.value, translateY.value); });
+
   const tapCandidates = [doubleTap as any];
   if (onLongPress) tapCandidates.push(longPress);
   if (onSingleTap) tapCandidates.push(singleTap);
   const taps = tapCandidates.length > 1 ? Gesture.Exclusive(...tapCandidates) : doubleTap;
-  const gesture = Gesture.Simultaneous(pinch, pan, taps);
+  // When pin-drag is enabled it takes priority over canvas pan (after long press).
+  const panOrDrag = onPinDrag ? Gesture.Exclusive(pinDrag, pan) : pan;
+  const gesture = Gesture.Simultaneous(pinch, panOrDrag, taps);
 
   // Imperative zoom controls (buttons). Setting shared values from the JS thread
   // with withTiming is safe; the clamp helpers are plain functions here.

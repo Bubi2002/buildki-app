@@ -428,17 +428,39 @@ export default function FloorPlanScreen() {
     }
   };
 
-  // Long-press on (or very near) a marker picks it up for moving — then the next
-  // tap drops it at the new position. "Stark draufdrücken und verschieben."
-  const handlePlanLongPress = (point: Point) => {
-    if (!selectedPlan || movingPin) return;
+  // Long-press ON a marker, then drag it to move it live; release to drop.
+  // "Draufdrücken und verschieben."
+  const draggingPinRef = useRef<string | null>(null);
+  const handlePinDrag = (phase: "start" | "move" | "end", point: Point) => {
+    if (!selectedPlan) return;
     const img = containerPointToImage(point);
-    const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
-      const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
-      return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
-    }, null);
-    if (nearestPin && nearestPin.distance <= 0.06) {
-      startMovePin(nearestPin.pin);
+    if (phase === "start") {
+      const nearestPin = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((nearest, pin) => {
+        const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
+        return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
+      }, null);
+      if (nearestPin && nearestPin.distance <= 0.07) {
+        draggingPinRef.current = nearestPin.pin.id;
+        setPlanInteractionActive(true);
+        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } else {
+        draggingPinRef.current = null;
+      }
+    } else if (phase === "move") {
+      const id = draggingPinRef.current;
+      if (!id) return;
+      setPins((cur) => cur.map((p) => (p.id === id ? { ...p, x: img.x, y: img.y } : p)));
+    } else {
+      const id = draggingPinRef.current;
+      draggingPinRef.current = null;
+      setPlanInteractionActive(false);
+      if (!id) return;
+      setPins((cur) => {
+        const pin = cur.find((p) => p.id === id);
+        if (pin) void savePlanPin({ ...pin, x: img.x, y: img.y });
+        return cur.map((p) => (p.id === id ? { ...p, x: img.x, y: img.y } : p));
+      });
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
@@ -935,7 +957,7 @@ export default function FloorPlanScreen() {
                 height={containerHeight}
                 maxScale={4}
                 onSingleTap={handlePlanTap}
-                onLongPress={handlePlanLongPress}
+                onPinDrag={handlePinDrag}
                 onInteractionChange={setPlanInteractionActive}
                 testID="floor-plan-zoom-stage"
               >
