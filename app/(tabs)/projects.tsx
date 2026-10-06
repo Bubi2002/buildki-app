@@ -246,15 +246,25 @@ export default function RundgangTab() {
       return next;
     });
 
+  const roomFloorName = (room: Room) => floors.find((f) => f.id === room.floorId)?.name || "";
+  // An item belongs to a room when the room names match AND, if the item carries
+  // a floor, that floor matches too. Otherwise several "Flur" rooms on different
+  // floors would all show the same Mangel/Aufgabe. Items without a floor stay
+  // name-matched for backward compatibility with older data.
+  const sameFloor = (itemFloor: string | undefined, room: Room) => {
+    const f = (itemFloor || "").trim().toLowerCase();
+    if (!f) return true;
+    return f === roomFloorName(room).trim().toLowerCase();
+  };
   const roomDefects = (room: Room) =>
-    defects.filter((d) => (d.room || "").trim().toLowerCase() === room.name.trim().toLowerCase());
+    defects.filter((d) => (d.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && sameFloor((d as any).floor, room));
   const roomOpenDefects = (room: Room) => roomDefects(room).filter((d) => OPEN_DEFECT_STATUSES.has(d.status)).length;
   const roomFollowUps = (room: Room) =>
     roomDefects(room).filter((d) => !!(d as any).followUpDate && d.status !== "erledigt" && d.status !== "geschlossen").length;
   const roomChecklists = (room: Room) =>
     checklistResults.filter((r) => (r.location || "").toLowerCase().includes(room.name.trim().toLowerCase())).length;
   const roomTasks = (room: Room) =>
-    tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && tk.status !== "erledigt" && tk.done !== true).length;
+    tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && sameFloor((tk as any).floor, room) && tk.status !== "erledigt" && tk.done !== true).length;
 
 
   const toggleRoomExpand = (id: string) => {
@@ -268,7 +278,7 @@ export default function RundgangTab() {
 
   // Full item lists per room (for the inline expand view)
   const roomTaskList = (room: Room) =>
-    tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase());
+    tasks.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && sameFloor((tk as any).floor, room));
   const roomChecklistList = (room: Room) =>
     checklistResults.filter((r) => (r.location || "").toLowerCase().includes(room.name.trim().toLowerCase()));
 
@@ -487,10 +497,11 @@ export default function RundgangTab() {
       id: `task-${Date.now()}`,
       projectId: selectedProjectId,
       room: room.name,
+      floor: roomFloorName(room) || undefined,
       title,
       status: "offen",
       done: false,
-    };
+    } as ProjectTask;
     try {
       const raw = await AsyncStorage.getItem("project-tasks");
       const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
