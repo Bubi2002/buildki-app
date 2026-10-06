@@ -297,7 +297,14 @@ export default function ProjectWizardScreen() {
 
   // Land on the Projekte tab (showing the just-created/selected project),
   // not the old (tabs) group index.
-  const finish = () => router.replace("/(tabs)/projects" as any);
+  const finish = async () => {
+    // If a Mangel/Aufgabe is typed but not yet added, add it automatically so the
+    // user doesn't lose it by tapping "Fertig" without "Hinzufügen" first.
+    if (step === "items" && itemTitle.trim()) {
+      try { await addItemNow(); } catch {}
+    }
+    router.replace("/(tabs)/projects" as any);
+  };
 
   const pickExisting = async (id: string) => {
     haptic();
