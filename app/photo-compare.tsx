@@ -25,6 +25,7 @@ import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { Swipeable, Gesture, GestureDetector } from "react-native-gesture-handler";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
+import { getProjectStructure, type Room as ProjectRoom, type Floor as ProjectFloor } from "@/lib/room-store";
 import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
 import { generateAndSharePdf, type PdfCard, type PdfImage } from "@/lib/pdf-professional";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
@@ -72,6 +73,9 @@ export default function PhotoCompareScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
   const [comparisons, setComparisons] = useState<ComparisonPair[]>([]);
+  const [projFloors, setProjFloors] = useState<ProjectFloor[]>([]);
+  const [projRooms, setProjRooms] = useState<ProjectRoom[]>([]);
+  const [cmpFloorId, setCmpFloorId] = useState<string | null>(null);
   const [selectedPair, setSelectedPair] = useState<ComparisonPair | null>(null);
   const [sliderPosition, setSliderPosition] = useState(0.5);
   const compareRef = React.useRef<View>(null);
@@ -95,7 +99,26 @@ export default function PhotoCompareScreen() {
     void Promise.resolve().then(() => {
       loadComparisons();
     });
+    if (params.projectId) {
+      void (async () => {
+        try {
+          const structure = await getProjectStructure(params.projectId!);
+          setProjFloors(structure.floors.sort((a, b) => a.number - b.number));
+          setProjRooms(structure.rooms);
+        } catch {}
+      })();
+    }
   }, []);
+
+  // Set the room ("Etage · Raum") on the open comparison and persist it.
+  const setCompareRoom = async (label: string | undefined) => {
+    if (!selectedPair) return;
+    const next = { ...selectedPair, room: label };
+    setSelectedPair(next);
+    const updated = comparisons.map((c) => (c.id === next.id ? { ...c, ...next } : c));
+    setComparisons(updated);
+    await saveComparisons(updated);
+  };
 
   const saveComparisons = async (updated: ComparisonPair[]) => {
     try {
@@ -467,16 +490,57 @@ export default function PhotoCompareScreen() {
                 numberOfLines={3}
                 style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, minHeight: 72, textAlignVertical: "top" }}
               />
-              <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('export_raum' as any)}</Text>
-              <TextInput
-                value={selectedPair.room || ""}
-                onChangeText={updateSelectedField("room")}
-                onEndEditing={persistSelectedPair}
-                onBlur={persistSelectedPair}
-                placeholder={t('export_raum' as any)}
-                placeholderTextColor={colors.muted}
-                style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 }}
-              />
+              {projRooms.length > 0 ? (() => {
+                const floorsWithRooms = projFloors.filter((f) => projRooms.some((r) => r.floorId === f.id));
+                const roomFromValue = projRooms.find((r) => {
+                  const fn = projFloors.find((f) => f.id === r.floorId)?.name || "";
+                  const lbl = fn ? `${fn} · ${r.name}` : r.name;
+                  return lbl === selectedPair.room;
+                });
+                const effFloorId = cmpFloorId || roomFromValue?.floorId || floorsWithRooms[0]?.id || null;
+                const roomsOfFloor = projRooms.filter((r) => r.floorId === effFloorId);
+                return (
+                  <>
+                    <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('export_etage' as any)}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                      {floorsWithRooms.map((f) => {
+                        const on = effFloorId === f.id;
+                        return (
+                          <Pressable key={f.id} onPress={() => setCmpFloorId(f.id)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : "transparent" }}>
+                            <Text style={{ fontSize: 12, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.muted }}>{f.name}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                    <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('export_raum' as any)}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                      {roomsOfFloor.map((room) => {
+                        const floorName = projFloors.find((f) => f.id === room.floorId)?.name || "";
+                        const label = floorName ? `${floorName} · ${room.name}` : room.name;
+                        const on = selectedPair.room === label;
+                        return (
+                          <Pressable key={room.id} onPress={() => void setCompareRoom(on ? undefined : label)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : "transparent" }}>
+                            <Text style={{ fontSize: 12, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.muted }}>{room.name}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </>
+                );
+              })() : (
+                <>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4, marginTop: 10 }}>{t('export_raum' as any)}</Text>
+                  <TextInput
+                    value={selectedPair.room || ""}
+                    onChangeText={updateSelectedField("room")}
+                    onEndEditing={persistSelectedPair}
+                    onBlur={persistSelectedPair}
+                    placeholder={t('export_raum' as any)}
+                    placeholderTextColor={colors.muted}
+                    style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.foreground, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 }}
+                  />
+                </>
+              )}
             </View>
 
             {selectedPair.afterUri && (
