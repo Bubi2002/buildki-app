@@ -597,10 +597,30 @@ export default function ProjectWizardScreen() {
           } catch {}
         }
       } else {
+        const now = new Date().toISOString();
+        // Map the (defect-style) status chips onto a task status.
+        const taskStatus = itemStatus === "erledigt" ? "erledigt" : (itemStatus === "in_bearbeitung" || itemStatus === "zugewiesen") ? "in_arbeit" : "offen";
         const raw = await AsyncStorage.getItem("project-tasks");
         const all = raw ? JSON.parse(raw) : [];
-        all.unshift({ id, projectId, title, description: itemDesc.trim(), room, floor: floorName, assignee, priority: itemPriority, dueDate: itemDueDate || undefined, status: "offen", done: false });
+        all.unshift({ id, projectId, title, description: itemDesc.trim(), room, floor: floorName, assignee, gewerk: itemGewerk || undefined, priority: itemPriority, dueDate: itemDueDate || undefined, photos: itemPhotos, status: taskStatus, done: taskStatus === "erledigt" });
         await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
+        // Optional plan position → mark the task on the floor plan too.
+        if (pendingPos) {
+          try {
+            await savePlanPin({
+              id: `pin-${Date.now()}`,
+              planId: pendingPos.planId,
+              projectId,
+              x: pendingPos.x,
+              y: pendingPos.y,
+              type: "task",
+              label: title,
+              description: itemDesc.trim() || undefined,
+              color: "#818CF8",
+              createdAt: now,
+            } as any);
+          } catch {}
+        }
       }
       if (room) await rememberRoomName(room);
       setAddedItems((prev) => [{ id, type: itemType, title, room }, ...prev]);
@@ -991,7 +1011,7 @@ export default function ProjectWizardScreen() {
               </>
             )}
 
-            {itemType === "defect" && (
+            {(
               <>
                 {/* Gewerk */}
                 <Text style={styles.miniLabel}>{t('gewerk')}</Text>
