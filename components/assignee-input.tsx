@@ -78,10 +78,15 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
         suggestions.push({ label: c.name, sub: c.email || c.phone, value: c.name });
       }
     }
+  } else {
+    // Empty field but focused: show recent entries + the first contacts so it's
+    // obvious the address book is accessible (not only after typing).
+    for (const h of history) suggestions.push({ label: h, value: h });
+    for (const c of contacts) suggestions.push({ label: c.name, sub: c.email || c.phone, value: c.name });
   }
   // de-dup by value, keep order
   const seen = new Set<string>();
-  const top = suggestions.filter((s) => (seen.has(s.value.toLowerCase()) ? false : seen.add(s.value.toLowerCase()))).slice(0, 6);
+  const top = suggestions.filter((s) => (seen.has(s.value.toLowerCase()) ? false : seen.add(s.value.toLowerCase()))).slice(0, 8);
 
   return (
     <View>

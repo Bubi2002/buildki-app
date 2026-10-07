@@ -245,9 +245,10 @@ export default function ProjectWizardScreen() {
   const importGrundrissAndMark = async () => {
     if (!projectId) return;
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
-      if (res.canceled || !res.assets?.[0]) return;
-      const a = res.assets[0];
+      // Kamera / Galerie / Dateien (Dropbox, iCloud, Drive …).
+      const picked = await pickImagesWithSource({ t, multiple: false } as any);
+      if (!picked || picked.length === 0) return;
+      const a = picked[0] as any;
       const dir = `${FileSystem.documentDirectory}floor-plans/`;
       try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
       let uri = a.uri;
