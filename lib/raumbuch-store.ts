@@ -24,10 +24,18 @@ export type RaumbuchEntry = {
   planName?: string;
   planX?: number; // 0..1
   planY?: number; // 0..1
+  /** Optional crop of the plan (normalised 0..1) so the sheet shows only the
+   *  relevant area around the room instead of the whole plan. */
+  planCrop?: { x: number; y: number; w: number; h: number };
+  /** Optional drawn wall lines (normalised 0..1 plan coords), labelled A–D. */
+  walls?: Partial<Record<"A" | "B" | "C" | "D", { x1: number; y1: number; x2: number; y2: number }>>;
   photos: Partial<Record<RaumbuchPosition, string>>;
   notes?: Partial<Record<RaumbuchPosition, string>>;
   updatedAt: string;
 };
+
+export type RaumbuchWallKey = "A" | "B" | "C" | "D";
+export type RaumbuchWall = { x1: number; y1: number; x2: number; y2: number };
 
 const KEY = (projectId: string) => `raumbuch_${projectId}`;
 

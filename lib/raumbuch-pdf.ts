@@ -3,7 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { getFloorPlans } from "./floor-plan-store";
 import { getPdfBranding } from "./pdf-branding-store";
-import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, type RaumbuchEntry, type RaumbuchPosition } from "./raumbuch-store";
+import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
+
+const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
+const PLAN_W = 240; // px width of the plan excerpt box in the PDF
 
 async function toDataUri(uri?: string | null): Promise<string | null> {
   if (!uri) return null;
@@ -42,18 +45,42 @@ export async function generateRaumbuchPdf(
     projectAddress = proj?.address || proj?.location || proj?.strasse || "";
   } catch {}
 
-  // Pre-resolve plan excerpts once per plan.
-  const planExcerpt = async (e: RaumbuchEntry): Promise<string> => {
-    if (!e.planId || e.planX == null || e.planY == null) return "";
+  // Resolve the plan image (once per plan).
+  const resolvePlan = async (e: RaumbuchEntry): Promise<{ uri: string | null; aspect: number } | null> => {
+    if (!e.planId) return null;
     if (!(e.planId in planCache)) {
       const p = plans.find((x: any) => x.id === e.planId);
       planCache[e.planId] = { uri: await toDataUri(p?.imageUri), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
     }
-    const pc = planCache[e.planId];
+    return planCache[e.planId];
+  };
+
+  // Build the plan excerpt, applying the optional crop and drawing the labelled
+  // wall lines (the wall for the current page is highlighted).
+  const buildPlanExcerpt = (e: RaumbuchEntry, pc: { uri: string | null; aspect: number }, highlight?: RaumbuchWallKey): string => {
     if (!pc.uri) return "";
-    return `<div class="plan">
-      <img src="${pc.uri}" />
-      <div class="pin" style="left:${(e.planX * 100).toFixed(2)}%; top:${(e.planY * 100).toFixed(2)}%;"></div>
+    const A = pc.aspect || 1.6;
+    const cr = e.planCrop;
+    const cx = cr?.x ?? 0, cy = cr?.y ?? 0, cw = cr?.w ?? 1, ch = cr?.h ?? 1;
+    const contAspect = (cw * A) / ch;
+    const W = PLAN_W, contH = W / contAspect;
+    const imgW = W / cw, imgH = imgW / A;
+    const toX = (px: number) => (((px - cx) / cw) * W);
+    const toY = (py: number) => (((py - cy) / ch) * contH);
+    const walls = e.walls || {};
+    const wallSvg = Object.keys(walls).length
+      ? `<svg width="${W}" height="${contH.toFixed(1)}" viewBox="0 0 ${W} ${contH.toFixed(1)}" style="position:absolute;left:0;top:0;">${WALL_KEYS.map((k) => {
+          const wl = walls[k]; if (!wl) return "";
+          const hot = highlight === k;
+          const mx = (toX(wl.x1) + toX(wl.x2)) / 2, my = (toY(wl.y1) + toY(wl.y2)) / 2;
+          return `<line x1="${toX(wl.x1).toFixed(1)}" y1="${toY(wl.y1).toFixed(1)}" x2="${toX(wl.x2).toFixed(1)}" y2="${toY(wl.y2).toFixed(1)}" stroke="${hot ? "#DC2626" : "#2563EB"}" stroke-width="${hot ? 3.5 : 2.5}" stroke-linecap="round"/><text x="${mx.toFixed(1)}" y="${(my - 4).toFixed(1)}" font-size="11" font-weight="bold" text-anchor="middle" fill="#1b2430" paint-order="stroke" stroke="#ffffff" stroke-width="2.5">${k}</text>`;
+        }).join("")}</svg>`
+      : "";
+    const hasPin = e.planX != null && e.planY != null;
+    return `<div class="plan" style="width:${W}px;height:${contH.toFixed(1)}px;">
+      <img src="${pc.uri}" style="position:absolute;width:${imgW.toFixed(1)}px;height:${imgH.toFixed(1)}px;left:${(-cx * imgW).toFixed(1)}px;top:${(-cy * imgH).toFixed(1)}px;max-width:none;" />
+      ${wallSvg}
+      ${hasPin ? `<div class="pin" style="left:${toX(e.planX!).toFixed(1)}px;top:${toY(e.planY!).toFixed(1)}px;"></div>` : ""}
     </div>`;
   };
 
@@ -64,7 +91,7 @@ export async function generateRaumbuchPdf(
   const total = entries.reduce((sum, e) => sum + RAUMBUCH_POSITIONS.filter((p) => e.photos?.[p]).length, 0);
 
   for (const e of entries) {
-    const plan = await planExcerpt(e);
+    const pc = await resolvePlan(e);
     for (const pos of RAUMBUCH_POSITIONS) {
       const uri = e.photos?.[pos];
       if (!uri) continue; // no empty pages
@@ -77,6 +104,7 @@ export async function generateRaumbuchPdf(
       const posRow = isWall
         ? `<div class="m"><span>Wand:</span> ${pos}</div>`
         : `<div class="m"><span>Bereich:</span> ${label}</div>`;
+      const plan = pc ? buildPlanExcerpt(e, pc, isWall ? (pos as RaumbuchWallKey) : undefined) : "";
       pages.push(`
         <section class="page${pageNo > 1 ? " brk" : ""}">
           <div class="meta-row">
