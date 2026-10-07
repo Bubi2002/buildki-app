@@ -121,6 +121,9 @@ export default function RundgangTab() {
   const [newRoomNameInput, setNewRoomNameInput] = useState("");
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState("");
+  const [editTaskDesc, setEditTaskDesc] = useState("");
+  const [editTaskAssignee, setEditTaskAssignee] = useState("");
+  const [editTaskDue, setEditTaskDue] = useState("");
   const [selectedChecklist, setSelectedChecklist] = useState<ChecklistResult | null>(null);
 
   const tn = (key: string, n: number) => t(key as any).replace("{n}", String(n));
@@ -363,6 +366,9 @@ export default function RundgangTab() {
   };
   const openTaskDetail = (tk: ProjectTask) => {
     setEditTaskTitle(taskTitle(tk));
+    setEditTaskDesc(tk.description || "");
+    setEditTaskAssignee(tk.assignee || "");
+    setEditTaskDue(tk.dueDate || "");
     setSelectedTask(tk);
   };
   const openChecklistDetail = (c: ChecklistResult) => setSelectedChecklist(c);
@@ -521,8 +527,14 @@ export default function RundgangTab() {
     const tk = selectedTask;
     const title = editTaskTitle.trim();
     if (!tk || !title) { setSelectedTask(null); return; }
-    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, title } : x)));
-    await persistTasks((all) => all.map((x) => (x.id === tk.id ? { ...x, title } : x)));
+    const patch = {
+      title,
+      description: editTaskDesc.trim() || undefined,
+      assignee: editTaskAssignee.trim() || undefined,
+      dueDate: editTaskDue.trim() || undefined,
+    };
+    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, ...patch } : x)));
+    await persistTasks((all) => all.map((x) => (x.id === tk.id ? { ...x, ...patch } : x)));
     setSelectedTask(null);
   };
   const deleteTaskNow = async (tk: ProjectTask) => {
@@ -1076,17 +1088,28 @@ export default function RundgangTab() {
 
       {/* Task detail popup */}
       <Modal visible={!!selectedTask} transparent animationType="slide" onRequestClose={() => setSelectedTask(null)}>
-        <View style={styles.taskOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.taskOverlay}>
           <View style={styles.taskSheet}>
             {selectedTask && (
               <>
                 <Text style={styles.taskSheetTitle}>{t('index_tool_aufgaben' as any)}</Text>
-                {selectedTask.room ? <Text style={styles.taskSheetSub}>{selectedTask.room}</Text> : null}
-                <TextInput value={editTaskTitle} onChangeText={setEditTaskTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" style={styles.taskInput} />
-                <Pressable onPress={() => toggleTaskDone(selectedTask)} style={[styles.doneToggle, { borderColor: isTaskDone(selectedTask) ? "#10B981" : "#1E3A5F" }]}>
-                  <MaterialIcons name={isTaskDone(selectedTask) ? "check-circle" : "radio-button-unchecked"} size={22} color={isTaskDone(selectedTask) ? "#10B981" : "#4B5B6B"} />
-                  <Text style={{ color: isTaskDone(selectedTask) ? "#10B981" : "#8FA3B8", fontWeight: "700" }}>{t('index_erledigt' as any)}</Text>
-                </Pressable>
+                {(selectedTask.floor || selectedTask.room) ? <Text style={styles.taskSheetSub}>{[selectedTask.floor, selectedTask.room].filter(Boolean).join(" · ")}</Text> : null}
+                <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                  <TextInput value={editTaskTitle} onChangeText={setEditTaskTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" style={styles.taskInput} />
+                  <TextInput value={editTaskDesc} onChangeText={setEditTaskDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
+
+                  <Text style={styles.defLabel}>{t('zustaendig')}</Text>
+                  <AssigneeInput value={editTaskAssignee} onChange={setEditTaskAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
+
+                  <View style={{ marginTop: 8 }}>
+                    <DateOnlyPicker value={editTaskDue} onChange={setEditTaskDue} label={t('frist')} withTime />
+                  </View>
+
+                  <Pressable onPress={() => toggleTaskDone(selectedTask)} style={[styles.doneToggle, { borderColor: isTaskDone(selectedTask) ? "#10B981" : "#1E3A5F", marginTop: 14 }]}>
+                    <MaterialIcons name={isTaskDone(selectedTask) ? "check-circle" : "radio-button-unchecked"} size={22} color={isTaskDone(selectedTask) ? "#10B981" : "#4B5B6B"} />
+                    <Text style={{ color: isTaskDone(selectedTask) ? "#10B981" : "#8FA3B8", fontWeight: "700" }}>{t('index_erledigt' as any)}</Text>
+                  </Pressable>
+                </ScrollView>
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
                   <Pressable onPress={() => deleteTaskNow(selectedTask)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
                   <Pressable onPress={saveTaskEdit} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
@@ -1094,7 +1117,7 @@ export default function RundgangTab() {
               </>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Checklist detail popup (read-only) */}
