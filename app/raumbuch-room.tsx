@@ -46,9 +46,10 @@ export default function RaumbuchRoomScreen() {
   const planAspect = useRef(1.4);
   // Plan editing modes: place marker, draw a crop rectangle, or draw wall lines.
   const [planMode, setPlanMode] = useState<PlanMode>("marker");
-  const [pendingStart, setPendingStart] = useState<{ x: number; y: number } | null>(null);
   const [tempWalls, setTempWalls] = useState<Partial<Record<RaumbuchWallKey, RaumbuchWall>>>({});
   const [tempCrop, setTempCrop] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Which element is being dragged (new line/box, a wall endpoint, or a crop corner).
+  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; start?: { x: number; y: number } } | null>(null);
 
   const blankEntry = (): RaumbuchEntry => ({
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
@@ -116,29 +117,84 @@ export default function RaumbuchRoomScreen() {
     setTempWalls(onStart && entry?.walls ? { ...entry.walls } : {});
     setTempCrop(onStart && entry?.planCrop ? { ...entry.planCrop } : null);
     setPlanMode("marker");
-    setPendingStart(null);
+    dragRef.current = null;
     setPlanModal(true);
   };
 
   const onPlanLayout = (e: LayoutChangeEvent) => setModalImgW(e.nativeEvent.layout.width);
 
-  // A tap on the plan does different things per mode. Crop/wall modes need two
-  // taps (start + end); the pin mode places immediately.
-  const onPlanPoint = (pt: { x: number; y: number }) => {
-    if (planMode === "marker") { setTempPos(pt); return; }
-    if (!pendingStart) { setPendingStart(pt); return; }
-    const a = pendingStart, b = pt;
-    if (planMode === "crop") {
-      const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-      const w = Math.abs(a.x - b.x), h = Math.abs(a.y - b.y);
-      if (w > 0.02 && h > 0.02) setTempCrop({ x, y, w, h });
-    } else {
-      setTempWalls((prev) => ({ ...prev, [planMode]: { x1: a.x, y1: a.y, x2: b.x, y2: b.y } }));
-    }
-    setPendingStart(null);
+  // Marker mode: a tap places the pin.
+  const onPlanTap = (pt: { x: number; y: number }) => {
+    if (planMode === "marker") setTempPos(pt);
   };
 
-  const selectMode = (m: PlanMode) => { setPlanMode(m); setPendingStart(null); };
+  // Crop & wall modes: DRAG to draw (like the Messen tool) — pull a line between
+  // the two points, or a crop rectangle; drag an existing corner/endpoint to
+  // adjust it. Live, so the line/box follows your finger exactly.
+  const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+  const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y) < 0.055;
+  const onPlanDrag = (phase: "start" | "move" | "end", raw: { x: number; y: number }) => {
+    if (planMode === "marker") return; // marker is placed by tap, not drag
+    const pt = { x: clamp01(raw.x), y: clamp01(raw.y) };
+    if (planMode === "crop") {
+      if (phase === "start") {
+        const c = tempCrop;
+        if (c) {
+          const corners: Record<string, { x: number; y: number }> = {
+            tl: { x: c.x, y: c.y }, tr: { x: c.x + c.w, y: c.y }, bl: { x: c.x, y: c.y + c.h }, br: { x: c.x + c.w, y: c.y + c.h },
+          };
+          const hit = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k]));
+          if (hit) { dragRef.current = { kind: "crop-corner", corner: hit }; return; }
+        }
+        dragRef.current = { kind: "crop-new", start: pt };
+        setTempCrop({ x: pt.x, y: pt.y, w: 0, h: 0 });
+      } else if (phase === "move") {
+        const d = dragRef.current; if (!d) return;
+        if (d.kind === "crop-new" && d.start) {
+          const a = d.start;
+          setTempCrop({ x: Math.min(a.x, pt.x), y: Math.min(a.y, pt.y), w: Math.abs(a.x - pt.x), h: Math.abs(a.y - pt.y) });
+        } else if (d.kind === "crop-corner") {
+          setTempCrop((c) => {
+            if (!c) return c;
+            let x1 = c.x, y1 = c.y, x2 = c.x + c.w, y2 = c.y + c.h;
+            if (d.corner === "tl") { x1 = pt.x; y1 = pt.y; } else if (d.corner === "tr") { x2 = pt.x; y1 = pt.y; } else if (d.corner === "bl") { x1 = pt.x; y2 = pt.y; } else { x2 = pt.x; y2 = pt.y; }
+            return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+          });
+        }
+      } else {
+        dragRef.current = null;
+        setTempCrop((c) => (c && c.w > 0.03 && c.h > 0.03 ? c : null));
+      }
+      return;
+    }
+    // Wall modes A/B/C/D.
+    const key = planMode as RaumbuchWallKey;
+    if (phase === "start") {
+      const wl = tempWalls[key];
+      if (wl) {
+        if (near(pt, { x: wl.x1, y: wl.y1 })) { dragRef.current = { kind: "wall-start" }; return; }
+        if (near(pt, { x: wl.x2, y: wl.y2 })) { dragRef.current = { kind: "wall-end" }; return; }
+      }
+      dragRef.current = { kind: "wall-new", start: pt };
+      setTempWalls((prev) => ({ ...prev, [key]: { x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y } }));
+    } else if (phase === "move") {
+      const d = dragRef.current; if (!d) return;
+      setTempWalls((prev) => {
+        const w = prev[key]; if (!w) return prev;
+        if (d.kind === "wall-start") return { ...prev, [key]: { ...w, x1: pt.x, y1: pt.y } };
+        return { ...prev, [key]: { ...w, x2: pt.x, y2: pt.y } }; // wall-end or wall-new
+      });
+    } else {
+      dragRef.current = null;
+      setTempWalls((prev) => {
+        const w = prev[key]; if (!w) return prev;
+        if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.02) { const n = { ...prev }; delete n[key]; return n; }
+        return prev;
+      });
+    }
+  };
+
+  const selectMode = (m: PlanMode) => { setPlanMode(m); dragRef.current = null; };
 
   const confirmPlanMarker = async () => {
     if (modalPlan) {
@@ -227,7 +283,7 @@ export default function RaumbuchRoomScreen() {
                 {plans.map((p) => {
                   const active = modalPlan?.id === p.id;
                   return (
-                    <Pressable key={p.id} onPress={() => { setModalPlan(p); planAspect.current = p.width > 0 && p.height > 0 ? p.width / p.height : 1.4; setTempPos(null); setTempWalls({}); setTempCrop(null); setPendingStart(null); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
+                    <Pressable key={p.id} onPress={() => { setModalPlan(p); planAspect.current = p.width > 0 && p.height > 0 ? p.width / p.height : 1.4; setTempPos(null); setTempWalls({}); setTempCrop(null); dragRef.current = null; }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
                       <Text style={{ fontSize: 12, fontWeight: "700", color: active ? colors.primary : colors.muted }} numberOfLines={1}>{p.name}</Text>
                     </Pressable>
                   );
@@ -263,29 +319,40 @@ export default function RaumbuchRoomScreen() {
                     width={modalImgW}
                     height={H}
                     maxScale={5}
-                    onSingleTap={onPlanPoint}
+                    onSingleTap={onPlanTap}
+                    onPinDrag={onPlanDrag}
+                    dragImmediate={planMode !== "marker"}
                   >
                     <View style={{ width: modalImgW, height: H }}>
                       <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
-                      {/* Overlay: crop rect + wall lines + pending start dot. */}
+                      {/* Overlay: crop rect (+ corner handles) and wall lines (+ endpoint handles). */}
                       <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={modalImgW} height={H}>
                         {tempCrop && (
-                          <SvgRect x={tempCrop.x * modalImgW} y={tempCrop.y * H} width={tempCrop.w * modalImgW} height={tempCrop.h * H} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
+                          <SvgG>
+                            <SvgRect x={tempCrop.x * modalImgW} y={tempCrop.y * H} width={tempCrop.w * modalImgW} height={tempCrop.h * H} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
+                            {planMode === "crop" && ([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
+                              <SvgCircle key={i} cx={cx * modalImgW} cy={cy * H} r={8} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
+                            ))}
+                          </SvgG>
                         )}
                         {WALL_KEYS.map((k) => {
                           const wline = tempWalls[k]; if (!wline) return null;
                           const active = planMode === k;
+                          const col = active ? "#DC2626" : WALL_COLOR;
                           const mx = ((wline.x1 + wline.x2) / 2) * modalImgW, my = ((wline.y1 + wline.y2) / 2) * H;
                           return (
                             <SvgG key={k}>
-                              <SvgLine x1={wline.x1 * modalImgW} y1={wline.y1 * H} x2={wline.x2 * modalImgW} y2={wline.y2 * H} stroke={active ? "#DC2626" : WALL_COLOR} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
-                              <SvgText x={mx} y={my - 5} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
+                              <SvgLine x1={wline.x1 * modalImgW} y1={wline.y1 * H} x2={wline.x2 * modalImgW} y2={wline.y2 * H} stroke={col} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
+                              {active && (
+                                <SvgG>
+                                  <SvgCircle cx={wline.x1 * modalImgW} cy={wline.y1 * H} r={8} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                  <SvgCircle cx={wline.x2 * modalImgW} cy={wline.y2 * H} r={8} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                </SvgG>
+                              )}
+                              <SvgText x={mx} y={my - 8} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
                             </SvgG>
                           );
                         })}
-                        {pendingStart && (
-                          <SvgCircle cx={pendingStart.x * modalImgW} cy={pendingStart.y * H} r={5} fill="#DC2626" stroke="#fff" strokeWidth={1.5} />
-                        )}
                       </Svg>
                       {tempPos && (
                         <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * modalImgW - 14, top: tempPos.y * H - 28 }}>
@@ -303,9 +370,9 @@ export default function RaumbuchRoomScreen() {
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
               {planMode === "marker"
                 ? t("raumbuch_tap_to_mark" as any)
-                : pendingStart
-                ? t("raumbuch_tap_end" as any)
-                : t("raumbuch_tap_start" as any)}
+                : planMode === "crop"
+                ? t("raumbuch_crop_hint" as any)
+                : t("raumbuch_wall_hint" as any)}
               {" · "}{t("fullscreen_photo_viewer_zoom_hint" as any)}
             </Text>
             {(tempCrop || Object.keys(tempWalls).length > 0) && (
@@ -314,7 +381,7 @@ export default function RaumbuchRoomScreen() {
                   <Pressable onPress={() => setTempCrop(null)} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>{t("raumbuch_crop_reset" as any)}</Text></Pressable>
                 )}
                 {Object.keys(tempWalls).length > 0 && (
-                  <Pressable onPress={() => { setTempWalls({}); setPendingStart(null); }} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>{t("raumbuch_walls_clear" as any)}</Text></Pressable>
+                  <Pressable onPress={() => { setTempWalls({}); dragRef.current = null; }} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>{t("raumbuch_walls_clear" as any)}</Text></Pressable>
                 )}
               </View>
             )}
