@@ -70,21 +70,14 @@ export default function RundgangTab() {
   const [lastBegehung, setLastBegehung] = useState<string | null>(null);
   const [protocolList, setProtocolList] = useState<{ id: string; title?: string; templateName?: string; createdAt: string }[]>([]);
 
-  // Start a Begehung: make sure this project is active, then open the camera tab.
+  // Start a Begehung: make sure this project is active, then go straight to the
+  // recording screen. (The old "Was willst du tun?" chooser was removed — it was
+  // an extra, mispositioned step that led to the same /record screen anyway.)
   const startBegehung = async () => {
     if (!selectedProjectId) { setShowProjectDropdown(true); return; }
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Ask: whole walk or room-by-room.
-    setShowWhatDo(true);
-  };
-  // "Was willst du tun?" after picking a project (project-scoped start step).
-  const [showWhatDo, setShowWhatDo] = useState(false);
-  const whatDoRecord = async (roomwise: boolean) => {
-    setShowWhatDo(false);
-    if (!selectedProjectId) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try { await AsyncStorage.setItem("last-selected-project-id", selectedProjectId); } catch {}
-    router.push(`/record${roomwise ? "?rooms=1" : ""}` as any);
+    router.push("/record" as any);
   };
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -1262,23 +1255,6 @@ export default function RundgangTab() {
         </View>
       </Modal>
 
-      {/* "Was willst du tun?" — project-scoped start step */}
-      <Modal visible={showWhatDo} transparent animationType="fade" onRequestClose={() => setShowWhatDo(false)}>
-        <Pressable style={styles.dropdownOverlay} onPress={() => setShowWhatDo(false)}>
-          <Pressable style={styles.whatDoCard} onPress={() => {}}>
-            <Text style={styles.whatDoTitle}>{t('whatdo_title' as any)}</Text>
-            <Pressable onPress={() => whatDoRecord(false)} style={({ pressed }) => [styles.whatDoBtnPrimary, { opacity: pressed ? 0.85 : 1 }]}>
-              <MaterialIcons name="videocam" size={22} color="#FFFFFF" />
-              <Text style={styles.whatDoBtnPrimaryText}>{t('whatdo_record_full' as any)}</Text>
-            </Pressable>
-            <Pressable onPress={() => whatDoRecord(true)} style={({ pressed }) => [styles.whatDoBtn, { opacity: pressed ? 0.85 : 1 }]}>
-              <MaterialIcons name="meeting-room" size={22} color="#5DADE2" />
-              <Text style={styles.whatDoBtnText}>{t('whatdo_record_rooms' as any)}</Text>
-              <MaterialIcons name="chevron-right" size={20} color="#8FA3B8" />
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </ScreenContainer>
   );
 }
