@@ -147,14 +147,62 @@ function createCandidateFromText(rawText: string, confidence: number): ProtocolD
   };
 }
 
+// Field-style lines used in the per-room chapter format:
+//   "Mangel / offener Punkt: …", "Verantwortlich: …", "Maßnahme / Frist: …"
+const DEFECT_FIELD_RE = /^(?:mangel(?:\s*\/\s*offener\s*punkt)?|offener\s*punkt|beanstandung|schaden|befund|feststellung)\s*:\s*(.+)$/i;
+const RESP_FIELD_RE = /^(?:verantwortlich|zust[äa]ndig|gewerk|firma)\s*:\s*(.+)$/i;
+const DUE_FIELD_RE = /^(?:ma[ßs]nahme(?:\s*\/\s*frist)?|frist|termin|deadline)\s*:\s*(.+)$/i;
+
 export function extractProtocolDefectCandidates(protocolText: string, transcription = ""): ProtocolDefectCandidate[] {
   const blocks = parseReportMarkdown(decodeUnicodeEscapes(protocolText || ""));
   const candidates: ProtocolDefectCandidate[] = [];
   let insideDefectSection = false;
+  // The current room/chapter heading (e.g. "2. OG · Schlafzimmer"), used as the
+  // location for defects listed under it when they carry no own Ort column.
+  let currentLocation: string | undefined;
+  // Last defect from a field-style group, so a following Verantwortlich/Frist line
+  // enriches it.
+  let lastFieldCandidate: ProtocolDefectCandidate | null = null;
+
+  // Parse a field-style line; returns true if it was a defect field line.
+  const handleFieldLine = (raw: string): boolean => {
+    const item = cleanText(raw);
+    let m: RegExpMatchArray | null;
+    if ((m = item.match(DEFECT_FIELD_RE))) {
+      const desc = cleanText(m[1]);
+      if (desc && !NO_DEFECT_PATTERN.test(desc)) {
+        lastFieldCandidate = {
+          title: desc.length > 110 ? `${desc.slice(0, 107).trim()}…` : desc,
+          description: desc,
+          location: currentLocation,
+          priority: parsePriority(desc),
+          confidence: 0.85,
+        };
+        candidates.push(lastFieldCandidate);
+      }
+      return true;
+    }
+    if ((m = item.match(RESP_FIELD_RE)) && lastFieldCandidate) {
+      lastFieldCandidate.trade = cleanText(m[1]) || lastFieldCandidate.trade;
+      return true;
+    }
+    if ((m = item.match(DUE_FIELD_RE)) && lastFieldCandidate) {
+      lastFieldCandidate.dueDate = parseDueDate(m[1]) || lastFieldCandidate.dueDate;
+      const pr = parsePriority(m[1]);
+      if (pr !== "mittel") lastFieldCandidate.priority = pr;
+      return true;
+    }
+    return false;
+  };
 
   for (const block of blocks) {
     if (block.type === "heading") {
       insideDefectSection = DEFECT_SECTION_PATTERN.test(block.text);
+      // Keep the FULL heading (don't strip a leading "2." — it's part of "2. OG").
+      const h = decodeUnicodeEscapes(String(block.text || "")).replace(/\*\*(.*?)\*\*/g, "$1").replace(/`(.*?)`/g, "$1").replace(/\s+/g, " ").trim();
+      // Room chapters are formatted "Geschoss · Raum" → remember as location.
+      if (h.includes("·") || h.includes("•")) currentLocation = h;
+      lastFieldCandidate = null;
       continue;
     }
 
@@ -172,7 +220,7 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
         candidates.push({
           title: description.length > 110 ? `${description.slice(0, 107).trim()}…` : description,
           description,
-          location: locationIndex >= 0 ? cleanText(row[locationIndex]) || undefined : undefined,
+          location: (locationIndex >= 0 ? cleanText(row[locationIndex]) : "") || currentLocation,
           trade: tradeIndex >= 0 ? cleanText(row[tradeIndex]) || undefined : undefined,
           priority: parsePriority(priorityIndex >= 0 ? row[priorityIndex] : description),
           dueDate: dueDateIndex >= 0 ? parseDueDate(row[dueDateIndex]) : undefined,
@@ -183,24 +231,31 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
     }
 
     if (block.type === "list") {
+      // Field-style defect bullets work anywhere (also under a room chapter).
+      let hadField = false;
+      for (const item of block.items) if (handleFieldLine(item)) hadField = true;
+      if (hadField) continue;
       const sectionIndex = block.items.findIndex((item) => DEFECT_SECTION_PATTERN.test(item));
       if (sectionIndex >= 0) insideDefectSection = true;
       if (!insideDefectSection) continue;
       const items = sectionIndex >= 0 ? block.items.slice(sectionIndex + 1) : block.items;
       for (const item of items) {
         const candidate = createCandidateFromText(item, 0.88);
-        if (candidate) candidates.push(candidate);
+        if (candidate) { candidate.location = candidate.location || currentLocation; candidates.push(candidate); }
       }
       continue;
     }
 
-    if (insideDefectSection && block.type === "paragraph") {
-      if (DEFECT_SECTION_PATTERN.test(block.text) && block.text.length < 80) {
-        insideDefectSection = true;
-        continue;
+    if (block.type === "paragraph") {
+      if (handleFieldLine(block.text)) continue;
+      if (insideDefectSection) {
+        if (DEFECT_SECTION_PATTERN.test(block.text) && block.text.length < 80) {
+          insideDefectSection = true;
+          continue;
+        }
+        const candidate = createCandidateFromText(block.text, 0.86);
+        if (candidate) { candidate.location = candidate.location || currentLocation; candidates.push(candidate); }
       }
-      const candidate = createCandidateFromText(block.text, 0.86);
-      if (candidate) candidates.push(candidate);
     }
   }
 
