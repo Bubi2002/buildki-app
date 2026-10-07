@@ -98,8 +98,11 @@ export function PdfRasterizer({ pdfUri, label, maxSize = 1600, onDone }: Props) 
                   // too early yields a blurry/half-rendered frame.
                   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))));
                   // Larger renders need a longer beat to finish rasterizing the
-                  // PDF vector content before we snapshot it.
-                  await new Promise((resolve) => setTimeout(resolve, 700));
+                  // PDF vector content before we snapshot it — scale the wait with
+                  // the stage size so big/complex plans don't capture half-rendered
+                  // (blurry) or blank (white) frames.
+                  const settleMs = Math.min(3000, 900 + Math.max(dims.w, dims.h) * PixelRatio.get() * 0.35);
+                  await new Promise((resolve) => setTimeout(resolve, settleMs));
                   // The stage is far larger than the screen, so the default
                   // drawViewHierarchyInRect path (which "doesn't work for large
                   // views" per RNViewShot.mm and yields a blank/blurry frame)

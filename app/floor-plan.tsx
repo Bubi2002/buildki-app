@@ -1816,7 +1816,7 @@ export default function FloorPlanScreen() {
       <PdfRasterizer
         pdfUri={pdfToConvert}
         label={t('floor_plan_pdf_converting' as any)}
-        maxSize={6400}
+        maxSize={3072}
         onDone={handlePdfConverted}
       />
 
