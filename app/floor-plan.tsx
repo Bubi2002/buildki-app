@@ -42,6 +42,9 @@ import {
 } from "@/lib/floor-plan-store";
 import { importPlanFromCloud } from "@/lib/cloud-import-service";
 import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
+import { GEWERKE } from "@/lib/defect-pdf-export";
+import { AssigneeInput } from "@/components/assignee-input";
+import { DateOnlyPicker } from "@/components/date-only-picker";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { defectStatusColor } from "@/lib/status-colors";
 import { exportFloorPlansPdf } from "@/lib/floor-plan-export";
@@ -100,6 +103,16 @@ export default function FloorPlanScreen() {
   const [newPinProtocol, setNewPinProtocol] = useState<FloorPlanProtocolReference | null>(null);
   const [pinProtoOptions, setPinProtoOptions] = useState<FloorPlanProtocolReference[]>([]);
   const [pinProtoListOpen, setPinProtoListOpen] = useState(false);
+  // Mangel marker: either fill in a new defect (Gewerk/Prioritaet/Zustaendig/Frist)
+  // or link an existing one from the Maengelliste.
+  const [mangelMode, setMangelMode] = useState<"new" | "existing">("new");
+  const [newDefectGewerk, setNewDefectGewerk] = useState("");
+  const [newDefectPriority, setNewDefectPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [newDefectAssignee, setNewDefectAssignee] = useState("");
+  const [newDefectDue, setNewDefectDue] = useState("");
+  const [existingDefects, setExistingDefects] = useState<Defect[]>([]);
+  const [existingDefectListOpen, setExistingDefectListOpen] = useState(false);
+  const [selectedExistingDefect, setSelectedExistingDefect] = useState<Defect | null>(null);
   const [newPlanName, setNewPlanName] = useState("");
   const [pendingPlanAsset, setPendingPlanAsset] = useState<any>(null);
   const [imageSize, setImageSize] = useState({ width: 1, height: 1 });
@@ -431,6 +444,13 @@ export default function FloorPlanScreen() {
     setNewPinProtocol(null);
     setPinProtoListOpen(false);
     setPinProtoOptions([]);
+    setMangelMode("new");
+    setNewDefectGewerk("");
+    setNewDefectPriority("mittel");
+    setNewDefectAssignee("");
+    setNewDefectDue("");
+    setExistingDefectListOpen(false);
+    setSelectedExistingDefect(null);
     setShowPinModal(true);
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -573,8 +593,21 @@ export default function FloorPlanScreen() {
     } catch {}
   };
 
+  // Load existing Mängel of this project to link one to a Mangel marker.
+  const loadExistingDefects = async () => {
+    setExistingDefectListOpen(true);
+    try { setExistingDefects(await getDefects(projectId || undefined)); } catch {}
+  };
+  const selectExistingDefect = (d: Defect) => {
+    setSelectedExistingDefect(d);
+    setExistingDefectListOpen(false);
+    if (!pinLabel.trim()) setPinLabel(decodeUnicodeEscapes(d.title || ""));
+  };
+
   const savePin = async () => {
-    if (!pendingPin || !selectedPlan || !pinLabel.trim()) {
+    const linkingExisting = pinType === "defect" && mangelMode === "existing" && !!selectedExistingDefect;
+    const effectiveLabel = linkingExisting ? (pinLabel.trim() || decodeUnicodeEscapes(selectedExistingDefect!.title || "")) : pinLabel.trim();
+    if (!pendingPin || !selectedPlan || !effectiveLabel) {
       Alert.alert(t('hinweis'), t('msg_bitte_gib_eine_bezeichnung_ein'));
       return;
     }
@@ -586,36 +619,46 @@ export default function FloorPlanScreen() {
       x: pendingPin.x,
       y: pendingPin.y,
       type: pinType,
-      label: pinLabel.trim(),
+      label: effectiveLabel,
       description: pinDescription.trim() || undefined,
       color: PIN_COLORS[pinType],
       createdAt: new Date().toISOString(),
     };
 
-    // A "Mangel" marker also creates a real defect in the Mängel list (PlanRadar
-    // style), linked to this plan + pin so both sides stay in sync.
+    // A "Mangel" marker is tied to a real defect in the Mängelliste (PlanRadar
+    // style): either link an existing one, or create a new one with its details.
     if (pinType === "defect") {
-      const defectId = `defect-${Date.now()}`;
-      (newPin as any).defectId = defectId;
       const nowIso = new Date().toISOString();
-      try {
-        await saveDefect({
-          id: defectId,
-          projectId,
-          planId: selectedPlan.id,
-          pinId: newPin.id,
-          title: pinLabel.trim(),
-          description: pinDescription.trim() || "",
-          status: "offen",
-          priority: "mittel",
-          category: "Sonstiges",
-          photos: [],
-          location: decodeUnicodeEscapes(selectedPlan.name),
-          createdAt: nowIso,
-          updatedAt: nowIso,
-        } as Defect);
-      } catch (e) {
-        console.warn("Could not create defect for plan pin:", e);
+      if (linkingExisting && selectedExistingDefect) {
+        (newPin as any).defectId = selectedExistingDefect.id;
+        try {
+          await saveDefect({ ...selectedExistingDefect, planId: selectedPlan.id, pinId: newPin.id, updatedAt: nowIso });
+        } catch (e) { console.warn("Could not link existing defect:", e); }
+      } else {
+        const defectId = `defect-${Date.now()}`;
+        (newPin as any).defectId = defectId;
+        try {
+          await saveDefect({
+            id: defectId,
+            projectId,
+            planId: selectedPlan.id,
+            pinId: newPin.id,
+            title: effectiveLabel,
+            description: pinDescription.trim() || "",
+            status: "offen",
+            priority: newDefectPriority,
+            category: "sonstiges",
+            gewerk: newDefectGewerk.trim() || undefined,
+            assignee: newDefectAssignee.trim() || undefined,
+            dueDate: newDefectDue.trim() || undefined,
+            photos: [],
+            location: decodeUnicodeEscapes(selectedPlan.name),
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          } as Defect);
+        } catch (e) {
+          console.warn("Could not create defect for plan pin:", e);
+        }
       }
     }
 
@@ -1342,6 +1385,84 @@ export default function FloorPlanScreen() {
               </View>
             )}
 
+            {/* Mangel-Typ: neuer Mangel mit Details ODER bestehenden auswählen */}
+            {pinType === "defect" && (
+              <View style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+                  {([["new", t('floor_plan_mangel_new' as any)], ["existing", t('floor_plan_mangel_existing' as any)]] as const).map(([m, lbl]) => {
+                    const on = mangelMode === m;
+                    return (
+                      <Pressable key={m} onPress={() => { setMangelMode(m); if (m === "existing") void loadExistingDefects(); }} style={{ flex: 1, paddingVertical: 9, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: on ? "#F44336" : colors.border, backgroundColor: on ? "#F4433618" : colors.surface }}>
+                        <Text style={{ fontSize: 12, fontWeight: on ? "800" : "600", color: on ? "#F44336" : colors.muted }}>{lbl}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {mangelMode === "new" ? (
+                  <>
+                    <Text style={styles.pinFieldLabel}>{t('gewerk')}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }} keyboardShouldPersistTaps="handled">
+                      {GEWERKE.map((g) => {
+                        const on = newDefectGewerk === g;
+                        return (
+                          <Pressable key={g} onPress={() => setNewDefectGewerk(on ? "" : g)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : colors.surface }}>
+                            <Text style={{ fontSize: 13, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.muted }}>{g}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+
+                    <Text style={styles.pinFieldLabel}>{t('prioritaet')}</Text>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {(["hoch", "mittel", "niedrig"] as const).map((p) => {
+                        const on = newDefectPriority === p;
+                        const c = p === "hoch" ? "#DC2626" : p === "mittel" ? "#F59E0B" : "#16A34A";
+                        return (
+                          <Pressable key={p} onPress={() => setNewDefectPriority(p)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: on ? c : colors.border, backgroundColor: on ? c + "18" : colors.surface }}>
+                            <Text style={{ fontSize: 13, fontWeight: on ? "800" : "600", color: on ? c : colors.muted }}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+
+                    <Text style={styles.pinFieldLabel}>{t('zustaendig')}</Text>
+                    <AssigneeInput value={newDefectAssignee} onChange={setNewDefectAssignee} placeholder={t('zustaendig')} style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]} />
+
+                    <View style={{ marginTop: 10 }}>
+                      <DateOnlyPicker value={newDefectDue} onChange={setNewDefectDue} label={t('frist')} withTime />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    {selectedExistingDefect ? (
+                      <Pressable onPress={() => { setSelectedExistingDefect(null); void loadExistingDefects(); }} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#F44336", backgroundColor: "#F4433612", opacity: pressed ? 0.8 : 1 }]}>
+                        <MaterialIcons name="warning" size={18} color="#F44336" />
+                        <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 14, flex: 1 }} numberOfLines={1}>{decodeUnicodeEscapes(selectedExistingDefect.title || "")}</Text>
+                        <Text style={{ color: "#F44336", fontSize: 12, fontWeight: "700" }}>{t('aendern' as any)}</Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, maxHeight: 200, overflow: "hidden" }}>
+                        <ScrollView keyboardShouldPersistTaps="handled">
+                          {existingDefects.length === 0 ? (
+                            <Text style={{ padding: 12, fontSize: 13, color: colors.muted }}>{t('keine_maengel' as any)}</Text>
+                          ) : existingDefects.map((d) => (
+                            <Pressable key={d.id} onPress={() => selectExistingDefect(d)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                              <MaterialIcons name="warning" size={16} color="#F44336" />
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: "600" }} numberOfLines={1}>{decodeUnicodeEscapes(d.title || "")}</Text>
+                                {(d.gewerk || d.location) ? <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>{[d.gewerk, d.location].filter(Boolean).join(" · ")}</Text> : null}
+                              </View>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+
             <View style={styles.modalButtons}>
               <Pressable
                 onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}
@@ -2022,6 +2143,7 @@ const styles = StyleSheet.create({
   },
   typeBtnText: { fontSize: 11, fontWeight: "700" },
   input: { borderWidth: 1, borderRadius: 0, padding: 14, fontSize: 15, marginBottom: 12 },
+  pinFieldLabel: { fontSize: 11, fontWeight: "700", color: "#8FA3B8", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
   textArea: { minHeight: 80, textAlignVertical: "top" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
   cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 0, borderWidth: 1, alignItems: "center", justifyContent: "center" },
