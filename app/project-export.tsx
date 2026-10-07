@@ -22,6 +22,8 @@ import { getDirectProjectPhotos } from "@/lib/project-photo-store";
 import { getEvidence } from "@/lib/evidence-store";
 import { generateAndSharePdf, type PdfSection, type PdfImage, type PdfCard } from "@/lib/pdf-professional";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Platform } from "react-native";
 
 type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "plans" | "compare" | "measure" | "photos";
 
@@ -32,12 +34,19 @@ const STATUS_COLOR: Record<string, string> = {
   pruefung: "#7C3AED", erledigt: "#5E8B6F", abgelehnt: "#78716C", geschlossen: "#475569",
 };
 
-/** Read a local image file as a base64 data URI (or null if it can't be read). */
+/** Read a local image as a base64 data URI, converting to a web-safe JPEG first
+ *  (iOS HEIC photos won't render in a PDF; also keeps the file small). */
 async function toDataUri(uri: string): Promise<string | null> {
   try {
-    const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    const mime = uri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
-    return `data:${mime};base64,${b64}`;
+    let src = uri;
+    if (Platform.OS !== "web") {
+      try {
+        const m = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1400 } }], { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG });
+        if (m?.uri) src = m.uri;
+      } catch {}
+    }
+    const b64 = await FileSystem.readAsStringAsync(src, { encoding: FileSystem.EncodingType.Base64 });
+    return `data:image/jpeg;base64,${b64}`;
   } catch {
     return null;
   }

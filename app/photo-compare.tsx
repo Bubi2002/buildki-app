@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { Swipeable, Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -227,7 +228,12 @@ export default function PhotoCompareScreen() {
       } catch {}
       const toData = async (uri?: string | null): Promise<string | null> => {
         if (!uri) return null;
-        try { const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 }); const m = uri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg"; return `data:${m};base64,${b64}`; } catch { return null; }
+        try {
+          let src = uri;
+          try { const m = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1400 } }], { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG }); if (m?.uri) src = m.uri; } catch {}
+          const b64 = await FileSystem.readAsStringAsync(src, { encoding: FileSystem.EncodingType.Base64 });
+          return `data:image/jpeg;base64,${b64}`;
+        } catch { return null; }
       };
       const cards: PdfCard[] = [];
       for (const p of pairs) {

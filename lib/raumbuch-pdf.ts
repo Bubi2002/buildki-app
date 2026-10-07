@@ -1,4 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { getFloorPlans } from "./floor-plan-store";
@@ -8,12 +10,25 @@ import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, type RaumbuchEntry, ty
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
 const PLAN_W = 240; // px width of the plan excerpt box in the PDF
 
-async function toDataUri(uri?: string | null): Promise<string | null> {
+// Read an image as a base64 data URI. Converts through ImageManipulator to a
+// web-safe JPEG first — iOS photos are often HEIC (which a PDF can't render) and
+// can be huge; this makes them display reliably and keeps the PDF small.
+async function toDataUri(uri?: string | null, maxWidth = 1400): Promise<string | null> {
   if (!uri) return null;
   try {
-    const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    const ext = uri.toLowerCase().includes(".png") ? "png" : "jpeg";
-    return `data:image/${ext};base64,${b64}`;
+    let src = uri;
+    if (Platform.OS !== "web") {
+      try {
+        const m = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: maxWidth } }],
+          { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        if (m?.uri) src = m.uri;
+      } catch {}
+    }
+    const b64 = await FileSystem.readAsStringAsync(src, { encoding: FileSystem.EncodingType.Base64 });
+    return `data:image/jpeg;base64,${b64}`;
   } catch {
     return null;
   }
@@ -50,7 +65,7 @@ export async function generateRaumbuchPdf(
     if (!e.planId) return null;
     if (!(e.planId in planCache)) {
       const p = plans.find((x: any) => x.id === e.planId);
-      planCache[e.planId] = { uri: await toDataUri(p?.imageUri), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
+      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 2000), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
     }
     return planCache[e.planId];
   };
