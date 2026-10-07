@@ -1134,13 +1134,18 @@ export default function RundgangTab() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Checklist detail popup (read-only) */}
+      {/* Checklist detail popup */}
       <Modal visible={!!selectedChecklist} transparent animationType="slide" onRequestClose={() => setSelectedChecklist(null)}>
-        <View style={styles.taskOverlay}>
-          <View style={styles.taskSheet}>
+        <Pressable style={styles.taskOverlay} onPress={() => setSelectedChecklist(null)}>
+          <Pressable style={styles.taskSheet} onPress={() => {}}>
             {selectedChecklist && (
               <>
-                <Text style={styles.taskSheetTitle} numberOfLines={2}>{selectedChecklist.checklistName}</Text>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                  <Text style={[styles.taskSheetTitle, { flex: 1 }]} numberOfLines={2}>{selectedChecklist.checklistName}</Text>
+                  <Pressable onPress={() => setSelectedChecklist(null)} hitSlop={10} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 2 }]}>
+                    <MaterialIcons name="close" size={24} color="#8FA3B8" />
+                  </Pressable>
+                </View>
                 <Text style={styles.taskSheetSub}>
                   {getChecklistCompletionRate(selectedChecklist)}%
                   {selectedChecklist.location ? `  ·  ${selectedChecklist.location}` : ""}
@@ -1175,8 +1180,8 @@ export default function RundgangTab() {
                 <Pressable onPress={() => setSelectedChecklist(null)} style={[styles.taskSave, { marginTop: 14 }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('close' as any)}</Text></Pressable>
               </>
             )}
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Rename a room */}
