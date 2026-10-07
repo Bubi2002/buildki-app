@@ -1962,22 +1962,23 @@ export default function ProtocolDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Editable protocol title: the auto-generated one is often a raw speech
-            snippet, so let the user type a clean title right at the top. */}
-        {protocol.status !== "processing" && (
-          <View style={{ marginBottom: 12 }}>
-            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('titel' as any)}</Text>
-            <TextInput
-              value={titleDraft}
-              onChangeText={setTitleDraft}
-              onBlur={() => void saveProtocolTitle()}
-              onSubmitEditing={() => void saveProtocolTitle()}
-              returnKeyType="done"
-              placeholder={t('titel' as any)}
-              placeholderTextColor={colors.muted}
-              style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface }}
-            />
-          </View>
-        )}
+            snippet, so let the user type a clean title right at the top. Always
+            available — even while a protocol is still flagged "processing", so a
+            stuck/finished draft can still be renamed instead of showing the raw
+            status text forever. */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('titel' as any)}</Text>
+          <TextInput
+            value={titleDraft}
+            onChangeText={setTitleDraft}
+            onBlur={() => void saveProtocolTitle()}
+            onSubmitEditing={() => void saveProtocolTitle()}
+            returnKeyType="done"
+            placeholder={t('titel' as any)}
+            placeholderTextColor={colors.muted}
+            style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface }}
+          />
+        </View>
 
         {/* Tags */}
         {showTagEditor && (
