@@ -588,11 +588,26 @@ export default function ChecklistsScreen() {
                           return (
                             <Pressable
                               key={room.id}
-                              onPress={() => {
-                                const next = { ...activeResult, location: active ? undefined : label };
+                              onPress={async () => {
+                                // Tapping the selected room again → deselect it.
+                                if (active) {
+                                  const next = { ...activeResult, location: undefined };
+                                  setActiveResult(next); void saveChecklistResult(next);
+                                  return;
+                                }
+                                // Switching to a DIFFERENT room = a fresh inspection:
+                                // keep the previous room's result (save it under its own
+                                // id), then start this room with all Prüfpunkte unchecked.
+                                const switching = !!activeResult.location;
+                                if (switching) { try { await saveChecklistResult(activeResult); } catch {} }
+                                const freshResults = activeResult.results.map((r) => ({ itemId: r.itemId, checked: false }));
+                                const next = {
+                                  ...activeResult,
+                                  ...(switching ? { id: `result-${Date.now()}`, createdAt: new Date().toISOString(), completedAt: undefined } : {}),
+                                  location: label,
+                                  results: freshResults,
+                                };
                                 setActiveResult(next);
-                                // Persist immediately so the chosen Ort is always in
-                                // the saved result (and shows up in the PDF export).
                                 void saveChecklistResult(next);
                               }}
                               style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}
