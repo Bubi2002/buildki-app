@@ -10,17 +10,35 @@ import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, type RaumbuchEntry, ty
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
 const PLAN_W = 240; // px width of the plan excerpt box in the PDF
 
+// iOS can change the app's Documents container path between installs/updates, so a
+// file:// path saved by an earlier build may no longer resolve. Re-home such a
+// stale path onto the CURRENT container so old photos/plans are still found.
+async function resolveLocalUri(uri: string): Promise<string> {
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists) return uri;
+  } catch {}
+  const marker = "/Documents/";
+  const idx = uri.indexOf(marker);
+  if (idx >= 0 && FileSystem.documentDirectory) {
+    const rehomed = FileSystem.documentDirectory.replace(/\/$/, "/") + uri.slice(idx + marker.length);
+    try { const i2 = await FileSystem.getInfoAsync(rehomed); if (i2.exists) return rehomed; } catch {}
+  }
+  return uri;
+}
+
 // Read an image as a base64 data URI. Converts through ImageManipulator to a
 // web-safe JPEG first — iOS photos are often HEIC (which a PDF can't render) and
 // can be huge; this makes them display reliably and keeps the PDF small.
 async function toDataUri(uri?: string | null, maxWidth = 1400): Promise<string | null> {
   if (!uri) return null;
   try {
-    let src = uri;
+    const resolved = await resolveLocalUri(uri);
+    let src = resolved;
     if (Platform.OS !== "web") {
       try {
         const m = await ImageManipulator.manipulateAsync(
-          uri,
+          resolved,
           [{ resize: { width: maxWidth } }],
           { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG },
         );
@@ -138,7 +156,7 @@ export async function generateRaumbuchPdf(
   }
 
   if (pages.length === 0) {
-    pages.push(`<section class="page"><div class="empty">${esc(t("raumbuch_empty" as any) || "Keine Fotos erfasst.")}</div></section>`);
+    pages.push(`<section class="page"><div class="empty">Keine Fotos erfasst.</div></section>`);
   }
 
   const bandMeta = [esc(projectName), projectAddress ? esc(projectAddress) : "", now].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");

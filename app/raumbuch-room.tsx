@@ -50,8 +50,9 @@ export default function RaumbuchRoomScreen() {
   const [planMode, setPlanMode] = useState<PlanMode>("marker");
   const [tempWalls, setTempWalls] = useState<Partial<Record<RaumbuchWallKey, RaumbuchWall>>>({});
   const [tempCrop, setTempCrop] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  // Which element is being dragged (new line/box, a wall endpoint, or a crop corner).
-  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; start?: { x: number; y: number } } | null>(null);
+  // Which element is being dragged (new line/box, a wall endpoint, a crop corner,
+  // or a single crop edge).
+  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number } } | null>(null);
 
   const blankEntry = (): RaumbuchEntry => ({
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
@@ -142,11 +143,17 @@ export default function RaumbuchRoomScreen() {
       if (phase === "start") {
         const c = tempCrop;
         if (c) {
+          // Corners (resize two edges) first, then edge midpoints (move one edge).
           const corners: Record<string, { x: number; y: number }> = {
             tl: { x: c.x, y: c.y }, tr: { x: c.x + c.w, y: c.y }, bl: { x: c.x, y: c.y + c.h }, br: { x: c.x + c.w, y: c.y + c.h },
           };
-          const hit = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k]));
-          if (hit) { dragRef.current = { kind: "crop-corner", corner: hit }; return; }
+          const hitC = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k]));
+          if (hitC) { dragRef.current = { kind: "crop-corner", corner: hitC }; return; }
+          const edges: Record<string, { x: number; y: number }> = {
+            top: { x: c.x + c.w / 2, y: c.y }, bottom: { x: c.x + c.w / 2, y: c.y + c.h }, left: { x: c.x, y: c.y + c.h / 2 }, right: { x: c.x + c.w, y: c.y + c.h / 2 },
+          };
+          const hitE = (["top", "right", "bottom", "left"] as const).find((k) => near(pt, edges[k]));
+          if (hitE) { dragRef.current = { kind: "crop-edge", edge: hitE }; return; }
         }
         dragRef.current = { kind: "crop-new", start: pt };
         setTempCrop({ x: pt.x, y: pt.y, w: 0, h: 0 });
@@ -160,6 +167,13 @@ export default function RaumbuchRoomScreen() {
             if (!c) return c;
             let x1 = c.x, y1 = c.y, x2 = c.x + c.w, y2 = c.y + c.h;
             if (d.corner === "tl") { x1 = pt.x; y1 = pt.y; } else if (d.corner === "tr") { x2 = pt.x; y1 = pt.y; } else if (d.corner === "bl") { x1 = pt.x; y2 = pt.y; } else { x2 = pt.x; y2 = pt.y; }
+            return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+          });
+        } else if (d.kind === "crop-edge") {
+          setTempCrop((c) => {
+            if (!c) return c;
+            let x1 = c.x, y1 = c.y, x2 = c.x + c.w, y2 = c.y + c.h;
+            if (d.edge === "top") y1 = pt.y; else if (d.edge === "bottom") y2 = pt.y; else if (d.edge === "left") x1 = pt.x; else x2 = pt.x;
             return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
           });
         }
@@ -335,9 +349,18 @@ export default function RaumbuchRoomScreen() {
                             {tempCrop && (
                               <SvgG>
                                 <SvgRect x={tempCrop.x * pw} y={tempCrop.y * ph} width={tempCrop.w * pw} height={tempCrop.h * ph} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
-                                {planMode === "crop" && ([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
-                                  <SvgCircle key={i} cx={cx * pw} cy={cy * ph} r={7} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
-                                ))}
+                                {planMode === "crop" && (
+                                  <SvgG>
+                                    {/* Corner handles (resize two sides). */}
+                                    {([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
+                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={8} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
+                                    ))}
+                                    {/* Edge handles (move one side). */}
+                                    {([[tempCrop.x + tempCrop.w / 2, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h / 2], [tempCrop.x + tempCrop.w / 2, tempCrop.y + tempCrop.h], [tempCrop.x, tempCrop.y + tempCrop.h / 2]] as const).map(([cx, cy], i) => (
+                                      <SvgRect key={`e${i}`} x={cx * pw - 7} y={cy * ph - 7} width={14} height={14} rx={3} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2} />
+                                    ))}
+                                  </SvgG>
+                                )}
                               </SvgG>
                             )}
                             {WALL_KEYS.map((k) => {
@@ -360,9 +383,13 @@ export default function RaumbuchRoomScreen() {
                             })}
                           </Svg>
                           {tempPos && (
-                            <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * pw - 14, top: tempPos.y * ph - 28 }}>
-                              <MaterialIcons name="place" size={30} color="#DC2626" />
-                            </View>
+                            <>
+                              {/* Pin tip sits exactly on the point; the small dot marks it precisely. */}
+                              <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * pw - 15, top: tempPos.y * ph - 30 }}>
+                                <MaterialIcons name="place" size={30} color="#DC2626" />
+                              </View>
+                              <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * pw - 3, top: tempPos.y * ph - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: "#FFFFFF", borderWidth: 1.5, borderColor: "#DC2626" }} />
+                            </>
                           )}
                         </View>
                       </ZoomableCanvas>
