@@ -2785,7 +2785,7 @@ export default function RecordScreen() {
                 onPress={startChapterMarker}
                 style={({ pressed }) => [
                   styles.actionButtonLarge,
-                  { backgroundColor: "#FF9800", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                  { backgroundColor: "#5DADE2", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
                 <MaterialIcons name="meeting-room" size={32} color="#FFFFFF" />
@@ -2802,7 +2802,7 @@ export default function RecordScreen() {
                 onPress={startChapterMarker}
                 style={({ pressed }) => [
                   styles.actionButtonLarge,
-                  { backgroundColor: "#FF9800", transform: [{ scale: pressed ? 0.9 : 1 }] },
+                  { backgroundColor: "#5DADE2", transform: [{ scale: pressed ? 0.9 : 1 }] },
                 ]}
               >
                 <MaterialIcons name="meeting-room" size={32} color="#FFFFFF" />
@@ -3700,6 +3700,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   actionButtonPlaceholder: {
     width: 72,
