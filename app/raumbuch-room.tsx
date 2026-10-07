@@ -313,7 +313,7 @@ export default function RaumbuchRoomScreen() {
             {modalPlan && (() => {
               const H = modalImgW / (planAspect.current || 1.4);
               return (
-              <View onLayout={onPlanLayout} style={{ width: "100%", aspectRatio: planAspect.current, borderRadius: 8, overflow: "hidden", backgroundColor: "#0f1b2b" }}>
+              <View onLayout={onPlanLayout} style={{ width: "100%", aspectRatio: planAspect.current, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFFFFF" }}>
                 {modalImgW > 0 ? (
                   <ZoomableCanvas
                     width={modalImgW}
@@ -423,7 +423,7 @@ function PlanWithMarker({ plan, entryPlanId, planName, x, y, aspect, projectId, 
   const toX = (px: number) => ((px - cx) / cw) * w;
   const toY = (py: number) => ((py - cy) / ch) * contH;
   return (
-    <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ width: "100%", aspectRatio: contAspect, backgroundColor: "#0f1b2b", overflow: "hidden" }}>
+    <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ width: "100%", aspectRatio: contAspect, backgroundColor: "#FFFFFF", overflow: "hidden" }}>
       {w > 0 && (
         <Image source={{ uri }} style={{ position: "absolute", width: imgW, height: imgH, left: -cx * imgW, top: -cy * imgH }} contentFit="fill" allowDownscaling={false} />
       )}
