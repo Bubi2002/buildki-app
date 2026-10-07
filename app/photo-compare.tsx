@@ -378,7 +378,12 @@ export default function PhotoCompareScreen() {
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+          <ScrollView
+            contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+            automaticallyAdjustKeyboardInsets
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+          >
             <View ref={compareRef} style={{ backgroundColor: colors.background }}>
               {selectedPair.afterUri ? (
                 /* Interactive before/after slider: drag the handle between old & new. */
