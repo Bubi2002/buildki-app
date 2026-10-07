@@ -14,6 +14,15 @@ const PIN_HEX: Record<PlanPin["type"], string> = {
   task: "#818CF8",
 };
 
+const TYPE_LABEL: Record<PlanPin["type"], string> = {
+  photo: "Foto",
+  defect: "Mangel",
+  note: "Notiz",
+  protocol: "Protokoll",
+  chapter: "Kapitel",
+  task: "Aufgabe",
+};
+
 async function fileToDataUri(uri: string): Promise<string | null> {
   try {
     const info = await FileSystem.getInfoAsync(uri);
@@ -35,19 +44,43 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+// Numbered teardrop markers (like the app) — no floating label on the plan; the
+// text goes into the Mängel-/Markierungsliste below the plan instead.
 function pinsHtml(pins: PlanPin[]): string {
   return pins
-    .map((p) => {
+    .map((p, i) => {
       const color = p.color || PIN_HEX[p.type] || "#F44336";
       const left = Math.min(100, Math.max(0, p.x * 100)).toFixed(2);
       const top = Math.min(100, Math.max(0, p.y * 100)).toFixed(2);
-      const label = esc(decodeUnicodeEscapes(p.label || ""));
       return `<div class="pin" style="left:${left}%;top:${top}%;">
-        <span class="dot" style="background:${color};"></span>
-        <span class="lbl" style="border-color:${color};">${label}</span>
+        <svg width="24" height="31" viewBox="0 0 24 31">
+          <path d="M12 0C5.4 0 0 5.4 0 12c0 8.4 12 19 12 19s12-10.6 12-19C24 5.4 18.6 0 12 0z" fill="${color}" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="12" cy="12" r="7.5" fill="#ffffff"/>
+          <text x="12" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="${color}">${i + 1}</text>
+        </svg>
       </div>`;
     })
     .join("");
+}
+
+// Boxed list of the markings below the plan ("drunter Mängelliste im Kasten").
+function marksHtml(pins: PlanPin[]): string {
+  if (pins.length === 0) return "";
+  const rows = pins
+    .map((p, i) => {
+      const color = p.color || PIN_HEX[p.type] || "#F44336";
+      const label = esc(decodeUnicodeEscapes(p.label || "")) || `${TYPE_LABEL[p.type]} ${i + 1}`;
+      const desc = esc(decodeUnicodeEscapes(p.description || ""));
+      return `<div class="mark">
+        <span class="mnum" style="background:${color};">${i + 1}</span>
+        <div class="mtxt">
+          <div class="mlabel">${label} <span class="mtype" style="color:${color};">${TYPE_LABEL[p.type]}</span></div>
+          ${desc ? `<div class="mdesc">${desc}</div>` : ""}
+        </div>
+      </div>`;
+    })
+    .join("");
+  return `<div class="marks"><div class="marks-h">Markierungen</div>${rows}</div>`;
 }
 
 function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boolean, company: string): string {
@@ -64,6 +97,7 @@ function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boo
       <img src="${dataUri}" />
       ${pinsHtml(pins)}
     </div>
+    ${marksHtml(pins)}
   </section>`;
 }
 
@@ -78,9 +112,18 @@ const styleFor = (accent: string) => `
   .meta { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
   .wrap { position: relative; width: 100%; border: 1px solid #e8ecf1; border-radius: 8px; overflow: hidden; }
   .wrap img { width: 100%; display: block; }
-  .pin { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-  .pin .dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.25); flex: 0 0 auto; }
-  .pin .lbl { font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.92); border: 1px solid; border-radius: 4px; padding: 1px 4px; color: #1f2937; }
+  /* Teardrop marker: its tip (bottom centre) sits exactly on the point. */
+  .pin { position: absolute; transform: translate(-50%, -100%); }
+  .pin svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+  /* Markings list below the plan — each in its own box. */
+  .marks { margin-top: 12px; }
+  .marks-h { font-size: 11px; font-weight: 800; color: #0F2744; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .mark { display: flex; align-items: flex-start; gap: 10px; border: 1px solid #e6eaf0; border-radius: 8px; padding: 9px 11px; margin-bottom: 7px; break-inside: avoid; page-break-inside: avoid; }
+  .mnum { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .mtxt { flex: 1; }
+  .mlabel { font-size: 12.5px; font-weight: 700; color: #1b2430; }
+  .mtype { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 6px; }
+  .mdesc { font-size: 11px; color: #475569; line-height: 1.45; margin-top: 2px; }
 `;
 
 /**
