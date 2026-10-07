@@ -30,7 +30,7 @@ import { Image as ExpoImage } from "expo-image";
 import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
-type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; floor?: string; title?: string; task?: string; dueDate?: string; assignee?: string };
+type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; floor?: string; title?: string; task?: string; description?: string; dueDate?: string; assignee?: string };
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
   nicht_begonnen: "rooms_status_nicht_begonnen",
@@ -95,6 +95,9 @@ export default function RundgangTab() {
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
   const [taskRoom, setTaskRoom] = useState<Room | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDesc, setNewTaskDesc] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
+  const [newTaskDue, setNewTaskDue] = useState("");
   // Defect create popup
   const [defectRoom, setDefectRoom] = useState<Room | null>(null);
   const [newDefectTitle, setNewDefectTitle] = useState("");
@@ -530,6 +533,9 @@ export default function RundgangTab() {
 
   const openTaskCreate = (room: Room) => {
     setNewTaskTitle("");
+    setNewTaskDesc("");
+    setNewTaskAssignee("");
+    setNewTaskDue("");
     setTaskRoom(room);
   };
 
@@ -543,6 +549,9 @@ export default function RundgangTab() {
       room: room.name,
       floor: roomFloorName(room) || undefined,
       title,
+      description: newTaskDesc.trim() || undefined,
+      assignee: newTaskAssignee.trim() || undefined,
+      dueDate: newTaskDue.trim() || undefined,
       status: "offen",
       done: false,
     } as ProjectTask;
@@ -554,6 +563,9 @@ export default function RundgangTab() {
       setTasks((prev) => [newTask, ...prev]);
     } catch {}
     setNewTaskTitle("");
+    setNewTaskDesc("");
+    setNewTaskAssignee("");
+    setNewTaskDue("");
     setTaskRoom(null);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -918,20 +930,36 @@ export default function RundgangTab() {
 
       {/* Add task to a room (inline, no window switch) */}
       <Modal visible={!!taskRoom} transparent animationType="slide" onRequestClose={() => setTaskRoom(null)}>
-        <View style={styles.taskOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.taskOverlay}>
           <View style={styles.taskSheet}>
             <Text style={styles.taskSheetTitle}>{t('rooms_add_task_here' as any)}</Text>
-            <Text style={styles.taskSheetSub}>{taskRoom?.name}</Text>
-            <TextInput
-              value={newTaskTitle}
-              onChangeText={setNewTaskTitle}
-              placeholder={t('titel' as any)}
-              placeholderTextColor="#5F7590"
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={createRoomTask}
-              style={styles.taskInput}
-            />
+            <Text style={styles.taskSheetSub}>{[taskRoom && roomFloorName(taskRoom), taskRoom?.name].filter(Boolean).join(" · ")}</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <TextInput
+                value={newTaskTitle}
+                onChangeText={setNewTaskTitle}
+                placeholder={t('titel' as any)}
+                placeholderTextColor="#5F7590"
+                autoFocus
+                returnKeyType="next"
+                style={styles.taskInput}
+              />
+              <TextInput
+                value={newTaskDesc}
+                onChangeText={setNewTaskDesc}
+                placeholder={t('beschreibung_optional' as any)}
+                placeholderTextColor="#5F7590"
+                multiline
+                style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]}
+              />
+
+              <Text style={styles.defLabel}>{t('zustaendig')}</Text>
+              <AssigneeInput value={newTaskAssignee} onChange={setNewTaskAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
+
+              <View style={{ marginTop: 8 }}>
+                <DateOnlyPicker value={newTaskDue} onChange={setNewTaskDue} label={t('frist')} withTime />
+              </View>
+            </ScrollView>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => setTaskRoom(null)} style={styles.taskCancel}>
                 <Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text>
@@ -941,7 +969,7 @@ export default function RundgangTab() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Create defect for a room (inline popup) */}
