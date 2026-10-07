@@ -6,6 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { ZoomableCanvas } from "@/components/zoomable-canvas";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
@@ -104,14 +105,6 @@ export default function RaumbuchRoomScreen() {
 
   const onPlanLayout = (e: LayoutChangeEvent) => setModalImgW(e.nativeEvent.layout.width);
 
-  const onPlanTap = (e: any) => {
-    const w = modalImgW || 1;
-    const h = w / (planAspect.current || 1.4);
-    const x = Math.min(1, Math.max(0, e.nativeEvent.locationX / w));
-    const y = Math.min(1, Math.max(0, e.nativeEvent.locationY / h));
-    setTempPos({ x, y });
-  };
-
   const confirmPlanMarker = async () => {
     if (modalPlan && tempPos) {
       const cur = entry || blankEntry();
@@ -200,16 +193,29 @@ export default function RaumbuchRoomScreen() {
               </ScrollView>
             )}
             {modalPlan && (
-              <Pressable onPress={onPlanTap} onLayout={onPlanLayout} style={{ width: "100%", aspectRatio: planAspect.current, borderRadius: 8, overflow: "hidden", backgroundColor: "#0f1b2b" }}>
-                <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
-                {tempPos && modalImgW > 0 && (
-                  <View style={{ position: "absolute", left: tempPos.x * modalImgW - 14, top: tempPos.y * (modalImgW / (planAspect.current || 1.4)) - 28 }}>
-                    <MaterialIcons name="place" size={30} color="#DC2626" />
-                  </View>
+              <View onLayout={onPlanLayout} style={{ width: "100%", aspectRatio: planAspect.current, borderRadius: 8, overflow: "hidden", backgroundColor: "#0f1b2b" }}>
+                {modalImgW > 0 ? (
+                  <ZoomableCanvas
+                    width={modalImgW}
+                    height={modalImgW / (planAspect.current || 1.4)}
+                    maxScale={5}
+                    onSingleTap={(pt) => setTempPos({ x: pt.x, y: pt.y })}
+                  >
+                    <View style={{ width: modalImgW, height: modalImgW / (planAspect.current || 1.4) }}>
+                      <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
+                      {tempPos && (
+                        <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * modalImgW - 14, top: tempPos.y * (modalImgW / (planAspect.current || 1.4)) - 28 }}>
+                          <MaterialIcons name="place" size={30} color="#DC2626" />
+                        </View>
+                      )}
+                    </View>
+                  </ZoomableCanvas>
+                ) : (
+                  <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
                 )}
-              </Pressable>
+              </View>
             )}
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>{t("raumbuch_tap_to_mark" as any)}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>{t("raumbuch_tap_to_mark" as any)} · {t("fullscreen_photo_viewer_zoom_hint" as any)}</Text>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => setPlanModal(false)} style={({ pressed }) => [styles.modalBtnGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t("btn_abbrechen" as any)}</Text>
