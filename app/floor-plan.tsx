@@ -95,6 +95,11 @@ export default function FloorPlanScreen() {
   const [pinLabel, setPinLabel] = useState("");
   const [pinType, setPinType] = useState<PlanPin["type"]>("note");
   const [pinDescription, setPinDescription] = useState("");
+  // Attach a photo / link a protocol while CREATING a marker (not only afterwards).
+  const [newPinPhotos, setNewPinPhotos] = useState<string[]>([]);
+  const [newPinProtocol, setNewPinProtocol] = useState<FloorPlanProtocolReference | null>(null);
+  const [pinProtoOptions, setPinProtoOptions] = useState<FloorPlanProtocolReference[]>([]);
+  const [pinProtoListOpen, setPinProtoListOpen] = useState(false);
   const [newPlanName, setNewPlanName] = useState("");
   const [pendingPlanAsset, setPendingPlanAsset] = useState<any>(null);
   const [imageSize, setImageSize] = useState({ width: 1, height: 1 });
@@ -422,6 +427,10 @@ export default function FloorPlanScreen() {
     setPinLabel("");
     setPinDescription("");
     setPinType("note");
+    setNewPinPhotos([]);
+    setNewPinProtocol(null);
+    setPinProtoListOpen(false);
+    setPinProtoOptions([]);
     setShowPinModal(true);
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -539,6 +548,31 @@ export default function FloorPlanScreen() {
     setTimeout(() => setDrawingPlan(true), 350);
   };
 
+  // Pick photos while creating a "Foto" marker.
+  const pickNewPinPhotos = async () => {
+    try {
+      const picked = await pickImagesWithSource({ t, multiple: true } as any);
+      if (!picked || picked.length === 0) return;
+      const uris: string[] = [];
+      for (const [i, asset] of picked.entries()) {
+        try {
+          const persisted = await persistFloorPlanMedia({ sourceUri: asset.uri, projectId, ownerId: `newpin-${Date.now()}-${i}`, width: (asset as any).width, height: (asset as any).height, kind: "photo" });
+          uris.push(persisted.uri);
+        } catch { uris.push(asset.uri); }
+      }
+      setNewPinPhotos((prev) => [...prev, ...uris]);
+    } catch (e) { console.warn("pickNewPinPhotos failed:", e); }
+  };
+
+  // Load this project's protocols to pick one for a "Protokoll" marker.
+  const loadPinProtocols = async () => {
+    setPinProtoListOpen(true);
+    try {
+      const stored = await AsyncStorage.getItem("protocols");
+      setPinProtoOptions(parseProjectProtocolReferences(stored, projectId));
+    } catch {}
+  };
+
   const savePin = async () => {
     if (!pendingPin || !selectedPlan || !pinLabel.trim()) {
       Alert.alert(t('hinweis'), t('msg_bitte_gib_eine_bezeichnung_ein'));
@@ -585,12 +619,25 @@ export default function FloorPlanScreen() {
       }
     }
 
-    await savePlanPin(newPin);
-    setPins((current) => [...current, newPin]);
+    // Attach photos (Foto marker) or link a protocol (Protokoll marker) chosen
+    // during creation.
+    let finalPin: PlanPin = newPin;
+    if (pinType === "photo" && newPinPhotos.length > 0) {
+      finalPin = { ...finalPin, photos: [...newPinPhotos] };
+    }
+    if (pinType === "protocol" && newPinProtocol) {
+      finalPin = linkPlanPinToProtocol(finalPin, newPinProtocol);
+    }
+
+    await savePlanPin(finalPin);
+    setPins((current) => [...current, finalPin]);
     setShowPinModal(false);
     setPendingPin(null);
     setPinLabel("");
     setPinDescription("");
+    setNewPinPhotos([]);
+    setNewPinProtocol(null);
+    setPinProtoListOpen(false);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -1240,6 +1287,60 @@ export default function FloorPlanScreen() {
               returnKeyType="done"
               onSubmitEditing={Keyboard.dismiss}
             />
+
+            {/* Foto-Typ: direkt ein Foto hinzufügen */}
+            {pinType === "photo" && (
+              <View style={{ marginBottom: 12 }}>
+                <Pressable onPress={pickNewPinPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+                  <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+                </Pressable>
+                {newPinPhotos.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                    {newPinPhotos.map((uri, i) => (
+                      <View key={`${uri}-${i}`}>
+                        <Image source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                        <Pressable onPress={() => setNewPinPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                          <MaterialIcons name="close" size={13} color="#fff" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
+
+            {/* Protokoll-Typ: ein vorhandenes Protokoll auswählen */}
+            {pinType === "protocol" && (
+              <View style={{ marginBottom: 12 }}>
+                {newPinProtocol ? (
+                  <Pressable onPress={() => { setNewPinProtocol(null); void loadPinProtocols(); }} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "12", opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="description" size={18} color={colors.primary} />
+                    <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 14, flex: 1 }} numberOfLines={1}>{decodeUnicodeEscapes(newPinProtocol.title || "")}</Text>
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>{t('aendern' as any)}</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable onPress={() => void loadPinProtocols()} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="post-add" size={18} color={colors.primary} />
+                    <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('protokoll_zuordnen')}</Text>
+                  </Pressable>
+                )}
+                {pinProtoListOpen && !newPinProtocol && (
+                  <View style={{ marginTop: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 10, maxHeight: 180, overflow: "hidden" }}>
+                    <ScrollView keyboardShouldPersistTaps="handled">
+                      {pinProtoOptions.length === 0 ? (
+                        <Text style={{ padding: 12, fontSize: 13, color: colors.muted }}>{t('protocol_no_protocols' as any)}</Text>
+                      ) : pinProtoOptions.map((p) => (
+                        <Pressable key={p.id} onPress={() => { setNewPinProtocol(p); setPinProtoListOpen(false); }} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                          <MaterialIcons name="description" size={16} color={colors.muted} />
+                          <Text style={{ fontSize: 13, color: colors.foreground, flex: 1 }} numberOfLines={1}>{decodeUnicodeEscapes(p.title || "")}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            )}
 
             <View style={styles.modalButtons}>
               <Pressable
