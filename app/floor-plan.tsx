@@ -928,6 +928,15 @@ export default function FloorPlanScreen() {
               )}
             </Pressable>
           )}
+          {/* Delete the currently shown plan */}
+          {selectedPlan && (
+            <Pressable
+              onPress={() => removePlan(selectedPlan.id)}
+              style={({ pressed }) => [styles.headerAction, { backgroundColor: colors.surface }, pressed && { opacity: 0.6 }]}
+            >
+              <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+            </Pressable>
+          )}
           {/* View mode toggle */}
           <Pressable
             onPress={() => setViewMode(viewMode === "plan" ? "list" : "plan")}
@@ -1853,6 +1862,13 @@ export default function FloorPlanScreen() {
                     </Text>
                     {count != null ? <Text style={{ fontSize: 12, color: colors.muted }}>{count}</Text> : null}
                     {active ? <MaterialIcons name="check" size={20} color={colors.primary} /> : null}
+                    <Pressable
+                      onPress={() => { setShowPlanPicker(false); removePlan(plan.id); }}
+                      hitSlop={10}
+                      style={({ pressed }) => [{ padding: 6, marginLeft: 2, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+                    </Pressable>
                   </Pressable>
                 );
               })}
