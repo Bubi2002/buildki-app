@@ -24,7 +24,9 @@ import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getFloorPlans, saveFloorPlan, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
 import { DateOnlyPicker } from "@/components/date-only-picker";
 import { AssigneeInput } from "@/components/assignee-input";
-import { pickImagesWithSource } from "@/lib/import-picker";
+import { pickImagesWithSource, pickPlanWithSource } from "@/lib/import-picker";
+import { PdfRasterizer, type RasterResult } from "@/components/pdf-rasterizer";
+import { splitPdfIntoPages } from "@/lib/pdf-pages";
 import { searchAddress, type AddressSuggestion } from "@/lib/geocode";
 
 const WIZ_COLORS = ["#5DADE2", "#EF4444", "#F59E0B", "#34D399", "#A78BFA", "#EC407A", "#00ACC1", "#FF7043"];
@@ -241,29 +243,88 @@ export default function ProjectWizardScreen() {
     setTempPos(pendingPos && pendingPos.planId === plan.id ? { x: pendingPos.x, y: pendingPos.y } : null);
     setShowPlanModal(true);
   };
-  // Import a floor plan image directly in the wizard, then open the marker modal.
+  // PDF → image conversion (same approach as the main Grundriss tool): split a
+  // multi-page PDF with pdf-lib, then rasterize each page sharply with expo-image.
+  const [planPdfUri, setPlanPdfUri] = useState<string | null>(null);
+  const [planPdfName, setPlanPdfName] = useState("");
+  const [planConverting, setPlanConverting] = useState(false);
+  const planRasterResolve = useRef<((r: RasterResult | null) => void) | null>(null);
+  const rasterizePlanPage = (uri: string): Promise<RasterResult | null> =>
+    new Promise((resolve) => { planRasterResolve.current = resolve; setPlanPdfUri(uri); });
+
+  // Persist a (rasterized or image) plan and return the stored FloorPlan record.
+  const createPlanRecord = async (srcUri: string, width: number, height: number, name: string): Promise<FloorPlan> => {
+    const dir = `${FileSystem.documentDirectory}floor-plans/`;
+    try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+    let uri = srcUri;
+    try { const dest = `${dir}plan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`; await FileSystem.copyAsync({ from: srcUri, to: dest }); uri = dest; } catch {}
+    const plan: FloorPlan = {
+      id: `plan_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      projectId: projectId!,
+      name,
+      imageUri: uri,
+      width: width || 1000,
+      height: height || 1000,
+      createdAt: new Date().toISOString(),
+    };
+    await saveFloorPlan(plan);
+    return plan;
+  };
+
+  // Receive a rasterized single-page PDF and finish the import.
+  const handlePlanPdfConverted = async (result: RasterResult | null) => {
+    const name = planPdfName;
+    setPlanPdfUri(null);
+    // Multi-page queue: hand the result back to the awaiting rasterizePlanPage().
+    if (planRasterResolve.current) {
+      const resolve = planRasterResolve.current;
+      planRasterResolve.current = null;
+      resolve(result);
+      return;
+    }
+    if (!result) { Alert.alert(t('alert_fehler' as any), t('floor_plan_pdf_convert_failed' as any)); return; }
+    const floorName = floors.find((f) => f.id === curFloorId)?.name;
+    const plan = await createPlanRecord(result.uri, result.width, result.height, name || (floorName ? `${t('grundriss' as any)} ${floorName}` : (t('grundriss' as any) as string)));
+    setPlans(await getFloorPlans(projectId!));
+    openPlanModalForPlan(plan);
+  };
+
+  // Import a floor plan (image OR PDF) directly in the wizard, then open the marker modal.
   const importGrundrissAndMark = async () => {
     if (!projectId) return;
     try {
-      // Kamera / Galerie / Dateien (Dropbox, iCloud, Drive …).
-      const picked = await pickImagesWithSource({ t, multiple: false } as any);
-      if (!picked || picked.length === 0) return;
-      const a = picked[0] as any;
-      const dir = `${FileSystem.documentDirectory}floor-plans/`;
-      try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
-      let uri = a.uri;
-      try { const dest = `${dir}plan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`; await FileSystem.copyAsync({ from: a.uri, to: dest }); uri = dest; } catch {}
+      // Galerie / Dateien (Dropbox, iCloud, Drive …) — accepts images AND PDFs.
+      const picked = await pickPlanWithSource({ t });
+      if (!picked) return;
       const floorName = floors.find((f) => f.id === curFloorId)?.name;
-      const plan: FloorPlan = {
-        id: `plan_${Date.now()}`,
-        projectId,
-        name: floorName ? `${t('grundriss' as any)} ${floorName}` : (t('grundriss' as any) as string),
-        imageUri: uri,
-        width: a.width || 1000,
-        height: a.height || 1000,
-        createdAt: new Date().toISOString(),
-      };
-      await saveFloorPlan(plan);
+      const defaultName = floorName ? `${t('grundriss' as any)} ${floorName}` : (t('grundriss' as any) as string);
+      const isPdf = picked.mimeType === "application/pdf" || /\.pdf$/i.test(picked.name || "");
+      if (isPdf) {
+        const baseName = (picked.name || defaultName).replace(/\.[^/.]+$/, "") || defaultName;
+        // Multi-page: split into single-page PDFs, rasterize each to a sharp image.
+        let pageUris: string[] = [];
+        setPlanConverting(true);
+        try { pageUris = await splitPdfIntoPages(picked.uri); } finally { setPlanConverting(false); }
+        if (pageUris.length > 0) {
+          let firstPlan: FloorPlan | null = null;
+          for (let i = 0; i < pageUris.length; i++) {
+            const r = await rasterizePlanPage(pageUris[i]);
+            if (r) {
+              const p = await createPlanRecord(r.uri, r.width, r.height, pageUris.length > 1 ? `${baseName} – ${t('floor_plan_page' as any)} ${i + 1}` : baseName);
+              if (!firstPlan) firstPlan = p;
+            }
+          }
+          setPlans(await getFloorPlans(projectId));
+          if (firstPlan) openPlanModalForPlan(firstPlan);
+          return;
+        }
+        // Single page (or split failed): rasterize the original PDF directly.
+        setPlanPdfName(baseName);
+        setPlanPdfUri(picked.uri);
+        return;
+      }
+      // Plain image plan.
+      const plan = await createPlanRecord(picked.uri, picked.width || 1000, picked.height || 1000, defaultName);
       setPlans(await getFloorPlans(projectId));
       openPlanModalForPlan(plan);
     } catch {}
@@ -1282,6 +1343,20 @@ export default function ProjectWizardScreen() {
               </Pressable>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Off-screen PDF → sharp-image rasterizer for imported Grundriss PDFs */}
+      <PdfRasterizer
+        pdfUri={planPdfUri}
+        label={t('floor_plan_pdf_converting' as any)}
+        maxSize={3072}
+        onDone={handlePlanPdfConverted}
+      />
+      <Modal visible={planConverting} transparent animationType="fade">
+        <View style={styles.voiceOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "600", marginTop: 12 }}>{t('floor_plan_pdf_converting' as any)}</Text>
         </View>
       </Modal>
     </ScreenContainer>

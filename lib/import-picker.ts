@@ -9,7 +9,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as DocumentPicker from "expo-document-picker";
 
-import { importFromCloud } from "@/lib/cloud-import-service";
+import { importFromCloud, importPlanFromCloud } from "@/lib/cloud-import-service";
 
 type Translate = (key: any) => string;
 
@@ -97,6 +97,62 @@ export function pickImagesWithSource(opts: {
         { text: t("cancel"), style: "cancel", onPress: () => done([]) },
       ],
       { cancelable: true, onDismiss: () => done([]) },
+    );
+  });
+}
+
+export type PickedPlan = { uri: string; name: string; mimeType?: string; width?: number; height?: number };
+
+/**
+ * Pick a FLOOR PLAN (Grundriss) from the gallery or the Files app. Unlike the
+ * photo picker this also accepts PDFs (construction plans are usually PDFs) — the
+ * caller rasterizes a picked PDF into a sharp image. Returns null if cancelled.
+ */
+export function pickPlanWithSource(opts: { t: Translate }): Promise<PickedPlan | null> {
+  const { t } = opts;
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (p: PickedPlan | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(p);
+    };
+
+    Alert.alert(
+      t("import_source_title"),
+      t("import_source_message"),
+      [
+        {
+          text: t("import_source_gallery"),
+          onPress: async () => {
+            try {
+              const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!permission.granted) { done(null); return; }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: false,
+                quality: 1,
+              });
+              if (result.canceled || !result.assets[0]) { done(null); return; }
+              const a = result.assets[0];
+              done({ uri: a.uri, name: a.fileName || `plan-${Date.now()}.jpg`, mimeType: a.mimeType || "image/jpeg", width: a.width, height: a.height });
+            } catch { done(null); }
+          },
+        },
+        {
+          text: t("import_source_files"),
+          onPress: async () => {
+            try {
+              // Files picker that allows images AND PDFs (category "plan").
+              const file = await importPlanFromCloud();
+              if (!file) { done(null); return; }
+              done({ uri: file.uri, name: file.name, mimeType: file.mimeType });
+            } catch { done(null); }
+          },
+        },
+        { text: t("cancel"), style: "cancel", onPress: () => done(null) },
+      ],
+      { cancelable: true, onDismiss: () => done(null) },
     );
   });
 }
