@@ -106,7 +106,8 @@ export async function generateRaumbuchPdf(
           const wl = walls[k]; if (!wl) return "";
           const hot = highlight === k;
           const mx = (toX(wl.x1) + toX(wl.x2)) / 2, my = (toY(wl.y1) + toY(wl.y2)) / 2;
-          return `<line x1="${toX(wl.x1).toFixed(1)}" y1="${toY(wl.y1).toFixed(1)}" x2="${toX(wl.x2).toFixed(1)}" y2="${toY(wl.y2).toFixed(1)}" stroke="${hot ? "#DC2626" : "#2563EB"}" stroke-width="${hot ? 3.5 : 2.5}" stroke-linecap="round"/><text x="${mx.toFixed(1)}" y="${(my - 4).toFixed(1)}" font-size="11" font-weight="bold" text-anchor="middle" fill="#1b2430" paint-order="stroke" stroke="#ffffff" stroke-width="2.5">${k}</text>`;
+          const col = hot ? "#DC2626" : "#2563EB";
+          return `<line x1="${toX(wl.x1).toFixed(1)}" y1="${toY(wl.y1).toFixed(1)}" x2="${toX(wl.x2).toFixed(1)}" y2="${toY(wl.y2).toFixed(1)}" stroke="${col}" stroke-width="${hot ? 3.5 : 2.5}" stroke-linecap="round"/><circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="8" fill="${col}" stroke="#ffffff" stroke-width="1.5"/><text x="${mx.toFixed(1)}" y="${(my + 3.3).toFixed(1)}" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">${k}</text>`;
         }).join("")}</svg>`
       : "";
     const hasPin = e.planX != null && e.planY != null;
