@@ -21,6 +21,7 @@ import {
   type TimeTrackingSettings,
 } from "@/lib/time-tracking-store";
 import { exportTaqlohnzettelPdf, exportWeeklyPdf, shareTaqlohnzettel } from "@/lib/taglohnzettel-export";
+import { generateAndSharePdf } from "@/lib/pdf-professional";
 import { useTranslation } from "@/lib/language-provider";
 
 const CATEGORIES: { id: TimeEntry["category"]; label: string; icon: string; color: string }[] = [
@@ -147,6 +148,34 @@ export default function TimeTrackingScreen() {
   const m = Math.floor((elapsed % 3600) / 60);
   const s = elapsed % 60;
 
+  // Share the time entries as a PDF (top-right Teilen button).
+  const shareTimeReport = async () => {
+    if (entries.length === 0) return;
+    try {
+      const rate = parseFloat(String(settings.hourlyRate || "").replace(",", ".")) || 0;
+      const total = entries.reduce((s, e) => s + (e.duration || 0), 0);
+      const euro = (sec: number) => `${((sec / 3600) * rate).toFixed(2).replace(".", ",")} €`;
+      const catLabel = (c: TimeEntry["category"]) => t((CATEGORIES.find((x) => x.id === c)?.label ?? "") as any);
+      let content = `**${t('project_export_total_hours' as any)}:** ${formatDuration(total)}`;
+      if (rate > 0) content += `  ·  **${t('project_export_total_cost' as any)}:** ${((total / 3600) * rate).toFixed(2).replace(".", ",")} € (${rate.toFixed(2).replace(".", ",")} €/h)`;
+      const headers = rate > 0 ? ["Datum", "Kategorie", "Dauer", "Kosten", "Notiz"] : ["Datum", "Kategorie", "Dauer", "Notiz"];
+      const rows = [...entries].sort((a, b) => String(b.startTime).localeCompare(String(a.startTime))).map((e) => rate > 0
+        ? [new Date(e.startTime).toLocaleDateString("de-DE"), catLabel(e.category), formatDuration(e.duration || 0), euro(e.duration || 0), e.note || "-"]
+        : [new Date(e.startTime).toLocaleDateString("de-DE"), catLabel(e.category), formatDuration(e.duration || 0), e.note || "-"]);
+      await generateAndSharePdf({
+        title: t('zeiterfassung'),
+        subtitle: projectName || undefined,
+        reportType: t('zeiterfassung'),
+        datum: new Date().toLocaleDateString("de-DE"),
+        projekt: projectName || undefined,
+        sections: [{ title: `${t('zeiterfassung')} (${entries.length})`, content, table: { headers, rows } }],
+        accentColor: "#1E3A5F",
+      });
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || "");
+    }
+  };
+
   return (
     <ScreenContainer edges={["top", "bottom", "left", "right"]} className="flex-1">
       {/* Header */}
@@ -155,9 +184,14 @@ export default function TimeTrackingScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t('zeiterfassung')}</Text>
-        <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
-          <MaterialIcons name="settings" size={24} color={colors.foreground} />
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+          <Pressable onPress={() => void shareTimeReport()} disabled={entries.length === 0} style={({ pressed }) => [{ opacity: entries.length === 0 ? 0.4 : pressed ? 0.5 : 1 }]}>
+            <MaterialIcons name="ios-share" size={22} color={colors.foreground} />
+          </Pressable>
+          <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}>
+            <MaterialIcons name="settings" size={24} color={colors.foreground} />
+          </Pressable>
+        </View>
       </View>
 
       <FlatList

@@ -24,6 +24,7 @@ import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildPremiumHtml, progressRing, legend, premiumIcons, resolveBrandingLogo, type InfoCol } from "@/lib/pdf-premium";
+import { generateAndSharePdf, type PdfCard } from "@/lib/pdf-professional";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 import { BusyOverlay } from "@/components/busy-overlay";
 import {
@@ -203,6 +204,45 @@ export default function ChecklistsScreen() {
         const { addExportEntry } = await import("@/lib/pdf-export-history");
         await addExportEntry({ filename: uri.split("/").pop() || "checkliste.pdf", protocolTitle: checklist.name, templateName: t('checklist_report_tag' as any), projectName: exportDetails?.bauvorhaben || "", recipients: [], ccRecipients: [], method: "share" });
       } catch {}
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  // Share ALL recorded checklist results of this project as one PDF (with each
+  // Prüfpunkt). Top-right "Teilen" action.
+  const shareAllChecklists = async () => {
+    if (results.length === 0) { Alert.alert(t('checklist_title'), t('project_export_empty' as any)); return; }
+    setPdfBusy(true);
+    try {
+      const cards: PdfCard[] = results.map((r) => {
+        const def = checklists.find((c) => c.id === r.checklistId);
+        const textById = new Map((def?.items || []).map((it) => [it.id, it.text]));
+        const items = (def?.items?.length
+          ? def.items.map((it) => { const res = r.results.find((x) => x.itemId === it.id); return { text: it.text, checked: !!res?.checked, note: res?.note }; })
+          : r.results.map((x) => ({ text: textById.get(x.itemId) || "Prüfpunkt", checked: !!x.checked, note: x.note })));
+        const rate = getChecklistCompletionRate(r);
+        return {
+          title: r.checklistName || "-",
+          badges: [{ label: `${rate}% erledigt`, color: rate >= 100 ? "#16A34A" : rate >= 50 ? "#B45309" : "#DC2626" }],
+          fields: [
+            { label: "Ort", value: r.location || "" },
+            { label: "Datum", value: new Date(r.createdAt).toLocaleDateString("de-DE") },
+          ],
+          checklist: items,
+        };
+      });
+      await generateAndSharePdf({
+        title: t('checklist_title'),
+        subtitle: exportDetails?.bauvorhaben || undefined,
+        reportType: t('checklist_title'),
+        datum: new Date().toLocaleDateString("de-DE"),
+        projekt: exportDetails?.bauvorhaben || undefined,
+        sections: [{ title: `${t('checklist_title')} (${results.length})`, content: "", cards }],
+        accentColor: "#1E3A5F",
+      });
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || t('pdf_teilen'));
     } finally {
@@ -432,6 +472,9 @@ export default function ChecklistsScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>{t('checklist_title')}</Text>
+        <Pressable onPress={() => void shareAllChecklists()} disabled={pdfBusy || results.length === 0} style={({ pressed }) => [styles.addBtn, { opacity: pdfBusy || results.length === 0 ? 0.4 : pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="ios-share" size={22} color={colors.primary} />
+        </Pressable>
         <Pressable onPress={() => setShowTemplateModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="add" size={24} color={colors.primary} />
         </Pressable>

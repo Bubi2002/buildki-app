@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { TradePicker } from "@/components/trade-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "@/lib/language-provider";
+import { generateAndSharePdf, type PdfSection } from "@/lib/pdf-professional";
 
 const ATTENDANCE_KEY = "attendance_records";
 
@@ -146,6 +147,42 @@ export default function AttendanceScreen() {
   const todayRecord = getTodayRecord();
   const totalWorkersToday = todayRecord?.workers.length || 0;
 
+  // Share the attendance log as a PDF (top-right Teilen button).
+  const shareAttendance = async () => {
+    if (records.length === 0) return;
+    try {
+      let projectName = "";
+      try {
+        const raw = await AsyncStorage.getItem("projects");
+        projectName = (raw ? JSON.parse(raw) : []).find((p: any) => p.id === projectId)?.name || "";
+      } catch {}
+      const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date));
+      const section: PdfSection = {
+        title: `${t('attendance_title' as any)} (${records.length})`,
+        content: "",
+        table: {
+          headers: ["Datum", "Anzahl", "Personen"],
+          rows: sorted.map((r) => [
+            new Date(r.date + "T12:00:00").toLocaleDateString("de-DE"),
+            String(r.workers.length),
+            r.workers.map((w) => [w.name, w.firma ? `(${w.firma})` : "", w.arrivalTime && w.departureTime ? `${w.arrivalTime}–${w.departureTime}` : ""].filter(Boolean).join(" ")).join(", ") || "-",
+          ]),
+        },
+      };
+      await generateAndSharePdf({
+        title: t('attendance_title' as any),
+        subtitle: projectName || undefined,
+        reportType: t('attendance_title' as any),
+        datum: new Date().toLocaleDateString("de-DE"),
+        projekt: projectName || undefined,
+        sections: [section],
+        accentColor: "#1E3A5F",
+      });
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || "");
+    }
+  };
+
   const renderRecord = ({ item }: { item: AttendanceRecord }) => {
     const isToday = item.date === today;
     const dateFormatted = new Date(item.date + "T12:00:00").toLocaleDateString("de-DE", {
@@ -207,6 +244,9 @@ export default function AttendanceScreen() {
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>{t('attendance_title' as any)}</Text>
+        <Pressable onPress={() => void shareAttendance()} disabled={records.length === 0} style={({ pressed }) => [styles.addBtn, { opacity: records.length === 0 ? 0.4 : pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="ios-share" size={22} color={colors.primary} />
+        </Pressable>
         <Pressable onPress={() => setShowAddModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
           <MaterialIcons name="person-add" size={24} color={colors.primary} />
         </Pressable>

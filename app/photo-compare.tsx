@@ -26,6 +26,7 @@ import { pickImagesWithSource } from "@/lib/import-picker";
 import { Swipeable, Gesture, GestureDetector } from "react-native-gesture-handler";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
+import { generateAndSharePdf, type PdfCard, type PdfImage } from "@/lib/pdf-professional";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -189,6 +190,46 @@ export default function PhotoCompareScreen() {
     const updated = comparisons.map((c) => (c.id === selectedPair.id ? { ...c, ...selectedPair } : c));
     setComparisons(updated);
     await saveComparisons(updated);
+  };
+
+  // Share ALL comparisons of this project as one PDF (top-right Teilen button).
+  const shareAllComparisons = async () => {
+    const pairs = comparisons.filter((c) => c.afterUri);
+    if (pairs.length === 0) { Alert.alert(t('vorhernachher'), t('project_export_empty' as any)); return; }
+    try {
+      let projectName = "";
+      try {
+        const raw = await AsyncStorage.getItem("projects");
+        projectName = (raw ? JSON.parse(raw) : []).find((p: any) => p.id === params.projectId)?.name || "";
+      } catch {}
+      const toData = async (uri?: string | null): Promise<string | null> => {
+        if (!uri) return null;
+        try { const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 }); const m = uri.toLowerCase().includes(".png") ? "image/png" : "image/jpeg"; return `data:${m};base64,${b64}`; } catch { return null; }
+      };
+      const cards: PdfCard[] = [];
+      for (const p of pairs) {
+        const images: PdfImage[] = [];
+        const before = await toData(p.beforeUri); if (before) images.push({ base64: before, caption: "Vorher" });
+        const after = await toData(p.afterUri); if (after) images.push({ base64: after, caption: "Nachher" });
+        cards.push({
+          title: p.label || t('vorhernachher'),
+          fields: [{ label: "Raum", value: p.room || "" }, { label: "Gewerk", value: p.trade || "" }],
+          note: p.description || "",
+          images,
+        });
+      }
+      await generateAndSharePdf({
+        title: t('vorhernachher'),
+        subtitle: projectName || undefined,
+        reportType: t('vorhernachher'),
+        datum: new Date().toLocaleDateString("de-DE"),
+        projekt: projectName || undefined,
+        sections: [{ title: `${t('vorhernachher')} (${pairs.length})`, content: "", cards }],
+        accentColor: "#1E3A5F",
+      });
+    } catch (e: any) {
+      Alert.alert(t('alert_fehler'), e?.message || "");
+    }
   };
 
   const shareComparison = async () => {
@@ -478,6 +519,9 @@ export default function PhotoCompareScreen() {
             <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('vorhernachher')}</Text>
             <Text style={{ fontSize: 12, color: colors.muted }}>{t('fortschrittsdokumentation')}</Text>
           </View>
+          <Pressable onPress={() => void shareAllComparisons()} disabled={comparisons.filter((c) => c.afterUri).length === 0} style={({ pressed }) => [{ opacity: comparisons.filter((c) => c.afterUri).length === 0 ? 0.4 : pressed ? 0.6 : 1, marginRight: 14 }]}>
+            <MaterialIcons name="ios-share" size={22} color={colors.foreground} />
+          </Pressable>
           <Pressable onPress={createNewComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }]}>
             <MaterialIcons name="add" size={18} color="#FFF" />
             <Text style={{ fontSize: 13, fontWeight: "600", color: "#FFF" }}>{t('neu')}</Text>
