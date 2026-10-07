@@ -120,9 +120,16 @@ export default function PhotoAnnotateScreen() {
   const [scale, setScale] = useState(1);
   const [translateX, setTranslateX] = useState(0);
   const [translateY, setTranslateY] = useState(0);
-  const [baseScale, setBaseScale] = useState(1);
-  const [baseTranslateX, setBaseTranslateX] = useState(0);
-  const [baseTranslateY, setBaseTranslateY] = useState(0);
+  // Live values in refs so gesture callbacks read the CURRENT zoom/pan instead of
+  // a stale React-state closure (which made each new pinch jump back to 1x).
+  const scaleRef = useRef(1);
+  const txRef = useRef(0);
+  const tyRef = useRef(0);
+  const baseScaleRef = useRef(1);
+  const baseTxRef = useRef(0);
+  const baseTyRef = useRef(0);
+  const applyScale = (v: number) => { scaleRef.current = v; setScale(v); };
+  const applyTranslate = (x: number, y: number) => { txRef.current = x; tyRef.current = y; setTranslateX(x); setTranslateY(y); };
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
 
@@ -141,11 +148,11 @@ export default function PhotoAnnotateScreen() {
   // so the user can zoom at any time while drawing.
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
-      setBaseScale(scale);
+      baseScaleRef.current = scaleRef.current;
     })
     .onUpdate((e) => {
-      const newScale = Math.min(Math.max(baseScale * e.scale, 1), 5);
-      setScale(newScale);
+      const newScale = Math.min(Math.max(baseScaleRef.current * e.scale, 1), 5);
+      applyScale(newScale);
     })
     .runOnJS(true);
 
@@ -154,21 +161,20 @@ export default function PhotoAnnotateScreen() {
   const zoomPanGesture = Gesture.Pan()
     .minPointers(2)
     .onStart(() => {
-      setBaseTranslateX(translateX);
-      setBaseTranslateY(translateY);
+      baseTxRef.current = txRef.current;
+      baseTyRef.current = tyRef.current;
     })
     .onUpdate((e) => {
-      if (scale > 1) {
-        setTranslateX(baseTranslateX + e.translationX);
-        setTranslateY(baseTranslateY + e.translationY);
+      if (scaleRef.current > 1) {
+        applyTranslate(baseTxRef.current + e.translationX, baseTyRef.current + e.translationY);
       }
     })
     .runOnJS(true);
 
   const resetZoom = () => {
-    setScale(1);
-    setTranslateX(0);
-    setTranslateY(0);
+    scaleRef.current = 1; txRef.current = 0; tyRef.current = 0;
+    applyScale(1);
+    applyTranslate(0, 0);
   };
 
   // Pan gesture for pen drawing – one finger only (two fingers = zoom/pan).
