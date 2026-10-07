@@ -43,6 +43,8 @@ export default function RaumbuchRoomScreen() {
   const [modalPlan, setModalPlan] = useState<FloorPlan | null>(null);
   const [tempPos, setTempPos] = useState<{ x: number; y: number } | null>(null);
   const [modalImgW, setModalImgW] = useState(0);
+  // Available area for the plan in the (now near-fullscreen) editor.
+  const [planBox, setPlanBox] = useState({ w: 0, h: 0 });
   const planAspect = useRef(1.4);
   // Plan editing modes: place marker, draw a crop rectangle, or draw wall lines.
   const [planMode, setPlanMode] = useState<PlanMode>("marker");
@@ -310,63 +312,65 @@ export default function RaumbuchRoomScreen() {
                 })}
               </ScrollView>
             )}
-            {modalPlan && (() => {
-              const H = modalImgW / (planAspect.current || 1.4);
-              return (
-              <View onLayout={onPlanLayout} style={{ width: "100%", aspectRatio: planAspect.current, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFFFFF" }}>
-                {modalImgW > 0 ? (
-                  <ZoomableCanvas
-                    width={modalImgW}
-                    height={H}
-                    maxScale={5}
-                    onSingleTap={onPlanTap}
-                    onPinDrag={onPlanDrag}
-                    dragImmediate={planMode !== "marker"}
-                  >
-                    <View style={{ width: modalImgW, height: H }}>
-                      <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
-                      {/* Overlay: crop rect (+ corner handles) and wall lines (+ endpoint handles). */}
-                      <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={modalImgW} height={H}>
-                        {tempCrop && (
-                          <SvgG>
-                            <SvgRect x={tempCrop.x * modalImgW} y={tempCrop.y * H} width={tempCrop.w * modalImgW} height={tempCrop.h * H} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
-                            {planMode === "crop" && ([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
-                              <SvgCircle key={i} cx={cx * modalImgW} cy={cy * H} r={8} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
-                            ))}
-                          </SvgG>
-                        )}
-                        {WALL_KEYS.map((k) => {
-                          const wline = tempWalls[k]; if (!wline) return null;
-                          const active = planMode === k;
-                          const col = active ? "#DC2626" : WALL_COLOR;
-                          const mx = ((wline.x1 + wline.x2) / 2) * modalImgW, my = ((wline.y1 + wline.y2) / 2) * H;
-                          return (
-                            <SvgG key={k}>
-                              <SvgLine x1={wline.x1 * modalImgW} y1={wline.y1 * H} x2={wline.x2 * modalImgW} y2={wline.y2 * H} stroke={col} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
-                              {active && (
-                                <SvgG>
-                                  <SvgCircle cx={wline.x1 * modalImgW} cy={wline.y1 * H} r={8} fill="#ffffff" stroke={col} strokeWidth={2.5} />
-                                  <SvgCircle cx={wline.x2 * modalImgW} cy={wline.y2 * H} r={8} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+            {modalPlan && (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", marginVertical: 6 }} onLayout={(e) => setPlanBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+                {planBox.w > 0 && planBox.h > 0 && (() => {
+                  // Fit the plan into the available box (contain), as large as possible.
+                  const aspect = planAspect.current || 1.4;
+                  let pw = planBox.w, ph = pw / aspect;
+                  if (ph > planBox.h) { ph = planBox.h; pw = ph * aspect; }
+                  return (
+                    <View style={{ width: pw, height: ph, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFFFFF" }}>
+                      <ZoomableCanvas
+                        width={pw}
+                        height={ph}
+                        maxScale={6}
+                        onSingleTap={onPlanTap}
+                        onPinDrag={onPlanDrag}
+                        dragImmediate={planMode !== "marker"}
+                      >
+                        <View style={{ width: pw, height: ph }}>
+                          <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
+                          <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={pw} height={ph}>
+                            {tempCrop && (
+                              <SvgG>
+                                <SvgRect x={tempCrop.x * pw} y={tempCrop.y * ph} width={tempCrop.w * pw} height={tempCrop.h * ph} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
+                                {planMode === "crop" && ([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
+                                  <SvgCircle key={i} cx={cx * pw} cy={cy * ph} r={7} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
+                                ))}
+                              </SvgG>
+                            )}
+                            {WALL_KEYS.map((k) => {
+                              const wline = tempWalls[k]; if (!wline) return null;
+                              const active = planMode === k;
+                              const col = active ? "#DC2626" : WALL_COLOR;
+                              const mx = ((wline.x1 + wline.x2) / 2) * pw, my = ((wline.y1 + wline.y2) / 2) * ph;
+                              return (
+                                <SvgG key={k}>
+                                  <SvgLine x1={wline.x1 * pw} y1={wline.y1 * ph} x2={wline.x2 * pw} y2={wline.y2 * ph} stroke={col} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
+                                  {active && (
+                                    <SvgG>
+                                      <SvgCircle cx={wline.x1 * pw} cy={wline.y1 * ph} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={wline.x2 * pw} cy={wline.y2 * ph} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                    </SvgG>
+                                  )}
+                                  <SvgText x={mx} y={my - 8} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
                                 </SvgG>
-                              )}
-                              <SvgText x={mx} y={my - 8} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
-                            </SvgG>
-                          );
-                        })}
-                      </Svg>
-                      {tempPos && (
-                        <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * modalImgW - 14, top: tempPos.y * H - 28 }}>
-                          <MaterialIcons name="place" size={30} color="#DC2626" />
+                              );
+                            })}
+                          </Svg>
+                          {tempPos && (
+                            <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * pw - 14, top: tempPos.y * ph - 28 }}>
+                              <MaterialIcons name="place" size={30} color="#DC2626" />
+                            </View>
+                          )}
                         </View>
-                      )}
+                      </ZoomableCanvas>
                     </View>
-                  </ZoomableCanvas>
-                ) : (
-                  <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
-                )}
+                  );
+                })()}
               </View>
-              );
-            })()}
+            )}
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
               {planMode === "marker"
                 ? t("raumbuch_tap_to_mark" as any)
@@ -464,7 +468,8 @@ const styles = StyleSheet.create({
   slotEdit: { position: "absolute", right: 6, bottom: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, padding: 4 },
   slotEmpty: { width: "100%", height: 110, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  modalSheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: "90%" },
+  // Near-fullscreen so the plan editor is large and easy to work on.
+  modalSheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, height: "96%" },
   modalBtnGhost: { flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, alignItems: "center" },
   modalBtnPrimary: { flex: 2, paddingVertical: 14, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
 });
