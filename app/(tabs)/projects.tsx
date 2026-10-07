@@ -30,7 +30,7 @@ import { Image as ExpoImage } from "expo-image";
 import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
-type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; title?: string; task?: string; dueDate?: string };
+type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; floor?: string; title?: string; task?: string; dueDate?: string; assignee?: string };
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
   nicht_begonnen: "rooms_status_nicht_begonnen",
@@ -319,6 +319,35 @@ export default function RundgangTab() {
         all[idx] = { ...all[idx], done: nextDone, status: nextDone ? "erledigt" : "offen" };
         await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
       }
+    } catch {}
+  };
+
+  // Tap cycles the status: offen → In Arbeit → Fertig → offen.
+  const defectStatusVisual = (s: string): { name: any; color: string } => {
+    if (s === "erledigt" || s === "geschlossen") return { name: "check-circle", color: "#10B981" };
+    if (s === "in_bearbeitung" || s === "in_arbeit" || s === "nachbesserung" || s === "pruefung") return { name: "pending", color: "#F59E0B" };
+    return { name: "radio-button-unchecked", color: "#4B5B6B" };
+  };
+  const cycleDefectStatus = async (d: Defect) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const order: DefectStatus[] = ["offen", "in_bearbeitung", "erledigt"];
+    const cur: DefectStatus = (d.status === "erledigt" || d.status === "geschlossen") ? "erledigt" : (d.status === "in_bearbeitung" || d.status === "in_arbeit" as any) ? "in_bearbeitung" : "offen";
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    setDefects((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: next } : x)));
+    try { await updateDefectStatus(d.id, next); } catch {}
+  };
+  const cycleTaskStatus = async (tk: ProjectTask) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const order = ["offen", "in_arbeit", "erledigt"] as const;
+    const cur = (tk.done === true || tk.status === "erledigt") ? "erledigt" : tk.status === "in_arbeit" ? "in_arbeit" : "offen";
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    const nextDone = next === "erledigt";
+    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: next, done: nextDone } : x)));
+    try {
+      const raw = await AsyncStorage.getItem("project-tasks");
+      const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
+      const idx = all.findIndex((x) => x.id === tk.id);
+      if (idx >= 0) { all[idx] = { ...all[idx], status: next, done: nextDone }; await AsyncStorage.setItem("project-tasks", JSON.stringify(all)); }
     } catch {}
   };
 
@@ -734,14 +763,19 @@ export default function RundgangTab() {
                                 </View>
                                 {dList.map((d) => {
                                   const ddone = isDefectDone(d);
+                                  const vis = defectStatusVisual(d.status);
+                                  const sub = [(d as any).assignee, (d as any).dueDate].map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
                                   return (
                                     <View key={d.id} style={styles.entryRow}>
-                                      <Pressable onPress={() => toggleDefectDone(d)} hitSlop={8} style={styles.entryCheck}>
-                                        <MaterialIcons name={ddone ? "check-circle" : "radio-button-unchecked"} size={22} color={ddone ? "#10B981" : "#4B5B6B"} />
+                                      <Pressable onPress={() => cycleDefectStatus(d)} hitSlop={8} style={styles.entryCheck}>
+                                        <MaterialIcons name={vis.name} size={22} color={vis.color} />
                                       </Pressable>
                                       <Pressable onPress={() => openDefect(d)} style={styles.entryTap}>
                                         <MaterialIcons name="warning" size={14} color="#F97316" />
-                                        <Text style={[styles.entryTitle, ddone && styles.entryTitleDone]} numberOfLines={1}>{d.title || d.description || t("index_tool_maengel" as any)}</Text>
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={[styles.entryTitle, ddone && styles.entryTitleDone]} numberOfLines={1}>{d.title || d.description || t("index_tool_maengel" as any)}</Text>
+                                          {sub ? <Text style={styles.entrySub} numberOfLines={1}>{sub}</Text> : null}
+                                        </View>
                                       </Pressable>
                                       <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
                                     </View>
@@ -756,14 +790,19 @@ export default function RundgangTab() {
                                 </View>
                                 {tList.map((tkItem) => {
                                   const tdone = isTaskDone(tkItem);
+                                  const vis = defectStatusVisual(tdone ? "erledigt" : (tkItem.status || "offen"));
+                                  const sub = [tkItem.assignee, tkItem.dueDate].map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
                                   return (
                                     <View key={tkItem.id} style={styles.entryRow}>
-                                      <Pressable onPress={() => toggleTaskDone(tkItem)} hitSlop={8} style={styles.entryCheck}>
-                                        <MaterialIcons name={tdone ? "check-circle" : "radio-button-unchecked"} size={22} color={tdone ? "#10B981" : "#4B5B6B"} />
+                                      <Pressable onPress={() => cycleTaskStatus(tkItem)} hitSlop={8} style={styles.entryCheck}>
+                                        <MaterialIcons name={vis.name} size={22} color={vis.color} />
                                       </Pressable>
                                       <Pressable onPress={() => openTaskDetail(tkItem)} style={styles.entryTap}>
                                         <MaterialIcons name="task-alt" size={14} color="#818CF8" />
-                                        <Text style={[styles.entryTitle, tdone && styles.entryTitleDone]} numberOfLines={1}>{taskTitle(tkItem)}</Text>
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={[styles.entryTitle, tdone && styles.entryTitleDone]} numberOfLines={1}>{taskTitle(tkItem)}</Text>
+                                          {sub ? <Text style={styles.entrySub} numberOfLines={1}>{sub}</Text> : null}
+                                        </View>
                                       </Pressable>
                                       <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
                                     </View>
@@ -1366,8 +1405,9 @@ const styles = StyleSheet.create({
   },
   entryCheck: { padding: 2, width: 28, alignItems: "center" },
   entryTap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  entryTitle: { flex: 1, color: "#DCE6F0", fontSize: 14, fontWeight: "600" },
+  entryTitle: { color: "#DCE6F0", fontSize: 14, fontWeight: "600" },
   entryTitleDone: { color: "#6B7A8A", textDecorationLine: "line-through" },
+  entrySub: { color: "#7E8EA0", fontSize: 11, fontWeight: "500", marginTop: 1 },
   roomOpenLink: {
     flexDirection: "row",
     alignItems: "center",
