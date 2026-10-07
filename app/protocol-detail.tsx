@@ -1417,6 +1417,13 @@ export default function ProtocolDetailScreen() {
       const activeVersion = activeVersionId ? versions.find(v => v.id === activeVersionId) : null;
       const pdfText = activeVersion?.text || protocol.protocol;
       const pdfTemplateName = activeVersion?.templateName || protocol.templateName;
+      // Cover hero image = the PROJECT image (not the first/Mangel photo).
+      let projectImageUri: string | undefined;
+      try {
+        const projRaw = await AsyncStorage.getItem("projects");
+        const proj = (projRaw ? JSON.parse(projRaw) : []).find((p: any) => p.id === (protocol as any).projectId);
+        if (proj?.imageUri) projectImageUri = proj.imageUri;
+      } catch {}
       const pdfUri = await generateProtocolPdf({
         title: protocol.title,
         protocol: pdfText,
@@ -1435,6 +1442,7 @@ export default function ProtocolDetailScreen() {
         protocolNumber: protocol.protocolNumber,
         projectName: protocol.projectName || undefined,
         projectColor: (protocol as any).projectColor || undefined,
+        projectImageUri,
         signaturePaths: signaturePaths.length > 0 ? signaturePaths : undefined,
         signatures: signatures.length > 0 ? signatures : undefined,
       });

@@ -83,6 +83,7 @@ type PdfProtocol = {
   protocolNumber?: string;
   projectName?: string;
   projectColor?: string; // hex color for accent line
+  projectImageUri?: string; // project cover image shown as the hero on the cover page
   planData?: {
     planImageUri: string;
     planName: string;
@@ -498,28 +499,12 @@ export function generatePdfHtml(
   // Helper: Get caption text for a photo based on its timestamp and transcription segments
   // Returns HTML with the exact sentence at photo time highlighted in bold
   const getPhotoCaptionFromSegments = (photoIndex: number): string => {
-    // Priority 1: Pre-computed captions (no highlight for manually edited captions)
+    // Only use an explicitly set/edited caption. Do NOT auto-insert the raw
+    // spoken sentence from the transcript (e.g. "Vom Tischler liegen 13 Uhr") —
+    // the user doesn't want their raw speech dumped under each photo.
     if (protocol.photoCaptions && protocol.photoCaptions[photoIndex]) {
       return protocol.photoCaptions[photoIndex];
     }
-    // Priority 2: Match segments by timestamp - only show the exact sentence at photo time (bold only)
-    if (protocol.transcriptionSegments && protocol.transcriptionSegments.length > 0 && protocol.photoTimestamps && protocol.photoTimestamps[photoIndex] != null) {
-      const photoTime = protocol.photoTimestamps[photoIndex];
-      // Find the exact segment that contains the photo timestamp (spoken at that moment)
-      const exactSegment = protocol.transcriptionSegments.find(
-        (seg) => seg.start <= photoTime && seg.end >= photoTime
-      );
-      if (exactSegment) {
-        return `<strong>${exactSegment.text.trim()}</strong>`;
-      }
-      // Fallback: find the closest segment before the photo
-      const beforeSegments = protocol.transcriptionSegments.filter(seg => seg.start <= photoTime);
-      if (beforeSegments.length > 0) {
-        const closest = beforeSegments[beforeSegments.length - 1];
-        return `<strong>${closest.text.trim()}</strong>`;
-      }
-    }
-    // Priority 3: No segments available – use empty
     return "";
   };
 
@@ -1644,9 +1629,14 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
         kpiCards.push({ value: _open, label: "Offene Aufgaben", sub: _open > 0 ? `${_open} offen` : undefined, subWarn: _open > 0, color: _open > 0 ? "#B7791F" : "#2F855A", bg: _open > 0 ? "#FBF0DD" : "#E4F3EA", icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' });
         kpiCards.push({ value: _todos.length - _open, label: "Erledigt", color: "#2F855A", bg: "#E4F3EA", icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' });
       }
-      if (_photoN > 0) kpiCards.push({ value: _photoN, label: "Fotos", color: "#1E3A5F", bg: "#EEF1F5", icon: '<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/>' });
-      if (_durMin > 0) kpiCards.push({ value: `${_durMin} Min`, label: "Dauer", color: "#2B6CB0", bg: "#E7F0FB", icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' });
-      const heroDataUri = photoDataUris.find(Boolean) || null;
+      // "Fotos" and "Dauer" cards dropped on purpose — not useful on a cover.
+      void _photoN; void _durMin;
+      // Hero = the project's own image (not the first/Mangel photo). No project
+      // image → no hero, rather than a random evidence photo.
+      let heroDataUri: string | null = null;
+      if (resolvedProtocol.projectImageUri) {
+        heroDataUri = await withTimeout(fileToBase64DataUri(resolvedProtocol.projectImageUri), 5000, null);
+      }
       coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64, { kpiCards, heroDataUri });
     } catch (e) {
       console.warn("[PDF-Gen] Cover page generation failed:", e);
