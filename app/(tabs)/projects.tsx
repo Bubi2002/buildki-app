@@ -27,7 +27,7 @@ import { GEWERKE } from "@/lib/defect-pdf-export";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { Image as ExpoImage } from "expo-image";
-import { getChecklistResults, getChecklistCompletionRate, type ChecklistResult } from "@/lib/checklist-store";
+import { getChecklistResults, getChecklistCompletionRate, getChecklists, saveChecklistResult, type ChecklistResult, type Checklist } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
 type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; floor?: string; title?: string; task?: string; description?: string; dueDate?: string; assignee?: string };
@@ -118,6 +118,7 @@ export default function RundgangTab() {
   const [editTaskAssignee, setEditTaskAssignee] = useState("");
   const [editTaskDue, setEditTaskDue] = useState("");
   const [selectedChecklist, setSelectedChecklist] = useState<ChecklistResult | null>(null);
+  const [checklistDefs, setChecklistDefs] = useState<Checklist[]>([]);
 
   const tn = (key: string, n: number) => t(key as any).replace("{n}", String(n));
 
@@ -364,7 +365,27 @@ export default function RundgangTab() {
     setEditTaskDue(tk.dueDate || "");
     setSelectedTask(tk);
   };
-  const openChecklistDetail = (c: ChecklistResult) => setSelectedChecklist(c);
+  const openChecklistDetail = async (c: ChecklistResult) => {
+    setSelectedChecklist(c);
+    // Load the checklist definitions so we can show each Prüfpunkt's text.
+    try { if (checklistDefs.length === 0) setChecklistDefs(await getChecklists()); } catch {}
+  };
+  // Map a result's itemId → its Prüfpunkt text (from the checklist definition).
+  const checklistItemText = (c: ChecklistResult | null, itemId: string): string => {
+    const def = checklistDefs.find((d) => d.id === c?.checklistId);
+    return def?.items.find((it) => it.id === itemId)?.text || itemId;
+  };
+  // Toggle one Prüfpunkt directly from the room view and persist it.
+  const toggleChecklistItem = async (itemId: string) => {
+    if (!selectedChecklist) return;
+    const results = (selectedChecklist.results || []).map((r) =>
+      r.itemId === itemId ? { ...r, checked: !r.checked } : r,
+    );
+    const updated: ChecklistResult = { ...selectedChecklist, results };
+    setSelectedChecklist(updated);
+    setChecklistResults((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    try { await saveChecklistResult(updated); } catch {}
+  };
   const taskTitle = (tk: ProjectTask) => (tk.title || tk.task || "").trim() || t("index_tool_aufgaben" as any);
 
   // ── Defect popup actions ──────────────────────────────────────────────────
@@ -1125,10 +1146,33 @@ export default function RundgangTab() {
                   {selectedChecklist.location ? `  ·  ${selectedChecklist.location}` : ""}
                   {selectedChecklist.inspector ? `  ·  ${selectedChecklist.inspector}` : ""}
                 </Text>
-                <Text style={{ color: "#8FA3B8", fontSize: 13, marginTop: 10 }}>
+                <Text style={{ color: "#8FA3B8", fontSize: 13, marginTop: 10, marginBottom: 6 }}>
                   {(selectedChecklist.results || []).filter((r) => r.checked).length} / {(selectedChecklist.results || []).length} {t('index_erledigt' as any)}
                 </Text>
-                <Pressable onPress={() => setSelectedChecklist(null)} style={[styles.taskSave, { marginTop: 18 }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
+                {/* The actual Prüfpunkte — tap to toggle; saved immediately. */}
+                <ScrollView style={{ maxHeight: 360, marginTop: 4 }} showsVerticalScrollIndicator>
+                  {(selectedChecklist.results || []).map((r) => (
+                    <Pressable
+                      key={r.itemId}
+                      onPress={() => void toggleChecklistItem(r.itemId)}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#1E3A5F", opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <MaterialIcons
+                        name={r.checked ? "check-box" : "check-box-outline-blank"}
+                        size={22}
+                        color={r.checked ? "#34D399" : "#5A7184"}
+                        style={{ marginTop: 1 }}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: r.checked ? "#8FA3B8" : "#E8EEF4", fontSize: 14, fontWeight: "600", textDecorationLine: r.checked ? "line-through" : "none" }}>
+                          {checklistItemText(selectedChecklist, r.itemId)}
+                        </Text>
+                        {r.note ? <Text style={{ color: "#8FA3B8", fontSize: 12, marginTop: 2 }}>{r.note}</Text> : null}
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <Pressable onPress={() => setSelectedChecklist(null)} style={[styles.taskSave, { marginTop: 14 }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('close' as any)}</Text></Pressable>
               </>
             )}
           </View>
