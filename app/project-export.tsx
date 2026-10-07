@@ -14,7 +14,7 @@ import { BusyOverlay } from "@/components/busy-overlay";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getDefects } from "@/lib/defect-store";
-import { getChecklistResults, getChecklistCompletionRate } from "@/lib/checklist-store";
+import { getChecklistResults, getChecklistCompletionRate, getChecklists } from "@/lib/checklist-store";
 import { getFloorPlans } from "@/lib/floor-plan-store";
 import { getTimeEntries, getTimeTrackingSettings } from "@/lib/time-tracking-store";
 import { getProjectStructure } from "@/lib/room-store";
@@ -172,14 +172,34 @@ export default function ProjectExportScreen() {
 
       if (selected.checklists) {
         const results = await getChecklistResults(projectId);
+        const defs = await getChecklists();
         if (results.length) {
+          // One card per checklist result, listing every single Prüfpunkt with
+          // its checked state (not just a completion percentage).
+          const cards: PdfCard[] = results.map((r) => {
+            const def = defs.find((c) => c.id === r.checklistId);
+            const textById = new Map((def?.items || []).map((it) => [it.id, it.text]));
+            const items = (def?.items?.length
+              ? def.items.map((it) => {
+                  const res = r.results.find((x) => x.itemId === it.id);
+                  return { text: it.text, checked: !!res?.checked, note: res?.note };
+                })
+              : r.results.map((x) => ({ text: textById.get(x.itemId) || "Prüfpunkt", checked: !!x.checked, note: x.note })));
+            const rate = getChecklistCompletionRate(r);
+            return {
+              title: r.checklistName || "-",
+              badges: [{ label: `${rate}% erledigt`, color: rate >= 100 ? "#16A34A" : rate >= 50 ? "#B45309" : "#DC2626" }],
+              fields: [
+                { label: "Ort", value: r.location || "" },
+                { label: "Datum", value: new Date(r.createdAt).toLocaleDateString("de-DE") },
+              ],
+              checklist: items,
+            };
+          });
           sections.push({
             title: `${t('checklist_title' as any)} (${results.length})`,
             content: "",
-            table: {
-              headers: ["Checkliste", "Ort", "Erledigt", "Datum"],
-              rows: results.map((r) => [r.checklistName || "-", r.location || "-", `${getChecklistCompletionRate(r)}%`, new Date(r.createdAt).toLocaleDateString("de-DE")]),
-            },
+            cards,
           });
         }
       }

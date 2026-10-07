@@ -44,6 +44,8 @@ export interface PdfCard {
   fields?: { label: string; value: string }[];
   note?: string;
   images?: PdfImage[];
+  /** Checklist items (Prüfpunkte) with their checked state, listed in the card. */
+  checklist?: { text: string; checked: boolean; note?: string }[];
 }
 
 export interface PdfImage {
@@ -213,6 +215,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
           </div>
           ${card.fields && card.fields.some((f) => f.value) ? `<div class="mc-fields">${card.fields.filter((f) => f.value).map((f) => `<div class="mc-field"><span class="k">${esc(f.label)}</span><span class="v">${esc(f.value)}</span></div>`).join("")}</div>` : ""}
           ${card.note ? `<div class="mc-note">${esc(card.note)}</div>` : ""}
+          ${card.checklist && card.checklist.length ? `<div class="mc-checks">${card.checklist.map((it) => `<div class="mc-check"><span class="box" style="color:${it.checked ? "#16A34A" : "#94A3B8"};">${it.checked ? "☑" : "☐"}</span><span class="${it.checked ? "done" : ""}">${esc(it.text)}${it.note ? ` <em>— ${esc(it.note)}</em>` : ""}</span></div>`).join("")}</div>` : ""}
           ${card.images && card.images.length ? `<div class="mc-images">${card.images.map((im) => `<div class="mc-img"><img src="${im.base64}" />${im.caption ? `<p class="image-caption">${esc(im.caption)}</p>` : ""}</div>`).join("")}</div>` : ""}
         </div>`;
       }
@@ -348,6 +351,11 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .mcard .mc-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
     .mcard .mc-images .mc-img { width: calc(50% - 4px); page-break-inside: avoid; break-inside: avoid; }
     .mcard .mc-images img { width: 100%; max-height: 190px; object-fit: cover; border: 1px solid #e8ecf1; border-radius: 6px; }
+    .mcard .mc-checks { margin-top: 8px; }
+    .mcard .mc-check { display: flex; gap: 7px; font-size: 10.5px; line-height: 1.5; padding: 2px 0; align-items: baseline; }
+    .mcard .mc-check .box { font-size: 12px; }
+    .mcard .mc-check .done { color: #64748b; }
+    .mcard .mc-check em { color: #64748b; font-style: italic; }
     .image-annotation { font-size: 9px; color: ${accentColor}; margin-top: 2px; }
     .data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
     .data-table th { background: #f8fafc; color: #334155; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid #e2e8f0; }
