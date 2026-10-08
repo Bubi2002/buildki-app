@@ -10,7 +10,8 @@ import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, type 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
 // Distinct colour per wall: A = Blau, B = Grün, C = Rot, D = Orange.
 const WALL_COLOR: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C" };
-const PLAN_W = 240; // px width of the plan excerpt box in the PDF
+const PLAN_W = 190; // px width of the plan excerpt box in the PDF (kept small so
+                    // the meta row stays short and the photo fits on the SAME page)
 
 // iOS can change the app's Documents container path between installs/updates, so a
 // file:// path saved by an earlier build may no longer resolve. Re-home such a
@@ -106,7 +107,12 @@ export async function generateRaumbuchPdf(
     const cr = e.planCrop;
     const cx = cr?.x ?? 0, cy = cr?.y ?? 0, cw = cr?.w ?? 1, ch = cr?.h ?? 1;
     const contAspect = (cw * A) / ch;
-    const W = PLAN_W, contH = W / contAspect;
+    // Keep the excerpt box from getting too TALL (a tall/portrait crop) — a tall
+    // meta row would push the photo onto the next page. Scale the whole excerpt
+    // down (no cropping) when it would exceed the height cap.
+    const MAX_CONT_H = 200; // px (~53mm)
+    let W = PLAN_W, contH = W / contAspect;
+    if (contH > MAX_CONT_H) { W = W * (MAX_CONT_H / contH); contH = MAX_CONT_H; }
     const imgW = W / cw, imgH = imgW / A;
     const toX = (px: number) => (((px - cx) / cw) * W);
     const toY = (py: number) => (((py - cy) / ch) * contH);
@@ -344,11 +350,11 @@ export async function generateRaumbuchPdf(
     .meta { font-size: 14px; line-height: 1.7; color: #253040; }
     .meta .m span { font-weight: 800; color: ${NAVY}; }
     .meta .note { font-size: 12.5px; color: #475569; margin-top: 4px; max-width: 380px; }
-    .plan { position: relative; width: 240px; max-width: 42%; border: 1px solid #e6eaf0; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+    .plan { position: relative; max-width: 40%; border: 1px solid #e6eaf0; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
     .plan img { display: block; width: 100%; height: auto; }
     .plan .pin { position: absolute; width: 14px; height: 14px; margin-left: -7px; margin-top: -7px; border-radius: 50%; background: #DC2626; border: 2px solid #fff; box-shadow: 0 0 0 1px #DC2626; }
     .photo-wrap { text-align: center; break-inside: avoid; page-break-inside: avoid; }
-    .photo { display: block; width: 100%; max-height: 185mm; object-fit: contain; border: 1px solid #e6eaf0; border-radius: 8px; }
+    .photo { display: block; width: 100%; max-height: 150mm; object-fit: contain; border: 1px solid #e6eaf0; border-radius: 8px; }
     .wall-label { font-size: 16px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px; margin: 10px 0 0; }
     .empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
     /* ── Fragenkatalog (questionnaire) ── */
