@@ -25,6 +25,8 @@ import {
 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
 const WALL_COLOR = "#2563EB";
+// Distinct colour per wall, matching the Raumbuch PDF (A=Blau, B=Grün, C=Rot, D=Orange).
+const WALL_COLORS: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C" };
 type PlanMode = "marker" | "crop" | RaumbuchWallKey;
 
 export default function RaumbuchRoomScreen() {
@@ -206,9 +208,14 @@ export default function RaumbuchRoomScreen() {
     } else {
       dragRef.current = null;
       setTempWalls((prev) => {
-        const w = prev[key]; if (!w) return prev;
+        let w = prev[key]; if (!w) return prev;
         if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.02) { const n = { ...prev }; delete n[key]; return n; }
-        return prev;
+        // Auto-straighten: a room wall is almost always horizontal or vertical,
+        // so snap it to exactly H/V when it's within ~22° of an axis.
+        const dx = Math.abs(w.x2 - w.x1), dy = Math.abs(w.y2 - w.y1);
+        if (dy <= dx * 0.4) { const y = (w.y1 + w.y2) / 2; w = { ...w, y1: y, y2: y }; }
+        else if (dx <= dy * 0.4) { const x = (w.x1 + w.x2) / 2; w = { ...w, x1: x, x2: x }; }
+        return { ...prev, [key]: w };
       });
     }
   };
@@ -388,7 +395,8 @@ export default function RaumbuchRoomScreen() {
                             {WALL_KEYS.map((k) => {
                               const wline = tempWalls[k]; if (!wline) return null;
                               const active = planMode === k;
-                              const col = active ? "#DC2626" : WALL_COLOR;
+                              // Each wall keeps its own colour; the active one is just drawn thicker.
+                              const col = WALL_COLORS[k] || WALL_COLOR;
                               const mx = ((wline.x1 + wline.x2) / 2) * pw, my = ((wline.y1 + wline.y2) / 2) * ph;
                               return (
                                 <SvgG key={k}>

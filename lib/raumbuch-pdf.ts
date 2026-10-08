@@ -8,6 +8,8 @@ import { getPdfBranding } from "./pdf-branding-store";
 import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
+// Distinct colour per wall: A = Blau, B = Grün, C = Rot, D = Orange.
+const WALL_COLOR: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C" };
 const PLAN_W = 240; // px width of the plan excerpt box in the PDF
 
 // iOS can change the app's Documents container path between installs/updates, so a
@@ -101,13 +103,20 @@ export async function generateRaumbuchPdf(
     const toX = (px: number) => (((px - cx) / cw) * W);
     const toY = (py: number) => (((py - cy) / ch) * contH);
     const walls = e.walls || {};
+    // Clamp into the box so lines/labels never spill past the frame.
+    const R = 8;
+    const clX = (x: number) => Math.max(0, Math.min(W, x));
+    const clY = (y: number) => Math.max(0, Math.min(contH, y));
     const wallSvg = Object.keys(walls).length
       ? `<svg width="${W}" height="${contH.toFixed(1)}" viewBox="0 0 ${W} ${contH.toFixed(1)}" style="position:absolute;left:0;top:0;">${WALL_KEYS.map((k) => {
           const wl = walls[k]; if (!wl) return "";
           const hot = highlight === k;
-          const mx = (toX(wl.x1) + toX(wl.x2)) / 2, my = (toY(wl.y1) + toY(wl.y2)) / 2;
-          const col = hot ? "#DC2626" : "#2563EB";
-          return `<line x1="${toX(wl.x1).toFixed(1)}" y1="${toY(wl.y1).toFixed(1)}" x2="${toX(wl.x2).toFixed(1)}" y2="${toY(wl.y2).toFixed(1)}" stroke="${col}" stroke-width="${hot ? 3.5 : 2.5}" stroke-linecap="round"/><circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="8" fill="${col}" stroke="#ffffff" stroke-width="1.5"/><text x="${mx.toFixed(1)}" y="${(my + 3.3).toFixed(1)}" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">${k}</text>`;
+          const x1 = clX(toX(wl.x1)), y1 = clY(toY(wl.y1)), x2 = clX(toX(wl.x2)), y2 = clY(toY(wl.y2));
+          // Badge at the line midpoint, kept fully inside the frame.
+          const bx = Math.max(R + 1, Math.min(W - R - 1, (x1 + x2) / 2));
+          const by = Math.max(R + 1, Math.min(contH - R - 1, (y1 + y2) / 2));
+          const col = WALL_COLOR[k] || "#2563EB";
+          return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${col}" stroke-width="${hot ? 4 : 2.5}" stroke-linecap="round"/><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${R}" fill="${col}" stroke="#ffffff" stroke-width="1.5"/><text x="${bx.toFixed(1)}" y="${(by + 3.3).toFixed(1)}" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">${k}</text>`;
         }).join("")}</svg>`
       : "";
     const hasPin = e.planX != null && e.planY != null;
