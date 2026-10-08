@@ -364,6 +364,28 @@ export default function ProtocolDetailScreen() {
           await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
         }
       }
+      // Self-heal a stuck placeholder title: if processing actually finished
+      // (real content is present) but the title is still the "Wird verarbeitet…"
+      // placeholder (its completion path was interrupted), derive a proper title
+      // the same way the background processor would, and persist it.
+      if (found && typeof found.protocol === "string" && found.protocol.trim().length > 20) {
+        const placeholders = [
+          t('record_processing' as any), t('record_processing_title' as any), t('protocol_draft_title' as any),
+          "Wird verarbeitet...", "Wird verarbeitet …",
+        ].map((s) => String(s || "").trim().toLowerCase());
+        const curTitle = String(found.title || "").trim();
+        if (!curTitle || placeholders.includes(curTitle.toLowerCase())) {
+          try {
+            const { deriveProtocolTitle } = await import("@/lib/background-processor");
+            const derived = deriveProtocolTitle(found.protocol || "", (found as any).transcription || "", found.templateName).trim();
+            if (derived && !placeholders.includes(derived.toLowerCase())) {
+              found = { ...found, title: derived } as any;
+              const i2 = protocols.findIndex((p: Protocol) => p.id === id);
+              if (i2 >= 0) { protocols[i2] = { ...protocols[i2], title: derived }; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
+            }
+          } catch {}
+        }
+      }
       setProtocol(found || null);
       if (found?.todos) {
         setTodos(found.todos);

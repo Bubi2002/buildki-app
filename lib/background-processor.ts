@@ -15,17 +15,20 @@ import { PROTOCOL_TEMPLATES } from "@/shared/templates";
 // Build a clean, human-readable protocol title instead of dumping the first 50
 // characters of raw speech. Prefers a real heading from the generated protocol,
 // then the template name, then a short first sentence of the transcript.
-function deriveProtocolTitle(markdown: string, transcription: string, templateName?: string): string {
+export function deriveProtocolTitle(markdown: string, transcription: string, templateName?: string): string {
   const headings = (markdown || "").match(/^#{1,3}\s+.+$/gm) || [];
   for (const raw of headings) {
     const h = raw.replace(/^#{1,3}\s+/, "").replace(/\*\*/g, "").replace(/[#`]/g, "").trim();
     if (!h || h.length > 60 || h.includes("·") || h.includes("/")) continue;
-    // Skip field labels / section names / room headings — not good titles.
-    if (/^(objekt|bauvorhaben|datum|teilnehmer|anwesend|ort|allgemein|protokoll|zusammenfassung|m[aä]ngel|aufgaben|befund|allgemeines)\b/i.test(h)) continue;
-    return h;
+    // Drop a leading section number ("4. Zusammenfassung" → "Zusammenfassung")
+    // before deciding whether it's a generic section name.
+    const hc = h.replace(/^\d+[.)]\s*/, "").trim();
+    // Skip field labels / standard section names / room headings — not titles.
+    if (/^(objekt|bauvorhaben|datum|teilnehmer|anwesend|ort|allgemein|protokoll|zusammenfassung|m[aä]ngel|aufgaben|befund|allgemeines|empfohlene|ma[ßs]nahmen?|kritische|sonstige|sonstiges|n[aä]chste\s+schritte|ergebnis|fazit|beschreibung|priorit)\b/i.test(hc)) continue;
+    return hc || h;
   }
   const tn = (templateName || "").trim();
-  if (tn && !/^(auto|automatisch)$/i.test(tn)) return tn;
+  if (tn && !/^(auto|automatisch|freies\s+protokoll)$/i.test(tn)) return tn;
   const sentence = (transcription || "").trim().split(/[.!?\n]/)[0].trim();
   if (sentence && sentence.length >= 4 && sentence.length <= 60) return sentence;
   if ((transcription || "").trim().length > 0) {
