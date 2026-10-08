@@ -40,6 +40,7 @@ import { trpc } from "@/lib/trpc";
 import * as FileSystem from "expo-file-system/legacy";
 import { extractDefectFromText } from "@/lib/defect-extraction";
 import { GEWERKE } from "@/lib/defect-pdf-export";
+import { getProjectStructure, type Room as ProjectRoom, type Floor as ProjectFloor } from "@/lib/room-store";
 
 type TodoItem = {
   task: string;
@@ -83,6 +84,10 @@ export default function TasksScreen() {
   const [newDeadline, setNewDeadline] = useState("");
   const [newFloor, setNewFloor] = useState("");
   const [newRoom, setNewRoom] = useState("");
+  // Two-level "Wo" picker (Etage → Raum), when the task's project has a structure.
+  const [taskFloors, setTaskFloors] = useState<ProjectFloor[]>([]);
+  const [taskRooms, setTaskRooms] = useState<ProjectRoom[]>([]);
+  const [newFloorId, setNewFloorId] = useState<string | null>(null);
   const [newPhotos, setNewPhotos] = useState<string[]>([]);
   // Pending re-annotation: which photo index is being edited in /photo-annotate.
   const pendingPhotoAnnotate = useRef<{ key: string; index: number } | null>(null);
@@ -106,6 +111,22 @@ export default function TasksScreen() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projectId || null);
+  // Load the floors/rooms of the task's project so "Wo" can be a two-level
+  // Etage → Raum picker (only works when a single project is in scope).
+  const effectiveProjectId = projectId || selectedProjectId;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!showCreate || !effectiveProjectId) { if (!cancelled) { setTaskFloors([]); setTaskRooms([]); } return; }
+      try {
+        const s = await getProjectStructure(effectiveProjectId);
+        if (cancelled) return;
+        setTaskFloors(s.floors.slice().sort((a, b) => a.number - b.number));
+        setTaskRooms(s.rooms);
+      } catch { if (!cancelled) { setTaskFloors([]); setTaskRooms([]); } }
+    })();
+    return () => { cancelled = true; };
+  }, [showCreate, effectiveProjectId]);
   // Share flow (one "Teilen" button)
   const [showShare, setShowShare] = useState(false);
   const [shareFormat, setShareFormat] = useState<"pdf" | "csv">("pdf");
@@ -168,7 +189,7 @@ export default function TasksScreen() {
 
   const resetTaskForm = () => {
     setNewTitle(""); setNewTrade(""); setNewPriority("mittel");
-    setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewStatus("offen"); setNewAssignee("");
+    setNewDeadline(""); setNewFloor(""); setNewRoom(""); setNewFloorId(null); setNewStatus("offen"); setNewAssignee("");
     setNewPhotos([]);
     setEditingTaskId(null);
     setEditingProtocol(null);
@@ -1123,24 +1144,58 @@ export default function TasksScreen() {
               <DateOnlyPicker value={newDeadline} onChange={setNewDeadline} label={t('tasks_field_wann' as any)} withTime />
             </View>
 
-            {/* Wo (Geschoss / Raum) */}
+            {/* Wo (Geschoss / Raum) — two-level Etage → Raum picker when the
+                task's project has a structure; free text otherwise. */}
             <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('tasks_field_wo' as any)}</Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <TextInput
-                value={newFloor}
-                onChangeText={setNewFloor}
-                placeholder={t('export_etage')}
-                placeholderTextColor={colors.muted}
-                style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              />
-              <TextInput
-                value={newRoom}
-                onChangeText={setNewRoom}
-                placeholder={t('export_raum')}
-                placeholderTextColor={colors.muted}
-                style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              />
-            </View>
+            {taskRooms.length > 0 ? (() => {
+              const floorsWithRooms = taskFloors.filter((f) => taskRooms.some((r) => r.floorId === f.id));
+              // Effective floor: explicit pick → floor of the chosen room → first floor.
+              const roomFromName = taskRooms.find((r) => r.name === newRoom && (!newFloor || taskFloors.find((f) => f.id === r.floorId)?.name === newFloor));
+              const effFloorId = newFloorId || roomFromName?.floorId || floorsWithRooms[0]?.id || null;
+              const roomsOfFloor = taskRooms.filter((r) => r.floorId === effFloorId);
+              return (
+                <View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
+                    {floorsWithRooms.map((f) => {
+                      const active = effFloorId === f.id;
+                      return (
+                        <Pressable key={f.id} onPress={() => { setNewFloorId(f.id); setNewFloor(f.name); setNewRoom(""); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}>
+                          <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{f.name}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled" style={{ marginTop: 8 }}>
+                    {roomsOfFloor.map((room) => {
+                      const active = newRoom === room.name && (taskFloors.find((f) => f.id === room.floorId)?.name || "") === newFloor;
+                      return (
+                        <Pressable key={room.id} onPress={() => { const fn = taskFloors.find((f) => f.id === room.floorId)?.name || ""; setNewFloorId(room.floorId); setNewFloor(fn); setNewRoom(active ? "" : room.name); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : "transparent" }}>
+                          <Text style={{ fontSize: 12, fontWeight: active ? "700" : "600", color: active ? colors.primary : colors.muted }}>{room.name}</Text>
+                        </Pressable>
+                      );
+                    })}
+                    {roomsOfFloor.length === 0 && <Text style={{ fontSize: 12, color: colors.muted, paddingVertical: 7 }}>{t('export_raum')}</Text>}
+                  </ScrollView>
+                </View>
+              );
+            })() : (
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TextInput
+                  value={newFloor}
+                  onChangeText={setNewFloor}
+                  placeholder={t('export_etage')}
+                  placeholderTextColor={colors.muted}
+                  style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                />
+                <TextInput
+                  value={newRoom}
+                  onChangeText={setNewRoom}
+                  placeholder={t('export_raum')}
+                  placeholderTextColor={colors.muted}
+                  style={[styles.createInput, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+                />
+              </View>
+            )}
 
             {/* Fotos (hinzufügen + markieren) */}
             <Text style={[styles.createLabel, { color: colors.muted, marginTop: 12 }]}>{t('gallery_photos' as any)}</Text>

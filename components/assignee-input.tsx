@@ -40,6 +40,7 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
   const [focused, setFocused] = useState(false);
   const [permDenied, setPermDenied] = useState(false);
   const loadedContacts = useRef(false);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -48,6 +49,7 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
         if (raw) setHistory(JSON.parse(raw));
       } catch {}
     })();
+    return () => { if (blurTimer.current) clearTimeout(blurTimer.current); };
   }, []);
 
   const loadContactsOnce = async () => {
@@ -92,9 +94,9 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
     <View>
       <TextInput
         value={value}
-        onChangeText={onChange}
-        onFocus={() => { setFocused(true); loadContactsOnce(); }}
-        onBlur={() => { if (value.trim()) rememberAssignee(value); setTimeout(() => setFocused(false), 180); }}
+        onChangeText={(v) => { setFocused(true); onChange(v); }}
+        onFocus={() => { if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; } setFocused(true); void loadContactsOnce(); }}
+        onBlur={() => { if (value.trim()) rememberAssignee(value); if (blurTimer.current) clearTimeout(blurTimer.current); blurTimer.current = setTimeout(() => setFocused(false), 180); }}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
         autoCapitalize="none"
