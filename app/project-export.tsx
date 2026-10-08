@@ -18,6 +18,7 @@ import { getChecklistResults, getChecklistCompletionRate, getChecklists } from "
 import { getFloorPlans } from "@/lib/floor-plan-store";
 import { getTimeEntries, getTimeTrackingSettings } from "@/lib/time-tracking-store";
 import { getProjectStructure } from "@/lib/room-store";
+import { getRaumbuch, raumbuchPhotoCount, RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY } from "@/lib/raumbuch-store";
 import { getDirectProjectPhotos } from "@/lib/project-photo-store";
 import { getEvidence } from "@/lib/evidence-store";
 import { generateAndSharePdf, type PdfSection, type PdfImage, type PdfCard } from "@/lib/pdf-professional";
@@ -25,7 +26,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Platform } from "react-native";
 
-type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "plans" | "compare" | "measure" | "photos";
+type SourceKey = "defects" | "checklists" | "tasks" | "attendance" | "time" | "diary" | "protocols" | "rooms" | "plans" | "raumbuch" | "compare" | "measure" | "photos";
 
 // Pill colours matching the app (status + priority).
 const PRIO_COLOR: Record<string, string> = { hoch: "#B91C1C", mittel: "#B45309", niedrig: "#6B7280" };
@@ -72,7 +73,7 @@ export default function ProjectExportScreen() {
   const { projectId = "", projectName } = useLocalSearchParams<{ projectId: string; projectName?: string }>();
 
   const [selected, setSelected] = useState<Record<SourceKey, boolean>>({
-    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: false, protocols: true, rooms: true, plans: true, compare: true, measure: true, photos: false,
+    defects: true, checklists: true, tasks: true, attendance: true, time: true, diary: false, protocols: true, rooms: true, plans: true, raumbuch: true, compare: true, measure: true, photos: false,
   });
   const [counts, setCounts] = useState<Partial<Record<SourceKey, number>>>({});
   const [busy, setBusy] = useState(false);
@@ -86,6 +87,7 @@ export default function ProjectExportScreen() {
     { key: "protocols", label: t('project_export_protocols' as any), icon: "description" },
     { key: "rooms", label: t('index_tool_raeume' as any), icon: "layers" },
     { key: "plans", label: t('index_tool_grundriss' as any), icon: "map" },
+    { key: "raumbuch", label: t('raumbuch_title' as any), icon: "menu-book" },
     { key: "compare", label: t('vergleich' as any), icon: "compare" },
     { key: "measure", label: t('measure_title' as any), icon: "straighten" },
   ];
@@ -114,6 +116,7 @@ export default function ProjectExportScreen() {
         const tasks = (tasksRaw ? JSON.parse(tasksRaw) : []).filter((tk: any) => !tk.projectId || tk.projectId === projectId);
         const compares = (cmpRaw ? JSON.parse(cmpRaw) : []).filter((c: any) => c.projectId === projectId && c.afterUri);
         const measures = evidence.filter((e) => (e.measurements?.length || 0) > 0 && e.previewUri);
+        const raumbuch = (await getRaumbuch(projectId).catch(() => [])).filter((e) => raumbuchPhotoCount(e) > 0);
         const defectPhotos = defects.reduce((s, d) => s + ((d.photos || []).length), 0);
         setCounts({
           defects: defects.length,
@@ -125,6 +128,7 @@ export default function ProjectExportScreen() {
           protocols: proto.length,
           rooms: structure.rooms.length,
           plans: floorPlans.length,
+          raumbuch: raumbuch.length,
           compare: compares.length,
           measure: measures.length,
           photos: projectPhotos.length + defectPhotos,
@@ -343,6 +347,33 @@ export default function ProjectExportScreen() {
             content: "",
             images,
           });
+        }
+      }
+
+      if (selected.raumbuch) {
+        const entries = (await getRaumbuch(projectId).catch(() => [])).filter((e) => raumbuchPhotoCount(e) > 0);
+        if (entries.length) {
+          const cards: PdfCard[] = [];
+          for (const e of entries) {
+            const images: PdfImage[] = [];
+            for (const pos of RAUMBUCH_POSITIONS) {
+              const uri = e.photos?.[pos];
+              if (!uri) continue;
+              const data = await toDataUri(uri);
+              if (data) images.push({ base64: data, caption: t(RAUMBUCH_POSITION_LABEL_KEY[pos] as any) });
+            }
+            if (!images.length) continue;
+            const noteText = RAUMBUCH_POSITIONS
+              .map((pos) => { const n = (e.notes?.[pos] || "").trim(); return n ? `${t(RAUMBUCH_POSITION_LABEL_KEY[pos] as any)}: ${n}` : ""; })
+              .filter(Boolean).join("\n");
+            cards.push({
+              title: [e.floorName, e.roomName].filter(Boolean).join(" · ") || e.roomName || t('raumbuch_title' as any),
+              fields: [],
+              note: noteText,
+              images,
+            });
+          }
+          if (cards.length) sections.push({ title: `${t('raumbuch_title' as any)} (${cards.length})`, content: "", cards });
         }
       }
 
