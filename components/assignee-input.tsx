@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Linking, Modal, FlatList, ActivityIndicator, type TextStyle, type StyleProp } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loadPhoneContacts, type PhoneContact } from "@/lib/phone-contacts";
+import { loadPhoneContacts, presentContactAccessPicker, type PhoneContact } from "@/lib/phone-contacts";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 
@@ -49,6 +49,7 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
   const [pickerBusy, setPickerBusy] = useState(false);
   const [pickerError, setPickerError] = useState<null | "denied" | "empty" | "error" | "web">(null);
   const [pickerQuery, setPickerQuery] = useState("");
+  const [limited, setLimited] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +83,7 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
     setPickerError(null);
     try {
       const res = await loadPhoneContacts();
+      setLimited(!!res.limited);
       if (res.ok) {
         setContacts(res.contacts.slice(0, 1000));
         loadedContacts.current = true;
@@ -96,6 +98,12 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
     } finally {
       setPickerBusy(false);
     }
+  };
+
+  // iOS 18 limited access: let the user share MORE contacts, then reload.
+  const shareMoreContacts = async () => {
+    const shown = await presentContactAccessPicker();
+    if (shown) { loadedContacts.current = false; await openPicker(); }
   };
 
   const pick = (name: string) => {
@@ -142,11 +150,12 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
           autoCapitalize="none"
           style={[style, { paddingRight: 44 }]}
         />
-        {/* Always-visible contacts button (reliable, focus-independent). */}
+        {/* Always-visible contacts button (reliable, focus-independent),
+            vertically centred in the field. */}
         <Pressable
           onPress={() => void openPicker()}
-          hitSlop={8}
-          style={({ pressed }) => [{ position: "absolute", right: 8, padding: 6, opacity: pressed ? 0.6 : 1 }]}
+          hitSlop={12}
+          style={({ pressed }) => [{ position: "absolute", right: 4, top: 0, bottom: 0, paddingHorizontal: 8, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 }]}
           accessibilityLabel={t('assignee_pick_title' as any)}
         >
           <MaterialIcons name="contacts" size={22} color={colors.primary} />
@@ -191,6 +200,12 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
                   style={{ flex: 1, color: colors.foreground, fontSize: 15, paddingVertical: 8 }}
                 />
               </View>
+            )}
+            {limited && !pickerBusy && (
+              <Pressable onPress={() => void shareMoreContacts()} style={({ pressed }) => [styles.pickRow, { borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                <MaterialIcons name="person-add" size={18} color={colors.primary} />
+                <Text style={{ flex: 1, color: colors.primary, fontSize: 14, fontWeight: "700" }}>{t('assignee_share_more' as any)}</Text>
+              </Pressable>
             )}
             {pickerBusy ? (
               <View style={{ padding: 30, alignItems: "center" }}><ActivityIndicator color={colors.primary} /></View>

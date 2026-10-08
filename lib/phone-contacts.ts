@@ -8,8 +8,25 @@ export type LoadContactsResult =
 
 export type PhoneContact = { name: string; email?: string; phone?: string };
 export type LoadAllContactsResult =
-  | { ok: true; contacts: PhoneContact[] }
-  | { ok: false; reason: "web" | "denied" | "empty" | "error"; message?: string };
+  | { ok: true; contacts: PhoneContact[]; limited?: boolean }
+  | { ok: false; reason: "web" | "denied" | "empty" | "error"; message?: string; limited?: boolean };
+
+/**
+ * iOS 18+: when the app only has LIMITED contacts access, present Apple's picker
+ * so the user can share MORE contacts with the app. Returns true if the picker
+ * was shown (caller should then reload contacts). No-op/false elsewhere.
+ */
+export async function presentContactAccessPicker(): Promise<boolean> {
+  if (Platform.OS !== "ios") return false;
+  try {
+    const Contacts = await import("expo-contacts/legacy");
+    if (typeof (Contacts as any).presentAccessPickerAsync !== "function") return false;
+    await (Contacts as any).presentAccessPickerAsync();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Load ALL address-book contacts that have a name (not just those with an
@@ -20,18 +37,19 @@ export async function loadPhoneContacts(): Promise<LoadAllContactsResult> {
   if (Platform.OS === "web") return { ok: false, reason: "web" };
   try {
     const Contacts = await import("expo-contacts/legacy");
-    const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== "granted") return { ok: false, reason: "denied" };
+    const perm = await Contacts.requestPermissionsAsync();
+    const limited = (perm as any).accessPrivileges === "limited";
+    if (perm.status !== "granted") return { ok: false, reason: "denied", limited };
 
     const { data } = await Contacts.getContactsAsync({
-      fields: [Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+      fields: [Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers, Contacts.Fields.Name, Contacts.Fields.FirstName, Contacts.Fields.LastName],
       sort: Contacts.SortTypes?.FirstName || undefined,
     });
 
     const seen = new Set<string>();
     const out: PhoneContact[] = [];
     for (const c of data || []) {
-      const name = (c.name || "").trim();
+      const name = (c.name || [c.firstName, c.lastName].filter(Boolean).join(" ") || "").trim();
       if (!name) continue;
       const key = name.toLowerCase();
       if (seen.has(key)) continue;
@@ -43,8 +61,8 @@ export async function loadPhoneContacts(): Promise<LoadAllContactsResult> {
       });
     }
     out.sort((a, b) => a.name.localeCompare(b.name, "de"));
-    if (out.length === 0) return { ok: false, reason: "empty" };
-    return { ok: true, contacts: out };
+    if (out.length === 0) return { ok: false, reason: "empty", limited };
+    return { ok: true, contacts: out, limited };
   } catch (e: any) {
     return { ok: false, reason: "error", message: e?.message };
   }
