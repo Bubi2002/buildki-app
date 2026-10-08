@@ -89,7 +89,7 @@ export default function RaumbuchRoomScreen() {
 
   const addPhoto = async (pos: RaumbuchPosition) => {
     try {
-      const picked = await pickImagesWithSource({ t, multiple: false } as any);
+      const picked = await pickImagesWithSource({ t, multiple: false, withCamera: true } as any);
       if (!picked || picked.length === 0) return;
       const saved = await persistPhotoFile(picked[0].uri, pos);
       const cur = entry || blankEntry();

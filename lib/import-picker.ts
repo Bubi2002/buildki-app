@@ -25,8 +25,10 @@ export function pickImagesWithSource(opts: {
   multiple?: boolean;
   /** Also return base64 (needed for on-device/AI analysis uploads). */
   withBase64?: boolean;
+  /** Offer a "Kamera" option to shoot a photo on-site (single photo). */
+  withCamera?: boolean;
 }): Promise<PickedImage[]> {
-  const { t, multiple = false, withBase64 = false } = opts;
+  const { t, multiple = false, withBase64 = false, withCamera = false } = opts;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -36,10 +38,34 @@ export function pickImagesWithSource(opts: {
       resolve(images);
     };
 
+    const cameraOption = {
+      text: t("kamera"),
+      onPress: async () => {
+        try {
+          const permission = await ImagePicker.requestCameraPermissionsAsync();
+          if (!permission.granted) { done([]); return; }
+          const result = await ImagePicker.launchCameraAsync({ quality: 0.9, base64: withBase64 });
+          done(
+            result.canceled
+              ? []
+              : result.assets.map((asset) => ({
+                  uri: asset.uri,
+                  base64: asset.base64 || undefined,
+                  mimeType: asset.mimeType || "image/jpeg",
+                  fileName: asset.fileName || undefined,
+                })),
+          );
+        } catch {
+          done([]);
+        }
+      },
+    };
+
     Alert.alert(
       t("import_source_title"),
       t("import_source_message"),
       [
+        ...(withCamera ? [cameraOption] : []),
         {
           text: t("import_source_gallery"),
           onPress: async () => {
