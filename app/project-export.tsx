@@ -221,14 +221,35 @@ export default function ProjectExportScreen() {
         const raw = await AsyncStorage.getItem("project-tasks");
         const tasks = (raw ? JSON.parse(raw) : []).filter((tk: any) => !tk.projectId || tk.projectId === projectId);
         if (tasks.length) {
-          sections.push({
-            title: `${t('index_tool_aufgaben' as any)} (${tasks.length})`,
-            content: "",
-            table: {
-              headers: ["Aufgabe", "Raum", "Status"],
-              rows: tasks.map((tk: any) => [tk.title || tk.task || "-", tk.room || "-", tk.status === "erledigt" || tk.done ? "Erledigt" : "Offen"]),
-            },
-          });
+          const prioRank: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
+          const sorted = [...tasks].sort((a, b) => (prioRank[a.priority] ?? 3) - (prioRank[b.priority] ?? 3));
+          const cards: PdfCard[] = [];
+          for (const tk of sorted) {
+            const images: PdfImage[] = [];
+            for (const uri of (tk.photos || []).slice(0, 4)) {
+              const data = await toDataUri(uri);
+              if (data) images.push({ base64: data });
+            }
+            const ort = [tk.floor, tk.room].map((s: any) => (s || "").trim()).filter(Boolean).join(" · ");
+            const status = tk.status === "erledigt" || tk.done ? "erledigt" : (tk.status === "in_arbeit" || tk.status === "in_bearbeitung" ? "in_bearbeitung" : "offen");
+            const prio = (tk.priority || "").toString();
+            cards.push({
+              title: tk.title || tk.task || "-",
+              badges: [
+                { label: STATUS_LABEL[status] || status, color: STATUS_COLOR[status] },
+                ...(prio ? [{ label: prio.charAt(0).toUpperCase() + prio.slice(1), color: PRIO_COLOR[prio] }] : []),
+              ],
+              fields: [
+                { label: "Ort", value: ort },
+                { label: "Gewerk", value: tk.gewerk || "" },
+                { label: "Zuständig", value: tk.assignee || "" },
+                { label: "Frist", value: tk.dueDate || tk.deadline || "" },
+              ],
+              note: tk.description || "",
+              images,
+            });
+          }
+          sections.push({ title: `${t('index_tool_aufgaben' as any)} (${tasks.length})`, content: "", cards });
         }
       }
 

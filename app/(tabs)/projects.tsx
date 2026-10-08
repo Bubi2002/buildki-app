@@ -30,7 +30,7 @@ import { Image as ExpoImage } from "expo-image";
 import { getChecklistResults, getChecklistCompletionRate, getChecklists, saveChecklistResult, type ChecklistResult, type Checklist } from "@/lib/checklist-store";
 
 type ProjectItem = { id: string; name: string; color?: string; archived?: boolean; favorite?: boolean };
-type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; floor?: string; title?: string; task?: string; description?: string; dueDate?: string; assignee?: string };
+type ProjectTask = { id: string; projectId?: string; status?: string; done?: boolean; room?: string; floor?: string; title?: string; task?: string; description?: string; dueDate?: string; deadline?: string; assignee?: string; gewerk?: string; priority?: "hoch" | "mittel" | "niedrig"; photos?: string[] };
 
 const ROOM_STATUS_LABELS: Record<string, string> = {
   nicht_begonnen: "rooms_status_nicht_begonnen",
@@ -91,6 +91,9 @@ export default function RundgangTab() {
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskAssignee, setNewTaskAssignee] = useState("");
   const [newTaskDue, setNewTaskDue] = useState("");
+  const [newTaskGewerk, setNewTaskGewerk] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [newTaskPhotos, setNewTaskPhotos] = useState<string[]>([]);
   // Defect create popup
   const [defectRoom, setDefectRoom] = useState<Room | null>(null);
   const [newDefectTitle, setNewDefectTitle] = useState("");
@@ -562,7 +565,24 @@ export default function RundgangTab() {
     setNewTaskDesc("");
     setNewTaskAssignee("");
     setNewTaskDue("");
+    setNewTaskGewerk("");
+    setNewTaskPriority("mittel");
+    setNewTaskPhotos([]);
     setTaskRoom(room);
+  };
+
+  const pickTaskPhotos = async () => {
+    try {
+      const picked = await pickImagesWithSource({ t, multiple: true, withCamera: true } as any);
+      if (!picked || picked.length === 0) return;
+      const dir = `${FileSystem.documentDirectory}task-photos/`;
+      try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+      const uris: string[] = [];
+      for (const a of picked) {
+        try { const dest = `${dir}t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`; await FileSystem.copyAsync({ from: a.uri, to: dest }); uris.push(dest); } catch { uris.push(a.uri); }
+      }
+      setNewTaskPhotos((prev) => [...prev, ...uris]);
+    } catch {}
   };
 
   const createRoomTask = async () => {
@@ -578,6 +598,10 @@ export default function RundgangTab() {
       description: newTaskDesc.trim() || undefined,
       assignee: newTaskAssignee.trim() || undefined,
       dueDate: newTaskDue.trim() || undefined,
+      deadline: newTaskDue.trim() || undefined,
+      gewerk: newTaskGewerk.trim() || undefined,
+      priority: newTaskPriority,
+      photos: newTaskPhotos.length ? [...newTaskPhotos] : undefined,
       status: "offen",
       done: false,
     } as ProjectTask;
@@ -592,6 +616,9 @@ export default function RundgangTab() {
     setNewTaskDesc("");
     setNewTaskAssignee("");
     setNewTaskDue("");
+    setNewTaskGewerk("");
+    setNewTaskPriority("mittel");
+    setNewTaskPhotos([]);
     setTaskRoom(null);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -829,19 +856,22 @@ export default function RundgangTab() {
                                 {tList.map((tkItem) => {
                                   const tdone = isTaskDone(tkItem);
                                   const vis = defectStatusVisual(tdone ? "erledigt" : (tkItem.status || "offen"));
-                                  const sub = [tkItem.assignee, tkItem.dueDate].map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
+                                  const sub = [tkItem.gewerk, tkItem.assignee, tkItem.dueDate].map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
+                                  const prioCol = tkItem.priority === "hoch" ? "#DC2626" : tkItem.priority === "niedrig" ? "#16A34A" : "#F59E0B";
                                   return (
                                     <View key={tkItem.id} style={styles.entryRow}>
                                       <Pressable onPress={() => cycleTaskStatus(tkItem)} hitSlop={8} style={styles.entryCheck}>
                                         <MaterialIcons name={vis.name} size={22} color={vis.color} />
                                       </Pressable>
                                       <Pressable onPress={() => openTaskDetail(tkItem)} style={styles.entryTap}>
+                                        {tkItem.priority ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: prioCol, marginRight: 1 }} /> : null}
                                         <MaterialIcons name="task-alt" size={14} color="#818CF8" />
                                         <View style={{ flex: 1 }}>
                                           <Text style={[styles.entryTitle, tdone && styles.entryTitleDone]} numberOfLines={1}>{taskTitle(tkItem)}</Text>
                                           {sub ? <Text style={styles.entrySub} numberOfLines={1}>{sub}</Text> : null}
                                         </View>
                                       </Pressable>
+                                      {(tkItem.photos && tkItem.photos.length) ? <MaterialIcons name="photo" size={14} color="#5A6B7C" style={{ marginRight: 2 }} /> : null}
                                       <MaterialIcons name="chevron-right" size={18} color="#5A6B7C" />
                                     </View>
                                   );
@@ -979,12 +1009,54 @@ export default function RundgangTab() {
                 style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]}
               />
 
+              <Text style={styles.defLabel}>{t('gewerk')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                {GEWERKE.map((g) => {
+                  const active = newTaskGewerk === g;
+                  return (
+                    <Pressable key={g} onPress={() => setNewTaskGewerk(active ? "" : g)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? "#5DADE2" : "#1E3A5F", backgroundColor: active ? "#5DADE218" : "transparent" }}>
+                      <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? "#5DADE2" : "#8FA3B8" }}>{g}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              <Text style={styles.defLabel}>{t('prioritaet')}</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(["hoch", "mittel", "niedrig"] as const).map((p) => {
+                  const active = newTaskPriority === p;
+                  const c = p === "hoch" ? "#DC2626" : p === "mittel" ? "#F59E0B" : "#16A34A";
+                  return (
+                    <Pressable key={p} onPress={() => setNewTaskPriority(p)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: active ? c : "#1E3A5F", backgroundColor: active ? c + "18" : "transparent" }}>
+                      <Text style={{ fontSize: 13, fontWeight: active ? "800" : "600", color: active ? c : "#8FA3B8" }}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <Text style={styles.defLabel}>{t('zustaendig')}</Text>
               <AssigneeInput value={newTaskAssignee} onChange={setNewTaskAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
 
               <View style={{ marginTop: 8 }}>
                 <DateOnlyPicker value={newTaskDue} onChange={setNewTaskDue} label={t('frist')} withTime />
               </View>
+
+              <Pressable onPress={pickTaskPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
+                <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+              </Pressable>
+              {newTaskPhotos.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                  {newTaskPhotos.map((uri, i) => (
+                    <View key={i}>
+                      <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                      <Pressable onPress={() => setNewTaskPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                        <MaterialIcons name="close" size={13} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
             </ScrollView>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => setTaskRoom(null)} style={styles.taskCancel}>
