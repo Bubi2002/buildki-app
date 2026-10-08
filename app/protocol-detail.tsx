@@ -36,6 +36,8 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { DateOnlyPicker } from "@/components/date-only-picker";
+import { formatDateTime } from "@/lib/date-only";
 import { WebView } from "react-native-webview";
 import { matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
 import { saveDelegation, formatDelegationNotification } from "@/lib/task-delegation";
@@ -586,6 +588,46 @@ export default function ProtocolDetailScreen() {
   const [mGewerk, setMGewerk] = useState("");
   const [mPrio, setMPrio] = useState("");
   const [mFrist, setMFrist] = useState("");
+  // Working value for the Frist date/time wheel (ISO). Picking a date writes a
+  // formatted string into mFrist (the cell value); free text stays editable too.
+  const [mFristISO, setMFristISO] = useState("");
+
+  // "Bild einfügen": attach photo(s) to this Mangel. The photos are stored on the
+  // protocol and referenced via [FOTO N] markers in the description, which render
+  // inline under the Mangel (in-app and in the PDF).
+  const addMangelPhoto = async () => {
+    if (!protocol) return;
+    try {
+      const picked = await pickImagesWithSource({ t, multiple: true });
+      if (!picked.length) return;
+      const photoDir = `${FileSystem.documentDirectory}photos/`;
+      try { const di = await FileSystem.getInfoAsync(photoDir); if (!di.exists) await FileSystem.makeDirectoryAsync(photoDir, { intermediates: true }); } catch {}
+      const persisted: string[] = [];
+      for (const asset of picked) {
+        try {
+          const dest = `${photoDir}photo-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
+          await FileSystem.copyAsync({ from: asset.uri, to: dest });
+          persisted.push(dest);
+        } catch { persisted.push(asset.uri); }
+      }
+      // Append to the protocol's photos and compute the new 1-based indices.
+      let startIndex = (protocol.photos || []).length;
+      try {
+        const protocolsStr = await AsyncStorage.getItem("protocols");
+        const protocols = protocolsStr ? JSON.parse(protocolsStr) : [];
+        const idx = protocols.findIndex((p: any) => p.id === protocol.id);
+        if (idx !== -1) {
+          startIndex = (protocols[idx].photos || []).length;
+          protocols[idx].photos = [...(protocols[idx].photos || []), ...persisted];
+          await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
+          setProtocol({ ...protocol, photos: protocols[idx].photos } as any);
+        }
+      } catch (e) { console.error("Mangel photo persist failed:", e); }
+      const markers = persisted.map((_, k) => `[FOTO ${startIndex + k + 1}]`).join(" ");
+      setMDesc((prev) => `${prev}${prev.trim() ? " " : ""}${markers}`.trim());
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) { console.error("Mangel photo add failed:", e); }
+  };
 
   const handleEditMangel = (headerLine: string, rowLine: string) => {
     if (activeVersionId) {
@@ -603,6 +645,7 @@ export default function ProtocolDetailScreen() {
     setMGewerk(iGewerk >= 0 ? (cells[iGewerk] || "") : "");
     setMPrio(iPrio >= 0 ? (cells[iPrio] || "") : "");
     setMFrist(iFrist >= 0 ? (cells[iFrist] || "") : "");
+    setMFristISO("");
     setEditMangel({ rowLine, cells, header, iDesc, iGewerk, iPrio, iFrist });
   };
 
@@ -626,11 +669,13 @@ export default function ProtocolDetailScreen() {
     let newText = base;
     if (li >= 0) {
       if (editMangel.iDesc >= 0) {
+        // Merge: keep original [FOTO N] markers that aren't already present in the
+        // edited cell (so newly added photos don't drop the existing ones).
         const origCells = splitTableRow(baseLines[li]);
-        const fotos = (origCells[editMangel.iDesc]?.match(fotoRe) || []).join(" ");
-        if (fotos && !/\[Foto/i.test(cells[editMangel.iDesc])) {
-          cells[editMangel.iDesc] = `${cells[editMangel.iDesc]} ${fotos}`.trim();
-        }
+        const origFotos = origCells[editMangel.iDesc]?.match(fotoRe) || [];
+        const present = new Set((cells[editMangel.iDesc].match(fotoRe) || []).map((s) => s.toLowerCase()));
+        const missing = origFotos.filter((f) => !present.has(f.toLowerCase()));
+        if (missing.length) cells[editMangel.iDesc] = `${cells[editMangel.iDesc]} ${missing.join(" ")}`.trim();
       }
       baseLines[li] = "| " + cells.join(" | ") + " |";
       newText = baseLines.join("\n");
@@ -3024,6 +3069,15 @@ export default function ProtocolDetailScreen() {
                   <>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('beschreibung_optional')}</Text>
                     <TextInput value={mDesc} onChangeText={setMDesc} multiline placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, minHeight: 90, textAlignVertical: "top", backgroundColor: colors.surface }} />
+                    {(() => {
+                      const n = (mDesc.match(/\[FOTO\s*\d+\]/gi) || []).length;
+                      return (
+                        <Pressable onPress={() => void addMangelPhoto()} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderStyle: "dashed", borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}>
+                          <MaterialIcons name="add-photo-alternate" size={18} color={colors.primary} />
+                          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('fotos_hinzufuegen' as any)}{n > 0 ? `  ·  ${n}` : ""}</Text>
+                        </Pressable>
+                      );
+                    })()}
                   </>
                 )}
                 {editMangel?.iGewerk !== undefined && editMangel.iGewerk >= 0 && (
@@ -3051,7 +3105,14 @@ export default function ProtocolDetailScreen() {
                 {editMangel?.iFrist !== undefined && editMangel.iFrist >= 0 && (
                   <>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('frist')}</Text>
-                    <TextInput value={mFrist} onChangeText={setMFrist} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
+                    <DateOnlyPicker
+                      value={mFristISO}
+                      withTime
+                      allowClear
+                      label=""
+                      onChange={(v) => { setMFristISO(v); setMFrist(v ? formatDateTime(v) : ""); }}
+                    />
+                    <TextInput value={mFrist} onChangeText={setMFrist} placeholder={t('frist')} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
                   </>
                 )}
               </ScrollView>
