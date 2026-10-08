@@ -60,7 +60,7 @@ export default function RaumbuchScreen() {
     router.push(`/raumbuch-room?projectId=${project?.id || ""}&roomId=${room.id}&floor=${encodeURIComponent(floor.name)}&room=${encodeURIComponent(room.name)}` as any);
   };
 
-  const exportPdf = async () => {
+  const runExport = async (tmpl: "standard" | "fragenkatalog") => {
     if (!project || exporting) return;
     const documented = Object.values(entries).filter((e) => raumbuchPhotoCount(e) > 0 || (e.planX != null));
     if (documented.length === 0) {
@@ -69,7 +69,7 @@ export default function RaumbuchScreen() {
     }
     setExporting(true);
     try {
-      const html = await generateRaumbuchPdf(project.name, documented, t);
+      const html = await generateRaumbuchPdf(project.name, documented, t, tmpl);
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
@@ -79,6 +79,20 @@ export default function RaumbuchScreen() {
     } finally {
       setExporting(false);
     }
+  };
+
+  // Let the user pick which Raumbuch layout to export.
+  const exportPdf = () => {
+    if (!project || exporting) return;
+    Alert.alert(
+      t("raumbuch_export_template_title" as any),
+      t("raumbuch_export_template_msg" as any),
+      [
+        { text: t("raumbuch_export_tmpl_standard" as any), onPress: () => void runExport("standard") },
+        { text: t("raumbuch_export_tmpl_fragenkatalog" as any), onPress: () => void runExport("fragenkatalog") },
+        { text: t("cancel" as any), style: "cancel" },
+      ],
+    );
   };
 
   return (

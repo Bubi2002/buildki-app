@@ -58,10 +58,22 @@ const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, 
 
 /** Build a Raumbuch PDF: ONE PAGE PER WALL/position (A/B/C/D, Boden, Decke) with
  *  the full, uncropped photo, plus the room metadata and a plan excerpt. */
+export type RaumbuchTemplate = "standard" | "fragenkatalog";
+
+// Fragenkatalog (second template): a per-room checklist to tick off by hand.
+const QUESTIONNAIRE: { label: string; options: string[] }[] = [
+  { label: "Innenwände", options: ["GK Q2", "GK Q3", "GK Q4", "Betonoptik", "Vlies", "Anstrich weiß", "Anstrich farbig", "Fliesen", "Sichtbeton", "Holzverkleidung", "Akustikpaneel", "Sonstiges"] },
+  { label: "Boden", options: ["Estrich roh", "Fliesen", "Vinyl", "Parkett", "Epoxidharz", "Teppich", "Sockelleiste fehlt", "Fuge nacharbeiten", "Sonstiges"] },
+  { label: "Decke", options: ["Beton roh", "GK glatt", "GK-Lochdecke", "Rasterdecke", "Akustikdecke", "Schattenfuge", "Revisionsklappe", "Sonstiges"] },
+  { label: "Installationen", options: ["Kabel vorhanden", "Kabel beschriften", "Steckdosen fehlen", "Schalter fehlt", "Netzwerk fehlt", "Sanitär offen", "Lüftung offen", "Brandschutz offen", "Sonstiges"] },
+  { label: "Schallschutz", options: ["Baffel", "Segel", "Paneel", "Akustikdecke", "Wandabsorber", "Sonstiges"] },
+];
+
 export async function generateRaumbuchPdf(
   projectName: string,
   entries: RaumbuchEntry[],
   t: (key: any) => string,
+  template: RaumbuchTemplate = "standard",
 ): Promise<string> {
   const branding = await getPdfBranding().catch(() => null);
   const NAVY = "#0F2744";
@@ -165,15 +177,25 @@ export async function generateRaumbuchPdf(
 
   // Page numbers for the table of contents: cover = 1, TOC = 2, then each floor
   // gets 1 divider page followed by its rooms' wall pages.
+  // The Fragenkatalog template adds one questionnaire page per room.
+  const roomPages = (e: RaumbuchEntry) => (template === "fragenkatalog" ? 1 : 0) + wallCount(e);
   let pageCursor = 3;
   const tocFloors = floors.map((fl) => {
     pageCursor += 1; // divider page
     const rooms = fl.rooms.map((e, i) => {
-      const startPage = pageCursor; pageCursor += wallCount(e);
+      const startPage = pageCursor; pageCursor += roomPages(e);
       return { no: `${fl.code} ${pad2(i + 1)}`, name: e.roomName || "—", page: startPage };
     });
     return { name: fl.name, rooms };
   });
+
+  // Questionnaire + Freigabe/Änderung block (static), used by the Fragenkatalog template.
+  const ck = "&#9744;"; // ☐
+  const quizHtml = `
+    <div class="quiz">
+      ${QUESTIONNAIRE.map((q) => `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${q.options.map((o) => o === "Sonstiges" ? `${ck} ${esc(o)} ______________` : `${ck} ${esc(o)}`).join("&nbsp;&nbsp;&nbsp;")}</div></div>`).join("")}
+    </div>
+    <div class="freigabe"><b>BITTE ANKREUZEN:</b> &nbsp; ${ck} <b>Freigabe</b> &nbsp;&nbsp;oder&nbsp;&nbsp; ${ck} <b>Änderung</b> <span class="freigabe-hint">(bitte hier angeben)</span> ___________________________</div>`;
 
   const content: string[] = [];
 
@@ -214,8 +236,33 @@ export async function generateRaumbuchPdf(
         ${floorPlanUri ? `<div class="floor-plan"><img src="${floorPlanUri}" /></div>` : ""}
       </section>`);
 
-    for (const e of fl.rooms) {
+    for (let ri = 0; ri < fl.rooms.length; ri++) {
+      const e = fl.rooms[ri];
       const pc = await resolvePlan(e);
+      const roomNo = `${fl.code}-${pad2(ri + 1)}`;
+
+      // Fragenkatalog: a questionnaire/overview page per room (plan + up to 2
+      // photos + the checklist to tick off + Freigabe/Änderung).
+      if (template === "fragenkatalog") {
+        const thumbSrc = RAUMBUCH_POSITIONS.map((p) => e.photos?.[p]).filter(Boolean).slice(0, 2);
+        const thumbs: string[] = [];
+        for (const u of thumbSrc) { const d = await toDataUri(u as string); if (d) thumbs.push(`<img class="rp" src="${d}" />`); }
+        const planFull = pc ? buildPlanExcerpt(e, pc) : "";
+        content.push(`
+          <section class="page brk room-overview">
+            <div class="meta-row">
+              <div class="meta">
+                <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
+                <div class="m"><span>Raumnummer:</span> ${esc(roomNo)}</div>
+                <div class="m"><span>Bezeichnung:</span> ${esc(e.roomName)}</div>
+              </div>
+              ${planFull}
+            </div>
+            ${thumbs.length ? `<div class="room-photos">${thumbs.join("")}</div>` : ""}
+            ${quizHtml}
+          </section>`);
+      }
+
       for (const pos of RAUMBUCH_POSITIONS) {
         const uri = e.photos?.[pos];
         if (!uri) continue;
@@ -233,6 +280,7 @@ export async function generateRaumbuchPdf(
             <div class="meta-row">
               <div class="meta">
                 <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
+                ${template === "fragenkatalog" ? `<div class="m"><span>Raumnummer:</span> ${esc(roomNo)}</div>` : ""}
                 <div class="m"><span>Raum:</span> ${esc(e.roomName)}</div>
                 ${posRow}
                 ${note ? `<div class="m note"><span>Notiz:</span> ${note}</div>` : ""}
@@ -293,6 +341,15 @@ export async function generateRaumbuchPdf(
     .photo { display: block; width: 100%; max-height: 185mm; object-fit: contain; border: 1px solid #e6eaf0; border-radius: 8px; }
     .wall-label { font-size: 16px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px; margin: 10px 0 0; }
     .empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
+    /* ── Fragenkatalog (questionnaire) ── */
+    .room-photos { display: flex; gap: 10px; margin: 2px 0 14px; }
+    .room-photos .rp { width: 50%; height: 52mm; object-fit: cover; border: 1px solid #e6eaf0; border-radius: 6px; }
+    .quiz { border-top: 2px solid ${NAVY}; }
+    .quiz-row { display: flex; gap: 14px; padding: 9px 0; border-bottom: 1px solid #e6eaf0; }
+    .quiz-label { width: 110px; flex-shrink: 0; font-size: 12.5px; font-weight: 800; color: ${NAVY}; }
+    .quiz-opts { flex: 1; font-size: 11.5px; line-height: 1.8; color: #253040; }
+    .freigabe { margin-top: 16px; font-size: 12.5px; color: #253040; }
+    .freigabe-hint { color: #64748b; }
   </style></head><body>
     ${content.join("")}
   </body></html>`;
