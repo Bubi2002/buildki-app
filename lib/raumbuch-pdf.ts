@@ -175,7 +175,7 @@ export async function generateRaumbuchPdf(
     @page { margin: 0 0 12mm 0; @bottom-left { content: "${esc(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 6mm 14mm; } @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 6mm 0; } }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #253040; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .top { background: ${NAVY}; color: #fff; padding: 16px 14mm; display: flex; align-items: center; justify-content: space-between; }
+    .top { background: ${NAVY}; color: #fff; padding: 11px 14mm; display: flex; align-items: center; justify-content: space-between; }
     .top .co { font-size: 15px; font-weight: 800; letter-spacing: 0.3px; }
     .top .co small { display: block; font-size: 8px; font-weight: 700; color: #9db8d4; letter-spacing: 1.4px; text-transform: uppercase; margin-top: 3px; }
     .top .d { font-size: 10.5px; font-weight: 600; color: #cfe0f2; text-align: right; max-width: 60%; }
@@ -191,6 +191,9 @@ export async function generateRaumbuchPdf(
     .photo-wrap { text-align: center; break-inside: avoid; page-break-inside: avoid; }
     /* Full, uncropped photo: contain inside a generous box so it always fits one page. */
     .photo { display: block; width: 100%; max-height: 185mm; object-fit: contain; border: 1px solid #e6eaf0; border-radius: 8px; }
+    /* Page 1 also carries the title band, so its photo gets a smaller cap to
+       stay on the SAME page instead of spilling onto the next one. */
+    section.page:first-of-type .photo { max-height: 150mm; }
     .wall-label { font-size: 16px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px; margin: 10px 0 0; }
     .empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
   </style></head><body>
