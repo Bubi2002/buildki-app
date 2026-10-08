@@ -28,7 +28,7 @@ const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
 const WALL_COLOR = "#2563EB";
 // Distinct colour per wall, matching the Raumbuch PDF (A=Blau, B=Grün, C=Rot, D=Orange).
 const WALL_COLORS: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C" };
-type PlanMode = "marker" | "crop" | RaumbuchWallKey;
+type PlanMode = "marker" | "crop" | "view" | RaumbuchWallKey;
 
 export default function RaumbuchRoomScreen() {
   const { t } = useTranslation();
@@ -50,7 +50,7 @@ export default function RaumbuchRoomScreen() {
   const [planBox, setPlanBox] = useState({ w: 0, h: 0 });
   const planAspect = useRef(1.4);
   // Guided flow: step 1 = Ausschnitt (crop), step 2 = Markieren (pin / walls).
-  const [planStep, setPlanStep] = useState<1 | 2>(1);
+  const [planStep, setPlanStep] = useState<1 | 2 | 3>(1);
   // Plan editing modes: place marker, draw a crop rectangle, or draw wall lines.
   const [planMode, setPlanMode] = useState<PlanMode>("crop");
   const [tempWalls, setTempWalls] = useState<Partial<Record<RaumbuchWallKey, RaumbuchWall>>>({});
@@ -65,7 +65,7 @@ export default function RaumbuchRoomScreen() {
   useEffect(() => {
     if (planBox.w <= 0) return;
     const id = setTimeout(() => {
-      if (planStep === 2 && tempCrop && tempCrop.w > 0.02 && tempCrop.h > 0.02) canvasRef.current?.zoomToRegion(tempCrop);
+      if (planStep === 3 && tempCrop && tempCrop.w > 0.02 && tempCrop.h > 0.02) canvasRef.current?.zoomToRegion(tempCrop);
       else canvasRef.current?.reset();
     }, 80);
     return () => clearTimeout(id);
@@ -160,7 +160,7 @@ export default function RaumbuchRoomScreen() {
     setTempWalls(onStart && entry?.walls ? { ...entry.walls } : {});
     setTempCrop(onStart && entry?.planCrop ? { ...entry.planCrop } : null);
     setPlanStep(1);
-    setPlanMode("crop");
+    setPlanMode("view");
     dragRef.current = null;
     setPlanModal(true);
   };
@@ -178,7 +178,7 @@ export default function RaumbuchRoomScreen() {
   const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
   const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y) < 0.055;
   const onPlanDrag = (phase: "start" | "move" | "end", raw: { x: number; y: number }) => {
-    if (planMode === "marker") return; // marker is placed by tap, not drag
+    if (planMode === "marker" || planMode === "view") return; // no drawing in page-select/marker
     const pt = { x: clamp01(raw.x), y: clamp01(raw.y) };
     if (planMode === "crop") {
       if (phase === "start") {
@@ -402,21 +402,21 @@ export default function RaumbuchRoomScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { backgroundColor: colors.background }]}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{planStep === 1 ? t("raumbuch_step1_title" as any) : t("raumbuch_step2_title" as any)}</Text>
+              <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{`${t("raumbuch_step" as any)} ${planStep}: ${planStep === 1 ? t("raumbuch_step_plan" as any) : planStep === 2 ? t("raumbuch_mode_crop" as any) : t("raumbuch_step2_short" as any)}`}</Text>
               <Pressable onPress={() => setPlanModal(false)} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
             </View>
-            {/* Step indicator */}
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
-              {([1, 2] as const).map((s) => (
-                <Pressable key={s} onPress={() => { setPlanStep(s); setPlanMode(s === 1 ? "crop" : "A"); dragRef.current = null; }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: planStep === s ? colors.primary : colors.border, backgroundColor: planStep === s ? colors.primary + "18" : colors.surface }}>
+            {/* Step indicator: 1 = Plan/Seite wählen, 2 = Ausschnitt, 3 = Markieren */}
+            <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>
+              {([1, 2, 3] as const).map((s) => (
+                <Pressable key={s} onPress={() => { setPlanStep(s); setPlanMode(s === 1 ? "view" : s === 2 ? "crop" : "A"); dragRef.current = null; }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: planStep === s ? colors.primary : colors.border, backgroundColor: planStep === s ? colors.primary + "18" : colors.surface }}>
                   <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: planStep === s ? colors.primary : colors.muted + "40", alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ fontSize: 11, fontWeight: "800", color: planStep === s ? "#fff" : colors.muted }}>{s}</Text>
                   </View>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: planStep === s ? colors.primary : colors.muted }}>{s === 1 ? t("raumbuch_mode_crop" as any) : t("raumbuch_step2_short" as any)}</Text>
+                  <Text style={{ fontSize: 11.5, fontWeight: "700", color: planStep === s ? colors.primary : colors.muted }} numberOfLines={1}>{s === 1 ? t("raumbuch_step_plan" as any) : s === 2 ? t("raumbuch_mode_crop" as any) : t("raumbuch_step2_short" as any)}</Text>
                 </Pressable>
               ))}
             </View>
-            {plans.length > 1 && (
+            {plans.length > 1 && planStep === 1 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
                 {plans.map((p) => {
                   const active = modalPlan?.id === p.id;
@@ -428,8 +428,8 @@ export default function RaumbuchRoomScreen() {
                 })}
               </ScrollView>
             )}
-            {/* Step 2 mode toolbar: place marker (or center) or draw wall lines A–D. */}
-            {modalPlan && planStep === 2 && (
+            {/* Step 3 mode toolbar: centre pin or draw wall lines A–D. */}
+            {modalPlan && planStep === 3 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
                 {/* "Markierung" (manual pin) removed on request — only walls + a
                     quick centre pin remain. */}
@@ -466,12 +466,12 @@ export default function RaumbuchRoomScreen() {
                         maxScale={6}
                         onSingleTap={onPlanTap}
                         onPinDrag={onPlanDrag}
-                        dragImmediate={planMode !== "marker"}
+                        dragImmediate={planMode !== "marker" && planMode !== "view"}
                       >
                         <View style={{ width: pw, height: ph }}>
                           <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
                           <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={pw} height={ph}>
-                            {tempCrop && (
+                            {tempCrop && planStep !== 3 && (
                               <SvgG>
                                 <SvgRect x={tempCrop.x * pw} y={tempCrop.y * ph} width={tempCrop.w * pw} height={tempCrop.h * ph} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
                                 {planMode === "crop" && (
@@ -526,45 +526,43 @@ export default function RaumbuchRoomScreen() {
             )}
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
               {planStep === 1
+                ? t("raumbuch_plan_hint" as any)
+                : planStep === 2
                 ? t("raumbuch_crop_hint" as any)
-                : planMode === "marker"
-                ? t("raumbuch_tap_to_mark" as any)
                 : t("raumbuch_wall_hint" as any)}
               {" · "}{t("fullscreen_photo_viewer_zoom_hint" as any)}
             </Text>
-            {((planStep === 1 && tempCrop) || (planStep === 2 && Object.keys(tempWalls).length > 0)) && (
+            {((planStep === 2 && tempCrop) || (planStep === 3 && Object.keys(tempWalls).length > 0)) && (
               <View style={{ flexDirection: "row", gap: 14, marginTop: 8 }}>
-                {planStep === 1 && tempCrop && (
+                {planStep === 2 && tempCrop && (
                   <Pressable onPress={() => setTempCrop(null)} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>{t("raumbuch_crop_reset" as any)}</Text></Pressable>
                 )}
-                {planStep === 2 && Object.keys(tempWalls).length > 0 && (
+                {planStep === 3 && Object.keys(tempWalls).length > 0 && (
                   <Pressable onPress={() => { setTempWalls({}); dragRef.current = null; }} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>{t("raumbuch_walls_clear" as any)}</Text></Pressable>
                 )}
               </View>
             )}
-            {/* Step navigation */}
-            {planStep === 1 ? (
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                <Pressable onPress={() => setPlanModal(false)} style={({ pressed }) => [styles.modalBtnGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t("btn_abbrechen" as any)}</Text>
-                </Pressable>
-                <Pressable onPress={() => { setPlanStep(2); setPlanMode("A"); dragRef.current = null; }} style={({ pressed }) => [styles.modalBtnPrimary, { backgroundColor: colors.primary, opacity: !modalPlan ? 0.4 : pressed ? 0.85 : 1 }]} disabled={!modalPlan}>
-                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{tempCrop ? t("btn_weiter" as any) : t("raumbuch_crop_skip" as any)}</Text>
+            {/* Step navigation: 1 Plan → 2 Ausschnitt → 3 Markieren */}
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <Pressable
+                onPress={() => { if (planStep === 1) { setPlanModal(false); } else { const prev = (planStep - 1) as 1 | 2; setPlanStep(prev); setPlanMode(prev === 1 ? "view" : "crop"); dragRef.current = null; } }}
+                style={({ pressed }) => [styles.modalBtnGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }]}
+              >
+                {planStep > 1 ? <MaterialIcons name="arrow-back" size={18} color={colors.muted} /> : null}
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{planStep === 1 ? t("btn_abbrechen" as any) : t("btn_zurueck" as any)}</Text>
+              </Pressable>
+              {planStep < 3 ? (
+                <Pressable onPress={() => { const nx = (planStep + 1) as 2 | 3; setPlanStep(nx); setPlanMode(nx === 2 ? "crop" : "A"); dragRef.current = null; }} disabled={!modalPlan} style={({ pressed }) => [styles.modalBtnPrimary, { backgroundColor: colors.primary, opacity: !modalPlan ? 0.4 : pressed ? 0.85 : 1 }]}>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{planStep === 2 && !tempCrop ? t("raumbuch_crop_skip" as any) : t("btn_weiter" as any)}</Text>
                   <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
                 </Pressable>
-              </View>
-            ) : (
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                <Pressable onPress={() => { setPlanStep(1); setPlanMode("crop"); dragRef.current = null; }} style={({ pressed }) => [styles.modalBtnGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }]}>
-                  <MaterialIcons name="arrow-back" size={18} color={colors.muted} />
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t("btn_zurueck" as any)}</Text>
-                </Pressable>
+              ) : (
                 <Pressable onPress={() => void confirmPlanMarker()} disabled={!modalPlan} style={({ pressed }) => [styles.modalBtnPrimary, { backgroundColor: colors.primary, opacity: !modalPlan ? 0.4 : pressed ? 0.85 : 1 }]}>
                   <MaterialIcons name="check" size={20} color="#FFFFFF" />
                   <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{t("save" as any)}</Text>
                 </Pressable>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </View>
       </Modal>
