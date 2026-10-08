@@ -2839,14 +2839,12 @@ export default function ProtocolDetailScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
               {[
+                // Only the tools that belong on a single protocol. Messen, Fotos,
+                // Checklisten, Anwesenheit and Zeiterfassung are project-level and
+                // were removed here on purpose (reachable from the Projekte tab).
                 { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
                 { icon: "checklist", label: t('nav_aufgaben' as any), route: "/tasks", color: "#5DADE2" },
-                { icon: "straighten", label: t('index_tool_messen' as any), route: "/measure", color: "#26A69A" },
                 { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
-                { icon: "photo-library", label: t('index_tool_fotos' as any), route: "/photo-gallery", color: "#EC407A" },
-                { icon: "fact-check", label: t('index_tool_checklisten' as any), route: "/checklists", color: "#AB47BC" },
-                { icon: "how-to-reg", label: t('anwesenheit' as any), route: "/attendance", color: "#00897B" },
-                { icon: "timer", label: t('index_tool_zeiterfassung' as any), route: "/time-tracking", color: "#FF5722" },
               ].map((tool) => (
                 <Pressable
                   key={tool.route}
