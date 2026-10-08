@@ -72,13 +72,18 @@ export async function generateRaumbuchPdf(
   const now = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const co = esc(branding?.companyName || "BuildKI");
 
-  // Project address for the header band ("Straße, Datum, Projekt …").
+  // Project meta for the cover page.
   let projectAddress = "";
+  let projectBuilder = ""; // Bauherr / Auftraggeber
+  let heroDataUri: string | null = null;
   try {
     const raw = await AsyncStorage.getItem("projects");
     const proj = (raw ? JSON.parse(raw) : []).find((p: any) => p.id === projectId);
     projectAddress = proj?.address || proj?.location || proj?.strasse || "";
+    projectBuilder = proj?.client || proj?.bauherr || proj?.builder || proj?.auftraggeber || proj?.customer || "";
+    if (proj?.imageUri) heroDataUri = await toDataUri(proj.imageUri, 1600);
   } catch {}
+  const companyAddress = esc(branding?.companyAddress || "").replace(/\n/g, "<br>");
 
   // Resolve the plan image (once per plan).
   const resolvePlan = async (e: RaumbuchEntry): Promise<{ uri: string | null; aspect: number } | null> => {
@@ -127,60 +132,156 @@ export async function generateRaumbuchPdf(
     </div>`;
   };
 
-  // One page per (room × position-with-photo).
-  const pages: string[] = [];
-  let pageNo = 0;
-  // Count total pages first (positions that actually have a photo).
-  const total = entries.reduce((sum, e) => sum + RAUMBUCH_POSITIONS.filter((p) => e.photos?.[p]).length, 0);
+  // ── Group rooms by floor, ordered KG/UG → EG → OG → DG. ──
+  const floorRank = (name: string): number => {
+    const n = (name || "").toUpperCase();
+    if (/KELLER|\bKG\b|\bUG\b/.test(n)) return 0;
+    if (/ERDGESCH|\bEG\b/.test(n)) return 1;
+    const og = n.match(/(\d+)\s*\.?\s*OG/); if (og) return 10 + parseInt(og[1], 10);
+    if (/DACH|\bDG\b/.test(n)) return 100;
+    return 50;
+  };
+  const floorCode = (name: string): string => {
+    const n = (name || "").toUpperCase();
+    if (/KELLER|\bKG\b|\bUG\b/.test(n)) return "KG";
+    if (/ERDGESCH|\bEG\b/.test(n)) return "EG";
+    const og = n.match(/(\d+)\s*\.?\s*OG/); if (og) return `${og[1]}OG`;
+    if (/DACH|\bDG\b/.test(n)) return "DG";
+    return (name || "R").replace(/[^A-Za-zÄÖÜ]/g, "").slice(0, 2).toUpperCase() || "R";
+  };
+  const wallCount = (e: RaumbuchEntry) => RAUMBUCH_POSITIONS.filter((p) => e.photos?.[p]).length;
+  const pad2 = (n: number) => String(n).padStart(2, "0");
 
-  for (const e of entries) {
-    const pc = await resolvePlan(e);
-    for (const pos of RAUMBUCH_POSITIONS) {
-      const uri = e.photos?.[pos];
-      if (!uri) continue; // no empty pages
-      const photo = await toDataUri(uri);
-      if (!photo) continue;
-      pageNo++;
-      const label = esc(t(RAUMBUCH_POSITION_LABEL_KEY[pos]));
-      const note = esc(e.notes?.[pos] || "");
-      const isWall = pos === "A" || pos === "B" || pos === "C" || pos === "D";
-      const posRow = isWall
-        ? `<div class="m"><span>Wand:</span> ${pos}</div>`
-        : `<div class="m"><span>Bereich:</span> ${label}</div>`;
-      const plan = pc ? buildPlanExcerpt(e, pc, isWall ? (pos as RaumbuchWallKey) : undefined) : "";
-      pages.push(`
-        <section class="page${pageNo > 1 ? " brk" : ""}">
-          <div class="meta-row">
-            <div class="meta">
-              <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
-              <div class="m"><span>Raum:</span> ${esc(e.roomName)}</div>
-              ${posRow}
-              ${note ? `<div class="m note"><span>Notiz:</span> ${note}</div>` : ""}
+  // Only rooms with at least one photo produce content pages.
+  const withPhotos = entries.filter((e) => wallCount(e) > 0);
+  const floorNames = Array.from(new Set(withPhotos.map((e) => e.floorName || "—")))
+    .sort((a, b) => floorRank(a) - floorRank(b) || a.localeCompare(b, "de"));
+  const floors = floorNames.map((fname) => ({
+    name: fname,
+    code: floorCode(fname),
+    rooms: withPhotos.filter((e) => (e.floorName || "—") === fname)
+      .sort((a, b) => (a.roomName || "").localeCompare(b.roomName || "", "de")),
+  }));
+
+  // Page numbers for the table of contents: cover = 1, TOC = 2, then each floor
+  // gets 1 divider page followed by its rooms' wall pages.
+  let pageCursor = 3;
+  const tocFloors = floors.map((fl) => {
+    pageCursor += 1; // divider page
+    const rooms = fl.rooms.map((e, i) => {
+      const startPage = pageCursor; pageCursor += wallCount(e);
+      return { no: `${fl.code} ${pad2(i + 1)}`, name: e.roomName || "—", page: startPage };
+    });
+    return { name: fl.name, rooms };
+  });
+
+  const content: string[] = [];
+
+  // ── Cover page ──
+  content.push(`
+    <section class="page cover">
+      <div class="cover-co">${co}</div>
+      ${heroDataUri ? `<img class="cover-hero" src="${heroDataUri}" />` : `<div class="cover-hero ph"></div>`}
+      <div class="cover-body">
+        <div class="cover-kicker">Raumbuch</div>
+        <div class="cover-title">${esc(projectName)}</div>
+        <div class="cover-meta">
+          ${projectAddress ? `<div class="cover-block"><b>Baugrundstück</b><br>${esc(projectAddress)}</div>` : ""}
+          ${projectBuilder ? `<div class="cover-block"><b>Bauherr</b><br>${esc(projectBuilder)}</div>` : ""}
+          <div class="cover-block"><b>Ersteller</b><br>${co}${companyAddress ? `<br>${companyAddress}` : ""}</div>
+        </div>
+        <div class="cover-date">${now}</div>
+      </div>
+    </section>`);
+
+  // ── Table of contents ──
+  content.push(`
+    <section class="page brk toc">
+      <h1 class="toc-head">Inhalt</h1>
+      ${tocFloors.map((fl) => `
+        <div class="toc-floor">${esc(fl.name).toUpperCase()}</div>
+        ${fl.rooms.map((r) => `<div class="toc-row"><span class="toc-no">${esc(r.no)}</span><span class="toc-name">${esc(r.name)}</span><span class="toc-dots"></span><span class="toc-pg">${r.page}</span></div>`).join("")}
+      `).join("")}
+    </section>`);
+
+  // ── Per floor: divider page (with plan) + room wall pages ──
+  for (const fl of floors) {
+    let floorPlanUri: string | null = null;
+    for (const e of fl.rooms) { const pc = await resolvePlan(e); if (pc?.uri) { floorPlanUri = pc.uri; break; } }
+    content.push(`
+      <section class="page brk floor-divider">
+        <h1 class="floor-title">${esc(fl.name)}</h1>
+        ${floorPlanUri ? `<div class="floor-plan"><img src="${floorPlanUri}" /></div>` : ""}
+      </section>`);
+
+    for (const e of fl.rooms) {
+      const pc = await resolvePlan(e);
+      for (const pos of RAUMBUCH_POSITIONS) {
+        const uri = e.photos?.[pos];
+        if (!uri) continue;
+        const photo = await toDataUri(uri);
+        if (!photo) continue;
+        const label = esc(t(RAUMBUCH_POSITION_LABEL_KEY[pos]));
+        const note = esc(e.notes?.[pos] || "");
+        const isWall = pos === "A" || pos === "B" || pos === "C" || pos === "D";
+        const posRow = isWall
+          ? `<div class="m"><span>Wand:</span> ${pos}</div>`
+          : `<div class="m"><span>Bereich:</span> ${label}</div>`;
+        const plan = pc ? buildPlanExcerpt(e, pc, isWall ? (pos as RaumbuchWallKey) : undefined) : "";
+        content.push(`
+          <section class="page brk">
+            <div class="meta-row">
+              <div class="meta">
+                <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
+                <div class="m"><span>Raum:</span> ${esc(e.roomName)}</div>
+                ${posRow}
+                ${note ? `<div class="m note"><span>Notiz:</span> ${note}</div>` : ""}
+              </div>
+              ${plan}
             </div>
-            ${plan}
-          </div>
-          <div class="photo-wrap"><img class="photo" src="${photo}" /></div>
-          <div class="wall-label">${label}</div>
-        </section>`);
+            <div class="photo-wrap"><img class="photo" src="${photo}" /></div>
+            <div class="wall-label">${label}</div>
+          </section>`);
+      }
     }
   }
 
-  if (pages.length === 0) {
-    pages.push(`<section class="page"><div class="empty">Keine Fotos erfasst.</div></section>`);
+  if (floors.length === 0) {
+    content.push(`<section class="page cover"><div class="cover-body"><div class="cover-title">${esc(projectName)}</div><div class="empty">Keine Fotos erfasst.</div></div></section>`);
   }
-
-  const bandMeta = [esc(projectName), projectAddress ? esc(projectAddress) : "", now].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
     @page { margin: 0 0 12mm 0; @bottom-left { content: "${esc(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 6mm 14mm; } @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 6mm 0; } }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #253040; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .top { background: ${NAVY}; color: #fff; padding: 11px 14mm; display: flex; align-items: center; justify-content: space-between; }
-    .top .co { font-size: 15px; font-weight: 800; letter-spacing: 0.3px; }
-    .top .co small { display: block; font-size: 8px; font-weight: 700; color: #9db8d4; letter-spacing: 1.4px; text-transform: uppercase; margin-top: 3px; }
-    .top .d { font-size: 10.5px; font-weight: 600; color: #cfe0f2; text-align: right; max-width: 60%; }
     .page { padding: 18px 14mm 0; }
     .brk { break-before: page; page-break-before: always; }
+    /* ── Cover ── */
+    .cover { padding: 0; }
+    .cover-co { font-size: 22px; font-weight: 800; letter-spacing: 0.5px; color: ${NAVY}; padding: 22mm 14mm 10px; }
+    .cover-hero { display: block; width: 100%; height: 95mm; object-fit: cover; }
+    .cover-hero.ph { height: 2mm; background: ${NAVY}; }
+    .cover-body { padding: 16px 14mm 0; }
+    .cover-kicker { font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; }
+    .cover-title { font-size: 26px; font-weight: 800; color: ${NAVY}; margin: 4px 0 0; }
+    .cover-meta { margin-top: 18px; font-size: 12.5px; line-height: 1.6; color: #253040; }
+    .cover-block { margin-bottom: 12px; }
+    .cover-block b { color: ${NAVY}; }
+    .cover-date { margin-top: 14px; font-size: 10px; color: #9aa6b4; letter-spacing: 1px; }
+    /* ── Table of contents ── */
+    .toc-head { font-size: 26px; font-weight: 800; letter-spacing: 1px; color: ${NAVY}; text-transform: uppercase; margin: 6px 0 14px; }
+    .toc-floor { font-size: 13px; font-weight: 800; color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.5px; border-top: 2px solid ${NAVY}; padding-top: 8px; margin: 16px 0 4px; }
+    .toc-row { display: flex; align-items: baseline; gap: 8px; font-size: 13px; padding: 4px 0; }
+    .toc-no { width: 56px; color: #475569; font-weight: 700; flex-shrink: 0; }
+    .toc-name { color: #253040; }
+    .toc-dots { flex: 1; border-bottom: 1px dotted #c7d0db; transform: translateY(-3px); }
+    .toc-pg { color: #475569; font-weight: 700; }
+    /* ── Floor divider ── */
+    .floor-divider { display: flex; flex-direction: column; align-items: center; padding-top: 38mm; }
+    .floor-title { font-size: 30px; font-weight: 800; letter-spacing: 1px; color: ${NAVY}; text-transform: uppercase; text-align: center; margin: 0 0 18px; }
+    .floor-plan { width: 100%; text-align: center; }
+    .floor-plan img { max-width: 100%; max-height: 185mm; object-fit: contain; border: 1px solid #e6eaf0; border-radius: 8px; }
+    /* ── Room / wall pages ── */
     .meta-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
     .meta { font-size: 14px; line-height: 1.7; color: #253040; }
     .meta .m span { font-weight: 800; color: ${NAVY}; }
@@ -189,15 +290,10 @@ export async function generateRaumbuchPdf(
     .plan img { display: block; width: 100%; height: auto; }
     .plan .pin { position: absolute; width: 14px; height: 14px; margin-left: -7px; margin-top: -7px; border-radius: 50%; background: #DC2626; border: 2px solid #fff; box-shadow: 0 0 0 1px #DC2626; }
     .photo-wrap { text-align: center; break-inside: avoid; page-break-inside: avoid; }
-    /* Full, uncropped photo: contain inside a generous box so it always fits one page. */
     .photo { display: block; width: 100%; max-height: 185mm; object-fit: contain; border: 1px solid #e6eaf0; border-radius: 8px; }
-    /* Page 1 also carries the title band, so its photo gets a smaller cap to
-       stay on the SAME page instead of spilling onto the next one. */
-    section.page:first-of-type .photo { max-height: 150mm; }
     .wall-label { font-size: 16px; font-weight: 800; color: ${accent}; letter-spacing: 0.5px; margin: 10px 0 0; }
     .empty { padding: 40px; text-align: center; color: #94a3b8; font-size: 14px; }
   </style></head><body>
-    <div class="top"><div class="co">${co}<small>Raumbuch</small></div><div class="d">${bandMeta}</div></div>
-    ${pages.join("")}
+    ${content.join("")}
   </body></html>`;
 }
