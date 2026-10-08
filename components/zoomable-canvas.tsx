@@ -50,10 +50,12 @@ type ZoomableCanvasProps = {
   testID?: string;
 };
 
-/** Imperative controls exposed via ref: step zoom, or reset to fit (scale 1). */
+/** Imperative controls exposed via ref: step zoom, reset to fit (scale 1), or
+ *  frame a normalized region (0..1) so it fills the view. */
 export type ZoomableCanvasHandle = {
   zoomBy: (factor: number) => void;
   reset: () => void;
+  zoomToRegion: (region: { x: number; y: number; w: number; h: number }) => void;
 };
 
 export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasProps>(function ZoomableCanvas({
@@ -220,6 +222,21 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       scale.value = withTiming(1, { duration: 180 });
       translateX.value = withTiming(0, { duration: 180 });
       translateY.value = withTiming(0, { duration: 180 });
+    },
+    zoomToRegion: (region) => {
+      const w = Math.max(0.05, region.w || 1);
+      const h = Math.max(0.05, region.h || 1);
+      // Contain the region in the view (a little padding via *0.92).
+      const next = wClampScale(Math.min(1 / w, 1 / h) * 0.92, 1, maxScale);
+      // Translate so the region's centre maps to the view centre (scale is about
+      // the view centre in RN, so offset the region centre from there).
+      const ccx = (region.x + w / 2) * width;
+      const ccy = (region.y + h / 2) * height;
+      const tx = -(ccx - width / 2) * next;
+      const ty = -(ccy - height / 2) * next;
+      scale.value = withTiming(next, { duration: 200 });
+      translateX.value = withTiming(wClampTranslation(tx, width, next), { duration: 200 });
+      translateY.value = withTiming(wClampTranslation(ty, height, next), { duration: 200 });
     },
   }), [width, height, maxScale, scale, translateX, translateY]);
 

@@ -7,7 +7,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import Svg, { Line as SvgLine, Rect as SvgRect, Circle as SvgCircle, Text as SvgText, G as SvgG } from "react-native-svg";
 
 import { ScreenContainer } from "@/components/screen-container";
-import { ZoomableCanvas } from "@/components/zoomable-canvas";
+import { ZoomableCanvas, type ZoomableCanvasHandle } from "@/components/zoomable-canvas";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
@@ -58,6 +58,19 @@ export default function RaumbuchRoomScreen() {
   // Which element is being dragged (new line/box, a wall endpoint, a crop corner,
   // or a single crop edge).
   const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number } } | null>(null);
+  const canvasRef = useRef<ZoomableCanvasHandle | null>(null);
+
+  // When marking (step 2) and a crop exists, zoom the plan into just that area so
+  // the room fills the view and the walls are easy to place.
+  useEffect(() => {
+    if (planBox.w <= 0) return;
+    const id = setTimeout(() => {
+      if (planStep === 2 && tempCrop && tempCrop.w > 0.02 && tempCrop.h > 0.02) canvasRef.current?.zoomToRegion(tempCrop);
+      else canvasRef.current?.reset();
+    }, 80);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planStep, planBox.w, planBox.h, modalPlan?.id]);
 
   const blankEntry = (): RaumbuchEntry => ({
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
@@ -395,7 +408,7 @@ export default function RaumbuchRoomScreen() {
             {/* Step indicator */}
             <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
               {([1, 2] as const).map((s) => (
-                <Pressable key={s} onPress={() => { setPlanStep(s); setPlanMode(s === 1 ? "crop" : "marker"); dragRef.current = null; }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: planStep === s ? colors.primary : colors.border, backgroundColor: planStep === s ? colors.primary + "18" : colors.surface }}>
+                <Pressable key={s} onPress={() => { setPlanStep(s); setPlanMode(s === 1 ? "crop" : "A"); dragRef.current = null; }} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: planStep === s ? colors.primary : colors.border, backgroundColor: planStep === s ? colors.primary + "18" : colors.surface }}>
                   <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: planStep === s ? colors.primary : colors.muted + "40", alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ fontSize: 11, fontWeight: "800", color: planStep === s ? "#fff" : colors.muted }}>{s}</Text>
                   </View>
@@ -418,14 +431,12 @@ export default function RaumbuchRoomScreen() {
             {/* Step 2 mode toolbar: place marker (or center) or draw wall lines A–D. */}
             {modalPlan && planStep === 2 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
-                <Pressable onPress={() => selectMode("marker")} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: planMode === "marker" ? colors.primary : colors.border, backgroundColor: planMode === "marker" ? colors.primary + "18" : colors.surface }}>
-                  <MaterialIcons name="place" size={15} color={planMode === "marker" ? colors.primary : colors.muted} />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: planMode === "marker" ? colors.primary : colors.muted }}>{t("raumbuch_mode_marker" as any)}</Text>
+                {/* "Markierung" (manual pin) removed on request — only walls + a
+                    quick centre pin remain. */}
+                <Pressable onPress={() => { placeMarkerCenter(); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: tempPos ? colors.primary : colors.border, backgroundColor: tempPos ? colors.primary + "18" : colors.surface }}>
+                  <MaterialIcons name="center-focus-strong" size={15} color={tempPos ? colors.primary : colors.muted} />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: tempPos ? colors.primary : colors.muted }}>{t("raumbuch_marker_center" as any)}</Text>
                   {tempPos ? <MaterialIcons name="check-circle" size={13} color="#16A34A" /> : null}
-                </Pressable>
-                <Pressable onPress={() => { setPlanMode("marker"); placeMarkerCenter(); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-                  <MaterialIcons name="center-focus-strong" size={15} color={colors.muted} />
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>{t("raumbuch_marker_center" as any)}</Text>
                 </Pressable>
                 {WALL_KEYS.map((k) => {
                   const active = planMode === k;
@@ -449,6 +460,7 @@ export default function RaumbuchRoomScreen() {
                   return (
                     <View style={{ width: pw, height: ph, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFFFFF" }}>
                       <ZoomableCanvas
+                        ref={canvasRef}
                         width={pw}
                         height={ph}
                         maxScale={6}
@@ -536,7 +548,7 @@ export default function RaumbuchRoomScreen() {
                 <Pressable onPress={() => setPlanModal(false)} style={({ pressed }) => [styles.modalBtnGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                   <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>{t("btn_abbrechen" as any)}</Text>
                 </Pressable>
-                <Pressable onPress={() => { setPlanStep(2); setPlanMode("marker"); dragRef.current = null; }} style={({ pressed }) => [styles.modalBtnPrimary, { backgroundColor: colors.primary, opacity: !modalPlan ? 0.4 : pressed ? 0.85 : 1 }]} disabled={!modalPlan}>
+                <Pressable onPress={() => { setPlanStep(2); setPlanMode("A"); dragRef.current = null; }} style={({ pressed }) => [styles.modalBtnPrimary, { backgroundColor: colors.primary, opacity: !modalPlan ? 0.4 : pressed ? 0.85 : 1 }]} disabled={!modalPlan}>
                   <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>{tempCrop ? t("btn_weiter" as any) : t("raumbuch_crop_skip" as any)}</Text>
                   <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
                 </Pressable>
