@@ -262,6 +262,9 @@ interface LayoutOptions {
   showMetadata?: boolean;
   showSignatures?: boolean;
   photoSize?: "klein" | "mittel" | "gro\u00df";
+  /** A separate cover page is prepended \u2192 the body drops the duplicate
+   *  metadata table and KPI band (same info already on the Titelblatt). */
+  hasCoverPage?: boolean;
 }
 
 // Status / priority label → colour, for rendering coloured pills in tables.
@@ -296,7 +299,10 @@ export function generatePdfHtml(
   // Layout options with defaults
   const layoutShowTranscription = layoutOptions.showTranscription !== false;
   const layoutShowTodos = layoutOptions.showTodos !== false;
-  const layoutShowMetadata = layoutOptions.showMetadata !== false;
+  // When a cover page is prepended it already carries Projekt/Datum/Standort and
+  // the key figures, so the body omits the duplicate metadata table + KPI band.
+  const hasCoverPage = layoutOptions.hasCoverPage === true;
+  const layoutShowMetadata = layoutOptions.showMetadata !== false && !hasCoverPage;
   const layoutShowSignatures = layoutOptions.showSignatures !== false;
   const layoutPhotoSize = layoutOptions.photoSize || "mittel";
   
@@ -324,6 +330,11 @@ export function generatePdfHtml(
   const durationStr = `${durationMins}:${durationSecs.toString().padStart(2, "0")} Min.`;
   const evidenceSnapshots = protocol.evidenceSnapshots || [];
 
+  // Footer rendered via the @page bottom margin box (reliable in expo-print),
+  // instead of a position:fixed div that iOS mis-positions onto the content.
+  const cssStr = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const footerContent = `${company.companyName ? cssStr(company.companyName) + " | " : ""}Erstellt am ${date} um ${time} | BuildKI Protokoll-App`;
+
   // ── Cover key figures (Kennzahlen-Karten) ─────────────────────────────────
   // Built from the data a single protocol actually has: tasks, photos, evidence.
   const kpiPhotoCount = photoDataUris.filter(Boolean).length;
@@ -337,7 +348,7 @@ export function generatePdfHtml(
   }
   if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: "Fotos", color: "#1E3A5F" });
   if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? "Beleg" : "Belege", color: "#64748B" });
-  const kpiBandHtml = kpiCards.length > 0
+  const kpiBandHtml = (kpiCards.length > 0 && !hasCoverPage)
     ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
     : "";
 
@@ -795,6 +806,11 @@ export function generatePdfHtml(
   <style>
     @page {
       margin: 17mm 18mm 20mm 18mm;
+      @bottom-center {
+        content: "${footerContent}";
+        font-size: 8px;
+        color: #94a3b8;
+      }
     }
     * {
       box-sizing: border-box;
@@ -1455,10 +1471,6 @@ export function generatePdfHtml(
   ${freigabeHtml}
 
   ${company.watermarkEnabled && company.watermarkText ? `<div class="watermark">${company.watermarkText}</div>` : ''}
-
-  <div class="footer">
-    ${company.companyName ? company.companyName + " | " : ""}Erstellt am ${date} um ${time} | BuildKI Protokoll-App
-  </div>
 </body>
 </html>`;
 }
@@ -1598,10 +1610,8 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     }
   } catch {}
 
-  // Generate HTML
-  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize });
-
-  // Generate cover page if enabled
+  // Generate cover page FIRST (if enabled) so the body can drop the duplicate
+  // metadata table + KPI band only when a cover is actually produced.
   let coverPageHtml = "";
   if (showCoverPage) {
     try {
@@ -1642,6 +1652,9 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       console.warn("[PDF-Gen] Cover page generation failed:", e);
     }
   }
+
+  // Generate the body HTML — dropping the duplicate metadata/KPIs when a cover exists.
+  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize, hasCoverPage: !!coverPageHtml });
 
   // Insert cover page before the body content if available
   const finalHtml = coverPageHtml
