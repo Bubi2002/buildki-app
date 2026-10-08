@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -17,6 +17,7 @@ import {
   saveRaumbuchEntry,
   RAUMBUCH_POSITIONS,
   RAUMBUCH_POSITION_LABEL_KEY,
+  RAUMBUCH_SURVEY,
   type RaumbuchEntry,
   type RaumbuchPosition,
   type RaumbuchWallKey,
@@ -74,6 +75,28 @@ export default function RaumbuchRoomScreen() {
   const persist = async (next: RaumbuchEntry) => {
     setEntry(next);
     try { await saveRaumbuchEntry(next); } catch {}
+  };
+
+  // ── Fragenkatalog (digital room survey) ──
+  const survey = entry?.survey || {};
+  const toggleSurvey = async (groupKey: string, option: string) => {
+    const cur = entry || blankEntry();
+    const checked = new Set(cur.survey?.checked?.[groupKey] || []);
+    if (checked.has(option)) checked.delete(option); else checked.add(option);
+    await persist({ ...cur, survey: { ...(cur.survey || {}), checked: { ...(cur.survey?.checked || {}), [groupKey]: Array.from(checked) } } });
+  };
+  const setSurveyOther = async (groupKey: string, text: string) => {
+    const cur = entry || blankEntry();
+    await persist({ ...cur, survey: { ...(cur.survey || {}), other: { ...(cur.survey?.other || {}), [groupKey]: text } } });
+  };
+  const setSurveyDecision = async (decision: "freigabe" | "aenderung") => {
+    const cur = entry || blankEntry();
+    const next = cur.survey?.decision === decision ? undefined : decision;
+    await persist({ ...cur, survey: { ...(cur.survey || {}), decision: next } });
+  };
+  const setSurveyNote = async (text: string) => {
+    const cur = entry || blankEntry();
+    await persist({ ...cur, survey: { ...(cur.survey || {}), decisionNote: text } });
   };
 
   const persistPhotoFile = async (uri: string, pos: RaumbuchPosition): Promise<string> => {
@@ -298,6 +321,67 @@ export default function RaumbuchRoomScreen() {
           })}
         </View>
         <Text style={{ fontSize: 11, color: colors.muted, marginTop: 10 }}>{t("raumbuch_longpress_remove" as any)}</Text>
+
+        {/* ── Fragenkatalog (digital survey; shows up in the Fragenkatalog PDF) ── */}
+        <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 24 }]}>{t("raumbuch_survey_section" as any)}</Text>
+        {RAUMBUCH_SURVEY.map((g) => {
+          const checked = new Set(survey.checked?.[g.key] || []);
+          return (
+            <View key={g.key} style={{ marginTop: 14 }}>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: colors.foreground, marginBottom: 8 }}>{g.label}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {g.options.map((o) => {
+                  const on = checked.has(o);
+                  return (
+                    <Pressable key={o} onPress={() => void toggleSurvey(g.key, o)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : colors.surface, opacity: pressed ? 0.7 : 1 }]}>
+                      <MaterialIcons name={on ? "check-box" : "check-box-outline-blank"} size={16} color={on ? colors.primary : colors.muted} />
+                      <Text style={{ fontSize: 12.5, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.foreground }}>{o}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {checked.has("Sonstiges") && (
+                <TextInput
+                  key={`other-${g.key}-${entry ? "l" : "e"}`}
+                  defaultValue={survey.other?.[g.key] || ""}
+                  onEndEditing={(e) => void setSurveyOther(g.key, e.nativeEvent.text)}
+                  placeholder={t("raumbuch_survey_other_ph" as any)}
+                  placeholderTextColor={colors.muted}
+                  style={{ marginTop: 8, fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface }}
+                />
+              )}
+            </View>
+          );
+        })}
+
+        {/* Freigabe / Änderung */}
+        <Text style={{ fontSize: 13, fontWeight: "800", color: colors.foreground, marginTop: 20, marginBottom: 8 }}>{t("raumbuch_survey_decision" as any)}</Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {([
+            { key: "freigabe" as const, label: t("raumbuch_survey_freigabe" as any), col: "#16A34A" },
+            { key: "aenderung" as const, label: t("raumbuch_survey_aenderung" as any), col: "#DC2626" },
+          ]).map((d) => {
+            const on = survey.decision === d.key;
+            return (
+              <Pressable key={d.key} onPress={() => void setSurveyDecision(d.key)} style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: on ? d.col : colors.border, backgroundColor: on ? d.col + "18" : colors.surface, opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name={on ? "radio-button-checked" : "radio-button-unchecked"} size={18} color={on ? d.col : colors.muted} />
+                <Text style={{ fontSize: 13, fontWeight: on ? "800" : "600", color: on ? d.col : colors.muted }}>{d.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {survey.decision === "aenderung" && (
+          <TextInput
+            key={`note-${entry ? "l" : "e"}`}
+            defaultValue={survey.decisionNote || ""}
+            onEndEditing={(e) => void setSurveyNote(e.nativeEvent.text)}
+            placeholder={t("raumbuch_survey_change_ph" as any)}
+            placeholderTextColor={colors.muted}
+            multiline
+            style={{ marginTop: 8, minHeight: 70, textAlignVertical: "top", fontSize: 14, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface }}
+          />
+        )}
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* Plan marker modal */}

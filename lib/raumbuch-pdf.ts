@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { getFloorPlans } from "./floor-plan-store";
 import { getPdfBranding } from "./pdf-branding-store";
-import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
+import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
 // Distinct colour per wall: A = Blau, B = Grün, C = Rot, D = Orange.
@@ -59,15 +59,6 @@ const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, 
 /** Build a Raumbuch PDF: ONE PAGE PER WALL/position (A/B/C/D, Boden, Decke) with
  *  the full, uncropped photo, plus the room metadata and a plan excerpt. */
 export type RaumbuchTemplate = "standard" | "fragenkatalog";
-
-// Fragenkatalog (second template): a per-room checklist to tick off by hand.
-const QUESTIONNAIRE: { label: string; options: string[] }[] = [
-  { label: "Innenwände", options: ["GK Q2", "GK Q3", "GK Q4", "Betonoptik", "Vlies", "Anstrich weiß", "Anstrich farbig", "Fliesen", "Sichtbeton", "Holzverkleidung", "Akustikpaneel", "Sonstiges"] },
-  { label: "Boden", options: ["Estrich roh", "Fliesen", "Vinyl", "Parkett", "Epoxidharz", "Teppich", "Sockelleiste fehlt", "Fuge nacharbeiten", "Sonstiges"] },
-  { label: "Decke", options: ["Beton roh", "GK glatt", "GK-Lochdecke", "Rasterdecke", "Akustikdecke", "Schattenfuge", "Revisionsklappe", "Sonstiges"] },
-  { label: "Installationen", options: ["Kabel vorhanden", "Kabel beschriften", "Steckdosen fehlen", "Schalter fehlt", "Netzwerk fehlt", "Sanitär offen", "Lüftung offen", "Brandschutz offen", "Sonstiges"] },
-  { label: "Schallschutz", options: ["Baffel", "Segel", "Paneel", "Akustikdecke", "Wandabsorber", "Sonstiges"] },
-];
 
 export async function generateRaumbuchPdf(
   projectName: string,
@@ -189,13 +180,32 @@ export async function generateRaumbuchPdf(
     return { name: fl.name, rooms };
   });
 
-  // Questionnaire + Freigabe/Änderung block (static), used by the Fragenkatalog template.
-  const ck = "&#9744;"; // ☐
-  const quizHtml = `
-    <div class="quiz">
-      ${QUESTIONNAIRE.map((q) => `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${q.options.map((o) => o === "Sonstiges" ? `${ck} ${esc(o)} ______________` : `${ck} ${esc(o)}`).join("&nbsp;&nbsp;&nbsp;")}</div></div>`).join("")}
-    </div>
-    <div class="freigabe"><b>BITTE ANKREUZEN:</b> &nbsp; ${ck} <b>Freigabe</b> &nbsp;&nbsp;oder&nbsp;&nbsp; ${ck} <b>Änderung</b> <span class="freigabe-hint">(bitte hier angeben)</span> ___________________________</div>`;
+  // Questionnaire + Freigabe/Änderung block — reflects the room's filled-in
+  // answers (☑ checked / ☐ unchecked), or stays blank to tick off by hand.
+  const BOX_OFF = "&#9744;"; // ☐
+  const BOX_ON = "&#9745;";  // ☑
+  const buildQuiz = (survey?: RaumbuchEntry["survey"]): string => {
+    const s = survey || {};
+    const rows = RAUMBUCH_SURVEY.map((q) => {
+      const checked = new Set(s.checked?.[q.key] || []);
+      const opts = q.options.map((o) => {
+        const on = checked.has(o);
+        const box = on ? BOX_ON : BOX_OFF;
+        if (o === "Sonstiges") {
+          const txt = (s.other?.[q.key] || "").trim();
+          return `<span class="${on ? "on" : ""}">${box} ${esc(o)} ${txt ? esc(txt) : "______________"}</span>`;
+        }
+        return `<span class="${on ? "on" : ""}">${box} ${esc(o)}</span>`;
+      }).join("&nbsp;&nbsp;&nbsp;");
+      return `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${opts}</div></div>`;
+    }).join("");
+    const freiOn = s.decision === "freigabe";
+    const aendOn = s.decision === "aenderung";
+    const note = (s.decisionNote || "").trim();
+    return `
+      <div class="quiz">${rows}</div>
+      <div class="freigabe"><b>BITTE ANKREUZEN:</b> &nbsp; <span class="${freiOn ? "on" : ""}">${freiOn ? BOX_ON : BOX_OFF} <b>Freigabe</b></span> &nbsp;&nbsp;oder&nbsp;&nbsp; <span class="${aendOn ? "on" : ""}">${aendOn ? BOX_ON : BOX_OFF} <b>Änderung</b></span> <span class="freigabe-hint">(bitte hier angeben)</span> ${note ? esc(note) : "___________________________"}</div>`;
+  };
 
   const content: string[] = [];
 
@@ -259,7 +269,7 @@ export async function generateRaumbuchPdf(
               ${planFull}
             </div>
             ${thumbs.length ? `<div class="room-photos">${thumbs.join("")}</div>` : ""}
-            ${quizHtml}
+            ${buildQuiz(e.survey)}
           </section>`);
       }
 
@@ -348,6 +358,7 @@ export async function generateRaumbuchPdf(
     .quiz-row { display: flex; gap: 14px; padding: 9px 0; border-bottom: 1px solid #e6eaf0; }
     .quiz-label { width: 110px; flex-shrink: 0; font-size: 12.5px; font-weight: 800; color: ${NAVY}; }
     .quiz-opts { flex: 1; font-size: 11.5px; line-height: 1.8; color: #253040; }
+    .quiz-opts .on, .freigabe .on { font-weight: 800; color: ${NAVY}; }
     .freigabe { margin-top: 16px; font-size: 12.5px; color: #253040; }
     .freigabe-hint { color: #64748b; }
   </style></head><body>

@@ -31,11 +31,32 @@ export type RaumbuchEntry = {
   walls?: Partial<Record<"A" | "B" | "C" | "D", { x1: number; y1: number; x2: number; y2: number }>>;
   photos: Partial<Record<RaumbuchPosition, string>>;
   notes?: Partial<Record<RaumbuchPosition, string>>;
+  /** Filled-in Fragenkatalog answers for this room (second export template). */
+  survey?: RaumbuchSurvey;
   updatedAt: string;
 };
 
 export type RaumbuchWallKey = "A" | "B" | "C" | "D";
 export type RaumbuchWall = { x1: number; y1: number; x2: number; y2: number };
+
+// ── Fragenkatalog (room survey) ──────────────────────────────────────────────
+// Shared definition used by both the in-app form and the PDF so they stay in sync.
+export type RaumbuchSurveyGroup = { key: string; label: string; options: string[] };
+export const RAUMBUCH_SURVEY: RaumbuchSurveyGroup[] = [
+  { key: "innenwaende", label: "Innenwände", options: ["GK Q2", "GK Q3", "GK Q4", "Betonoptik", "Vlies", "Anstrich weiß", "Anstrich farbig", "Fliesen", "Sichtbeton", "Holzverkleidung", "Akustikpaneel", "Sonstiges"] },
+  { key: "boden", label: "Boden", options: ["Estrich roh", "Fliesen", "Vinyl", "Parkett", "Epoxidharz", "Teppich", "Sockelleiste fehlt", "Fuge nacharbeiten", "Sonstiges"] },
+  { key: "decke", label: "Decke", options: ["Beton roh", "GK glatt", "GK-Lochdecke", "Rasterdecke", "Akustikdecke", "Schattenfuge", "Revisionsklappe", "Sonstiges"] },
+  { key: "installationen", label: "Installationen", options: ["Kabel vorhanden", "Kabel beschriften", "Steckdosen fehlen", "Schalter fehlt", "Netzwerk fehlt", "Sanitär offen", "Lüftung offen", "Brandschutz offen", "Sonstiges"] },
+  { key: "schallschutz", label: "Schallschutz", options: ["Baffel", "Segel", "Paneel", "Akustikdecke", "Wandabsorber", "Sonstiges"] },
+];
+export type RaumbuchSurvey = {
+  /** group key → checked option labels */
+  checked?: Record<string, string[]>;
+  /** group key → free text after "Sonstiges" */
+  other?: Record<string, string>;
+  decision?: "freigabe" | "aenderung";
+  decisionNote?: string;
+};
 
 const KEY = (projectId: string) => `raumbuch_${projectId}`;
 
