@@ -57,7 +57,7 @@ export default function RaumbuchRoomScreen() {
   const [tempCrop, setTempCrop] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   // Which element is being dragged (new line/box, a wall endpoint, a crop corner,
   // or a single crop edge).
-  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number } } | null>(null);
+  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "crop-move" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number }; origin?: { x: number; y: number } } | null>(null);
   const canvasRef = useRef<ZoomableCanvasHandle | null>(null);
 
   // When marking (step 2) and a crop exists, zoom the plan into just that area so
@@ -176,7 +176,7 @@ export default function RaumbuchRoomScreen() {
   // the two points, or a crop rectangle; drag an existing corner/endpoint to
   // adjust it. Live, so the line/box follows your finger exactly.
   const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-  const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y) < 0.055;
+  const near = (a: { x: number; y: number }, b: { x: number; y: number }, r = 0.055) => Math.hypot(a.x - b.x, a.y - b.y) < r;
   const onPlanDrag = (phase: "start" | "move" | "end", raw: { x: number; y: number }) => {
     if (planMode === "marker" || planMode === "view") return; // no drawing in page-select/marker
     const pt = { x: clamp01(raw.x), y: clamp01(raw.y) };
@@ -188,19 +188,32 @@ export default function RaumbuchRoomScreen() {
           const corners: Record<string, { x: number; y: number }> = {
             tl: { x: c.x, y: c.y }, tr: { x: c.x + c.w, y: c.y }, bl: { x: c.x, y: c.y + c.h }, br: { x: c.x + c.w, y: c.y + c.h },
           };
-          const hitC = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k]));
+          const hitC = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k], 0.08));
           if (hitC) { dragRef.current = { kind: "crop-corner", corner: hitC }; return; }
           const edges: Record<string, { x: number; y: number }> = {
             top: { x: c.x + c.w / 2, y: c.y }, bottom: { x: c.x + c.w / 2, y: c.y + c.h }, left: { x: c.x, y: c.y + c.h / 2 }, right: { x: c.x + c.w, y: c.y + c.h / 2 },
           };
-          const hitE = (["top", "right", "bottom", "left"] as const).find((k) => near(pt, edges[k]));
+          const hitE = (["top", "right", "bottom", "left"] as const).find((k) => near(pt, edges[k], 0.08));
           if (hitE) { dragRef.current = { kind: "crop-edge", edge: hitE }; return; }
+          // Touch INSIDE the box (not on a handle) → move the whole box.
+          if (pt.x > c.x && pt.x < c.x + c.w && pt.y > c.y && pt.y < c.y + c.h) {
+            dragRef.current = { kind: "crop-move", start: pt, origin: { x: c.x, y: c.y } };
+            return;
+          }
         }
         dragRef.current = { kind: "crop-new", start: pt };
         setTempCrop({ x: pt.x, y: pt.y, w: 0, h: 0 });
       } else if (phase === "move") {
         const d = dragRef.current; if (!d) return;
-        if (d.kind === "crop-new" && d.start) {
+        if (d.kind === "crop-move" && d.start && d.origin) {
+          const dx = pt.x - d.start.x, dy = pt.y - d.start.y;
+          setTempCrop((c) => {
+            if (!c) return c;
+            const nx = Math.max(0, Math.min(1 - c.w, d.origin!.x + dx));
+            const ny = Math.max(0, Math.min(1 - c.h, d.origin!.y + dy));
+            return { ...c, x: nx, y: ny };
+          });
+        } else if (d.kind === "crop-new" && d.start) {
           const a = d.start;
           setTempCrop({ x: Math.min(a.x, pt.x), y: Math.min(a.y, pt.y), w: Math.abs(a.x - pt.x), h: Math.abs(a.y - pt.y) });
         } else if (d.kind === "crop-corner") {
@@ -243,15 +256,12 @@ export default function RaumbuchRoomScreen() {
       });
     } else {
       dragRef.current = null;
+      // No auto-straighten — the user draws the line exactly as dragged (so
+      // diagonal walls like a Dachschräge stay diagonal).
       setTempWalls((prev) => {
-        let w = prev[key]; if (!w) return prev;
+        const w = prev[key]; if (!w) return prev;
         if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.02) { const n = { ...prev }; delete n[key]; return n; }
-        // Auto-straighten: a room wall is almost always horizontal or vertical,
-        // so snap it to exactly H/V when it's within ~22° of an axis.
-        const dx = Math.abs(w.x2 - w.x1), dy = Math.abs(w.y2 - w.y1);
-        if (dy <= dx * 0.4) { const y = (w.y1 + w.y2) / 2; w = { ...w, y1: y, y2: y }; }
-        else if (dx <= dy * 0.4) { const x = (w.x1 + w.x2) / 2; w = { ...w, x1: x, x2: x }; }
-        return { ...prev, [key]: w };
+        return prev;
       });
     }
   };
@@ -417,11 +427,11 @@ export default function RaumbuchRoomScreen() {
               ))}
             </View>
             {plans.length > 1 && planStep === 1 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, flexGrow: 0 }} contentContainerStyle={{ gap: 8, alignItems: "center", paddingBottom: 6 }}>
                 {plans.map((p) => {
                   const active = modalPlan?.id === p.id;
                   return (
-                    <Pressable key={p.id} onPress={() => { setModalPlan(p); planAspect.current = p.width > 0 && p.height > 0 ? p.width / p.height : 1.4; setTempPos(null); setTempWalls({}); setTempCrop(null); dragRef.current = null; }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
+                    <Pressable key={p.id} onPress={() => { setModalPlan(p); planAspect.current = p.width > 0 && p.height > 0 ? p.width / p.height : 1.4; setTempPos(null); setTempWalls({}); setTempCrop(null); dragRef.current = null; }} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
                       <Text style={{ fontSize: 12, fontWeight: "700", color: active ? colors.primary : colors.muted }} numberOfLines={1}>{p.name}</Text>
                     </Pressable>
                   );
@@ -430,7 +440,7 @@ export default function RaumbuchRoomScreen() {
             )}
             {/* Step 3 mode toolbar: centre pin or draw wall lines A–D. */}
             {modalPlan && planStep === 3 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 10 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, flexGrow: 0 }} contentContainerStyle={{ gap: 8, alignItems: "center", paddingBottom: 6 }}>
                 {/* "Markierung" (manual pin) removed on request — only walls + a
                     quick centre pin remain. */}
                 <Pressable onPress={() => { placeMarkerCenter(); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: tempPos ? colors.primary : colors.border, backgroundColor: tempPos ? colors.primary + "18" : colors.surface }}>
