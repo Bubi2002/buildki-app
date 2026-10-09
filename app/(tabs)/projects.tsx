@@ -1009,6 +1009,23 @@ export default function RundgangTab() {
                 style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]}
               />
 
+              <Pressable onPress={pickTaskPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
+                <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+              </Pressable>
+              {newTaskPhotos.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                  {newTaskPhotos.map((uri, i) => (
+                    <View key={i}>
+                      <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                      <Pressable onPress={() => setNewTaskPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                        <MaterialIcons name="close" size={13} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
               <Text style={styles.defLabel}>{t('gewerk')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
                 {GEWERKE.map((g) => {
@@ -1040,23 +1057,6 @@ export default function RundgangTab() {
               <View style={{ marginTop: 8 }}>
                 <DateOnlyPicker value={newTaskDue} onChange={setNewTaskDue} label={t('frist')} withTime />
               </View>
-
-              <Pressable onPress={pickTaskPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
-                <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
-                <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
-              </Pressable>
-              {newTaskPhotos.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
-                  {newTaskPhotos.map((uri, i) => (
-                    <View key={i}>
-                      <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
-                      <Pressable onPress={() => setNewTaskPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
-                        <MaterialIcons name="close" size={13} color="#fff" />
-                      </Pressable>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
             </ScrollView>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => setTaskRoom(null)} style={styles.taskCancel}>
@@ -1079,6 +1079,23 @@ export default function RundgangTab() {
             <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
               <TextInput value={newDefectTitle} onChangeText={setNewDefectTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" autoFocus returnKeyType="next" style={styles.taskInput} />
               <TextInput value={newDefectDesc} onChangeText={setNewDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
+
+              <Pressable onPress={pickDefectPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
+                <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
+                <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+              </Pressable>
+              {newDefectPhotos.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                  {newDefectPhotos.map((uri, i) => (
+                    <View key={i}>
+                      <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                      <Pressable onPress={() => setNewDefectPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                        <MaterialIcons name="close" size={13} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
 
               <Text style={styles.defLabel}>{t('gewerk')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
@@ -1111,23 +1128,6 @@ export default function RundgangTab() {
               <View style={{ marginTop: 8 }}>
                 <DateOnlyPicker value={newDefectDue} onChange={setNewDefectDue} label={t('frist')} withTime />
               </View>
-
-              <Pressable onPress={pickDefectPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
-                <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
-                <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
-              </Pressable>
-              {newDefectPhotos.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
-                  {newDefectPhotos.map((uri, i) => (
-                    <View key={i}>
-                      <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
-                      <Pressable onPress={() => setNewDefectPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
-                        <MaterialIcons name="close" size={13} color="#fff" />
-                      </Pressable>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
             </ScrollView>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <Pressable onPress={() => setDefectRoom(null)} style={styles.taskCancel}><Text style={{ color: "#8FA3B8", fontWeight: "700" }}>{t('btn_abbrechen')}</Text></Pressable>
