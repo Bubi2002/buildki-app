@@ -304,7 +304,7 @@ export async function generateRaumbuchPdf(
               ${plan}
             </div>
             <div class="photo-wrap"><img class="photo" src="${photo}" /></div>
-            <div class="wall-label">${label}</div>
+            <div class="wall-label" style="color:${isWall ? WALL_COLOR[pos as RaumbuchWallKey] : accent};">${label}</div>
           </section>`);
       }
     }
