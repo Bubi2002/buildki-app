@@ -62,15 +62,25 @@ export default function RaumbuchRoomScreen() {
 
   // When marking (step 2) and a crop exists, zoom the plan into just that area so
   // the room fills the view and the walls are easy to place.
+  // Step 3 renders ONLY the cropped region (scale 1, no pan) — like the Messen
+  // tool — so walls draw as a clean line with draggable handles. Reset any pinch
+  // zoom when the step/plan changes so we always start fitted.
   useEffect(() => {
     if (planBox.w <= 0) return;
-    const id = setTimeout(() => {
-      if (planStep === 3 && tempCrop && tempCrop.w > 0.02 && tempCrop.h > 0.02) canvasRef.current?.zoomToRegion(tempCrop);
-      else canvasRef.current?.reset();
-    }, 80);
+    const id = setTimeout(() => canvasRef.current?.reset(), 60);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planStep, planBox.w, planBox.h, modalPlan?.id]);
+
+  // Map a view-normalised point (0..1 over what's shown) to FULL-plan coords.
+  // In step 3 we show just the crop, so touches must be translated back.
+  const viewToFull = (pt: { x: number; y: number }) => {
+    const c = tempCrop;
+    if (planStep === 3 && c && c.w > 0.02 && c.h > 0.02) {
+      return { x: c.x + pt.x * c.w, y: c.y + pt.y * c.h };
+    }
+    return pt;
+  };
 
   const blankEntry = (): RaumbuchEntry => ({
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
@@ -169,7 +179,7 @@ export default function RaumbuchRoomScreen() {
 
   // Marker mode: a tap places the pin.
   const onPlanTap = (pt: { x: number; y: number }) => {
-    if (planMode === "marker") setTempPos(pt);
+    if (planMode === "marker") setTempPos(viewToFull(pt));
   };
 
   // Crop & wall modes: DRAG to draw (like the Messen tool) — pull a line between
@@ -179,7 +189,8 @@ export default function RaumbuchRoomScreen() {
   const near = (a: { x: number; y: number }, b: { x: number; y: number }, r = 0.055) => Math.hypot(a.x - b.x, a.y - b.y) < r;
   const onPlanDrag = (phase: "start" | "move" | "end", raw: { x: number; y: number }) => {
     if (planMode === "marker" || planMode === "view") return; // no drawing in page-select/marker
-    const pt = { x: clamp01(raw.x), y: clamp01(raw.y) };
+    const full = viewToFull(raw);
+    const pt = { x: clamp01(full.x), y: clamp01(full.y) };
     if (planMode === "crop") {
       if (phase === "start") {
         const c = tempCrop;
@@ -463,10 +474,20 @@ export default function RaumbuchRoomScreen() {
             {modalPlan && (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", marginVertical: 6 }} onLayout={(e) => setPlanBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
                 {planBox.w > 0 && planBox.h > 0 && (() => {
-                  // Fit the plan into the available box (contain), as large as possible.
-                  const aspect = planAspect.current || 1.4;
-                  let pw = planBox.w, ph = pw / aspect;
-                  if (ph > planBox.h) { ph = planBox.h; pw = ph * aspect; }
+                  // In step 3 show ONLY the cropped region (so walls are drawn big,
+                  // like the Messen tool). Elsewhere show the full plan.
+                  const fullAspect = planAspect.current || 1.4;
+                  const useCrop = planStep === 3 && !!tempCrop && tempCrop.w > 0.02 && tempCrop.h > 0.02;
+                  const cw = useCrop ? tempCrop!.w : 1, ch = useCrop ? tempCrop!.h : 1, cxN = useCrop ? tempCrop!.x : 0, cyN = useCrop ? tempCrop!.y : 0;
+                  const viewAspect = (cw * fullAspect) / ch;
+                  let pw = planBox.w, ph = pw / viewAspect;
+                  if (ph > planBox.h) { ph = planBox.h; pw = ph * viewAspect; }
+                  // Full-plan normalised → view pixels.
+                  const toVX = (nx: number) => ((nx - cxN) / cw) * pw;
+                  const toVY = (ny: number) => ((ny - cyN) / ch) * ph;
+                  const imgStyle = useCrop
+                    ? { position: "absolute" as const, width: pw / cw, height: ph / ch, left: -cxN * (pw / cw), top: -cyN * (ph / ch) }
+                    : { width: "100%" as const, height: "100%" as const };
                   return (
                     <View style={{ width: pw, height: ph, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFFFFF" }}>
                       <ZoomableCanvas
@@ -479,7 +500,7 @@ export default function RaumbuchRoomScreen() {
                         dragImmediate={planMode !== "marker" && planMode !== "view"}
                       >
                         <View style={{ width: pw, height: ph }}>
-                          <Image source={{ uri: modalPlan.imageUri }} style={{ width: "100%", height: "100%" }} contentFit="fill" allowDownscaling={false} />
+                          <Image source={{ uri: modalPlan.imageUri }} style={imgStyle} contentFit="fill" allowDownscaling={false} />
                           <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={pw} height={ph}>
                             {tempCrop && planStep !== 3 && (
                               <SvgG>
@@ -503,17 +524,18 @@ export default function RaumbuchRoomScreen() {
                               const active = planMode === k;
                               // Each wall keeps its own colour; the active one is just drawn thicker.
                               const col = WALL_COLORS[k] || WALL_COLOR;
-                              const mx = ((wline.x1 + wline.x2) / 2) * pw, my = ((wline.y1 + wline.y2) / 2) * ph;
+                              const x1 = toVX(wline.x1), y1 = toVY(wline.y1), x2 = toVX(wline.x2), y2 = toVY(wline.y2);
+                              const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
                               return (
                                 <SvgG key={k}>
-                                  <SvgLine x1={wline.x1 * pw} y1={wline.y1 * ph} x2={wline.x2 * pw} y2={wline.y2 * ph} stroke={col} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
+                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
                                   {active && (
                                     <SvgG>
-                                      <SvgCircle cx={wline.x1 * pw} cy={wline.y1 * ph} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
-                                      <SvgCircle cx={wline.x2 * pw} cy={wline.y2 * ph} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x1} cy={y1} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x2} cy={y2} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
                                     </SvgG>
                                   )}
-                                  <SvgText x={mx} y={my - 8} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
+                                  <SvgText x={mx} y={my - 10} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
                                 </SvgG>
                               );
                             })}
@@ -521,10 +543,10 @@ export default function RaumbuchRoomScreen() {
                           {tempPos && (
                             <>
                               {/* Pin tip sits exactly on the point; the small dot marks it precisely. */}
-                              <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * pw - 15, top: tempPos.y * ph - 30 }}>
+                              <View pointerEvents="none" style={{ position: "absolute", left: toVX(tempPos.x) - 15, top: toVY(tempPos.y) - 30 }}>
                                 <MaterialIcons name="place" size={30} color="#DC2626" />
                               </View>
-                              <View pointerEvents="none" style={{ position: "absolute", left: tempPos.x * pw - 3, top: tempPos.y * ph - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: "#FFFFFF", borderWidth: 1.5, borderColor: "#DC2626" }} />
+                              <View pointerEvents="none" style={{ position: "absolute", left: toVX(tempPos.x) - 3, top: toVY(tempPos.y) - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: "#FFFFFF", borderWidth: 1.5, borderColor: "#DC2626" }} />
                             </>
                           )}
                         </View>
