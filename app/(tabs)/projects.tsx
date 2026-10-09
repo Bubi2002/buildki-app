@@ -957,7 +957,6 @@ export default function RundgangTab() {
                 <Text style={styles.sectionHead}>{t('werkzeuge')}</Text>
                 <View style={styles.toolRow}>
                   {([
-                    { icon: "fact-check", label: `${t('index_tool_maengel' as any)} & ${t('index_tool_aufgaben' as any)}`, route: `/tasks?projectId=${selectedProjectId}` },
                     { icon: "map", label: t('grundriss'), route: `/floor-plan?projectId=${selectedProjectId}` },
                     { icon: "photo-library", label: t('gallery_photos'), route: `/photo-gallery?projectId=${selectedProjectId}` },
                     { icon: "compare", label: t('vergleich'), route: `/photo-compare?projectId=${selectedProjectId}` },
