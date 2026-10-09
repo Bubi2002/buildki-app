@@ -101,9 +101,19 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
   };
 
   // iOS 18 limited access: let the user share MORE contacts, then reload.
-  const shareMoreContacts = async () => {
-    const shown = await presentContactAccessPicker();
-    if (shown) { loadedContacts.current = false; await openPicker(); }
+  // IMPORTANT: close our modal FIRST — presenting the native Apple picker over an
+  // open RN Modal leaves the UI frozen on dismiss.
+  const shareMoreContacts = () => {
+    setShowPicker(false);
+    setFocused(false);
+    setTimeout(async () => {
+      try {
+        const shown = await presentContactAccessPicker();
+        loadedContacts.current = false;
+        setContacts([]);
+        if (shown) setTimeout(() => { void openPicker(); }, 250);
+      } catch {}
+    }, 350);
   };
 
   const pick = (name: string) => {
@@ -137,9 +147,16 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
     : contacts
   ).slice(0, 500);
 
+  // The field's outer margins go on the WRAPPER (not the TextInput) so the
+  // contacts icon centres over the input box itself — otherwise a marginTop
+  // pushes the icon too high.
+  const flat = StyleSheet.flatten(style) || {};
+  const { margin, marginTop, marginBottom, marginVertical, marginHorizontal, marginLeft, marginRight, ...inputStyle } = flat as any;
+  const wrapperMargin = { margin, marginTop, marginBottom, marginVertical, marginHorizontal, marginLeft, marginRight };
+
   return (
     <View>
-      <View style={{ position: "relative", justifyContent: "center" }}>
+      <View style={[{ position: "relative", justifyContent: "center" }, wrapperMargin]}>
         <TextInput
           value={value}
           onChangeText={(v) => { setFocused(true); onChange(v); }}
@@ -148,7 +165,7 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
           placeholder={placeholder}
           placeholderTextColor={colors.muted}
           autoCapitalize="none"
-          style={[style, { paddingRight: 44 }]}
+          style={[inputStyle, { paddingRight: 44 }]}
         />
         {/* Always-visible contacts button (reliable, focus-independent),
             vertically centred in the field. */}
