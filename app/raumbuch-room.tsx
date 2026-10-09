@@ -528,14 +528,14 @@ export default function RaumbuchRoomScreen() {
                               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
                               return (
                                 <SvgG key={k}>
-                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 4 : 3} strokeLinecap="round" />
+                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 3 : 2} strokeLinecap="round" />
                                   {active && (
                                     <SvgG>
-                                      <SvgCircle cx={x1} cy={y1} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
-                                      <SvgCircle cx={x2} cy={y2} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x1} cy={y1} r={7} fill="#ffffff" stroke={col} strokeWidth={2} />
+                                      <SvgCircle cx={x2} cy={y2} r={7} fill="#ffffff" stroke={col} strokeWidth={2} />
                                     </SvgG>
                                   )}
-                                  <SvgText x={mx} y={my - 10} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.8} fontSize={13} fontWeight="bold" textAnchor="middle">{k}</SvgText>
+                                  <SvgText x={mx} y={my - 9} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.7} fontSize={12} fontWeight="bold" textAnchor="middle">{k}</SvgText>
                                 </SvgG>
                               );
                             })}
