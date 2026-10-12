@@ -577,13 +577,16 @@ export default function RaumbuchRoomScreen() {
                                 <SvgRect x={tempCrop.x * pw} y={tempCrop.y * ph} width={tempCrop.w * pw} height={tempCrop.h * ph} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
                                 {planMode === "crop" && (
                                   <SvgG>
-                                    {/* Corner handles (resize two sides). */}
+                                    {/* Corner handles (resize two sides). Kept small
+                                        on purpose — the touch target (hit radius) is
+                                        much larger than the dot, so they stay easy to
+                                        grab without covering the plan. */}
                                     {([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
-                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={11} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={3} />
+                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={6.5} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
                                     ))}
                                     {/* Edge handles (move one side). */}
                                     {([[tempCrop.x + tempCrop.w / 2, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h / 2], [tempCrop.x + tempCrop.w / 2, tempCrop.y + tempCrop.h], [tempCrop.x, tempCrop.y + tempCrop.h / 2]] as const).map(([cx, cy], i) => (
-                                      <SvgRect key={`e${i}`} x={cx * pw - 9} y={cy * ph - 9} width={18} height={18} rx={4} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2.5} />
+                                      <SvgRect key={`e${i}`} x={cx * pw - 5.5} y={cy * ph - 5.5} width={11} height={11} rx={3} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2} />
                                     ))}
                                   </SvgG>
                                 )}
@@ -601,8 +604,8 @@ export default function RaumbuchRoomScreen() {
                                   <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 4.5 : 3.5} strokeLinecap="round" />
                                   {active && (
                                     <SvgG>
-                                      <SvgCircle cx={x1} cy={y1} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
-                                      <SvgCircle cx={x2} cy={y2} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x1} cy={y1} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x2} cy={y2} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
                                     </SvgG>
                                   )}
                                   <SvgText x={mx} y={my - 9} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.7} fontSize={12} fontWeight="bold" textAnchor="middle">{k}</SvgText>
@@ -611,8 +614,8 @@ export default function RaumbuchRoomScreen() {
                             })}
                             {wallTapStart && (WALL_KEYS as string[]).includes(planMode as string) && (
                               <SvgG>
-                                <SvgCircle cx={toVX(wallTapStart.x)} cy={toVY(wallTapStart.y)} r={11} fill="none" stroke={WALL_COLORS[planMode as RaumbuchWallKey] || WALL_COLOR} strokeWidth={2.5} />
-                                <SvgCircle cx={toVX(wallTapStart.x)} cy={toVY(wallTapStart.y)} r={4} fill={WALL_COLORS[planMode as RaumbuchWallKey] || WALL_COLOR} />
+                                <SvgCircle cx={toVX(wallTapStart.x)} cy={toVY(wallTapStart.y)} r={8} fill="none" stroke={WALL_COLORS[planMode as RaumbuchWallKey] || WALL_COLOR} strokeWidth={2} />
+                                <SvgCircle cx={toVX(wallTapStart.x)} cy={toVY(wallTapStart.y)} r={3} fill={WALL_COLORS[planMode as RaumbuchWallKey] || WALL_COLOR} />
                               </SvgG>
                             )}
                           </Svg>
