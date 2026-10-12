@@ -8,7 +8,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Current schema version - increment when data format changes
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 const SCHEMA_VERSION_KEY = "buildki_schema_version";
 const MIGRATION_LOG_KEY = "buildki_migration_log";
 
@@ -116,6 +116,21 @@ const MIGRATIONS: Record<number, MigrationFn> = {
     }
 
     return { keysAffected };
+  },
+
+  // v2 → v3: Consolidate the company identity. Company data lived in THREE
+  // independent stores (company-settings, pdf-branding, company_info) and could
+  // diverge. Make pdf-branding the single source and backfill it from the legacy
+  // stores (lossless), then keep them in sync on every save.
+  3: async () => {
+    try {
+      const { consolidateCompanyProfile } = await import("./pdf-branding-store");
+      const res = await consolidateCompanyProfile();
+      return { keysAffected: res.keysAffected };
+    } catch (e) {
+      console.warn("[Migration v3] company profile consolidation error:", e);
+      return { keysAffected: [] };
+    }
   },
 };
 

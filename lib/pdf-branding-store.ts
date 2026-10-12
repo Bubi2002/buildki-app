@@ -3,6 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const PDF_BRANDING_KEY = "pdf-branding";
 const PDF_BRANDING_PROFILES_KEY = "pdf-branding-profiles";
 
+// Legacy company-identity stores kept in sync from the canonical `pdf-branding`
+// record so every PDF generator (which still reads one of these) sees the same,
+// fresh company data. This is the single source of truth for company identity.
+const LEGACY_COMPANY_SETTINGS_KEY = "company-settings"; // read by pdf-generator.ts (protocol)
+const LEGACY_COMPANY_INFO_KEY = "company_info"; // read by pdf-professional.ts (pro engine)
+const LEGACY_COMPANY_LOGO_KEY = "company_logo_base64"; // pro engine logo
+
 export type FilenameSchema = "project_date_nr" | "nr_project_date" | "date_project_nr" | "project_nr" | "date_nr";
 
 export type PdfTemplate = "standard" | "compact" | "detailed" | "no_photos";
@@ -130,7 +137,100 @@ export async function savePdfBranding(branding: Partial<PdfBranding>): Promise<v
     const current = await getPdfBranding();
     const updated = { ...current, ...branding };
     await AsyncStorage.setItem(PDF_BRANDING_KEY, JSON.stringify(updated));
+    // Keep the legacy company-identity stores in sync so every PDF generator
+    // reads the same, fresh company data (no "changed here, stale there").
+    await syncCompanyToLegacy(updated);
   } catch {}
+}
+
+/**
+ * Mirror the canonical company identity (from `pdf-branding`) into the legacy
+ * stores that individual PDF generators still read. This removes the old
+ * divergence where editing company data only updated some document types.
+ * Text fields propagate always; the logo is resolved to base64 once so the
+ * protocol + pro-engine PDFs keep working unchanged.
+ */
+export async function syncCompanyToLegacy(b: PdfBranding): Promise<void> {
+  try {
+    // Resolve the logo to a base64 data URI (handles file:// and data: URIs).
+    let logoBase64 = "";
+    try {
+      const { resolveBrandingLogo } = await import("./pdf-premium");
+      logoBase64 = await resolveBrandingLogo(b);
+    } catch {}
+
+    // company-settings (protocol generator). Preserve any existing extra fields.
+    try {
+      const raw = await AsyncStorage.getItem(LEGACY_COMPANY_SETTINGS_KEY);
+      const prev = raw ? JSON.parse(raw) : {};
+      const next = {
+        ...prev,
+        companyName: b.companyName,
+        companyAddress: b.companyAddress,
+        companyPhone: b.companyPhone,
+        companyEmail: b.companyEmail,
+        companyWebsite: b.companyWebsite,
+        logoUri: b.logoUri || prev.logoUri || null,
+        logoBase64: logoBase64 || prev.logoBase64 || "",
+      };
+      await AsyncStorage.setItem(LEGACY_COMPANY_SETTINGS_KEY, JSON.stringify(next));
+    } catch {}
+
+    // company_info + company_logo_base64 (pro engine).
+    try {
+      const info = {
+        name: b.companyName,
+        address: b.companyAddress,
+        phone: b.companyPhone,
+        email: b.companyEmail,
+        website: b.companyWebsite,
+        logoBase64: logoBase64 || undefined,
+      };
+      await AsyncStorage.setItem(LEGACY_COMPANY_INFO_KEY, JSON.stringify(info));
+      if (logoBase64) await AsyncStorage.setItem(LEGACY_COMPANY_LOGO_KEY, logoBase64);
+    } catch {}
+  } catch {}
+}
+
+/**
+ * One-time consolidation (run from the migration framework): if the canonical
+ * `pdf-branding` record is missing company identity that only lived in a legacy
+ * store, backfill it — then sync everything so all stores agree. Idempotent.
+ */
+export async function consolidateCompanyProfile(): Promise<{ keysAffected: string[] }> {
+  const keysAffected: string[] = [];
+  try {
+    const b = await getPdfBranding();
+    const missing = (v: string | null | undefined) => !v || !String(v).trim();
+
+    // Pull legacy company-settings / company_info if branding is blank.
+    let legacyCS: any = {};
+    let legacyCI: any = {};
+    try { const r = await AsyncStorage.getItem(LEGACY_COMPANY_SETTINGS_KEY); legacyCS = r ? JSON.parse(r) : {}; } catch {}
+    try { const r = await AsyncStorage.getItem(LEGACY_COMPANY_INFO_KEY); legacyCI = r ? JSON.parse(r) : {}; } catch {}
+
+    const patch: Partial<PdfBranding> = {};
+    if (missing(b.companyName)) { const v = legacyCS.companyName || legacyCI.name; if (v) patch.companyName = v; }
+    if (missing(b.companyAddress)) { const v = legacyCS.companyAddress || legacyCI.address; if (v) patch.companyAddress = v; }
+    if (missing(b.companyPhone)) { const v = legacyCS.companyPhone || legacyCI.phone; if (v) patch.companyPhone = v; }
+    if (missing(b.companyEmail)) { const v = legacyCS.companyEmail || legacyCI.email; if (v) patch.companyEmail = v; }
+    if (missing(b.companyWebsite)) { const v = legacyCS.companyWebsite || legacyCI.website; if (v) patch.companyWebsite = v; }
+    if (!b.logoUri) {
+      // Prefer an existing file URI; otherwise use a base64 logo as a data: URI.
+      const uri = legacyCS.logoUri || null;
+      const b64 = legacyCS.logoBase64 || legacyCI.logoBase64 || null;
+      if (uri) patch.logoUri = uri;
+      else if (b64) patch.logoUri = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+    }
+
+    const merged = { ...b, ...patch };
+    await AsyncStorage.setItem(PDF_BRANDING_KEY, JSON.stringify(merged));
+    await syncCompanyToLegacy(merged);
+    keysAffected.push("pdf-branding", LEGACY_COMPANY_SETTINGS_KEY, LEGACY_COMPANY_INFO_KEY);
+  } catch (e) {
+    console.warn("[Branding] consolidateCompanyProfile failed:", e);
+  }
+  return { keysAffected };
 }
 
 // ─── Named branding profiles (multiple templates) ───────────────────────────
