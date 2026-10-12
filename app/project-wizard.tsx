@@ -1251,9 +1251,9 @@ export default function ProjectWizardScreen() {
                 <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('btn_zurueck')}</Text>
               </Pressable>
               <Pressable onPress={() => setStep("items")} style={({ pressed }) => [styles.footerGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('ueberspringen')}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.footerGhostText, { color: colors.muted }]}>{t('ueberspringen')}</Text>
               </Pressable>
-              <Pressable onPress={() => setStep("items")} style={({ pressed }) => [styles.footerPrimary, { flex: 2, opacity: pressed ? 0.85 : 1 }]}>
+              <Pressable onPress={() => setStep("items")} style={({ pressed }) => [styles.footerPrimary, { flex: 1.6, opacity: pressed ? 0.85 : 1 }]}>
                 <Text style={styles.footerPrimaryText}>{t('weiter')}</Text>
                 <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
               </Pressable>
@@ -1266,9 +1266,9 @@ export default function ProjectWizardScreen() {
                 <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('btn_zurueck')}</Text>
               </Pressable>
               <Pressable onPress={finish} style={({ pressed }) => [styles.footerGhost, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={[styles.footerGhostText, { color: colors.muted }]}>{t('ueberspringen')}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.footerGhostText, { color: colors.muted }]}>{t('ueberspringen')}</Text>
               </Pressable>
-              <Pressable onPress={finish} style={({ pressed }) => [styles.footerPrimary, { flex: 2, opacity: pressed ? 0.85 : 1 }]}>
+              <Pressable onPress={finish} style={({ pressed }) => [styles.footerPrimary, { flex: 1.6, opacity: pressed ? 0.85 : 1 }]}>
                 <MaterialIcons name="check" size={20} color="#FFFFFF" />
                 <Text style={styles.footerPrimaryText}>{t('wizard_done' as any)}</Text>
               </Pressable>
