@@ -60,6 +60,9 @@ export default function RaumbuchRoomScreen() {
   const [planMode, setPlanMode] = useState<PlanMode>("crop");
   const [tempWalls, setTempWalls] = useState<Partial<Record<RaumbuchWallKey, RaumbuchWall>>>({});
   const [tempCrop, setTempCrop] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Wall drawing by TAPPING two points (robust on a phone): the first tap sets
+  // the pending start; the second tap completes the wall. null = no pending tap.
+  const [wallTapStart, setWallTapStart] = useState<{ x: number; y: number } | null>(null);
   // Which element is being dragged (new line/box, a wall endpoint, a crop corner,
   // or a single crop edge).
   const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "crop-move" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number }; origin?: { x: number; y: number } } | null>(null);
@@ -78,6 +81,9 @@ export default function RaumbuchRoomScreen() {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planStep, planBox.w, planBox.h, modalPlan?.id]);
+
+  // Clear a pending wall start tap whenever the tool/step/plan changes.
+  useEffect(() => { setWallTapStart(null); }, [planMode, planStep, modalPlan?.id]);
 
   // Map a view-normalised point (0..1 over what's shown) to FULL-plan coords.
   // In step 3 we show just the crop, so touches must be translated back.
@@ -186,8 +192,25 @@ export default function RaumbuchRoomScreen() {
   const onPlanLayout = (e: LayoutChangeEvent) => setModalImgW(e.nativeEvent.layout.width);
 
   // Marker mode: a tap places the pin.
+  // Wall modes: tap the start point, then tap the end point → the wall line is
+  // drawn between them (no fiddly dragging). Afterwards the endpoints can still
+  // be dragged to fine-tune.
   const onPlanTap = (pt: { x: number; y: number }) => {
-    if (planMode === "marker") setTempPos(viewToFull(pt));
+    const full = viewToFull(pt);
+    const p = { x: Math.min(1, Math.max(0, full.x)), y: Math.min(1, Math.max(0, full.y)) };
+    if (planMode === "marker") { setTempPos(p); return; }
+    if ((WALL_KEYS as string[]).includes(planMode as string)) {
+      const key = planMode as RaumbuchWallKey;
+      if (!wallTapStart) {
+        setWallTapStart(p);
+      } else {
+        const a = wallTapStart;
+        if (Math.hypot(p.x - a.x, p.y - a.y) >= 0.02) {
+          setTempWalls((prev) => ({ ...prev, [key]: { x1: a.x, y1: a.y, x2: p.x, y2: p.y } }));
+        }
+        setWallTapStart(null);
+      }
+    }
   };
 
   // Crop & wall modes: DRAG to draw (like the Messen tool) — pull a line between
@@ -262,16 +285,18 @@ export default function RaumbuchRoomScreen() {
       }
       return;
     }
-    // Wall modes A/B/C/D.
+    // Wall modes A/B/C/D. New walls are placed by TAPPING two points (see
+    // onPlanTap); dragging only fine-tunes an existing endpoint. A drag that
+    // doesn't grab an endpoint does nothing (so the plan/line never jumps).
     const key = planMode as RaumbuchWallKey;
     if (phase === "start") {
       const wl = tempWalls[key];
       if (wl) {
-        if (near(pt, { x: wl.x1, y: wl.y1 }, 0.08)) { dragRef.current = { kind: "wall-start" }; return; }
-        if (near(pt, { x: wl.x2, y: wl.y2 }, 0.08)) { dragRef.current = { kind: "wall-end" }; return; }
+        if (near(pt, { x: wl.x1, y: wl.y1 }, 0.09)) { dragRef.current = { kind: "wall-start" }; return; }
+        if (near(pt, { x: wl.x2, y: wl.y2 }, 0.09)) { dragRef.current = { kind: "wall-end" }; return; }
       }
-      dragRef.current = { kind: "wall-new", start: pt };
-      setTempWalls((prev) => ({ ...prev, [key]: { x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y } }));
+      dragRef.current = null;
+      return;
     } else if (phase === "move") {
       const d = dragRef.current; if (!d) return;
       setTempWalls((prev) => {
@@ -291,7 +316,7 @@ export default function RaumbuchRoomScreen() {
     }
   };
 
-  const selectMode = (m: PlanMode) => { setPlanMode(m); dragRef.current = null; };
+  const selectMode = (m: PlanMode) => { setPlanMode(m); dragRef.current = null; setWallTapStart(null); };
   // Enter the crop step. Seed a ready-made frame (unless the user already has a
   // crop or explicitly chose "Ganzer Plan") so cropping = dragging the handles.
   const enterStep2 = () => {
@@ -584,6 +609,12 @@ export default function RaumbuchRoomScreen() {
                                 </SvgG>
                               );
                             })}
+                            {wallTapStart && (WALL_KEYS as string[]).includes(planMode as string) && (
+                              <SvgG>
+                                <SvgCircle cx={toVX(wallTapStart.x)} cy={toVY(wallTapStart.y)} r={11} fill="none" stroke={WALL_COLORS[planMode as RaumbuchWallKey] || WALL_COLOR} strokeWidth={2.5} />
+                                <SvgCircle cx={toVX(wallTapStart.x)} cy={toVY(wallTapStart.y)} r={4} fill={WALL_COLORS[planMode as RaumbuchWallKey] || WALL_COLOR} />
+                              </SvgG>
+                            )}
                           </Svg>
                           {tempPos && (
                             <>
@@ -601,11 +632,13 @@ export default function RaumbuchRoomScreen() {
                 })()}
               </View>
             )}
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
+            <Text style={{ fontSize: 12, color: (planStep === 3 && wallTapStart) ? "#5DADE2" : colors.muted, fontWeight: (planStep === 3 && wallTapStart) ? "700" : "400", marginTop: 8 }}>
               {planStep === 1
                 ? t("raumbuch_plan_hint" as any)
                 : planStep === 2
                 ? t("raumbuch_crop_hint" as any)
+                : wallTapStart
+                ? t("raumbuch_wall_tap_end" as any)
                 : t("raumbuch_wall_hint" as any)}
               {" · "}{t("fullscreen_photo_viewer_zoom_hint" as any)}
             </Text>
@@ -615,7 +648,7 @@ export default function RaumbuchRoomScreen() {
                   <Pressable onPress={() => { setTempCrop(null); clearedCropRef.current = true; }} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>{t("raumbuch_crop_reset" as any)}</Text></Pressable>
                 )}
                 {planStep === 3 && Object.keys(tempWalls).length > 0 && (
-                  <Pressable onPress={() => { setTempWalls({}); dragRef.current = null; }} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>{t("raumbuch_walls_clear" as any)}</Text></Pressable>
+                  <Pressable onPress={() => { setTempWalls({}); dragRef.current = null; setWallTapStart(null); }} hitSlop={6}><Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>{t("raumbuch_walls_clear" as any)}</Text></Pressable>
                 )}
               </View>
             )}
