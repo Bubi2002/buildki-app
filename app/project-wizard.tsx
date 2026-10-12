@@ -72,11 +72,14 @@ export default function ProjectWizardScreen() {
   const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; projectId?: string }>();
+  // Opened with ?mode=rooms&projectId=… → edit an EXISTING project's rooms:
+  // jump straight to the room step (voice add, floors, rooms) and finish back.
+  const roomsOnly = params.mode === "rooms";
 
   // Opened with ?mode=new (from the project chooser) → go straight to the new
   // project form instead of showing another project-selection step.
-  const [step, setStep] = useState<Step>(params.mode === "new" ? "details" : "choose");
+  const [step, setStep] = useState<Step>(roomsOnly ? "rooms" : params.mode === "new" ? "details" : "choose");
   const [projects, setProjects] = useState<ProjItem[]>([]);
 
   // Step 1 – details
@@ -428,6 +431,44 @@ export default function ProjectWizardScreen() {
     setStep("rooms");
   };
 
+  // Edit-rooms entry: load the existing project + its floors/rooms/plans and
+  // open the room step directly.
+  useEffect(() => {
+    if (!roomsOnly || !params.projectId) return;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("projects");
+        const all = raw ? JSON.parse(raw) : [];
+        const p = Array.isArray(all) ? all.find((x: any) => x.id === params.projectId) : null;
+        if (p) {
+          setName(p.name || "");
+          setDesc(p.description || "");
+          setAddress(p.address || "");
+          setProjectNumber(p.projectNumber || "");
+          setClient(p.client || "");
+          setContact(p.contact || "");
+          setProjType(p.projectType || "");
+          if (p.color) setColor(p.color);
+          setProjectImage(p.imageUri || null);
+        }
+        setProjectId(params.projectId!);
+        const [fl, rm, pl] = await Promise.all([
+          getFloors(params.projectId!),
+          getAllRooms(params.projectId!),
+          getFloorPlans(params.projectId!),
+        ]);
+        setFloors(fl);
+        setRooms(rm);
+        setPlans(pl);
+        setFloorId((prev) => prev || fl[0]?.id || null);
+        setStep("rooms");
+      } catch (e) {
+        console.warn("[wizard] edit-rooms load failed", e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const addRoomNow = async () => {
     if (!projectId || !floorId || !roomName.trim()) return;
     haptic();
@@ -739,12 +780,14 @@ export default function ProjectWizardScreen() {
   // ─── Header / progress ──────────────────────────────────────────────────────
   const stepIndex = step === "choose" ? 0 : step === "details" ? 1 : step === "rooms" ? 2 : 3;
   const stepTitle =
-    step === "choose" ? t('wizard_choose_project' as any)
+    roomsOnly ? t('wizard_edit_rooms' as any)
+    : step === "choose" ? t('wizard_choose_project' as any)
       : step === "details" ? t('wizard_step_details' as any)
         : step === "rooms" ? t('wizard_step_rooms' as any)
           : t('wizard_step_items' as any);
 
   const back = () => {
+    if (roomsOnly) { finish(); return; }
     if (step === "details") setStep(projects.length ? "choose" : "details");
     else if (step === "rooms") setStep("details");
     else if (step === "items") setStep("rooms");
@@ -765,8 +808,9 @@ export default function ProjectWizardScreen() {
         </Pressable>
       </View>
 
-      {/* Labeled step indicator (details/rooms/items) */}
-      {step !== "choose" && (
+      {/* Labeled step indicator (details/rooms/items) — hidden when only editing
+          an existing project's rooms. */}
+      {step !== "choose" && !roomsOnly && (
         <View style={[styles.stepper, { borderBottomColor: colors.border }]}>
           {[
             { n: 1, label: t('wizard_step_details' as any) },
@@ -1195,7 +1239,12 @@ export default function ProjectWizardScreen() {
               <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
             </Pressable>
           )}
-          {step === "rooms" && (
+          {step === "rooms" && (roomsOnly ? (
+            <Pressable onPress={finish} style={({ pressed }) => [styles.footerPrimary, { flex: 1, opacity: pressed ? 0.85 : 1 }]}>
+              <MaterialIcons name="check" size={20} color="#FFFFFF" />
+              <Text style={styles.footerPrimaryText}>{t('wizard_done' as any)}</Text>
+            </Pressable>
+          ) : (
             <>
               <Pressable onPress={() => setStep("details")} style={({ pressed }) => [styles.footerBack, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                 <MaterialIcons name="arrow-back" size={18} color={colors.muted} />
@@ -1209,7 +1258,7 @@ export default function ProjectWizardScreen() {
                 <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
               </Pressable>
             </>
-          )}
+          ))}
           {step === "items" && (
             <>
               <Pressable onPress={() => setStep("rooms")} style={({ pressed }) => [styles.footerBack, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>

@@ -923,6 +923,16 @@ export default function RundgangTab() {
             })}
 
             {selectedProjectId && (
+              <Pressable
+                onPress={() => router.push(`/project-wizard?mode=rooms&projectId=${selectedProjectId}` as any)}
+                style={({ pressed }) => [styles.editRoomsRow, { opacity: pressed ? 0.85 : 1 }]}
+              >
+                <MaterialIcons name="edit-note" size={20} color="#FFFFFF" />
+                <Text style={styles.editRoomsText}>{t('rooms_edit_setup' as any)}</Text>
+              </Pressable>
+            )}
+
+            {selectedProjectId && (
               <Pressable onPress={() => { setNewFloorName(""); setAddFloorOpen(true); }} style={styles.addFloorRow}>
                 <MaterialIcons name="add" size={18} color="#5DADE2" />
                 <Text style={styles.addFloorText}>{t('rundgang_add_floor' as any)}</Text>
@@ -1532,6 +1542,8 @@ const styles = StyleSheet.create({
   pdfExportBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 14, paddingVertical: 14, borderRadius: 12, backgroundColor: "#1E3A5F" },
   pdfExportText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
   addFloorText: { color: "#5DADE2", fontSize: 14, fontWeight: "800" },
+  editRoomsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 10, paddingVertical: 13, borderRadius: 10, backgroundColor: "#5DADE2" },
+  editRoomsText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
   taskOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center" },
   taskSheet: { backgroundColor: "#0F1E30", borderRadius: 18, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: "#1E3A5F" },
   taskSheetTitle: { color: "#F0F4F8", fontSize: 18, fontWeight: "800" },
