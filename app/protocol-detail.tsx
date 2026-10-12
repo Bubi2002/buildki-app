@@ -2909,7 +2909,8 @@ export default function ProtocolDetailScreen() {
                 // Only the tools that belong on a single protocol. Messen, Fotos,
                 // Checklisten, Anwesenheit and Zeiterfassung are project-level and
                 // were removed here on purpose (reachable from the Projekte tab).
-                { icon: "warning", label: t('index_tool_maengel' as any), route: "/defects", color: "#FF9800" },
+                // "Mängel" was removed too — it opened the global defect list
+                // (not scoped to this protocol/project), which confused users.
                 { icon: "checklist", label: t('nav_aufgaben' as any), route: "/tasks", color: "#5DADE2" },
                 { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
               ].map((tool) => (
