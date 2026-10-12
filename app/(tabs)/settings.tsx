@@ -1012,10 +1012,13 @@ export default function SettingsScreen() {
     loadCustomTemplates();
   }, []);
 
-  // Reload custom templates when screen is focused (e.g. returning from template editor)
+  // Reload custom templates + the shared branding when the screen is focused
+  // (e.g. returning from the template editor or a child settings screen), so
+  // presentation/dispatch controls never show a stale value edited elsewhere.
   useFocusEffect(
     useCallback(() => {
       loadCustomTemplates();
+      getPdfBranding().then(setBranding).catch(() => {});
     }, [])
   );
 
@@ -1129,6 +1132,10 @@ export default function SettingsScreen() {
           accentColor: branding.accentColor,
           logoSize: branding.logoSize,
           logoPosition: branding.logoPosition,
+          // dispatch (keep legacy autoSendEmail flag in sync with the 3-state mode)
+          autoSendMode: branding.autoSendMode,
+          autoSendEmail: branding.autoSendMode === "auto",
+          defaultEmailAddress: branding.defaultEmailAddress,
         });
       }
 
@@ -2155,6 +2162,45 @@ return (
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
+        </View>
+
+        </>)}
+        {/* Versandart (zentrale Dispatch-Steuerung) */}
+        {inCat("versand") && (<>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('dispatch_mode_title' as any)}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('dispatch_mode_desc' as any)}</Text>
+          <Segmented
+            colors={colors}
+            value={branding?.autoSendMode || "off"}
+            onChange={(v) => updateBranding("autoSendMode", v as any)}
+            options={[
+              { v: "off", label: t('dispatch_manual' as any) },
+              { v: "prepare", label: t('dispatch_prepare' as any) },
+              { v: "auto", label: t('dispatch_auto' as any) },
+            ]}
+          />
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
+            {(branding?.autoSendMode || "off") === "auto"
+              ? t('dispatch_auto_hint' as any)
+              : (branding?.autoSendMode || "off") === "prepare"
+                ? t('dispatch_prepare_hint' as any)
+                : t('dispatch_manual_hint' as any)}
+          </Text>
+          <View style={{ marginTop: 14 }}>
+            <LabeledInput
+              colors={colors}
+              icon="alternate-email"
+              label={t('dispatch_default_recipient' as any)}
+              value={branding?.defaultEmailAddress || ""}
+              onChangeText={(v) => updateBranding("defaultEmailAddress", v)}
+              placeholder="info@firma.de"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              optional
+            />
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('dispatch_recipient_note' as any)}</Text>
+          </View>
         </View>
 
         </>)}
