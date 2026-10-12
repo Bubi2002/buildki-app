@@ -33,6 +33,12 @@ type Project = {
   description: string;
   color: string;
   createdAt: string;
+  address?: string;
+  client?: string;
+  contact?: string;
+  projectNumber?: string;
+  projectType?: string;
+  imageUri?: string;
 };
 
 type Protocol = {
@@ -411,12 +417,21 @@ export default function ProjectDetailScreen() {
               {project.name}
             </Text>
           </View>
-          <Pressable
-            onPress={() => setShowAssignModal(true)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <MaterialIcons name="add" size={28} color={colors.primary} />
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 18 }}>
+            <Pressable
+              onPress={() => router.push(`/project-edit?projectId=${project.id}` as any)}
+              hitSlop={6}
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            >
+              <MaterialIcons name="edit" size={23} color={colors.foreground} />
+            </Pressable>
+            <Pressable
+              onPress={() => setShowAssignModal(true)}
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            >
+              <MaterialIcons name="add" size={28} color={colors.primary} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Segmented tabs: Übersicht · Begehungen · Vorgänge · Dokumente */}
@@ -455,6 +470,48 @@ export default function ProjectDetailScreen() {
             <>
         {/* ══════════ ÜBERSICHT ══════════ */}
         {activeTab === "overview" && (<>
+        {/* Projektdaten (Bauherr, Adresse …) — tap to edit */}
+        <Pressable
+          onPress={() => router.push(`/project-edit?projectId=${project.id}` as any)}
+          style={({ pressed }) => [{ marginHorizontal: 16, marginTop: 12, marginBottom: 12, padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: (project.client || project.address || project.contact || project.projectNumber) ? 10 : 0 }}>
+            <Text style={{ flex: 1, fontSize: 13, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5, color: colors.muted }}>{t('project_data_title' as any)}</Text>
+            <MaterialIcons name="edit" size={16} color={colors.primary} />
+            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary, marginLeft: 4 }}>{t('bearbeiten' as any)}</Text>
+          </View>
+          {(project.client || project.address || project.contact || project.projectNumber) ? (
+            <View style={{ gap: 7 }}>
+              {!!project.client && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialIcons name="person" size={16} color={colors.muted} />
+                  <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{project.client}</Text>
+                </View>
+              )}
+              {!!project.contact && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialIcons name="support-agent" size={16} color={colors.muted} />
+                  <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{project.contact}</Text>
+                </View>
+              )}
+              {!!project.address && (
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                  <MaterialIcons name="location-on" size={16} color={colors.muted} style={{ marginTop: 1 }} />
+                  <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{project.address}</Text>
+                </View>
+              )}
+              {!!project.projectNumber && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialIcons name="tag" size={16} color={colors.muted} />
+                  <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{project.projectNumber}</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 13, color: colors.muted }}>{t('project_data_none' as any)}</Text>
+          )}
+        </Pressable>
+
         {project.description ? (
           <Text style={[styles.description, { color: colors.muted }]}>{project.description}</Text>
         ) : null}
