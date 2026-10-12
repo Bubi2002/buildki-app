@@ -327,9 +327,20 @@ export default function RaumbuchRoomScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
         {/* Grundriss-Markierung */}
         <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t("raumbuch_plan_section" as any)}</Text>
-        {entry?.planX != null && entry?.planId ? (
+        {entry?.planId && (entry?.planX != null || entry?.planCrop || (entry?.walls && Object.keys(entry.walls).length > 0)) ? (
           <Pressable onPress={() => void openPlanMarker()} style={[styles.planCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
             <PlanWithMarker plan={plans.find((p) => p.id === entry.planId)} entryPlanId={entry.planId} planName={entry.planName} x={entry.planX} y={entry.planY} aspect={planPreviewAspect} projectId={projectId} crop={entry.planCrop} walls={entry.walls} />
+            {/* Legend so the A/B/C/D lines on the plan map to the wall cards below. */}
+            {entry.walls && Object.keys(entry.walls).length > 0 && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, paddingHorizontal: 12, paddingTop: 10 }}>
+                {WALL_KEYS.filter((k) => entry.walls?.[k]).map((k) => (
+                  <View key={k} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                    <View style={{ width: 14, height: 4, borderRadius: 2, backgroundColor: WALL_COLORS[k] }} />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.foreground }}>{t(RAUMBUCH_POSITION_LABEL_KEY[k] as any)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             <Text style={{ color: colors.primary, fontWeight: "700", textAlign: "center", paddingVertical: 10 }}>{t("raumbuch_edit_location" as any)}</Text>
           </Pressable>
         ) : (
@@ -346,7 +357,12 @@ export default function RaumbuchRoomScreen() {
             const photo = entry?.photos?.[pos];
             return (
               <View key={pos} style={[styles.slot, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                <Text style={[styles.slotLabel, { color: colors.foreground }]}>{label(pos)}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  {(WALL_COLORS as Record<string, string>)[pos] && (
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: (WALL_COLORS as Record<string, string>)[pos] }} />
+                  )}
+                  <Text style={[styles.slotLabel, { color: colors.foreground, marginBottom: 0 }]}>{label(pos)}</Text>
+                </View>
                 {photo ? (
                   <Pressable onPress={() => void addPhoto(pos)} onLongPress={() => removePhoto(pos)}>
                     <Image source={{ uri: photo }} style={styles.slotPhoto} contentFit="cover" cachePolicy="memory-disk" />
