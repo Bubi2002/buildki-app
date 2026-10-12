@@ -113,6 +113,18 @@ export default function ProjectWizardScreen() {
   const transcribe = trpc.voice.transcribe.useMutation();
   const [roomName, setRoomName] = useState("");
   const [rooms, setRooms] = useState<Room[]>([]);
+  // Floor groups the user has collapsed in the room list (keeps a long list short).
+  const [collapsedFloors, setCollapsedFloors] = useState<Set<string>>(new Set());
+  const toggleFloorCollapsed = (fid: string) =>
+    setCollapsedFloors((prev) => {
+      const next = new Set(prev);
+      if (next.has(fid)) next.delete(fid);
+      else next.add(fid);
+      return next;
+    });
+  // True while a new floor name is typed but not yet confirmed with the ✓.
+  // Adding a room is blocked then, so a room never lands on the wrong floor.
+  const floorPending = floorInputOpen && newFloorName.trim().length > 0;
 
   // Step 3 – defects/tasks
   const [itemType, setItemType] = useState<"defect" | "task">("defect");
@@ -1002,25 +1014,40 @@ export default function ProjectWizardScreen() {
               </View>
             )}
 
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-              <TextInput value={roomName} onChangeText={setRoomName} placeholder={t('rooms_add_room')} placeholderTextColor={colors.muted} returnKeyType="done" onSubmitEditing={addRoomNow} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
-              <Pressable onPress={recording ? stopVoiceRooms : startVoiceRooms} style={({ pressed }) => [styles.addBtn, { backgroundColor: recording ? "#EF4444" : "#334155", opacity: pressed ? 0.85 : 1 }]}>
+            {floorPending && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: "#F59E0B", backgroundColor: "#F59E0B18" }}>
+                <MaterialIcons name="info-outline" size={16} color="#F59E0B" />
+                <Text style={{ flex: 1, color: "#F59E0B", fontSize: 12.5, fontWeight: "600" }}>{t('wizard_confirm_floor_first' as any)}</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 10, opacity: floorPending ? 0.4 : 1 }}>
+              <TextInput editable={!floorPending} value={roomName} onChangeText={setRoomName} placeholder={t('rooms_add_room')} placeholderTextColor={colors.muted} returnKeyType="done" onSubmitEditing={addRoomNow} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+              <Pressable disabled={floorPending} onPress={recording ? stopVoiceRooms : startVoiceRooms} style={({ pressed }) => [styles.addBtn, { backgroundColor: recording ? "#EF4444" : "#334155", opacity: pressed ? 0.85 : 1 }]}>
                 <MaterialIcons name={recording ? "stop" : "mic"} size={22} color="#FFFFFF" />
               </Pressable>
-              <Pressable onPress={addRoomNow} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
+              <Pressable disabled={floorPending} onPress={addRoomNow} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
                 <MaterialIcons name="add" size={22} color="#FFFFFF" />
               </Pressable>
             </View>
-            <Text style={{ color: recording ? "#EF4444" : colors.muted, fontSize: 12, marginTop: 6 }}>
-              {recording ? t('wizard_voice_listening' as any) : t('wizard_voice_hint' as any)}
-            </Text>
+            {!floorPending && (
+              <Text style={{ color: recording ? "#EF4444" : colors.muted, fontSize: 12, marginTop: 6 }}>
+                {recording ? t('wizard_voice_listening' as any) : t('wizard_voice_hint' as any)}
+              </Text>
+            )}
             {floors.map((f) => {
               const fr = roomsForFloor(f.id);
               if (fr.length === 0) return null;
+              const collapsed = collapsedFloors.has(f.id);
               return (
                 <View key={f.id} style={{ marginTop: 14 }}>
-                  <Text style={[styles.groupLabel, { color: colors.muted }]}>{floorLabel(f)}</Text>
-                  {fr.map((r) => (
+                  {/* Tap the floor header to collapse/expand its rooms — keeps a
+                      long list manageable when there are many rooms. */}
+                  <Pressable onPress={() => toggleFloorCollapsed(f.id)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, opacity: pressed ? 0.6 : 1 }]}>
+                    <MaterialIcons name={collapsed ? "chevron-right" : "expand-more"} size={20} color={colors.muted} />
+                    <Text style={[styles.groupLabel, { color: colors.muted, marginBottom: 0 }]}>{floorLabel(f)}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>({fr.length})</Text>
+                  </Pressable>
+                  {!collapsed && fr.map((r) => (
                     <Pressable key={r.id} onPress={() => openEditRoom(r)} style={({ pressed }) => [styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                       <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
                       <Text style={[styles.itemText, { color: colors.foreground }]} numberOfLines={1}>{r.name}</Text>
