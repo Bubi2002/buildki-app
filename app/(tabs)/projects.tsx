@@ -643,22 +643,16 @@ export default function RundgangTab() {
     <ScreenContainer className="flex-1">
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("nav_projekte" as any)}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          {totalRooms > 0 && (
-            <View style={styles.doneBadge}>
-              <MaterialIcons name="check-circle" size={14} color="#10B981" />
-              <Text style={styles.doneBadgeText}>{doneText}</Text>
-            </View>
-          )}
-          <Pressable
-            onPress={() => router.push("/project-wizard?mode=new" as any)}
-            hitSlop={8}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#5DADE2", opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="add" size={18} color="#FFFFFF" />
-            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13 }}>{t("rundgang_new_project" as any)}</Text>
-          </Pressable>
-        </View>
+        {/* "x/y Räume fertig" lives in the project card below — keeping it out
+            of the header avoids the title/button overlapping on narrow phones. */}
+        <Pressable
+          onPress={() => router.push("/project-wizard?mode=new" as any)}
+          hitSlop={8}
+          style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#5DADE2", opacity: pressed ? 0.85 : 1 }]}
+        >
+          <MaterialIcons name="add" size={18} color="#FFFFFF" />
+          <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13 }}>{t("rundgang_new_project" as any)}</Text>
+        </Pressable>
       </View>
 
       {projects.length === 0 ? (
