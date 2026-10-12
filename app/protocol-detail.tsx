@@ -587,7 +587,26 @@ export default function ProtocolDetailScreen() {
 
   // ── Protokoll-Titel bearbeiten ─────────────────────────────────────────────
   const [titleDraft, setTitleDraft] = useState("");
-  useEffect(() => { setTitleDraft(protocol?.title || ""); }, [protocol?.id]);
+  // Sync the editable title field from the stored title. Besides the initial
+  // load (id change), also adopt the stored title when it changes from the
+  // "Wird verarbeitet…" placeholder to a real one (processing finished / self-
+  // heal) — otherwise the box would keep showing the placeholder forever. We
+  // never clobber an edit the user is making (only replace a placeholder draft).
+  useEffect(() => {
+    const incoming = protocol?.title || "";
+    const procPlaceholders = [
+      t('record_processing' as any), t('record_processing_title' as any), t('protocol_draft_title' as any),
+      "Wird verarbeitet...", "Wird verarbeitet …", "Wird verarbeitet ...",
+    ].map((s) => String(s || "").trim().toLowerCase());
+    setTitleDraft((prev) => {
+      if (!prev) return incoming;
+      const prevIsPlaceholder = procPlaceholders.includes(prev.trim().toLowerCase());
+      const incomingReal = incoming && !procPlaceholders.includes(incoming.trim().toLowerCase());
+      if (prevIsPlaceholder && incomingReal) return incoming;
+      return prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [protocol?.id, protocol?.title]);
   const saveProtocolTitle = async () => {
     const next = titleDraft.trim();
     if (!protocol || !next || next === (protocol.title || "")) return;
