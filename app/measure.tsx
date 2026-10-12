@@ -135,6 +135,9 @@ export default function MeasureScreen() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  // When set, step 2/3 edit this existing measurement (replace on save) instead
+  // of adding a new one.
+  const [editingMeasurementId, setEditingMeasurementId] = useState<string | null>(null);
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -313,6 +316,9 @@ export default function MeasureScreen() {
   // Existing saved measurements rendered as numbered teal lines (M1, M2, ...).
   const savedMeasurementLines = (small = false) =>
     measurementsList.map((m, i) => {
+      // While editing a measurement it is shown as the red active line, so skip
+      // its teal copy here (otherwise both would stack = "two lines").
+      if (editingMeasurementId && m.id === editingMeasurementId) return null;
       const pts = m.geometry?.points;
       if (!pts || pts.length < 2) return null;
       const a = { x: pts[0].x * CANVAS_WIDTH, y: pts[0].y * CANVAS_HEIGHT };
@@ -351,6 +357,26 @@ export default function MeasureScreen() {
         },
       },
     ]);
+  };
+
+  // Load an existing measurement into the editor (step 2) to adjust its line,
+  // value, unit, method, tolerance and note. Saving replaces it in place.
+  const editMeasurement = (m: any) => {
+    const pts = m.geometry?.points;
+    if (pts && pts.length >= 2) {
+      setStartPoint({ x: pts[0].x * CANVAS_WIDTH, y: pts[0].y * CANVAS_HEIGHT });
+      setEndPoint({ x: pts[1].x * CANVAS_WIDTH, y: pts[1].y * CANVAS_HEIGHT });
+    } else {
+      setStartPoint(null);
+      setEndPoint(null);
+    }
+    setValue(String(m.value ?? "").replace(".", ","));
+    if (m.unit) setUnit(m.unit);
+    if (m.method) setMethod(m.method);
+    setTolerance(m.tolerance != null ? String(m.tolerance).replace(".", ",") : "");
+    setNote(m.note || "");
+    setEditingMeasurementId(m.id);
+    setStep(2);
   };
 
   async function ensureMeasurementDirectory() {
@@ -416,7 +442,11 @@ export default function MeasureScreen() {
         room: selectedRoom || undefined,
         reviewStatus: "approved",
         defectId: selectedDefectId || undefined,
-        measurements: [...(selectedEvidence.measurements || []), measurement],
+        measurements: editingMeasurementId
+          ? (selectedEvidence.measurements || []).map((x) =>
+              x.id === editingMeasurementId ? { ...measurement, id: editingMeasurementId } : x,
+            )
+          : [...(selectedEvidence.measurements || []), measurement],
       } as any);
       if (!updated) throw new Error(t('measure_error_update_failed' as any));
       setSelectedEvidence(updated);
@@ -436,6 +466,7 @@ export default function MeasureScreen() {
       setNote("");
       setSelectedFloor(null);
       setSelectedRoom(null);
+      setEditingMeasurementId(null);
       setStep(1);
     } catch (error) {
       Alert.alert(
@@ -645,7 +676,7 @@ export default function MeasureScreen() {
               <>
                 <View style={styles.canvas}>
                   <Image
-                    source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
+                    source={{ uri: selectedEvidence.originalUri || selectedEvidence.previewUri }}
                     style={StyleSheet.absoluteFill}
                     contentFit="contain"
                     onLoad={(e: any) => { const s = e?.source; if (s?.width && s?.height) setImageSize({ width: s.width, height: s.height }); }}
@@ -668,6 +699,9 @@ export default function MeasureScreen() {
                         <Text style={[styles.measTag, styles.measColTag]}>{`M${i + 1}`}</Text>
                         <Text style={[styles.measCell, styles.measColVal, { color: colors.foreground }]}>{fmtMeasureValue(m)}</Text>
                         <Text style={[styles.measCell, styles.measColMethod, { color: colors.muted }]} numberOfLines={1}>{methodShortLabel(m.method)}</Text>
+                        <Pressable onPress={() => editMeasurement(m)} hitSlop={6} style={{ paddingHorizontal: 6 }}>
+                          <MaterialIcons name="edit" size={17} color="#00ACC1" />
+                        </Pressable>
                         <Pressable onPress={() => deleteMeasurement(m.id)} hitSlop={6} style={styles.measColDel}>
                           <MaterialIcons name="delete-outline" size={18} color="#DC2626" />
                         </Pressable>
@@ -700,7 +734,7 @@ export default function MeasureScreen() {
                 <GestureDetector gesture={drawingGesture}>
                   <View ref={canvasRef} collapsable={false} style={styles.canvas}>
                     <Image
-                      source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }}
+                      source={{ uri: selectedEvidence.originalUri || selectedEvidence.previewUri }}
                       style={StyleSheet.absoluteFill}
                       contentFit="contain"
                       onLoad={(e: any) => { const s = e?.source; if (s?.width && s?.height) setImageSize({ width: s.width, height: s.height }); }}
@@ -775,7 +809,7 @@ export default function MeasureScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('measure_step_document' as any)}</Text>
 
                 <View ref={canvasRef} collapsable={false} style={styles.canvas}>
-                  <Image source={{ uri: selectedEvidence.previewUri || selectedEvidence.originalUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
+                  <Image source={{ uri: selectedEvidence.originalUri || selectedEvidence.previewUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
                   <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
                     {savedMeasurementLines(true)}
                     {startPoint && endPoint && (
