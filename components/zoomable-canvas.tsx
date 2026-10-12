@@ -205,8 +205,14 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   if (onLongPress) tapCandidates.push(longPress);
   if (onSingleTap) tapCandidates.push(singleTap);
   const taps = tapCandidates.length > 1 ? Gesture.Exclusive(...tapCandidates) : doubleTap;
-  // When pin-drag is enabled it takes priority over canvas pan (after long press).
-  const panOrDrag = onPinDrag ? Gesture.Exclusive(pinDrag, pan) : pan;
+  // Gesture wiring for one-finger drags:
+  // • dragImmediate (explicit "draw/move mode", e.g. drawing a wall or moving a
+  //   pin): the draw gesture is the ONLY one-finger gesture — no canvas pan can
+  //   race it. This is what makes free lines (incl. diagonals) register every
+  //   time instead of "sometimes". Two-finger pinch still zooms.
+  // • otherwise: draw-after-long-press takes priority over a casual one-finger
+  //   canvas pan (Exclusive).
+  const panOrDrag = onPinDrag ? (dragImmediate ? pinDrag : Gesture.Exclusive(pinDrag, pan)) : pan;
   const gesture = Gesture.Simultaneous(pinch, panOrDrag, taps);
 
   // Imperative zoom controls (buttons). Setting shared values from the JS thread
