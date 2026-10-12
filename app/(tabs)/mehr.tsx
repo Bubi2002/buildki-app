@@ -8,10 +8,10 @@ import { useTranslation } from "@/lib/language-provider";
 type Item = { labelKey: string; icon: string; route: string };
 
 /**
- * "Mehr" is an admin / settings hub — NOT the old tool grid. The construction
- * tools (Messen, Grundriss, Fotos, Checklisten …) belong in the project /
- * inspection context; they only appear here as a secondary shortcut section
- * during the restructure so nothing is unreachable.
+ * "Mehr" is a lean admin hub: Team, PDF/Branding & Versand and service
+ * connections (Dropbox/Cloud) open the central Einstellungen at the right
+ * place, plus Hilfe/FAQ, Einstellungen and Rechtliches. Documents (Protokolle)
+ * and the Export-Center live in the project context, not here.
  */
 export default function MehrScreen() {
   const colors = useColors();
@@ -20,23 +20,21 @@ export default function MehrScreen() {
 
   const sections: { titleKey: string; items: Item[]; muted?: boolean }[] = [
     {
-      titleKey: "mehr_sec_docs",
+      // Verwaltung: Team-Kontaktbuch, PDF/Branding & Versand (in den zentralen
+      // Einstellungen), Dienste verbinden (Dropbox/Cloud) und Hilfe.
+      titleKey: "mehr_sec_admin",
       items: [
-        { labelKey: "nav_protocols", icon: "description", route: "/protocols" },
-        { labelKey: "export_center_title", icon: "ios-share", route: "/export-center" },
+        { labelKey: "index_tool_team", icon: "groups", route: "/team" },
+        { labelKey: "mehr_pdf_branding", icon: "palette", route: "/settings?section=berichte" },
+        { labelKey: "mehr_cloud_connect", icon: "cloud", route: "/settings?section=konto" },
+        { labelKey: "mehr_faq", icon: "help-outline", route: "/faq" },
       ],
     },
     {
-      // Single entry point into the central settings — every item here opens the
-      // same Einstellungen screen at the matching category (no parallel area).
-      titleKey: "nav_settings",
+      titleKey: "mehr_sec_app",
       items: [
-        { labelKey: "cat_company_title", icon: "business", route: "/settings?section=unternehmen" },
-        { labelKey: "cat_reports_title", icon: "description", route: "/settings?section=berichte" },
-        { labelKey: "cat_dispatch_title", icon: "send", route: "/settings?section=versand" },
-        { labelKey: "cat_notif_title", icon: "notifications", route: "/settings?section=benachrichtigungen" },
-        { labelKey: "cat_account_title", icon: "cloud", route: "/settings?section=konto" },
-        { labelKey: "cat_app_title", icon: "settings", route: "/settings?section=app" },
+        { labelKey: "nav_settings", icon: "settings", route: "/settings" },
+        { labelKey: "mehr_legal", icon: "gavel", route: "/legal" },
       ],
     },
   ];
