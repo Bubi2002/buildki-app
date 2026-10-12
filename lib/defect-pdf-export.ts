@@ -168,7 +168,7 @@ export async function generateDefectPdfHtml(
   const coSub = esc(applyBrandingVariables(branding.headerText || "Mängeldokumentation", varCtx));
   const footerLeft = escCss(applyBrandingVariables(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"), varCtx));
   const pageBox = branding.showPageNumbers
-    ? `@bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
+    ? `@bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
     : "";
   const icoBuilding = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 8h5a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5"/><path d="M7 7h.01M7 11h.01M7 15h.01M10 7h.01M10 11h.01M10 15h.01"/></svg>`;
   const icoCal = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>`;

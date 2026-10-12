@@ -111,12 +111,20 @@ export function buildPremiumHtml(opts: {
   info?: InfoCol[];
   body: string;
   footerLeft?: string;
+  /** Optional centred footer text (e.g. document id · date). */
+  footerCenter?: string;
   extraCss?: string;
   /** Pre-resolved base64 data URI of the logo (see resolveBrandingLogo). */
   logoDataUri?: string;
 }): string {
   const { branding, accentColor, title, subtitle, reportTag, info, body, extraCss, logoDataUri } = opts;
-  const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
+  // Single brand accent for the whole document: the configured Firmenfarbe,
+  // falling back to the house navy. Everything that used to be hard-navy now
+  // follows this so one setting themes every report consistently.
+  const brand = accentColor || NAVY;
+  // Logo height follows the configured size (keeps aspect ratio via width:auto).
+  const logoH = branding.logoSize === "small" ? 24 : branding.logoSize === "large" ? 44 : 32;
+  const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${brand}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
   const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : houseSvg;
   const coName = escHtml(branding.companyName || "BuildKI");
   const coSub = escHtml(reportTag || branding.headerText || "Baudokumentation");
@@ -128,9 +136,14 @@ export function buildPremiumHtml(opts: {
         escHtml(branding.companyEmail || ""),
       ].filter(Boolean).join("<br>")}</div>`
     : "";
-  const footerLeft = escCss(opts.footerLeft || branding.footerText || "BuildKI");
+  // Three-part footer: company left · optional id/date centre · page nums right.
+  const footerLeft = escCss(opts.footerLeft || branding.companyName || branding.footerText || "BuildKI");
+  const footerCenter = escCss(opts.footerCenter || "");
   const pageBox = branding.showPageNumbers
-    ? `@bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
+    ? `@bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
+    : "";
+  const centerBox = footerCenter
+    ? `@bottom-center { content: "${footerCenter}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 0; }`
     : "";
   const infoHtml =
     info && info.length > 0
@@ -147,13 +160,13 @@ export function buildPremiumHtml(opts: {
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { margin: 12mm 0 15mm 0; ${pageBox} @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 14mm; } }
+  @page { margin: 12mm 0 15mm 0; ${pageBox} ${centerBox} @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 14mm; } }
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
   .topbar { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 28px 14px; border-bottom: 1px solid #E6EBF1; }
   .topbar .brand { display: flex; align-items: center; gap: 10px; }
-  .topbar .brand img { height: 32px; width: auto; object-fit: contain; }
-  .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -0.2px; line-height: 1.15; }
+  .topbar .brand img { height: ${logoH}px; width: auto; object-fit: contain; }
+  .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${brand}; letter-spacing: -0.2px; line-height: 1.15; }
   .topbar .brand .co small { display: block; font-size: 8.5px; font-weight: 600; color: #6B7A8D; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
   .topbar .company { font-size: 9px; color: #6B7A8D; text-align: right; line-height: 1.55; }
   .topbar .company b { color: #1b2430; font-size: 9.5px; }
@@ -175,7 +188,7 @@ export function buildPremiumHtml(opts: {
   .progress-band { display: flex; align-items: center; gap: 20px; background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px 20px; margin: 18px 0 2px; }
   .progress-band .pmeta { flex: 1; }
   .progress-band .plabel { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; }
-  .progress-band .pbig { font-size: 26px; font-weight: 800; color: ${NAVY}; margin-top: 2px; }
+  .progress-band .pbig { font-size: 26px; font-weight: 800; color: ${brand}; margin-top: 2px; }
   .progress-band .pbar { height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 10px; overflow: hidden; }
   .progress-band .pbar > i { display: block; height: 100%; background: ${accentColor}; border-radius: 4px; }
   .progress-band .psub { font-size: 11px; color: #64748b; margin-top: 6px; }
@@ -183,8 +196,8 @@ export function buildPremiumHtml(opts: {
   .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #475569; font-weight: 600; }
   .legend-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid; }
   .section-chip { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
-  .section-chip .num { background: ${NAVY}; color: #fff; font-size: 12px; font-weight: 800; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
-  .section-chip .txt { font-size: 15px; font-weight: 800; color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.4px; }
+  .section-chip .num { background: ${brand}; color: #fff; font-size: 12px; font-weight: 800; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+  .section-chip .txt { font-size: 15px; font-weight: 800; color: ${brand}; text-transform: uppercase; letter-spacing: 0.4px; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
   .page-break { page-break-before: always; }
   .prem-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }

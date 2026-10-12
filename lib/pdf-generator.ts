@@ -265,6 +265,8 @@ interface LayoutOptions {
   /** A separate cover page is prepended \u2192 the body drops the duplicate
    *  metadata table and KPI band (same info already on the Titelblatt). */
   hasCoverPage?: boolean;
+  /** Show "Seite X von Y" in the footer (from branding.showPageNumbers). */
+  showPageNumbers?: boolean;
 }
 
 // Status / priority label → colour, for rendering coloured pills in tables.
@@ -330,10 +332,14 @@ export function generatePdfHtml(
   const durationStr = `${durationMins}:${durationSecs.toString().padStart(2, "0")} Min.`;
   const evidenceSnapshots = protocol.evidenceSnapshots || [];
 
-  // Footer rendered via the @page bottom margin box (reliable in expo-print),
+  // Footer rendered via the @page bottom margin boxes (reliable in expo-print),
   // instead of a position:fixed div that iOS mis-positions onto the content.
+  // Three-part layout: company left · "Erstellt am …" centre · page nums right
+  // (page numbers only when enabled, so the Titelblatt never shows a duplicate).
   const cssStr = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  const footerContent = `${company.companyName ? cssStr(company.companyName) + " | " : ""}Erstellt am ${date} um ${time} | BuildKI Protokoll-App`;
+  const footerLeftContent = company.companyName ? cssStr(company.companyName) : "BuildKI";
+  const footerContent = `Erstellt am ${date} um ${time}`;
+  const showFooterPageNumbers = layoutOptions.showPageNumbers !== false;
 
   // ── Cover key figures (Kennzahlen-Karten) ─────────────────────────────────
   // Built from the data a single protocol actually has: tasks, photos, evidence.
@@ -806,11 +812,21 @@ export function generatePdfHtml(
   <style>
     @page {
       margin: 17mm 18mm 20mm 18mm;
+      @bottom-left {
+        content: "${footerLeftContent}";
+        font-size: 8px;
+        color: #94a3b8;
+      }
       @bottom-center {
         content: "${footerContent}";
         font-size: 8px;
         color: #94a3b8;
       }
+      ${showFooterPageNumbers ? `@bottom-right {
+        content: "Seite " counter(page) " von " counter(pages);
+        font-size: 8px;
+        color: #94a3b8;
+      }` : ""}
     }
     * {
       box-sizing: border-box;
@@ -1609,6 +1625,7 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       if (branding.photoSize) photoSize = branding.photoSize;
     }
   } catch {}
+  const showPageNumbers = brandingData?.showPageNumbers !== false;
 
   // Generate cover page FIRST (if enabled) so the body can drop the duplicate
   // metadata table + KPI band only when a cover is actually produced.
@@ -1654,7 +1671,7 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   }
 
   // Generate the body HTML — dropping the duplicate metadata/KPIs when a cover exists.
-  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize, hasCoverPage: !!coverPageHtml });
+  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize, hasCoverPage: !!coverPageHtml, showPageNumbers });
 
   // Insert cover page before the body content if available
   const finalHtml = coverPageHtml
