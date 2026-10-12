@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Line as SvgLine, Rect as SvgRect, Circle as SvgCircle, Text as SvgText, G as SvgG } from "react-native-svg";
 
 import { ScreenContainer } from "@/components/screen-container";
@@ -34,6 +35,7 @@ export default function RaumbuchRoomScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ projectId?: string; roomId?: string; floor?: string; room?: string }>();
   const projectId = params.projectId || "";
   const roomId = params.roomId || "";
@@ -199,18 +201,24 @@ export default function RaumbuchRoomScreen() {
           const corners: Record<string, { x: number; y: number }> = {
             tl: { x: c.x, y: c.y }, tr: { x: c.x + c.w, y: c.y }, bl: { x: c.x, y: c.y + c.h }, br: { x: c.x + c.w, y: c.y + c.h },
           };
-          const hitC = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k], 0.08));
+          const hitC = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k], 0.11));
           if (hitC) { dragRef.current = { kind: "crop-corner", corner: hitC }; return; }
           const edges: Record<string, { x: number; y: number }> = {
             top: { x: c.x + c.w / 2, y: c.y }, bottom: { x: c.x + c.w / 2, y: c.y + c.h }, left: { x: c.x, y: c.y + c.h / 2 }, right: { x: c.x + c.w, y: c.y + c.h / 2 },
           };
-          const hitE = (["top", "right", "bottom", "left"] as const).find((k) => near(pt, edges[k], 0.08));
+          const hitE = (["top", "right", "bottom", "left"] as const).find((k) => near(pt, edges[k], 0.11));
           if (hitE) { dragRef.current = { kind: "crop-edge", edge: hitE }; return; }
           // Touch INSIDE the box (not on a handle) → move the whole box.
           if (pt.x > c.x && pt.x < c.x + c.w && pt.y > c.y && pt.y < c.y + c.h) {
             dragRef.current = { kind: "crop-move", start: pt, origin: { x: c.x, y: c.y } };
             return;
           }
+          // A crop already exists and the touch missed every handle and the box
+          // itself → do NOTHING instead of wiping it with a new box. This is what
+          // made editing frustrating when zoomed in (a slightly-off grab used to
+          // start a fresh crop). Use "Ausschnitt neu" to draw a different one.
+          dragRef.current = null;
+          return;
         }
         dragRef.current = { kind: "crop-new", start: pt };
         setTempCrop({ x: pt.x, y: pt.y, w: 0, h: 0 });
@@ -253,8 +261,8 @@ export default function RaumbuchRoomScreen() {
     if (phase === "start") {
       const wl = tempWalls[key];
       if (wl) {
-        if (near(pt, { x: wl.x1, y: wl.y1 })) { dragRef.current = { kind: "wall-start" }; return; }
-        if (near(pt, { x: wl.x2, y: wl.y2 })) { dragRef.current = { kind: "wall-end" }; return; }
+        if (near(pt, { x: wl.x1, y: wl.y1 }, 0.08)) { dragRef.current = { kind: "wall-start" }; return; }
+        if (near(pt, { x: wl.x2, y: wl.y2 }, 0.08)) { dragRef.current = { kind: "wall-end" }; return; }
       }
       dragRef.current = { kind: "wall-new", start: pt };
       setTempWalls((prev) => ({ ...prev, [key]: { x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y } }));
@@ -421,10 +429,17 @@ export default function RaumbuchRoomScreen() {
       {/* Plan marker modal */}
       <Modal visible={planModal} transparent animationType="slide" onRequestClose={() => setPlanModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: colors.background }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{`${t("raumbuch_step" as any)} ${planStep}: ${planStep === 1 ? t("raumbuch_step_plan" as any) : planStep === 2 ? t("raumbuch_mode_crop" as any) : t("raumbuch_step2_short" as any)}`}</Text>
-              <Pressable onPress={() => setPlanModal(false)} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, paddingTop: Math.max(insets.top, 12) + 4 }]}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }} numberOfLines={1}>{`${t("raumbuch_step" as any)} ${planStep}: ${planStep === 1 ? t("raumbuch_step_plan" as any) : planStep === 2 ? t("raumbuch_mode_crop" as any) : t("raumbuch_step2_short" as any)}`}</Text>
+                {!!roomName && (
+                  <Text style={{ fontSize: 12.5, fontWeight: "600", color: colors.muted, marginTop: 2 }} numberOfLines={1}>
+                    <MaterialIcons name="meeting-room" size={13} color={colors.muted} /> {roomName}{floorName ? ` · ${floorName}` : ""}
+                  </Text>
+                )}
+              </View>
+              <Pressable onPress={() => setPlanModal(false)} hitSlop={8} style={{ paddingTop: 2 }}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
             </View>
             {/* Step indicator: 1 = Plan/Seite wählen, 2 = Ausschnitt, 3 = Markieren */}
             <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>
@@ -509,11 +524,11 @@ export default function RaumbuchRoomScreen() {
                                   <SvgG>
                                     {/* Corner handles (resize two sides). */}
                                     {([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
-                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={8} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
+                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={11} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={3} />
                                     ))}
                                     {/* Edge handles (move one side). */}
                                     {([[tempCrop.x + tempCrop.w / 2, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h / 2], [tempCrop.x + tempCrop.w / 2, tempCrop.y + tempCrop.h], [tempCrop.x, tempCrop.y + tempCrop.h / 2]] as const).map(([cx, cy], i) => (
-                                      <SvgRect key={`e${i}`} x={cx * pw - 7} y={cy * ph - 7} width={14} height={14} rx={3} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2} />
+                                      <SvgRect key={`e${i}`} x={cx * pw - 9} y={cy * ph - 9} width={18} height={18} rx={4} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2.5} />
                                     ))}
                                   </SvgG>
                                 )}
@@ -528,11 +543,11 @@ export default function RaumbuchRoomScreen() {
                               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
                               return (
                                 <SvgG key={k}>
-                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 3 : 2} strokeLinecap="round" />
+                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 4.5 : 3.5} strokeLinecap="round" />
                                   {active && (
                                     <SvgG>
-                                      <SvgCircle cx={x1} cy={y1} r={7} fill="#ffffff" stroke={col} strokeWidth={2} />
-                                      <SvgCircle cx={x2} cy={y2} r={7} fill="#ffffff" stroke={col} strokeWidth={2} />
+                                      <SvgCircle cx={x1} cy={y1} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x2} cy={y2} r={9} fill="#ffffff" stroke={col} strokeWidth={2.5} />
                                     </SvgG>
                                   )}
                                   <SvgText x={mx} y={my - 9} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.7} fontSize={12} fontWeight="bold" textAnchor="middle">{k}</SvgText>
@@ -635,7 +650,7 @@ function PlanWithMarker({ plan, entryPlanId, planName, x, y, aspect, projectId, 
             const mx = (toX(wl.x1) + toX(wl.x2)) / 2, my = (toY(wl.y1) + toY(wl.y2)) / 2;
             return (
               <SvgG key={k}>
-                <SvgLine x1={toX(wl.x1)} y1={toY(wl.y1)} x2={toX(wl.x2)} y2={toY(wl.y2)} stroke={WALL_COLOR} strokeWidth={2.5} strokeLinecap="round" />
+                <SvgLine x1={toX(wl.x1)} y1={toY(wl.y1)} x2={toX(wl.x2)} y2={toY(wl.y2)} stroke={WALL_COLORS[k] || WALL_COLOR} strokeWidth={3.5} strokeLinecap="round" />
                 <SvgText x={mx} y={my - 4} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.7} fontSize={11} fontWeight="bold" textAnchor="middle">{k}</SvgText>
               </SvgG>
             );
@@ -665,8 +680,10 @@ const styles = StyleSheet.create({
   slotEdit: { position: "absolute", right: 6, bottom: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, padding: 4 },
   slotEmpty: { width: "100%", height: 110, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  // Near-fullscreen so the plan editor is large and easy to work on.
-  modalSheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, height: "96%" },
+  // Full height so the plan editor is as large as possible on the phone
+  // (paddingTop is set inline from the safe-area inset so nothing hides under
+  // the status bar / notch).
+  modalSheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingBottom: 16, height: "100%" },
   modalBtnGhost: { flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1, alignItems: "center" },
   modalBtnPrimary: { flex: 2, paddingVertical: 14, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
 });

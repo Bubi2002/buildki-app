@@ -130,7 +130,7 @@ export async function generateRaumbuchPdf(
           const bx = Math.max(R + 1, Math.min(W - R - 1, (x1 + x2) / 2));
           const by = Math.max(R + 1, Math.min(contH - R - 1, (y1 + y2) / 2));
           const col = WALL_COLOR[k] || "#2563EB";
-          return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${col}" stroke-width="${hot ? 4 : 2.5}" stroke-linecap="round"/><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${R}" fill="${col}" stroke="#ffffff" stroke-width="1.5"/><text x="${bx.toFixed(1)}" y="${(by + 3.3).toFixed(1)}" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">${k}</text>`;
+          return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${col}" stroke-width="${hot ? 5 : 3.5}" stroke-linecap="round"/><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${R}" fill="${col}" stroke="#ffffff" stroke-width="1.5"/><text x="${bx.toFixed(1)}" y="${(by + 3.3).toFixed(1)}" font-size="10" font-weight="bold" text-anchor="middle" fill="#ffffff">${k}</text>`;
         }).join("")}</svg>`
       : "";
     const hasPin = e.planX != null && e.planY != null;
