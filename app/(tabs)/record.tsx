@@ -342,16 +342,11 @@ export default function RecordScreen() {
           if (!active) return;
 
           setCustomTemplates(templates);
-          const settings = settingsStr ? JSON.parse(settingsStr) : {};
-          // Only "Automatisch" + the three core templates are offered now, so
-          // ignore any older stored preference outside that set.
-          const allowedIds = ["auto", "baustellenbericht", "maengelliste", "abnahmeprotokoll"];
-          const preferredId = lastUsedId || settings.templateId;
-          const preferred = preferredId && allowedIds.includes(preferredId)
-            ? [AUTO_TEMPLATE, ...PROTOCOL_TEMPLATES].find((template) => template.id === preferredId)
-            : undefined;
-          // Default to "Automatisch" (KI wählt) when nothing valid was chosen.
-          setSelectedTemplate(preferred || AUTO_TEMPLATE);
+          void settingsStr; void lastUsedId;
+          // Only "Automatisch" (KI wählt) is offered now — always default to it
+          // so the AI picks the right template and the nicely formatted boxes
+          // (e.g. for Mängel) are always kept. Manual templates were removed.
+          setSelectedTemplate(AUTO_TEMPLATE);
         } catch {
           if (active) {
             setCustomTemplates([]);
@@ -2622,24 +2617,6 @@ export default function RecordScreen() {
                   <MaterialIcons name="close" size={24} color={colors.muted} />
                 </Pressable>
               </View>
-              {/* Search field */}
-              <View style={[styles.templateSearchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <MaterialIcons name="search" size={20} color={colors.muted} />
-                <TextInput
-                  style={[styles.templateSearchInput, { color: colors.foreground }]}
-                  placeholder={t('vorlage_suchen')}
-                  placeholderTextColor={colors.muted}
-                  value={templateSearch}
-                  onChangeText={setTemplateSearch}
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                />
-                {templateSearch.length > 0 && (
-                  <Pressable onPress={() => setTemplateSearch("")}>
-                    <MaterialIcons name="close" size={18} color={colors.muted} />
-                  </Pressable>
-                )}
-              </View>
               {/* Categorized list */}
               <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
                 {/* Automatisch — KI wählt die passende Vorlage aus der Aufnahme */}
@@ -2666,39 +2643,13 @@ export default function RecordScreen() {
                   </View>
                   {selectedTemplate.id === "auto" && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
                 </Pressable>
-                {/* Only the three core construction templates — kept short on
-                    purpose so there is little to review. "Automatisch" above
-                    covers the rest. */}
-                {PROTOCOL_TEMPLATES.filter((tpl) =>
-                  ["baustellenbericht", "maengelliste", "abnahmeprotokoll"].includes(tpl.id) &&
-                  (!templateSearch.trim() ||
-                    localizedLabel(t, templateNameKey(tpl.id), tpl.name).toLowerCase().includes(templateSearch.trim().toLowerCase()))
-                ).map((template) => (
-                  <Pressable
-                    key={template.id}
-                    onPress={() => selectTemplate(template)}
-                    style={({ pressed }) => [
-                      styles.templateListItem,
-                      {
-                        marginBottom: 8,
-                        backgroundColor: selectedTemplate.id === template.id ? colors.primary + "15" : "transparent",
-                        borderColor: selectedTemplate.id === template.id ? colors.primary : colors.border,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons name={template.icon as any} size={22} color={selectedTemplate.id === template.id ? colors.primary : colors.muted} />
-                    <View style={styles.templateListText}>
-                      <Text style={[styles.templateListName, { color: selectedTemplate.id === template.id ? colors.primary : colors.foreground }]}>
-                        {localizedLabel(t, templateNameKey(template.id), template.name)}
-                      </Text>
-                      <Text style={[styles.templateListDesc, { color: colors.muted }]} numberOfLines={1}>
-                        {localizedLabel(t, templateDescKey(template.id), template.description)}
-                      </Text>
-                    </View>
-                    {selectedTemplate.id === template.id && <MaterialIcons name="check-circle" size={20} color={colors.primary} />}
-                  </Pressable>
-                ))}
+                {/* Only "Automatisch — KI wählt" is offered: the AI picks the
+                    right template (e.g. Mängelliste) so the nicely formatted
+                    boxes are always kept. Manual templates were removed on
+                    request. */}
+                <Text style={{ fontSize: 12.5, color: colors.muted, paddingHorizontal: 4, marginTop: 6, lineHeight: 19 }}>
+                  {t('template_auto_only_hint' as any)}
+                </Text>
               </ScrollView>
             </View>
           </View>
