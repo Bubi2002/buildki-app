@@ -1267,9 +1267,10 @@ export default function FloorPlanScreen() {
       <Modal visible={showPinModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}>
           <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "center" }}>
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "flex-end" }}>
               <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                <View style={[styles.modalContent, { backgroundColor: colors.background, maxHeight: "90%" }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neue_markierung')}</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
@@ -1487,6 +1488,7 @@ export default function FloorPlanScreen() {
                 <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFF", marginLeft: 6 }}>{t('save')}</Text>
               </Pressable>
             </View>
+            </ScrollView>
               </View>
             </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
@@ -2126,7 +2128,7 @@ const styles = StyleSheet.create({
     borderRadius: 0,
   },
   uploadBtnText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   modalContent: {
     borderRadius: 24,
     padding: 24,
