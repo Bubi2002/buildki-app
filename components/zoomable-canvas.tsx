@@ -125,6 +125,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
 
   const pan = Gesture.Pan()
     .minDistance(8)
+    .maxPointers(1)
     .onBegin(() => {
       "worklet";
       savedTranslateX.value = translateX.value;
@@ -142,6 +143,27 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       translateX.value = withTiming(wClampTranslation(translateX.value, width, scale.value), { duration: 140 });
       translateY.value = withTiming(wClampTranslation(translateY.value, height, scale.value), { duration: 140 });
       runOnJS(setInteraction)(false);
+    });
+
+  // Two-finger pan to move around the zoomed plan while one finger is reserved
+  // for drawing (used in dragImmediate mode). Runs alongside pinch.
+  const twoFingerPan = Gesture.Pan()
+    .minPointers(2)
+    .onBegin(() => {
+      "worklet";
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    })
+    .onUpdate((event) => {
+      "worklet";
+      if (scale.value <= 1) return;
+      translateX.value = wClampTranslation(savedTranslateX.value + event.translationX, width, scale.value);
+      translateY.value = wClampTranslation(savedTranslateY.value + event.translationY, height, scale.value);
+    })
+    .onFinalize(() => {
+      "worklet";
+      translateX.value = withTiming(wClampTranslation(translateX.value, width, scale.value), { duration: 140 });
+      translateY.value = withTiming(wClampTranslation(translateY.value, height, scale.value), { duration: 140 });
     });
 
   const doubleTap = Gesture.Tap()
@@ -187,15 +209,20 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   // • dragImmediate (explicit "move mode"): a plain Pan that grabs right away.
   //   It marks the interaction active on finger-down so the parent ScrollView
   //   stops scrolling and can never steal the drag.
+  // maxPointers(1): the draw/move gesture must react to a SINGLE finger only.
+  // Otherwise a two-finger pinch (zoom) also drives it, dragging the crop box /
+  // wall instead of just zooming. With this, one finger draws, two fingers zoom.
   const pinDrag = dragImmediate
     ? Gesture.Pan()
         .minDistance(2)
+        .maxPointers(1)
         .onBegin(() => { "worklet"; runOnJS(setInteraction)(true); })
         .onStart((event) => { "worklet"; runOnJS(emitPinDrag)("start", event.x, event.y, scale.value, translateX.value, translateY.value); })
         .onUpdate((event) => { "worklet"; runOnJS(emitPinDrag)("move", event.x, event.y, scale.value, translateX.value, translateY.value); })
         .onEnd((event) => { "worklet"; runOnJS(emitPinDrag)("end", event.x, event.y, scale.value, translateX.value, translateY.value); })
         .onFinalize(() => { "worklet"; runOnJS(setInteraction)(false); })
     : Gesture.Pan()
+        .maxPointers(1)
         .activateAfterLongPress(300)
         .onStart((event) => { "worklet"; runOnJS(emitPinDrag)("start", event.x, event.y, scale.value, translateX.value, translateY.value); })
         .onUpdate((event) => { "worklet"; runOnJS(emitPinDrag)("move", event.x, event.y, scale.value, translateX.value, translateY.value); })
@@ -209,10 +236,13 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   // • dragImmediate (explicit "draw/move mode", e.g. drawing a wall or moving a
   //   pin): the draw gesture is the ONLY one-finger gesture — no canvas pan can
   //   race it. This is what makes free lines (incl. diagonals) register every
-  //   time instead of "sometimes". Two-finger pinch still zooms.
+  //   time instead of "sometimes". A two-finger pinch still zooms AND a
+  //   two-finger drag pans, so you can zoom in and move around while cropping.
   // • otherwise: draw-after-long-press takes priority over a casual one-finger
   //   canvas pan (Exclusive).
-  const panOrDrag = onPinDrag ? (dragImmediate ? pinDrag : Gesture.Exclusive(pinDrag, pan)) : pan;
+  const panOrDrag = onPinDrag
+    ? (dragImmediate ? Gesture.Simultaneous(pinDrag, twoFingerPan) : Gesture.Exclusive(pinDrag, pan))
+    : pan;
   const gesture = Gesture.Simultaneous(pinch, panOrDrag, taps);
 
   // Imperative zoom controls (buttons). Setting shared values from the JS thread
