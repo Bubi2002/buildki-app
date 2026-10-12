@@ -480,25 +480,9 @@ export default function ChecklistsScreen() {
         </Pressable>
       </View>
 
-      {/* Results Section */}
-      {results.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('letzte_pruefungen')}</Text>
-          <FlatList
-            data={results.slice(0, 5)}
-            keyExtractor={(item) => item.id}
-            renderItem={(p) => (
-              <SwipeableRow onDelete={() => removeResult(p.item.id)} deleteLabel={t('btn_loeschen')}>
-                {renderResult(p)}
-              </SwipeableRow>
-            )}
-            scrollEnabled={false}
-          />
-        </View>
-      )}
-
-      {/* Checklists Section */}
-      <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>{t('verfuegbare_checklisten')}</Text>
+      {/* One scroll container: "Letzte Prüfungen" and the available checklists
+          scroll together (as the list header), so the top no longer stays
+          fixed while only the bottom scrolls. */}
       <FlatList
         data={checklists}
         keyExtractor={(item) => item.id}
@@ -510,6 +494,21 @@ export default function ChecklistsScreen() {
           ) : renderChecklist(p)
         )}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          <>
+            {results.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('letzte_pruefungen')}</Text>
+                {results.slice(0, 5).map((item) => (
+                  <SwipeableRow key={item.id} onDelete={() => removeResult(item.id)} deleteLabel={t('btn_loeschen')}>
+                    {renderResult({ item })}
+                  </SwipeableRow>
+                ))}
+              </View>
+            )}
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 16 }]}>{t('verfuegbare_checklisten')}</Text>
+          </>
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <MaterialIcons name="checklist" size={48} color={colors.muted} />
