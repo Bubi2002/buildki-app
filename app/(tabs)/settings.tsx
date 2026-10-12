@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -25,7 +25,7 @@ import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { PROTOCOL_TEMPLATES, type ProtocolTemplate } from "@/shared/templates";
 import { localizedLabel, templateNameKey, templateDescKey } from "@/lib/template-i18n";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "@/lib/language-provider";
 import { useThemeContext } from "@/lib/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
@@ -696,6 +696,21 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const colors = useColors();
   const router = useRouter();
+  const settingsParams = useLocalSearchParams<{ section?: string }>();
+  // Settings home = 6 category cards; tapping one opens that category's masks.
+  const [cat, setCat] = useState<string | null>((settingsParams.section as string) || null);
+  const inCat = (c: string) => cat === c;
+  // When the user jumps in from "Mehr" with ?section=… while this tab is already
+  // mounted, the initial state above won't re-run — sync on param change only
+  // (not on every render, so manually backing out to the overview still works).
+  const lastSectionParam = useRef<string | undefined>((settingsParams.section as string) || undefined);
+  useEffect(() => {
+    const s = (settingsParams.section as string) || undefined;
+    if (s !== lastSectionParam.current) {
+      lastSectionParam.current = s;
+      if (s) setCat(s);
+    }
+  }, [settingsParams.section]);
   const { setThemeMode } = useThemeContext();
   // Force dark mode always
   useEffect(() => { setThemeMode("dark"); }, []);
@@ -1100,9 +1115,32 @@ export default function SettingsScreen() {
 
 return (
     <ScreenContainer className="flex-1">
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, cat ? { flexDirection: "row", alignItems: "center", gap: 10 } : null]}>
+        {cat && (
+          <Pressable
+            onPress={() => setCat(null)}
+            hitSlop={10}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 2 }]}
+          >
+            <MaterialIcons name="arrow-back" size={26} color={colors.foreground} />
+          </Pressable>
+        )}
         <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-          {t('settings_screen_title' as any)}
+          {cat
+            ? t(
+                (cat === "unternehmen"
+                  ? "cat_company_title"
+                  : cat === "berichte"
+                    ? "cat_reports_title"
+                    : cat === "versand"
+                      ? "cat_dispatch_title"
+                      : cat === "benachrichtigungen"
+                        ? "cat_notif_title"
+                        : cat === "konto"
+                          ? "cat_account_title"
+                          : "cat_app_title") as any,
+              )
+            : t('settings_screen_title' as any)}
         </Text>
       </View>
 
@@ -1111,7 +1149,29 @@ return (
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {!cat && (
+          <View style={{ gap: 10 }}>
+            {([
+              { k: "unternehmen", icon: "business", title: t('cat_company_title' as any), sub: t('cat_company_sub' as any) },
+              { k: "berichte", icon: "description", title: t('cat_reports_title' as any), sub: t('cat_reports_sub' as any) },
+              { k: "versand", icon: "send", title: t('cat_dispatch_title' as any), sub: t('cat_dispatch_sub' as any) },
+              { k: "benachrichtigungen", icon: "notifications", title: t('cat_notif_title' as any), sub: t('cat_notif_sub' as any) },
+              { k: "konto", icon: "cloud", title: t('cat_account_title' as any), sub: t('cat_account_sub' as any) },
+              { k: "app", icon: "settings", title: t('cat_app_title' as any), sub: t('cat_app_sub' as any) },
+            ] as const).map((c) => (
+              <Pressable key={c.k} onPress={() => setCat(c.k)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                <MaterialIcons name={c.icon as any} size={24} color={colors.primary} style={{ marginRight: 14 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>{c.title}</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{c.sub}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+              </Pressable>
+            ))}
+          </View>
+        )}
         {/* Company Branding Section */}
+        {inCat("unternehmen") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_company_data_title' as any)}
@@ -1264,7 +1324,9 @@ return (
           </View>
         </View>
 
+        </>)}
         {/* PDF-Branding */}
+        {inCat("berichte") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdfbranding')}</Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('pdf_design_desc' as any)}</Text>
@@ -1303,13 +1365,17 @@ return (
           </Pressable>
         </View>
 
+        </>)}
         {/* Wasserzeichen / Firmenstempel */}
+        {inCat("berichte") && (<>
         <WatermarkSection colors={colors} />
 
         {/* App language is chosen via the dedicated Sprache/Language screen
             (full 10-language picker); the old de/en protocol toggle was removed. */}
 
+        </>)}
         {/* Cloud Sync & Konto */}
+        {inCat("konto") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_cloud_account_title' as any)}
@@ -1396,7 +1462,9 @@ return (
           )}
         </View>
 
+        </>)}
         {/* Erinnerungen */}
+        {inCat("benachrichtigungen") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_reminders_title' as any)}
@@ -1443,7 +1511,9 @@ return (
           )}
         </View>
 
+        </>)}
         {/* Push-Benachrichtigungen */}
+        {inCat("benachrichtigungen") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_notifications')}</Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('erinnerungen_fuer_maengel_und')}</Text>
@@ -1471,7 +1541,9 @@ return (
           </Pressable>
         </View>
 
+        </>)}
         {/* Sprache */}
+        {inCat("app") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_language')}</Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('appsprache_fuer_internationale_baustelle')}</Text>
@@ -1488,18 +1560,26 @@ return (
           </Pressable>
         </View>
 
+        </>)}
         {/* Biometrische Sperre */}
+        {inCat("app") && (<>
         <BiometricLockSection colors={colors} />
 
         {/* Text-Vorlagen für Annotation */}
 
+        </>)}
         {/* Aufgaben-Erinnerungen */}
+        {inCat("benachrichtigungen") && (<>
         <TaskReminderSection colors={colors} />
 
+        </>)}
         {/* Backup */}
+        {inCat("konto") && (<>
         <BackupSection colors={colors} />
 
+        </>)}
         {/* Dropbox Integration */}
+        {inCat("konto") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Dropbox
@@ -1527,7 +1607,9 @@ return (
           </Pressable>
         </View>
 
+        </>)}
         {/* Auto-Bericht */}
+        {inCat("versand") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_auto_report_title' as any)}
@@ -1557,7 +1639,9 @@ return (
 
 
 
+        </>)}
         {/* Team-Kontaktbuch */}
+        {inCat("versand") && (<>
         <View style={{ marginTop: 24, backgroundColor: colors.surface, borderRadius: 0, padding: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>{t('teamkontaktbuch')}</Text>
           <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>{t('gespeicherte_kontakte_fuer_schnellen')}</Text>
@@ -1609,7 +1693,9 @@ return (
           )}
         </View>
 
+        </>)}
         {/* Gespeicherte Sprecher */}
+        {inCat("app") && (<>
         {speakerProfiles.length > 0 && (
           <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
             <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>{t('gespeicherte_sprecher')}</Text>
@@ -1629,7 +1715,9 @@ return (
         )}
 
         
+        </>)}
         {/* Stimmprofile */}
+        {inCat("app") && (<>
         {voiceProfiles.length > 0 && (
           <View style={{ marginTop: 16, backgroundColor: "white", borderRadius: 0, padding: 16 }}>
             <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>{t('stimmprofile')}</Text>
@@ -1651,7 +1739,9 @@ return (
           </View>
         )}
 
+        </>)}
 {/* KI-Support */}
+        {inCat("app") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_help_support_title' as any)}
@@ -1727,10 +1817,14 @@ return (
           </Pressable>
         </View>
 
+        </>)}
 {/* Feature-Toggles */}
+        {inCat("app") && (<>
         <FeatureTogglesSection colors={colors} />
 
+        </>)}
 {/* Rechtliches & Datenschutz */}
+        {inCat("app") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_legal_privacy_title' as any)}
@@ -1777,6 +1871,8 @@ return (
           </Pressable>
         </View>
 
+        </>)}
+        {cat && (<>
         <Pressable
           onPress={saveSettings}
           style={({ pressed }) => [
@@ -1796,6 +1892,7 @@ return (
             {saved ? t('btn_gespeichert') : t('btn_einstellungen_speichern')}
           </Text>
         </Pressable>
+        </>)}
 
         <View style={{ height: 40 }} />
       </ScrollView>

@@ -21,23 +21,22 @@ export default function MehrScreen() {
   const sections: { titleKey: string; items: Item[]; muted?: boolean }[] = [
     {
       titleKey: "mehr_sec_docs",
-      items: [{ labelKey: "nav_protocols", icon: "description", route: "/protocols" }],
-    },
-    {
-      titleKey: "mehr_sec_admin",
       items: [
-        { labelKey: "index_tool_team", icon: "groups", route: "/team" },
-        { labelKey: "mehr_pdf_branding", icon: "palette", route: "/pdf-branding" },
-        { labelKey: "send_auto_title", icon: "send", route: "/send-automation" },
+        { labelKey: "nav_protocols", icon: "description", route: "/protocols" },
         { labelKey: "export_center_title", icon: "ios-share", route: "/export-center" },
-        { labelKey: "mehr_cloud_backup", icon: "cloud", route: "/cloud-import" },
       ],
     },
     {
-      titleKey: "mehr_sec_app",
+      // Single entry point into the central settings — every item here opens the
+      // same Einstellungen screen at the matching category (no parallel area).
+      titleKey: "nav_settings",
       items: [
-        { labelKey: "nav_settings", icon: "settings", route: "/settings" },
-        { labelKey: "mehr_legal", icon: "gavel", route: "/legal" },
+        { labelKey: "cat_company_title", icon: "business", route: "/settings?section=unternehmen" },
+        { labelKey: "cat_reports_title", icon: "description", route: "/settings?section=berichte" },
+        { labelKey: "cat_dispatch_title", icon: "send", route: "/settings?section=versand" },
+        { labelKey: "cat_notif_title", icon: "notifications", route: "/settings?section=benachrichtigungen" },
+        { labelKey: "cat_account_title", icon: "cloud", route: "/settings?section=konto" },
+        { labelKey: "cat_app_title", icon: "settings", route: "/settings?section=app" },
       ],
     },
   ];
