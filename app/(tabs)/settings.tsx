@@ -18,7 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTeamContacts, saveTeamContact, deleteTeamContact, updateTeamContact, TeamContact } from "@/lib/team-contacts";
-import { getPdfBranding, savePdfBranding } from "@/lib/pdf-branding-store";
+import { getPdfBranding, savePdfBranding, type PdfBranding } from "@/lib/pdf-branding-store";
 import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
 import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-profiles";
 // delegations removed from settings
@@ -65,12 +65,33 @@ type Settings = {
 
 type CompanySettings = {
   companyName: string;
+  // companyAddress stays as the single composed address line block so every
+  // existing PDF generator that reads it keeps working. It is derived from the
+  // structured fields below on save (falls back to its legacy value).
   companyAddress: string;
   companyPhone: string;
   companyEmail: string;
   companyWebsite: string;
   logoBase64: string;
   logoUri: string;
+  // --- structured professional profile (all optional, lossless additions) ---
+  legalForm: string;        // Namenszusatz / Rechtsform (z. B. GmbH, Architekturbüro)
+  contactPerson: string;    // Ansprechpartner / Inhaber
+  contactTitle: string;     // Titel / Funktion
+  street: string;           // Straße
+  houseNumber: string;      // Hausnummer
+  zip: string;              // PLZ
+  city: string;             // Ort
+  country: string;          // Land
+  mobile: string;           // Mobil
+  registerCourt: string;    // Registergericht
+  registerNumber: string;   // Registernummer (HRB …)
+  vatId: string;            // USt-IdNr.
+  legalNote: string;        // rechtlicher Zusatz / Pflichtangaben
+  defaultEditor: string;    // Standardbearbeiter
+  emailSignature: string;   // E-Mail-Signatur
+  signatureUri: string;     // optionale Unterschrift (Dateipfad)
+  signatureBase64: string;  // optionale Unterschrift (data-URI für PDF)
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -98,7 +119,198 @@ const DEFAULT_COMPANY: CompanySettings = {
   companyWebsite: "",
   logoBase64: "",
   logoUri: "",
+  legalForm: "",
+  contactPerson: "",
+  contactTitle: "",
+  street: "",
+  houseNumber: "",
+  zip: "",
+  city: "",
+  country: "",
+  mobile: "",
+  registerCourt: "",
+  registerNumber: "",
+  vatId: "",
+  legalNote: "",
+  defaultEditor: "",
+  emailSignature: "",
+  signatureUri: "",
+  signatureBase64: "",
 };
+
+// Build the single-line/block address from the structured fields. Used so the
+// legacy `companyAddress` (read by every PDF generator) always reflects the
+// structured data. Returns "" when nothing structured is filled.
+function composeCompanyAddress(c: Partial<CompanySettings>): string {
+  const line1 = [c.street, c.houseNumber].map((s) => (s || "").trim()).filter(Boolean).join(" ");
+  const line2 = [c.zip, c.city].map((s) => (s || "").trim()).filter(Boolean).join(" ");
+  const parts = [line1, line2, (c.country || "").trim()].filter(Boolean);
+  return parts.join("\n");
+}
+
+// Best-effort split of a legacy single-line/block address into structured
+// fields (display convenience only). Conservative: on any doubt it leaves the
+// structured fields empty — the composed value always falls back to the
+// original string, so no data is ever lost.
+function parseLegacyAddress(addr: string): Partial<CompanySettings> {
+  const out: Partial<CompanySettings> = {};
+  if (!addr || !addr.trim()) return out;
+  const lines = addr
+    .split(/\r?\n|,/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length < 1) return out;
+  // Find a "PLZ Ort" line (4-5 digit postal code followed by a place name).
+  const zipIdx = lines.findIndex((l) => /^\d{4,5}\s+\S/.test(l));
+  if (zipIdx >= 0) {
+    const m = lines[zipIdx].match(/^(\d{4,5})\s+(.+)$/);
+    if (m) {
+      out.zip = m[1];
+      out.city = m[2];
+    }
+  }
+  // The street line = first line that is not the zip line and has a trailing number.
+  const streetLine = lines.find((l, i) => i !== zipIdx && /\d/.test(l));
+  if (streetLine) {
+    const m = streetLine.match(/^(.*?)[\s]+(\d+\s*[a-zA-Z]?)$/);
+    if (m) {
+      out.street = m[1].trim();
+      out.houseNumber = m[2].trim();
+    } else {
+      out.street = streetLine;
+    }
+  }
+  return out;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function normalizeWebsite(w: string): string {
+  const t = (w || "").trim();
+  if (!t) return "";
+  if (/^https?:\/\//i.test(t)) return t;
+  return t; // keep as typed (e.g. www.firma.de); normalization for links happens at render
+}
+
+// A labelled text input used throughout the company profile mask. Keeps the
+// look consistent and supports inline validation + optional two-column layout.
+function LabeledInput({
+  colors,
+  icon,
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  autoCapitalize,
+  multiline,
+  invalid,
+  hint,
+  optional,
+  containerStyle,
+}: {
+  colors: any;
+  icon?: string;
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder?: string;
+  keyboardType?: any;
+  autoCapitalize?: any;
+  multiline?: boolean;
+  invalid?: boolean;
+  hint?: string;
+  optional?: boolean;
+  containerStyle?: any;
+}) {
+  return (
+    <View style={[styles.inputGroup, containerStyle]}>
+      <View style={styles.inputLabel}>
+        {icon ? <MaterialIcons name={icon as any} size={16} color={colors.primary} /> : null}
+        <Text style={[styles.labelText, { color: colors.foreground }]}>
+          {label}
+          {optional ? <Text style={{ color: colors.muted, fontWeight: "400" }}>  ·  optional</Text> : null}
+        </Text>
+      </View>
+      <TextInput
+        style={[
+          styles.input,
+          multiline ? styles.multilineInput : null,
+          { color: colors.foreground, borderColor: invalid ? colors.error : colors.border, backgroundColor: colors.surface },
+        ]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        multiline={!!multiline}
+      />
+      {hint ? (
+        <Text style={{ fontSize: 11, color: invalid ? colors.error : colors.muted, marginTop: 4 }}>{hint}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+// Small segmented control (e.g. logo size / position).
+function Segmented({
+  colors,
+  value,
+  options,
+  onChange,
+}: {
+  colors: any;
+  value: string;
+  options: { v: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={{ flexDirection: "row", borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: "hidden" }}>
+      {options.map((o, i) => {
+        const active = o.v === value;
+        return (
+          <Pressable
+            key={o.v}
+            onPress={() => onChange(o.v)}
+            style={{
+              flex: 1,
+              paddingVertical: 10,
+              alignItems: "center",
+              backgroundColor: active ? colors.primary : colors.surface,
+              borderLeftWidth: i === 0 ? 0 : 1,
+              borderLeftColor: colors.border,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: active ? "700" : "500", color: active ? "#fff" : colors.foreground }}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// Group heading inside a section.
+function GroupHeading({ colors, children }: { colors: any; children: any }) {
+  return (
+    <Text
+      style={{
+        fontSize: 12,
+        fontWeight: "800",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        color: colors.muted,
+        marginTop: 18,
+        marginBottom: 10,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+const BRAND_COLORS = ["#1E3A5F", "#0F2744", "#334155", "#1F6F54", "#7C2D12", "#4C1D95", "#111827", "#B91C1C"];
 
 function BiometricLockSection({ colors }: { colors: any }) {
   const { t } = useTranslation();
@@ -717,6 +929,13 @@ export default function SettingsScreen() {
   const { user, isAuthenticated, logout } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [company, setCompany] = useState<CompanySettings>(DEFAULT_COMPANY);
+  // Single source for presentation choices (Firmenfarbe / Logo) — loaded from
+  // and saved back to the PDF-branding store so nothing diverges.
+  const [branding, setBranding] = useState<PdfBranding | null>(null);
+  const [showOptionalLegal, setShowOptionalLegal] = useState(false);
+  // Becomes true once the user edits any structured address field; only then do
+  // we let the composed address replace a legacy free-form companyAddress.
+  const [addressDirty, setAddressDirty] = useState(false);
   const [customTemplates, setCustomTemplates] = useState<ProtocolTemplate[]>([]);
   const [templateFeedback, setTemplateFeedback] = useState("");
   const [saved, setSaved] = useState(false);
@@ -837,6 +1056,9 @@ export default function SettingsScreen() {
   // Mirror the shared company identity into the PDF-branding store so both the
   // classic protocol PDF and the premium reports use one set of company data.
   async function mirrorCompanyToBranding(c: CompanySettings) {
+    // c.companyAddress is already the authoritative address (composed by the
+    // caller only once the user edited the structured fields) — never recompute
+    // here, so a legacy free-form address is preserved verbatim until edited.
     await savePdfBranding({
       companyName: c.companyName,
       companyAddress: c.companyAddress,
@@ -844,6 +1066,16 @@ export default function SettingsScreen() {
       companyEmail: c.companyEmail,
       companyWebsite: c.companyWebsite,
       logoUri: c.logoUri || null,
+      // extended identity so the unified PDF template can render a full header
+      companyLegalForm: c.legalForm,
+      companyContactPerson: c.contactPerson,
+      companyContactTitle: c.contactTitle,
+      companyMobile: c.mobile,
+      companyRegisterCourt: c.registerCourt,
+      companyRegisterNumber: c.registerNumber,
+      companyVatId: c.vatId,
+      companyLegalNote: c.legalNote,
+      defaultEditor: c.defaultEditor,
     });
   }
 
@@ -855,6 +1087,7 @@ export default function SettingsScreen() {
       // PDF-branding store (e.g. email/website) so nothing is lost.
       const branding = await getPdfBranding();
       const merged: CompanySettings = {
+        ...base,
         companyName: base.companyName || branding.companyName || "",
         companyAddress: base.companyAddress || branding.companyAddress || "",
         companyPhone: base.companyPhone || branding.companyPhone || "",
@@ -863,7 +1096,15 @@ export default function SettingsScreen() {
         logoBase64: base.logoBase64 || "",
         logoUri: base.logoUri || branding.logoUri || "",
       };
+      // Convenience: if the structured address fields are still empty but we
+      // have a legacy one-line address, split it best-effort for display. The
+      // original string is kept, so composition always has a safe fallback.
+      const structuredEmpty = !merged.street && !merged.zip && !merged.city;
+      if (structuredEmpty && merged.companyAddress) {
+        Object.assign(merged, parseLegacyAddress(merged.companyAddress));
+      }
       setCompany(merged);
+      setBranding(branding);
       await AsyncStorage.setItem("company-settings", JSON.stringify(merged));
       await mirrorCompanyToBranding(merged);
     } catch (error) {
@@ -874,8 +1115,22 @@ export default function SettingsScreen() {
   const saveSettings = async () => {
     try {
       await AsyncStorage.setItem("protokoll-settings", JSON.stringify(settings));
-      await AsyncStorage.setItem("company-settings", JSON.stringify(company));
-      await mirrorCompanyToBranding(company);
+      // Keep the composed one-line address in sync with the structured fields
+      // so every PDF generator that reads companyAddress shows current data.
+      const composedAddr = addressDirty
+        ? composeCompanyAddress(company) || company.companyAddress
+        : company.companyAddress;
+      const companyToSave: CompanySettings = { ...company, companyAddress: composedAddr };
+      await AsyncStorage.setItem("company-settings", JSON.stringify(companyToSave));
+      await mirrorCompanyToBranding(companyToSave);
+      // Persist presentation choices (Firmenfarbe, Logo) in the single branding source.
+      if (branding) {
+        await savePdfBranding({
+          accentColor: branding.accentColor,
+          logoSize: branding.logoSize,
+          logoPosition: branding.logoPosition,
+        });
+      }
 
       // Schedule or cancel reminders based on settings
       if (settings.remindersEnabled) {
@@ -919,6 +1174,13 @@ export default function SettingsScreen() {
   };
 
   const updateCompany = <K extends keyof CompanySettings>(key: K, value: CompanySettings[K]) => {
+    setCompany((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Updater for the structured address fields: marks the address dirty so the
+  // composed value is persisted (and the legacy string is replaced) on save.
+  const updateCompanyAddr = <K extends keyof CompanySettings>(key: K, value: CompanySettings[K]) => {
+    setAddressDirty(true);
     setCompany((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -979,6 +1241,56 @@ export default function SettingsScreen() {
     updateCompany("logoBase64", "");
     updateCompany("logoUri", "");
   };
+
+  const updateBranding = <K extends keyof PdfBranding>(key: K, value: PdfBranding[K]) => {
+    setBranding((prev) => ({ ...(prev || ({} as PdfBranding)), [key]: value }));
+  };
+
+  const pickSignature = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [3, 1],
+        quality: 0.9,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        let normalizedUri = uri;
+        try {
+          if (Platform.OS !== "web") {
+            const manip = await ImageManipulator.manipulateAsync(uri, [], {
+              compress: 0.95,
+              format: ImageManipulator.SaveFormat.PNG,
+            });
+            normalizedUri = manip.uri;
+          }
+        } catch (e) {
+          console.warn("Signature normalization failed:", e);
+        }
+        const base64 = await FileSystem.readAsStringAsync(normalizedUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const dir = `${FileSystem.documentDirectory}branding/`;
+        const info = await FileSystem.getInfoAsync(dir);
+        if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+        const path = `${dir}signature.png`;
+        await FileSystem.copyAsync({ from: normalizedUri, to: path });
+        updateCompany("signatureBase64", `data:image/png;base64,${base64}`);
+        updateCompany("signatureUri", path);
+      }
+    } catch (error) {
+      console.error("Signature picker error:", error);
+    }
+  };
+
+  const removeSignature = () => {
+    updateCompany("signatureBase64", "");
+    updateCompany("signatureUri", "");
+  };
+
+  // Small inline-validation helpers for the profile mask.
+  const emailValid = !company.companyEmail || EMAIL_RE.test(company.companyEmail.trim());
 
   
   // Team Contacts
@@ -1180,32 +1492,61 @@ return (
             {t('settings_company_data_desc' as any)}
           </Text>
 
-          {/* Logo Upload */}
+          {/* Digitale Firmenkarte (Live-Vorschau) */}
+          {!!company.companyName && (
+            <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surface, padding: 16, marginBottom: 18 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                {company.logoBase64 ? (
+                  <Image source={{ uri: company.logoBase64 }} style={{ width: 68, height: 42 }} contentFit="contain" />
+                ) : (
+                  <View style={{ width: 68, height: 42, borderRadius: 6, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+                    <MaterialIcons name="business" size={22} color={colors.muted} />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: colors.foreground }}>
+                    {company.companyName}
+                    {company.legalForm ? " " + company.legalForm : ""}
+                  </Text>
+                  {!!company.contactPerson && (
+                    <Text style={{ fontSize: 13, color: colors.foreground, marginTop: 1 }}>
+                      {company.contactPerson}
+                      {company.contactTitle ? " · " + company.contactTitle : ""}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 10 }} />
+              {!!(composeCompanyAddress(company) || company.companyAddress) && (
+                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>
+                  {(composeCompanyAddress(company) || company.companyAddress).replace(/\n/g, ", ")}
+                </Text>
+              )}
+              <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 2 }}>
+                {!!company.companyPhone && <Text style={{ fontSize: 12, color: colors.muted }}>{"☎  " + company.companyPhone}</Text>}
+                {!!company.mobile && <Text style={{ fontSize: 12, color: colors.muted }}>{"📱  " + company.mobile}</Text>}
+                {!!company.companyEmail && <Text style={{ fontSize: 12, color: colors.muted }}>{"✉  " + company.companyEmail}</Text>}
+                {!!company.companyWebsite && <Text style={{ fontSize: 12, color: colors.muted }}>{"🌐  " + company.companyWebsite}</Text>}
+              </View>
+            </View>
+          )}
+
+          {/* Logo */}
           <View style={styles.logoSection}>
             {company.logoBase64 ? (
               <View style={styles.logoPreviewContainer}>
-                <Image
-                  source={{ uri: company.logoBase64 }}
-                  style={styles.logoPreview}
-                  contentFit="contain"
-                />
+                <Image source={{ uri: company.logoBase64 }} style={styles.logoPreview} contentFit="contain" />
                 <View style={styles.logoActions}>
                   <Pressable
                     onPress={pickLogo}
-                    style={({ pressed }) => [
-                      styles.logoActionButton,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-                    ]}
+                    style={({ pressed }) => [styles.logoActionButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="edit" size={16} color={colors.primary} />
                     <Text style={[styles.logoActionText, { color: colors.primary }]}>{t('aendern')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={removeLogo}
-                    style={({ pressed }) => [
-                      styles.logoActionButton,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-                    ]}
+                    style={({ pressed }) => [styles.logoActionButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="delete" size={16} color={colors.error} />
                     <Text style={[styles.logoActionText, { color: colors.error }]}>{t('entfernen')}</Text>
@@ -1215,112 +1556,321 @@ return (
             ) : (
               <Pressable
                 onPress={pickLogo}
-                style={({ pressed }) => [
-                  styles.logoUploadButton,
-                  { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 },
-                ]}
+                style={({ pressed }) => [styles.logoUploadButton, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="add-photo-alternate" size={32} color={colors.muted} />
-                <Text style={[styles.logoUploadText, { color: colors.muted }]}>
-                  {t('settings_upload_logo' as any)}
-                </Text>
-                <Text style={[styles.logoUploadHint, { color: colors.muted }]}>
-                  {t('settings_logo_hint' as any)}
-                </Text>
+                <Text style={[styles.logoUploadText, { color: colors.muted }]}>{t('settings_upload_logo' as any)}</Text>
+                <Text style={[styles.logoUploadHint, { color: colors.muted }]}>{t('settings_logo_hint' as any)}</Text>
               </Pressable>
             )}
           </View>
 
-          {/* Company Name */}
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <MaterialIcons name="business" size={18} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>
-                {t('settings_company_name' as any)}
-              </Text>
-            </View>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={company.companyName}
-              onChangeText={(v) => updateCompany("companyName", v)}
-              placeholder={t('meine_firma_gmbh')}
-              placeholderTextColor={colors.muted}
+          {/* Firmenname / Rechtsform */}
+          <LabeledInput
+            colors={colors}
+            icon="business"
+            label={t('settings_company_name' as any)}
+            value={company.companyName}
+            onChangeText={(v) => updateCompany("companyName", v)}
+            placeholder={t('meine_firma_gmbh')}
+          />
+          <LabeledInput
+            colors={colors}
+            icon="badge"
+            label={t('company_legal_form' as any)}
+            value={company.legalForm}
+            onChangeText={(v) => updateCompany("legalForm", v)}
+            placeholder={t('company_legal_form_ph' as any)}
+            optional
+          />
+
+          {/* Ansprechpartner & Bearbeiter */}
+          <GroupHeading colors={colors}>{t('company_group_contact' as any)}</GroupHeading>
+          <LabeledInput
+            colors={colors}
+            icon="person"
+            label={t('company_contact_person' as any)}
+            value={company.contactPerson}
+            onChangeText={(v) => updateCompany("contactPerson", v)}
+            placeholder={t('company_contact_person_ph' as any)}
+          />
+          <LabeledInput
+            colors={colors}
+            icon="work"
+            label={t('company_contact_title' as any)}
+            value={company.contactTitle}
+            onChangeText={(v) => updateCompany("contactTitle", v)}
+            placeholder={t('company_contact_title_ph' as any)}
+            optional
+          />
+          <LabeledInput
+            colors={colors}
+            icon="edit-note"
+            label={t('company_default_editor' as any)}
+            value={company.defaultEditor}
+            onChangeText={(v) => updateCompany("defaultEditor", v)}
+            placeholder={t('company_default_editor_ph' as any)}
+            optional
+          />
+
+          {/* Anschrift */}
+          <GroupHeading colors={colors}>{t('company_group_address' as any)}</GroupHeading>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <LabeledInput
+              colors={colors}
+              icon="location-on"
+              label={t('company_street' as any)}
+              value={company.street}
+              onChangeText={(v) => updateCompanyAddr("street", v)}
+              placeholder="Musterstraße"
+              containerStyle={{ flex: 3 }}
+            />
+            <LabeledInput
+              colors={colors}
+              label={t('company_house_number' as any)}
+              value={company.houseNumber}
+              onChangeText={(v) => updateCompanyAddr("houseNumber", v)}
+              placeholder="110"
+              containerStyle={{ flex: 1 }}
             />
           </View>
-
-          {/* Company Address */}
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <MaterialIcons name="location-on" size={18} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>
-                {t('adresse')}
-              </Text>
-            </View>
-            <TextInput
-              style={[styles.input, styles.multilineInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={company.companyAddress}
-              onChangeText={(v) => updateCompany("companyAddress", v)}
-              placeholder={t('musterstrasse_11012345_musterstadt')}
-              placeholderTextColor={colors.muted}
-              multiline
-              numberOfLines={2}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <LabeledInput
+              colors={colors}
+              label={t('company_zip' as any)}
+              value={company.zip}
+              onChangeText={(v) => updateCompanyAddr("zip", v)}
+              placeholder="12345"
+              keyboardType="number-pad"
+              containerStyle={{ flex: 1 }}
+            />
+            <LabeledInput
+              colors={colors}
+              label={t('company_city' as any)}
+              value={company.city}
+              onChangeText={(v) => updateCompanyAddr("city", v)}
+              placeholder="Musterstadt"
+              containerStyle={{ flex: 3 }}
             />
           </View>
+          <LabeledInput
+            colors={colors}
+            icon="public"
+            label={t('company_country' as any)}
+            value={company.country}
+            onChangeText={(v) => updateCompanyAddr("country", v)}
+            placeholder="Deutschland"
+            optional
+          />
 
-          {/* Company Phone */}
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <MaterialIcons name="phone" size={18} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>
-                {t('telefon')}
-              </Text>
-            </View>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
+          {/* Kontakt */}
+          <GroupHeading colors={colors}>{t('company_group_reach' as any)}</GroupHeading>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <LabeledInput
+              colors={colors}
+              icon="phone"
+              label={t('telefon')}
               value={company.companyPhone}
               onChangeText={(v) => updateCompany("companyPhone", v)}
               placeholder="+49 123 456789"
-              placeholderTextColor={colors.muted}
               keyboardType="phone-pad"
+              containerStyle={{ flex: 1 }}
+            />
+            <LabeledInput
+              colors={colors}
+              icon="smartphone"
+              label={t('company_mobile' as any)}
+              value={company.mobile}
+              onChangeText={(v) => updateCompany("mobile", v)}
+              placeholder="+49 170 1234567"
+              keyboardType="phone-pad"
+              containerStyle={{ flex: 1 }}
+              optional
             />
           </View>
+          <LabeledInput
+            colors={colors}
+            icon="email"
+            label={t('email')}
+            value={company.companyEmail}
+            onChangeText={(v) => updateCompany("companyEmail", v)}
+            placeholder="info@firma.de"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            invalid={!emailValid}
+            hint={!emailValid ? t('company_email_invalid' as any) : undefined}
+          />
+          <LabeledInput
+            colors={colors}
+            icon="language"
+            label={t('website')}
+            value={company.companyWebsite}
+            onChangeText={(v) => updateCompany("companyWebsite", v)}
+            placeholder="www.firma.de"
+            keyboardType="url"
+            autoCapitalize="none"
+            optional
+          />
 
-          {/* Company Email */}
+          {/* Rechtliche Angaben (einklappbar) */}
+          <Pressable
+            onPress={() => setShowOptionalLegal((s) => !s)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <MaterialIcons name={showOptionalLegal ? "expand-less" : "expand-more"} size={22} color={colors.primary} />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('company_optional_show' as any)}</Text>
+          </Pressable>
+          {showOptionalLegal && (
+            <View style={{ marginTop: 12 }}>
+              <LabeledInput
+                colors={colors}
+                icon="account-balance"
+                label={t('company_register_court' as any)}
+                value={company.registerCourt}
+                onChangeText={(v) => updateCompany("registerCourt", v)}
+                placeholder="Amtsgericht Musterstadt"
+                optional
+              />
+              <LabeledInput
+                colors={colors}
+                icon="tag"
+                label={t('company_register_number' as any)}
+                value={company.registerNumber}
+                onChangeText={(v) => updateCompany("registerNumber", v)}
+                placeholder="HRB 12345"
+                optional
+              />
+              <LabeledInput
+                colors={colors}
+                icon="receipt-long"
+                label={t('company_vat_id' as any)}
+                value={company.vatId}
+                onChangeText={(v) => updateCompany("vatId", v)}
+                placeholder="DE123456789"
+                autoCapitalize="characters"
+                optional
+              />
+              <LabeledInput
+                colors={colors}
+                icon="gavel"
+                label={t('company_legal_note' as any)}
+                value={company.legalNote}
+                onChangeText={(v) => updateCompany("legalNote", v)}
+                placeholder=""
+                multiline
+                optional
+              />
+            </View>
+          )}
+
+          {/* Darstellung */}
+          <GroupHeading colors={colors}>{t('company_group_display' as any)}</GroupHeading>
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <MaterialIcons name="email" size={18} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>
-                {t('email')}
-              </Text>
+              <MaterialIcons name="palette" size={16} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>{t('company_brand_color' as any)}</Text>
             </View>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={company.companyEmail}
-              onChangeText={(v) => updateCompany("companyEmail", v)}
-              placeholder="info@firma.de"
-              placeholderTextColor={colors.muted}
-              keyboardType="email-address"
-              autoCapitalize="none"
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {BRAND_COLORS.map((c) => {
+                const active = (branding?.accentColor || "#1E3A5F").toLowerCase() === c.toLowerCase();
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => updateBranding("accentColor", c)}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: c,
+                      borderWidth: active ? 3 : 1,
+                      borderColor: active ? colors.foreground : colors.border,
+                    }}
+                  />
+                );
+              })}
+            </View>
+          </View>
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="photo-size-select-large" size={16} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>{t('company_logo_size' as any)}</Text>
+            </View>
+            <Segmented
+              colors={colors}
+              value={branding?.logoSize || "medium"}
+              onChange={(v) => updateBranding("logoSize", v as any)}
+              options={[
+                { v: "small", label: t('logo_size_small' as any) },
+                { v: "medium", label: t('logo_size_medium' as any) },
+                { v: "large", label: t('logo_size_large' as any) },
+              ]}
             />
           </View>
-
-          {/* Company Website */}
           <View style={styles.inputGroup}>
             <View style={styles.inputLabel}>
-              <MaterialIcons name="language" size={18} color={colors.primary} />
+              <MaterialIcons name="align-horizontal-left" size={16} color={colors.primary} />
+              <Text style={[styles.labelText, { color: colors.foreground }]}>{t('company_logo_position' as any)}</Text>
+            </View>
+            <Segmented
+              colors={colors}
+              value={branding?.logoPosition || "left"}
+              onChange={(v) => updateBranding("logoPosition", v as any)}
+              options={[
+                { v: "left", label: t('logo_pos_left' as any) },
+                { v: "center", label: t('logo_pos_center' as any) },
+                { v: "right", label: t('logo_pos_right' as any) },
+              ]}
+            />
+          </View>
+          <LabeledInput
+            colors={colors}
+            icon="draw"
+            label={t('company_email_signature' as any)}
+            value={company.emailSignature}
+            onChangeText={(v) => updateCompany("emailSignature", v)}
+            placeholder={t('company_email_signature_ph' as any)}
+            multiline
+            optional
+          />
+
+          {/* Unterschrift (optional) */}
+          <View style={styles.inputGroup}>
+            <View style={styles.inputLabel}>
+              <MaterialIcons name="gesture" size={16} color={colors.primary} />
               <Text style={[styles.labelText, { color: colors.foreground }]}>
-                {t('website')}
+                {t('company_signature' as any)}
+                <Text style={{ color: colors.muted, fontWeight: "400" }}>  ·  optional</Text>
               </Text>
             </View>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-              value={company.companyWebsite}
-              onChangeText={(v) => updateCompany("companyWebsite", v)}
-              placeholder="www.firma.de"
-              placeholderTextColor={colors.muted}
-              keyboardType="url"
-              autoCapitalize="none"
-            />
+            {company.signatureBase64 ? (
+              <View style={styles.logoPreviewContainer}>
+                <Image source={{ uri: company.signatureBase64 }} style={styles.logoPreview} contentFit="contain" />
+                <View style={styles.logoActions}>
+                  <Pressable
+                    onPress={pickSignature}
+                    style={({ pressed }) => [styles.logoActionButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="edit" size={16} color={colors.primary} />
+                    <Text style={[styles.logoActionText, { color: colors.primary }]}>{t('aendern')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={removeSignature}
+                    style={({ pressed }) => [styles.logoActionButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="delete" size={16} color={colors.error} />
+                    <Text style={[styles.logoActionText, { color: colors.error }]}>{t('entfernen')}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable
+                onPress={pickSignature}
+                style={({ pressed }) => [styles.logoUploadButton, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="add-photo-alternate" size={28} color={colors.muted} />
+                <Text style={[styles.logoUploadHint, { color: colors.muted }]}>{t('company_signature_hint' as any)}</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 

@@ -44,6 +44,19 @@ export type PdfBranding = {
   emailBodyTemplate: string; // email body template (placeholders: {vorlage}, {titel}, {datum}, {projekt})
   emailCc: string; // CC recipients (comma-separated)
   emailBcc: string; // BCC recipients (comma-separated)
+  // --- extended company identity (mirrored from company-settings) ---
+  companyLegalForm?: string; // Namenszusatz / Rechtsform
+  companyContactPerson?: string; // Ansprechpartner / Inhaber
+  companyContactTitle?: string; // Titel / Funktion
+  companyMobile?: string; // Mobil
+  companyRegisterCourt?: string; // Registergericht
+  companyRegisterNumber?: string; // Registernummer
+  companyVatId?: string; // USt-IdNr.
+  companyLegalNote?: string; // Pflichtangaben / rechtlicher Zusatz
+  defaultEditor?: string; // Standardbearbeiter
+  // --- logo presentation ---
+  logoSize?: "small" | "medium" | "large";
+  logoPosition?: "left" | "center" | "right";
 };
 
 export const DEFAULT_BRANDING: PdfBranding = {
@@ -76,6 +89,17 @@ export const DEFAULT_BRANDING: PdfBranding = {
   emailBodyTemplate: "Anbei das Protokoll \"{titel}\" vom {datum}.\n\nMit freundlichen Gr\u00fc\u00dfen",
   emailCc: "",
   emailBcc: "",
+  companyLegalForm: "",
+  companyContactPerson: "",
+  companyContactTitle: "",
+  companyMobile: "",
+  companyRegisterCourt: "",
+  companyRegisterNumber: "",
+  companyVatId: "",
+  companyLegalNote: "",
+  defaultEditor: "",
+  logoSize: "medium",
+  logoPosition: "left",
 };
 
 /**
