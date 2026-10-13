@@ -218,50 +218,56 @@ export default function RaumbuchRoomScreen() {
   // adjust it. Live, so the line/box follows your finger exactly.
   const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
   const near = (a: { x: number; y: number }, b: { x: number; y: number }, r = 0.055) => Math.hypot(a.x - b.x, a.y - b.y) < r;
-  const onPlanDrag = (phase: "start" | "move" | "end", raw: { x: number; y: number }) => {
+  const onPlanDrag = (phase: "start" | "move" | "end", raw: { x: number; y: number }, scaleValue?: number) => {
     if (planMode === "marker" || planMode === "view") return; // no drawing in page-select/marker
     const full = viewToFull(raw);
     const pt = { x: clamp01(full.x), y: clamp01(full.y) };
+    // Touch target in plan-space, kept roughly constant on screen: it shrinks as
+    // you zoom in, so handles stay grabbable without overlapping each other.
+    const sc = Math.max(1, scaleValue || 1);
+    const grabR = Math.max(0.018, 0.06 / sc);
     if (planMode === "crop") {
       if (phase === "start") {
         const c = tempCrop;
         if (c) {
-          // Corners (resize two edges) first, then edge midpoints (move one edge).
-          const corners: Record<string, { x: number; y: number }> = {
-            tl: { x: c.x, y: c.y }, tr: { x: c.x + c.w, y: c.y }, bl: { x: c.x, y: c.y + c.h }, br: { x: c.x + c.w, y: c.y + c.h },
-          };
-          const hitC = (["tl", "tr", "bl", "br"] as const).find((k) => near(pt, corners[k], 0.11));
-          if (hitC) { dragRef.current = { kind: "crop-corner", corner: hitC }; return; }
-          const edges: Record<string, { x: number; y: number }> = {
-            top: { x: c.x + c.w / 2, y: c.y }, bottom: { x: c.x + c.w / 2, y: c.y + c.h }, left: { x: c.x, y: c.y + c.h / 2 }, right: { x: c.x + c.w, y: c.y + c.h / 2 },
-          };
-          const hitE = (["top", "right", "bottom", "left"] as const).find((k) => near(pt, edges[k], 0.11));
-          if (hitE) { dragRef.current = { kind: "crop-edge", edge: hitE }; return; }
-          // Touch INSIDE the box (not on a handle) → move the whole box.
-          if (pt.x > c.x && pt.x < c.x + c.w && pt.y > c.y && pt.y < c.y + c.h) {
-            dragRef.current = { kind: "crop-move", start: pt, origin: { x: c.x, y: c.y } };
+          // Pick the SINGLE NEAREST handle within grabR. Corners resize their two
+          // edges, edge-midpoints move only their one edge. Nearest-wins means a
+          // handle never triggers a neighbouring one (no "bottom moves the top").
+          const handles = [
+            { kind: "corner" as const, id: "tl", x: c.x, y: c.y },
+            { kind: "corner" as const, id: "tr", x: c.x + c.w, y: c.y },
+            { kind: "corner" as const, id: "bl", x: c.x, y: c.y + c.h },
+            { kind: "corner" as const, id: "br", x: c.x + c.w, y: c.y + c.h },
+            { kind: "edge" as const, id: "top", x: c.x + c.w / 2, y: c.y },
+            { kind: "edge" as const, id: "bottom", x: c.x + c.w / 2, y: c.y + c.h },
+            { kind: "edge" as const, id: "left", x: c.x, y: c.y + c.h / 2 },
+            { kind: "edge" as const, id: "right", x: c.x + c.w, y: c.y + c.h / 2 },
+          ];
+          let best: (typeof handles)[number] | null = null;
+          let bestD = grabR;
+          for (const h of handles) {
+            const d = Math.hypot(pt.x - h.x, pt.y - h.y);
+            if (d < bestD) { bestD = d; best = h; }
+          }
+          if (best) {
+            // Lock the grabbed handle for the whole gesture — it can never switch
+            // to another handle mid-drag.
+            dragRef.current = best.kind === "corner"
+              ? { kind: "crop-corner", corner: best.id as any }
+              : { kind: "crop-edge", edge: best.id as any };
             return;
           }
-          // A crop already exists and the touch missed every handle and the box
-          // itself → do NOTHING instead of wiping it with a new box. This is what
-          // made editing frustrating when zoomed in (a slightly-off grab used to
-          // start a fresh crop). Use "Ausschnitt neu" to draw a different one.
+          // Missed every handle → do NOTHING. Dragging inside/outside the box
+          // never moves the whole frame. (Use "Ganzer Plan" to start over.)
           dragRef.current = null;
           return;
         }
+        // No crop yet → the frame pops up and rubber-bands as you drag.
         dragRef.current = { kind: "crop-new", start: pt };
         setTempCrop({ x: pt.x, y: pt.y, w: 0, h: 0 });
       } else if (phase === "move") {
         const d = dragRef.current; if (!d) return;
-        if (d.kind === "crop-move" && d.start && d.origin) {
-          const dx = pt.x - d.start.x, dy = pt.y - d.start.y;
-          setTempCrop((c) => {
-            if (!c) return c;
-            const nx = Math.max(0, Math.min(1 - c.w, d.origin!.x + dx));
-            const ny = Math.max(0, Math.min(1 - c.h, d.origin!.y + dy));
-            return { ...c, x: nx, y: ny };
-          });
-        } else if (d.kind === "crop-new" && d.start) {
+        if (d.kind === "crop-new" && d.start) {
           const a = d.start;
           setTempCrop({ x: Math.min(a.x, pt.x), y: Math.min(a.y, pt.y), w: Math.abs(a.x - pt.x), h: Math.abs(a.y - pt.y) });
         } else if (d.kind === "crop-corner") {
@@ -274,6 +280,7 @@ export default function RaumbuchRoomScreen() {
         } else if (d.kind === "crop-edge") {
           setTempCrop((c) => {
             if (!c) return c;
+            // Move ONLY the grabbed edge; the opposite edge stays fixed.
             let x1 = c.x, y1 = c.y, x2 = c.x + c.w, y2 = c.y + c.h;
             if (d.edge === "top") y1 = pt.y; else if (d.edge === "bottom") y2 = pt.y; else if (d.edge === "left") x1 = pt.x; else x2 = pt.x;
             return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
@@ -292,8 +299,8 @@ export default function RaumbuchRoomScreen() {
     if (phase === "start") {
       const wl = tempWalls[key];
       if (wl) {
-        if (near(pt, { x: wl.x1, y: wl.y1 }, 0.09)) { dragRef.current = { kind: "wall-start" }; return; }
-        if (near(pt, { x: wl.x2, y: wl.y2 }, 0.09)) { dragRef.current = { kind: "wall-end" }; return; }
+        if (near(pt, { x: wl.x1, y: wl.y1 }, grabR + 0.02)) { dragRef.current = { kind: "wall-start" }; return; }
+        if (near(pt, { x: wl.x2, y: wl.y2 }, grabR + 0.02)) { dragRef.current = { kind: "wall-end" }; return; }
       }
       dragRef.current = null;
       return;
@@ -317,13 +324,13 @@ export default function RaumbuchRoomScreen() {
   };
 
   const selectMode = (m: PlanMode) => { setPlanMode(m); dragRef.current = null; setWallTapStart(null); };
-  // Enter the crop step. Seed a ready-made frame (unless the user already has a
-  // crop or explicitly chose "Ganzer Plan") so cropping = dragging the handles.
+  // Enter the crop step. No pre-seeded frame — it pops up only when the user
+  // starts dragging (so it is never "too big" at the start). An existing crop
+  // (e.g. when returning to the step) is kept.
   const enterStep2 = () => {
     setPlanStep(2);
     setPlanMode("crop");
     dragRef.current = null;
-    if (!clearedCropRef.current) setTempCrop((c) => c || { ...DEFAULT_CROP });
   };
   const placeMarkerCenter = () => {
     const c = tempCrop;

@@ -39,7 +39,7 @@ type ZoomableCanvasProps = {
   onSingleTap?: (point: Point) => void;
   onLongPress?: (point: Point) => void;
   /** Long-press then drag: grab something at the point and move it live. */
-  onPinDrag?: (phase: "start" | "move" | "end", point: Point) => void;
+  onPinDrag?: (phase: "start" | "move" | "end", point: Point, scale?: number) => void;
   /**
    * When true, a plain one-finger drag (no long press) moves the pin and takes
    * priority over canvas panning. Used for an explicit "move mode" where the
@@ -98,7 +98,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   const emitPinDrag = (phase: "start" | "move" | "end", x: number, y: number, scaleValue: number, tx: number, ty: number) => {
     if (!onPinDrag) return;
     const point = screenPointToNormalized({ x, y }, { width, height }, scaleValue, { x: tx, y: ty });
-    onPinDrag(phase, point);
+    onPinDrag(phase, point, scaleValue);
   };
 
   const pinch = Gesture.Pinch()
