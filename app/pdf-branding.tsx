@@ -225,59 +225,25 @@ export default function PdfBrandingScreen() {
         </Pressable>
       </View>
 
-      {/* Tabs */}
-      <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        {TABS.map((tb) => {
-          const active = tab === tb.key;
-          return (
-            <Pressable
-              key={tb.key}
-              onPress={() => setTab(tb.key)}
-              style={{ flex: 1, alignItems: "center", paddingVertical: 10, gap: 2, borderBottomWidth: 2, borderBottomColor: active ? colors.primary : "transparent" }}
-            >
-              <MaterialIcons name={tb.icon as any} size={20} color={active ? colors.primary : colors.muted} />
-              <Text style={{ fontSize: 11, fontWeight: active ? "700" : "500", color: active ? colors.primary : colors.muted }}>{t(tb.labelKey as any)}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
+      {/* Vereinfacht: nur noch Branding (Akzentfarbe). Kopf-/Fußzeile, Layout,
+          Inhalt, Versand und Vorlagen wurden entfernt — die Vorlage legt den
+          PDF-Kopf (Firma+Logo oben, Datum, Seitenzahl) automatisch an. */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {tab === "branding" && (
         <>
-        {/* Company identity (logo, name, address, contact) is managed centrally
-            in Settings → Firmendaten and mirrored into this store automatically,
-            so it isn't duplicated here. */}
-        <View style={[styles.section, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
-          <MaterialIcons name="info-outline" size={20} color={colors.primary} />
-          <Text style={{ flex: 1, fontSize: 12, color: colors.muted, lineHeight: 17 }}>
-            {t('pdf_company_managed_hint' as any)}
-          </Text>
-        </View>
-
-        {/* Header/Footer Text */}
+        {/* Firmendaten (Firma, Logo, Anschrift …) — stehen oben auf der PDF.
+            Werden zentral gepflegt und sind von hier direkt erreichbar. */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('kopf_fusszeile')}</Text>
-
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('kopfzeile_optional')}</Text>
-          <TextInput
-            value={branding.headerText}
-            onChangeText={(v) => updateField("headerText", v)}
-            placeholder={t('pdf_branding_headertext_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
-          {renderVarButtons("headerText")}
-
-          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('fusszeile')}</Text>
-          <TextInput
-            value={branding.footerText}
-            onChangeText={(v) => updateField("footerText", v)}
-            placeholder={t('pdf_branding_footertext_placeholder' as any)}
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          />
-          {renderVarButtons("footerText")}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('cat_company_title' as any)}</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>{t('pdf_company_managed_hint' as any)}</Text>
+          <Pressable
+            onPress={() => router.push("/settings?section=unternehmen" as any)}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10, padding: 14, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="business" size={20} color={colors.primary} />
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: colors.foreground }}>{t('company_edit_cta' as any)}</Text>
+            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+          </Pressable>
         </View>
 
         {/* Accent Color */}

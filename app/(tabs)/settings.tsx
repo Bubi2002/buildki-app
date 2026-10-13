@@ -1132,9 +1132,9 @@ export default function SettingsScreen() {
           accentColor: branding.accentColor,
           logoSize: branding.logoSize,
           logoPosition: branding.logoPosition,
-          // dispatch (keep legacy autoSendEmail flag in sync with the 3-state mode)
-          autoSendMode: branding.autoSendMode,
-          autoSendEmail: branding.autoSendMode === "auto",
+          // Versand ist immer manuell (die Modus-Auswahl wurde entfernt).
+          autoSendMode: "off",
+          autoSendEmail: false,
           defaultEmailAddress: branding.defaultEmailAddress,
         });
       }
@@ -1898,28 +1898,8 @@ return (
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
-          <Pressable
-            onPress={() => router.push("/export-history" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
-          >
-            <MaterialIcons name="history" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('exportverlauf')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('alle_gesendeten_pdfs_anzeigen')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/send-automation" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 10 }]}
-          >
-            <MaterialIcons name="send" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('send_auto_title' as any)}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('send_auto_intro' as any)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
+          {/* Export-Verlauf und "Versand & Automatisierung" hier entfernt:
+              Versand lebt in der Kategorie "Versand & Kontakte". */}
         </View>
 
         </>)}
@@ -2165,42 +2145,23 @@ return (
         </View>
 
         </>)}
-        {/* Versandart (zentrale Dispatch-Steuerung) */}
+        {/* Versand: immer manuell — nur der Standardempfänger wird hier gepflegt. */}
         {inCat("versand") && (<>
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('dispatch_mode_title' as any)}</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('dispatch_mode_desc' as any)}</Text>
-          <Segmented
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('dispatch_default_recipient' as any)}</Text>
+          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('dispatch_manual_hint' as any)}</Text>
+          <LabeledInput
             colors={colors}
-            value={branding?.autoSendMode || "off"}
-            onChange={(v) => updateBranding("autoSendMode", v as any)}
-            options={[
-              { v: "off", label: t('dispatch_manual' as any) },
-              { v: "prepare", label: t('dispatch_prepare' as any) },
-              { v: "auto", label: t('dispatch_auto' as any) },
-            ]}
+            icon="alternate-email"
+            label={t('dispatch_default_recipient' as any)}
+            value={branding?.defaultEmailAddress || ""}
+            onChangeText={(v) => updateBranding("defaultEmailAddress", v)}
+            placeholder="info@firma.de"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            optional
           />
-          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>
-            {(branding?.autoSendMode || "off") === "auto"
-              ? t('dispatch_auto_hint' as any)
-              : (branding?.autoSendMode || "off") === "prepare"
-                ? t('dispatch_prepare_hint' as any)
-                : t('dispatch_manual_hint' as any)}
-          </Text>
-          <View style={{ marginTop: 14 }}>
-            <LabeledInput
-              colors={colors}
-              icon="alternate-email"
-              label={t('dispatch_default_recipient' as any)}
-              value={branding?.defaultEmailAddress || ""}
-              onChangeText={(v) => updateBranding("defaultEmailAddress", v)}
-              placeholder="info@firma.de"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              optional
-            />
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('dispatch_recipient_note' as any)}</Text>
-          </View>
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('dispatch_recipient_note' as any)}</Text>
         </View>
 
         </>)}

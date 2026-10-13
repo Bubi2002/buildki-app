@@ -50,7 +50,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="mehr"
         options={{
-          title: t("nav_mehr" as any),
+          title: t("nav_settings" as any),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
         }}
       />
