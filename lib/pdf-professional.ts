@@ -276,9 +276,14 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     : "";
 
   // Footer with the author's data (company name · phone · email · address).
+  // IMPORTANT: collapse any newlines first — a raw newline inside the CSS
+  // `content: "…"` string breaks the whole @page rule, which would drop BOTH
+  // the footer text AND the page number. (e.g. a multi-line company address.)
   const authorLine = [companyInfo?.name, companyInfo?.phone, companyInfo?.email, companyInfo?.address]
     .map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
-  const footerLeft = escCss(footerText || authorLine || (projekt ? `Projekt: ${projekt}` : "BuildKI"));
+  const footerLeft = escCss(
+    (footerText || authorLine || (projekt ? `Projekt: ${projekt}` : "BuildKI")).replace(/\r?\n+/g, "  ·  "),
+  );
 
   return `<!DOCTYPE html>
 <html>
@@ -298,11 +303,11 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       color: #1f2937;
     }
     .topbar {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      padding: 0 0 14px; border-bottom: 1px solid #E6EBF1;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0 16px; border-bottom: 1px solid #E6EBF1;
     }
-    .topbar .brand { display: flex; align-items: center; gap: 10px; }
-    .topbar .brand img { max-height: 32px; max-width: 150px; object-fit: contain; }
+    .topbar .brand { display: flex; align-items: center; gap: 14px; }
+    .topbar .brand img { max-height: 44px; max-width: 190px; object-fit: contain; }
     .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -.2px; }
     .topbar .bandmeta { text-align: right; font-size: 9px; line-height: 1.55; color: #6B7A8D; }
     .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 20px 0 0; letter-spacing: -.6px; }
