@@ -1512,28 +1512,16 @@ return (
                   <Text style={{ fontSize: 16, fontWeight: "800", color: colors.foreground }}>
                     {company.companyName}
                   </Text>
-                  {!!company.legalForm && (
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginTop: 1 }}>
-                      {company.legalForm}
-                    </Text>
-                  )}
-                  {!!company.contactPerson && (
+                  {!!company.defaultEditor && (
                     <Text style={{ fontSize: 13, color: colors.foreground, marginTop: 1 }}>
-                      {company.contactPerson}
-                      {company.contactTitle ? " · " + company.contactTitle : ""}
+                      {company.defaultEditor}
                     </Text>
                   )}
                 </View>
               </View>
               <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 10 }} />
-              {!!(composeCompanyAddress(company) || company.companyAddress) && (
-                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>
-                  {(composeCompanyAddress(company) || company.companyAddress).replace(/\n/g, ", ")}
-                </Text>
-              )}
               <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 2 }}>
                 {!!company.companyPhone && <Text style={{ fontSize: 12, color: colors.muted }}>{"☎  " + company.companyPhone}</Text>}
-                {!!company.mobile && <Text style={{ fontSize: 12, color: colors.muted }}>{"📱  " + company.mobile}</Text>}
                 {!!company.companyEmail && <Text style={{ fontSize: 12, color: colors.muted }}>{"✉  " + company.companyEmail}</Text>}
                 {!!company.companyWebsite && <Text style={{ fontSize: 12, color: colors.muted }}>{"🌐  " + company.companyWebsite}</Text>}
               </View>
@@ -1574,7 +1562,10 @@ return (
             )}
           </View>
 
-          {/* Firmenname / Rechtsform */}
+          {/* Nur die Felder, die wirklich gebraucht werden und in der PDF
+              erscheinen: Firma, Ersteller, Telefon, Mail, Website. Adresse,
+              Rechtsform, Ansprechpartner/Titel und rechtliche Angaben wurden
+              nach Feedback entfernt (spielen keine Rolle). */}
           <LabeledInput
             colors={colors}
             icon="business"
@@ -1585,95 +1576,12 @@ return (
           />
           <LabeledInput
             colors={colors}
-            icon="badge"
-            label={t('company_legal_form' as any)}
-            value={company.legalForm}
-            onChangeText={(v) => updateCompany("legalForm", v)}
-            placeholder={t('company_legal_form_ph' as any)}
-            optional
-          />
-
-          {/* Ansprechpartner & Bearbeiter */}
-          <GroupHeading colors={colors}>{t('company_group_contact' as any)}</GroupHeading>
-          <LabeledInput
-            colors={colors}
-            icon="person"
-            label={t('company_contact_person' as any)}
-            value={company.contactPerson}
-            onChangeText={(v) => updateCompany("contactPerson", v)}
-            placeholder={t('company_contact_person_ph' as any)}
-          />
-          <LabeledInput
-            colors={colors}
-            icon="work"
-            label={t('company_contact_title' as any)}
-            value={company.contactTitle}
-            onChangeText={(v) => updateCompany("contactTitle", v)}
-            placeholder={t('company_contact_title_ph' as any)}
-            optional
-          />
-          <LabeledInput
-            colors={colors}
             icon="edit-note"
             label={t('company_default_editor' as any)}
             value={company.defaultEditor}
             onChangeText={(v) => updateCompany("defaultEditor", v)}
             placeholder={t('company_default_editor_ph' as any)}
-            optional
           />
-
-          {/* Anschrift */}
-          <GroupHeading colors={colors}>{t('company_group_address' as any)}</GroupHeading>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <LabeledInput
-              colors={colors}
-              icon="location-on"
-              label={t('company_street' as any)}
-              value={company.street}
-              onChangeText={(v) => updateCompanyAddr("street", v)}
-              placeholder="Musterstraße"
-              containerStyle={{ flex: 3 }}
-            />
-            <LabeledInput
-              colors={colors}
-              label={t('company_house_number' as any)}
-              value={company.houseNumber}
-              onChangeText={(v) => updateCompanyAddr("houseNumber", v)}
-              placeholder="110"
-              containerStyle={{ flex: 1 }}
-            />
-          </View>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <LabeledInput
-              colors={colors}
-              label={t('company_zip' as any)}
-              value={company.zip}
-              onChangeText={(v) => updateCompanyAddr("zip", v)}
-              placeholder="12345"
-              keyboardType="number-pad"
-              containerStyle={{ flex: 1 }}
-            />
-            <LabeledInput
-              colors={colors}
-              label={t('company_city' as any)}
-              value={company.city}
-              onChangeText={(v) => updateCompanyAddr("city", v)}
-              placeholder="Musterstadt"
-              containerStyle={{ flex: 3 }}
-            />
-          </View>
-          <LabeledInput
-            colors={colors}
-            icon="public"
-            label={t('company_country' as any)}
-            value={company.country}
-            onChangeText={(v) => updateCompanyAddr("country", v)}
-            placeholder="Deutschland"
-            optional
-          />
-
-          {/* Kontakt */}
-          <GroupHeading colors={colors}>{t('company_group_reach' as any)}</GroupHeading>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <LabeledInput
               colors={colors}
@@ -1687,28 +1595,18 @@ return (
             />
             <LabeledInput
               colors={colors}
-              icon="smartphone"
-              label={t('company_mobile' as any)}
-              value={company.mobile}
-              onChangeText={(v) => updateCompany("mobile", v)}
-              placeholder="+49 170 1234567"
-              keyboardType="phone-pad"
+              icon="email"
+              label={t('email')}
+              value={company.companyEmail}
+              onChangeText={(v) => updateCompany("companyEmail", v)}
+              placeholder="info@firma.de"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              invalid={!emailValid}
+              hint={!emailValid ? t('company_email_invalid' as any) : undefined}
               containerStyle={{ flex: 1 }}
-              optional
             />
           </View>
-          <LabeledInput
-            colors={colors}
-            icon="email"
-            label={t('email')}
-            value={company.companyEmail}
-            onChangeText={(v) => updateCompany("companyEmail", v)}
-            placeholder="info@firma.de"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            invalid={!emailValid}
-            hint={!emailValid ? t('company_email_invalid' as any) : undefined}
-          />
           <LabeledInput
             colors={colors}
             icon="language"
@@ -1720,57 +1618,6 @@ return (
             autoCapitalize="none"
             optional
           />
-
-          {/* Rechtliche Angaben (einklappbar) */}
-          <Pressable
-            onPress={() => setShowOptionalLegal((s) => !s)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, opacity: pressed ? 0.6 : 1 }]}
-          >
-            <MaterialIcons name={showOptionalLegal ? "expand-less" : "expand-more"} size={22} color={colors.primary} />
-            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('company_optional_show' as any)}</Text>
-          </Pressable>
-          {showOptionalLegal && (
-            <View style={{ marginTop: 12 }}>
-              <LabeledInput
-                colors={colors}
-                icon="account-balance"
-                label={t('company_register_court' as any)}
-                value={company.registerCourt}
-                onChangeText={(v) => updateCompany("registerCourt", v)}
-                placeholder="Amtsgericht Musterstadt"
-                optional
-              />
-              <LabeledInput
-                colors={colors}
-                icon="tag"
-                label={t('company_register_number' as any)}
-                value={company.registerNumber}
-                onChangeText={(v) => updateCompany("registerNumber", v)}
-                placeholder="HRB 12345"
-                optional
-              />
-              <LabeledInput
-                colors={colors}
-                icon="receipt-long"
-                label={t('company_vat_id' as any)}
-                value={company.vatId}
-                onChangeText={(v) => updateCompany("vatId", v)}
-                placeholder="DE123456789"
-                autoCapitalize="characters"
-                optional
-              />
-              <LabeledInput
-                colors={colors}
-                icon="gavel"
-                label={t('company_legal_note' as any)}
-                value={company.legalNote}
-                onChangeText={(v) => updateCompany("legalNote", v)}
-                placeholder=""
-                multiline
-                optional
-              />
-            </View>
-          )}
 
           {/* Darstellung */}
           <GroupHeading colors={colors}>{t('company_group_display' as any)}</GroupHeading>
