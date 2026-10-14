@@ -125,19 +125,6 @@ export function PrivacyChoicesSection({ colors }: Props) {
 
   return (
     <View style={{ gap: 10 }}>
-      <View
-        style={{
-          borderWidth: 1,
-          borderColor: colors.error,
-          padding: 12,
-          backgroundColor: colors.error + "10",
-        }}
-      >
-        <Text style={{ color: colors.error, fontWeight: "800", fontSize: 12 }}>
-          {t('privacy_choices_section_compliance_hinweis' as any)}
-        </Text>
-      </View>
-
       {ITEMS.map((item) => {
         const enabled = choices[item.purpose];
         const busy = busyPurpose === item.purpose;
@@ -200,25 +187,8 @@ export function PrivacyChoicesSection({ colors }: Props) {
       <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 16 }}>
         {t('privacy_choices_section_widerruf_hinweis' as any)}
       </Text>
-
-      <Pressable
-        onPress={() => router.push("/legal?section=dsgvo-export" as never)}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          padding: 12,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
-          opacity: pressed ? 0.75 : 1,
-        })}
-      >
-        <MaterialIcons name="manage-accounts" size={20} color={colors.primary} />
-        <Text style={{ color: colors.foreground, fontWeight: "600", marginLeft: 10, flex: 1 }}>
-          {t('privacy_choices_section_export_loeschung' as any)}
-        </Text>
-        <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-      </Pressable>
+      {/* "Export, Löschung und Datenschutzanfragen" entfernt — identisch mit
+          "Meine Daten & Konto löschen" direkt darunter (eine Zeile statt zwei). */}
     </View>
   );
 }

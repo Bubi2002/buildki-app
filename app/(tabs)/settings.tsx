@@ -1437,7 +1437,9 @@ return (
       <View style={[styles.headerContainer, cat ? { flexDirection: "row", alignItems: "center", gap: 10 } : null]}>
         {cat && (
           <Pressable
-            onPress={() => setCat(null)}
+            // Opened directly from the Einstellungen tab (via ?section) → go back
+            // to that tab instead of showing a second 6-card settings list.
+            onPress={() => { if (settingsParams.section) { router.back(); } else { setCat(null); } }}
             hitSlop={10}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 2 }]}
           >

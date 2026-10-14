@@ -18,23 +18,27 @@ export default function MehrScreen() {
   const { t } = useTranslation();
   const router = useRouter();
 
+  // One single settings list: the six categories (each opens its page directly)
+  // plus Team and Hilfe. No separate "Weitere Einstellungen" hub and no
+  // duplicate PDF/Cloud shortcuts — Rechtliches + Meine Daten live inside
+  // "App & Datenschutz".
   const sections: { titleKey: string; items: Item[]; muted?: boolean }[] = [
     {
-      // Verwaltung: Team-Kontaktbuch, PDF/Branding & Versand (in den zentralen
-      // Einstellungen), Dienste verbinden (Dropbox/Cloud) und Hilfe.
       titleKey: "mehr_sec_admin",
       items: [
-        { labelKey: "index_tool_team", icon: "groups", route: "/team" },
-        { labelKey: "mehr_pdf_branding", icon: "palette", route: "/settings?section=berichte" },
-        { labelKey: "mehr_cloud_connect", icon: "cloud", route: "/settings?section=konto" },
-        { labelKey: "mehr_faq", icon: "help-outline", route: "/faq" },
+        { labelKey: "cat_company_title", icon: "business", route: "/settings?section=unternehmen" },
+        { labelKey: "cat_reports_title", icon: "description", route: "/settings?section=berichte" },
+        { labelKey: "cat_dispatch_title", icon: "send", route: "/settings?section=versand" },
+        { labelKey: "cat_notif_title", icon: "notifications", route: "/settings?section=benachrichtigungen" },
+        { labelKey: "cat_account_title", icon: "cloud", route: "/settings?section=konto" },
+        { labelKey: "cat_app_title", icon: "settings", route: "/settings?section=app" },
       ],
     },
     {
       titleKey: "mehr_sec_app",
       items: [
-        { labelKey: "mehr_more_settings", icon: "settings", route: "/settings" },
-        { labelKey: "mehr_legal", icon: "gavel", route: "/legal" },
+        { labelKey: "index_tool_team", icon: "groups", route: "/team" },
+        { labelKey: "mehr_faq", icon: "help-outline", route: "/faq" },
       ],
     },
   ];
