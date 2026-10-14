@@ -1512,7 +1512,7 @@ export const translations = {
     in_sprache_uebersetzen: 'In {lang} übersetzen',
     n_protokolle_zusammenfuehren: '{count} Protokolle zusammenführen',
     version_wiederherstellen_frage: 'Möchten Sie Version {version} vom {date} wiederherstellen?',
-    einladung_nachricht: 'Hallo {name}, du wurdest als {role} zum Team in BuildKI eingeladen. Lade dir die App herunter um gemeinsam an Projekten zu arbeiten. Viele Gruesse',
+    einladung_nachricht: 'Hallo {name}, du wurdest als {role} zum Team in BuildKI eingeladen. Lade dir die App herunter, um gemeinsam an Projekten zu arbeiten. Viele Grüße',
     zeit_erfasst: '{duration} erfasst für "{project}".',
     onboarding_title_1: 'Aufnehmen & Fotografieren',
     onboarding_title_2: 'KI erstellt dein Protokoll',
