@@ -47,6 +47,9 @@ type ZoomableCanvasProps = {
    */
   dragImmediate?: boolean;
   onInteractionChange?: (active: boolean) => void;
+  /** Fires with the new zoom scale when it settles (pinch/double-tap/buttons),
+   *  so the parent can keep overlay handles a constant size on screen. */
+  onZoomChange?: (scale: number) => void;
   testID?: string;
 };
 
@@ -68,6 +71,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   onPinDrag,
   dragImmediate = false,
   onInteractionChange,
+  onZoomChange,
   testID,
 }: ZoomableCanvasProps, ref) {
   const scale = useSharedValue(1);
@@ -81,6 +85,9 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   // gesture worklets exclusively through runOnJS with primitive arguments.
   const setInteraction = (active: boolean) => {
     onInteractionChange?.(active);
+  };
+  const emitZoom = (s: number) => {
+    onZoomChange?.(s);
   };
 
   const emitTap = (x: number, y: number, scaleValue: number, tx: number, ty: number) => {
@@ -121,6 +128,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       translateX.value = withTiming(wClampTranslation(translateX.value, width, nextScale), { duration: 140 });
       translateY.value = withTiming(wClampTranslation(translateY.value, height, nextScale), { duration: 140 });
       runOnJS(setInteraction)(false);
+      runOnJS(emitZoom)(nextScale);
     });
 
   const pan = Gesture.Pan()
@@ -181,6 +189,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       scale.value = withTiming(nextScale, { duration: 220 });
       translateX.value = withTiming(nextX, { duration: 220 });
       translateY.value = withTiming(nextY, { duration: 220 });
+      runOnJS(emitZoom)(nextScale);
     });
 
   const singleTap = Gesture.Tap()
@@ -253,11 +262,13 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       scale.value = withTiming(next, { duration: 160 });
       translateX.value = withTiming(wClampTranslation(translateX.value, width, next), { duration: 160 });
       translateY.value = withTiming(wClampTranslation(translateY.value, height, next), { duration: 160 });
+      emitZoom(next);
     },
     reset: () => {
       scale.value = withTiming(1, { duration: 180 });
       translateX.value = withTiming(0, { duration: 180 });
       translateY.value = withTiming(0, { duration: 180 });
+      emitZoom(1);
     },
     zoomToRegion: (region) => {
       const w = Math.max(0.05, region.w || 1);
@@ -273,6 +284,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       scale.value = withTiming(next, { duration: 200 });
       translateX.value = withTiming(wClampTranslation(tx, width, next), { duration: 200 });
       translateY.value = withTiming(wClampTranslation(ty, height, next), { duration: 200 });
+      emitZoom(next);
     },
   }), [width, height, maxScale, scale, translateX, translateY]);
 

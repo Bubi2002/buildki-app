@@ -64,6 +64,10 @@ export default function RaumbuchRoomScreen() {
   // or a single crop edge).
   const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "crop-move" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number }; origin?: { x: number; y: number } } | null>(null);
   const canvasRef = useRef<ZoomableCanvasHandle | null>(null);
+  // Current zoom of the plan canvas, so overlay handles/lines can be drawn at a
+  // CONSTANT screen size (counter-scaled by 1/zoom) instead of blowing up when
+  // the user zooms in.
+  const [canvasScale, setCanvasScale] = useState(1);
   // True once the user picked "Ganzer Plan" → don't re-seed the default crop.
   const clearedCropRef = useRef(false);
 
@@ -74,6 +78,7 @@ export default function RaumbuchRoomScreen() {
   // zoom when the step/plan changes so we always start fitted.
   useEffect(() => {
     if (planBox.w <= 0) return;
+    setCanvasScale(1);
     const id = setTimeout(() => canvasRef.current?.reset(), 60);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -543,6 +548,10 @@ export default function RaumbuchRoomScreen() {
                   const imgStyle = useCrop
                     ? { position: "absolute" as const, width: pw / cw, height: ph / ch, left: -cxN * (pw / cw), top: -cyN * (ph / ch) }
                     : { width: "100%" as const, height: "100%" as const };
+                  // The whole SVG overlay is scaled by the pinch zoom, so divide
+                  // every handle/line size by the zoom to keep it a CONSTANT size
+                  // on screen (no more giant dots when zoomed in).
+                  const hs = 1 / Math.max(1, canvasScale);
                   return (
                     <View style={{ width: pw, height: ph, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFFFFF" }}>
                       <ZoomableCanvas
@@ -552,6 +561,7 @@ export default function RaumbuchRoomScreen() {
                         maxScale={6}
                         onSingleTap={onPlanTap}
                         onPinDrag={onPlanDrag}
+                        onZoomChange={setCanvasScale}
                         dragImmediate={planMode !== "marker" && planMode !== "view"}
                       >
                         <View style={{ width: pw, height: ph }}>
@@ -559,19 +569,16 @@ export default function RaumbuchRoomScreen() {
                           <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={pw} height={ph}>
                             {tempCrop && planStep !== 3 && (
                               <SvgG>
-                                <SvgRect x={tempCrop.x * pw} y={tempCrop.y * ph} width={tempCrop.w * pw} height={tempCrop.h * ph} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2} strokeDasharray="6,5" />
+                                <SvgRect x={tempCrop.x * pw} y={tempCrop.y * ph} width={tempCrop.w * pw} height={tempCrop.h * ph} fill="rgba(37,99,235,0.10)" stroke={WALL_COLOR} strokeWidth={2 * hs} strokeDasharray={`${6 * hs},${5 * hs}`} />
                                 {planMode === "crop" && (
                                   <SvgG>
-                                    {/* Corner handles (resize two sides). Kept small
-                                        on purpose — the touch target (hit radius) is
-                                        much larger than the dot, so they stay easy to
-                                        grab without covering the plan. */}
+                                    {/* Corner + edge handles, counter-scaled (×hs) so they
+                                        stay a constant size on screen at any zoom. */}
                                     {([[tempCrop.x, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y], [tempCrop.x, tempCrop.y + tempCrop.h], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h]] as const).map(([cx, cy], i) => (
-                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={6.5} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5} />
+                                      <SvgCircle key={`c${i}`} cx={cx * pw} cy={cy * ph} r={6.5 * hs} fill="#ffffff" stroke={WALL_COLOR} strokeWidth={2.5 * hs} />
                                     ))}
-                                    {/* Edge handles (move one side). */}
                                     {([[tempCrop.x + tempCrop.w / 2, tempCrop.y], [tempCrop.x + tempCrop.w, tempCrop.y + tempCrop.h / 2], [tempCrop.x + tempCrop.w / 2, tempCrop.y + tempCrop.h], [tempCrop.x, tempCrop.y + tempCrop.h / 2]] as const).map(([cx, cy], i) => (
-                                      <SvgRect key={`e${i}`} x={cx * pw - 5.5} y={cy * ph - 5.5} width={11} height={11} rx={3} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2} />
+                                      <SvgRect key={`e${i}`} x={cx * pw - 5.5 * hs} y={cy * ph - 5.5 * hs} width={11 * hs} height={11 * hs} rx={3 * hs} fill={WALL_COLOR} stroke="#ffffff" strokeWidth={2 * hs} />
                                     ))}
                                   </SvgG>
                                 )}
@@ -586,14 +593,14 @@ export default function RaumbuchRoomScreen() {
                               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
                               return (
                                 <SvgG key={k}>
-                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={active ? 4.5 : 3.5} strokeLinecap="round" />
+                                  <SvgLine x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth={(active ? 4.5 : 3.5) * hs} strokeLinecap="round" />
                                   {active && (
                                     <SvgG>
-                                      <SvgCircle cx={x1} cy={y1} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
-                                      <SvgCircle cx={x2} cy={y2} r={7} fill="#ffffff" stroke={col} strokeWidth={2.5} />
+                                      <SvgCircle cx={x1} cy={y1} r={7 * hs} fill="#ffffff" stroke={col} strokeWidth={2.5 * hs} />
+                                      <SvgCircle cx={x2} cy={y2} r={7 * hs} fill="#ffffff" stroke={col} strokeWidth={2.5 * hs} />
                                     </SvgG>
                                   )}
-                                  <SvgText x={mx} y={my - 9} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.7} fontSize={12} fontWeight="bold" textAnchor="middle">{k}</SvgText>
+                                  <SvgText x={mx} y={my - 9 * hs} fill="#FFFFFF" stroke="#0f1b2b" strokeWidth={0.7 * hs} fontSize={12 * hs} fontWeight="bold" textAnchor="middle">{k}</SvgText>
                                 </SvgG>
                               );
                             })}
