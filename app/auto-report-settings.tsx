@@ -208,40 +208,9 @@ export default function AutoReportSettingsScreen() {
               </View>
             </View>
 
-            {/* Auto-Send Options */}
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.muted }]}>{t('automatischer_versand')}</Text>
-              
-              <View style={styles.toggleRow}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('per_email_senden')}</Text>
-                <Switch
-                  value={settings.autoSendEmail}
-                  onValueChange={(v) => setSettings({ ...settings, autoSendEmail: v })}
-                  trackColor={{ true: colors.primary }}
-                />
-              </View>
-
-              {settings.autoSendEmail && (
-                <TextInput
-                  style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-                  placeholder={t('emailadresse')}
-                  placeholderTextColor={colors.muted}
-                  value={settings.emailRecipient}
-                  onChangeText={(t) => setSettings({ ...settings, emailRecipient: t })}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              )}
-
-              <View style={[styles.toggleRow, { marginTop: 8 }]}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>{t('in_dropbox_hochladen')}</Text>
-                <Switch
-                  value={settings.autoUploadDropbox}
-                  onValueChange={(v) => setSettings({ ...settings, autoUploadDropbox: v })}
-                  trackColor={{ true: colors.primary }}
-                />
-              </View>
-            </View>
+            {/* "Automatischer Versand" (E-Mail/Dropbox) entfernt: Ein
+                Hintergrund-Versand ist ohne Server nicht möglich. Der Bericht
+                wird beim Öffnen erstellt und immer selbst geteilt/verschickt. */}
 
             {/* Last Run Info */}
             {lastRun && (
