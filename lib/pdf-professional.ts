@@ -290,10 +290,14 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
 <head>
   <meta charset="utf-8">
   <style>
+    /* Horizontal spacing comes from the inner .sheet padding, NOT from @page
+       side margins (iOS expo-print does not reliably honor horizontal @page
+       margins, so content ended up stuck to the left edge). @page keeps only
+       the vertical margins; the footer margin-boxes get their own side padding. */
     @page {
-      margin: 18mm 16mm 20mm 16mm;
-      @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; }
-      @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; }
+      margin: 18mm 0 18mm 0;
+      @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding-left: 16mm; }
+      @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding-right: 16mm; }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -302,6 +306,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       line-height: 1.55;
       color: #1f2937;
     }
+    .sheet { padding: 0 16mm; }
     .topbar {
       display: flex; justify-content: space-between; align-items: center;
       padding: 6px 0 16px; border-bottom: 1px solid #E6EBF1;
@@ -383,6 +388,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
 <body>
   ${watermark ? `<div class="watermark">${esc(watermark)}</div>` : ""}
 
+  <div class="sheet">
   <div class="topbar">
     <div class="brand">
       ${logoHtml || `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`}
@@ -407,6 +413,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     <img src="${options.qrCodeBase64}" style="width:96px;height:96px;" />
     <p style="font-size:9px;color:#64748b;margin-top:6px;">${esc(options.qrCodeLabel || "QR-Code scannen f\u00fcr digitale Version")}</p>
   </div>` : ""}
+  </div>
 </body>
 </html>`;
 }
