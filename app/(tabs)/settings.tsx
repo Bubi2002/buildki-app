@@ -1450,15 +1450,13 @@ return (
             ? t(
                 (cat === "unternehmen"
                   ? "cat_company_title"
-                  : cat === "berichte"
-                    ? "cat_reports_title"
-                    : cat === "versand"
-                      ? "cat_dispatch_title"
-                      : cat === "benachrichtigungen"
-                        ? "cat_notif_title"
-                        : cat === "konto"
-                          ? "cat_account_title"
-                          : "cat_app_title") as any,
+                  : cat === "versand"
+                    ? "cat_dispatch_title"
+                    : cat === "benachrichtigungen"
+                      ? "cat_notif_title"
+                      : cat === "konto"
+                        ? "cat_account_title"
+                        : "cat_app_title") as any,
               )
             : t('settings_screen_title' as any)}
         </Text>
@@ -1473,7 +1471,6 @@ return (
           <View style={{ gap: 10 }}>
             {([
               { k: "unternehmen", icon: "business", title: t('cat_company_title' as any), sub: t('cat_company_sub' as any) },
-              { k: "berichte", icon: "description", title: t('cat_reports_title' as any), sub: t('cat_reports_sub' as any) },
               { k: "versand", icon: "send", title: t('cat_dispatch_title' as any), sub: t('cat_dispatch_sub' as any) },
               { k: "benachrichtigungen", icon: "notifications", title: t('cat_notif_title' as any), sub: t('cat_notif_sub' as any) },
               { k: "konto", icon: "cloud", title: t('cat_account_title' as any), sub: t('cat_account_sub' as any) },
@@ -1887,29 +1884,11 @@ return (
         </View>
 
         </>)}
-        {/* PDF-Branding */}
-        {inCat("berichte") && (<>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('pdfbranding')}</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('pdf_design_desc' as any)}</Text>
-          <Pressable
-            onPress={() => router.push("/pdf-branding" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="palette" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pdflayout_anpassen')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('pdf_design_subtitle' as any)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          {/* Export-Verlauf und "Versand & Automatisierung" hier entfernt:
-              Versand lebt in der Kategorie "Versand & Kontakte". */}
-        </View>
-
-        </>)}
-        {/* Wasserzeichen / Firmenstempel */}
-        {inCat("berichte") && (<>
+        {/* "Berichte & PDF" entfernt: die PDF-Darstellung (Firmenfarbe, Logo)
+            liegt bereits in "Unternehmen & Profil" → Darstellung. Nur das
+            Wasserzeichen ist hierher (zu Unternehmen & Profil) umgezogen. */}
+        {/* Wasserzeichen / Firmenstempel — jetzt in Unternehmen & Profil */}
+        {inCat("unternehmen") && (<>
         <WatermarkSection colors={colors} />
 
         {/* App language is chosen via the dedicated Sprache/Language screen

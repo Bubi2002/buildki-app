@@ -27,7 +27,6 @@ export default function MehrScreen() {
       titleKey: "mehr_sec_admin",
       items: [
         { labelKey: "cat_company_title", icon: "business", route: "/settings?section=unternehmen" },
-        { labelKey: "cat_reports_title", icon: "description", route: "/settings?section=berichte" },
         { labelKey: "cat_dispatch_title", icon: "send", route: "/settings?section=versand" },
         { labelKey: "cat_notif_title", icon: "notifications", route: "/settings?section=benachrichtigungen" },
         { labelKey: "cat_account_title", icon: "cloud", route: "/settings?section=konto" },
