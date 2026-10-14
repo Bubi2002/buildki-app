@@ -38,8 +38,11 @@ type ZoomableCanvasProps = {
   maxScale?: number;
   onSingleTap?: (point: Point) => void;
   onLongPress?: (point: Point) => void;
-  /** Long-press then drag: grab something at the point and move it live. */
-  onPinDrag?: (phase: "start" | "move" | "end", point: Point, scale?: number) => void;
+  /** Long-press then drag: grab something at the point and move it live.
+   *  `raw` is the untransformed stage-pixel position of the finger (0..width /
+   *  0..height), which the parent needs to hit-test a viewport-fixed overlay
+   *  (e.g. the Apple-style crop frame) that is NOT inside the zoom transform. */
+  onPinDrag?: (phase: "start" | "move" | "end", point: Point, scale?: number, raw?: Point) => void;
   /**
    * When true, a plain one-finger drag (no long press) moves the pin and takes
    * priority over canvas panning. Used for an explicit "move mode" where the
@@ -59,6 +62,12 @@ export type ZoomableCanvasHandle = {
   zoomBy: (factor: number) => void;
   reset: () => void;
   zoomToRegion: (region: { x: number; y: number; w: number; h: number }) => void;
+  /** Pan the content by a stage-pixel delta (used by the Apple-style crop to
+   *  move the image under a fixed frame). Clamped so the image never leaves view. */
+  panByPx: (dx: number, dy: number) => void;
+  /** Current live transform, for inverse-mapping a fixed overlay rect back to
+   *  normalized content coordinates. */
+  getTransform: () => { scale: number; tx: number; ty: number };
 };
 
 export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasProps>(function ZoomableCanvas({
@@ -105,7 +114,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   const emitPinDrag = (phase: "start" | "move" | "end", x: number, y: number, scaleValue: number, tx: number, ty: number) => {
     if (!onPinDrag) return;
     const point = screenPointToNormalized({ x, y }, { width, height }, scaleValue, { x: tx, y: ty });
-    onPinDrag(phase, point, scaleValue);
+    onPinDrag(phase, point, scaleValue, { x, y });
   };
 
   const pinch = Gesture.Pinch()
@@ -286,6 +295,12 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
       translateY.value = withTiming(wClampTranslation(ty, height, next), { duration: 200 });
       emitZoom(next);
     },
+    panByPx: (dx: number, dy: number) => {
+      const s = scale.value;
+      translateX.value = wClampTranslation(translateX.value + dx, width, s);
+      translateY.value = wClampTranslation(translateY.value + dy, height, s);
+    },
+    getTransform: () => ({ scale: scale.value, tx: translateX.value, ty: translateY.value }),
   }), [width, height, maxScale, scale, translateX, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
