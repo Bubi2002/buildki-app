@@ -14,6 +14,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
+import { pickImagesWithSource } from "@/lib/import-picker";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -1193,51 +1194,49 @@ export default function SettingsScreen() {
 
   const pickLogo = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [3, 1],
-        quality: 0.8,
-      });
+      // Source chooser: Fotos / Dateien (die Dateien-App zeigt auch Dropbox,
+      // iCloud, Drive …) – wie beim Foto-Import an anderer Stelle.
+      const picked = await pickImagesWithSource({ t, multiple: false });
+      if (!picked || picked.length === 0) return;
+      const uri = picked[0].uri;
 
-      if (!result.canceled && result.assets[0]) {
-        const uri = result.assets[0].uri;
-
-        // Normalize orientation using ImageManipulator (fixes rotated/skewed logos from iOS)
-        let normalizedUri = uri;
-        try {
-          if (Platform.OS !== "web") {
-            const manipResult = await ImageManipulator.manipulateAsync(
-              uri,
-              [], // no transforms needed - manipulateAsync auto-applies EXIF orientation
-              { compress: 0.9, format: ImageManipulator.SaveFormat.PNG }
+      // Normalize orientation + measure. Then downscale the long edge so the
+      // logo never bloats the PDF, and warn if the original was very large.
+      const MAX_EDGE = 600;
+      let outUri = uri;
+      let tooBig = false;
+      try {
+        if (Platform.OS !== "web") {
+          let work = await ImageManipulator.manipulateAsync(uri, [], { compress: 0.9, format: ImageManipulator.SaveFormat.PNG });
+          const w0 = work.width || 0, h0 = work.height || 0;
+          tooBig = w0 > 1600 || h0 > 1600;
+          if (w0 > MAX_EDGE || h0 > MAX_EDGE) {
+            work = await ImageManipulator.manipulateAsync(
+              work.uri,
+              [w0 >= h0 ? { resize: { width: MAX_EDGE } } : { resize: { height: MAX_EDGE } }],
+              { compress: 0.9, format: ImageManipulator.SaveFormat.PNG },
             );
-            normalizedUri = manipResult.uri;
           }
-        } catch (e) {
-          console.warn("Logo orientation normalization failed, using original:", e);
+          outUri = work.uri;
         }
-
-        // Convert to base64 for PDF embedding
-        const base64 = await FileSystem.readAsStringAsync(normalizedUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        // Save logo to persistent directory
-        const logoDir = `${FileSystem.documentDirectory}branding/`;
-        const dirInfo = await FileSystem.getInfoAsync(logoDir);
-        if (!dirInfo.exists) {
-          await FileSystem.makeDirectoryAsync(logoDir, { intermediates: true });
-        }
-        const logoPath = `${logoDir}logo.png`;
-        await FileSystem.copyAsync({ from: normalizedUri, to: logoPath });
-
-        // Always use PNG mime since we normalized to PNG format
-        const mime = "image/png";
-
-        updateCompany("logoBase64", `data:${mime};base64,${base64}`);
-        updateCompany("logoUri", logoPath);
+      } catch (e) {
+        console.warn("Logo normalize/resize failed, using original:", e);
       }
+
+      if (tooBig) {
+        Alert.alert(t('logo_too_big_title' as any), t('logo_too_big_msg' as any));
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(outUri, { encoding: FileSystem.EncodingType.Base64 });
+      const logoDir = `${FileSystem.documentDirectory}branding/`;
+      const dirInfo = await FileSystem.getInfoAsync(logoDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(logoDir, { intermediates: true });
+      }
+      const logoPath = `${logoDir}logo.png`;
+      await FileSystem.copyAsync({ from: outUri, to: logoPath });
+      updateCompany("logoBase64", `data:image/png;base64,${base64}`);
+      updateCompany("logoUri", logoPath);
     } catch (error) {
       console.error("Logo picker error:", error);
       Alert.alert(t('alert_fehler'), t('msg_logo_konnte_nicht_geladen_werden'));
@@ -1515,8 +1514,12 @@ return (
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: "800", color: colors.foreground }}>
                     {company.companyName}
-                    {company.legalForm ? " " + company.legalForm : ""}
                   </Text>
+                  {!!company.legalForm && (
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginTop: 1 }}>
+                      {company.legalForm}
+                    </Text>
+                  )}
                   {!!company.contactPerson && (
                     <Text style={{ fontSize: 13, color: colors.foreground, marginTop: 1 }}>
                       {company.contactPerson}
