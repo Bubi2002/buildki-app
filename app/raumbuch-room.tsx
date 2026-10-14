@@ -38,7 +38,8 @@ const DEFAULT_CROP = { x: 0.14, y: 0.14, w: 0.72, h: 0.72 };
 // the plan pans/zooms underneath it. Stored as a fraction of the plan box.
 const DEFAULT_FRAME = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
 const FRAME_MIN_PX = 64; // smallest the frame can be dragged to
-const FRAME_GRAB_PX = 30; // touch radius to grab a corner/edge handle
+const FRAME_CORNER_PX = 38; // touch radius to grab a corner
+const FRAME_EDGE_PX = 26; // touch distance to grab an edge anywhere along its line
 
 export default function RaumbuchRoomScreen() {
   const { t } = useTranslation();
@@ -230,22 +231,31 @@ export default function RaumbuchRoomScreen() {
       const px = rawPx.x, py = rawPx.y;
       if (phase === "start") {
         const fx = cropFrame.x * pw, fy = cropFrame.y * ph, fw = cropFrame.w * pw, fh = cropFrame.h * ph;
+        // Corners win first (grab anywhere near the corner point); otherwise grab
+        // an EDGE anywhere along its line (not just the midpoint), so pulling a
+        // side in/out works no matter where on the line you touch.
+        let best: { kind: "corner" | "edge"; id: string } | null = null;
+        let bestD = FRAME_CORNER_PX;
         const corners = [
           { id: "tl" as const, x: fx, y: fy },
           { id: "tr" as const, x: fx + fw, y: fy },
           { id: "bl" as const, x: fx, y: fy + fh },
           { id: "br" as const, x: fx + fw, y: fy + fh },
         ];
-        const edges = [
-          { id: "top" as const, x: fx + fw / 2, y: fy },
-          { id: "bottom" as const, x: fx + fw / 2, y: fy + fh },
-          { id: "left" as const, x: fx, y: fy + fh / 2 },
-          { id: "right" as const, x: fx + fw, y: fy + fh / 2 },
-        ];
-        let best: { kind: "corner" | "edge"; id: string } | null = null;
-        let bestD = FRAME_GRAB_PX;
         for (const c of corners) { const d = Math.hypot(px - c.x, py - c.y); if (d < bestD) { bestD = d; best = { kind: "corner", id: c.id }; } }
-        for (const e of edges) { const d = Math.hypot(px - e.x, py - e.y); if (d < bestD) { bestD = d; best = { kind: "edge", id: e.id }; } }
+        if (!best) {
+          // Perpendicular distance to each side, but only within that side's span
+          // (+ a little slack so the ends are reachable).
+          const m = FRAME_EDGE_PX;
+          const inX = px >= fx - m && px <= fx + fw + m;
+          const inY = py >= fy - m && py <= fy + fh + m;
+          let eBest: string | null = null, eBestD = FRAME_EDGE_PX;
+          if (inX) { const d = Math.abs(py - fy); if (d < eBestD) { eBestD = d; eBest = "top"; } }
+          if (inX) { const d = Math.abs(py - (fy + fh)); if (d < eBestD) { eBestD = d; eBest = "bottom"; } }
+          if (inY) { const d = Math.abs(px - fx); if (d < eBestD) { eBestD = d; eBest = "left"; } }
+          if (inY) { const d = Math.abs(px - (fx + fw)); if (d < eBestD) { eBestD = d; eBest = "right"; } }
+          if (eBest) best = { kind: "edge", id: eBest };
+        }
         if (best) {
           frameDragRef.current = best.kind === "corner"
             ? { mode: "corner", corner: best.id as any, startFrame: { ...cropFrame } }
