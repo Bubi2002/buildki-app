@@ -118,8 +118,14 @@ export function extractDefectFromText(text: string): ExtractedDefect {
     else if (!out[h.field]) (out as any)[h.field] = val;
   }
 
-  // Derive a title if only a description was spoken (or nothing was labelled).
-  if (!out.title && out.description) out.title = shortTitle(out.description);
-  if (!out.title && !out.description) { out.title = shortTitle(src); out.description = src; }
+  // The text spoken BEFORE the first field label is the task itself — use it as
+  // title/description instead of dumping the whole transcript (incl. the labelled
+  // parts) into the title.
+  const lead = tidy(hits.length ? src.slice(0, hits[0].start) : src);
+  if (!out.title) {
+    if (out.description) out.title = shortTitle(out.description);
+    else if (lead) { out.title = shortTitle(lead); if (!out.description) out.description = lead; }
+    else out.title = shortTitle(src);
+  }
   return out;
 }
