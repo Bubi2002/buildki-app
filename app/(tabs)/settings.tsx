@@ -34,6 +34,9 @@ import { isSyncEnabled, setSyncEnabled, getLocalProtocols, markProtocolSynced, e
 import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import { PrivacyChoicesSection } from "@/components/privacy-choices-section";
+import { SignaturePad } from "@/components/signature-pad";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SvgXml } from "react-native-svg";
 import { getConsentRequiredMessage, isConsentGiven } from "@/lib/privacy-consent";
 import {
   loadCustomProtocolTemplates,
@@ -1295,6 +1298,39 @@ export default function SettingsScreen() {
     updateCompany("signatureUri", "");
   };
 
+  // Drawn signature: SignaturePad gives SVG path strings → build a self-contained
+  // SVG (cropped to the strokes) and store it as a data-URI in signatureBase64,
+  // so it is used in the PDFs just like an uploaded image.
+  const [showSigPad, setShowSigPad] = useState(false);
+  const buildSignatureSvg = (paths: string[]): string | null => {
+    if (!paths.length) return null;
+    const nums = (paths.join(" ").match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+    const xs: number[] = [], ys: number[] = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) { xs.push(nums[i]); ys.push(nums[i + 1]); }
+    let vbX = 0, vbY = 0, vbW = 300, vbH = 120;
+    if (xs.length && ys.length) {
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const pad = 10;
+      vbX = minX - pad; vbY = minY - pad;
+      vbW = Math.max(1, (maxX - minX) + pad * 2); vbH = Math.max(1, (maxY - minY) + pad * 2);
+    }
+    const strokeW = Math.max(2, (vbW / 300) * 2.5).toFixed(1);
+    const pathEls = paths.map((d) => `<path d="${d}" stroke="#1a1a1a" stroke-width="${strokeW}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(vbW)}" height="${Math.round(vbH)}" viewBox="${vbX} ${vbY} ${vbW} ${vbH}">${pathEls}</svg>`;
+  };
+  const saveDrawnSignature = (paths: string[]) => {
+    const svg = buildSignatureSvg(paths);
+    setShowSigPad(false);
+    if (!svg) return;
+    updateCompany("signatureBase64", `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
+    updateCompany("signatureUri", "");
+  };
+  // For the in-app preview: an SVG data-URI must be rendered via SvgXml (expo-image
+  // does not render SVG); uploaded PNGs keep using <Image>.
+  const sigValue = company.signatureBase64 || "";
+  const sigIsSvg = sigValue.startsWith("data:image/svg+xml");
+  const sigSvgXml = sigIsSvg ? decodeURIComponent(sigValue.replace(/^data:image\/svg\+xml;utf8,/, "")) : null;
+
   // Small inline-validation helpers for the profile mask.
   const emailValid = !company.companyEmail || EMAIL_RE.test(company.companyEmail.trim());
 
@@ -1700,14 +1736,27 @@ return (
             </View>
             {company.signatureBase64 ? (
               <View style={styles.logoPreviewContainer}>
-                <Image source={{ uri: company.signatureBase64 }} style={styles.logoPreview} contentFit="contain" />
+                {sigIsSvg && sigSvgXml ? (
+                  <View style={[styles.logoPreview, { backgroundColor: "#FFFFFF", borderRadius: 6, overflow: "hidden" }]}>
+                    <SvgXml xml={sigSvgXml} width="100%" height="100%" />
+                  </View>
+                ) : (
+                  <Image source={{ uri: company.signatureBase64 }} style={styles.logoPreview} contentFit="contain" />
+                )}
                 <View style={styles.logoActions}>
+                  <Pressable
+                    onPress={() => setShowSigPad(true)}
+                    style={({ pressed }) => [styles.logoActionButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="gesture" size={16} color={colors.primary} />
+                    <Text style={[styles.logoActionText, { color: colors.primary }]}>{t('company_signature_draw' as any)}</Text>
+                  </Pressable>
                   <Pressable
                     onPress={pickSignature}
                     style={({ pressed }) => [styles.logoActionButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <MaterialIcons name="edit" size={16} color={colors.primary} />
-                    <Text style={[styles.logoActionText, { color: colors.primary }]}>{t('aendern')}</Text>
+                    <MaterialIcons name="image" size={16} color={colors.primary} />
+                    <Text style={[styles.logoActionText, { color: colors.primary }]}>{t('company_signature_upload' as any)}</Text>
                   </Pressable>
                   <Pressable
                     onPress={removeSignature}
@@ -1719,13 +1768,22 @@ return (
                 </View>
               </View>
             ) : (
-              <Pressable
-                onPress={pickSignature}
-                style={({ pressed }) => [styles.logoUploadButton, { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="add-photo-alternate" size={28} color={colors.muted} />
-                <Text style={[styles.logoUploadHint, { color: colors.muted }]}>{t('company_signature_hint' as any)}</Text>
-              </Pressable>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={() => setShowSigPad(true)}
+                  style={({ pressed }) => [styles.logoUploadButton, { flex: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="gesture" size={28} color={colors.primary} />
+                  <Text style={[styles.logoUploadHint, { color: colors.foreground }]}>{t('company_signature_draw' as any)}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={pickSignature}
+                  style={({ pressed }) => [styles.logoUploadButton, { flex: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="add-photo-alternate" size={28} color={colors.muted} />
+                  <Text style={[styles.logoUploadHint, { color: colors.muted }]}>{t('company_signature_upload' as any)}</Text>
+                </Pressable>
+              </View>
             )}
           </View>
         </View>
@@ -2266,6 +2324,15 @@ return (
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Unterschrift zeichnen */}
+      <Modal visible={showSigPad} transparent animationType="fade" onRequestClose={() => setShowSigPad(false)}>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", paddingHorizontal: 16 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 14, overflow: "hidden" }}>
+            <SignaturePad onSave={saveDrawnSignature} onCancel={() => setShowSigPad(false)} />
+          </View>
+        </GestureHandlerRootView>
       </Modal>
     </ScreenContainer>
   );
