@@ -136,9 +136,12 @@ export default function PhotoAnnotateScreen() {
   // arrow/measure line, or the whole element.
   const [dragPart, setDragPart] = useState<"start" | "end" | "whole">("whole");
 
-  // Calculate image dimensions to fit screen
-  const imageWidth = SCREEN_WIDTH;
-  const imageHeight = SCREEN_HEIGHT - 180;
+  // Size the image to the ACTUAL available canvas area (measured below), so it
+  // never overflows up under the header / Save button or down under the toolbar.
+  // The constant is only a first-frame fallback until onLayout measures it.
+  const [canvasLayout, setCanvasLayout] = useState({ w: SCREEN_WIDTH, h: SCREEN_HEIGHT - 180 });
+  const imageWidth = canvasLayout.w;
+  const imageHeight = canvasLayout.h;
 
   // Last position the user touched on the image – used to drop template labels
   // exactly where the finger was set instead of always in the center.
@@ -654,7 +657,17 @@ export default function PhotoAnnotateScreen() {
         </View>
 
         {/* Canvas area */}
-        <View ref={canvasRef} style={styles.canvasContainer} collapsable={false}>
+        <View
+          ref={canvasRef}
+          style={styles.canvasContainer}
+          collapsable={false}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (width > 0 && height > 0 && (Math.abs(width - canvasLayout.w) > 1 || Math.abs(height - canvasLayout.h) > 1)) {
+              setCanvasLayout({ w: width, h: height });
+            }
+          }}
+        >
           <View style={{ transform: [{ scale }, { translateX }, { translateY }], width: imageWidth, height: imageHeight }}>
             <Image
               source={{ uri: photoUri }}
@@ -970,6 +983,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
   svgOverlay: {
     position: "absolute",
