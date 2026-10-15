@@ -77,6 +77,7 @@ export default function RaumbuchRoomScreen() {
   // Live gesture state for the frame: resize a corner/edge, or pan the image.
   const frameDragRef = useRef<
     | { mode: "pan"; last: { x: number; y: number } }
+    | { mode: "moveframe"; startFrame: { x: number; y: number; w: number; h: number }; startPx: { x: number; y: number } }
     | { mode: "corner"; corner: "tl" | "tr" | "bl" | "br"; startFrame: { x: number; y: number; w: number; h: number } }
     | { mode: "edge"; edge: "top" | "right" | "bottom" | "left"; startFrame: { x: number; y: number; w: number; h: number } }
     | null
@@ -287,8 +288,11 @@ export default function RaumbuchRoomScreen() {
           frameDragRef.current = best.kind === "corner"
             ? { mode: "corner", corner: best.id as any, startFrame: { ...cropFrame } }
             : { mode: "edge", edge: best.id as any, startFrame: { ...cropFrame } };
+        } else if (px >= fx && px <= fx + fw && py >= fy && py <= fy + fh) {
+          // Inside the frame (not on a handle) → move the WHOLE frame.
+          frameDragRef.current = { mode: "moveframe", startFrame: { ...cropFrame }, startPx: { x: px, y: py } };
         } else {
-          // Not on a handle → pan the plan under the frame (one-finger drag).
+          // Outside the frame (dim area) → pan the plan underneath.
           frameDragRef.current = { mode: "pan", last: { x: px, y: py } };
         }
       } else if (phase === "move") {
@@ -296,6 +300,13 @@ export default function RaumbuchRoomScreen() {
         if (d.mode === "pan") {
           canvasRef.current?.panByPx(px - d.last.x, py - d.last.y);
           d.last = { x: px, y: py };
+          return;
+        }
+        if (d.mode === "moveframe") {
+          const dxF = (px - d.startPx.x) / pw, dyF = (py - d.startPx.y) / ph;
+          const nx = Math.min(Math.max(0, d.startFrame.x + dxF), 1 - d.startFrame.w);
+          const ny = Math.min(Math.max(0, d.startFrame.y + dyF), 1 - d.startFrame.h);
+          setCropFrame({ x: nx, y: ny, w: d.startFrame.w, h: d.startFrame.h });
           return;
         }
         // Resize: edges move in stage px, the opposite side stays anchored.
