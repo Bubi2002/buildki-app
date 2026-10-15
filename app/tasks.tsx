@@ -74,6 +74,9 @@ export default function TasksScreen() {
   const [allTodos, setAllTodos] = useState<ProtocolTodo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("open");
+  // Tasks just tapped stay visible (don't vanish from the current filter) until
+  // the list is reloaded — so a completed task shows its green check in place.
+  const [stickyKeys, setStickyKeys] = useState<Set<string>>(new Set());
   const [csvEnabled, setCsvEnabled] = useState(true);
   const [exportDetails, setExportDetails] = useState<ExportDetails>(EMPTY_EXPORT_DETAILS);
   const { projectId, projectName } = useLocalSearchParams<{ projectId?: string; projectName?: string }>();
@@ -504,6 +507,7 @@ export default function TasksScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setStickyKeys(new Set()); // reload → erledigte Aufgaben sortieren wieder nach unten
       loadAllTodos();
       (async () => {
         const { isFeatureEnabled } = require("@/lib/feature-toggles");
@@ -511,86 +515,82 @@ export default function TasksScreen() {
       })();
     }, [])
   );
+  // Switching the filter tab / project resets the "stay visible" set.
+  useEffect(() => { setStickyKeys(new Set()); }, [filter, selectedProjectId]);
 
+  // Tapping cycles the status: offen → in Arbeit → erledigt → offen.
+  const STATUS_CYCLE: Record<"offen" | "in_arbeit" | "erledigt", "offen" | "in_arbeit" | "erledigt"> = {
+    offen: "in_arbeit", in_arbeit: "erledigt", erledigt: "offen",
+  };
   const toggleTodo = async (item: ProtocolTodo) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+    const cur: "offen" | "in_arbeit" | "erledigt" = item.status || (item.done ? "erledigt" : "offen");
+    const next = STATUS_CYCLE[cur];
+    const nextDone = next === "erledigt";
+    // Keep this task visible in the current filter until the list reloads.
+    setStickyKeys((prev) => new Set(prev).add(taskKey(item)));
 
-    // Mängel: Status im Defect-Store umschalten (offen ↔ erledigt)
+    // Mängel: Status im Defect-Store umschalten.
     if (item.source === "defect") {
       try {
         const { updateDefectStatus } = await import("@/lib/defect-store");
-        await updateDefectStatus(item.taskId!, item.done ? "offen" : "erledigt");
+        const defStatus = next === "erledigt" ? "erledigt" : next === "in_arbeit" ? "in_bearbeitung" : "offen";
+        await updateDefectStatus(item.taskId!, defStatus as any);
       } catch (error) {
         console.error("Error toggling defect:", error);
       }
       setAllTodos((prev) =>
-        prev.map((tt) => (tt.source === "defect" && tt.taskId === item.taskId ? { ...tt, done: !tt.done, status: !tt.done ? "erledigt" : "offen" } : tt))
+        prev.map((tt) => (tt.source === "defect" && tt.taskId === item.taskId ? { ...tt, done: nextDone, status: next } : tt))
       );
       return;
     }
 
-    // Eigenstaendige Projekt-Tasks im eigenen Speicher abhaken
+    // Eigenstaendige Projekt-Tasks im eigenen Speicher.
     if (item.source === "project-task") {
       try {
-        const tasks = JSON.parse(
-          (await AsyncStorage.getItem("project-tasks")) || "[]"
-        );
+        const tasks = JSON.parse((await AsyncStorage.getItem("project-tasks")) || "[]");
         const idx = tasks.findIndex((x: any) => x.id === item.taskId);
         if (idx !== -1) {
-          const nowDone = !item.done;
-          tasks[idx].status = nowDone ? "erledigt" : "offen";
-          tasks[idx].done = nowDone;
+          tasks[idx].status = next;
+          tasks[idx].done = nextDone;
           await AsyncStorage.setItem("project-tasks", JSON.stringify(tasks));
         }
       } catch (error) {
         console.error("Error toggling project task:", error);
       }
       setAllTodos((prev) =>
-        prev.map((t) =>
-          t.source === "project-task" && t.taskId === item.taskId
-            ? { ...t, done: !t.done }
-            : t
-        )
+        prev.map((t) => (t.source === "project-task" && t.taskId === item.taskId ? { ...t, done: nextDone, status: next } : t))
       );
       return;
     }
 
     try {
-      const protocols = JSON.parse(
-        (await AsyncStorage.getItem("protocols")) || "[]"
-      );
-      const protocolIdx = protocols.findIndex(
-        (p: any) => p.id === item.protocolId
-      );
+      const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+      const protocolIdx = protocols.findIndex((p: any) => p.id === item.protocolId);
       if (protocolIdx !== -1 && protocols[protocolIdx].todos) {
-        protocols[protocolIdx].todos[item.todoIndex].done = !item.done;
+        protocols[protocolIdx].todos[item.todoIndex].done = nextDone;
+        protocols[protocolIdx].todos[item.todoIndex].status = next;
         await AsyncStorage.setItem("protocols", JSON.stringify(protocols));
 
-        // Timeline event
+        // Timeline event when a task becomes done / is reopened.
         try {
           const projectId = protocols[protocolIdx].projectId || "default";
           await timelineEngine.emit({
             projectId,
-            eventType: !item.done ? "task_completed" : "task_updated",
+            eventType: nextDone ? "task_completed" : "task_updated",
             source: "user",
-            title: !item.done ? t('tasks_event_aufgabe_erledigt' as any) : t('tasks_event_aufgabe_geoeffnet' as any),
+            title: nextDone ? t('tasks_event_aufgabe_erledigt' as any) : t('tasks_event_aufgabe_geoeffnet' as any),
             description: item.task,
             entityId: item.protocolId,
             entityType: "task",
-            tags: ["task", !item.done ? "completed" : "reopened"],
+            tags: ["task", nextDone ? "completed" : "reopened"],
           });
         } catch {}
       }
-
-      // Update local state
       setAllTodos((prev) =>
-        prev.map((t) =>
-          t.protocolId === item.protocolId && t.todoIndex === item.todoIndex
-            ? { ...t, done: !t.done }
-            : t
-        )
+        prev.map((t) => (t.protocolId === item.protocolId && t.todoIndex === item.todoIndex ? { ...t, done: nextDone, status: next } : t))
       );
     } catch (error) {
       console.error("Error toggling todo:", error);
@@ -599,6 +599,8 @@ export default function TasksScreen() {
 
   const filteredTodos = allTodos.filter((tt) => {
     if (selectedProjectId && tt.projectId !== selectedProjectId) return false;
+    // Just-tapped tasks stay visible in the current filter until reload.
+    if (stickyKeys.has(taskKey(tt))) return true;
     if (filter === "open") return !tt.done && tt.status !== "in_arbeit";
     if (filter === "in_progress") return !tt.done && tt.status === "in_arbeit";
     if (filter === "done") return tt.done;
@@ -708,8 +710,8 @@ export default function TasksScreen() {
           style={[
             styles.checkbox,
             {
-              borderColor: item.done ? colors.primary : item.status === "in_arbeit" ? "#F59E0B" : colors.muted,
-              backgroundColor: item.done ? colors.primary : "transparent",
+              borderColor: item.done ? "#16A34A" : item.status === "in_arbeit" ? "#F59E0B" : colors.muted,
+              backgroundColor: item.done ? "#16A34A" : "transparent",
             },
           ]}
         >
@@ -915,7 +917,7 @@ export default function TasksScreen() {
 
       {/* Project selector */}
       {projects.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginVertical: 8 }} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: "center" }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, height: 46, marginTop: 8, marginBottom: 2 }} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: "center" }}>
           <Pressable
             onPress={() => setSelectedProjectId(null)}
             style={[styles.projChip, { backgroundColor: !selectedProjectId ? colors.primary + "20" : colors.surface, borderColor: !selectedProjectId ? colors.primary : colors.border }]}
