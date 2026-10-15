@@ -37,6 +37,44 @@ export function deriveProtocolTitle(markdown: string, transcription: string, tem
   return "Ohne erkannte Sprache";
 }
 
+// Split the transcript into its chapters using the chapter-marker TIMES and the
+// Whisper segment timestamps (both in seconds). Each segment is assigned to the
+// last chapter whose marker time is at/just before the segment start, so spoken
+// content lands under the room it was spoken in — instead of all defects ending
+// up in the first chapter (the AI can't align an untimed transcript otherwise).
+function buildChapteredTranscript(
+  fullText: string,
+  segments: { start: number; end: number; text: string }[] | undefined,
+  markers: { time: number; label: string }[] | undefined,
+): string {
+  const chapters = (markers || [])
+    .filter((m) => m.label.startsWith("KAPITEL:"))
+    .map((m) => ({ time: m.time, name: m.label.replace(/^KAPITEL:\s*/, "").trim(), texts: [] as string[] }))
+    .sort((a, b) => a.time - b.time);
+  // Only worth segmenting with 2+ chapters and real segment timestamps.
+  if (chapters.length < 2 || !segments || segments.length === 0) return fullText;
+  const preamble: string[] = [];
+  for (const seg of segments) {
+    let ci = -1;
+    for (let i = 0; i < chapters.length; i++) {
+      if (seg.start >= chapters[i].time - 1) ci = i; else break; // 1s tolerance
+    }
+    if (ci === -1) preamble.push(seg.text); else chapters[ci].texts.push(seg.text);
+  }
+  const clean = (s: string) => s.replace(/\s+/g, " ").trim();
+  // Safety: if the timing clearly didn't line up (everything landed in the first
+  // chapter / preamble and the rest is empty), fall back to the raw transcript.
+  const filled = chapters.filter((c) => c.texts.length > 0).length;
+  if (filled <= 1) return fullText;
+  let out = "";
+  const pre = clean(preamble.join(" "));
+  if (pre) out += `${pre}\n\n`;
+  for (const ch of chapters) {
+    out += `=== KAPITEL: ${ch.name} ===\n${clean(ch.texts.join(" ")) || "(hierzu wurde nichts gesprochen)"}\n\n`;
+  }
+  return out.trim();
+}
+
 // Picks the best-fitting template from the transcript when the user chose
 // "Automatisch" (templateId "auto"). Limited to the three core construction
 // templates so the output is always one of the few formats the user knows.
@@ -405,9 +443,12 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
     if (job.projectName?.trim()) contextLines.push(`Objekt/Bauvorhaben: ${job.projectName.trim()}`);
     if (localDate) contextLines.push(`Aufnahmedatum: ${localDate}`);
     if (localTime) contextLines.push(`Aufnahmeuhrzeit: ${localTime} Uhr (Ortszeit)`);
+    // Group the transcript by the spoken chapters (rooms), so each room's defects
+    // stay with that room instead of all landing in the first chapter.
+    const chapteredText = buildChapteredTranscript(transcription.text, transcriptionSegments, job.markers);
     const transcriptForGeneration = contextLines.length
-      ? `[Kontext zur Aufnahme – nutze diese Angaben für Kopfdaten wie Objekt, Datum und Uhrzeit; nicht als Zitat wiedergeben]\n${contextLines.join("\n")}\n\n[Transkript]\n${transcription.text}`
-      : transcription.text;
+      ? `[Kontext zur Aufnahme – nutze diese Angaben für Kopfdaten wie Objekt, Datum und Uhrzeit; nicht als Zitat wiedergeben]\n${contextLines.join("\n")}\n\n[Transkript]\n${chapteredText}`
+      : chapteredText;
 
     // "Automatisch": let the AI pick the fitting template from the transcript.
     let effectiveTemplateId = job.templateId;

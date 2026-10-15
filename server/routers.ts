@@ -146,7 +146,7 @@ export const appRouter = router({
               const chapterName = m.label.replace("KAPITEL: ", "");
               userMessage += `  [${timeCode}] Kapitel: ${chapterName}\n`;
             });
-            userMessage += "\nKRITISCH - PFLICHT: Jedes Kapitel MUSS als Markdown-Überschrift mit einem einzelnen # am Zeilenanfang geschrieben werden. Format: '# Kapitelname' (Raute, Leerzeichen, dann der exakte Kapitelname). Dies ist NICHT optional. Jedes genannte Kapitel MUSS als # Überschrift im Ergebnis vorkommen. Der Text nach jeder Kapitelüberschrift enthält die Inhalte, die ab diesem Zeitpunkt gesprochen wurden. Beginne das Protokoll mit dem ersten Kapitel.\n\n";
+            userMessage += "\nKRITISCH - PFLICHT: Jedes Kapitel MUSS als Markdown-Überschrift mit einem einzelnen # am Zeilenanfang geschrieben werden. Format: '# Kapitelname' (Raute, Leerzeichen, dann der exakte Kapitelname). Dies ist NICHT optional. Jedes genannte Kapitel MUSS als # Überschrift im Ergebnis vorkommen. Beginne das Protokoll mit dem ersten Kapitel.\nIm Transkript sind die Kapitelgrenzen zusätzlich mit eigenen Zeilen '=== KAPITEL: Name ===' markiert. Ordne JEDEN Mangel und JEDEN Inhalt GENAU dem Kapitel zu, unter dessen '=== KAPITEL: … ==='-Markierung er im Transkript steht – NICHT alles ins erste Kapitel. Verschiebe nichts zwischen Kapiteln, auch wenn ähnliche Themen in mehreren Räumen vorkommen.\n\n";
           }
 
           if (regularMarkers.length > 0) {
