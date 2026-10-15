@@ -14,7 +14,7 @@ import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import Svg, { Path, Line, Polygon, Rect, G, Text as SvgText } from "react-native-svg";
+import Svg, { Path, Line, Polygon, Rect, G, Text as SvgText, Circle } from "react-native-svg";
 import {
   GestureDetector,
   Gesture,
@@ -132,6 +132,9 @@ export default function PhotoAnnotateScreen() {
   const applyTranslate = (x: number, y: number) => { txRef.current = x; tyRef.current = y; setTranslateX(x); setTranslateY(y); };
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  // Which part of the grabbed element is being dragged: a single endpoint of an
+  // arrow/measure line, or the whole element.
+  const [dragPart, setDragPart] = useState<"start" | "end" | "whole">("whole");
 
   // Calculate image dimensions to fit screen
   const imageWidth = SCREEN_WIDTH;
@@ -275,29 +278,40 @@ export default function PhotoAnnotateScreen() {
     .maxPointers(1)
     .onStart((e) => {
       setLastTap({ x: e.x, y: e.y });
-      // Find the closest text element to the tap point
-      let closestIdx = -1;
-      let closestDist = 40; // max tap distance threshold
+      // Distance from a point to a line segment (for grabbing a whole line).
+      const distToSeg = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => {
+        const dx = bx - ax, dy = by - ay; const len2 = dx * dx + dy * dy;
+        let tt = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+        tt = Math.max(0, Math.min(1, tt));
+        return Math.hypot(px - (ax + tt * dx), py - (ay + tt * dy));
+      };
+      const END_R = 34; // grab an endpoint
+      let best: { idx: number; part: "start" | "end" | "whole"; dist: number } | null = null;
+      // Pass 1 — endpoints of arrows/measurements win first, so you can pull a
+      // single end instead of moving the whole line.
       elements.forEach((el, i) => {
-        if (el.type === "text" && el.x !== undefined && el.y !== undefined) {
-          const dist = Math.sqrt(Math.pow(e.x - el.x, 2) + Math.pow(e.y - el.y, 2));
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestIdx = i;
-          }
-        } else if (el.type === "arrow") {
-          // Check proximity to arrow midpoint
-          const midX = ((el.startX || 0) + (el.endX || 0)) / 2;
-          const midY = ((el.startY || 0) + (el.endY || 0)) / 2;
-          const dist = Math.sqrt(Math.pow(e.x - midX, 2) + Math.pow(e.y - midY, 2));
-          if (dist < closestDist) {
-            closestDist = dist;
-            closestIdx = i;
-          }
+        if (el.type === "arrow" || el.type === "measure") {
+          const dS = Math.hypot(e.x - (el.startX || 0), e.y - (el.startY || 0));
+          const dE = Math.hypot(e.x - (el.endX || 0), e.y - (el.endY || 0));
+          if (dS <= END_R && (!best || dS < best.dist)) best = { idx: i, part: "start", dist: dS };
+          if (dE <= END_R && (!best || dE < best.dist)) best = { idx: i, part: "end", dist: dE };
         }
       });
-      if (closestIdx >= 0) {
-        setDragIndex(closestIdx);
+      // Pass 2 — otherwise grab the whole element (text, or the arrow/measure line).
+      if (!best) {
+        elements.forEach((el, i) => {
+          if (el.type === "text" && el.x !== undefined && el.y !== undefined) {
+            const d = Math.hypot(e.x - el.x, e.y - el.y);
+            if (d <= 44 && (!best || d < best.dist)) best = { idx: i, part: "whole", dist: d };
+          } else if (el.type === "arrow" || el.type === "measure") {
+            const d = distToSeg(e.x, e.y, el.startX || 0, el.startY || 0, el.endX || 0, el.endY || 0);
+            if (d <= 30 && (!best || d < best.dist)) best = { idx: i, part: "whole", dist: d };
+          }
+        });
+      }
+      if (best) {
+        setDragIndex(best.idx);
+        setDragPart(best.part);
         setDragStartPos({ x: e.x, y: e.y });
       }
     })
@@ -311,11 +325,15 @@ export default function PhotoAnnotateScreen() {
           if (el.type === "text") {
             el.x = (el.x || 0) + dx;
             el.y = (el.y || 0) + dy;
-          } else if (el.type === "arrow") {
-            el.startX = (el.startX || 0) + dx;
-            el.startY = (el.startY || 0) + dy;
-            el.endX = (el.endX || 0) + dx;
-            el.endY = (el.endY || 0) + dy;
+          } else if (el.type === "arrow" || el.type === "measure") {
+            if (dragPart === "start") {
+              el.startX = (el.startX || 0) + dx; el.startY = (el.startY || 0) + dy;
+            } else if (dragPart === "end") {
+              el.endX = (el.endX || 0) + dx; el.endY = (el.endY || 0) + dy;
+            } else {
+              el.startX = (el.startX || 0) + dx; el.startY = (el.startY || 0) + dy;
+              el.endX = (el.endX || 0) + dx; el.endY = (el.endY || 0) + dy;
+            }
           }
           updated[dragIndex] = el;
           return updated;
@@ -326,6 +344,7 @@ export default function PhotoAnnotateScreen() {
     .onEnd(() => {
       setDragIndex(null);
       setDragStartPos(null);
+      setDragPart("whole");
     })
     .runOnJS(true);
 
@@ -533,6 +552,12 @@ export default function PhotoAnnotateScreen() {
               points={getArrowHead(el.startX!, el.startY!, el.endX!, el.endY!, el.strokeWidth)}
               fill={el.color}
             />
+            {selectedTool === "move" && (
+              <>
+                <Circle cx={el.startX} cy={el.startY} r={8} fill="#FFFFFF" stroke="#2563EB" strokeWidth={2} />
+                <Circle cx={el.endX} cy={el.endY} r={8} fill="#FFFFFF" stroke="#2563EB" strokeWidth={2} />
+              </>
+            )}
           </G>
         );
       case "measure": {
@@ -553,6 +578,12 @@ export default function PhotoAnnotateScreen() {
                 <SvgText x={midx} y={midy - 11} fill="#FFFFFF" fontSize={12} fontWeight="bold" textAnchor="middle">{label}</SvgText>
               </>
             ) : null}
+            {selectedTool === "move" && (
+              <>
+                <Circle cx={sx} cy={sy} r={8} fill="#FFFFFF" stroke="#2563EB" strokeWidth={2} />
+                <Circle cx={ex} cy={ey} r={8} fill="#FFFFFF" stroke="#2563EB" strokeWidth={2} />
+              </>
+            )}
           </G>
         );
       }
