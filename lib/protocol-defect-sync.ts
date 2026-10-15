@@ -17,7 +17,7 @@ export type ProtocolDefectCandidate = {
   description: string;
   location?: string;
   trade?: string;
-  priority: DefectPriority;
+  priority?: DefectPriority;
   dueDate?: string;
   confidence: number;
 };
@@ -105,10 +105,13 @@ function splitLocation(location?: string): { floor?: string; room?: string } {
   return {};
 }
 
-function parsePriority(value: string): DefectPriority {
+// Returns a priority ONLY when the text actually states one; otherwise undefined
+// so the defect stays unset ("–") and the user picks it. Never defaults to "mittel".
+function parsePriority(value: string): DefectPriority | undefined {
   if (/hoch|kritisch|critical|major|dringend/i.test(value)) return "hoch";
+  if (/mittel|normal|medium|moderat/i.test(value)) return "mittel";
   if (/niedrig|gering|minor|cosmetic/i.test(value)) return "niedrig";
-  return "mittel";
+  return undefined;
 }
 
 function parseDueDate(value: string): string | undefined {
@@ -189,7 +192,7 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
     if ((m = item.match(DUE_FIELD_RE)) && lastFieldCandidate) {
       lastFieldCandidate.dueDate = parseDueDate(m[1]) || lastFieldCandidate.dueDate;
       const pr = parsePriority(m[1]);
-      if (pr !== "mittel") lastFieldCandidate.priority = pr;
+      if (pr) lastFieldCandidate.priority = pr;
       return true;
     }
     return false;

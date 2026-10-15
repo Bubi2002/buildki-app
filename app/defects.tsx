@@ -1185,8 +1185,8 @@ export default function DefectsScreen() {
                       {statusLabels[selectedDefect.status]}
                     </Text>
                   </View>
-                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: priorityColors[selectedDefect.priority] + "20" }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: priorityColors[selectedDefect.priority] }}>{priorityLabels[selectedDefect.priority]}</Text>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: (selectedDefect.priority ? priorityColors[selectedDefect.priority] : colors.muted) + "20" }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: selectedDefect.priority ? priorityColors[selectedDefect.priority] : colors.muted }}>{selectedDefect.priority ? priorityLabels[selectedDefect.priority] : "–"}</Text>
                   </View>
                   <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, backgroundColor: colors.border + "40" }}>
                     <Text style={{ fontSize: 12, color: colors.muted }}>{selectedDefect.category}</Text>

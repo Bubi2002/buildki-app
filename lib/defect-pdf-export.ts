@@ -48,7 +48,7 @@ export async function generateDefectPdfHtml(
   // Sort: high priority first, then by date
   defects.sort((a, b) => {
     const priorityOrder: Record<DefectPriority, number> = { hoch: 0, mittel: 1, niedrig: 2 };
-    const pDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    const pDiff = (a.priority ? priorityOrder[a.priority] : 3) - (b.priority ? priorityOrder[b.priority] : 3);
     if (pDiff !== 0) return pDiff;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
@@ -136,6 +136,9 @@ export async function generateDefectPdfHtml(
     mittel: "Mittel",
     niedrig: "Niedrig",
   };
+  // An unset priority shows a dash, not an invented value.
+  const prioLabel = (p?: DefectPriority) => (p ? priorityLabels[p] : "–");
+  const prioColor = (p?: DefectPriority) => (p ? priorityColors[p] : "#94A3B8");
 
   const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -327,7 +330,7 @@ export async function generateDefectPdfHtml(
       <td>${ort}</td>
       <td>${zust}</td>
       <td><span class="badge" style="background: ${sc}1A; color: ${sc}; border: 1px solid ${sc}44;">${statusLabels[d.status]}</span></td>
-      <td style="white-space:nowrap;"><span class="prio-dot" style="background:${priorityColors[d.priority]};"></span><span style="color: ${priorityColors[d.priority]}; font-weight: 700;">${priorityLabels[d.priority]}</span></td>
+      <td style="white-space:nowrap;"><span class="prio-dot" style="background:${prioColor(d.priority)};"></span><span style="color: ${prioColor(d.priority)}; font-weight: 700;">${prioLabel(d.priority)}</span></td>
       <td style="white-space:nowrap;">${dueDate}</td>
     </tr>`;
   });
@@ -348,14 +351,14 @@ export async function generateDefectPdfHtml(
       const followUpStr = d.followUpDate ? new Date(d.followUpDate).toLocaleDateString("de-DE") : null;
       const followUpResultStr = d.followUpResult === "behoben" ? "✅ Behoben" : d.followUpResult === "nachbesserung" ? "⚠️ Nachbesserung" : null;
       const sc = statusColors[d.status];
-      const pc = priorityColors[d.priority];
+      const pc = prioColor(d.priority);
       const quelle = d.source ? (d.source === "matterport" ? "3D-Scan" : d.source === "ki_analysis" ? "KI-Analyse" : d.source === "checklist" ? "Checkliste" : "Manuell") : "";
 
       html += `<div class="defect-card">`;
       html += `<div class="top" style="border-left: 4px solid ${sc};">
         <div class="defect-title">${(d as any).positionCode ? `<span style="font-family:monospace;color:${accentColor};">[${(d as any).positionCode}]</span> ` : ''}${i + 1}. ${d.title}</div>
         <div style="display:flex; gap:6px; flex-shrink:0;">
-          <span class="badge" style="background: ${pc}1A; color: ${pc}; border: 1px solid ${pc}44;">${priorityLabels[d.priority]}</span>
+          <span class="badge" style="background: ${pc}1A; color: ${pc}; border: 1px solid ${pc}44;">${prioLabel(d.priority)}</span>
           <span class="badge" style="background: ${sc}1A; color: ${sc}; border: 1px solid ${sc}44;">${statusLabels[d.status]}</span>
         </div>
       </div>`;

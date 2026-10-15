@@ -62,7 +62,9 @@ export type Defect = {
   title: string;
   description: string;
   status: DefectStatus;
-  priority: DefectPriority;
+  /** Optional: a defect starts WITHOUT a priority ("–") unless one was explicitly
+   *  stated/selected — never auto-defaulted to "mittel"/"hoch". */
+  priority?: DefectPriority;
   category: string;
   gewerk?: string;
   photos: string[];

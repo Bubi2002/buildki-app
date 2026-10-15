@@ -301,11 +301,11 @@ export default function FollowUpScreen() {
           )}
           <Pressable
             onPress={() => changePriority(item)}
-            style={({ pressed }) => [styles.footerChip, { backgroundColor: item.priority === "hoch" ? "#F8717115" : item.priority === "mittel" ? "#FBBF2415" : "#4ADE8015", opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.footerChip, { backgroundColor: item.priority === "hoch" ? "#F8717115" : item.priority === "mittel" ? "#FBBF2415" : item.priority === "niedrig" ? "#4ADE8015" : "#94A3B815", opacity: pressed ? 0.6 : 1 }]}
           >
-            <MaterialIcons name="edit" size={11} color={item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : "#4ADE80"} />
-            <Text style={[styles.footerChipText, { color: item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : "#4ADE80" }]}>
-              {item.priority === "hoch" ? t('defect_priority_high') : item.priority === "mittel" ? t('defect_priority_medium') : t('defect_priority_low')}
+            <MaterialIcons name="edit" size={11} color={item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : item.priority === "niedrig" ? "#4ADE80" : "#94A3B8"} />
+            <Text style={[styles.footerChipText, { color: item.priority === "hoch" ? "#F87171" : item.priority === "mittel" ? "#FBBF24" : item.priority === "niedrig" ? "#4ADE80" : "#94A3B8" }]}>
+              {item.priority === "hoch" ? t('defect_priority_high') : item.priority === "mittel" ? t('defect_priority_medium') : item.priority === "niedrig" ? t('defect_priority_low') : "–"}
             </Text>
           </Pressable>
           {item.positionCode && (
