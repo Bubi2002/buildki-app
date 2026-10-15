@@ -750,20 +750,49 @@ export default function ProtocolDetailScreen() {
     const name = mAssignee.trim();
     if (!name) { Alert.alert(t('hinweis'), t('protocol_mangel_assignee_missing' as any)); return; }
     const strip = (s: string) => (s || "").replace(/\[FOTO\s*\d+\]/gi, "").trim();
+    const label = (l: string) => l.replace(/:\s*$/, ""); // "Frist:" → "Frist"
+    // Fotos dieses Mangels: aus den [FOTO N]-Markern der gespeicherten Zeile.
+    const attachments: string[] = [];
+    try {
+      const base = protocol?.protocol || "";
+      const rowNorm = (s: string) => s.replace(/\[FOTO\s*\d+\]/gi, "").replace(/\s+/g, " ").trim();
+      const target = editMangel ? rowNorm(editMangel.rowLine) : "";
+      const storedLine = base.split("\n").find((l) => l.trim().startsWith("|") && rowNorm(l) === target);
+      if (storedLine) {
+        const nums = Array.from(storedLine.matchAll(/\[FOTO\s*(\d+)\]/gi)).map((m) => parseInt(m[1], 10));
+        const allPhotos = protocol?.photos || [];
+        for (const n of nums) { const uri = allPhotos[n - 1]; if (uri && !attachments.includes(uri)) attachments.push(uri); }
+      }
+    } catch {}
+    // Firmendaten: Signatur ("freundliche Grüße…") + Ersteller als Absendername.
+    let signature = "", ersteller = "";
+    try {
+      const cs = JSON.parse((await AsyncStorage.getItem("company-settings")) || "{}");
+      signature = (cs.emailSignature || "").trim();
+      ersteller = (cs.defaultEditor || "").trim();
+    } catch {}
     const compose = async (to: string) => {
       const subject = `${t('index_tool_maengel' as any)}: ${strip(mDesc).slice(0, 80)}`;
+      const fields = [
+        strip(mDesc) ? `${t('mangel_label_description' as any)}: ${strip(mDesc)}` : null,
+        mGewerk.trim() ? `${label(t('gewerk' as any))}: ${mGewerk.trim()}` : null,
+        mPrio.trim() ? `${label(t('prioritaet' as any))}: ${mPrio.trim()}` : null,
+        mFrist.trim() ? `${label(t('frist' as any))}: ${mFrist.trim()}` : null,
+      ].filter(Boolean).join("\n");
+      const closing = [signature || t('mit_freundlichen_gruessen' as any), ersteller].filter(Boolean).join("\n");
       const body = [
-        strip(mDesc) ? `${t('beschreibung_optional' as any)}: ${strip(mDesc)}` : "",
-        mGewerk.trim() ? `${t('gewerk' as any)}: ${mGewerk.trim()}` : "",
-        mPrio.trim() ? `${t('prioritaet' as any)}: ${mPrio.trim()}` : "",
-        mFrist.trim() ? `${t('frist' as any)}: ${mFrist.trim()}` : "",
+        `${t('mangel_mail_hello' as any)} ${name},`,
         "",
-        t('mit_freundlichen_gruessen' as any),
-      ].filter((l) => l !== "").join("\n");
+        t('mangel_mail_intro' as any),
+        "",
+        fields,
+        "",
+        closing,
+      ].join("\n");
       try {
         const MailComposer = await import("expo-mail-composer");
         if (await MailComposer.isAvailableAsync()) {
-          await MailComposer.composeAsync({ recipients: [to], subject, body });
+          await MailComposer.composeAsync({ recipients: [to], subject, body, attachments: attachments.length ? attachments : undefined });
           return;
         }
       } catch {}
