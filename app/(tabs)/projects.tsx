@@ -927,12 +927,8 @@ export default function RundgangTab() {
               </Pressable>
             )}
 
-            {selectedProjectId && (
-              <Pressable onPress={() => { setNewFloorName(""); setAddFloorOpen(true); }} style={styles.addFloorRow}>
-                <MaterialIcons name="add" size={18} color="#5DADE2" />
-                <Text style={styles.addFloorText}>{t('rundgang_add_floor' as any)}</Text>
-              </Pressable>
-            )}
+            {/* "+ Etage hinzufügen" entfernt: Etagen UND Räume werden über den
+                einen Button "Etagen & Räume bearbeiten" (project-wizard) angelegt. */}
 
             {floors.length > 0 && totalRooms === 0 && (
               <View style={styles.empty}>
