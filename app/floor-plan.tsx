@@ -1575,6 +1575,42 @@ export default function FloorPlanScreen() {
                   </View>
                 )}
 
+                {/* Vollständige Mangeldaten aus dem verknüpften Defect. */}
+                {(() => {
+                  const d = showPinDetail.defectId ? defectsById[showPinDetail.defectId] : undefined;
+                  if (!d) return null;
+                  const statusLabel: Record<string, string> = { offen: "Offen", zugewiesen: "Zugewiesen", in_bearbeitung: "In Bearbeitung", nachbesserung: "Nachbesserung", pruefung: "Prüfung", erledigt: "Erledigt", abgelehnt: "Abgelehnt", geschlossen: "Geschlossen" };
+                  const prioLabel = d.priority ? (d.priority === "hoch" ? "Hoch" : d.priority === "mittel" ? "Mittel" : "Niedrig") : "–";
+                  const rows: { k: string; v: string }[] = [
+                    { k: t('gewerk'), v: ((d as any).gewerk || d.category || "").trim() },
+                    { k: t('prioritaet'), v: prioLabel },
+                    { k: "Frist", v: d.dueDate ? new Date(d.dueDate).toLocaleDateString("de-DE") : "–" },
+                    { k: t('zustaendig'), v: [d.assignee, d.assigneeFirma].filter(Boolean).join(" · ") },
+                    { k: "Ort", v: [d.floor, d.room].filter(Boolean).join(" · ") || d.location || "" },
+                    { k: t('status_label' as any), v: statusLabel[d.status] || d.status },
+                  ].filter((r) => r.v);
+                  const descExtra = d.description && d.description.trim() && d.description.trim() !== (showPinDetail.description || "").trim() ? d.description.trim() : "";
+                  const photos = d.photos || [];
+                  return (
+                    <View style={[styles.detailDescBox, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
+                      {descExtra ? <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20, marginBottom: 8 }}>{descExtra}</Text> : null}
+                      {rows.map((r) => (
+                        <View key={r.k} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4 }}>
+                          <Text style={{ fontSize: 12.5, color: colors.muted, width: 92 }}>{r.k}</Text>
+                          <Text style={{ fontSize: 12.5, color: colors.foreground, fontWeight: "600", flex: 1 }}>{r.v}</Text>
+                        </View>
+                      ))}
+                      {photos.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
+                          {photos.map((uri, i) => (
+                            <Image key={`dp-${i}`} source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8, borderWidth: 1, borderColor: colors.border }} contentFit="cover" />
+                          ))}
+                        </ScrollView>
+                      )}
+                    </View>
+                  );
+                })()}
+
                 {showPinDetail.type === "protocol" && (
                   <View style={{ marginBottom: 12, gap: 8 }}>
                     {showPinDetail.protocolId && (
