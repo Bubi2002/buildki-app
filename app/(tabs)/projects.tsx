@@ -99,7 +99,7 @@ export default function RundgangTab() {
   const [newDefectTitle, setNewDefectTitle] = useState("");
   const [newDefectDesc, setNewDefectDesc] = useState("");
   const [newDefectGewerk, setNewDefectGewerk] = useState("");
-  const [newDefectPriority, setNewDefectPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [newDefectPriority, setNewDefectPriority] = useState<"hoch" | "mittel" | "niedrig" | null>(null);
   const [newDefectAssignee, setNewDefectAssignee] = useState("");
   const [newDefectDue, setNewDefectDue] = useState("");
   const [newDefectPhotos, setNewDefectPhotos] = useState<string[]>([]);
@@ -484,7 +484,7 @@ export default function RundgangTab() {
     setNewDefectTitle("");
     setNewDefectDesc("");
     setNewDefectGewerk("");
-    setNewDefectPriority("mittel");
+    setNewDefectPriority(null);
     setNewDefectAssignee("");
     setNewDefectDue("");
     setNewDefectPhotos([]);
@@ -516,7 +516,7 @@ export default function RundgangTab() {
       title,
       description: newDefectDesc.trim(),
       status: "offen" as DefectStatus,
-      priority: newDefectPriority,
+      priority: newDefectPriority || undefined,
       category: "sonstiges",
       gewerk: newDefectGewerk.trim() || undefined,
       photos: [...newDefectPhotos],

@@ -107,7 +107,7 @@ export default function DefectsScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [newPriority, setNewPriority] = useState<DefectPriority>("mittel");
+  const [newPriority, setNewPriority] = useState<DefectPriority | null>(null);
   const [newStatus, setNewStatus] = useState<DefectStatus>("offen");
   const [newCategory, setNewCategory] = useState(DEFECT_CATEGORIES[0]);
   const [newLocation, setNewLocation] = useState("");
@@ -388,7 +388,7 @@ export default function DefectsScreen() {
       title: newTitle.trim(),
       description: newDescription.trim(),
       status: newStatus,
-      priority: newPriority,
+      priority: newPriority || undefined,
       category: newCategory,
       photos: [...newPhotos],
       location: newLocation.trim() || undefined,
@@ -418,7 +418,7 @@ export default function DefectsScreen() {
     setShowCreateModal(false);
     setNewTitle("");
     setNewDescription("");
-    setNewPriority("mittel");
+    setNewPriority(null);
     setNewStatus("offen");
     setNewLocation("");
     setNewDueDate("");
@@ -1821,7 +1821,7 @@ export default function DefectsScreen() {
                   setNewAssignee("");
                   setNewFloorId("");
                   setNewRoomId("");
-                  setNewPriority("mittel");
+                  setNewPriority(null);
                   setNewStatus("offen");
                   setNewCategory(DEFECT_CATEGORIES[0]);
                   setNewGewerk(GEWERKE[0]);

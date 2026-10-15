@@ -107,7 +107,7 @@ export default function FloorPlanScreen() {
   // or link an existing one from the Maengelliste.
   const [mangelMode, setMangelMode] = useState<"new" | "existing">("new");
   const [newDefectGewerk, setNewDefectGewerk] = useState("");
-  const [newDefectPriority, setNewDefectPriority] = useState<"hoch" | "mittel" | "niedrig">("mittel");
+  const [newDefectPriority, setNewDefectPriority] = useState<"hoch" | "mittel" | "niedrig" | null>(null);
   const [newDefectAssignee, setNewDefectAssignee] = useState("");
   const [newDefectDue, setNewDefectDue] = useState("");
   const [existingDefects, setExistingDefects] = useState<Defect[]>([]);
@@ -449,7 +449,7 @@ export default function FloorPlanScreen() {
     setPinProtoOptions([]);
     setMangelMode("new");
     setNewDefectGewerk("");
-    setNewDefectPriority("mittel");
+    setNewDefectPriority(null);
     setNewDefectAssignee("");
     setNewDefectDue("");
     setExistingDefectListOpen(false);
@@ -662,7 +662,7 @@ export default function FloorPlanScreen() {
             title: effectiveLabel,
             description: pinDescription.trim() || "",
             status: "offen",
-            priority: newDefectPriority,
+            priority: newDefectPriority || undefined,
             category: "sonstiges",
             gewerk: newDefectGewerk.trim() || undefined,
             assignee: newDefectAssignee.trim() || undefined,
