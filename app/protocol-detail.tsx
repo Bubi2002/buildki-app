@@ -37,6 +37,8 @@ import * as ImagePicker from "expo-image-picker";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { DateOnlyPicker } from "@/components/date-only-picker";
+import { AssigneeInput } from "@/components/assignee-input";
+import { loadPhoneContacts } from "@/lib/phone-contacts";
 import { formatDateTime } from "@/lib/date-only";
 import { WebView } from "react-native-webview";
 import { matchSpeakerToProfile, VoiceProfile } from "@/lib/voice-profiles";
@@ -627,6 +629,7 @@ export default function ProtocolDetailScreen() {
   const [editMangel, setEditMangel] = useState<null | { rowLine: string; cells: string[]; header: string[]; iDesc: number; iGewerk: number; iPrio: number; iFrist: number }>(null);
   const [mDesc, setMDesc] = useState("");
   const [mGewerk, setMGewerk] = useState("");
+  const [mAssignee, setMAssignee] = useState(""); // Zuständiger, in der Gewerk-Zelle als " · Name" gespeichert
   const [mPrio, setMPrio] = useState("");
   const [mFrist, setMFrist] = useState("");
   // Working value for the Frist date/time wheel (ISO). Picking a date writes a
@@ -683,7 +686,14 @@ export default function ProtocolDetailScreen() {
     const iPrio = findCol(/priorit|schwere|dringlich/);
     const iFrist = findCol(/frist|beseitig|datum|termin/);
     setMDesc(iDesc >= 0 ? (cells[iDesc] || "") : "");
-    setMGewerk(iGewerk >= 0 ? (cells[iGewerk] || "") : "");
+    // Zuständiger wird in der Gewerk/Verantwortlich-Zelle als " · Name" abgelegt,
+    // damit vorhandene Gewerk-Angaben nicht zerstört werden.
+    {
+      const g = iGewerk >= 0 ? (cells[iGewerk] || "") : "";
+      const mk = g.lastIndexOf(" · ");
+      if (mk >= 0) { setMGewerk(g.slice(0, mk).trim()); setMAssignee(g.slice(mk + 3).trim()); }
+      else { setMGewerk(g); setMAssignee(""); }
+    }
     setMPrio(iPrio >= 0 ? (cells[iPrio] || "") : "");
     setMFrist(iFrist >= 0 ? (cells[iFrist] || "") : "");
     setMFristISO("");
@@ -695,7 +705,7 @@ export default function ProtocolDetailScreen() {
     const cells = [...editMangel.cells];
     const clean = (s: string) => s.replace(/\|/g, "/").replace(/\n/g, " ").trim();
     if (editMangel.iDesc >= 0) cells[editMangel.iDesc] = clean(mDesc);
-    if (editMangel.iGewerk >= 0) cells[editMangel.iGewerk] = clean(mGewerk);
+    if (editMangel.iGewerk >= 0) cells[editMangel.iGewerk] = clean(mAssignee.trim() ? `${mGewerk.trim()} · ${mAssignee.trim()}`.replace(/^ · /, "") : mGewerk);
     if (editMangel.iPrio >= 0) cells[editMangel.iPrio] = clean(mPrio);
     if (editMangel.iFrist >= 0) cells[editMangel.iFrist] = clean(mFrist);
     const base = protocol.protocol || "";
@@ -731,6 +741,56 @@ export default function ProtocolDetailScreen() {
       }
     } catch (e) { console.error("Mangel save failed:", e); }
     setEditMangel(null);
+  };
+
+  // Send this Mangel to the responsible person by email. The recipient address is
+  // resolved from the phone contacts by name; if none is found the user is asked
+  // for it. Opens a prefilled mail — nothing is sent automatically.
+  const sendMangelToAssignee = async () => {
+    const name = mAssignee.trim();
+    if (!name) { Alert.alert(t('hinweis'), t('protocol_mangel_assignee_missing' as any)); return; }
+    const strip = (s: string) => (s || "").replace(/\[FOTO\s*\d+\]/gi, "").trim();
+    const compose = async (to: string) => {
+      const subject = `${t('index_tool_maengel' as any)}: ${strip(mDesc).slice(0, 80)}`;
+      const body = [
+        strip(mDesc) ? `${t('beschreibung_optional' as any)}: ${strip(mDesc)}` : "",
+        mGewerk.trim() ? `${t('gewerk' as any)}: ${mGewerk.trim()}` : "",
+        mPrio.trim() ? `${t('prioritaet' as any)}: ${mPrio.trim()}` : "",
+        mFrist.trim() ? `${t('frist' as any)}: ${mFrist.trim()}` : "",
+        "",
+        t('mit_freundlichen_gruessen' as any),
+      ].filter((l) => l !== "").join("\n");
+      try {
+        const MailComposer = await import("expo-mail-composer");
+        if (await MailComposer.isAvailableAsync()) {
+          await MailComposer.composeAsync({ recipients: [to], subject, body });
+          return;
+        }
+      } catch {}
+      await Linking.openURL(`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    };
+    let email = "";
+    try {
+      const res = await loadPhoneContacts();
+      if (res.ok) {
+        const hit = res.contacts.find((c) => c.name.trim().toLowerCase() === name.toLowerCase() && c.email);
+        if (hit?.email) email = hit.email;
+      }
+    } catch {}
+    if (email) { await compose(email); return; }
+    if (typeof Alert.prompt === "function") {
+      Alert.prompt(
+        t('protocol_mangel_email_title' as any),
+        t('protocol_mangel_email_msg' as any),
+        [
+          { text: t('btn_abbrechen' as any), style: "cancel" },
+          { text: t('senden' as any), onPress: (val?: string) => { const e = (val || "").trim(); if (e) void compose(e); } },
+        ],
+        "plain-text",
+      );
+    } else {
+      Alert.alert(t('hinweis'), t('protocol_mangel_email_msg' as any));
+    }
   };
 
   // ── Tabellen-Editor: Markdown-Tabelle strukturiert bearbeiten ──
@@ -3126,6 +3186,8 @@ export default function ProtocolDetailScreen() {
                   <>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('gewerk')}</Text>
                     <TextInput value={mGewerk} onChangeText={setMGewerk} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('zustaendig')}</Text>
+                    <AssigneeInput value={mAssignee} onChange={setMAssignee} placeholder={t('verantwortlicher_optional')} />
                   </>
                 )}
                 {editMangel?.iPrio !== undefined && editMangel.iPrio >= 0 && (
@@ -3156,6 +3218,16 @@ export default function ProtocolDetailScreen() {
                     />
                     <TextInput value={mFrist} onChangeText={setMFrist} placeholder={t('frist')} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
                   </>
+                )}
+                {editMangel?.iGewerk !== undefined && editMangel.iGewerk >= 0 && (
+                  <Pressable
+                    onPress={() => void sendMangelToAssignee()}
+                    disabled={!mAssignee.trim()}
+                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 18, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, opacity: !mAssignee.trim() ? 0.4 : pressed ? 0.7 : 1 }]}
+                  >
+                    <MaterialIcons name="send" size={18} color={colors.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('protocol_mangel_send' as any)}</Text>
+                  </Pressable>
                 )}
               </ScrollView>
               <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
