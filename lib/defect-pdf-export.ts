@@ -193,7 +193,7 @@ export async function generateDefectPdfHtml(
   /* Header band */
   .header { background: ${NAVY}; color: #fff; padding: 20px 16mm; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .header .brand { display: flex; align-items: center; gap: 14px; }
-  .header img { height: 38px; width: auto; object-fit: contain; }
+  .header img { height: 52px; width: auto; max-width: 240px; object-fit: contain; }
   .header .co { font-size: 16px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.2; }
   .header .co small { display: block; font-size: 8.5px; font-weight: 700; color: #9db8d4; letter-spacing: 1.6px; text-transform: uppercase; margin-top: 4px; }
   .header .rtag { text-align: right; }

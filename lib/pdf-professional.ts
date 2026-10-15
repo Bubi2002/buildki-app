@@ -312,7 +312,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       padding: 6px 0 16px; border-bottom: 1px solid #E6EBF1;
     }
     .topbar .brand { display: flex; align-items: center; gap: 14px; }
-    .topbar .brand img { max-height: 44px; max-width: 190px; object-fit: contain; }
+    .topbar .brand img { max-height: 64px; max-width: 230px; object-fit: contain; }
     .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -.2px; }
     .topbar .bandmeta { text-align: right; font-size: 9px; line-height: 1.55; color: #6B7A8D; }
     .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 20px 0 0; letter-spacing: -.6px; }

@@ -502,7 +502,7 @@ export function generatePdfHtml(
     : "";
 
   const logoHtml = company.logoBase64
-    ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 180px; object-fit: contain; display: block;" />`
+    ? `<img src="${company.logoBase64}" style="max-height: 72px; max-width: 240px; object-fit: contain; display: block;" />`
     : "";
 
   const companyInfoHtml = company.companyName
