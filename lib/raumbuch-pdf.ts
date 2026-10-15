@@ -203,8 +203,11 @@ export async function generateRaumbuchPdf(
         }
         return `<span class="${on ? "on" : ""}">${box} ${esc(o)}</span>`;
       });
-      // User-added custom points — always shown as checked.
-      const customOpts = (s.custom?.[q.key] || []).map((c) => `<span class="on">${BOX_ON} ${esc(c)}</span>`);
+      // User-added custom points — ticked state mirrors the checked set.
+      const customOpts = (s.custom?.[q.key] || []).map((c) => {
+        const on = checked.has(c);
+        return `<span class="${on ? "on" : ""}">${on ? BOX_ON : BOX_OFF} ${esc(c)}</span>`;
+      });
       const allOpts = [...opts, ...customOpts].join("&nbsp;&nbsp;&nbsp;");
       return `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${allOpts}</div></div>`;
     }).join("");

@@ -145,20 +145,30 @@ export default function RaumbuchRoomScreen() {
     const cur = entry || blankEntry();
     await persist({ ...cur, survey: { ...(cur.survey || {}), other: { ...(cur.survey?.other || {}), [groupKey]: text } } });
   };
-  // User-added custom points per group — they count as selected and show up in
-  // the Fragenkatalog PDF just like a checked option.
+  // User-added custom points per group. The point's EXISTENCE lives in `custom`
+  // (so it stays in the list even when unchecked); whether it is ticked lives in
+  // `checked` just like a predefined option. A new point starts ticked.
   const addSurveyCustom = async (groupKey: string, label: string) => {
     const txt = (label || "").trim();
     if (!txt) return;
     const cur = entry || blankEntry();
     const list = cur.survey?.custom?.[groupKey] || [];
     if (list.some((l) => l.toLowerCase() === txt.toLowerCase())) return; // no duplicates
-    await persist({ ...cur, survey: { ...(cur.survey || {}), custom: { ...(cur.survey?.custom || {}), [groupKey]: [...list, txt] } } });
+    const checked = new Set(cur.survey?.checked?.[groupKey] || []);
+    checked.add(txt);
+    await persist({ ...cur, survey: { ...(cur.survey || {}),
+      custom: { ...(cur.survey?.custom || {}), [groupKey]: [...list, txt] },
+      checked: { ...(cur.survey?.checked || {}), [groupKey]: Array.from(checked) },
+    } });
   };
   const removeSurveyCustom = async (groupKey: string, label: string) => {
     const cur = entry || blankEntry();
     const list = (cur.survey?.custom?.[groupKey] || []).filter((l) => l !== label);
-    await persist({ ...cur, survey: { ...(cur.survey || {}), custom: { ...(cur.survey?.custom || {}), [groupKey]: list } } });
+    const checked = (cur.survey?.checked?.[groupKey] || []).filter((l) => l !== label);
+    await persist({ ...cur, survey: { ...(cur.survey || {}),
+      custom: { ...(cur.survey?.custom || {}), [groupKey]: list },
+      checked: { ...(cur.survey?.checked || {}), [groupKey]: checked },
+    } });
   };
   const promptCustomPoint = (groupKey: string) => {
     if (typeof Alert.prompt !== "function") return; // Alert.prompt is iOS-only
@@ -505,14 +515,20 @@ export default function RaumbuchRoomScreen() {
                     </Pressable>
                   );
                 })}
-                {/* User-added custom points (tap the ✕ to remove). */}
-                {(survey.custom?.[g.key] || []).map((c) => (
-                  <Pressable key={`cust-${c}`} onPress={() => void removeSurveyCustom(g.key, c)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "18", opacity: pressed ? 0.7 : 1 }]}>
-                    <MaterialIcons name="check-box" size={16} color={colors.primary} />
-                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.primary }}>{c}</Text>
-                    <MaterialIcons name="close" size={14} color={colors.primary} />
-                  </Pressable>
-                ))}
+                {/* User-added custom points: tap to check/uncheck (stays in the
+                    list either way); tap the ✕ to remove it completely. */}
+                {(survey.custom?.[g.key] || []).map((c) => {
+                  const on = checked.has(c);
+                  return (
+                    <Pressable key={`cust-${c}`} onPress={() => void toggleSurvey(g.key, c)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : colors.surface, opacity: pressed ? 0.7 : 1 }]}>
+                      <MaterialIcons name={on ? "check-box" : "check-box-outline-blank"} size={16} color={on ? colors.primary : colors.muted} />
+                      <Text style={{ fontSize: 12.5, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.foreground }}>{c}</Text>
+                      <Pressable onPress={() => void removeSurveyCustom(g.key, c)} hitSlop={8} style={{ marginLeft: 2 }}>
+                        <MaterialIcons name="close" size={15} color={colors.muted} />
+                      </Pressable>
+                    </Pressable>
+                  );
+                })}
                 {/* Add your own point instead of only "Sonstiges". */}
                 <Pressable onPress={() => promptCustomPoint(g.key)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", borderColor: colors.muted, backgroundColor: "transparent", opacity: pressed ? 0.6 : 1 }]}>
                   <MaterialIcons name="add" size={16} color={colors.muted} />
