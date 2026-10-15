@@ -266,7 +266,14 @@ export default function RaumbuchRoomScreen() {
     if (planMode === "crop") {
       const { pw, ph } = planPxRef.current;
       if (!rawPx || pw <= 0 || ph <= 0) return;
-      const px = rawPx.x, py = rawPx.y;
+      // The gesture's raw coords come from the ZOOMED canvas; map them to the
+      // FIXED viewport (stage) pixels that the crop frame overlay uses, so the
+      // hit-test/move keep working when the plan is zoomed in. (Identity at
+      // scale 1 → unchanged behaviour there.)
+      const tf = canvasRef.current?.getTransform?.() || { scale: 1, tx: 0, ty: 0 };
+      const sc = Math.max(1, tf.scale);
+      const px = (rawPx.x - pw / 2) * sc + pw / 2 + tf.tx;
+      const py = (rawPx.y - ph / 2) * sc + ph / 2 + tf.ty;
       if (phase === "start") {
         const fx = cropFrame.x * pw, fy = cropFrame.y * ph, fw = cropFrame.w * pw, fh = cropFrame.h * ph;
         // Corners win first (grab anywhere near the corner point); otherwise grab
