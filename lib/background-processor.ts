@@ -185,6 +185,12 @@ export function isJobActive(protocolId: string): boolean {
  * Auto-send PDF via email after protocol creation if enabled in settings.
  */
 async function autoSendPdfIfEnabled(protocolId: string) {
+  // Automatischer Mail-Versand ist bewusst deaktiviert: Die Mail soll sich NUR
+  // öffnen, wenn der Nutzer selbst auf "Exportieren" tippt – nicht automatisch,
+  // sobald ein Protokoll fertig ist. (Es gibt dafür auch keine Einstellung mehr.)
+  return;
+
+  // eslint-disable-next-line no-unreachable
   const { getPdfBranding } = await import("@/lib/pdf-branding-store");
   const branding = await getPdfBranding();
 
