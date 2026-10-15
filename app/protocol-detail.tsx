@@ -192,6 +192,7 @@ export default function ProtocolDetailScreen() {
   const [showTagEditor, setShowTagEditor] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
+  const [showEditPreview, setShowEditPreview] = useState(true); // Live-Vorschau beim Bearbeiten
   const [editSel, setEditSel] = useState({ start: 0, end: 0 });
   const [editInputHeight, setEditInputHeight] = useState(0);
 
@@ -2709,6 +2710,25 @@ export default function ProtocolDetailScreen() {
                 scrollEnabled={false}
                 style={[styles.protocolText, { color: colors.foreground, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, padding: 12, height: Math.max(220, editInputHeight + 24), textAlignVertical: "top" }]}
               />
+
+              {/* Live-Vorschau: zeigt die saubere Darstellung (ohne #, **, |)
+                  während man den Text bearbeitet. */}
+              <View style={{ marginTop: 12 }}>
+                <Pressable onPress={() => setShowEditPreview((v) => !v)} hitSlop={6} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8, opacity: pressed ? 0.6 : 1 }]}>
+                  <MaterialIcons name={showEditPreview ? "visibility" : "visibility-off"} size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary, flex: 1 }}>{t('vorschau')}</Text>
+                  <MaterialIcons name={showEditPreview ? "expand-less" : "expand-more"} size={18} color={colors.primary} />
+                </Pressable>
+                {showEditPreview && (
+                  <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, backgroundColor: colors.surface }}>
+                    {editedText.trim() ? (
+                      <MarkdownText text={editedText} color={colors.foreground} />
+                    ) : (
+                      <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }}>{t('protokoll')}</Text>
+                    )}
+                  </View>
+                )}
+              </View>
 
               {/* Insert a photo inline at the cursor */}
               {photos.length > 0 && (
