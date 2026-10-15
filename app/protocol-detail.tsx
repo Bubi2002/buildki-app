@@ -3216,7 +3216,7 @@ export default function ProtocolDetailScreen() {
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('gewerk')}</Text>
                     <TextInput value={mGewerk} onChangeText={setMGewerk} placeholderTextColor={colors.muted} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t('zustaendig')}</Text>
-                    <AssigneeInput value={mAssignee} onChange={setMAssignee} placeholder={t('verantwortlicher_optional')} />
+                    <AssigneeInput value={mAssignee} onChange={setMAssignee} placeholder={t('verantwortlicher_optional')} style={{ fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.surface }} />
                   </>
                 )}
                 {editMangel?.iPrio !== undefined && editMangel.iPrio >= 0 && (
