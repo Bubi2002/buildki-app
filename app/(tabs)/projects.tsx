@@ -156,7 +156,8 @@ export default function RundgangTab() {
       const sortedFloors = structure.floors.sort((a, b) => a.number - b.number);
       setFloors(sortedFloors);
       setRooms(structure.rooms);
-      setExpandedFloors((prev) => (prev.size === 0 && sortedFloors.length > 0 ? new Set([sortedFloors[0].id]) : prev));
+      // Etagen starten standardmäßig ZUGEKLAPPT (kein Auto-Aufklappen der
+      // ersten Etage mehr) — der Nutzer klappt selbst auf, was er braucht.
       const [allDefects, allResults, tasksRaw] = await Promise.all([
         getDefects(pid),
         getChecklistResults(pid),
