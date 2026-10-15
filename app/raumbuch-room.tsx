@@ -67,9 +67,12 @@ export default function RaumbuchRoomScreen() {
   const [planMode, setPlanMode] = useState<PlanMode>("crop");
   const [tempWalls, setTempWalls] = useState<Partial<Record<RaumbuchWallKey, RaumbuchWall>>>({});
   const [tempCrop, setTempCrop] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  // Which element is being dragged (new line/box, a wall endpoint, a crop corner,
-  // or a single crop edge).
-  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "crop-move" | "wall-new" | "wall-start" | "wall-end"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number }; origin?: { x: number; y: number } } | null>(null);
+  // Snap wall lines to horizontal/vertical while drawing (toggle in step 3). Off
+  // lets the user draw free diagonal lines (e.g. a Dachschräge).
+  const [snapStraight, setSnapStraight] = useState(true);
+  // Which element is being dragged (new line/box, a wall endpoint, a whole wall,
+  // a crop corner, or a single crop edge).
+  const dragRef = useRef<{ kind: "crop-new" | "crop-corner" | "crop-edge" | "crop-move" | "wall-new" | "wall-start" | "wall-end" | "wall-move"; corner?: "tl" | "tr" | "bl" | "br"; edge?: "top" | "right" | "bottom" | "left"; start?: { x: number; y: number }; origin?: { x: number; y: number }; wallOrigin?: RaumbuchWall } | null>(null);
   const canvasRef = useRef<ZoomableCanvasHandle | null>(null);
   // Apple-style crop frame (step 2), as a fraction of the plan box. Fixed in the
   // viewport; the plan moves/zooms behind it.
@@ -355,33 +358,59 @@ export default function RaumbuchRoomScreen() {
     // Wall modes A/B/C/D — draw like the Messen tool: DRAG a line from start to
     // end. If the drag begins on an existing endpoint, that endpoint is moved
     // instead (fine-tuning). One finger draws, two fingers zoom/pan.
+    // Snap the moved end to horizontal/vertical relative to the fixed end when the
+    // "Gerade"-toggle is on (longer axis wins); off → keep the exact diagonal.
+    const snap = (fx: number, fy: number, mx: number, my: number) =>
+      !snapStraight ? { x: mx, y: my } : Math.abs(mx - fx) >= Math.abs(my - fy) ? { x: mx, y: fy } : { x: fx, y: my };
+    // Perpendicular distance from pt to the wall segment (to grab the whole line).
+    const distToSeg = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => {
+      const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+      let tt = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+      tt = Math.max(0, Math.min(1, tt));
+      return Math.hypot(px - (ax + tt * dx), py - (ay + tt * dy));
+    };
     const key = planMode as RaumbuchWallKey;
     if (phase === "start") {
       const wl = tempWalls[key];
       if (wl) {
         if (near(pt, { x: wl.x1, y: wl.y1 }, grabR + 0.02)) { dragRef.current = { kind: "wall-start" }; return; }
         if (near(pt, { x: wl.x2, y: wl.y2 }, grabR + 0.02)) { dragRef.current = { kind: "wall-end" }; return; }
+        // On the wall LINE (not an end) → move the WHOLE wall, don't overwrite it.
+        if (distToSeg(pt.x, pt.y, wl.x1, wl.y1, wl.x2, wl.y2) < grabR + 0.02) {
+          dragRef.current = { kind: "wall-move", start: pt, wallOrigin: { ...wl } };
+          return;
+        }
       }
-      // Start a fresh line at the touch point; the end follows the finger.
+      // Empty area → start a fresh line at the touch point; the end follows.
       dragRef.current = { kind: "wall-new", start: pt };
       setTempWalls((prev) => ({ ...prev, [key]: { x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y } }));
     } else if (phase === "move") {
       const d = dragRef.current; if (!d) return;
       setTempWalls((prev) => {
         const w = prev[key]; if (!w) return prev;
-        if (d.kind === "wall-start") return { ...prev, [key]: { ...w, x1: pt.x, y1: pt.y } };
-        return { ...prev, [key]: { ...w, x2: pt.x, y2: pt.y } }; // wall-end or wall-new
+        if (d.kind === "wall-move" && d.wallOrigin && d.start) {
+          const dx = pt.x - d.start.x, dy = pt.y - d.start.y;
+          const o = d.wallOrigin;
+          return { ...prev, [key]: { x1: clamp01(o.x1 + dx), y1: clamp01(o.y1 + dy), x2: clamp01(o.x2 + dx), y2: clamp01(o.y2 + dy) } };
+        }
+        if (d.kind === "wall-start") { const s = snap(w.x2, w.y2, pt.x, pt.y); return { ...prev, [key]: { ...w, x1: s.x, y1: s.y } }; }
+        const s = snap(w.x1, w.y1, pt.x, pt.y); // wall-end or wall-new (move end)
+        return { ...prev, [key]: { ...w, x2: s.x, y2: s.y } };
       });
     } else {
       dragRef.current = null;
-      // No auto-straighten — the user draws the line exactly as dragged (so
-      // diagonal walls like a Dachschräge stay diagonal).
+      // Drop a wall that stayed basically a point (an accidental tap-drag).
       setTempWalls((prev) => {
         const w = prev[key]; if (!w) return prev;
         if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.02) { const n = { ...prev }; delete n[key]; return n; }
         return prev;
       });
     }
+  };
+  // Remove a single wall (A/B/C/D).
+  const removeWall = (key: RaumbuchWallKey) => {
+    setTempWalls((prev) => { const n = { ...prev }; delete n[key]; return n; });
+    dragRef.current = null;
   };
 
   const selectMode = (m: PlanMode) => { setPlanMode(m); dragRef.current = null; };
@@ -627,23 +656,33 @@ export default function RaumbuchRoomScreen() {
             {/* Step 3 mode toolbar: centre pin or draw wall lines A–D. */}
             {modalPlan && planStep === 3 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, flexGrow: 0 }} contentContainerStyle={{ gap: 8, alignItems: "center", paddingBottom: 6 }}>
-                {/* "Markierung" (manual pin) removed on request — only walls + a
-                    quick centre pin remain. */}
+                {/* "Gerade"-Toggle: Linien auf waagrecht/senkrecht einrasten (aus =
+                    freie schräge Linien). */}
+                <Pressable onPress={() => setSnapStraight((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: snapStraight ? colors.primary : colors.border, backgroundColor: snapStraight ? colors.primary + "18" : colors.surface }}>
+                  <MaterialIcons name={snapStraight ? "straighten" : "gesture"} size={15} color={snapStraight ? colors.primary : colors.muted} />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: snapStraight ? colors.primary : colors.muted }}>{t("raumbuch_wall_straight" as any)}</Text>
+                </Pressable>
+                {/* Wände A–D zuerst (wichtiger als die Mitte), danach der Mittel-Pin. */}
+                {WALL_KEYS.map((k) => {
+                  const active = planMode === k;
+                  const hasWall = !!tempWalls[k];
+                  return (
+                    <Pressable key={k} onPress={() => selectMode(k)} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
+                      <MaterialIcons name="straighten" size={15} color={active ? colors.primary : colors.muted} />
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: active ? colors.primary : colors.muted }}>{t(RAUMBUCH_POSITION_LABEL_KEY[k] as any)}</Text>
+                      {hasWall ? (
+                        <Pressable onPress={() => removeWall(k)} hitSlop={8} style={{ marginLeft: 1 }}>
+                          <MaterialIcons name="cancel" size={15} color="#DC2626" />
+                        </Pressable>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
                 <Pressable onPress={() => { placeMarkerCenter(); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: tempPos ? colors.primary : colors.border, backgroundColor: tempPos ? colors.primary + "18" : colors.surface }}>
                   <MaterialIcons name="center-focus-strong" size={15} color={tempPos ? colors.primary : colors.muted} />
                   <Text style={{ fontSize: 12, fontWeight: "700", color: tempPos ? colors.primary : colors.muted }}>{t("raumbuch_marker_center" as any)}</Text>
                   {tempPos ? <MaterialIcons name="check-circle" size={13} color="#16A34A" /> : null}
                 </Pressable>
-                {WALL_KEYS.map((k) => {
-                  const active = planMode === k;
-                  return (
-                    <Pressable key={k} onPress={() => selectMode(k)} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.surface }}>
-                      <MaterialIcons name="straighten" size={15} color={active ? colors.primary : colors.muted} />
-                      <Text style={{ fontSize: 12, fontWeight: "700", color: active ? colors.primary : colors.muted }}>{t(RAUMBUCH_POSITION_LABEL_KEY[k] as any)}</Text>
-                      {tempWalls[k] ? <MaterialIcons name="check-circle" size={13} color="#16A34A" /> : null}
-                    </Pressable>
-                  );
-                })}
               </ScrollView>
             )}
             {modalPlan && (
