@@ -78,7 +78,8 @@ const FAQ: Group[] = [
   {
     title: "Cloud, Backup & Dropbox",
     items: [
-      { q: "Wie verbinde ich Dropbox?", a: "Mehr und dann „Cloud & Dropbox“, dort Dropbox verbinden. Danach kannst du Exporte dorthin ablegen." },
+      { q: "Wie hole ich einen Plan aus Dropbox in die App?", a: "Beim Plan-Hinzufügen „Cloud (Dropbox, Drive…)“ wählen – es öffnet sich die iOS-„Dateien“-Auswahl, dort auf Dropbox tippen und den Plan (PDF oder Bild) auswählen. Dafür ist kein „Verbinden“ nötig; die Dropbox-App muss nur auf dem iPad installiert sein." },
+      { q: "Wie lege ich eine PDF in Dropbox ab?", a: "Beim Export auf „Teilen“ tippen und „In Dropbox sichern“ wählen. Das geht ohne Konto-Verbindung über die iOS-Freigabe." },
       { q: "Wie sichere ich meine Daten?", a: "Mehr und dann „Cloud & Dropbox“ bzw. Einstellungen und dann „Konto & Datensicherung“: dort findest du Backup und, falls angemeldet, die Cloud-Synchronisierung." },
     ],
   },

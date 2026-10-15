@@ -1946,36 +1946,10 @@ return (
         <BackupSection colors={colors} />
 
         </>)}
-        {/* Dropbox Integration */}
-        {inCat("konto") && (<>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Dropbox
-          </Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            {t('settings_dropbox_desc' as any)}
-          </Text>
-          <Pressable
-            onPress={() => router.push("/dropbox-settings" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 0,
-              borderWidth: 1, borderColor: colors.border,
-              opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#0061FF15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="cloud-upload" size={20} color="#0061FF" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('dropboxeinstellungen')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('ordner_dateinamen_autoupload')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-        </View>
-
-        </>)}
+        {/* "Dropbox verbinden" (OAuth-Auto-Upload/Export) entfernt: braucht eine
+            Dropbox-Entwickler-App mit Produktion-Freigabe + Server und lief ins
+            Nutzerlimit. Zum IMPORTIEREN aus Dropbox braucht man das nicht – das
+            läuft über die iOS-„Dateien"-Auswahl (Cloud (Dropbox, Drive…)). */}
         {/* Versand: immer manuell — nur der Standardempfänger wird hier gepflegt. */}
         {inCat("versand") && (<>
         <View style={styles.section}>

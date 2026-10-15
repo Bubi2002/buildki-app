@@ -585,21 +585,8 @@ export default function ProjectDetailScreen() {
           {!isExportingZip && <MaterialIcons name="chevron-right" size={18} color="#4CAF50" />}
         </Pressable>
 
-        <Pressable
-          onPress={() => exportAllAsPdf("dropbox")}
-          disabled={isSavingDropbox || protocols.length === 0}
-          style={({ pressed }) => [styles.exportButton, { backgroundColor: '#0061FF10', borderColor: '#0061FF40', opacity: pressed || isSavingDropbox ? 0.7 : 1, marginTop: 8 }]}
-        >
-          {isSavingDropbox ? (
-            <ActivityIndicator size="small" color="#0061FF" />
-          ) : (
-            <MaterialIcons name="cloud-upload" size={20} color="#0061FF" />
-          )}
-          <Text style={[styles.exportButtonText, { color: '#0061FF' }]}>
-            {isSavingDropbox ? t('project_detail_wird_erstellt' as any) : t('pd_save_dropbox' as any)}
-          </Text>
-          {!isSavingDropbox && <MaterialIcons name="chevron-right" size={18} color="#0061FF" />}
-        </Pressable>
+        {/* "In Dropbox speichern" (OAuth-Upload) entfernt — zum Ablegen in
+            Dropbox nutzt man "Teilen"; zum Importieren die Dateien-Auswahl. */}
 
         <Pressable onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#7C3AED10', borderColor: '#7C3AED40', opacity: pressed ? 0.7 : 1 }]}>
           <MaterialIcons name="merge-type" size={20} color="#7C3AED" />
