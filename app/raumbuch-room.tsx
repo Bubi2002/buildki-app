@@ -144,6 +144,33 @@ export default function RaumbuchRoomScreen() {
     const cur = entry || blankEntry();
     await persist({ ...cur, survey: { ...(cur.survey || {}), other: { ...(cur.survey?.other || {}), [groupKey]: text } } });
   };
+  // User-added custom points per group — they count as selected and show up in
+  // the Fragenkatalog PDF just like a checked option.
+  const addSurveyCustom = async (groupKey: string, label: string) => {
+    const txt = (label || "").trim();
+    if (!txt) return;
+    const cur = entry || blankEntry();
+    const list = cur.survey?.custom?.[groupKey] || [];
+    if (list.some((l) => l.toLowerCase() === txt.toLowerCase())) return; // no duplicates
+    await persist({ ...cur, survey: { ...(cur.survey || {}), custom: { ...(cur.survey?.custom || {}), [groupKey]: [...list, txt] } } });
+  };
+  const removeSurveyCustom = async (groupKey: string, label: string) => {
+    const cur = entry || blankEntry();
+    const list = (cur.survey?.custom?.[groupKey] || []).filter((l) => l !== label);
+    await persist({ ...cur, survey: { ...(cur.survey || {}), custom: { ...(cur.survey?.custom || {}), [groupKey]: list } } });
+  };
+  const promptCustomPoint = (groupKey: string) => {
+    if (typeof Alert.prompt !== "function") return; // Alert.prompt is iOS-only
+    Alert.prompt(
+      t("raumbuch_survey_custom_title" as any),
+      t("raumbuch_survey_custom_msg" as any),
+      [
+        { text: t("btn_abbrechen" as any), style: "cancel" },
+        { text: t("hinzufuegen" as any), onPress: (val?: string) => void addSurveyCustom(groupKey, val || "") },
+      ],
+      "plain-text",
+    );
+  };
   const setSurveyDecision = async (decision: "freigabe" | "aenderung") => {
     const cur = entry || blankEntry();
     const next = cur.survey?.decision === decision ? undefined : decision;
@@ -467,6 +494,19 @@ export default function RaumbuchRoomScreen() {
                     </Pressable>
                   );
                 })}
+                {/* User-added custom points (tap the ✕ to remove). */}
+                {(survey.custom?.[g.key] || []).map((c) => (
+                  <Pressable key={`cust-${c}`} onPress={() => void removeSurveyCustom(g.key, c)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "18", opacity: pressed ? 0.7 : 1 }]}>
+                    <MaterialIcons name="check-box" size={16} color={colors.primary} />
+                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.primary }}>{c}</Text>
+                    <MaterialIcons name="close" size={14} color={colors.primary} />
+                  </Pressable>
+                ))}
+                {/* Add your own point instead of only "Sonstiges". */}
+                <Pressable onPress={() => promptCustomPoint(g.key)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", borderColor: colors.muted, backgroundColor: "transparent", opacity: pressed ? 0.6 : 1 }]}>
+                  <MaterialIcons name="add" size={16} color={colors.muted} />
+                  <Text style={{ fontSize: 12.5, fontWeight: "600", color: colors.muted }}>{t("raumbuch_survey_add_point" as any)}</Text>
+                </Pressable>
               </View>
               {checked.has("Sonstiges") && (
                 <TextInput

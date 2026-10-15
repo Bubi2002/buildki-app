@@ -54,6 +54,8 @@ export type RaumbuchSurvey = {
   checked?: Record<string, string[]>;
   /** group key → free text after "Sonstiges" */
   other?: Record<string, string>;
+  /** group key → user-added custom points (always count as checked/selected) */
+  custom?: Record<string, string[]>;
   decision?: "freigabe" | "aenderung";
   decisionNote?: string;
 };

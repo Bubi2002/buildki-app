@@ -202,8 +202,11 @@ export async function generateRaumbuchPdf(
           return `<span class="${on ? "on" : ""}">${box} ${esc(o)} ${txt ? esc(txt) : "______________"}</span>`;
         }
         return `<span class="${on ? "on" : ""}">${box} ${esc(o)}</span>`;
-      }).join("&nbsp;&nbsp;&nbsp;");
-      return `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${opts}</div></div>`;
+      });
+      // User-added custom points — always shown as checked.
+      const customOpts = (s.custom?.[q.key] || []).map((c) => `<span class="on">${BOX_ON} ${esc(c)}</span>`);
+      const allOpts = [...opts, ...customOpts].join("&nbsp;&nbsp;&nbsp;");
+      return `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${allOpts}</div></div>`;
     }).join("");
     const freiOn = s.decision === "freigabe";
     const aendOn = s.decision === "aenderung";
