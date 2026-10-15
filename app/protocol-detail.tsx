@@ -168,6 +168,9 @@ export default function ProtocolDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const router = useRouter();
+  // router.back() does nothing when there is no history (e.g. opened via a link
+  // or after a replace) — fall back to the projects tab so the button always works.
+  const goBack = () => { if (router.canGoBack()) router.back(); else router.replace("/(tabs)/projects" as any); };
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [projPlans, setProjPlans] = useState<{ plan: FloorPlan; pins: PlanPin[] }[]>([]);
   const [projDefects, setProjDefects] = useState<Defect[]>([]);
@@ -2066,7 +2069,7 @@ export default function ProtocolDetailScreen() {
       <ScreenContainer className="flex-1 items-center justify-center p-6">
         <Text className="text-xl text-foreground">{t('protokoll_nicht_gefunden')}</Text>
         <Pressable
-          onPress={() => router.back()}
+          onPress={goBack}
           style={({ pressed }) => [
             styles.backButton,
             { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
@@ -2104,8 +2107,9 @@ export default function ProtocolDetailScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          onPress={goBack}
+          hitSlop={12}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, paddingVertical: 4, paddingRight: 8 }]}
         >
           <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
         </Pressable>
