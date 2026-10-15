@@ -143,6 +143,9 @@ export default function FloorPlanScreen() {
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [highlightPinId, setHighlightPinId] = useState<string | null>(null);
   const canvasRef = useRef<ZoomableCanvasHandle>(null);
+  // Current plan zoom, so pins can be kept a CONSTANT size on screen (and thus
+  // anchored exactly on the tapped point) instead of growing with the zoom.
+  const [canvasScale, setCanvasScale] = useState(1);
   const rasterResolveRef = useRef<((r: RasterResult | null) => void) | null>(null);
   const mountedRef = useRef(true);
   const plansLoadRequestRef = useRef(0);
@@ -476,7 +479,7 @@ export default function FloorPlanScreen() {
         const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
         return !nearest || distance < nearest.distance ? { pin, distance } : nearest;
       }, null);
-      if (nearestPin && nearestPin.distance <= 0.07) {
+      if (nearestPin && nearestPin.distance <= 0.09) {
         draggingPinRef.current = nearestPin.pin.id;
         setPlanInteractionActive(true);
         if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -500,6 +503,19 @@ export default function FloorPlanScreen() {
       if (movingPin) setMovingPin(null); // drag ended → leave move mode
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+  };
+
+  // Press & hold ON a marker → pick it up (enter move mode); then drag to move
+  // and release/tap to drop. Gives the "draufdrücken und verschieben" the user
+  // expects, with clear feedback the moment the marker is grabbed.
+  const handlePlanLongPress = (point: Point) => {
+    if (!selectedPlan || movingPin) return;
+    const img = containerPointToImage(point);
+    const nearest = filteredPins.reduce<{ pin: PlanPin; distance: number } | null>((best, pin) => {
+      const distance = Math.hypot(pin.x - img.x, pin.y - img.y);
+      return !best || distance < best.distance ? { pin, distance } : best;
+    }, null);
+    if (nearest && nearest.distance <= 0.09) startMovePin(nearest.pin);
   };
 
   // --- Move an existing marking ---
@@ -1066,6 +1082,8 @@ export default function FloorPlanScreen() {
                 maxScale={4}
                 onSingleTap={handlePlanTap}
                 onPinDrag={handlePinDrag}
+                onLongPress={handlePlanLongPress}
+                onZoomChange={setCanvasScale}
                 dragImmediate={!!movingPin}
                 onInteractionChange={setPlanInteractionActive}
                 testID="floor-plan-zoom-stage"
@@ -1092,39 +1110,38 @@ export default function FloorPlanScreen() {
                 />
                 {/* Render Pins */}
                 <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-                  {filteredPins.map((pin) => (
-                    <View
-                      key={pin.id}
-                      style={[
-                        styles.pin,
-                        {
-                          left: offX + pin.x * dispW - 14,
-                          top: offY + pin.y * dispH - 32,
-                        },
-                      ]}
-                    >
-                      <View style={[styles.pinMarker, { backgroundColor: pinColor(pin) }, pin.id === highlightPinId && styles.pinMarkerHighlight]}>
-                        <MaterialIcons name={PIN_ICONS[pin.type] as any} size={14} color="#FFF" />
-                      </View>
-                      <View style={[styles.pinTail, { borderTopColor: pinColor(pin) }]} />
-                    </View>
-                  ))}
-                  {pendingPin && (
-                    <View
-                      style={[
-                        styles.pin,
-                        {
-                          left: offX + pendingPin.x * dispW - 14,
-                          top: offY + pendingPin.y * dispH - 32,
-                        },
-                      ]}
-                    >
-                      <View style={[styles.pinMarker, { backgroundColor: "#9E9E9E" }]}>
-                        <MaterialIcons name="add" size={14} color="#FFF" />
-                      </View>
-                      <View style={[styles.pinTail, { borderTopColor: "#9E9E9E" }]} />
-                    </View>
-                  )}
+                  {(() => {
+                    // Keep pins a CONSTANT screen size: counter-scale by 1/zoom,
+                    // anchored at the tip (bottom-center) so the point never drifts.
+                    const hs = 1 / Math.max(1, canvasScale);
+                    const PIN_W = 22, PIN_H = 26; // marker 22 + tail ~4
+                    const pinTransform = { transform: [{ scale: hs }], transformOrigin: "bottom center" as const };
+                    return (
+                      <>
+                        {filteredPins.map((pin) => (
+                          <View
+                            key={pin.id}
+                            style={[styles.pin, { left: offX + pin.x * dispW - PIN_W / 2, top: offY + pin.y * dispH - PIN_H }, pinTransform]}
+                          >
+                            <View style={[styles.pinMarker, { backgroundColor: pinColor(pin) }, pin.id === highlightPinId && styles.pinMarkerHighlight]}>
+                              <MaterialIcons name={PIN_ICONS[pin.type] as any} size={12} color="#FFF" />
+                            </View>
+                            <View style={[styles.pinTail, { borderTopColor: pinColor(pin) }]} />
+                          </View>
+                        ))}
+                        {pendingPin && (
+                          <View
+                            style={[styles.pin, { left: offX + pendingPin.x * dispW - PIN_W / 2, top: offY + pendingPin.y * dispH - PIN_H }, pinTransform]}
+                          >
+                            <View style={[styles.pinMarker, { backgroundColor: "#9E9E9E" }]}>
+                              <MaterialIcons name="add" size={12} color="#FFF" />
+                            </View>
+                            <View style={[styles.pinTail, { borderTopColor: "#9E9E9E" }]} />
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
                 </View>
                 </View>
               </ZoomableCanvas>
@@ -2045,8 +2062,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   pinMarker: {
-    width: 28,
-    height: 28,
+    width: 22,
+    height: 22,
     borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
@@ -2061,9 +2078,9 @@ const styles = StyleSheet.create({
   pinTail: {
     width: 0,
     height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderTopWidth: 6,
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderTopWidth: 5,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
     marginTop: -1,
