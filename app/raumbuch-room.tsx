@@ -724,7 +724,10 @@ export default function RaumbuchRoomScreen() {
                         dragImmediate={planMode !== "marker" && planMode !== "view"}
                       >
                         <View style={{ width: pw, height: ph }}>
-                          <Image source={{ uri: modalPlan.imageUri }} style={imgStyle} contentFit="fill" allowDownscaling={false} />
+                          {/* key/recyclingKey = modalPlan.id → switching the plan
+                              PAGE reloads the correct image (fixed: all pages showed
+                              the same). Stable within a page, so step 2/3 stay fast. */}
+                          <Image key={modalPlan.id} source={{ uri: modalPlan.imageUri }} style={imgStyle} contentFit="fill" allowDownscaling={false} recyclingKey={modalPlan.id} />
                           <Svg pointerEvents="none" style={{ position: "absolute", left: 0, top: 0 }} width={pw} height={ph}>
                             {WALL_KEYS.map((k) => {
                               const wline = tempWalls[k]; if (!wline) return null;
