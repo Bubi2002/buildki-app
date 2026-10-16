@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal, Alert, KeyboardAvoidingView } from "react-native";
+import { View, Text, Pressable, ScrollView, StyleSheet, Platform, TextInput, Modal, Alert, KeyboardAvoidingView, Keyboard } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -988,10 +988,11 @@ export default function RundgangTab() {
       {/* Add task to a room (inline, no window switch) */}
       <Modal visible={!!taskRoom} transparent animationType="slide" onRequestClose={() => setTaskRoom(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.taskOverlay, { justifyContent: "flex-end", paddingBottom: 8 }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} />
           <View style={[styles.taskSheet, { maxHeight: "92%" }]}>
             <Text style={styles.taskSheetTitle}>{t('rooms_add_task_here' as any)}</Text>
             <Text style={styles.taskSheetSub}>{[taskRoom && roomFloorName(taskRoom), taskRoom?.name].filter(Boolean).join(" · ")}</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
               <TextInput
                 value={newTaskTitle}
                 onChangeText={setNewTaskTitle}
@@ -1074,10 +1075,11 @@ export default function RundgangTab() {
       {/* Create defect for a room (inline popup) */}
       <Modal visible={!!defectRoom} transparent animationType="slide" onRequestClose={() => setDefectRoom(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.taskOverlay, { justifyContent: "flex-end", paddingBottom: 8 }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} />
           <View style={[styles.taskSheet, { maxHeight: "92%" }]}>
             <Text style={styles.taskSheetTitle}>{t('rooms_add_defect_here' as any)}</Text>
             <Text style={styles.taskSheetSub}>{defectRoom?.name}</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
               <TextInput value={newDefectTitle} onChangeText={setNewDefectTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" autoFocus returnKeyType="next" style={styles.taskInput} />
               <TextInput value={newDefectDesc} onChangeText={setNewDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
 
@@ -1176,12 +1178,13 @@ export default function RundgangTab() {
       {/* Task detail popup */}
       <Modal visible={!!selectedTask} transparent animationType="slide" onRequestClose={() => setSelectedTask(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.taskOverlay, { justifyContent: "flex-end", paddingBottom: 8 }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} />
           <View style={[styles.taskSheet, { maxHeight: "92%" }]}>
             {selectedTask && (
               <>
                 <Text style={styles.taskSheetTitle}>{t('index_tool_aufgaben' as any)}</Text>
                 {(selectedTask.floor || selectedTask.room) ? <Text style={styles.taskSheetSub}>{[selectedTask.floor, selectedTask.room].filter(Boolean).join(" · ")}</Text> : null}
-                <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+                <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
                   <TextInput value={editTaskTitle} onChangeText={setEditTaskTitle} placeholder={t('titel' as any)} placeholderTextColor="#5F7590" style={styles.taskInput} />
                   <TextInput value={editTaskDesc} onChangeText={setEditTaskDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top" }]} />
 
