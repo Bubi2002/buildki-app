@@ -369,7 +369,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .image-annotation { font-size: 9px; color: ${accentColor}; margin-top: 2px; }
     .data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
     .data-table th { background: #f8fafc; color: #334155; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid #e2e8f0; }
-    .data-table td { padding: 7px 10px; border-bottom: 1px solid #eef1f5; color: #334155; }
+    .data-table td { padding: 7px 10px; border-bottom: 1px solid #eef1f5; color: #334155; white-space: pre-line; vertical-align: top; }
     .data-table tr:nth-child(even) td { background: #fbfcfd; }
     .pill { display: inline-block; padding: 2px 9px; border-radius: 11px; font-size: 9px; font-weight: 700; white-space: nowrap; }
     .signatures-section { margin-top: 24px; }

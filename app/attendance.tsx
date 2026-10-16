@@ -165,7 +165,7 @@ export default function AttendanceScreen() {
           rows: sorted.map((r) => [
             new Date(r.date + "T12:00:00").toLocaleDateString("de-DE"),
             String(r.workers.length),
-            r.workers.map((w) => [w.name, w.firma ? `(${w.firma})` : "", w.arrivalTime && w.departureTime ? `${w.arrivalTime}–${w.departureTime}` : ""].filter(Boolean).join(" ")).join(", ") || "-",
+            r.workers.map((w) => [w.name, w.firma ? `(${w.firma})` : "", w.arrivalTime && w.departureTime ? `${w.arrivalTime}–${w.departureTime}` : ""].filter(Boolean).join(" ")).join("\n") || "-",
           ]),
         },
       };
@@ -247,9 +247,8 @@ export default function AttendanceScreen() {
         <Pressable onPress={() => void shareAttendance()} disabled={records.length === 0} style={({ pressed }) => [styles.addBtn, { opacity: records.length === 0 ? 0.4 : pressed ? 0.7 : 1 }]}>
           <MaterialIcons name="ios-share" size={22} color={colors.primary} />
         </Pressable>
-        <Pressable onPress={() => setShowAddModal(true)} style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}>
-          <MaterialIcons name="person-add" size={24} color={colors.primary} />
-        </Pressable>
+        {/* Person hinzufügen gibt es bereits prominent in der "Heute"-Karte (+),
+            daher hier kein zweiter, gleich wirkender Button mehr. */}
       </View>
 
       {/* Today Summary */}
@@ -340,7 +339,7 @@ export default function AttendanceScreen() {
 
       {/* Add Worker Modal */}
       <Modal visible={showAddModal} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={[styles.modalOverlay, { justifyContent: "flex-end", paddingBottom: 10 }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('attendance_add_person_title' as any)}</Text>
 
