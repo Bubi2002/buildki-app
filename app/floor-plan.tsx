@@ -782,6 +782,14 @@ export default function FloorPlanScreen() {
   ];
 
   const beginPinEdit = async (pin: PlanPin) => {
+    // Mangel-Pins: den vollständigen Mangel-Editor öffnen, damit ALLES bearbeitet
+    // werden kann (Status, Priorität, Gewerk, Frist, Zuständig, Fotos …) – nicht
+    // nur Titel/Beschreibung. Andere Pin-Typen behalten das kurze Textsheet.
+    if (pin.type === "defect" && pin.defectId && defectsById[pin.defectId]) {
+      setShowPinDetail(null);
+      router.push(`/defects?projectId=${encodeURIComponent(pin.projectId)}&defectId=${encodeURIComponent(pin.defectId)}` as any);
+      return;
+    }
     setShowPinDetail(null);
     await new Promise<void>((resolve) => {
       InteractionManager.runAfterInteractions(() => resolve());
@@ -1651,7 +1659,11 @@ export default function FloorPlanScreen() {
                     style={({ pressed }) => [styles.secondaryDetailAction, { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="edit" size={18} color={colors.primary} />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>{t('markierung_bearbeiten')}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>
+                      {showPinDetail.type === "defect" && showPinDetail.defectId && defectsById[showPinDetail.defectId]
+                        ? t('floor_plan_mangel_bearbeiten' as any)
+                        : t('markierung_bearbeiten')}
+                    </Text>
                   </Pressable>
                   <Pressable
                     onPress={() => startMovePin(showPinDetail)}
