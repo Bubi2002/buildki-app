@@ -19,6 +19,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTeamContacts, saveTeamContact, deleteTeamContact, updateTeamContact, TeamContact } from "@/lib/team-contacts";
+import { ContactPickerModal } from "@/components/contact-picker-modal";
+import type { PhoneContactEmail } from "@/lib/phone-contacts";
 import { getPdfBranding, savePdfBranding, type PdfBranding } from "@/lib/pdf-branding-store";
 import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
 import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-profiles";
@@ -1337,6 +1339,7 @@ export default function SettingsScreen() {
   
   // Team Contacts
   const [teamContacts, setTeamContacts] = useState<TeamContact[]>([]);
+  const [showImportContacts, setShowImportContacts] = useState(false);
   const [showAddTeamContact, setShowAddTeamContact] = useState(false);
   const [tcName, setTcName] = useState("");
   const [tcEmail, setTcEmail] = useState("");
@@ -1414,52 +1417,15 @@ export default function SettingsScreen() {
     setEditingContact(null);
   };
 
-  const importFromPhoneContacts = async () => {
-    try {
-      if (Platform.OS === "web") {
-        Alert.alert(t('alert_nicht_verfuegbar'), t('msg_kontaktimport_ist_nur_auf_dem'));
-        return;
-      }
-      const ContactsModule = await import("expo-contacts/legacy");
-      const { status } = await ContactsModule.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(t('alert_berechtigung'), t('msg_zugriff_auf_kontakte_wurde_verweigert'));
-        return;
-      }
-      const { data } = await ContactsModule.getContactsAsync({
-        fields: [ContactsModule.Fields.Emails, ContactsModule.Fields.PhoneNumbers, ContactsModule.Fields.Name],
-        sort: ContactsModule.SortTypes?.FirstName || undefined,
-      });
-      if (!data || data.length === 0) {
-        Alert.alert(t('alert_keine_kontakte'), t('msg_es_wurden_keine_kontakte_auf'));
-        return;
-      }
-      const sorted = data.filter(c => c.name).sort((a, b) => (a.name || "").localeCompare(b.name || "")).slice(0, 10);
-      Alert.alert(
-        t('alert_kontakt_importieren'),
-        t('msg_waehle_einen_kontakt'),
-        [
-          ...sorted.map(c => ({
-            text: c.name || t('unbekannt'),
-            onPress: async () => {
-              const email = c.emails?.[0]?.email || "";
-              const phone = c.phoneNumbers?.[0]?.number || "";
-              await saveTeamContact({
-                name: c.name || t('unbekannt'),
-                email,
-                phone: phone || undefined,
-                lastUsed: Date.now(),
-              });
-              loadTeamContacts();
-            },
-          })),
-          { text: t('btn_abbrechen'), style: "cancel" as const },
-        ]
-      );
-    } catch (e: any) {
-      console.error("Import contacts error:", e);
-      Alert.alert(t('alert_fehler'), `${t('settings_contacts_load_failed' as any)} ${e?.message || t('settings_unknown_error' as any)}`);
+  // Import one or more contacts via the searchable, scrollable picker (the old
+  // iOS-Alert list could not scroll or be searched and was capped at 10).
+  const importPickedContacts = async (picked: PhoneContactEmail[]) => {
+    for (const c of picked) {
+      try {
+        await saveTeamContact({ name: c.name || c.email, email: c.email, lastUsed: Date.now() });
+      } catch {}
     }
+    loadTeamContacts();
   };
 
   const handleDeleteSpeaker = async (id: string) => {
@@ -2087,7 +2053,7 @@ return (
               <Pressable onPress={() => setShowAddTeamContact(true)} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
                 <Text style={{ fontSize: 13, color: colors.primary }}>{t('settings_add_manually' as any)}</Text>
               </Pressable>
-              <Pressable onPress={importFromPhoneContacts} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
+              <Pressable onPress={() => setShowImportContacts(true)} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
                 <Text style={{ fontSize: 13, color: colors.primary }}>{t('aus_kontakten')}</Text>
               </Pressable>
             </View>
@@ -2334,6 +2300,13 @@ return (
           </View>
         </GestureHandlerRootView>
       </Modal>
+
+      <ContactPickerModal
+        visible={showImportContacts}
+        onClose={() => setShowImportContacts(false)}
+        onSelect={() => {}}
+        onSelectContacts={importPickedContacts}
+      />
     </ScreenContainer>
   );
 }

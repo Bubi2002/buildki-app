@@ -13,11 +13,14 @@ export function ContactPickerModal({
   visible,
   onClose,
   onSelect,
+  onSelectContacts,
   multi = true,
 }: {
   visible: boolean;
   onClose: () => void;
   onSelect: (emails: string[]) => void;
+  /** Optional: also receive the full picked contacts (name + email). */
+  onSelectContacts?: (contacts: PhoneContactEmail[]) => void;
   multi?: boolean;
 }) {
   const colors = useColors();
@@ -58,6 +61,7 @@ export function ContactPickerModal({
   const toggle = (email: string) => {
     if (!multi) {
       onSelect([email]);
+      onSelectContacts?.(contacts.filter((c) => c.email === email));
       onClose();
       return;
     }
@@ -71,6 +75,7 @@ export function ContactPickerModal({
 
   const apply = () => {
     onSelect(Array.from(selected));
+    onSelectContacts?.(contacts.filter((c) => selected.has(c.email)));
     onClose();
   };
 
