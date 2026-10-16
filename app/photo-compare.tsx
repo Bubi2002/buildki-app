@@ -86,6 +86,8 @@ export default function PhotoCompareScreen() {
   const compareRef = React.useRef<View>(null);
   const [zoomUri, setZoomUri] = useState<string | null>(null);
   const [aligning, setAligning] = useState(false);
+  const [shareSelectVisible, setShareSelectVisible] = useState(false);
+  const [shareIds, setShareIds] = useState<string[]>([]);
   const titleInputRef = React.useRef<TextInput>(null);
   const alignStart = React.useRef({ x: 0, y: 0 });
 
@@ -239,9 +241,10 @@ export default function PhotoCompareScreen() {
     void saveComparisons(updated);
   };
 
-  // Share ALL comparisons of this project as one PDF (top-right Teilen button).
-  const shareAllComparisons = async () => {
-    const pairs = comparisons.filter((c) => c.afterUri);
+  // Share the chosen comparisons of this project as one PDF. Without `ids` all
+  // comparisons that have a "nachher" photo are included.
+  const shareAllComparisons = async (ids?: string[]) => {
+    const pairs = comparisons.filter((c) => c.afterUri && (!ids || ids.includes(c.id)));
     if (pairs.length === 0) { Alert.alert(t('vorhernachher'), t('project_export_empty' as any)); return; }
     try {
       let projectName = "";
@@ -662,7 +665,17 @@ export default function PhotoCompareScreen() {
             <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>{t('vorhernachher')}</Text>
             <Text style={{ fontSize: 12, color: colors.muted }}>{t('fortschrittsdokumentation')}</Text>
           </View>
-          <Pressable onPress={() => void shareAllComparisons()} disabled={comparisons.filter((c) => c.afterUri).length === 0} style={({ pressed }) => [{ opacity: comparisons.filter((c) => c.afterUri).length === 0 ? 0.4 : pressed ? 0.6 : 1, marginRight: 14 }]}>
+          <Pressable
+            onPress={() => {
+              const shareable = comparisons.filter((c) => c.afterUri).map((c) => c.id);
+              if (shareable.length === 0) return;
+              if (shareable.length === 1) { void shareAllComparisons(shareable); return; }
+              setShareIds(shareable); // preselect all
+              setShareSelectVisible(true);
+            }}
+            disabled={comparisons.filter((c) => c.afterUri).length === 0}
+            style={({ pressed }) => [{ opacity: comparisons.filter((c) => c.afterUri).length === 0 ? 0.4 : pressed ? 0.6 : 1, marginRight: 14 }]}
+          >
             <MaterialIcons name="ios-share" size={22} color={colors.foreground} />
           </Pressable>
           <Pressable onPress={createNewComparison} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, backgroundColor: colors.primary, borderRadius: 0, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }]}>
@@ -755,6 +768,54 @@ export default function PhotoCompareScreen() {
             ))}
           </ScrollView>
         )}
+
+        {/* Choose which comparisons to share */}
+        <Modal visible={shareSelectVisible} transparent animationType="slide" onRequestClose={() => setShareSelectVisible(false)}>
+          <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} onPress={() => setShareSelectVisible(false)}>
+            <Pressable onPress={() => {}} style={{ backgroundColor: colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 28, maxHeight: "82%" }}>
+              <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 }} />
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{t('photo_compare_share_select' as any)}</Text>
+                <View style={{ flexDirection: "row", gap: 14 }}>
+                  <Pressable onPress={() => setShareIds(comparisons.filter((c) => c.afterUri).map((c) => c.id))}>
+                    <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "700" }}>{t('all')}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setShareIds([])}>
+                    <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "700" }}>{t('none')}</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {comparisons.filter((c) => c.afterUri).map((c) => {
+                  const on = shareIds.includes(c.id);
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => setShareIds((prev) => prev.includes(c.id) ? prev.filter((x) => x !== c.id) : [...prev, c.id])}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <MaterialIcons name={on ? "check-box" : "check-box-outline-blank"} size={24} color={on ? colors.primary : colors.muted} />
+                      <Image source={{ uri: c.beforeUri }} style={{ width: 44, height: 44, borderRadius: 6 }} contentFit="cover" />
+                      {c.afterUri ? <Image source={{ uri: c.afterUri }} style={{ width: 44, height: 44, borderRadius: 6 }} contentFit="cover" /> : null}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }} numberOfLines={1}>{c.label}</Text>
+                        <Text style={{ fontSize: 11, color: colors.muted }}>{formatDate(c.beforeDate)}{c.afterDate ? ` → ${formatDate(c.afterDate)}` : ""}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                disabled={shareIds.length === 0}
+                onPress={() => { const ids = shareIds; setShareSelectVisible(false); void shareAllComparisons(ids); }}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14, paddingVertical: 15, borderRadius: 12, backgroundColor: colors.primary, opacity: shareIds.length === 0 ? 0.4 : pressed ? 0.85 : 1 }]}
+              >
+                <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />
+                <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFFFFF" }}>{t('protocol_share' as any)} ({shareIds.length})</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     </ScreenContainer>
   );
