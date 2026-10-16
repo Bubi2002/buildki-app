@@ -336,9 +336,12 @@ export function generatePdfHtml(
   // instead of a position:fixed div that iOS mis-positions onto the content.
   // Three-part layout: company left · "Erstellt am …" centre · page nums right
   // (page numbers only when enabled, so the Titelblatt never shows a duplicate).
-  const cssStr = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // A raw newline inside a CSS @page margin-box content string is a parse error
+  // that kills the WHOLE @page rule — footer text AND page number silently vanish.
+  // So collapse all newlines to spaces before inserting (besides escaping \ and ").
+  const cssStr = (s: string) => String(s ?? "").replace(/[\r\n]+/g, " ").replace(/\\/g, "\\\\").replace(/"/g, '\\"').trim();
   const footerLeftContent = company.companyName ? cssStr(company.companyName) : "BuildKI";
-  const footerContent = `Erstellt am ${date} um ${time}`;
+  const footerContent = cssStr(`Erstellt am ${date} um ${time}`);
   const showFooterPageNumbers = layoutOptions.showPageNumbers !== false;
 
   // ── Cover key figures (Kennzahlen-Karten) ─────────────────────────────────
@@ -502,16 +505,18 @@ export function generatePdfHtml(
     : "";
 
   const logoHtml = company.logoBase64
-    ? `<img src="${company.logoBase64}" style="max-height: 72px; max-width: 240px; object-fit: contain; display: block;" />`
+    ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 200px; object-fit: contain; display: block;" />`
     : "";
 
-  const companyInfoHtml = company.companyName
-    ? `<div style="text-align: right; font-size: 10px; color: #444;">
-        <strong style="color: #222;">${company.companyName}</strong><br/>
-        ${company.companyAddress ? company.companyAddress.replace(/\n/g, "<br/>") : ""}
-        ${company.companyPhone ? `<br/>Tel: ${company.companyPhone}` : ""}
-      </div>`
-    : "";
+  // Right-hand masthead block: company lines + the date. Only present lines are
+  // joined (one <br/> each) so an empty address no longer leaves a blank gap
+  // between the company name and the phone number. The date is always shown.
+  const companyInfoHtml = `<div style="text-align: right; font-size: 10px; color: #444; line-height: 1.5;">${[
+    company.companyName ? `<strong style="color: #222;">${escapeHtml(company.companyName)}</strong>` : "",
+    company.companyAddress ? escapeHtml(company.companyAddress).replace(/\r?\n/g, "<br/>") : "",
+    company.companyPhone ? `Tel: ${escapeHtml(company.companyPhone)}` : "",
+    `<span style="color: #64748b;">Datum: ${escapeHtml(date)}</span>`,
+  ].filter(Boolean).join("<br/>")}</div>`;
 
   // Helper: Get caption text for a photo based on its timestamp and transcription segments
   // Returns HTML with the exact sentence at photo time highlighted in bold
