@@ -310,14 +310,17 @@ export default function RundgangTab() {
   const toggleDefectDone = async (d: Defect) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const next: DefectStatus = isDefectDone(d) ? "offen" : "erledigt";
-    setDefects((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: next } : x)));
+    const nextDefects = defects.map((x) => (x.id === d.id ? { ...x, status: next } : x));
+    setDefects(nextDefects);
     try { await updateDefectStatus(d.id, next); } catch {}
+    await applyRoomAutoStatus(findRoomForDefect(d), nextDefects, tasks);
   };
 
   const toggleTaskDone = async (tk: ProjectTask) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const nextDone = !isTaskDone(tk);
-    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, done: nextDone, status: nextDone ? "erledigt" : "offen" } : x)));
+    const nextTasks = tasks.map((x) => (x.id === tk.id ? { ...x, done: nextDone, status: nextDone ? "erledigt" : "offen" } : x));
+    setTasks(nextTasks);
     try {
       const raw = await AsyncStorage.getItem("project-tasks");
       const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
@@ -327,6 +330,7 @@ export default function RundgangTab() {
         await AsyncStorage.setItem("project-tasks", JSON.stringify(all));
       }
     } catch {}
+    await applyRoomAutoStatus(findRoomForTask(tk), defects, nextTasks);
   };
 
   // Tap cycles the status: offen → In Arbeit → Fertig → offen.
@@ -340,8 +344,10 @@ export default function RundgangTab() {
     const order: DefectStatus[] = ["offen", "in_bearbeitung", "erledigt"];
     const cur: DefectStatus = (d.status === "erledigt" || d.status === "geschlossen") ? "erledigt" : (d.status === "in_bearbeitung" || d.status === "in_arbeit" as any) ? "in_bearbeitung" : "offen";
     const next = order[(order.indexOf(cur) + 1) % order.length];
-    setDefects((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: next } : x)));
+    const nextDefects = defects.map((x) => (x.id === d.id ? { ...x, status: next } : x));
+    setDefects(nextDefects);
     try { await updateDefectStatus(d.id, next); } catch {}
+    await applyRoomAutoStatus(findRoomForDefect(d), nextDefects, tasks);
   };
   const cycleTaskStatus = async (tk: ProjectTask) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -349,13 +355,15 @@ export default function RundgangTab() {
     const cur = (tk.done === true || tk.status === "erledigt") ? "erledigt" : tk.status === "in_arbeit" ? "in_arbeit" : "offen";
     const next = order[(order.indexOf(cur) + 1) % order.length];
     const nextDone = next === "erledigt";
-    setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: next, done: nextDone } : x)));
+    const nextTasks = tasks.map((x) => (x.id === tk.id ? { ...x, status: next, done: nextDone } : x));
+    setTasks(nextTasks);
     try {
       const raw = await AsyncStorage.getItem("project-tasks");
       const all: ProjectTask[] = raw ? JSON.parse(raw) : [];
       const idx = all.findIndex((x) => x.id === tk.id);
       if (idx >= 0) { all[idx] = { ...all[idx], status: next, done: nextDone }; await AsyncStorage.setItem("project-tasks", JSON.stringify(all)); }
     } catch {}
+    await applyRoomAutoStatus(findRoomForTask(tk), defects, nextTasks);
   };
 
   const openDefect = (d: Defect) => {
@@ -416,9 +424,11 @@ export default function RundgangTab() {
   // ── Defect popup actions ──────────────────────────────────────────────────
   const setDefectStatusNow = async (d: Defect, status: DefectStatus) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setDefects((prev) => prev.map((x) => (x.id === d.id ? { ...x, status } : x)));
+    const nextDefects = defects.map((x) => (x.id === d.id ? { ...x, status } : x));
+    setDefects(nextDefects);
     setSelectedDefect((prev) => (prev && prev.id === d.id ? { ...prev, status } : prev));
     try { await updateDefectStatus(d.id, status); } catch {}
+    await applyRoomAutoStatus(findRoomForDefect(d), nextDefects, tasks);
   };
   const saveDefectEdit = async () => {
     const d = selectedDefect;
@@ -489,9 +499,12 @@ export default function RundgangTab() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
   const deleteDefectNow = async (d: Defect) => {
-    setDefects((prev) => prev.filter((x) => x.id !== d.id));
+    const room = findRoomForDefect(d);
+    const nextDefects = defects.filter((x) => x.id !== d.id);
+    setDefects(nextDefects);
     setSelectedDefect(null);
     try { await deleteDefect(d.id); } catch {}
+    await applyRoomAutoStatus(room, nextDefects, tasks);
   };
 
   const setRoomStatus = async (room: Room, status: Room["status"]) => {
@@ -499,6 +512,28 @@ export default function RundgangTab() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, status } : r)));
     try { await updateRoom(selectedProjectId, room.id, { status }); } catch {}
+  };
+
+  const findRoomForDefect = (d: Defect) =>
+    rooms.find((r) => r.name.trim().toLowerCase() === defectRoomName(d).toLowerCase() && sameFloor(defectFloorName(d), r)) || null;
+  const findRoomForTask = (tk: ProjectTask) =>
+    rooms.find((r) => r.name.trim().toLowerCase() === (tk.room || "").trim().toLowerCase() && sameFloor((tk as any).floor, r)) || null;
+
+  // Auto-reflect a room's status from its items: once every Mangel und jede
+  // Aufgabe erledigt ist, springt der Raum auf "fertig" (grün); wird wieder etwas
+  // offen, zurück auf "in Arbeit". Ein manuell "abgenommen" bleibt unangetastet.
+  // Lists are passed in (post-update) to avoid reading stale state after setDefects/setTasks.
+  const applyRoomAutoStatus = async (room: Room | null, defectsList: Defect[], tasksList: ProjectTask[]) => {
+    if (!room || !selectedProjectId) return;
+    const roomD = defectsList.filter((d) => defectRoomName(d).toLowerCase() === room.name.trim().toLowerCase() && sameFloor(defectFloorName(d), room));
+    const roomT = tasksList.filter((tk) => (tk.room || "").trim().toLowerCase() === room.name.trim().toLowerCase() && sameFloor((tk as any).floor, room));
+    if (roomD.length + roomT.length === 0) return; // nothing to derive from
+    const openD = roomD.filter((d) => OPEN_DEFECT_STATUSES.has(d.status)).length;
+    const openT = roomT.filter((tk) => !(tk.done === true || tk.status === "erledigt")).length;
+    const complete = openD === 0 && openT === 0;
+    const cur = room.status || "nicht_begonnen";
+    if (complete && cur !== "fertig" && cur !== "abgenommen") await setRoomStatus(room, "fertig");
+    else if (!complete && cur === "fertig") await setRoomStatus(room, "in_arbeit");
   };
 
   const openDefectCreate = (room: Room) => {
@@ -549,8 +584,11 @@ export default function RundgangTab() {
       updatedAt: now,
     };
     try { await saveDefect(newDefect as any); } catch {}
-    setDefects((prev) => [newDefect as any, ...prev]);
+    const nextDefects = [newDefect as any, ...defects];
+    setDefects(nextDefects);
     setDefectRoom(null);
+    // A new open defect means the room is no longer "fertig".
+    await applyRoomAutoStatus(room, nextDefects, tasks);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
