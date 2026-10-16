@@ -71,19 +71,24 @@ export default function PhotoGalleryScreen() {
   const [description, setDescription] = useState("");
   const [trade, setTrade] = useState("");
   const [location, setLocation] = useState("");
-  const [projectRooms, setProjectRooms] = useState<{ id: string; name: string }[]>([]);
+  const [projFloors, setProjFloors] = useState<{ id: string; name: string; number: number }[]>([]);
+  const [projRooms, setProjRooms] = useState<{ id: string; name: string; floorId: string }[]>([]);
+  const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
 
   useEffect(() => {
     void loadPhotos();
   }, [projectId]);
 
-  // Load the project's rooms so a photo can be assigned to one.
+  // Load the project's floors + rooms so a photo can be assigned to a room,
+  // choosing the Etage (floor) first and then the room on that floor.
   useEffect(() => {
-    if (!projectId) { setProjectRooms([]); return; }
+    if (!projectId) { setProjFloors([]); setProjRooms([]); return; }
     (async () => {
       try {
-        const { getAllRooms } = await import("@/lib/room-store");
-        setProjectRooms(await getAllRooms(projectId));
+        const { getProjectStructure } = await import("@/lib/room-store");
+        const s = await getProjectStructure(projectId);
+        setProjFloors((s.floors || []).map((f) => ({ id: f.id, name: f.name, number: f.number })));
+        setProjRooms((s.rooms || []).map((r) => ({ id: r.id, name: r.name, floorId: r.floorId })));
       } catch {}
     })();
   }, [projectId]);
@@ -250,7 +255,14 @@ export default function PhotoGalleryScreen() {
     setSelectedPhoto(photo);
     setDescription(photo.directPhoto?.description || "");
     setTrade(photo.directPhoto?.trade || "");
-    setLocation(photo.directPhoto?.location || "");
+    const loc = photo.directPhoto?.location || "";
+    setLocation(loc);
+    // Pre-select the Etage that contains the saved room (so its rooms show),
+    // otherwise default to the first floor.
+    const match = loc.trim()
+      ? projRooms.find((r) => r.name.trim().toLowerCase() === loc.trim().toLowerCase())
+      : undefined;
+    setSelectedFloorId(match?.floorId || projFloors[0]?.id || null);
   };
 
   const closePhoto = () => {
@@ -613,21 +625,40 @@ export default function PhotoGalleryScreen() {
                         placeholder={t('photo_gallery_trade_placeholder' as any)}
                         accessibilityLabel={t('photo_gallery_trade_a11y' as any)}
                       />
-                      {projectRooms.length > 0 && (
+                      {projFloors.length > 0 && (
                         <>
-                          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700" }}>{t('photo_assign_room' as any)}</Text>
+                          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700" }}>{t('wizard_floor' as any)}</Text>
                           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
-                            {projectRooms.map((r) => {
-                              const active = location.trim().toLowerCase() === r.name.trim().toLowerCase();
+                            {projFloors.map((f) => {
+                              const active = selectedFloorId === f.id;
                               return (
-                                <Pressable key={r.id} onPress={() => setLocation(active ? "" : r.name)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: active ? "#5DADE2" : "rgba(255,255,255,0.25)", backgroundColor: active ? "#5DADE233" : "transparent" }}>
-                                  <Text style={{ color: active ? "#5DADE2" : "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "700" }}>{r.name}</Text>
+                                <Pressable key={f.id} onPress={() => setSelectedFloorId(f.id)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: active ? "#5DADE2" : "rgba(255,255,255,0.25)", backgroundColor: active ? "#5DADE233" : "transparent" }}>
+                                  <Text style={{ color: active ? "#5DADE2" : "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "700" }}>{f.name}</Text>
                                 </Pressable>
                               );
                             })}
                           </ScrollView>
                         </>
                       )}
+                      {(() => {
+                        const floorRooms = selectedFloorId ? projRooms.filter((r) => r.floorId === selectedFloorId) : [];
+                        if (floorRooms.length === 0) return null;
+                        return (
+                          <>
+                            <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "700" }}>{t('photo_assign_room' as any)}</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                              {floorRooms.map((r) => {
+                                const active = location.trim().toLowerCase() === r.name.trim().toLowerCase();
+                                return (
+                                  <Pressable key={r.id} onPress={() => setLocation(active ? "" : r.name)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: active ? "#5DADE2" : "rgba(255,255,255,0.25)", backgroundColor: active ? "#5DADE233" : "transparent" }}>
+                                    <Text style={{ color: active ? "#5DADE2" : "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "700" }}>{r.name}</Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </ScrollView>
+                          </>
+                        );
+                      })()}
                       <TextInput
                         value={location}
                         onChangeText={setLocation}
