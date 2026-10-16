@@ -98,7 +98,9 @@ export default function ChecklistsScreen() {
         checked: false,
       })),
       createdAt: new Date().toISOString(),
-      inspector: inspectorName || t('label_pruefer'),
+      // Only store a real inspector name; never fall back to the literal label
+      // "Prüfer" (that produced the nonsensical "Prüfer: Prüfer" in the PDF).
+      inspector: inspectorName.trim(),
     };
     setActiveResult(result);
     setSelectedChecklist(checklist);
@@ -143,11 +145,16 @@ export default function ChecklistsScreen() {
       const totalItems = result.results.length;
       const pct = totalItems ? Math.round((done / totalItems) * 100) : 0;
 
+      // Treat a missing inspector — or the old literal-label fallback "Prüfer" —
+      // as empty, so neither the info column nor the subtitle shows "Prüfer: Prüfer".
+      const inspectorValue = (result.inspector || "").trim();
+      const showInspector = !!inspectorValue && inspectorValue !== t('label_pruefer');
+
       const info: InfoCol[] = [];
       if (exportDetails?.bauvorhaben) info.push({ label: t('export_bauvorhaben'), value: exportDetails.bauvorhaben, icon: ic.building });
       if (exportDetails?.etage) info.push({ label: t('export_etage'), value: exportDetails.etage, icon: ic.layers });
       if (exportDetails?.raum || result.location) info.push({ label: t('export_raum'), value: exportDetails?.raum || result.location || "", icon: ic.room });
-      if (result.inspector) info.push({ label: t('checklist_inspector' as any), value: result.inspector, icon: ic.person });
+      if (showInspector) info.push({ label: t('checklist_inspector' as any), value: inspectorValue, icon: ic.person });
       info.push({ label: t('datum' as any), value: dateStr, icon: ic.calendar });
 
       const progressBand = `<div class="progress-band">
@@ -190,7 +197,7 @@ export default function ChecklistsScreen() {
         accentColor: accent,
         title: checklist.name,
         reportTag: t('checklist_report_tag' as any),
-        subtitle: `${esc(result.inspector)} &nbsp;·&nbsp; ${dateStr}`,
+        subtitle: showInspector ? `${esc(inspectorValue)} &nbsp;·&nbsp; ${dateStr}` : dateStr,
         info,
         body: `${progressBand}${table}${legendHtml}`,
         logoDataUri: await resolveBrandingLogo(branding),
