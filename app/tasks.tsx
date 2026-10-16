@@ -11,6 +11,8 @@ import {
   Alert,
   Modal,
   TextInput,
+  KeyboardAvoidingView,
+  Keyboard,
  Platform } from "react-native";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -1081,7 +1083,8 @@ export default function TasksScreen() {
 
       {/* Create / edit task — centered popup */}
       <Modal visible={showCreate} transparent animationType="fade" onRequestClose={() => { setShowCreate(false); resetTaskForm(); }}>
-        <View style={styles.createOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.createOverlay, { justifyContent: "flex-end" }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} />
           <View style={[styles.createSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <Text style={[styles.headerTitle, { color: colors.foreground }]}>{editingTaskId || editingProtocol ? t('tasks_edit' as any) : t('tasks_add' as any)}</Text>
@@ -1090,7 +1093,7 @@ export default function TasksScreen() {
               </Pressable>
             </View>
 
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
             <Text style={[styles.createLabel, { color: colors.muted }]}>{t('titel' as any)}</Text>
             <TextInput
               value={newTitle}
@@ -1225,7 +1228,7 @@ export default function TasksScreen() {
             </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <BusyOverlay visible={pdfBusy} label={t('pdf_wird_erstellt' as any)} />
