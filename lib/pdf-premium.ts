@@ -124,7 +124,9 @@ export function buildPremiumHtml(opts: {
   const brand = accentColor || NAVY;
   // Logo height follows the configured size (keeps aspect ratio via width:auto).
   const logoH = branding.logoSize === "small" ? 24 : branding.logoSize === "large" ? 44 : 32;
-  const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${brand}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
+  // Fallback brand mark (shown only when no logo is uploaded): navy, so a light
+  // accent never turns it into an unreadable yellow/orange house.
+  const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
   const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : houseSvg;
   const coName = escHtml(branding.companyName || "BuildKI");
   const coSub = escHtml(reportTag || branding.headerText || "Baudokumentation");
@@ -166,7 +168,10 @@ export function buildPremiumHtml(opts: {
   .topbar { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 28px 14px; border-bottom: 1px solid #E6EBF1; }
   .topbar .brand { display: flex; align-items: center; gap: 10px; }
   .topbar .brand img { height: ${logoH}px; width: auto; object-fit: contain; }
-  .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${brand}; letter-spacing: -0.2px; line-height: 1.15; }
+  /* Company wordmark stays navy ink (not the accent): a light accent like
+     yellow/orange is unreadable on white, and the house style keeps the name
+     navy while the accent themes the rules/pills/icons. */
+  .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -0.2px; line-height: 1.15; }
   .topbar .brand .co small { display: block; font-size: 8.5px; font-weight: 600; color: #6B7A8D; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
   .topbar .company { font-size: 9px; color: #6B7A8D; text-align: right; line-height: 1.55; }
   .topbar .company b { color: #1b2430; font-size: 9.5px; }
