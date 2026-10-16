@@ -1101,7 +1101,11 @@ export default function FloorPlanScreen() {
                   source={{ uri: selectedPlan.imageUri }}
                   style={{ width: containerWidth, height: containerHeight }}
                   contentFit="contain"
-                  cachePolicy="memory-disk"
+                  // "disk" (not "memory-disk"): a multi-page plan would otherwise
+                  // pile up full-res (allowDownscaling off) bitmaps in the memory
+                  // cache as you page through, eventually failing to decode a new
+                  // page → white. Disk cache keeps switching fast without the pileup.
+                  cachePolicy="disk"
                   allowDownscaling={false}
                   recyclingKey={`floor-plan-${selectedPlan.id}`}
                   onLoadStart={() => setLoadingPlanId(selectedPlan.id)}

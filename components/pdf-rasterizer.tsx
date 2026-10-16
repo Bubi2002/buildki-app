@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, PixelRatio, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import * as FileSystem from "expo-file-system/legacy";
 import { captureRef } from "react-native-view-shot";
 
 export type RasterResult = { uri: string; width: number; height: number };
@@ -34,8 +35,9 @@ export function PdfRasterizer({ pdfUri, label, maxSize = 1600, onDone }: Props) 
     finished.current = false;
     setDims(null);
     if (!pdfUri) return;
-    // Safety net: never hang the UI if the PDF cannot be read.
-    const timeout = setTimeout(() => finish(null), 30000);
+    // Safety net: never hang the UI if the PDF cannot be read. Generous enough
+    // to cover the blank-capture retries (longer settle on each try).
+    const timeout = setTimeout(() => finish(null), 45000);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfUri]);
@@ -101,21 +103,37 @@ export function PdfRasterizer({ pdfUri, label, maxSize = 1600, onDone }: Props) 
                   // PDF vector content before we snapshot it — scale the wait with
                   // the stage size so big/complex plans don't capture half-rendered
                   // (blurry) or blank (white) frames.
-                  const settleMs = Math.min(3000, 900 + Math.max(dims.w, dims.h) * PixelRatio.get() * 0.35);
-                  await new Promise((resolve) => setTimeout(resolve, settleMs));
-                  // The stage is far larger than the screen, so the default
-                  // drawViewHierarchyInRect path (which "doesn't work for large
-                  // views" per RNViewShot.mm and yields a blank/blurry frame)
-                  // must NOT be used. useRenderInContext renders the layer tree
-                  // directly and works for large off-screen views. Combined with
-                  // the point-sized stage this captures at (points × screen
-                  // scale) px → a sharp, predictable resolution.
-                  const uri = await captureRef(stageRef, {
-                    format: "jpg",
-                    quality: 1,
-                    result: "tmpfile",
-                    useRenderInContext: true,
-                  });
+                  const baseSettle = Math.min(3000, 900 + Math.max(dims.w, dims.h) * PixelRatio.get() * 0.35);
+                  // A dense page can still be mid-rasterization after one beat and
+                  // snapshot as pure white. A blank capture of this large canvas
+                  // compresses to a tiny JPEG, so if the file comes back suspiciously
+                  // small we wait longer and re-capture (up to a few tries) instead
+                  // of permanently storing a white page.
+                  const MIN_OK_BYTES = 20000; // a real plan page at this size is far larger
+                  const MAX_TRIES = 3;
+                  let uri = "";
+                  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+                    await new Promise((resolve) => setTimeout(resolve, baseSettle * (attempt + 1)));
+                    // The stage is far larger than the screen, so the default
+                    // drawViewHierarchyInRect path (which "doesn't work for large
+                    // views" per RNViewShot.mm and yields a blank/blurry frame)
+                    // must NOT be used. useRenderInContext renders the layer tree
+                    // directly and works for large off-screen views. Combined with
+                    // the point-sized stage this captures at (points × screen
+                    // scale) px → a sharp, predictable resolution.
+                    uri = await captureRef(stageRef, {
+                      format: "jpg",
+                      quality: 1,
+                      result: "tmpfile",
+                      useRenderInContext: true,
+                    });
+                    let bytes = 0;
+                    try {
+                      const info = await FileSystem.getInfoAsync(uri);
+                      bytes = (info as any)?.size || 0;
+                    } catch {}
+                    if (bytes >= MIN_OK_BYTES || attempt === MAX_TRIES - 1) break;
+                  }
                   finish({ uri, width: dims.w, height: dims.h });
                 } catch {
                   finish(null);
