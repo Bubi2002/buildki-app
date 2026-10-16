@@ -109,6 +109,9 @@ export default function RundgangTab() {
   const [editDefectTitle, setEditDefectTitle] = useState("");
   const [editDefectAssignee, setEditDefectAssignee] = useState("");
   const [editDefectDue, setEditDefectDue] = useState("");
+  const [editDefectGewerk, setEditDefectGewerk] = useState("");
+  const [editDefectPriority, setEditDefectPriority] = useState<"hoch" | "mittel" | "niedrig" | null>(null);
+  const [editDefectPhotos, setEditDefectPhotos] = useState<string[]>([]);
   const [renameRoom, setRenameRoom] = useState<Room | null>(null);
   const [renameRoomName, setRenameRoomName] = useState("");
   const [addFloorOpen, setAddFloorOpen] = useState(false);
@@ -360,7 +363,25 @@ export default function RundgangTab() {
     setEditDefectDesc(d.description || "");
     setEditDefectAssignee(d.assignee || "");
     setEditDefectDue(d.dueDate || "");
+    setEditDefectGewerk((d as any).gewerk || "");
+    setEditDefectPriority((d.priority as any) || null);
+    setEditDefectPhotos(d.photos || []);
     setSelectedDefect(d);
+  };
+
+  // Pick photos for the defect being EDITED (same persistence as create).
+  const pickEditDefectPhotos = async () => {
+    try {
+      const picked = await pickImagesWithSource({ t, multiple: true } as any);
+      if (!picked || picked.length === 0) return;
+      const dir = `${FileSystem.documentDirectory}defect-photos/`;
+      try { const info = await FileSystem.getInfoAsync(dir); if (!info.exists) await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+      const uris: string[] = [];
+      for (const a of picked) {
+        try { const dest = `${dir}d-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`; await FileSystem.copyAsync({ from: a.uri, to: dest }); uris.push(dest); } catch { uris.push(a.uri); }
+      }
+      setEditDefectPhotos((prev) => [...prev, ...uris]);
+    } catch {}
   };
   const openTaskDetail = (tk: ProjectTask) => {
     setEditTaskTitle(taskTitle(tk));
@@ -402,7 +423,7 @@ export default function RundgangTab() {
   const saveDefectEdit = async () => {
     const d = selectedDefect;
     if (!d) return;
-    const updated = { ...d, title: editDefectTitle.trim() || d.title, description: editDefectDesc.trim(), assignee: editDefectAssignee.trim() || undefined, dueDate: editDefectDue.trim() || undefined, updatedAt: new Date().toISOString() };
+    const updated = { ...d, title: editDefectTitle.trim() || d.title, description: editDefectDesc.trim(), assignee: editDefectAssignee.trim() || undefined, dueDate: editDefectDue.trim() || undefined, gewerk: editDefectGewerk.trim() || undefined, priority: editDefectPriority || undefined, photos: [...editDefectPhotos], updatedAt: new Date().toISOString() };
     setDefects((prev) => prev.map((x) => (x.id === d.id ? updated : x)));
     try { await saveDefect(updated as any); } catch {}
     setSelectedDefect(null);
@@ -1142,8 +1163,9 @@ export default function RundgangTab() {
 
       {/* Defect detail popup */}
       <Modal visible={!!selectedDefect} transparent animationType="slide" onRequestClose={() => setSelectedDefect(null)}>
-        <View style={styles.taskOverlay}>
-          <View style={styles.taskSheet}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.taskOverlay, { justifyContent: "flex-end", paddingBottom: 8 }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} />
+          <View style={[styles.taskSheet, { maxHeight: "92%" }]}>
             {selectedDefect && (
               <>
                 {selectedDefect.room ? <Text style={styles.taskSheetSub}>{selectedDefect.room}</Text> : null}
@@ -1159,20 +1181,65 @@ export default function RundgangTab() {
                     );
                   })}
                 </View>
-                <TextInput value={editDefectDesc} onChangeText={setEditDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top", marginTop: 12 }]} />
-                <Text style={[styles.createLabelSm]}>{t('zustaendig')}</Text>
-                <AssigneeInput value={editDefectAssignee} onChange={setEditDefectAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
-                <View style={{ marginTop: 12 }}>
-                  <DateOnlyPicker value={editDefectDue} onChange={setEditDefectDue} label={t('frist')} withTime />
-                </View>
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false}>
+                  <TextInput value={editDefectDesc} onChangeText={setEditDefectDesc} placeholder={t('beschreibung_optional' as any)} placeholderTextColor="#5F7590" multiline style={[styles.taskInput, { minHeight: 70, textAlignVertical: "top", marginTop: 12 }]} />
+
+                  <Pressable onPress={pickEditDefectPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#1E3A5F", opacity: pressed ? 0.8 : 1 }]}>
+                    <MaterialIcons name="add-a-photo" size={18} color="#5DADE2" />
+                    <Text style={{ color: "#5DADE2", fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+                  </Pressable>
+                  {editDefectPhotos.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                      {editDefectPhotos.map((uri, i) => (
+                        <View key={i}>
+                          <ExpoImage source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                          <Pressable onPress={() => setEditDefectPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                            <MaterialIcons name="close" size={13} color="#fff" />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  <Text style={styles.defLabel}>{t('gewerk')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                    {GEWERKE.map((g) => {
+                      const active = editDefectGewerk === g;
+                      return (
+                        <Pressable key={g} onPress={() => setEditDefectGewerk(active ? "" : g)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: active ? "#5DADE2" : "#1E3A5F", backgroundColor: active ? "#5DADE218" : "transparent" }}>
+                          <Text style={{ fontSize: 13, fontWeight: active ? "700" : "600", color: active ? "#5DADE2" : "#8FA3B8" }}>{g}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <Text style={styles.defLabel}>{t('prioritaet')}</Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {(["hoch", "mittel", "niedrig"] as const).map((p) => {
+                      const active = editDefectPriority === p;
+                      const c = p === "hoch" ? "#DC2626" : p === "mittel" ? "#F59E0B" : "#16A34A";
+                      return (
+                        <Pressable key={p} onPress={() => setEditDefectPriority(active ? null : p)} style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, alignItems: "center", borderColor: active ? c : "#1E3A5F", backgroundColor: active ? c + "18" : "transparent" }}>
+                          <Text style={{ fontSize: 13, fontWeight: active ? "800" : "600", color: active ? c : "#8FA3B8" }}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  <Text style={[styles.createLabelSm]}>{t('zustaendig')}</Text>
+                  <AssigneeInput value={editDefectAssignee} onChange={setEditDefectAssignee} placeholder={t('zustaendig')} style={styles.taskInput} />
+                  <View style={{ marginTop: 12 }}>
+                    <DateOnlyPicker value={editDefectDue} onChange={setEditDefectDue} label={t('frist')} withTime />
+                  </View>
+                </ScrollView>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
                   <Pressable onPress={() => deleteDefectNow(selectedDefect)} style={[styles.taskCancel, { borderColor: "#7F1D1D" }]}><Text style={{ color: "#F87171", fontWeight: "700" }}>{t('btn_loeschen')}</Text></Pressable>
                   <Pressable onPress={saveDefectEdit} style={styles.taskSave}><Text style={{ color: "#fff", fontWeight: "700" }}>{t('save')}</Text></Pressable>
                 </View>
               </>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Task detail popup */}
