@@ -29,6 +29,7 @@ import {
   deleteDirectProjectPhoto,
   getDirectProjectPhotos,
   persistDirectProjectPhoto,
+  replaceDirectProjectPhotoImage,
   updateDirectProjectPhoto,
   type DirectProjectPhoto,
   type DirectProjectPhotoSource,
@@ -60,6 +61,11 @@ export default function PhotoGalleryScreen() {
   const [project, setProject] = useState<any>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null);
   const [annotating, setAnnotating] = useState(false);
+  // The annotator photo is tracked separately from selectedPhoto so the detail
+  // modal stays hidden for the whole annotator lifecycle. Presenting the detail
+  // modal while the full-screen annotator is still dismissing (or dismissing it
+  // mid-present) freezes the screen on iOS.
+  const [annotatorUri, setAnnotatorUri] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [description, setDescription] = useState("");
@@ -268,20 +274,42 @@ export default function PhotoGalleryScreen() {
     }
   };
 
-  const handleAnnotationSave = async (_annotations: Annotation[], flattenedUri?: string) => {
+  // Dismiss the full-screen annotator, then run `after` once it has finished
+  // animating out (≈300ms slide). Never present/dismiss another modal while it
+  // is still transitioning — that is what froze the screen on iOS.
+  const closeAnnotator = (after?: () => void) => {
     setAnnotating(false);
+    setTimeout(() => {
+      setAnnotatorUri(null);
+      after?.();
+    }, 320);
+  };
+
+  const handleAnnotationSave = async (_annotations: Annotation[], flattenedUri?: string) => {
+    const target = selectedPhoto;
+    // Close annotator → then close the detail modal; detail never flashes back in.
+    closeAnnotator(() => closePhoto());
     if (!flattenedUri || !projectId) return;
     const projectName = project?.name || t('photo_gallery_project_fallback' as any);
-    await persistDirectProjectPhoto({
-      projectId,
-      projectName,
-      sourceUri: flattenedUri,
-      originalFileName: t('photo_gallery_annotated_label' as any),
-      source: "camera",
-    });
-    await loadPhotos();
-    if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    closePhoto();
+    try {
+      if (target?.directPhoto) {
+        // Edit the existing gallery/camera photo in place — no duplicate entry.
+        await replaceDirectProjectPhotoImage(target.directPhoto.id, flattenedUri);
+      } else {
+        // Protocol photos can't be edited in place → store the annotated copy.
+        await persistDirectProjectPhoto({
+          projectId,
+          projectName,
+          sourceUri: flattenedUri,
+          originalFileName: t('photo_gallery_annotated_label' as any),
+          source: "camera",
+        });
+      }
+      await loadPhotos();
+      if (Platform.OS !== "web") await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      // Leave the gallery as-is on failure; the user can retry.
+    }
   };
 
   const confirmDelete = () => {
@@ -521,7 +549,7 @@ export default function PhotoGalleryScreen() {
           ))}
         </ScrollView>
 
-        <Modal visible={!!selectedPhoto && !annotating} animationType="fade" transparent onRequestClose={closePhoto}>
+        <Modal visible={!!selectedPhoto && !annotatorUri} animationType="fade" transparent onRequestClose={closePhoto}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.96)" }}
@@ -559,7 +587,7 @@ export default function PhotoGalleryScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t('photo_gallery_annotate' as any)}
-                    onPress={() => setAnnotating(true)}
+                    onPress={() => { setAnnotatorUri(selectedPhoto.uri); setAnnotating(true); }}
                     style={({ pressed }) => [{ marginTop: 16, minHeight: 48, flexDirection: "row", gap: 8, borderWidth: 1, borderColor: colors.primary, borderRadius: 0, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 }]}
                   >
                     <MaterialIcons name="gesture" size={20} color={colors.primary} />
@@ -634,11 +662,11 @@ export default function PhotoGalleryScreen() {
           </KeyboardAvoidingView>
         </Modal>
 
-        {selectedPhoto && (
+        {annotatorUri && (
           <PhotoAnnotator
             visible={annotating}
-            photoUri={selectedPhoto.uri}
-            onClose={() => setAnnotating(false)}
+            photoUri={annotatorUri}
+            onClose={() => closeAnnotator()}
             onSave={handleAnnotationSave}
           />
         )}

@@ -127,6 +127,48 @@ export async function updateDirectProjectPhoto(
   return updated;
 }
 
+/**
+ * Replace the IMAGE of an existing direct photo in place (same id/metadata/order),
+ * e.g. after annotating it — so annotation edits the photo instead of adding a
+ * duplicate. Writes to a fresh filename (so expo-image's uri cache can't show the
+ * stale bitmap) and removes the old file.
+ */
+export async function replaceDirectProjectPhotoImage(
+  photoId: string,
+  sourceUri: string,
+): Promise<DirectProjectPhoto | null> {
+  if (!sourceUri.trim()) return null;
+  const all = await getAllDirectProjectPhotos();
+  const index = all.findIndex((photo) => photo.id === photoId);
+  if (index < 0) return null;
+  const photo = all[index];
+  let uri = sourceUri;
+  let storedFileName = photo.storedFileName;
+  if (Platform.OS !== "web" && FileSystem.documentDirectory) {
+    const baseDirectory = `${FileSystem.documentDirectory}${PROJECT_PHOTOS_DIRECTORY}/${photo.projectId}/`;
+    const directoryInfo = await FileSystem.getInfoAsync(baseDirectory);
+    if (!directoryInfo.exists) {
+      await FileSystem.makeDirectoryAsync(baseDirectory, { intermediates: true });
+    }
+    storedFileName = `${photo.id}-annot-${Date.now()}.jpg`;
+    uri = `${baseDirectory}${storedFileName}`;
+    await FileSystem.copyAsync({ from: sourceUri, to: uri });
+    // Remove the previous file (best effort).
+    try {
+      if (photo.uri !== uri && photo.uri.startsWith(FileSystem.documentDirectory || "file://")) {
+        const info = await FileSystem.getInfoAsync(photo.uri);
+        if (info.exists) await FileSystem.deleteAsync(photo.uri, { idempotent: true });
+      }
+    } catch {
+      // Keeping the metadata authoritative is enough even if the old file lingers.
+    }
+  }
+  const updated: DirectProjectPhoto = { ...photo, uri, storedFileName };
+  all[index] = updated;
+  await saveAllDirectProjectPhotos(all);
+  return updated;
+}
+
 export async function deleteDirectProjectPhoto(photoId: string): Promise<boolean> {
   const all = await getAllDirectProjectPhotos();
   const photo = all.find((item) => item.id === photoId);
