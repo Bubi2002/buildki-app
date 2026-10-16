@@ -247,7 +247,22 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
     });
   };
 
+  // A marker is placed with a single TAP. A Pan with minDistance(0) does not
+  // reliably fire for a tap-without-movement on iOS (the user had to swipe), so
+  // the marker tool uses a dedicated Tap gesture; all drag tools use the Pan.
+  const placeMarker = useCallback((x: number, y: number) => {
+    const newAnnotation: Annotation = {
+      id: createLocalId("annotation"),
+      type: "marker",
+      color: currentColor,
+      points: [{ x, y }],
+    };
+    setAnnotations(prev => [...prev, newAnnotation]);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [currentColor]);
+
   const panGesture = Gesture.Pan()
+    .enabled(currentTool !== "marker")
     .onStart((e) => {
       runOnJS(handleTouchStart)(e.x, e.y);
     })
@@ -258,6 +273,15 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
       runOnJS(handleTouchEnd)();
     })
     .minDistance(0);
+
+  const tapGesture = Gesture.Tap()
+    .enabled(currentTool === "marker")
+    .maxDistance(24)
+    .onEnd((e) => {
+      runOnJS(placeMarker)(e.x, e.y);
+    });
+
+  const composedGesture = Gesture.Race(tapGesture, panGesture);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
@@ -288,7 +312,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
                 setImageSize({ width: containerW, height: Math.min(containerH, 500) });
               }}
             />
-            <GestureDetector gesture={panGesture}>
+            <GestureDetector gesture={composedGesture}>
               <Animated.View style={[StyleSheet.absoluteFill, { width: imageSize.width, height: imageSize.height }]}>
                 <Svg width={imageSize.width} height={imageSize.height} style={StyleSheet.absoluteFill}>
                   {annotations.map(renderAnnotation)}
