@@ -113,11 +113,16 @@ export async function exportPhotosToCloud(
     }
 
     if (photos.length === 1) {
-      // Single photo - share directly
-      await Sharing.shareAsync(photos[0], {
-        mimeType: "image/jpeg",
+      // Single photo - copy into the cache dir first so the share sheet can
+      // access it (a raw documentDirectory path can raise FilePermissionException).
+      const shareable = await toShareableFile(photos[0]);
+      if (!shareable) {
+        return { success: false, exportedCount: 0, error: "Das Foto konnte nicht geöffnet werden. Bitte das Foto erneut speichern und noch einmal versuchen." };
+      }
+      await Sharing.shareAsync(shareable.uri, {
+        mimeType: shareable.isPng ? "image/png" : "image/jpeg",
         dialogTitle: `Foto exportieren: ${folderName}`,
-        UTI: "public.jpeg",
+        UTI: shareable.isPng ? "public.png" : "public.jpeg",
       });
     } else {
       // Multiple photos - create a zip or share sequentially
@@ -130,11 +135,15 @@ export async function exportPhotosToCloud(
           UTI: "com.pkware.zip-archive",
         });
       } else {
-        // Fallback: share first photo and inform user
-        await Sharing.shareAsync(photos[0], {
-          mimeType: "image/jpeg",
+        // Fallback: share first photo (via a cache copy, see above).
+        const shareable = await toShareableFile(photos[0]);
+        if (!shareable) {
+          return { success: false, exportedCount: 0, error: "Die Fotos konnten nicht geöffnet werden. Bitte erneut versuchen." };
+        }
+        await Sharing.shareAsync(shareable.uri, {
+          mimeType: shareable.isPng ? "image/png" : "image/jpeg",
           dialogTitle: `Foto 1/${photos.length} exportieren: ${folderName}`,
-          UTI: "public.jpeg",
+          UTI: shareable.isPng ? "public.png" : "public.jpeg",
         });
       }
     }
@@ -188,6 +197,31 @@ function buildFolderName(options: {
   else parts.push(new Date().toISOString().split("T")[0]);
   if (parts.length === 0) parts.push(options.protocolTitle.slice(0, 30));
   return parts.join("_").replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, "_");
+}
+
+/**
+ * expo-sharing can throw "You don't have access to the provided file"
+ * (FilePermissionException) for some app-sandbox paths on iOS. Copying the file
+ * into the cache directory with a clean name yields a location the system share
+ * sheet can always read. Also verifies the file exists and downloads remote URLs.
+ */
+async function toShareableFile(uri: string): Promise<{ uri: string; isPng: boolean } | null> {
+  try {
+    if (!uri) return null;
+    const isPng = uri.toLowerCase().includes(".png");
+    const ext = isPng ? "png" : "jpg";
+    const dest = `${FileSystem.cacheDirectory}share_${Date.now()}_${Math.floor(Math.random() * 1_000_000)}.${ext}`;
+    if (/^https?:\/\//i.test(uri)) {
+      const res = await FileSystem.downloadAsync(uri, dest);
+      return res?.uri ? { uri: res.uri, isPng } : null;
+    }
+    const info = await FileSystem.getInfoAsync(uri);
+    if (!info.exists) return null;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+    return { uri: dest, isPng };
+  } catch {
+    return null;
+  }
 }
 
 /**
