@@ -2091,11 +2091,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#FFFFFF",
     transform: [{ scale: 1.4 }],
-    shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 8,
+    // No shadow: a shadowed + transformed view is offscreen-rasterized on iOS,
+    // which blurs when the canvas is zoomed and flickers while panning.
   },
   pinMarker: {
     width: 22,
@@ -2105,11 +2102,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    // No shadow here (see pinMarkerHighlight): shadows force an offscreen pass
+    // that upsamples a tiny rasterized bitmap when zoomed (blur) and recomposits
+    // every frame while panning (flicker). The white border gives contrast.
   },
   pinTail: {
     width: 0,
