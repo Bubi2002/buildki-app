@@ -24,7 +24,7 @@ import { captureRef } from "react-native-view-shot";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
-import { exportMeasurementPdf } from "@/lib/measure-export";
+import { exportMeasurementPdf, exportMeasurementsOverviewPdf } from "@/lib/measure-export";
 import {
   createEvidenceItem,
   createEvidenceMeasurement,
@@ -138,6 +138,9 @@ export default function MeasureScreen() {
   // When set, step 2/3 edit this existing measurement (replace on save) instead
   // of adding a new one.
   const [editingMeasurementId, setEditingMeasurementId] = useState<string | null>(null);
+  const [overviewVisible, setOverviewVisible] = useState(false);
+  const [overviewSelected, setOverviewSelected] = useState<string[]>([]);
+  const [isOverviewExporting, setIsOverviewExporting] = useState(false);
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -560,6 +563,67 @@ export default function MeasureScreen() {
     }
   }
 
+  // All evidence of this project that already has at least one measurement —
+  // the "Alle Messungen" overview lists these so saved measurements are always
+  // findable again (and a subset can be exported together).
+  const measuredEvidence = useMemo(
+    () => evidence.filter((e) => (e.measurements || []).length > 0),
+    [evidence],
+  );
+
+  const rowsForEvidence = (e: EvidenceItem): { label: string; value: string }[] =>
+    (e.measurements || []).map((m: any, i: number) => {
+      const mMethod = METHODS.find((x) => x.value === m.method) || METHODS[0];
+      const acc = mMethod.accuracy === "estimated"
+        ? t('measure_quality_estimate' as any)
+        : mMethod.accuracy === "verified"
+        ? t('measure_quality_verified' as any)
+        : t('measure_quality_calibrated' as any);
+      const valStr = `${String(m.value).replace(".", ",")} ${m.unit}`;
+      const tol = m.tolerance != null ? ` ±${String(m.tolerance).replace(".", ",")}${m.toleranceUnit || ""}` : "";
+      return { label: `M${i + 1}`, value: `${valStr}${tol} · ${t(mMethod.label as any)} (${acc})` };
+    });
+
+  const evidenceTitle = (e: EvidenceItem): string =>
+    (e.findingText || e.room || e.sourceFilename || t('measure_title' as any)) as string;
+
+  const openOverview = () => {
+    setOverviewSelected(measuredEvidence.map((e) => e.id)); // preselect all
+    setOverviewVisible(true);
+  };
+
+  const exportOverview = async () => {
+    const items = measuredEvidence
+      .filter((e) => overviewSelected.includes(e.id))
+      .map((e) => ({
+        label: evidenceTitle(e),
+        imageUri: e.previewUri || e.originalUri,
+        findingText: e.findingText,
+        rows: rowsForEvidence(e),
+      }));
+    if (items.length === 0) return;
+    setIsOverviewExporting(true);
+    try {
+      const result = await exportMeasurementsOverviewPdf({
+        title: t('measure_title' as any),
+        heading: project?.name || "",
+        dialogTitle: t('measure_title' as any),
+        items,
+      });
+      if (result === "unavailable") {
+        Alert.alert(t('measure_alert_messstrecke_title' as any), t('floor_plan_export_unavailable' as any));
+      } else if (result === "empty") {
+        Alert.alert(t('measure_alert_save_failed_title' as any), t('floor_plan_export_error' as any));
+      } else {
+        setOverviewVisible(false);
+      }
+    } catch (error) {
+      Alert.alert(t('measure_alert_save_failed_title' as any), error instanceof Error ? error.message : t('floor_plan_export_error' as any));
+    } finally {
+      setIsOverviewExporting(false);
+    }
+  };
+
   const measurementLabel = value.trim()
     ? `${value.replace(".", ",")} ${unit}${selectedMethod.accuracy === "estimated" ? t('measure_label_estimate_suffix' as any) : ""}`
     : t('measure_label_messwert' as any);
@@ -594,6 +658,15 @@ export default function MeasureScreen() {
             {project?.name || t('measure_project_placeholder' as any)}
           </Text>
         </View>
+        {measuredEvidence.length > 0 && (
+          <Pressable
+            onPress={openOverview}
+            accessibilityLabel={t('measure_overview_title' as any)}
+            style={({ pressed }) => [{ padding: 4, marginRight: 4, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <MaterialIcons name="format-list-bulleted" size={24} color="#00ACC1" />
+          </Pressable>
+        )}
         {selectedEvidence && step >= 2 ? (
           <Pressable
             onPress={() => void handleExportPdf()}
@@ -933,6 +1006,60 @@ export default function MeasureScreen() {
                 <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", paddingVertical: 20 }}>{t('measure_no_project_text' as any)}</Text>
               )}
             </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* "Alle Messungen" overview: find a saved measurement again, and export a chosen subset. */}
+      <Modal visible={overviewVisible} transparent animationType="slide" onRequestClose={() => setOverviewVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} onPress={() => setOverviewVisible(false)}>
+          <Pressable onPress={() => {}} style={{ backgroundColor: colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 28, maxHeight: "85%" }}>
+            <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 }} />
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <Text style={{ fontSize: 17, fontWeight: "800", color: colors.foreground }}>{t('measure_overview_title' as any)}</Text>
+              <View style={{ flexDirection: "row", gap: 14 }}>
+                <Pressable onPress={() => setOverviewSelected(measuredEvidence.map((e) => e.id))}>
+                  <Text style={{ fontSize: 13, color: "#00ACC1", fontWeight: "700" }}>{t('all')}</Text>
+                </Pressable>
+                <Pressable onPress={() => setOverviewSelected([])}>
+                  <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "700" }}>{t('none')}</Text>
+                </Pressable>
+              </View>
+            </View>
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 10 }}>{t('measure_overview_hint' as any)}</Text>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {measuredEvidence.map((e) => {
+                const on = overviewSelected.includes(e.id);
+                const ms = e.measurements || [];
+                const summary = ms.map((m: any, i: number) => `M${i + 1}: ${fmtMeasureValue(m)}`).join(" · ");
+                return (
+                  <View key={e.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                    <Pressable onPress={() => setOverviewSelected((prev) => prev.includes(e.id) ? prev.filter((x) => x !== e.id) : [...prev, e.id])} hitSlop={6}>
+                      <MaterialIcons name={on ? "check-box" : "check-box-outline-blank"} size={24} color={on ? "#00ACC1" : colors.muted} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => { selectEvidence(e); setStep(1); setOverviewVisible(false); }}
+                      style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <Image source={{ uri: e.previewUri || e.originalUri }} style={{ width: 52, height: 52, borderRadius: 6, backgroundColor: colors.surface }} contentFit="cover" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }} numberOfLines={1}>{evidenceTitle(e)}</Text>
+                        <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={2}>{summary}</Text>
+                      </View>
+                      <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <Pressable
+              disabled={overviewSelected.length === 0 || isOverviewExporting}
+              onPress={() => void exportOverview()}
+              style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14, paddingVertical: 15, borderRadius: 12, backgroundColor: "#00ACC1", opacity: (overviewSelected.length === 0 || isOverviewExporting) ? 0.4 : pressed ? 0.85 : 1 }]}
+            >
+              {isOverviewExporting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <MaterialIcons name="ios-share" size={20} color="#FFFFFF" />}
+              <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFFFFF" }}>{t('measure_export_pdf' as any)} ({overviewSelected.length})</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>

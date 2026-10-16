@@ -80,3 +80,51 @@ export async function exportMeasurementPdf(params: {
   await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: params.dialogTitle, UTI: "com.adobe.pdf" });
   return "shared";
 }
+
+/**
+ * Export several measured images as ONE PDF — a section per selected image with
+ * its annotated picture and its measurement rows. Used by the "Alle Messungen"
+ * overview to export a chosen subset.
+ */
+export async function exportMeasurementsOverviewPdf(params: {
+  title: string;
+  heading: string;
+  dialogTitle: string;
+  items: { label: string; imageUri?: string; findingText?: string; note?: string; rows: MeasureExportRow[] }[];
+}): Promise<"shared" | "unavailable" | "empty"> {
+  const branding = await getPdfBranding();
+  const accent = branding.accentColor || "#1E3A5F";
+  const logoDataUri = await resolveBrandingLogo(branding);
+
+  const sections: string[] = [];
+  for (const it of params.items) {
+    const dataUri = it.imageUri ? await fileToDataUri(it.imageUri) : null;
+    const rowsHtml = it.rows
+      .filter((r) => r.value && r.value.trim())
+      .map((r) => `<tr><td style="color:#64748b;width:42%;">${escHtml(r.label)}</td><td><strong>${escHtml(r.value)}</strong></td></tr>`)
+      .join("");
+    sections.push(`
+      <div style="margin-top:18px;page-break-inside:avoid;">
+        <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:6px;">${escHtml(it.label)}</div>
+        ${dataUri ? `<div class="card" style="text-align:center;padding:10px;background:#f8fafc;"><img src="${dataUri}" style="max-width:100%;max-height:360px;object-fit:contain;display:inline-block;" /></div>` : ""}
+        ${it.findingText && it.findingText.trim() ? `<div class="note" style="white-space:pre-wrap;margin-top:8px;">${escHtml(it.findingText)}</div>` : ""}
+        <table class="prem-table" style="margin-top:10px;"><tbody>${rowsHtml}</tbody></table>
+        ${it.note && it.note.trim() ? `<div class="note" style="white-space:pre-wrap;margin-top:6px;">${escHtml(it.note)}</div>` : ""}
+      </div>`);
+  }
+  if (sections.length === 0) return "empty";
+
+  const html = buildPremiumHtml({
+    branding,
+    accentColor: accent,
+    title: params.title,
+    subtitle: escHtml(params.heading),
+    body: sections.join(""),
+    logoDataUri,
+  });
+
+  const { uri } = await Print.printToFileAsync({ html });
+  if (!(await Sharing.isAvailableAsync())) return "unavailable";
+  await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: params.dialogTitle, UTI: "com.adobe.pdf" });
+  return "shared";
+}
