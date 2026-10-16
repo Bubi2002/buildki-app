@@ -3043,7 +3043,7 @@ export default function ProtocolDetailScreen() {
                 // were removed here on purpose (reachable from the Projekte tab).
                 // "Mängel" was removed too — it opened the global defect list
                 // (not scoped to this protocol/project), which confused users.
-                { icon: "checklist", label: t('nav_aufgaben' as any), route: "/tasks", color: "#5DADE2" },
+                // "Aufgaben" wurde hier auf Wunsch entfernt (über den Projekte-Tab erreichbar).
                 { icon: "map", label: t('index_tool_grundriss' as any), route: "/floor-plan", color: "#4FC3F7" },
               ].map((tool) => (
                 <Pressable
