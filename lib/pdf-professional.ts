@@ -185,13 +185,16 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       ).join("")}</div></div>`
     : "";
 
+  // Page number per entry via target-counter against the section anchor. iOS
+  // expo-print honors this in recent versions; where it is not supported the
+  // ::after simply renders empty (title still shows), so it degrades cleanly.
   const tocHtml = includeTableOfContents && sections.length > 3
     ? `<div class="toc">
         <div class="toc-h">Inhalt</div>
-        <ol>
-          ${sections.map((s, i) => `<li>${esc(s.title)}</li>`).join("")}
-          ${signatures && signatures.length > 0 ? `<li>Unterschriften</li>` : ""}
-        </ol>
+        <div class="toc-list">
+          ${sections.map((s, i) => `<div class="toc-row"><span class="toc-ttl">${i + 1}. ${esc(s.title)}</span><span class="toc-dots"></span><a class="toc-pg" href="#section-${i}"></a></div>`).join("")}
+          ${signatures && signatures.length > 0 ? `<div class="toc-row"><span class="toc-ttl">${sections.length + 1}. Unterschriften</span><span class="toc-dots"></span><a class="toc-pg" href="#signatures"></a></div>` : ""}
+        </div>
       </div>`
     : "";
 
@@ -327,10 +330,14 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .stat-box { flex: 1; min-width: 90px; background: #fff; border: 1px solid #eef1f5; border-radius: 8px; padding: 10px 6px; text-align: center; }
     .stat-number { font-size: 22px; font-weight: 800; }
     .stat-label { font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: .3px; }
-    .toc { margin: 16px 0; padding: 12px 16px; background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 10px; }
-    .toc-h { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: ${accentColor}; font-weight: 700; margin-bottom: 6px; }
-    .toc ol { padding-left: 20px; }
-    .toc li { margin: 3px 0; font-size: 11px; color: #334155; }
+    /* No frame around the table of contents — flat on the page. */
+    .toc { margin: 16px 0 6px; padding: 0; }
+    .toc-h { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: ${accentColor}; font-weight: 700; margin-bottom: 8px; }
+    .toc-row { display: flex; align-items: baseline; margin: 4px 0; font-size: 11px; color: #334155; }
+    .toc-ttl { flex: 0 0 auto; }
+    .toc-dots { flex: 1 1 auto; border-bottom: 1px dotted #cbd5e1; margin: 0 6px; transform: translateY(-2px); }
+    .toc-pg { flex: 0 0 auto; color: #64748b; text-decoration: none; }
+    .toc-pg::after { content: target-counter(attr(href url), page); }
     .section { margin-bottom: 20px; }
     .section-chip { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; }
     .section-chip .num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: ${NAVY}; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; }
@@ -474,6 +481,30 @@ export async function generateAndSharePdf(options: ProfessionalPdfOptions): Prom
     if (!options.companyInfo) {
       const stored = await getCompanyInfo();
       if (stored) options.companyInfo = stored;
+    }
+
+    // Make the header show the real company logo (like the other PDFs) instead
+    // of the generic house icon. The logo lives in the PDF branding store; pull
+    // it (and any missing company fields) from there when not already set.
+    try {
+      if (!options.companyInfo?.logoBase64) {
+        const { getPdfBranding } = await import("./pdf-branding-store");
+        const { resolveBrandingLogo } = await import("./pdf-premium");
+        const branding = await getPdfBranding();
+        const logo = await resolveBrandingLogo(branding);
+        if (logo || branding.companyName) {
+          options.companyInfo = {
+            name: options.companyInfo?.name || branding.companyName || "",
+            address: options.companyInfo?.address || branding.companyAddress,
+            phone: options.companyInfo?.phone || branding.companyPhone,
+            email: options.companyInfo?.email || branding.companyEmail,
+            website: options.companyInfo?.website || (branding as any).companyWebsite,
+            logoBase64: logo || options.companyInfo?.logoBase64,
+          };
+        }
+      }
+    } catch {
+      // Fall back to the house icon if branding can't be read.
     }
 
     const html = generateProfessionalPdfHtml(options);
