@@ -1974,26 +1974,8 @@ return (
             Dropbox-Entwickler-App mit Produktion-Freigabe + Server und lief ins
             Nutzerlimit. Zum IMPORTIEREN aus Dropbox braucht man das nicht – das
             läuft über die iOS-„Dateien"-Auswahl (Cloud (Dropbox, Drive…)). */}
-        {/* Versand: immer manuell — nur der Standardempfänger wird hier gepflegt. */}
-        {inCat("versand") && (<>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('dispatch_default_recipient' as any)}</Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('dispatch_manual_hint' as any)}</Text>
-          <LabeledInput
-            colors={colors}
-            icon="alternate-email"
-            label={t('dispatch_default_recipient' as any)}
-            value={branding?.defaultEmailAddress || ""}
-            onChangeText={(v) => updateBranding("defaultEmailAddress", v)}
-            placeholder="info@firma.de"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            optional
-          />
-          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('dispatch_recipient_note' as any)}</Text>
-        </View>
-
-        </>)}
+        {/* Standardempfänger wurde auf Wunsch entfernt — Versand erfolgt immer
+            manuell, Empfänger werden beim Senden ausgewählt. */}
         {/* Auto-Bericht */}
         {inCat("versand") && (<>
         <View style={styles.section}>
