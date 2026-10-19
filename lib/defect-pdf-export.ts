@@ -169,6 +169,14 @@ export async function generateDefectPdfHtml(
   const varCtx = { projekt: projectName, firma: branding.companyName, datum: nowStr, dokumenttyp: "Mängeldokumentation" };
   const coName = esc(branding.companyName || "BuildKI");
   const coSub = esc(applyBrandingVariables(branding.headerText || "Mängeldokumentation", varCtx));
+  // Company contact for the header band (Firma steht schon links): Adresse,
+  // Telefon, Mail, Website.
+  const headerCompanyMeta = [
+    branding.companyAddress ? esc(branding.companyAddress) : "",
+    branding.companyPhone ? `Tel: ${esc(branding.companyPhone)}` : "",
+    branding.companyEmail ? esc(branding.companyEmail) : "",
+    branding.companyWebsite ? esc(branding.companyWebsite) : "",
+  ].filter(Boolean).join("<br/>");
   const footerLeft = escCss(applyBrandingVariables(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"), varCtx));
   const pageBox = branding.showPageNumbers
     ? `@bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
@@ -264,7 +272,7 @@ export async function generateDefectPdfHtml(
 <body>
   <div class="header">
     <div class="brand">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
-    <div class="rtag"><div class="t">Bericht</div><div class="d">${dateStr}</div></div>
+    <div class="rtag"><div class="t">Bericht</div><div class="d">${dateStr}</div>${headerCompanyMeta ? `<div style="font-size:8.5px;color:#9db8d4;margin-top:6px;line-height:1.5;font-weight:400;letter-spacing:0;text-transform:none;">${headerCompanyMeta}</div>` : ""}</div>
   </div>
   <div class="wrap">
     <h1 class="title">Mängelbericht</h1>

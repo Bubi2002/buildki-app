@@ -88,6 +88,12 @@ export async function generateRaumbuchPdf(
     if (proj?.imageUri) heroDataUri = await toDataUri(proj.imageUri, 1600);
   } catch {}
   const companyAddress = esc(branding?.companyAddress || "").replace(/\n/g, "<br>");
+  // Firma-Kontaktzeilen für den Ersteller-Block: Telefon, Mail, Website.
+  const companyContact = [
+    branding?.companyPhone ? `Tel: ${esc(branding.companyPhone)}` : "",
+    branding?.companyEmail ? esc(branding.companyEmail) : "",
+    branding?.companyWebsite ? esc(branding.companyWebsite) : "",
+  ].filter(Boolean).join("<br>");
 
   // Resolve the plan image (once per plan).
   const resolvePlan = async (e: RaumbuchEntry): Promise<{ uri: string | null; aspect: number } | null> => {
@@ -232,7 +238,7 @@ export async function generateRaumbuchPdf(
         <div class="cover-meta">
           ${projectAddress ? `<div class="cover-block"><b>Baugrundstück</b><br>${esc(projectAddress)}</div>` : ""}
           ${projectBuilder ? `<div class="cover-block"><b>Bauherr</b><br>${esc(projectBuilder)}</div>` : ""}
-          <div class="cover-block"><b>Ersteller</b><br>${co}${companyAddress ? `<br>${companyAddress}` : ""}</div>
+          <div class="cover-block"><b>Ersteller</b><br>${co}${companyAddress ? `<br>${companyAddress}` : ""}${companyContact ? `<br>${companyContact}` : ""}</div>
         </div>
         <div class="cover-date">${now}</div>
       </div>

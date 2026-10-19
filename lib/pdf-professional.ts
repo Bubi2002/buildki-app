@@ -162,9 +162,19 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     : "";
   const coName = esc(companyInfo?.name || "");
 
-  // Compact report meta shown in the navy band (top-right).
-  const bandMeta = [reportType ? esc(reportType) : "", projekt ? esc(projekt) : "", esc(datum)]
-    .filter(Boolean).join("<br/>");
+  // Compact report meta + full company contact shown top-right: Berichtstyp,
+  // Projekt, Datum und darunter Firma, Adresse, Telefon, Mail, Website.
+  const companyMeta = [
+    companyInfo?.name ? `<b style="color:#1b2430;">${esc(companyInfo.name)}</b>` : "",
+    esc(companyInfo?.address || ""),
+    companyInfo?.phone ? `Tel: ${esc(companyInfo.phone)}` : "",
+    esc(companyInfo?.email || ""),
+    esc(companyInfo?.website || ""),
+  ].filter(Boolean).join("<br/>");
+  const bandMeta = [
+    [reportType ? esc(reportType) : "", projekt ? esc(projekt) : "", esc(datum)].filter(Boolean).join("<br/>"),
+    companyMeta ? `<div style="margin-top:6px;">${companyMeta}</div>` : "",
+  ].filter(Boolean).join("");
 
   // Info grid (icon-labelled project meta).
   const infoCols: string[] = [];
@@ -282,7 +292,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   // IMPORTANT: collapse any newlines first — a raw newline inside the CSS
   // `content: "…"` string breaks the whole @page rule, which would drop BOTH
   // the footer text AND the page number. (e.g. a multi-line company address.)
-  const authorLine = [companyInfo?.name, companyInfo?.phone, companyInfo?.email, companyInfo?.address]
+  const authorLine = [companyInfo?.name, companyInfo?.phone, companyInfo?.email, companyInfo?.website, companyInfo?.address]
     .map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
   const footerLeft = escCss(
     (footerText || authorLine || (projekt ? `Projekt: ${projekt}` : "BuildKI")).replace(/\r?\n+/g, "  ·  "),

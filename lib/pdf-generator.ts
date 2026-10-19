@@ -515,6 +515,8 @@ export function generatePdfHtml(
     company.companyName ? `<strong style="color: #222;">${escapeHtml(company.companyName)}</strong>` : "",
     company.companyAddress ? escapeHtml(company.companyAddress).replace(/\r?\n/g, "<br/>") : "",
     company.companyPhone ? `Tel: ${escapeHtml(company.companyPhone)}` : "",
+    (company as any).companyEmail ? escapeHtml((company as any).companyEmail) : "",
+    (company as any).companyWebsite ? escapeHtml((company as any).companyWebsite) : "",
     `<span style="color: #64748b;">Datum: ${escapeHtml(date)}</span>`,
   ].filter(Boolean).join("<br/>")}</div>`;
 

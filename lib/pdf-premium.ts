@@ -130,14 +130,17 @@ export function buildPremiumHtml(opts: {
   const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : houseSvg;
   const coName = escHtml(branding.companyName || "BuildKI");
   const coSub = escHtml(reportTag || branding.headerText || "Baudokumentation");
-  const companyBlock = (branding.companyName || branding.companyAddress || branding.companyPhone || branding.companyEmail)
-    ? `<div class="company">${[
-        branding.companyName ? `<b>${escHtml(branding.companyName)}</b>` : "",
-        escHtml(branding.companyAddress || ""),
-        branding.companyPhone ? `Tel: ${escHtml(branding.companyPhone)}` : "",
-        escHtml(branding.companyEmail || ""),
-      ].filter(Boolean).join("<br>")}</div>`
-    : "";
+  // Company block (top-right of every PDF): Firma, Adresse, Telefon, Mail,
+  // Website und Datum – auf Wunsch in jedem Export sichtbar.
+  const todayStr = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const companyBlock = `<div class="company">${[
+    branding.companyName ? `<b>${escHtml(branding.companyName)}</b>` : "",
+    escHtml(branding.companyAddress || ""),
+    branding.companyPhone ? `Tel: ${escHtml(branding.companyPhone)}` : "",
+    escHtml(branding.companyEmail || ""),
+    escHtml(branding.companyWebsite || ""),
+    `Datum: ${todayStr}`,
+  ].filter(Boolean).join("<br>")}</div>`;
   // Three-part footer: company left · optional id/date centre · page nums right.
   const footerLeft = escCss(opts.footerLeft || branding.companyName || branding.footerText || "BuildKI");
   const footerCenter = escCss(opts.footerCenter || "");

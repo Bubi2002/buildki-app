@@ -1606,6 +1606,16 @@ return (
             autoCapitalize="none"
             optional
           />
+          {/* Adresse: erscheint in der Kopf-/Fußzeile aller Export-PDFs. */}
+          <LabeledInput
+            colors={colors}
+            icon="location-on"
+            label={t('export_adresse')}
+            value={company.companyAddress}
+            onChangeText={(v) => updateCompany("companyAddress", v)}
+            placeholder="Musterstraße 1, 12345 Musterstadt"
+            optional
+          />
 
           {/* Darstellung */}
           <GroupHeading colors={colors}>{t('company_group_display' as any)}</GroupHeading>
