@@ -452,7 +452,7 @@ function KIHinweisContent() {
         <P>
           {t('legal_ki_uebermittelte_text')}
         </P>
-        <OpenLine label={t('legal_ki_vertragspartner_label')} value={LEGAL_DRAFT_MARKER} />
+        <P>{t('legal_ki_vendor_info' as any)}</P>
       </Section>
 
       <Section title={t('legal_ki_steuerung')}>
