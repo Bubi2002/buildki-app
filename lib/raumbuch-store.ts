@@ -38,7 +38,26 @@ export type RaumbuchEntry = {
   notes?: Partial<Record<RaumbuchPosition, string>>;
   /** Filled-in Fragenkatalog answers for this room (second export template). */
   survey?: RaumbuchSurvey;
+  /** Previously completed documentation rounds (archived via "Speichern & Neu").
+   *  The live entry keeps the plan + walls; each archive is a snapshot of one
+   *  round's photos/notes/survey (plus the plan context at that time). */
+  archives?: RaumbuchArchive[];
   updatedAt: string;
+};
+
+/** One archived documentation round of a room. */
+export type RaumbuchArchive = {
+  id: string;
+  archivedAt: string;
+  photos: Partial<Record<RaumbuchPosition, string>>;
+  notes?: Partial<Record<RaumbuchPosition, string>>;
+  survey?: RaumbuchSurvey;
+  planId?: string;
+  planName?: string;
+  planX?: number;
+  planY?: number;
+  planCrop?: { x: number; y: number; w: number; h: number };
+  walls?: RaumbuchEntry["walls"];
 };
 
 export type RaumbuchWallKey = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
@@ -98,4 +117,47 @@ export async function deleteRaumbuchEntry(projectId: string, roomId: string): Pr
 export function raumbuchPhotoCount(entry: RaumbuchEntry | null | undefined): number {
   if (!entry) return 0;
   return RAUMBUCH_POSITIONS.filter((p) => entry.photos?.[p]).length;
+}
+
+/** Number of photos in an archived round. */
+export function raumbuchArchivePhotoCount(a: RaumbuchArchive | null | undefined): number {
+  if (!a) return 0;
+  return RAUMBUCH_POSITIONS.filter((p) => a.photos?.[p]).length;
+}
+
+/**
+ * Archive the current round (photos/notes/survey + plan context) into the
+ * entry's archive list, then clear the photo slots for a fresh round. The plan
+ * marker, crop and walls are KEPT on the live entry so the next round reuses the
+ * same setup. Returns the updated live entry (or null if none exists).
+ */
+export async function archiveAndResetRaumbuchEntry(projectId: string, roomId: string): Promise<RaumbuchEntry | null> {
+  const all = await getRaumbuch(projectId);
+  const idx = all.findIndex((e) => e.roomId === roomId);
+  if (idx < 0) return null;
+  const entry = all[idx];
+  const snapshot: RaumbuchArchive = {
+    id: `rba_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    archivedAt: new Date().toISOString(),
+    photos: { ...(entry.photos || {}) },
+    notes: entry.notes ? { ...entry.notes } : undefined,
+    survey: entry.survey,
+    planId: entry.planId,
+    planName: entry.planName,
+    planX: entry.planX,
+    planY: entry.planY,
+    planCrop: entry.planCrop,
+    walls: entry.walls,
+  };
+  const next: RaumbuchEntry = {
+    ...entry,
+    photos: {},
+    notes: {},
+    survey: undefined,
+    archives: [snapshot, ...(entry.archives || [])],
+    updatedAt: new Date().toISOString(),
+  };
+  all[idx] = next;
+  await AsyncStorage.setItem(KEY(projectId), JSON.stringify(all));
+  return next;
 }

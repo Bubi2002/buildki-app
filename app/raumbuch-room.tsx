@@ -18,10 +18,14 @@ import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
 import {
   getRaumbuchEntry,
   saveRaumbuchEntry,
+  archiveAndResetRaumbuchEntry,
+  raumbuchPhotoCount,
+  raumbuchArchivePhotoCount,
   RAUMBUCH_POSITIONS,
   RAUMBUCH_POSITION_LABEL_KEY,
   RAUMBUCH_SURVEY,
   type RaumbuchEntry,
+  type RaumbuchArchive,
   type RaumbuchPosition,
   type RaumbuchWallKey,
   type RaumbuchWall,
@@ -123,6 +127,7 @@ export default function RaumbuchRoomScreen() {
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
   });
 
+  const [archiveView, setArchiveView] = useState<RaumbuchArchive | null>(null);
   const [planPins, setPlanPins] = useState<PlanPin[]>([]);
   // Overlay the Grundriss-tool pins (Mängel/Fotos) on the plan — off by default
   // so the sheet starts with a clean plan; the user can toggle them on.
@@ -151,6 +156,29 @@ export default function RaumbuchRoomScreen() {
   const persist = async (next: RaumbuchEntry) => {
     setEntry(next);
     try { await saveRaumbuchEntry(next); } catch {}
+  };
+
+  // Archive the current round (keeps plan + walls) and start a fresh empty one.
+  const onSaveAndNew = () => {
+    if (!projectId || !roomId) return;
+    if (raumbuchPhotoCount(entry) === 0) {
+      Alert.alert(t("raumbuch_save_new" as any), t("raumbuch_save_new_msg" as any));
+      return;
+    }
+    Alert.alert(
+      t("raumbuch_save_new" as any),
+      t("raumbuch_save_new_msg" as any),
+      [
+        { text: t("btn_abbrechen" as any), style: "cancel" },
+        {
+          text: t("btn_speichern" as any),
+          onPress: async () => {
+            const next = await archiveAndResetRaumbuchEntry(projectId, roomId);
+            if (next) setEntry(next);
+          },
+        },
+      ],
+    );
   };
 
   // Defects belonging to THIS room (matched by floor + room name).
@@ -602,6 +630,55 @@ export default function RaumbuchRoomScreen() {
           })}
         </View>
         <Text style={{ fontSize: 11, color: colors.muted, marginTop: 10 }}>{t("raumbuch_longpress_remove" as any)}</Text>
+
+        {/* ── Speichern & Neu (Durchgang archivieren, Plan/Wände bleiben) ── */}
+        <Pressable
+          onPress={onSaveAndNew}
+          style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 20, paddingVertical: 13, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}
+        >
+          <MaterialIcons name="save" size={18} color={colors.primary} />
+          <Text style={{ fontSize: 14, fontWeight: "800", color: colors.primary }}>{t("raumbuch_save_new" as any)}</Text>
+        </Pressable>
+        {!!entry?.archives?.length && (
+          <>
+            <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 20 }]}>{t("raumbuch_archive_section" as any)} ({entry.archives.length})</Text>
+            <View style={{ gap: 8, marginTop: 8 }}>
+              {entry.archives.map((a) => (
+                <Pressable key={a.id} onPress={() => setArchiveView(a)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}>
+                  <MaterialIcons name="history" size={18} color={colors.muted} />
+                  <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{t("raumbuch_archive_round" as any)} · {new Date(a.archivedAt).toLocaleDateString("de-DE")}</Text>
+                  <Text style={{ fontSize: 12, color: colors.muted }}>{raumbuchArchivePhotoCount(a)}</Text>
+                  <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Archiv-Durchgang ansehen (nur Lesen) */}
+        <Modal visible={!!archiveView} transparent animationType="slide" onRequestClose={() => setArchiveView(null)}>
+          <View style={{ flex: 1, backgroundColor: "#0009", justifyContent: "flex-end" }}>
+            <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 14, paddingBottom: Math.max(insets.bottom, 16), maxHeight: "85%" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, marginBottom: 10 }}>
+                <Text style={{ flex: 1, fontSize: 16, fontWeight: "800", color: colors.foreground }}>{t("raumbuch_archive_round" as any)}{archiveView ? ` · ${new Date(archiveView.archivedAt).toLocaleDateString("de-DE")}` : ""}</Text>
+                <Pressable onPress={() => setArchiveView(null)} hitSlop={8}><MaterialIcons name="close" size={24} color={colors.muted} /></Pressable>
+              </View>
+              <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
+                <View style={styles.grid}>
+                  {RAUMBUCH_POSITIONS.filter((p) => archiveView?.photos?.[p]).map((p) => (
+                    <View key={p} style={[styles.slot, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                      <Text style={[styles.slotLabel, { color: colors.foreground }]}>{label(p)}</Text>
+                      <Image source={{ uri: archiveView!.photos[p]! }} style={styles.slotPhoto} contentFit="cover" cachePolicy="memory-disk" />
+                    </View>
+                  ))}
+                </View>
+                {archiveView && raumbuchArchivePhotoCount(archiveView) === 0 && (
+                  <Text style={{ color: colors.muted, textAlign: "center", marginTop: 20 }}>—</Text>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* ── Mängel in diesem Raum ── */}
         <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 24 }]}>{t("raumbuch_defects_section" as any)}</Text>
