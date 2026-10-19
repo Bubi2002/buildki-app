@@ -49,5 +49,7 @@ export const LEGAL_PROCESSOR_OPEN_FIELDS = {
   serverRegion: LEGAL_DRAFT_MARKER,
   dpaStatus: LEGAL_DRAFT_MARKER,
   transferMechanism: LEGAL_DRAFT_MARKER,
-  retentionPeriod: LEGAL_DRAFT_MARKER,
+  // Vom Betreiber festgelegter Entwurf (vor Release mit tatsächlicher Systempraxis abgleichen):
+  retentionPeriod:
+    "Konto-/Stammdaten bis zur Kontolöschung; Rechnungs-/Abrechnungsdaten bis zu 10 Jahre (§ 147 AO, § 257 HGB); Projekt-/Baustellendaten bis zur Löschung durch den Nutzer bzw. kurz nach Kontolöschung; technische Server-Protokolle in der Regel 30–90 Tage; viele Daten bleiben nur lokal auf dem Gerät.",
 } as const;
