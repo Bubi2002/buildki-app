@@ -45,10 +45,14 @@ export const LEGAL_PROCESSOR_OPEN_FIELDS = {
   //  - Zahlung: Stripe im Code vorhanden, aber deaktiviert; kein IAP/Play-Billing
   contractingEntity:
     "Backend/Datenbank/Objektspeicher: Manus-Plattform (manus.space, forge.manus.im, S3); KI-/Transkriptions-Endpunkt: forge.manus.im (Whisper + Google Gemini); E-Mail: Strato; Zahlungsabwicklung (sobald aktiv): Apple In-App-Kauf bzw. Google Play Billing mit RevenueCat zur Kaufverwaltung/Belegpruefung. Genaue Rechtstraeger der Auftragsverarbeiter noch zu bestaetigen.",
-  // Nicht aus dem Code bestimmbar – bei Manus/Strato/Dropbox erfragen bzw. festlegen:
-  serverRegion: LEGAL_DRAFT_MARKER,
-  dpaStatus: LEGAL_DRAFT_MARKER,
-  transferMechanism: LEGAL_DRAFT_MARKER,
+  // Aus Manus' öffentlichen Angaben (Trust Center / DPA, Stand 2026-10) – vom
+  // Betreiber vor Release zu bestätigen:
+  serverRegion:
+    "Manus/Forge: USA und Singapur (nicht EU-exklusiv); Unterauftragsverarbeiter u. a. Google Cloud, AWS, OpenAI – United States. Strato-E-Mail: Deutschland.",
+  dpaStatus:
+    "Manus-DPA vorhanden (Master Services Agreement mit Butterfly Effect Pte. Ltd., Singapur); wirksamer Abschluss durch den Betreiber noch zu bestätigen.",
+  transferMechanism:
+    "EU-Standardvertragsklauseln (SCC) gemäß Manus-DPA für die Drittlandübermittlung (USA/Singapur).",
   // Vom Betreiber festgelegter Entwurf (vor Release mit tatsächlicher Systempraxis abgleichen):
   retentionPeriod:
     "Konto-/Stammdaten bis zur Kontolöschung; Rechnungs-/Abrechnungsdaten bis zu 10 Jahre (§ 147 AO, § 257 HGB); Projekt-/Baustellendaten bis zur Löschung durch den Nutzer bzw. kurz nach Kontolöschung; technische Server-Protokolle in der Regel 30–90 Tage; viele Daten bleiben nur lokal auf dem Gerät.",

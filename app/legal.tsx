@@ -158,6 +158,7 @@ function DatenschutzPlain() {
             {t(`legal_ds_q${n}_body` as any)}
             {(n === 1 || n === 7) ? LEGAL_CONTACT_EMAIL : ""}
           </P>
+          {n === 4 ? <P>{t('legal_ds_q4_transfer' as any)}</P> : null}
         </Section>
       ))}
     </View>
