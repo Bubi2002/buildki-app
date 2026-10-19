@@ -697,7 +697,7 @@ export default function FloorPlanScreen() {
             gewerk: newDefectGewerk.trim() || undefined,
             assignee: newDefectAssignee.trim() || undefined,
             dueDate: newDefectDue.trim() || undefined,
-            photos: [],
+            photos: [...newPinPhotos],
             location: decodeUnicodeEscapes(selectedPlan.name),
             createdAt: nowIso,
             updatedAt: nowIso,
@@ -1354,7 +1354,7 @@ export default function FloorPlanScreen() {
                   <View style={[styles.typeBtnIcon, { backgroundColor: pinType === opt.type ? opt.color : colors.muted + "30" }]}>
                     <MaterialIcons name={opt.icon as any} size={18} color={pinType === opt.type ? "#FFF" : colors.muted} />
                   </View>
-                  <Text style={[styles.typeBtnText, { color: pinType === opt.type ? opt.color : colors.muted }]}>
+                  <Text numberOfLines={1} style={[styles.typeBtnText, { color: pinType === opt.type ? opt.color : colors.muted }]}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -1372,7 +1372,7 @@ export default function FloorPlanScreen() {
                 <View style={[styles.typeBtnIcon, { backgroundColor: colors.primary + "30" }]}>
                   <MaterialIcons name="gesture" size={18} color={colors.primary} />
                 </View>
-                <Text style={[styles.typeBtnText, { color: colors.primary }]}>{t('floor_plan_draw' as any)}</Text>
+                <Text numberOfLines={1} style={[styles.typeBtnText, { color: colors.primary }]}>{t('floor_plan_draw' as any)}</Text>
               </Pressable>
             </View>
 
@@ -1500,6 +1500,26 @@ export default function FloorPlanScreen() {
 
                     <View style={{ marginTop: 10 }}>
                       <DateOnlyPicker value={newDefectDue} onChange={setNewDefectDue} label={t('frist')} withTime />
+                    </View>
+
+                    {/* Fotos direkt zum Mangel hinzufügen */}
+                    <View style={{ marginTop: 12 }}>
+                      <Pressable onPress={pickNewPinPhotos} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1 }]}>
+                        <MaterialIcons name="add-a-photo" size={18} color={colors.primary} />
+                        <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 14 }}>{t('fotos_hinzufuegen')}</Text>
+                      </Pressable>
+                      {newPinPhotos.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }} contentContainerStyle={{ gap: 8 }}>
+                          {newPinPhotos.map((uri, i) => (
+                            <View key={`${uri}-${i}`}>
+                              <Image source={{ uri }} style={{ width: 64, height: 64, borderRadius: 8 }} contentFit="cover" />
+                              <Pressable onPress={() => setNewPinPhotos((prev) => prev.filter((_, idx) => idx !== i))} style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                                <MaterialIcons name="close" size={13} color="#fff" />
+                              </Pressable>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      )}
                     </View>
                   </>
                 ) : (
@@ -2237,9 +2257,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
-  typeRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   typeBtn: {
-    flex: 1,
+    // 3 pro Reihe, alle exakt gleich groß (vorher flex:1 in einer Reihe → lange
+    // Labels wie "Protokoll"/"Zeichnen" brachen um und wirkten unterschiedlich).
+    flexBasis: "30%",
+    flexGrow: 1,
+    minHeight: 76,
+    justifyContent: "center",
     alignItems: "center",
     gap: 6,
     paddingVertical: 12,
@@ -2253,7 +2278,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  typeBtnText: { fontSize: 11, fontWeight: "700" },
+  typeBtnText: { fontSize: 11, fontWeight: "700", textAlign: "center" },
   input: { borderWidth: 1, borderRadius: 0, padding: 14, fontSize: 15, marginBottom: 12 },
   pinFieldLabel: { fontSize: 11, fontWeight: "700", color: "#8FA3B8", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
   textArea: { minHeight: 80, textAlignVertical: "top" },
