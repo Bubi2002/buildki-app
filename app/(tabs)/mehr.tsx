@@ -31,6 +31,7 @@ export default function MehrScreen() {
         { labelKey: "cat_notif_title", icon: "notifications", route: "/settings?section=benachrichtigungen" },
         { labelKey: "cat_account_title", icon: "cloud", route: "/settings?section=konto" },
         { labelKey: "cat_app_title", icon: "settings", route: "/settings?section=app" },
+        { labelKey: "index_abo", icon: "credit-card", route: "/subscription" },
       ],
     },
     {
@@ -47,7 +48,6 @@ export default function MehrScreen() {
         { labelKey: "kisupport_chat", icon: "support-agent", route: "/support-chat" },
         { labelKey: "index_anleitung", icon: "menu-book", route: "/tutorial" },
         { labelKey: "mehr_faq", icon: "help-outline", route: "/faq" },
-        { labelKey: "index_abo", icon: "credit-card", route: "/subscription" },
       ],
     },
   ];
