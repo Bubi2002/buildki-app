@@ -141,6 +141,16 @@ export default function MeasureScreen() {
   const [overviewVisible, setOverviewVisible] = useState(false);
   const [overviewSelected, setOverviewSelected] = useState<string[]>([]);
   const [isOverviewExporting, setIsOverviewExporting] = useState(false);
+  // Belege, deren Bilddatei nicht mehr auflösbar ist (z. B. aus alten Protokollen
+  // migrierte Fotos mit verwaister URI) → leere/schwarze Kästen. Werden aus dem
+  // Beleg-Streifen ausgeblendet, sobald das Laden fehlschlägt.
+  const [brokenEvidence, setBrokenEvidence] = useState<Set<string>>(new Set());
+
+  // Nur Belege mit tatsächlich vorhandenem, ladbarem Bild im Streifen zeigen.
+  const visibleEvidence = useMemo(
+    () => evidence.filter((item) => (item.previewUri || item.originalUri) && !brokenEvidence.has(item.id)),
+    [evidence, brokenEvidence],
+  );
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -722,9 +732,9 @@ export default function MeasureScreen() {
               </Pressable>
             </View>
 
-            {evidence.length > 0 && (
+            {visibleEvidence.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.evidenceStrip}>
-                {evidence.map((item) => (
+                {visibleEvidence.map((item) => (
                   <Pressable
                     key={item.id}
                     onPress={() => selectEvidence(item)}
@@ -736,7 +746,12 @@ export default function MeasureScreen() {
                       },
                     ]}
                   >
-                    <Image source={{ uri: item.previewUri || item.originalUri }} style={styles.evidenceImage} contentFit="cover" />
+                    <Image
+                      source={{ uri: item.previewUri || item.originalUri }}
+                      style={styles.evidenceImage}
+                      contentFit="cover"
+                      onError={() => setBrokenEvidence((prev) => { const next = new Set(prev); next.add(item.id); return next; })}
+                    />
                     <Text style={[styles.evidenceCaption, { color: colors.foreground }]} numberOfLines={2}>
                       {item.findingText || (item.sourceType === "video_frame" ? t('measure_video_frame' as any) : t('measure_photo' as any))}
                     </Text>
