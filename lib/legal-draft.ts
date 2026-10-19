@@ -22,12 +22,18 @@ export const LEGAL_PROVIDER = {
 } as const;
 
 export const LEGAL_BUSINESS_MODEL = {
-  audience: LEGAL_DRAFT_MARKER,
-  monthlyPrice: LEGAL_DRAFT_MARKER,
-  yearlyPrice: LEGAL_DRAFT_MARKER,
-  trialTerms: LEGAL_DRAFT_MARKER,
-  paymentArchitecture: LEGAL_DRAFT_MARKER,
-  cancellationTerms: LEGAL_DRAFT_MARKER,
+  audience:
+    "Alle Nutzerinnen und Nutzer über App Store und Google Play (Verbraucher und Unternehmer)",
+  monthlyPrice:
+    "Im App Store bzw. bei Google Play zum Kaufzeitpunkt angezeigter Monatspreis",
+  yearlyPrice:
+    "Im App Store bzw. bei Google Play zum Kaufzeitpunkt angezeigter Jahrespreis",
+  trialTerms:
+    "Optionale kostenlose Testphase wie im Store angezeigt; ungenutzte Testzeit verfällt mit dem ersten kostenpflichtigen Zeitraum",
+  paymentArchitecture:
+    "Abwicklung über Apple In-App-Kauf bzw. Google Play Billing; Abrechnung über das Apple-ID- bzw. Google-Konto",
+  cancellationTerms:
+    "Automatische Verlängerung um den gewählten Zeitraum, sofern nicht spätestens 24 Stunden vor Ablauf in den Abo-Einstellungen des Stores gekündigt wird",
 } as const;
 
 export const LEGAL_PROCESSOR_OPEN_FIELDS = {
