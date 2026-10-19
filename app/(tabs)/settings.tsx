@@ -2108,68 +2108,8 @@ return (
         )}
 
         </>)}
-{/* KI-Support */}
-        {inCat("app") && (<>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {t('settings_help_support_title' as any)}
-          </Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            {t('settings_help_support_desc' as any)}
-          </Text>
-          <Pressable
-            onPress={() => router.push("/support-chat" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
-              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.primary + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="support-agent" size={20} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('kisupport_chat')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('fragen_zur_app_hilfe')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          {/* "Loslegen" (/get-started) entfernt: doppelt mit Anleitung/FAQ. */}
-          <Pressable
-            onPress={() => router.push("/tutorial" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14, marginTop: 10,
-              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
-              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#5DADE215", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="menu-book" size={20} color="#5DADE2" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('index_anleitung' as any)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/subscription" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14, marginTop: 10,
-              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
-              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: "#4ADE8015", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="credit-card" size={20} color="#4ADE80" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('index_abo' as any)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-        </View>
-
-        </>)}
+{/* Hilfe & Support wurde hier entfernt und im "Einstellungen"-Hub (mehr.tsx)
+   gebündelt — KI-Support Chat, Anleitung, FAQ und Abo an einem Ort. */}
 {/* Feature-Toggles */}
         {inCat("app") && (<>
         <FeatureTogglesSection colors={colors} />

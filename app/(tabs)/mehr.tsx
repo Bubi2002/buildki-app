@@ -37,7 +37,17 @@ export default function MehrScreen() {
       titleKey: "mehr_sec_app",
       items: [
         { labelKey: "index_tool_team", icon: "groups", route: "/team" },
+      ],
+    },
+    // Hilfe & Support an einem Ort gebündelt (vorher teils doppelt in
+    // "App & Datenschutz").
+    {
+      titleKey: "settings_help_support_title",
+      items: [
+        { labelKey: "kisupport_chat", icon: "support-agent", route: "/support-chat" },
+        { labelKey: "index_anleitung", icon: "menu-book", route: "/tutorial" },
         { labelKey: "mehr_faq", icon: "help-outline", route: "/faq" },
+        { labelKey: "index_abo", icon: "credit-card", route: "/subscription" },
       ],
     },
   ];
@@ -47,7 +57,8 @@ export default function MehrScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.foreground }]}>{t("nav_settings" as any)}</Text>
         {sections.map((sec) => (
-          <View key={sec.titleKey} style={{ marginTop: 16 }}>
+          <View key={sec.titleKey} style={{ marginTop: 18 }}>
+            <Text style={[styles.secTitle, { color: colors.muted }]}>{t(sec.titleKey as any)}</Text>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {sec.items.map((it, i) => (
                 <Pressable
