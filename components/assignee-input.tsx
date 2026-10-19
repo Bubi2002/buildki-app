@@ -8,15 +8,38 @@ import { useTranslation } from "@/lib/language-provider";
 
 const HISTORY_KEY = "assignee-history";
 
-/** Remember a used "Zuständig" value so it's suggested next time. */
+type HistEntry = { name: string; count: number; lastUsed: number };
+
+/** Read the assignee history, migrating the legacy string[] format on the fly. */
+async function readAssigneeHistory(): Promise<HistEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    if (parsed.length && typeof parsed[0] === "string") {
+      // Legacy: ordered by recency → give decreasing lastUsed, count 1.
+      return (parsed as string[]).map((name, i) => ({ name, count: 1, lastUsed: Date.now() - i }));
+    }
+    return parsed as HistEntry[];
+  } catch { return []; }
+}
+
+/** Most-used first, then most-recent. */
+function sortAssigneeHistory(e: HistEntry[]): HistEntry[] {
+  return [...e].sort((a, b) => b.count - a.count || b.lastUsed - a.lastUsed);
+}
+
+/** Remember a used "Zuständig" value; ranks suggestions by how often it's used. */
 export async function rememberAssignee(value: string) {
   const v = (value || "").trim();
   if (!v) return;
   try {
-    const raw = await AsyncStorage.getItem(HISTORY_KEY);
-    const list: string[] = raw ? JSON.parse(raw) : [];
-    const next = [v, ...list.filter((x) => x.toLowerCase() !== v.toLowerCase())].slice(0, 30);
-    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    const entries = await readAssigneeHistory();
+    const idx = entries.findIndex((x) => x.name.toLowerCase() === v.toLowerCase());
+    if (idx >= 0) entries[idx] = { name: entries[idx].name, count: entries[idx].count + 1, lastUsed: Date.now() };
+    else entries.push({ name: v, count: 1, lastUsed: Date.now() });
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(sortAssigneeHistory(entries).slice(0, 50)));
   } catch {}
 }
 
@@ -53,10 +76,9 @@ export function AssigneeInput({ value, onChange, placeholder, style }: Props) {
 
   useEffect(() => {
     (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(HISTORY_KEY);
-        if (raw) setHistory(JSON.parse(raw));
-      } catch {}
+      // Names ordered by how often they were used (most-used first).
+      const entries = await readAssigneeHistory();
+      setHistory(sortAssigneeHistory(entries).map((e) => e.name));
     })();
     return () => { if (blurTimer.current) clearTimeout(blurTimer.current); };
   }, []);

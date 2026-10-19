@@ -19,8 +19,6 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getTeamContacts, saveTeamContact, deleteTeamContact, updateTeamContact, TeamContact } from "@/lib/team-contacts";
-import { ContactPickerModal } from "@/components/contact-picker-modal";
-import type { PhoneContactEmail } from "@/lib/phone-contacts";
 import { getPdfBranding, savePdfBranding, type PdfBranding } from "@/lib/pdf-branding-store";
 import { getSpeakerProfiles, deleteSpeakerProfile, SpeakerProfile } from "@/lib/speaker-names";
 import { getVoiceProfiles, deleteVoiceProfile, VoiceProfile } from "@/lib/voice-profiles";
@@ -1339,7 +1337,6 @@ export default function SettingsScreen() {
   
   // Team Contacts
   const [teamContacts, setTeamContacts] = useState<TeamContact[]>([]);
-  const [showImportContacts, setShowImportContacts] = useState(false);
   const [showAddTeamContact, setShowAddTeamContact] = useState(false);
   const [tcName, setTcName] = useState("");
   const [tcEmail, setTcEmail] = useState("");
@@ -1415,17 +1412,6 @@ export default function SettingsScreen() {
     });
     loadTeamContacts();
     setEditingContact(null);
-  };
-
-  // Import one or more contacts via the searchable, scrollable picker (the old
-  // iOS-Alert list could not scroll or be searched and was capped at 10).
-  const importPickedContacts = async (picked: PhoneContactEmail[]) => {
-    for (const c of picked) {
-      try {
-        await saveTeamContact({ name: c.name || c.email, email: c.email, lastUsed: Date.now() });
-      } catch {}
-    }
-    loadTeamContacts();
   };
 
   const handleDeleteSpeaker = async (id: string) => {
@@ -2008,60 +1994,9 @@ return (
 
 
         </>)}
-        {/* Team-Kontaktbuch */}
-        {inCat("versand") && (<>
-        <View style={{ marginTop: 24, backgroundColor: colors.surface, borderRadius: 0, padding: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>{t('teamkontaktbuch')}</Text>
-          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>{t('gespeicherte_kontakte_fuer_schnellen')}</Text>
-          {teamContacts.map(contact => (
-            <View key={contact.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <View style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center", marginRight: 10 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{contact.name.charAt(0)}</Text>
-              </View>
-              <Pressable onPress={() => startEditContact(contact)} style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>{contact.name}{contact.role ? ` • ${contact.role}` : ""}</Text>
-                <Text style={{ fontSize: 11, color: colors.muted }}>{contact.email}{contact.phone ? ` • ${contact.phone}` : ""}</Text>
-              </Pressable>
-              <Pressable onPress={() => startEditContact(contact)} style={{ padding: 6 }}>
-                <MaterialIcons name="edit" size={16} color={colors.muted} />
-              </Pressable>
-              <Pressable onPress={() => handleDeleteContact(contact.id)} style={{ padding: 6 }}>
-                <Text style={{ fontSize: 16, color: colors.error }}>×</Text>
-              </Pressable>
-            </View>
-          ))}
-          {!showAddTeamContact ? (
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-              <Pressable onPress={() => setShowAddTeamContact(true)} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
-                <Text style={{ fontSize: 13, color: colors.primary }}>{t('settings_add_manually' as any)}</Text>
-              </Pressable>
-              <Pressable onPress={() => setShowImportContacts(true)} style={{ flex: 1, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 0, borderStyle: "dashed" }}>
-                <Text style={{ fontSize: 13, color: colors.primary }}>{t('aus_kontakten')}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ marginTop: 10, padding: 12, backgroundColor: colors.background, borderRadius: 0, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('name')}</Text>
-              <TextInput placeholder={t('max_mustermann')} placeholderTextColor={colors.muted + "80"} value={tcName} onChangeText={setTcName} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('email')}</Text>
-              <TextInput placeholder="max@firma.de" placeholderTextColor={colors.muted + "80"} value={tcEmail} onChangeText={setTcEmail} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
-              <TextInput placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} value={tcPhone} onChangeText={setTcPhone} keyboardType="phone-pad" style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 8 }} />
-              <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle_optional')}</Text>
-              <TextInput placeholder={t('settings_role_placeholder' as any)} placeholderTextColor={colors.muted + "80"} value={tcRole} onChangeText={setTcRole} style={{ fontSize: 13, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 12 }} />
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <Pressable onPress={handleAddTeamContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
-                  <Text style={{ color: "#FFF", fontSize: 13, fontWeight: "600" }}>{t('save')}</Text>
-                </Pressable>
-                <Pressable onPress={() => { setShowAddTeamContact(false); setTcName(""); setTcEmail(""); setTcPhone(""); setTcRole(""); }} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ fontSize: 13, color: colors.muted }}>{t('cancel')}</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-        </View>
-
-        </>)}
+        {/* Team-Kontaktbuch entfernt: Zuständige werden direkt im "Zuständig"-Feld
+            (AssigneeInput) aus den Telefonkontakten + zuletzt/oft genutzten
+            Personen vorgeschlagen. */}
         {/* Gespeicherte Sprecher */}
         {inCat("app") && (<>
         {speakerProfiles.length > 0 && (
@@ -2189,31 +2124,6 @@ return (
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Edit Contact Modal */}
-      <Modal visible={!!editingContact} transparent animationType="fade" onRequestClose={() => setEditingContact(null)}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <View style={{ backgroundColor: colors.background, borderRadius: 0, padding: 24, width: "85%", maxWidth: 360, borderWidth: 1, borderColor: colors.border }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 16 }}>{t('kontakt_bearbeiten')}</Text>
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('project_sort_name')}</Text>
-            <TextInput value={editName} onChangeText={setEditName} placeholder={t('project_sort_name')} placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('email')}</Text>
-            <TextInput value={editEmail} onChangeText={setEditEmail} placeholder={t('email')} placeholderTextColor={colors.muted + "80"} keyboardType="email-address" autoCapitalize="none" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('telefon')}</Text>
-            <TextInput value={editPhone} onChangeText={setEditPhone} placeholder="+49 123 456789" placeholderTextColor={colors.muted + "80"} keyboardType="phone-pad" style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 10 }} />
-            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>{t('rolle')}</Text>
-            <TextInput value={editRole} onChangeText={setEditRole} placeholder={t('settings_role_placeholder_short' as any)} placeholderTextColor={colors.muted + "80"} style={{ fontSize: 14, color: colors.foreground, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, marginBottom: 16 }} />
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Pressable onPress={saveEditContact} style={{ flex: 1, backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 0, alignItems: "center" }}>
-                <Text style={{ color: "#FFF", fontSize: 14, fontWeight: "600" }}>{t('save')}</Text>
-              </Pressable>
-              <Pressable onPress={() => setEditingContact(null)} style={{ flex: 1, backgroundColor: colors.surface, paddingVertical: 10, borderRadius: 0, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
-                <Text style={{ fontSize: 14, color: colors.muted }}>{t('cancel')}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Unterschrift zeichnen */}
       <Modal visible={showSigPad} transparent animationType="fade" onRequestClose={() => setShowSigPad(false)}>
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", paddingHorizontal: 16 }}>
@@ -2223,13 +2133,6 @@ return (
         </GestureHandlerRootView>
       </Modal>
 
-      <ContactPickerModal
-        visible={showImportContacts}
-        onClose={() => setShowImportContacts(false)}
-        onSelect={() => {}}
-        onSelectContacts={importPickedContacts}
-        includeNoEmail
-      />
     </ScreenContainer>
   );
 }
