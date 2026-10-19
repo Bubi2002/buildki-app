@@ -71,7 +71,7 @@ export default function ProjectDetailScreen() {
   const [isSavingDropbox, setIsSavingDropbox] = useState(false);
   const [planCount, setPlanCount] = useState(0);
   const [defectCount, setDefectCount] = useState({ open: 0, resolved: 0, total: 0 });
-  const [activeTab, setActiveTab] = useState<"overview" | "begehungen" | "vorgaenge" | "dokumente">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "begehungen">("overview");
   const [showAllTools, setShowAllTools] = useState(false);
 
   async function loadData() {
@@ -434,13 +434,11 @@ export default function ProjectDetailScreen() {
           </View>
         </View>
 
-        {/* Segmented tabs: Übersicht · Begehungen · Vorgänge · Dokumente */}
+        {/* Segmented tabs: Übersicht · Begehungen */}
         <View style={styles.segmentRow}>
           {([
             { key: "overview", label: t('pd_tab_overview' as any) },
             { key: "begehungen", label: t('pd_tab_begehungen' as any) },
-            { key: "vorgaenge", label: t('pd_tab_vorgaenge' as any) },
-            { key: "dokumente", label: t('pd_tab_dokumente' as any) },
           ] as const).map((tab) => {
             const active = activeTab === tab.key;
             return (
@@ -536,225 +534,8 @@ export default function ProjectDetailScreen() {
         )}
         </>)}
 
-        {/* ══════════ DOKUMENTE (Berichte & Exporte) ══════════ */}
-        {activeTab === "dokumente" && (<>
-        <Pressable
-          onPress={exportAllAsPdf}
-          disabled={isExporting || protocols.length === 0}
-          style={({ pressed }) => [
-            styles.exportButton,
-            {
-              backgroundColor: colors.primary + '10',
-              borderColor: colors.primary + '40',
-              opacity: pressed || isExporting ? 0.7 : 1,
-            },
-          ]}
-        >
-          {isExporting ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
-          )}
-          <Text style={[styles.exportButtonText, { color: colors.primary }]}>
-            {isExporting ? t('project_detail_wird_erstellt' as any) : t('project_detail_alle_als_sammel_pdf' as any)}
-          </Text>
-          {!isExporting && <MaterialIcons name="chevron-right" size={18} color={colors.primary} />}
-        </Pressable>
-
-        <Pressable
-          onPress={exportAllAsZip}
-          disabled={isExportingZip || protocols.length === 0}
-          style={({ pressed }) => [
-            styles.exportButton,
-            {
-              backgroundColor: '#4CAF50' + '10',
-              borderColor: '#4CAF50' + '40',
-              opacity: pressed || isExportingZip ? 0.7 : 1,
-              marginTop: 8,
-            },
-          ]}
-        >
-          {isExportingZip ? (
-            <ActivityIndicator size="small" color="#4CAF50" />
-          ) : (
-            <MaterialIcons name="folder-zip" size={20} color="#4CAF50" />
-          )}
-          <Text style={[styles.exportButtonText, { color: '#4CAF50' }]}>
-            {isExportingZip ? t('project_detail_wird_erstellt' as any) : `${t('project_detail_einzelne_pdfs_exportieren' as any)} (${protocols.length})`}
-          </Text>
-          {!isExportingZip && <MaterialIcons name="chevron-right" size={18} color="#4CAF50" />}
-        </Pressable>
-
-        {/* "In Dropbox speichern" (OAuth-Upload) entfernt — zum Ablegen in
-            Dropbox nutzt man "Teilen"; zum Importieren die Dateien-Auswahl. */}
-
-        <Pressable onPress={() => router.push(`/protocol-merge?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#7C3AED10', borderColor: '#7C3AED40', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="merge-type" size={20} color="#7C3AED" />
-          <Text style={[styles.exportButtonText, { color: '#7C3AED' }]}>{t('bericht')}</Text>
-          <MaterialIcons name="chevron-right" size={18} color="#7C3AED" />
-        </Pressable>
-        <Pressable onPress={() => router.push(`/project-export?projectId=${project.id}&projectName=${encodeURIComponent(project.name || "")}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#43A04710', borderColor: '#43A04740', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="ios-share" size={20} color="#43A047" />
-          <Text style={[styles.exportButtonText, { color: '#43A047' }]}>{t('export')}</Text>
-          <MaterialIcons name="chevron-right" size={18} color="#43A047" />
-        </Pressable>
-        <Pressable onPress={handleExcelExport} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#2E7D3210', borderColor: '#2E7D3240', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="table-chart" size={20} color="#2E7D32" />
-          <Text style={[styles.exportButtonText, { color: '#2E7D32' }]}>{t('excel')}</Text>
-          <MaterialIcons name="chevron-right" size={18} color="#2E7D32" />
-        </Pressable>
-        <Pressable onPress={handleDefectsExport} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#EF444410', borderColor: '#EF444440', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="picture-as-pdf" size={20} color="#EF4444" />
-          <Text style={[styles.exportButtonText, { color: '#EF4444' }]}>{t('maengelpdf')}</Text>
-          <MaterialIcons name="chevron-right" size={18} color="#EF4444" />
-        </Pressable>
-        </>)}
-
-        {/* ══════════ VORGÄNGE (Mängel · Aufgaben · Nachprüfungen) ══════════ */}
-        {activeTab === "vorgaenge" && (<>
-        <Pressable onPress={() => router.push(`/defects?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#FF980010', borderColor: '#FF980040', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="warning" size={20} color="#FF9800" />
-          <Text style={[styles.exportButtonText, { color: colors.foreground }]}>{t('maengel')}</Text>
-          {defectCount.open > 0 && (
-            <View style={{ minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.error, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, marginRight: 4 }}>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>{defectCount.open}</Text>
-            </View>
-          )}
-          <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
-        </Pressable>
-        <Pressable onPress={() => router.push(`/tasks?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#5DADE210', borderColor: '#5DADE240', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="checklist" size={20} color="#5DADE2" />
-          <Text style={[styles.exportButtonText, { color: colors.foreground }]}>{t('nav_aufgaben' as any)}</Text>
-          <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
-        </Pressable>
-        <Pressable onPress={() => router.push(`/follow-up?projectId=${project.id}` as any)} style={({ pressed }) => [styles.exportButton, { backgroundColor: '#26A69A10', borderColor: '#26A69A40', opacity: pressed ? 0.7 : 1 }]}>
-          <MaterialIcons name="fact-check" size={20} color="#26A69A" />
-          <Text style={[styles.exportButtonText, { color: colors.foreground }]}>{t('pd_nachpruefungen' as any)}</Text>
-          <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
-        </Pressable>
-        </>)}
-
-        {/* ══════════ ÜBERSICHT · Werkzeuge ══════════ */}
+        {/* ══════════ ÜBERSICHT · Statistik ══════════ */}
         {activeTab === "overview" && (<>
-                {/* Tools Grid - Professional 3-column layout */}
-        <View style={styles.toolsSection}>
-          <Text style={[styles.toolsSectionTitle, { color: colors.muted }]}>{t('werkzeuge')}</Text>
-          <View style={styles.toolsGrid}>
-            {/* ── 4 primary tools ── */}
-            <Pressable
-              onPress={() => router.push(`/floor-plan?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#4FC3F715' }]}>
-                <MaterialIcons name="map" size={22} color="#4FC3F7" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('grundriss')}</Text>
-              {planCount > 0 && <Text style={[styles.toolCardBadge, { color: colors.muted }]}>{planCount}</Text>}
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/photo-gallery?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#EC407A15' }]}>
-                <MaterialIcons name="photo-library" size={22} color="#EC407A" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('gallery_photos')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/checklists?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#AB47BC15' }]}>
-                <MaterialIcons name="checklist" size={22} color="#AB47BC" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('checklist_title')}</Text>
-            </Pressable>
-
-            {/* ── secondary tools, collapsed by default ── */}
-            {showAllTools && (<>
-            <Pressable
-              onPress={() => router.push(`/team` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
-                <MaterialIcons name="groups" size={22} color="#5C6BC0" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('team_title')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/attendance?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#00897B15' }]}>
-                <MaterialIcons name="how-to-reg" size={22} color="#00897B" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('anwesenheit' as any)}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/project-stats?id=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#26A69A15' }]}>
-                <MaterialIcons name="bar-chart" size={22} color="#26A69A" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('statistik')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/qr-scanner?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#00BCD415' }]}>
-                <MaterialIcons name="qr-code-scanner" size={22} color="#00BCD4" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('qrscan')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/time-tracking?projectId=${project.id}&projectName=${encodeURIComponent(project.name)}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#FF572215' }]}>
-                <MaterialIcons name="timer" size={22} color="#FF5722" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('zeit')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/cloud-import?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#607D8B15' }]}>
-                <MaterialIcons name="cloud-download" size={22} color="#607D8B" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('cloud')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(`/photo-compare?projectId=${project.id}` as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#5C6BC015' }]}>
-                <MaterialIcons name="compare" size={22} color="#5C6BC0" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('vergleich')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/calendar-view" as any)}
-              style={({ pressed }) => [styles.toolCard, { backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <View style={[styles.toolIconBg, { backgroundColor: '#EF6C0015' }]}>
-                <MaterialIcons name="calendar-today" size={22} color="#EF6C00" />
-              </View>
-              <Text style={[styles.toolCardLabel, { color: colors.foreground }]}>{t('kalender')}</Text>
-            </Pressable>
-            </>)}
-          </View>
-          {/* Show more / less toggle */}
-          <Pressable
-            onPress={() => setShowAllTools((v) => !v)}
-            style={({ pressed }) => [styles.moreToolsBtn, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={[styles.moreToolsText, { color: colors.primary }]}>{showAllTools ? t('pd_tools_less' as any) : t('pd_tools_more' as any)}</Text>
-            <MaterialIcons name={showAllTools ? "expand-less" : "expand-more"} size={18} color={colors.primary} />
-          </Pressable>
-        </View>
 {/* Stats */}
         <View style={[styles.statsRow, { borderColor: colors.border }]}>
           <View style={styles.stat}>
