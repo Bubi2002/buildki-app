@@ -14,6 +14,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { getFloorPlans, type FloorPlan } from "@/lib/floor-plan-store";
+import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
 import {
   getRaumbuchEntry,
   saveRaumbuchEntry,
@@ -122,18 +123,77 @@ export default function RaumbuchRoomScreen() {
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
   });
 
+  const [allDefects, setAllDefects] = useState<Defect[]>([]);
+  const [defectModal, setDefectModal] = useState(false); // "neu anlegen"
+  const [defectTitle, setDefectTitle] = useState("");
+  const [linkModal, setLinkModal] = useState(false); // "bestehenden zuordnen"
+
+  const loadDefects = useCallback(async () => {
+    try { setAllDefects(await getDefects(projectId)); } catch { setAllDefects([]); }
+  }, [projectId]);
+
   const load = useCallback(async () => {
     const e = await getRaumbuchEntry(projectId, roomId);
     setEntry(e || blankEntry());
     try { setPlans(await getFloorPlans(projectId)); } catch {}
+    void loadDefects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, roomId]);
+  }, [projectId, roomId, loadDefects]);
 
   useEffect(() => { void load(); }, [load]);
 
   const persist = async (next: RaumbuchEntry) => {
     setEntry(next);
     try { await saveRaumbuchEntry(next); } catch {}
+  };
+
+  // Defects belonging to THIS room (matched by floor + room name).
+  const roomDefects = allDefects.filter(
+    (d) => (d.floor || "") === floorName && (d.room || "") === roomName,
+  );
+
+  const saveNewDefect = async () => {
+    const title = defectTitle.trim();
+    if (!title) return;
+    const now = new Date().toISOString();
+    const d: Defect = {
+      id: `defect-${Date.now()}`,
+      projectId,
+      title,
+      description: "",
+      status: "offen",
+      category: "Sonstiges",
+      photos: [],
+      floor: floorName || undefined,
+      room: roomName || undefined,
+      location: [floorName, roomName].filter(Boolean).join(" / ") || undefined,
+      source: "manual",
+      createdAt: now,
+      updatedAt: now,
+    };
+    try { await saveDefect(d); } catch {}
+    setDefectTitle("");
+    setDefectModal(false);
+    void loadDefects();
+  };
+
+  const linkExistingDefect = async (d: Defect) => {
+    const updated: Defect = {
+      ...d,
+      floor: floorName || undefined,
+      room: roomName || undefined,
+      location: [floorName, roomName].filter(Boolean).join(" / ") || d.location,
+      updatedAt: new Date().toISOString(),
+    };
+    try { await saveDefect(updated); } catch {}
+    setLinkModal(false);
+    void loadDefects();
+  };
+
+  const DEFECT_STATUS_COLOR: Record<string, string> = {
+    offen: "#EF4444", zugewiesen: "#F59E0B", in_bearbeitung: "#3B82F6",
+    nachbesserung: "#F97316", pruefung: "#8B5CF6", erledigt: "#22C55E",
+    abgelehnt: "#9CA3AF", geschlossen: "#6B7280",
   };
 
   // ── Fragenkatalog (digital room survey) ──
@@ -533,6 +593,98 @@ export default function RaumbuchRoomScreen() {
           })}
         </View>
         <Text style={{ fontSize: 11, color: colors.muted, marginTop: 10 }}>{t("raumbuch_longpress_remove" as any)}</Text>
+
+        {/* ── Mängel in diesem Raum ── */}
+        <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 24 }]}>{t("raumbuch_defects_section" as any)}</Text>
+        {roomDefects.length === 0 ? (
+          <Text style={{ fontSize: 12.5, color: colors.muted, marginTop: 6 }}>{t("raumbuch_defect_none" as any)}</Text>
+        ) : (
+          <View style={{ gap: 8, marginTop: 8 }}>
+            {roomDefects.map((d) => (
+              <Pressable
+                key={d.id}
+                onPress={() => router.push(`/defects?projectId=${projectId}&defectId=${d.id}` as any)}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: DEFECT_STATUS_COLOR[d.status] || colors.muted }} />
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{d.title}</Text>
+                <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+          <Pressable
+            onPress={() => { setDefectTitle(""); setDefectModal(true); }}
+            style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="add" size={18} color={colors.primary} />
+            <Text style={{ fontSize: 13, fontWeight: "800", color: colors.primary }}>{t("raumbuch_defect_add" as any)}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setLinkModal(true)}
+            style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="link" size={18} color={colors.foreground} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground }}>{t("raumbuch_defect_link" as any)}</Text>
+          </Pressable>
+        </View>
+
+        {/* Mangel neu anlegen */}
+        <Modal visible={defectModal} transparent animationType="fade" onRequestClose={() => setDefectModal(false)}>
+          <Pressable style={{ flex: 1, backgroundColor: "#0008", justifyContent: "center", padding: 24 }} onPress={() => setDefectModal(false)}>
+            <Pressable style={{ backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18 }} onPress={() => {}}>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: colors.foreground, marginBottom: 12 }}>{t("raumbuch_defect_add" as any)}</Text>
+              <TextInput
+                value={defectTitle}
+                onChangeText={setDefectTitle}
+                placeholder={t("raumbuch_defect_title_ph" as any)}
+                placeholderTextColor={colors.muted}
+                autoFocus
+                multiline
+                style={{ minHeight: 70, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.foreground, fontSize: 14, textAlignVertical: "top" }}
+              />
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                <Pressable onPress={() => setDefectModal(false)} style={({ pressed }) => [{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                  <Text style={{ fontWeight: "700", color: colors.foreground }}>{t("btn_abbrechen" as any)}</Text>
+                </Pressable>
+                <Pressable onPress={() => void saveNewDefect()} disabled={!defectTitle.trim()} style={({ pressed }) => [{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary, opacity: (pressed || !defectTitle.trim()) ? 0.6 : 1 }]}>
+                  <Text style={{ fontWeight: "800", color: "#FFFFFF" }}>{t("btn_speichern" as any)}</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Bestehenden Mangel zuordnen */}
+        <Modal visible={linkModal} transparent animationType="fade" onRequestClose={() => setLinkModal(false)}>
+          <Pressable style={{ flex: 1, backgroundColor: "#0008", justifyContent: "flex-end" }} onPress={() => setLinkModal(false)}>
+            <Pressable style={{ backgroundColor: colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 18, maxHeight: "70%" }} onPress={() => {}}>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: colors.foreground, marginBottom: 12 }}>{t("raumbuch_defect_link_title" as any)}</Text>
+              {allDefects.filter((d) => !((d.floor || "") === floorName && (d.room || "") === roomName)).length === 0 ? (
+                <Text style={{ fontSize: 13, color: colors.muted, paddingVertical: 12 }}>{t("raumbuch_defect_link_empty" as any)}</Text>
+              ) : (
+                <ScrollView style={{ maxHeight: 360 }}>
+                  {allDefects.filter((d) => !((d.floor || "") === floorName && (d.room || "") === roomName)).map((d) => (
+                    <Pressable key={d.id} onPress={() => void linkExistingDefect(d)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, opacity: pressed ? 0.6 : 1 }]}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: DEFECT_STATUS_COLOR[d.status] || colors.muted }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{d.title}</Text>
+                        {!!(d.floor || d.room || d.location) && (
+                          <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>{[d.floor, d.room].filter(Boolean).join(" / ") || d.location}</Text>
+                        )}
+                      </View>
+                      <MaterialIcons name="add" size={18} color={colors.primary} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+              <Pressable onPress={() => setLinkModal(false)} style={({ pressed }) => [{ alignItems: "center", paddingVertical: 12, marginTop: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={{ fontWeight: "700", color: colors.foreground }}>{t("btn_abbrechen" as any)}</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {/* ── Fragenkatalog (digital survey; shows up in the Fragenkatalog PDF) ── */}
         <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 24 }]}>{t("raumbuch_survey_section" as any)}</Text>
