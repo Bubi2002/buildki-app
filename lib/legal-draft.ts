@@ -44,7 +44,7 @@ export const LEGAL_PROCESSOR_OPEN_FIELDS = {
   //  - Optional (nur bei Nutzer-Verbindung): Dropbox, Matterport; Wetter: Open-Meteo
   //  - Zahlung: Stripe im Code vorhanden, aber deaktiviert; kein IAP/Play-Billing
   contractingEntity:
-    "Backend/Datenbank/Objektspeicher: Manus-Plattform (manus.space, forge.manus.im, S3); KI-/Transkriptions-Endpunkt: forge.manus.im (Whisper + Google Gemini); E-Mail: Strato. Genaue Rechtstraeger der Auftragsverarbeiter noch zu bestaetigen.",
+    "Backend/Datenbank/Objektspeicher: Manus-Plattform (manus.space, forge.manus.im, S3); KI-/Transkriptions-Endpunkt: forge.manus.im (Whisper + Google Gemini); E-Mail: Strato; Zahlungsabwicklung (sobald aktiv): Apple In-App-Kauf bzw. Google Play Billing mit RevenueCat zur Kaufverwaltung/Belegpruefung. Genaue Rechtstraeger der Auftragsverarbeiter noch zu bestaetigen.",
   // Nicht aus dem Code bestimmbar – bei Manus/Strato/Dropbox erfragen bzw. festlegen:
   serverRegion: LEGAL_DRAFT_MARKER,
   dpaStatus: LEGAL_DRAFT_MARKER,

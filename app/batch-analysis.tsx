@@ -26,6 +26,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import { trpc } from "@/lib/trpc";
 import { aiService, type AIServiceMutations } from "@/lib/ai-service";
 import type { BatchAnalysisResult, BatchGroupStrategy } from "@/shared/ai-types";
@@ -148,6 +149,7 @@ export default function BatchAnalysisScreen() {
 
   // Start batch analysis
   const startBatchAnalysis = async () => {
+    if (!ensurePremium('ai', t)) return;
     if (photos.length === 0) {
       Alert.alert(t('batch_analysis_no_photos_title' as any), t('batch_analysis_no_photos_msg' as any));
       return;

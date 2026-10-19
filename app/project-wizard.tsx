@@ -17,6 +17,7 @@ import { RecordingPresets, setAudioModeAsync, useAudioRecorder } from "expo-audi
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { ensureCanCreateProject } from "@/lib/premium-gate";
 import { trpc } from "@/lib/trpc";
 import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, DEFAULT_ROOMS_BY_FLOOR, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPriority } from "@/lib/defect-store";
@@ -391,6 +392,7 @@ export default function ProjectWizardScreen() {
 
   const createProject = async (): Promise<string | null> => {
     if (!name.trim()) return null;
+    if (!(await ensureCanCreateProject(t))) return null;
     const id = Date.now().toString();
     try {
       const raw = await AsyncStorage.getItem("projects");

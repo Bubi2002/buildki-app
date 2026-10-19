@@ -29,6 +29,7 @@ import { PdfRasterizer, type RasterResult } from "@/components/pdf-rasterizer";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import {
   DocumentAnalysisError,
   documentAI,
@@ -154,6 +155,7 @@ export default function DocumentAIScreen() {
   };
 
   const handlePickDocument = async () => {
+    if (!ensurePremium('ai', t)) return;
     if (!activeProject) {
       Alert.alert(t('document_ai_kein_projekt' as any), t('document_ai_bitte_projekt' as any));
       return;

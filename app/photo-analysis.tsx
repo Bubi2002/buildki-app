@@ -30,6 +30,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import { trpc } from "@/lib/trpc";
 
 // Reusable analysis components
@@ -527,6 +528,7 @@ export default function PhotoAnalysisScreen() {
   // ─── Analysis ───────────────────────────────────────────────────────────────
 
   const runAnalysis = async () => {
+    if (!ensurePremium('ai', t)) return;
     if (photos.length === 0) {
       Alert.alert(t('photo_analysis_no_photos_title' as any), t('photo_analysis_no_photos_message' as any));
       return;

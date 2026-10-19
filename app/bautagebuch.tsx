@@ -38,6 +38,7 @@ import { getCurrentLocation } from "@/lib/location-service";
 import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { buildPremiumHtml, statBand, premiumIcons, resolveBrandingLogo, type InfoCol } from "@/lib/pdf-premium";
@@ -256,6 +257,7 @@ export default function BautagebuchScreen() {
 
   const handleGenerate = useCallback(async () => {
     if (generating) return;
+    if (!ensurePremium('ai', t)) return;
     setGenerating(true);
 
     try {

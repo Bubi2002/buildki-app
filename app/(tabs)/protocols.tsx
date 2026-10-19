@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { onJobUpdate } from "@/lib/background-processor";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import { filterProtocolsByProject, isProtocolUnassigned, UNASSIGNED_PROJECT_ID } from "@/lib/project-context";
 import { createLocalId } from "@/lib/id";
 import {
@@ -389,6 +390,7 @@ export default function ProtocolsScreen() {
 
   const processAllDrafts = () => {
     if (processingDrafts) return;
+    if (!ensurePremium('ai', t)) return;
     const drafts = draftsToProcess();
     if (drafts.length === 0) {
       Alert.alert(t('hinweis'), t('protocols_no_drafts' as any));

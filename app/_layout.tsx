@@ -207,6 +207,12 @@ export default function RootLayout() {
       const { initDailySummary } = require("@/lib/daily-summary");
       initDailySummary();
     }
+    // Initialize in-app purchases (RevenueCat). No-op while monetization is
+    // disabled or the RevenueCat key is not yet set.
+    if (Platform.OS !== "web") {
+      const { initPurchases } = require("@/lib/purchases");
+      void initPurchases();
+    }
   }, []);
 
   // Biometric lock on app start

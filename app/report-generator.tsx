@@ -32,6 +32,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { ReportMarkdownPreview } from "@/components/report-markdown-preview";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import { REPORT_TYPES, type ReportType } from "@/lib/report-types";
 import { localizedLabel, reportTypeKey, reportTypeDescKey } from "@/lib/template-i18n";
 import { trpc } from "@/lib/trpc";
@@ -234,6 +235,7 @@ export default function ReportGeneratorScreen() {
    * 3. Receive formatted Markdown report
    */
   const generateReport = async () => {
+    if (!ensurePremium('ai', t)) return;
     if (!selectedType || !transcription.trim()) {
       Alert.alert(t('report_generator_fehler' as any), t('report_generator_berichtstyp_transkription' as any));
       return;

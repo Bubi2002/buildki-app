@@ -61,6 +61,7 @@ import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { useTranslation } from "@/lib/language-provider";
+import { ensurePremium } from "@/lib/premium-gate";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { generatePositionCode } from "@/lib/position-numbering";
 import { trpc } from "@/lib/trpc";
@@ -204,6 +205,7 @@ export default function DefectsScreen() {
 
   const stopVoiceCreateAndProcess = async () => {
     setVoiceRecording(false);
+    if (!ensurePremium('ai', t)) return;
     setVoiceCreateBusy(t('defects_voice_transcribing' as any));
     try {
       try { await aiRecorder.stop(); } catch {}

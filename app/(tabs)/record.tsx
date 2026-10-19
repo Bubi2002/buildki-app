@@ -48,6 +48,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { useTranslation } from "@/lib/language-provider";
+import { ensureCanCreateProject, ensurePremium } from "@/lib/premium-gate";
 import { deleteProjectLocally, resolveSelectedProject } from "@/lib/project-context";
 import { getPrivacyChoices } from "@/lib/privacy-consent";
 import { linkStoredPlanPinToProtocol } from "@/lib/floor-plan-store";
@@ -517,6 +518,7 @@ export default function RecordScreen() {
   };
   const createAndSelectProject = async () => {
     if (!newProjectName.trim()) { Alert.alert(t('alert_fehler'), t('msg_bitte_gib_einen_projektnamen_ein')); return; }
+    if (!(await ensureCanCreateProject(t))) return;
     try {
       const existing = JSON.parse((await AsyncStorage.getItem("projects")) || "[]");
       const np: ProjectItem = { id: Date.now().toString(), name: newProjectName.trim(), description: newProjectDesc.trim(), color: newProjectColor, createdAt: new Date().toISOString(), protocolPrefix: newProjectPrefix.trim().toUpperCase() || undefined, protocolCounter: 0 };
@@ -1457,6 +1459,7 @@ export default function RecordScreen() {
   };
 
   const processRecording = async (fileUri: string, mimeType: string) => {
+    if (!ensurePremium('ai', t)) return;
     // NON-BLOCKING: Create placeholder protocol immediately, navigate away,
     // then process in background. App is instantly usable again.
     
