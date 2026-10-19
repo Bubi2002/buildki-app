@@ -568,6 +568,33 @@ export default function ProtocolDetailScreen() {
     }
   };
 
+  // Delete this protocol (with confirmation), then go back.
+  const deleteProtocol = () => {
+    if (!protocol) return;
+    Alert.alert(
+      t('protocol_delete_title' as any),
+      t('protocol_delete_msg' as any),
+      [
+        { text: t('btn_abbrechen'), style: "cancel" },
+        {
+          text: t('btn_loeschen'),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+              await AsyncStorage.setItem("protocols", JSON.stringify(protocols.filter((p: any) => p.id !== protocol.id)));
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.back();
+            } catch (e) {
+              console.error("Error deleting protocol:", e);
+              Alert.alert(t('alert_fehler'), t('settings_unknown_error' as any));
+            }
+          },
+        },
+      ],
+    );
+  };
+
   // Edit protocol text
   const startEditing = () => {
     setEditedText(protocol?.protocol || "");
@@ -2125,6 +2152,7 @@ export default function ProtocolDetailScreen() {
               { text: t('tags'), onPress: () => setShowTagEditor(true) },
               { text: t('protocol_more_duplicate' as any), onPress: duplicateProtocol },
               { text: showTranscription ? t('transkription_ausblenden') : t('transkription_anzeigen'), onPress: () => setShowTranscription((v) => !v) },
+              { text: t('protocol_delete_title' as any), style: "destructive", onPress: deleteProtocol },
               { text: t('cancel'), style: "cancel" },
             ]);
           }}
