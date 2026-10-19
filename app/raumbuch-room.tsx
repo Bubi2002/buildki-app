@@ -126,6 +126,7 @@ export default function RaumbuchRoomScreen() {
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
   const [defectModal, setDefectModal] = useState(false); // "neu anlegen"
   const [defectTitle, setDefectTitle] = useState("");
+  const [defectWall, setDefectWall] = useState<RaumbuchPosition | null>(null);
   const [linkModal, setLinkModal] = useState(false); // "bestehenden zuordnen"
 
   const loadDefects = useCallback(async () => {
@@ -156,6 +157,7 @@ export default function RaumbuchRoomScreen() {
     const title = defectTitle.trim();
     if (!title) return;
     const now = new Date().toISOString();
+    const wallLabel = defectWall ? t(RAUMBUCH_POSITION_LABEL_KEY[defectWall] as any) : undefined;
     const d: Defect = {
       id: `defect-${Date.now()}`,
       projectId,
@@ -166,13 +168,15 @@ export default function RaumbuchRoomScreen() {
       photos: [],
       floor: floorName || undefined,
       room: roomName || undefined,
-      location: [floorName, roomName].filter(Boolean).join(" / ") || undefined,
+      wall: wallLabel,
+      location: [floorName, roomName, wallLabel].filter(Boolean).join(" / ") || undefined,
       source: "manual",
       createdAt: now,
       updatedAt: now,
     };
     try { await saveDefect(d); } catch {}
     setDefectTitle("");
+    setDefectWall(null);
     setDefectModal(false);
     void loadDefects();
   };
@@ -607,7 +611,10 @@ export default function RaumbuchRoomScreen() {
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
               >
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: DEFECT_STATUS_COLOR[d.status] || colors.muted }} />
-                <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{d.title}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }} numberOfLines={1}>{d.title}</Text>
+                  {!!d.wall && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 1 }} numberOfLines={1}>{d.wall}</Text>}
+                </View>
                 <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
               </Pressable>
             ))}
@@ -615,7 +622,7 @@ export default function RaumbuchRoomScreen() {
         )}
         <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
           <Pressable
-            onPress={() => { setDefectTitle(""); setDefectModal(true); }}
+            onPress={() => { setDefectTitle(""); setDefectWall(null); setDefectModal(true); }}
             style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons name="add" size={18} color={colors.primary} />
@@ -644,6 +651,24 @@ export default function RaumbuchRoomScreen() {
                 multiline
                 style={{ minHeight: 70, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.foreground, fontSize: 14, textAlignVertical: "top" }}
               />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted, marginTop: 14, marginBottom: 8 }}>{t("raumbuch_defect_wall" as any)}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {RAUMBUCH_POSITIONS.map((pos) => {
+                  const on = defectWall === pos;
+                  return (
+                    <Pressable
+                      key={pos}
+                      onPress={() => setDefectWall(on ? null : pos)}
+                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : colors.surface, opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      {(WALL_COLORS as Record<string, string>)[pos] && (
+                        <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: (WALL_COLORS as Record<string, string>)[pos] }} />
+                      )}
+                      <Text style={{ fontSize: 12.5, fontWeight: on ? "800" : "600", color: on ? colors.primary : colors.foreground }}>{t(RAUMBUCH_POSITION_LABEL_KEY[pos] as any)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
               <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
                 <Pressable onPress={() => setDefectModal(false)} style={({ pressed }) => [{ flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                   <Text style={{ fontWeight: "700", color: colors.foreground }}>{t("btn_abbrechen" as any)}</Text>

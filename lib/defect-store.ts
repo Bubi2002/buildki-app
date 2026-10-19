@@ -80,6 +80,8 @@ export type Defect = {
   floor?: string;
   /** Room/Raum */
   room?: string;
+  /** Optional wall/position within the room (Raumbuch: Wand A–H, Boden, Decke). */
+  wall?: string;
   comments?: DefectComment[];
   createdAt: string;
   updatedAt: string;
