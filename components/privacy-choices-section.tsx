@@ -97,27 +97,44 @@ export function PrivacyChoicesSection({ colors }: Props) {
     setBusyPurpose(purpose);
     setChoices(next);
 
+    let localSaved = false;
     try {
+      // 1) Maßgeblich: den Einwilligungs-Nachweis lokal speichern. NUR ein
+      //    Fehler hier bedeutet, dass der Nachweis nicht gespeichert wurde →
+      //    zurückrollen und warnen.
       await saveConsent(next, "settings");
+      localSaved = true;
+
+      // 2) Best-Effort-Nebeneffekte: Server-Sync + Laufzeitzustand. Ein Fehler
+      //    beim Sync oder beim (Neu-)Start des Sync-Managers darf eine bereits
+      //    gespeicherte Wahl NICHT zurücknehmen (das ließ z. B. den Standort-
+      //    Schalter fälschlich "konnte nicht gespeichert werden" melden, weil
+      //    bei aktivem KI+Cloud initSyncManager erneut lief).
       if (isAuthenticated) {
-        await saveRemote.mutateAsync({
-          version: 2,
-          choices: next,
-          source: "settings",
-        });
-        setStatus(t('privacy_choices_section_nachweis_synchronisiert' as any));
+        try {
+          await saveRemote.mutateAsync({
+            version: 2,
+            choices: next,
+            source: "settings",
+          });
+          setStatus(t('privacy_choices_section_nachweis_synchronisiert' as any));
+        } catch {
+          setStatus(t('privacy_choices_section_lokal_gespeichert' as any));
+        }
       } else {
         setStatus(t('privacy_choices_section_lokal_gespeichert' as any));
       }
-      await applyRuntimeState(next);
-    } catch  {
-      setChoices(previous);
-      await saveConsent(previous, "settings-rollback");
-      await applyRuntimeState(previous);
-      Alert.alert(
-        t('privacy_choices_section_option_nicht_geaendert' as any),
-        t('privacy_choices_section_option_nicht_geaendert_msg' as any),
-      );
+      try { await applyRuntimeState(next); } catch {}
+    } catch {
+      if (!localSaved) {
+        setChoices(previous);
+        await saveConsent(previous, "settings-rollback").catch(() => undefined);
+        await applyRuntimeState(previous).catch(() => undefined);
+        Alert.alert(
+          t('privacy_choices_section_option_nicht_geaendert' as any),
+          t('privacy_choices_section_option_nicht_geaendert_msg' as any),
+        );
+      }
     } finally {
       setBusyPurpose(null);
     }
