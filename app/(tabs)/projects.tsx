@@ -990,11 +990,9 @@ export default function RundgangTab() {
                 einen Button "Etagen & Räume bearbeiten" (project-wizard) angelegt. */}
 
             {floors.length > 0 && totalRooms === 0 && (
-              <View style={styles.empty}>
-                <MaterialIcons name="meeting-room" size={44} color="#4A5568" />
-                <Text style={styles.emptyTitle}>{t("rooms_empty_title" as any)}</Text>
-                <Text style={styles.emptyHint}>{t("rooms_empty_hint" as any)}</Text>
-              </View>
+              <Text style={{ color: "#5F7590", fontSize: 13, paddingVertical: 10, paddingHorizontal: 16 }}>
+                {t("rooms_empty_title" as any)}
+              </Text>
             )}
 
             {selectedProjectId && (
