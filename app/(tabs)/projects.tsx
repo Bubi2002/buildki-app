@@ -754,11 +754,11 @@ export default function RundgangTab() {
               <Text style={styles.startBegehungText}>{t("rundgang_start_begehung" as any)}</Text>
             </Pressable>
 
-            {/* Letzte Begehungen */}
+            {/* Projekt öffnen/bearbeiten */}
             <Pressable onPress={() => router.push(`/project-detail?id=${selectedProjectId}` as any)} style={styles.baustelleRecent}>
-              <MaterialIcons name="history" size={16} color="#8FA3B8" />
+              <MaterialIcons name="edit" size={16} color="#8FA3B8" />
               <Text style={styles.baustelleRecentText} numberOfLines={1}>
-                {begehungCount} {t("nav_begehung" as any)}{lastBegehung ? ` · ${new Date(lastBegehung).toLocaleDateString("de-DE")}` : ""}
+                {t("projekt_bearbeiten" as any)}
               </Text>
               <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
             </Pressable>
