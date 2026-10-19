@@ -141,16 +141,6 @@ export default function MeasureScreen() {
   const [overviewVisible, setOverviewVisible] = useState(false);
   const [overviewSelected, setOverviewSelected] = useState<string[]>([]);
   const [isOverviewExporting, setIsOverviewExporting] = useState(false);
-  // Belege, deren Bilddatei nicht mehr auflösbar ist (z. B. aus alten Protokollen
-  // migrierte Fotos mit verwaister URI) → leere/schwarze Kästen. Werden aus dem
-  // Beleg-Streifen ausgeblendet, sobald das Laden fehlschlägt.
-  const [brokenEvidence, setBrokenEvidence] = useState<Set<string>>(new Set());
-
-  // Nur Belege mit tatsächlich vorhandenem, ladbarem Bild im Streifen zeigen.
-  const visibleEvidence = useMemo(
-    () => evidence.filter((item) => (item.previewUri || item.originalUri) && !brokenEvidence.has(item.id)),
-    [evidence, brokenEvidence],
-  );
 
   const selectedMethod = useMemo(
     () => METHODS.find((item) => item.value === method) || METHODS[0],
@@ -732,32 +722,31 @@ export default function MeasureScreen() {
               </Pressable>
             </View>
 
-            {visibleEvidence.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.evidenceStrip}>
-                {visibleEvidence.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => selectEvidence(item)}
-                    style={[
-                      styles.evidenceCard,
-                      {
-                        borderColor: selectedEvidence?.id === item.id ? "#00ACC1" : colors.border,
-                        backgroundColor: colors.surface,
-                      },
-                    ]}
-                  >
-                    <Image
-                      source={{ uri: item.previewUri || item.originalUri }}
-                      style={styles.evidenceImage}
-                      contentFit="cover"
-                      onError={() => setBrokenEvidence((prev) => { const next = new Set(prev); next.add(item.id); return next; })}
-                    />
-                    <Text style={[styles.evidenceCaption, { color: colors.foreground }]} numberOfLines={2}>
-                      {item.findingText || (item.sourceType === "video_frame" ? t('measure_video_frame' as any) : t('measure_photo' as any))}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+            {measuredEvidence.length > 0 && (
+              <View style={styles.recentWrap}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>{t('measure_recent_title' as any)}</Text>
+                {measuredEvidence.map((e) => {
+                  const rows = rowsForEvidence(e);
+                  const summary = rows.map((r) => r.value).join("  ·  ");
+                  const selected = selectedEvidence?.id === e.id;
+                  return (
+                    <Pressable
+                      key={e.id}
+                      onPress={() => selectEvidence(e)}
+                      style={[styles.recentRow, { borderColor: selected ? "#00ACC1" : colors.border, backgroundColor: colors.surface }]}
+                    >
+                      <View style={[styles.recentBadge, { backgroundColor: "#00ACC1" }]}>
+                        <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 12 }}>{rows.length}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.recentTitle, { color: colors.foreground }]} numberOfLines={1}>{evidenceTitle(e)}</Text>
+                        <Text style={[styles.recentSub, { color: colors.muted }]} numberOfLines={2}>{summary}</Text>
+                      </View>
+                      <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                    </Pressable>
+                  );
+                })}
+              </View>
             )}
 
             {selectedEvidence && (
@@ -1099,6 +1088,11 @@ const styles = StyleSheet.create({
   evidenceCard: { width: 132, marginRight: 10, borderWidth: 2, padding: 6 },
   evidenceImage: { width: 116, height: 90, backgroundColor: "#111827" },
   evidenceCaption: { fontSize: 11, fontWeight: "700", marginTop: 6, lineHeight: 15 },
+  recentWrap: { marginTop: 4 },
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 12, marginBottom: 8 },
+  recentBadge: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  recentTitle: { fontSize: 14, fontWeight: "800" },
+  recentSub: { fontSize: 12, fontWeight: "600", marginTop: 3, lineHeight: 16 },
   helpText: { fontSize: 12, lineHeight: 18, marginBottom: 10 },
   canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, backgroundColor: "#111827", overflow: "hidden", borderWidth: 1, borderColor: "#334155" },
   fieldLabel: { fontSize: 13, fontWeight: "700", marginTop: 16, marginBottom: 6 },
