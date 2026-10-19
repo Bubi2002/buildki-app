@@ -13,7 +13,7 @@ import { screenPointToNormalized } from "@/lib/zoom-transform";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { pickImagesWithSource } from "@/lib/import-picker";
-import { getFloorPlans, type FloorPlan } from "@/lib/floor-plan-store";
+import { getFloorPlans, getPinsForProject, type FloorPlan, type PlanPin } from "@/lib/floor-plan-store";
 import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
 import {
   getRaumbuchEntry,
@@ -123,6 +123,10 @@ export default function RaumbuchRoomScreen() {
     projectId, roomId, floorName, roomName, photos: {}, notes: {}, updatedAt: new Date().toISOString(),
   });
 
+  const [planPins, setPlanPins] = useState<PlanPin[]>([]);
+  // Overlay the Grundriss-tool pins (Mängel/Fotos) on the plan — off by default
+  // so the sheet starts with a clean plan; the user can toggle them on.
+  const [showPins, setShowPins] = useState(false);
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
   const [defectModal, setDefectModal] = useState(false); // "neu anlegen"
   const [defectTitle, setDefectTitle] = useState("");
@@ -137,6 +141,7 @@ export default function RaumbuchRoomScreen() {
     const e = await getRaumbuchEntry(projectId, roomId);
     setEntry(e || blankEntry());
     try { setPlans(await getFloorPlans(projectId)); } catch {}
+    try { setPlanPins(await getPinsForProject(projectId)); } catch {}
     void loadDefects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, roomId, loadDefects]);
@@ -818,6 +823,18 @@ export default function RaumbuchRoomScreen() {
                 </Pressable>
               ))}
             </View>
+            {/* Markierungen (Pins) vom Grundriss-Tool ein-/ausblenden. */}
+            {modalPlan && planPins.some((p) => p.planId === modalPlan.id) && (
+              <View style={{ flexDirection: "row", marginBottom: 10 }}>
+                <Pressable
+                  onPress={() => setShowPins((v) => !v)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: showPins ? colors.primary : colors.border, backgroundColor: showPins ? colors.primary + "18" : colors.surface }}
+                >
+                  <MaterialIcons name={showPins ? "place" : "location-off"} size={16} color={showPins ? colors.primary : colors.muted} />
+                  <Text style={{ fontSize: 12.5, fontWeight: "700", color: showPins ? colors.primary : colors.muted }}>{t("raumbuch_markierungen_toggle" as any)}</Text>
+                </Pressable>
+              </View>
+            )}
             {plans.length > 1 && planStep === 1 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44, flexGrow: 0 }} contentContainerStyle={{ gap: 8, alignItems: "center", paddingBottom: 6 }}>
                 {plans.map((p) => {
@@ -926,6 +943,10 @@ export default function RaumbuchRoomScreen() {
                                 </SvgG>
                               );
                             })}
+                            {/* Grundriss-Pins (Mängel/Fotos) als Overlay, wenn eingeblendet. */}
+                            {showPins && modalPlan && planPins.filter((p) => p.planId === modalPlan.id).map((p) => (
+                              <SvgCircle key={p.id} cx={toVX(p.x)} cy={toVY(p.y)} r={7 * hs} fill={p.color || "#DC2626"} stroke="#FFFFFF" strokeWidth={2 * hs} />
+                            ))}
                           </Svg>
                           {tempPos && (
                             <>
