@@ -26,10 +26,10 @@ import {
   type RaumbuchWall,
 } from "@/lib/raumbuch-store";
 
-const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
+const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const WALL_COLOR = "#2563EB";
 // Distinct colour per wall, matching the Raumbuch PDF (A=Blau, B=Grün, C=Rot, D=Orange).
-const WALL_COLORS: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C" };
+const WALL_COLORS: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C", E: "#9333EA", F: "#0891B2", G: "#CA8A04", H: "#DB2777" };
 type PlanMode = "marker" | "crop" | "view" | RaumbuchWallKey;
 // A sensible starting crop so the user ADJUSTS a frame instead of drawing one
 // freehand on a small plan. Centred, covering most of the plan.

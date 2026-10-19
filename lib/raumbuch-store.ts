@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Positions documented per room: four walls + floor + ceiling.
-export type RaumbuchPosition = "A" | "B" | "C" | "D" | "boden" | "decke";
-export const RAUMBUCH_POSITIONS: RaumbuchPosition[] = ["A", "B", "C", "D", "boden", "decke"];
+// Positions documented per room: up to eight walls (A–H, for rooms with corners
+// or pillars) + floor + ceiling.
+export type RaumbuchPosition = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "boden" | "decke";
+export const RAUMBUCH_POSITIONS: RaumbuchPosition[] = ["A", "B", "C", "D", "E", "F", "G", "H", "boden", "decke"];
 
 /** i18n keys for each position's label. */
 export const RAUMBUCH_POSITION_LABEL_KEY: Record<RaumbuchPosition, string> = {
@@ -10,6 +11,10 @@ export const RAUMBUCH_POSITION_LABEL_KEY: Record<RaumbuchPosition, string> = {
   B: "raumbuch_wand_b",
   C: "raumbuch_wand_c",
   D: "raumbuch_wand_d",
+  E: "raumbuch_wand_e",
+  F: "raumbuch_wand_f",
+  G: "raumbuch_wand_g",
+  H: "raumbuch_wand_h",
   boden: "raumbuch_boden",
   decke: "raumbuch_decke",
 };
@@ -27,8 +32,8 @@ export type RaumbuchEntry = {
   /** Optional crop of the plan (normalised 0..1) so the sheet shows only the
    *  relevant area around the room instead of the whole plan. */
   planCrop?: { x: number; y: number; w: number; h: number };
-  /** Optional drawn wall lines (normalised 0..1 plan coords), labelled A–D. */
-  walls?: Partial<Record<"A" | "B" | "C" | "D", { x1: number; y1: number; x2: number; y2: number }>>;
+  /** Optional drawn wall lines (normalised 0..1 plan coords), labelled A–H. */
+  walls?: Partial<Record<"A" | "B" | "C" | "D" | "E" | "F" | "G" | "H", { x1: number; y1: number; x2: number; y2: number }>>;
   photos: Partial<Record<RaumbuchPosition, string>>;
   notes?: Partial<Record<RaumbuchPosition, string>>;
   /** Filled-in Fragenkatalog answers for this room (second export template). */
@@ -36,7 +41,7 @@ export type RaumbuchEntry = {
   updatedAt: string;
 };
 
-export type RaumbuchWallKey = "A" | "B" | "C" | "D";
+export type RaumbuchWallKey = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
 export type RaumbuchWall = { x1: number; y1: number; x2: number; y2: number };
 
 // ── Fragenkatalog (room survey) ──────────────────────────────────────────────

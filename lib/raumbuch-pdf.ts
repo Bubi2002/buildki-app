@@ -7,9 +7,9 @@ import { getFloorPlans } from "./floor-plan-store";
 import { getPdfBranding } from "./pdf-branding-store";
 import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
 
-const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D"];
+const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 // Distinct colour per wall: A = Blau, B = Grün, C = Rot, D = Orange.
-const WALL_COLOR: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C" };
+const WALL_COLOR: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C", E: "#9333EA", F: "#0891B2", G: "#CA8A04", H: "#DB2777" };
 const PLAN_W = 190; // px width of the plan excerpt box in the PDF (kept small so
                     // the meta row stays short and the photo fits on the SAME page)
 
@@ -298,7 +298,7 @@ export async function generateRaumbuchPdf(
         if (!photo) continue;
         const label = esc(t(RAUMBUCH_POSITION_LABEL_KEY[pos]));
         const note = esc(e.notes?.[pos] || "");
-        const isWall = pos === "A" || pos === "B" || pos === "C" || pos === "D";
+        const isWall = pos !== "boden" && pos !== "decke";
         const posRow = isWall
           ? `<div class="m"><span>Wand:</span> ${pos}</div>`
           : `<div class="m"><span>Bereich:</span> ${label}</div>`;
