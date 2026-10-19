@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 
 import { screenPointToNormalized, type Point } from "@/lib/zoom-transform";
@@ -53,6 +54,19 @@ type ZoomableCanvasProps = {
   /** Fires with the new zoom scale when it settles (pinch/double-tap/buttons),
    *  so the parent can keep overlay handles a constant size on screen. */
   onZoomChange?: (scale: number) => void;
+  /**
+   * Screen-space overlay rendered OUTSIDE the zoom transform but inside the
+   * clipping box (pointerEvents none). Receives the live transform shared
+   * values so the parent can position constant-size, crisp markers on the UI
+   * thread — no counter-scale blur, no flicker on pan/zoom.
+   */
+  overlay?: (t: {
+    scale: SharedValue<number>;
+    translateX: SharedValue<number>;
+    translateY: SharedValue<number>;
+    width: number;
+    height: number;
+  }) => ReactNode;
   testID?: string;
 };
 
@@ -81,6 +95,7 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
   dragImmediate = false,
   onInteractionChange,
   onZoomChange,
+  overlay,
   testID,
 }: ZoomableCanvasProps, ref) {
   const scale = useSharedValue(1);
@@ -318,6 +333,11 @@ export const ZoomableCanvas = forwardRef<ZoomableCanvasHandle, ZoomableCanvasPro
           {children}
         </Animated.View>
       </GestureDetector>
+      {overlay ? (
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, width, height }}>
+          {overlay({ scale, translateX, translateY, width, height })}
+        </View>
+      ) : null}
     </View>
   );
 });

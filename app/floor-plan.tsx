@@ -19,6 +19,7 @@ import {
   InteractionManager,
 } from "react-native";
 import { Image } from "expo-image";
+import Animated, { useAnimatedStyle, type SharedValue } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { FullscreenPhotoViewer } from "@/components/fullscreen-photo-viewer";
@@ -79,6 +80,35 @@ const PIN_ICONS: Record<PlanPin["type"], string> = {
   chapter: "bookmark",
   task: "task-alt",
 };
+
+const PIN_W = 22, PIN_H = 26;
+
+/**
+ * A floor-plan pin rendered in SCREEN space (overlay outside the zoom transform).
+ * Its position tracks the canvas's live scale/translation on the UI thread, so
+ * the marker stays a CONSTANT size (no counter-scale → crisp, no blur) and never
+ * flickers while panning/zooming. nx/ny are canvas-content coordinates.
+ */
+function AnimatedPin({ nx, ny, color, icon, highlight, scale, translateX, translateY, cw, ch }: {
+  nx: number; ny: number; color: string; icon: string; highlight: boolean;
+  scale: SharedValue<number>; translateX: SharedValue<number>; translateY: SharedValue<number>;
+  cw: number; ch: number;
+}) {
+  const aStyle = useAnimatedStyle(() => {
+    const s = scale.value;
+    const sx = (nx - cw / 2) * s + cw / 2 + translateX.value;
+    const sy = (ny - ch / 2) * s + ch / 2 + translateY.value;
+    return { transform: [{ translateX: sx - PIN_W / 2 }, { translateY: sy - PIN_H }] };
+  });
+  return (
+    <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: PIN_W, alignItems: "center" }, aStyle]}>
+      <View style={[styles.pinMarker, { backgroundColor: color }, highlight && styles.pinMarkerHighlight]}>
+        <MaterialIcons name={icon as any} size={12} color="#FFF" />
+      </View>
+      <View style={[styles.pinTail, { borderTopColor: color }]} />
+    </Animated.View>
+  );
+}
 
 export default function FloorPlanScreen() {
   const { t } = useTranslation();
@@ -1094,6 +1124,39 @@ export default function FloorPlanScreen() {
                 onZoomChange={setCanvasScale}
                 dragImmediate={!!movingPin}
                 onInteractionChange={setPlanInteractionActive}
+                overlay={({ scale, translateX, translateY, width, height }) => (
+                  <>
+                    {filteredPins.map((pin) => (
+                      <AnimatedPin
+                        key={pin.id}
+                        nx={offX + pin.x * dispW}
+                        ny={offY + pin.y * dispH}
+                        color={pinColor(pin)}
+                        icon={PIN_ICONS[pin.type]}
+                        highlight={pin.id === highlightPinId}
+                        scale={scale}
+                        translateX={translateX}
+                        translateY={translateY}
+                        cw={width}
+                        ch={height}
+                      />
+                    ))}
+                    {pendingPin && (
+                      <AnimatedPin
+                        nx={offX + pendingPin.x * dispW}
+                        ny={offY + pendingPin.y * dispH}
+                        color="#9E9E9E"
+                        icon="add"
+                        highlight={false}
+                        scale={scale}
+                        translateX={translateX}
+                        translateY={translateY}
+                        cw={width}
+                        ch={height}
+                      />
+                    )}
+                  </>
+                )}
                 testID="floor-plan-zoom-stage"
               >
                 <View style={{ width: containerWidth, height: containerHeight, backgroundColor: "#FFFFFF" }}>
@@ -1120,41 +1183,8 @@ export default function FloorPlanScreen() {
                   }}
                   onError={() => setLoadingPlanId(null)}
                 />
-                {/* Render Pins */}
-                <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-                  {(() => {
-                    // Keep pins a CONSTANT screen size: counter-scale by 1/zoom,
-                    // anchored at the tip (bottom-center) so the point never drifts.
-                    const hs = 1 / Math.max(1, canvasScale);
-                    const PIN_W = 22, PIN_H = 26; // marker 22 + tail ~4
-                    const pinTransform = { transform: [{ scale: hs }], transformOrigin: "bottom center" as const };
-                    return (
-                      <>
-                        {filteredPins.map((pin) => (
-                          <View
-                            key={pin.id}
-                            style={[styles.pin, { left: offX + pin.x * dispW - PIN_W / 2, top: offY + pin.y * dispH - PIN_H }, pinTransform]}
-                          >
-                            <View style={[styles.pinMarker, { backgroundColor: pinColor(pin) }, pin.id === highlightPinId && styles.pinMarkerHighlight]}>
-                              <MaterialIcons name={PIN_ICONS[pin.type] as any} size={12} color="#FFF" />
-                            </View>
-                            <View style={[styles.pinTail, { borderTopColor: pinColor(pin) }]} />
-                          </View>
-                        ))}
-                        {pendingPin && (
-                          <View
-                            style={[styles.pin, { left: offX + pendingPin.x * dispW - PIN_W / 2, top: offY + pendingPin.y * dispH - PIN_H }, pinTransform]}
-                          >
-                            <View style={[styles.pinMarker, { backgroundColor: "#9E9E9E" }]}>
-                              <MaterialIcons name="add" size={12} color="#FFF" />
-                            </View>
-                            <View style={[styles.pinTail, { borderTopColor: "#9E9E9E" }]} />
-                          </View>
-                        )}
-                      </>
-                    );
-                  })()}
-                </View>
+                {/* Pins werden jetzt als bildschirmfestes Overlay (konstante Größe,
+                    scharf, kein Flackern) über die ZoomableCanvas gerendert. */}
                 </View>
               </ZoomableCanvas>
               {loadingPlanId === selectedPlan.id ? (
