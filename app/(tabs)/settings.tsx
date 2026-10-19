@@ -1426,7 +1426,9 @@ return (
           <Pressable
             // Opened directly from the Einstellungen tab (via ?section) → go back
             // to that tab instead of showing a second 6-card settings list.
-            onPress={() => { if (settingsParams.section) { router.back(); } else { setCat(null); } }}
+            // NB: router.back() would drop to the start tab (Home) because
+            // "settings" is a hidden tab pushed from "mehr"; navigate explicitly.
+            onPress={() => { if (settingsParams.section) { router.navigate("/mehr" as any); } else { setCat(null); } }}
             hitSlop={10}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 2 }]}
           >
