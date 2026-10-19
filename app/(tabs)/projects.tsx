@@ -79,6 +79,30 @@ export default function RundgangTab() {
     try { await AsyncStorage.setItem("last-selected-project-id", selectedProjectId); } catch {}
     router.push("/record" as any);
   };
+
+  // Delete a protocol (Begehung) from the list, with confirmation.
+  const deleteProtocolNow = (p: { id: string }) => {
+    Alert.alert(
+      t('protocol_delete_title' as any),
+      t('protocol_delete_msg' as any),
+      [
+        { text: t('btn_abbrechen' as any), style: "cancel" },
+        {
+          text: t('btn_loeschen' as any),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const all = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+              await AsyncStorage.setItem("protocols", JSON.stringify(all.filter((x: any) => x.id !== p.id)));
+              setProtocolList((prev) => prev.filter((x) => x.id !== p.id));
+              setBegehungCount((c) => Math.max(0, c - 1));
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {}
+          },
+        },
+      ],
+    );
+  };
   const [floors, setFloors] = useState<Floor[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -1006,6 +1030,9 @@ export default function RundgangTab() {
                     <Pressable key={p.id} onPress={() => router.push(`/protocol-detail?id=${p.id}` as any)} style={styles.protoRow}>
                       <MaterialIcons name="description" size={18} color="#8FA3B8" />
                       <Text style={styles.protoText} numberOfLines={1}>{p.title || p.templateName || t('protokoll')} · {new Date(p.createdAt).toLocaleDateString("de-DE")}</Text>
+                      <Pressable onPress={() => deleteProtocolNow(p)} hitSlop={10} style={({ pressed }) => [{ paddingHorizontal: 4, opacity: pressed ? 0.6 : 1 }]}>
+                        <MaterialIcons name="delete-outline" size={19} color="#F87171" />
+                      </Pressable>
                       <MaterialIcons name="chevron-right" size={18} color="#8FA3B8" />
                     </Pressable>
                   ))
