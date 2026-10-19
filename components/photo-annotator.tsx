@@ -15,8 +15,15 @@ import * as Haptics from "expo-haptics";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
 } from "react-native-reanimated";
 import Svg, { Path, Circle, Rect, Line, Text as SvgText } from "react-native-svg";
+
+// Clamp helpers used on the UI thread by the zoom/pan gestures.
+function wClamp(v: number, min: number, max: number) { "worklet"; return Math.min(max, Math.max(min, v)); }
+function wClampTrans(t: number, dim: number, s: number) { "worklet"; const limit = Math.max(0, (dim * (s - 1)) / 2); return wClamp(t, -limit, limit); }
 import { captureRef } from "react-native-view-shot";
 import { createLocalId } from "@/lib/id";
 import { useTranslation } from "@/lib/language-provider";
@@ -65,6 +72,14 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<View>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Zoom/pan of the plan while drawing: two fingers zoom & move, one finger draws.
+  const zScale = useSharedValue(1);
+  const zSavedScale = useSharedValue(1);
+  const zTX = useSharedValue(0);
+  const zTY = useSharedValue(0);
+  const zSavedTX = useSharedValue(0);
+  const zSavedTY = useSharedValue(0);
 
   const handleTouchStart = useCallback((x: number, y: number) => {
     setStartPoint({ x, y });
@@ -136,6 +151,10 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   const handleSave = async () => {
     if (isSaving) return;
     setIsSaving(true);
+    // Reset zoom/pan so the captured image shows the FULL plan at native framing
+    // (not the zoomed-in section). Annotations are in content space and stay put.
+    zScale.value = 1; zTX.value = 0; zTY.value = 0;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))));
     let flattenedUri: string | undefined;
     try {
       if (canvasRef.current) {
@@ -261,8 +280,14 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [currentColor]);
 
+  const cw = imageSize.width;
+  const ch = imageSize.height;
+
+  // One finger draws (maxPointers 1). Its coords are in the transformed view's
+  // content space, so drawing lands under the finger even when zoomed/panned.
   const panGesture = Gesture.Pan()
     .enabled(currentTool !== "marker")
+    .maxPointers(1)
     .onStart((e) => {
       runOnJS(handleTouchStart)(e.x, e.y);
     })
@@ -281,7 +306,47 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
       runOnJS(placeMarker)(e.x, e.y);
     });
 
-  const composedGesture = Gesture.Race(tapGesture, panGesture);
+  // Two fingers: pinch to zoom, drag to move the plan.
+  const pinchGesture = Gesture.Pinch()
+    .onBegin(() => { "worklet"; zSavedScale.value = zScale.value; })
+    .onUpdate((e) => {
+      "worklet";
+      const ns = wClamp(zSavedScale.value * e.scale, 1, 5);
+      zScale.value = ns;
+      zTX.value = wClampTrans(zTX.value, cw, ns);
+      zTY.value = wClampTrans(zTY.value, ch, ns);
+    })
+    .onFinalize(() => {
+      "worklet";
+      const ns = wClamp(zScale.value, 1, 5);
+      zScale.value = withTiming(ns, { duration: 120 });
+      zTX.value = withTiming(wClampTrans(zTX.value, cw, ns), { duration: 120 });
+      zTY.value = withTiming(wClampTrans(zTY.value, ch, ns), { duration: 120 });
+    });
+
+  const twoFingerPan = Gesture.Pan()
+    .minPointers(2)
+    .onBegin(() => { "worklet"; zSavedTX.value = zTX.value; zSavedTY.value = zTY.value; })
+    .onUpdate((e) => {
+      "worklet";
+      if (zScale.value <= 1) return;
+      zTX.value = wClampTrans(zSavedTX.value + e.translationX, cw, zScale.value);
+      zTY.value = wClampTrans(zSavedTY.value + e.translationY, ch, zScale.value);
+    });
+
+  const composedGesture = Gesture.Simultaneous(
+    pinchGesture,
+    twoFingerPan,
+    Gesture.Race(tapGesture, panGesture),
+  );
+
+  const canvasTransform = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: zTX.value },
+      { translateY: zTY.value },
+      { scale: zScale.value },
+    ],
+  }));
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
@@ -297,23 +362,23 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
           </Pressable>
         </View>
 
-        {/* Canvas */}
+        {/* Canvas — two fingers zoom/move the plan, one finger draws. */}
         <View style={styles.canvasContainer}>
-          <View ref={canvasRef} collapsable={false} style={{ width: imageSize.width, height: imageSize.height }}>
-            <Image
-              source={{ uri: photoUri }}
-              style={[styles.image, { width: imageSize.width, height: imageSize.height }]}
-              contentFit="contain"
-              onLoad={(e) => {
-                const { width: imgW, height: imgH } = e.source;
-                const containerW = SCREEN_WIDTH - 32;
-                const ratio = imgW / imgH;
-                const containerH = containerW / ratio;
-                setImageSize({ width: containerW, height: Math.min(containerH, 500) });
-              }}
-            />
+          <View ref={canvasRef} collapsable={false} style={{ width: imageSize.width, height: imageSize.height, overflow: "hidden" }}>
             <GestureDetector gesture={composedGesture}>
-              <Animated.View style={[StyleSheet.absoluteFill, { width: imageSize.width, height: imageSize.height }]}>
+              <Animated.View style={[{ width: imageSize.width, height: imageSize.height }, canvasTransform]}>
+                <Image
+                  source={{ uri: photoUri }}
+                  style={[styles.image, { width: imageSize.width, height: imageSize.height }]}
+                  contentFit="contain"
+                  onLoad={(e) => {
+                    const { width: imgW, height: imgH } = e.source;
+                    const containerW = SCREEN_WIDTH - 32;
+                    const ratio = imgW / imgH;
+                    const containerH = containerW / ratio;
+                    setImageSize({ width: containerW, height: Math.min(containerH, 500) });
+                  }}
+                />
                 <Svg width={imageSize.width} height={imageSize.height} style={StyleSheet.absoluteFill}>
                   {annotations.map(renderAnnotation)}
                   {renderCurrentPath()}
@@ -321,6 +386,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
               </Animated.View>
             </GestureDetector>
           </View>
+          <Text style={styles.zoomHint}>{t('photo_annotator_zoom_hint' as any)}</Text>
         </View>
 
         {/* Tools */}
@@ -395,6 +461,12 @@ const styles = StyleSheet.create({
   },
   image: {
     borderRadius: 8,
+  },
+  zoomHint: {
+    color: "#8A8A8E",
+    fontSize: 11,
+    marginTop: 10,
+    textAlign: "center",
   },
   toolbar: {
     paddingHorizontal: 16,
