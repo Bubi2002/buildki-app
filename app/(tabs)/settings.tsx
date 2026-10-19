@@ -2228,6 +2228,7 @@ return (
         onClose={() => setShowImportContacts(false)}
         onSelect={() => {}}
         onSelectContacts={importPickedContacts}
+        includeNoEmail
       />
     </ScreenContainer>
   );
