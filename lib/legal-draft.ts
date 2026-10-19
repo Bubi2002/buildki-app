@@ -52,7 +52,7 @@ export const LEGAL_PROCESSOR_OPEN_FIELDS = {
   dpaStatus:
     "Manus-DPA vorhanden (Master Services Agreement mit Butterfly Effect Pte. Ltd., Singapur); wirksamer Abschluss durch den Betreiber noch zu bestätigen.",
   transferMechanism:
-    "EU-Standardvertragsklauseln (SCC) gemäß Manus-DPA für die Drittlandübermittlung (USA/Singapur).",
+    "Nach öffentlichen Angaben von Manus: EU-Standardvertragsklauseln (SCC) für die Drittlandübermittlung (USA/Singapur); Vertragsgeltung für den Betreiber noch zu bestätigen.",
   // Vom Betreiber festgelegter Entwurf (vor Release mit tatsächlicher Systempraxis abgleichen):
   retentionPeriod:
     "Konto-/Stammdaten bis zur Kontolöschung; Rechnungs-/Abrechnungsdaten bis zu 10 Jahre (§ 147 AO, § 257 HGB); Projekt-/Baustellendaten bis zur Löschung durch den Nutzer bzw. kurz nach Kontolöschung; technische Server-Protokolle in der Regel 30–90 Tage; viele Daten bleiben nur lokal auf dem Gerät.",
