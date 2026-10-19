@@ -19,7 +19,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { ensureCanCreateProject } from "@/lib/premium-gate";
 import { trpc } from "@/lib/trpc";
-import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, DEFAULT_ROOMS_BY_FLOOR, type Floor, type Room } from "@/lib/room-store";
+import { initializeDefaultFloors, getFloors, getAllRooms, addRoom, addFloor, updateRoom, deleteRoom, getProjectStructure, saveProjectStructure, DEFAULT_ROOMS_BY_FLOOR, type Floor, type Room } from "@/lib/room-store";
 import { saveDefect, getDefects, deleteDefect, type DefectStatus, type DefectPriority } from "@/lib/defect-store";
 import { GEWERKE } from "@/lib/defect-pdf-export";
 import { getFloorPlans, saveFloorPlan, savePlanPin, type FloorPlan } from "@/lib/floor-plan-store";
@@ -560,6 +560,48 @@ export default function ProjectWizardScreen() {
     try { await deleteRoom(projectId, r.id); } catch {}
   };
 
+  // Reorder a floor up (-1) / down (+1). Floors sort by `number` everywhere, so
+  // we permute the existing numbers to produce the new order (keeps the number
+  // set intact — no new values, no code churn).
+  const moveFloor = async (f: Floor, dir: -1 | 1) => {
+    if (!projectId) return;
+    const sorted = [...floors].sort((a, b) => a.number - b.number);
+    const i = sorted.findIndex((x) => x.id === f.id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= sorted.length) return;
+    const numbers = sorted.map((x) => x.number);
+    const [moved] = sorted.splice(i, 1);
+    sorted.splice(j, 0, moved);
+    const newNumber = new Map(sorted.map((x, idx) => [x.id, numbers[idx]]));
+    try {
+      const struct = await getProjectStructure(projectId);
+      struct.floors = struct.floors.map((fl) => (newNumber.has(fl.id) ? { ...fl, number: newNumber.get(fl.id)! } : fl));
+      await saveProjectStructure(struct);
+      setFloors(await getFloors(projectId));
+      haptic();
+    } catch {}
+  };
+
+  // Reorder a room up (-1) / down (+1) within its floor (rooms keep array order).
+  const moveRoom = async (r: Room, dir: -1 | 1) => {
+    if (!projectId) return;
+    try {
+      const struct = await getProjectStructure(projectId);
+      const sameFloor = struct.rooms.map((x, idx) => ({ x, idx })).filter((o) => o.x.floorId === r.floorId);
+      const pos = sameFloor.findIndex((o) => o.x.id === r.id);
+      const target = pos + dir;
+      if (pos < 0 || target < 0 || target >= sameFloor.length) return;
+      const arr = struct.rooms.slice();
+      const iA = sameFloor[pos].idx;
+      const iB = sameFloor[target].idx;
+      [arr[iA], arr[iB]] = [arr[iB], arr[iA]];
+      struct.rooms = arr;
+      await saveProjectStructure(struct);
+      setRooms(await getAllRooms(projectId));
+      haptic();
+    } catch {}
+  };
+
   // Speak room names ("Küche, Bad und Schlafzimmer") → adds them to the floor.
   // Splits on separators and strips common filler words so free speech still
   // produces clean names (the list is also editable afterwards).
@@ -1040,19 +1082,34 @@ export default function ProjectWizardScreen() {
               const fr = roomsForFloor(f.id);
               if (fr.length === 0) return null;
               const collapsed = collapsedFloors.has(f.id);
+              const fIdx = floors.findIndex((x) => x.id === f.id);
               return (
                 <View key={f.id} style={{ marginTop: 14 }}>
-                  {/* Tap the floor header to collapse/expand its rooms — keeps a
-                      long list manageable when there are many rooms. */}
-                  <Pressable onPress={() => toggleFloorCollapsed(f.id)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, opacity: pressed ? 0.6 : 1 }]}>
-                    <MaterialIcons name={collapsed ? "chevron-right" : "expand-more"} size={20} color={colors.muted} />
-                    <Text style={[styles.groupLabel, { color: colors.muted, marginBottom: 0 }]}>{floorLabel(f)}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>({fr.length})</Text>
-                  </Pressable>
-                  {!collapsed && fr.map((r) => (
+                  {/* Tap the floor header to collapse/expand its rooms; ↑/↓ reorder
+                      the floor. */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 }}>
+                    <Pressable onPress={() => toggleFloorCollapsed(f.id)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, opacity: pressed ? 0.6 : 1 }]}>
+                      <MaterialIcons name={collapsed ? "chevron-right" : "expand-more"} size={20} color={colors.muted} />
+                      <Text style={[styles.groupLabel, { color: colors.muted, marginBottom: 0 }]}>{floorLabel(f)}</Text>
+                      <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>({fr.length})</Text>
+                    </Pressable>
+                    <Pressable onPress={() => moveFloor(f, -1)} disabled={fIdx <= 0} hitSlop={6} style={{ padding: 4, opacity: fIdx <= 0 ? 0.3 : 1 }}>
+                      <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.muted} />
+                    </Pressable>
+                    <Pressable onPress={() => moveFloor(f, 1)} disabled={fIdx >= floors.length - 1} hitSlop={6} style={{ padding: 4, opacity: fIdx >= floors.length - 1 ? 0.3 : 1 }}>
+                      <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.muted} />
+                    </Pressable>
+                  </View>
+                  {!collapsed && fr.map((r, ri) => (
                     <Pressable key={r.id} onPress={() => openEditRoom(r)} style={({ pressed }) => [styles.itemRow, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                       <MaterialIcons name="meeting-room" size={16} color="#5DADE2" />
                       <Text style={[styles.itemText, { color: colors.foreground }]} numberOfLines={1}>{r.name}</Text>
+                      <Pressable onPress={() => moveRoom(r, -1)} disabled={ri <= 0} hitSlop={6} style={{ padding: 2, opacity: ri <= 0 ? 0.3 : 1 }}>
+                        <MaterialIcons name="keyboard-arrow-up" size={20} color={colors.muted} />
+                      </Pressable>
+                      <Pressable onPress={() => moveRoom(r, 1)} disabled={ri >= fr.length - 1} hitSlop={6} style={{ padding: 2, opacity: ri >= fr.length - 1 ? 0.3 : 1 }}>
+                        <MaterialIcons name="keyboard-arrow-down" size={20} color={colors.muted} />
+                      </Pressable>
                       <MaterialIcons name="edit" size={15} color={colors.muted} />
                       <Pressable onPress={() => deleteRoomNow(r)} hitSlop={8} style={{ paddingLeft: 6 }}>
                         <MaterialIcons name="delete-outline" size={19} color="#F87171" />
