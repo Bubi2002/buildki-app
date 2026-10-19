@@ -4,15 +4,19 @@ import * as FileSystem from "expo-file-system/legacy";
 import { decodeUnicodeEscapes } from "@/lib/display-text";
 import type { FloorPlan, PlanPin } from "@/lib/floor-plan-store";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
+import { getDefects } from "@/lib/defect-store";
 
 const PIN_HEX: Record<PlanPin["type"], string> = {
   photo: "#2196F3",
   defect: "#F44336",
   note: "#FF9800",
-  protocol: "#4CAF50",
+  protocol: "#2E7D32", // kräftigeres Grün (vorher #4CAF50 war zu hell)
   chapter: "#9C27B0",
   task: "#818CF8",
 };
+
+// Map of pin id → embedded photo data URIs (filled before rendering).
+type PhotoMap = Record<string, string[]>;
 
 const TYPE_LABEL: Record<PlanPin["type"], string> = {
   photo: "Foto",
@@ -49,7 +53,9 @@ function esc(s: string): string {
 function pinsHtml(pins: PlanPin[]): string {
   return pins
     .map((p, i) => {
-      const color = p.color || PIN_HEX[p.type] || "#F44336";
+      // Type colour first, so e.g. the darker protocol green also applies to
+      // pins that stored the old light green.
+      const color = PIN_HEX[p.type] || p.color || "#F44336";
       const left = Math.min(100, Math.max(0, p.x * 100)).toFixed(2);
       const top = Math.min(100, Math.max(0, p.y * 100)).toFixed(2);
       return `<div class="pin" style="left:${left}%;top:${top}%;">
@@ -64,18 +70,23 @@ function pinsHtml(pins: PlanPin[]): string {
 }
 
 // Boxed list of the markings below the plan ("drunter Mängelliste im Kasten").
-function marksHtml(pins: PlanPin[]): string {
+function marksHtml(pins: PlanPin[], photoMap: PhotoMap): string {
   if (pins.length === 0) return "";
   const rows = pins
     .map((p, i) => {
-      const color = p.color || PIN_HEX[p.type] || "#F44336";
+      const color = PIN_HEX[p.type] || p.color || "#F44336";
       const label = esc(decodeUnicodeEscapes(p.label || "")) || `${TYPE_LABEL[p.type]} ${i + 1}`;
       const desc = esc(decodeUnicodeEscapes(p.description || ""));
+      const photos = photoMap[p.id] || [];
+      const photosHtml = photos.length
+        ? `<div class="mphotos">${photos.map((d) => `<img src="${d}" />`).join("")}</div>`
+        : "";
       return `<div class="mark">
         <span class="mnum" style="background:${color};">${i + 1}</span>
         <div class="mtxt">
           <div class="mlabel">${label} <span class="mtype" style="color:${color};">${TYPE_LABEL[p.type]}</span></div>
           ${desc ? `<div class="mdesc">${desc}</div>` : ""}
+          ${photosHtml}
         </div>
       </div>`;
     })
@@ -83,7 +94,7 @@ function marksHtml(pins: PlanPin[]): string {
   return `<div class="marks"><div class="marks-h">Markierungen</div>${rows}</div>`;
 }
 
-function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boolean, company: string): string {
+function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boolean, company: string, photoMap: PhotoMap): string {
   const pinCount = pins.length;
   return `<section class="page" style="${isLast ? "" : "page-break-after:always;"}">
     <div class="head">
@@ -97,7 +108,7 @@ function planPage(plan: FloorPlan, pins: PlanPin[], dataUri: string, isLast: boo
       <img src="${dataUri}" />
       ${pinsHtml(pins)}
     </div>
-    ${marksHtml(pins)}
+    ${marksHtml(pins, photoMap)}
   </section>`;
 }
 
@@ -124,6 +135,8 @@ const styleFor = (accent: string) => `
   .mlabel { font-size: 12.5px; font-weight: 700; color: #1b2430; }
   .mtype { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 6px; }
   .mdesc { font-size: 11px; color: #475569; line-height: 1.45; margin-top: 2px; }
+  .mphotos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .mphotos img { width: 110px; height: 82px; object-fit: cover; border: 1px solid #e6eaf0; border-radius: 6px; }
 `;
 
 /**
@@ -143,12 +156,41 @@ export async function exportFloorPlansPdf(
   const accent = branding?.accentColor || "#1E3A5F";
   const company = branding?.companyName || "";
 
+  // Defect photos (for Mangel pins) live on the defect, not the pin.
+  let defectPhotosById: Record<string, string[]> = {};
+  try {
+    const projectId = plans[0]?.projectId;
+    const defs = await getDefects(projectId || undefined);
+    defectPhotosById = Object.fromEntries(defs.map((d) => [d.id, d.photos || []]));
+  } catch {}
+
+  // Embed every marking's photos (Foto pin + Mangel pin) as data URIs once.
+  const photoMap: PhotoMap = {};
+  for (const plan of plans) {
+    for (const pin of pinsByPlan[plan.id] || []) {
+      const srcs = [
+        ...((pin as any).photos || []),
+        ...((pin as any).photoUri ? [(pin as any).photoUri] : []),
+        ...((pin as any).defectId ? (defectPhotosById[(pin as any).defectId] || []) : []),
+      ];
+      const seen = new Set<string>();
+      const uris: string[] = [];
+      for (const s of srcs) {
+        if (!s || seen.has(s)) continue;
+        seen.add(s);
+        const d = await fileToDataUri(s);
+        if (d) uris.push(d);
+      }
+      if (uris.length) photoMap[pin.id] = uris;
+    }
+  }
+
   const pages: string[] = [];
   for (let i = 0; i < plans.length; i++) {
     const plan = plans[i];
     const dataUri = await fileToDataUri(plan.imageUri);
     if (!dataUri) continue;
-    pages.push(planPage(plan, pinsByPlan[plan.id] || [], dataUri, i === plans.length - 1, company));
+    pages.push(planPage(plan, pinsByPlan[plan.id] || [], dataUri, i === plans.length - 1, company, photoMap));
   }
   if (pages.length === 0) return "empty";
 

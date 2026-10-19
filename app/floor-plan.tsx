@@ -67,7 +67,7 @@ const PIN_COLORS: Record<PlanPin["type"], string> = {
   photo: "#2196F3",
   defect: "#F44336",
   note: "#FF9800",
-  protocol: "#4CAF50",
+  protocol: "#2E7D32", // kräftigeres Grün (vorher #4CAF50 war zu hell)
   chapter: "#9C27B0",
   task: "#818CF8",
 };
