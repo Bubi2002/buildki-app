@@ -175,9 +175,9 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
       if (!p) return null;
       return (
         <React.Fragment key={id}>
-          <Circle cx={p.x} cy={p.y} r={13} fill={color} />
-          <Circle cx={p.x} cy={p.y} r={13} fill="none" stroke="#FFFFFF" strokeWidth={3} />
-          <Circle cx={p.x} cy={p.y} r={4.5} fill="#FFFFFF" />
+          <Circle cx={p.x} cy={p.y} r={8} fill={color} />
+          <Circle cx={p.x} cy={p.y} r={8} fill="none" stroke="#FFFFFF" strokeWidth={2} />
+          <Circle cx={p.x} cy={p.y} r={3} fill="#FFFFFF" />
         </React.Fragment>
       );
     }
@@ -233,19 +233,19 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
         const midy = (start.y + end.y) / 2;
         const angle = Math.atan2(end.y - start.y, end.x - start.x);
         const perp = angle + Math.PI / 2;
-        const tick = 9;
+        const tick = 6;
         const tdx = tick * Math.cos(perp), tdy = tick * Math.sin(perp);
         const label = text || "";
-        const boxW = Math.max(34, label.length * 8 + 12);
+        const boxW = Math.max(24, label.length * 6.5 + 10);
         return (
           <React.Fragment key={id}>
-            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={3} />
-            <Line x1={start.x - tdx} y1={start.y - tdy} x2={start.x + tdx} y2={start.y + tdy} stroke={color} strokeWidth={3} />
-            <Line x1={end.x - tdx} y1={end.y - tdy} x2={end.x + tdx} y2={end.y + tdy} stroke={color} strokeWidth={3} />
+            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={2} />
+            <Line x1={start.x - tdx} y1={start.y - tdy} x2={start.x + tdx} y2={start.y + tdy} stroke={color} strokeWidth={2} />
+            <Line x1={end.x - tdx} y1={end.y - tdy} x2={end.x + tdx} y2={end.y + tdy} stroke={color} strokeWidth={2} />
             {label ? (
               <>
-                <Rect x={midx - boxW / 2} y={midy - 24} width={boxW} height={18} rx={4} fill="rgba(0,0,0,0.65)" />
-                <SvgText x={midx} y={midy - 11} fill="#FFFFFF" fontSize={12} fontWeight="bold" textAnchor="middle">{label}</SvgText>
+                <Rect x={midx - boxW / 2} y={midy - 20} width={boxW} height={14} rx={3} fill="rgba(0,0,0,0.65)" />
+                <SvgText x={midx} y={midy - 10} fill="#FFFFFF" fontSize={9.5} fontWeight="bold" textAnchor="middle">{label}</SvgText>
               </>
             ) : null}
           </React.Fragment>
