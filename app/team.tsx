@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { ContactPickerModal } from "@/components/contact-picker-modal";
 import {
   View,
   Text,
@@ -37,6 +38,7 @@ export default function TeamScreen() {
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
@@ -271,6 +273,15 @@ export default function TeamScreen() {
                 </Pressable>
               </View>
 
+              {/* Aus Telefon-/Apple-Kontakten übernehmen */}
+              <Pressable
+                onPress={() => setShowContactPicker(true)}
+                style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", marginBottom: 16, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="contacts" size={18} color={colors.primary} />
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('aus_kontakten' as any)}</Text>
+              </Pressable>
+
               <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
                 {/* Name */}
                 <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('name')}</Text>
@@ -386,6 +397,24 @@ export default function TeamScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      {/* Kontakt-Auswahl (Name/E-Mail/Telefon übernehmen) */}
+      <ContactPickerModal
+        visible={showContactPicker}
+        onClose={() => setShowContactPicker(false)}
+        onSelect={() => {}}
+        onSelectContacts={(cs) => {
+          const c = cs[0];
+          if (c) {
+            if (c.name) setNewName(c.name);
+            if (c.email) setNewEmail(c.email);
+            if (c.phone) setNewPhone(c.phone);
+          }
+          setShowContactPicker(false);
+        }}
+        multi={false}
+        includeNoEmail
+      />
     </ScreenContainer>
   );
 }

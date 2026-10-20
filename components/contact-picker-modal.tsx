@@ -22,8 +22,8 @@ export function ContactPickerModal({
   visible: boolean;
   onClose: () => void;
   onSelect: (emails: string[]) => void;
-  /** Optional: also receive the full picked contacts (name + email). */
-  onSelectContacts?: (contacts: PhoneContactEmail[]) => void;
+  /** Optional: also receive the full picked contacts (name + email + phone). */
+  onSelectContacts?: (contacts: { name: string; email: string; phone?: string }[]) => void;
   multi?: boolean;
   /** Show ALL contacts, not only those with an email (e.g. the team contact book). */
   includeNoEmail?: boolean;
@@ -72,7 +72,7 @@ export function ContactPickerModal({
   const toggle = (c: PickerContact) => {
     if (!multi) {
       onSelect(c.email ? [c.email] : []);
-      onSelectContacts?.([{ name: c.name, email: c.email }]);
+      onSelectContacts?.([{ name: c.name, email: c.email, phone: c.phone }]);
       onClose();
       return;
     }
@@ -87,7 +87,7 @@ export function ContactPickerModal({
   const apply = () => {
     const chosen = contacts.filter((c) => selected.has(c.key));
     onSelect(chosen.map((c) => c.email).filter(Boolean));
-    onSelectContacts?.(chosen.map((c) => ({ name: c.name, email: c.email })));
+    onSelectContacts?.(chosen.map((c) => ({ name: c.name, email: c.email, phone: c.phone })));
     onClose();
   };
 
