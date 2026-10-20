@@ -1143,17 +1143,8 @@ export default function SettingsScreen() {
         });
       }
 
-      // Schedule or cancel reminders based on settings
-      if (settings.remindersEnabled) {
-        const { requestNotificationPermissions, scheduleTaskReminders } = await import("@/lib/reminders");
-        const granted = await requestNotificationPermissions();
-        if (granted) {
-          await scheduleTaskReminders(settings.reminderHoursBefore);
-        }
-      } else {
-        const { cancelAllReminders } = await import("@/lib/reminders");
-        await cancelAllReminders();
-      }
+      // Notifications/reminders are configured on the dedicated Benachrichtigungen
+      // screen (one unified scheduler). Nothing to schedule from here anymore.
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -1856,55 +1847,6 @@ return (
         {/* Erinnerungen */}
         {inCat("benachrichtigungen") && (<>
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {t('settings_reminders_title' as any)}
-          </Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            {t('settings_reminders_desc' as any)}
-          </Text>
-
-          <View style={[styles.autoSendRow, { borderColor: colors.border }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.autoSendLabel, { color: colors.foreground }]}>{t('erinnerungen_aktiv')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('pushbenachrichtigungen_vor_fristablauf')}</Text>
-            </View>
-            <Pressable
-              onPress={() => setSettings({ ...settings, remindersEnabled: !settings.remindersEnabled })}
-              style={[styles.toggleSwitch, { backgroundColor: settings.remindersEnabled ? colors.primary : colors.border }]}
-            >
-              <View style={[styles.toggleKnob, { transform: [{ translateX: settings.remindersEnabled ? 20 : 2 }] }]} />
-            </Pressable>
-          </View>
-
-          {settings.remindersEnabled && (
-            <View style={{ marginTop: 12 }}>
-              <Text style={[styles.label, { color: colors.muted }]}>{t('vorlaufzeit_stunden_vor_frist')}</Text>
-              <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-                {[6, 12, 24, 48].map((hours) => (
-                  <Pressable
-                    key={hours}
-                    onPress={() => setSettings({ ...settings, reminderHoursBefore: hours })}
-                    style={({ pressed }) => [{
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 0,
-                      backgroundColor: settings.reminderHoursBefore === hours ? colors.primary : colors.surface,
-                      borderWidth: 1, borderColor: settings.reminderHoursBefore === hours ? colors.primary : colors.border,
-                      opacity: pressed ? 0.7 : 1,
-                    }]}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: "500", color: settings.reminderHoursBefore === hours ? "#FFFFFF" : colors.foreground }}>
-                      {hours}h
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
-
-        </>)}
-        {/* Push-Benachrichtigungen */}
-        {inCat("benachrichtigungen") && (<>
-        <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_notifications')}</Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('erinnerungen_fuer_maengel_und')}</Text>
           <Pressable
@@ -1915,17 +1857,6 @@ return (
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pushbenachrichtigungen')}</Text>
               <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('taegliche_erinnerungen_konfigurieren')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/daily-summary-settings" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
-          >
-            <MaterialIcons name="summarize" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('tageszusammenfassung')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('abendliche_push_mit_tagesuebersicht')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
@@ -1956,11 +1887,6 @@ return (
         <BiometricLockSection colors={colors} />
 
         {/* Text-Vorlagen für Annotation */}
-
-        </>)}
-        {/* Aufgaben-Erinnerungen */}
-        {inCat("benachrichtigungen") && (<>
-        <TaskReminderSection colors={colors} />
 
         </>)}
         {/* Backup */}

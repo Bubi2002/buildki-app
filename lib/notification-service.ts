@@ -2,7 +2,15 @@ import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-// Configure notification handler
+// ──────────────────────────────────────────────────────────────────────────────
+// Unified notification service.
+//
+// ONE settings object + ONE scheduler. `scheduleNotifications()` is the single
+// place that schedules anything: it cancels ALL scheduled notifications once and
+// then reschedules everything from the current preferences. That removes the old
+// problem where several screens/schedulers kept wiping each other.
+// ──────────────────────────────────────────────────────────────────────────────
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -13,41 +21,105 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/** Weekday numbers use the expo convention: 1=Sun, 2=Mon … 7=Sat. */
 export type NotificationPreferences = {
-  enabled: boolean;
-  openDefectsReminder: boolean;
-  checklistReminder: boolean;
-  dailyDigest: boolean;
-  followUpReminder: boolean;
+  enabled: boolean; // master switch
+
+  // Shared daily reminders (one time + one weekday selection)
   reminderHour: number; // 0-23
   reminderMinute: number; // 0-59
+  weekdays: number[]; // expo 1..7; empty or all 7 => every day
+  openDefectsReminder: boolean;
+  checklistReminder: boolean;
+  taskReminder: boolean; // fällige Aufgaben (todos with a due date)
+  taskLeadDays: number; // remind this many days before a todo is due
+  followUpReminder: boolean; // Nachprüfungen
+  defectDeadlineReminder: boolean; // Mängel-Fristen
+  defectDeadlineDays: number; // days before a defect deadline
+
+  // Tages-Zusammenfassung (own time + weekdays + content)
+  summaryEnabled: boolean;
+  summaryHour: number;
+  summaryMinute: number;
+  summaryWeekdays: number[]; // expo 1..7
+  summaryIncludeProtocols: boolean;
+  summaryIncludeDefects: boolean;
+  summaryIncludeTasks: boolean;
 };
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   enabled: true,
-  openDefectsReminder: true,
-  checklistReminder: true,
-  dailyDigest: true,
-  followUpReminder: true,
   reminderHour: 8,
   reminderMinute: 0,
+  weekdays: [1, 2, 3, 4, 5, 6, 7],
+  openDefectsReminder: true,
+  checklistReminder: true,
+  taskReminder: true,
+  taskLeadDays: 1,
+  followUpReminder: true,
+  defectDeadlineReminder: false,
+  defectDeadlineDays: 2,
+  summaryEnabled: false,
+  summaryHour: 18,
+  summaryMinute: 0,
+  summaryWeekdays: [2, 3, 4, 5, 6],
+  summaryIncludeProtocols: true,
+  summaryIncludeDefects: true,
+  summaryIncludeTasks: true,
 };
 
 const PREFS_KEY = "notification_preferences";
-const FOLLOWUP_NOTIFICATIONS_KEY = "followup_scheduled_notifications";
+// Legacy keys consolidated on first load so users keep their choices.
+const LEGACY_DAILY_SUMMARY_KEY = "daily-summary-settings";
+const LEGACY_TASK_REMINDER_KEY = "task-reminder-settings";
+
+async function migrateFromLegacy(base: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
+  const prefs: NotificationPreferences = { ...DEFAULT_PREFERENCES, ...base };
+  try {
+    const ds = await AsyncStorage.getItem(LEGACY_DAILY_SUMMARY_KEY);
+    if (ds) {
+      const s = JSON.parse(ds);
+      prefs.summaryEnabled = Boolean(s.enabled) || Boolean((base as any).dailyDigest);
+      if (typeof s.hour === "number") prefs.summaryHour = s.hour;
+      if (typeof s.minute === "number") prefs.summaryMinute = s.minute;
+      if (Array.isArray(s.weekdays) && s.weekdays.length) prefs.summaryWeekdays = s.weekdays;
+      if (typeof s.includeProtocols === "boolean") prefs.summaryIncludeProtocols = s.includeProtocols;
+      if (typeof s.includeDefects === "boolean") prefs.summaryIncludeDefects = s.includeDefects;
+      if (typeof s.includeTasks === "boolean") prefs.summaryIncludeTasks = s.includeTasks;
+      if (typeof s.defectDeadlineReminder === "boolean") prefs.defectDeadlineReminder = s.defectDeadlineReminder;
+      if (typeof s.defectDeadlineDays === "number") prefs.defectDeadlineDays = s.defectDeadlineDays;
+    }
+  } catch {}
+  try {
+    const tr = await AsyncStorage.getItem(LEGACY_TASK_REMINDER_KEY);
+    if (tr) {
+      const s = JSON.parse(tr);
+      if (typeof s.enabled === "boolean") prefs.taskReminder = s.enabled;
+      if (typeof s.daysBeforeDue === "number") prefs.taskLeadDays = s.daysBeforeDue;
+    }
+  } catch {}
+  return prefs;
+}
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
   try {
     const data = await AsyncStorage.getItem(PREFS_KEY);
-    if (data) return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) };
-    return DEFAULT_PREFERENCES;
+    const parsed = data ? JSON.parse(data) : null;
+    // v2 marker means the unified object is already stored.
+    if (parsed && parsed.__v2) {
+      return { ...DEFAULT_PREFERENCES, ...parsed };
+    }
+    // First run after the consolidation: pull values from the old stores.
+    const migrated = await migrateFromLegacy(parsed || {});
+    await AsyncStorage.setItem(PREFS_KEY, JSON.stringify({ ...migrated, __v2: true }));
+    return migrated;
   } catch {
     return DEFAULT_PREFERENCES;
   }
 }
 
 export async function saveNotificationPreferences(prefs: NotificationPreferences): Promise<void> {
-  await AsyncStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  await AsyncStorage.setItem(PREFS_KEY, JSON.stringify({ ...prefs, __v2: true }));
   await scheduleNotifications();
 }
 
@@ -59,135 +131,78 @@ export async function requestPermissions(): Promise<boolean> {
   return granted;
 }
 
+export async function cancelAllNotifications(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {}
+}
+
+// Schedule a push at a fixed clock time, honoring a weekday selection. If all 7
+// (or none) are selected, use a single DAILY trigger; otherwise one WEEKLY
+// trigger per selected weekday.
+async function scheduleAtTime(
+  content: Notifications.NotificationContentInput,
+  hour: number,
+  minute: number,
+  weekdays: number[],
+): Promise<void> {
+  const h = ((hour % 24) + 24) % 24;
+  const m = ((minute % 60) + 60) % 60;
+  if (!weekdays || weekdays.length === 0 || weekdays.length >= 7) {
+    await Notifications.scheduleNotificationAsync({
+      content,
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: h, minute: m },
+    });
+    return;
+  }
+  for (const weekday of weekdays) {
+    await Notifications.scheduleNotificationAsync({
+      content,
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday, hour: h, minute: m },
+    });
+  }
+}
+
+/** THE single scheduler. Cancels everything, then reschedules from prefs. */
 export async function scheduleNotifications(): Promise<void> {
   if (Platform.OS === "web") return;
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
 
-  // Cancel all existing scheduled notifications
-  await Notifications.cancelAllScheduledNotificationsAsync();
+    const prefs = await getNotificationPreferences();
+    if (!prefs.enabled) return;
+    if (!(await requestPermissions())) return;
 
-  const prefs = await getNotificationPreferences();
-  if (!prefs.enabled) return;
-
-  const hasPermission = await requestPermissions();
-  if (!hasPermission) return;
-
-  // Schedule daily check for open defects
-  if (prefs.openDefectsReminder) {
-    await scheduleDefectReminder(prefs);
-  }
-
-  // Schedule daily check for incomplete checklists
-  if (prefs.checklistReminder) {
-    await scheduleChecklistReminder(prefs);
-  }
-
-  // Schedule daily digest
-  if (prefs.dailyDigest) {
-    await scheduleDailyDigest(prefs);
-  }
-
-  // Schedule follow-up inspection reminders
-  if (prefs.followUpReminder) {
-    await scheduleFollowUpReminders();
-  }
-
-  // Schedule deadline-specific reminders
-  await scheduleDeadlineReminders(prefs);
+    if (prefs.openDefectsReminder) await scheduleDefectReminder(prefs);
+    if (prefs.checklistReminder) await scheduleChecklistReminder(prefs);
+    if (prefs.taskReminder) await scheduleTaskReminders(prefs);
+    if (prefs.followUpReminder) await scheduleFollowUpReminders(prefs);
+    await scheduleDeadlineReminders(prefs);
+    if (prefs.defectDeadlineReminder) await checkDefectDeadlines(prefs);
+    if (prefs.summaryEnabled) await scheduleSummary(prefs);
+  } catch {}
 }
 
 async function scheduleDefectReminder(prefs: NotificationPreferences): Promise<void> {
   try {
-    // Use getDefects from defect-store (Single Source of Truth)
     const { getDefects } = await import("@/lib/defect-store");
     const defects = await getDefects();
-    const openDefects = defects.filter((d) =>
-      d.status === "offen" || d.status === "zugewiesen" || d.status === "in_bearbeitung" || d.status === "nachbesserung"
+    const open = defects.filter(
+      (d) => d.status === "offen" || d.status === "zugewiesen" || d.status === "in_bearbeitung" || d.status === "nachbesserung",
     );
-
-    if (openDefects.length > 0) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Offene Mängel",
-          body: `Du hast ${openDefects.length} offene ${openDefects.length === 1 ? "Mangel" : "Mängel"} zu bearbeiten.`,
-          data: { type: "defects" },
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: prefs.reminderHour,
-          minute: prefs.reminderMinute,
-        },
-      });
-    }
-  } catch {}
-}
-
-/**
- * Schedule reminders for defects with upcoming or overdue deadlines (dueDate).
- */
-async function scheduleDeadlineReminders(prefs: NotificationPreferences): Promise<void> {
-  try {
-    const { getDefects } = await import("@/lib/defect-store");
-    const defects = await getDefects();
-    const now = new Date();
-
-    for (const defect of defects) {
-      if (!defect.dueDate || defect.status === "erledigt" || defect.status === "geschlossen") continue;
-      const due = new Date(defect.dueDate);
-      const diffMs = due.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-      // Overdue: notify immediately
-      if (diffDays < 0) {
-        const triggerDate = new Date();
-        triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute + 10, 0, 0);
-        if (triggerDate.getTime() > now.getTime()) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "\u26a0\ufe0f Frist \u00fcberschritten",
-              body: `"${defect.title}" - Frist war am ${due.toLocaleDateString("de-DE")}`,
-              data: { type: "overdue_deadline", defectId: defect.id },
-              sound: true,
-            },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 10 },
-          });
-        }
-        continue; // this defect handled; keep scheduling the rest
-      }
-
-      // Due today
-      if (diffDays === 0) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "\u23f0 Frist heute",
-            body: `"${defect.title}" muss heute erledigt werden!`,
-            data: { type: "deadline_today", defectId: defect.id },
-            sound: true,
-          },
-          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 2 },
-        });
-        continue;
-      }
-
-      // Due in 1-3 days
-      if (diffDays >= 1 && diffDays <= 3) {
-        const triggerDate = new Date(defect.dueDate);
-        triggerDate.setDate(triggerDate.getDate() - 1);
-        triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
-        if (triggerDate.getTime() > now.getTime()) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: `\ud83d\udcc5 Frist in ${diffDays} ${diffDays === 1 ? "Tag" : "Tagen"}`,
-              body: `"${defect.title}" - Frist: ${due.toLocaleDateString("de-DE")}`,
-              data: { type: "deadline_upcoming", defectId: defect.id },
-              sound: true,
-            },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
-          });
-        }
-        continue;
-      }
-    }
+    if (open.length === 0) return;
+    await scheduleAtTime(
+      {
+        title: "Offene Mängel",
+        body: `Du hast ${open.length} offene ${open.length === 1 ? "Mangel" : "Mängel"} zu bearbeiten.`,
+        data: { type: "defects" },
+        sound: true,
+      },
+      prefs.reminderHour,
+      prefs.reminderMinute,
+      prefs.weekdays,
+    );
   } catch {}
 }
 
@@ -195,207 +210,260 @@ async function scheduleChecklistReminder(prefs: NotificationPreferences): Promis
   try {
     const checklistsData = await AsyncStorage.getItem("checklists_progress");
     const progress = JSON.parse(checklistsData || "{}");
-
-    let incompleteCount = 0;
+    let incomplete = 0;
     Object.values(progress).forEach((items: any) => {
-      if (Array.isArray(items)) {
-        incompleteCount += items.filter((item: any) => !item.checked).length;
-      }
+      if (Array.isArray(items)) incomplete += items.filter((i: any) => !i.checked).length;
     });
+    if (incomplete === 0) return;
+    await scheduleAtTime(
+      {
+        title: "Checklisten-Erinnerung",
+        body: `${incomplete} offene ${incomplete === 1 ? "Punkt" : "Punkte"} in deinen Checklisten.`,
+        data: { type: "checklists" },
+        sound: true,
+      },
+      prefs.reminderHour,
+      prefs.reminderMinute + 5,
+      prefs.weekdays,
+    );
+  } catch {}
+}
 
-    if (incompleteCount > 0) {
+type Todo = { id: string; text?: string; done?: boolean; dueDate?: string };
+
+// Per-todo reminders: `taskLeadDays` before each todo's due date + on the due date.
+async function scheduleTaskReminders(prefs: NotificationPreferences): Promise<void> {
+  try {
+    const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+    const now = new Date();
+    let count = 0;
+    for (const protocol of protocols) {
+      if (!protocol.todos || protocol.status !== "ready") continue;
+      for (const todo of protocol.todos as Todo[]) {
+        if (todo.done || !todo.dueDate) continue;
+        const due = new Date(todo.dueDate);
+
+        const remindAt = new Date(due);
+        remindAt.setDate(remindAt.getDate() - prefs.taskLeadDays);
+        remindAt.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+        if (remindAt > now && count < 60) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Aufgabe fällig! 📋",
+              body: `"${todo.text || "Aufgabe"}" – Frist: ${due.toLocaleDateString("de-DE")}${protocol.templateName ? ` (${protocol.templateName})` : ""}`,
+              data: { type: "task", protocolId: protocol.id, todoId: todo.id },
+              sound: true,
+            },
+            trigger: { seconds: Math.floor((remindAt.getTime() - now.getTime()) / 1000), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
+          });
+          count++;
+        }
+
+        const dueMorning = new Date(due);
+        dueMorning.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+        if (dueMorning > now && count < 60) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Aufgabe heute fällig! ⚠️",
+              body: `"${todo.text || "Aufgabe"}" ist heute fällig!${protocol.templateName ? ` (${protocol.templateName})` : ""}`,
+              data: { type: "task", protocolId: protocol.id, todoId: todo.id },
+              sound: true,
+            },
+            trigger: { seconds: Math.floor((dueMorning.getTime() - now.getTime()) / 1000), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
+          });
+          count++;
+        }
+      }
+    }
+  } catch {}
+}
+
+async function scheduleDeadlineReminders(prefs: NotificationPreferences): Promise<void> {
+  try {
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects();
+    const now = new Date();
+    for (const defect of defects) {
+      if (!defect.dueDate || defect.status === "erledigt" || defect.status === "geschlossen") continue;
+      const due = new Date(defect.dueDate);
+      const diffDays = Math.ceil((due.getTime() - now.getTime()) / 86400000);
+      if (diffDays < 0) {
+        const t = new Date();
+        t.setHours(prefs.reminderHour, prefs.reminderMinute + 10, 0, 0);
+        if (t.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: "⚠️ Frist überschritten", body: `"${defect.title}" - Frist war am ${due.toLocaleDateString("de-DE")}`, data: { type: "overdue_deadline", defectId: defect.id }, sound: true },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 10 },
+          });
+        }
+      } else if (diffDays === 0) {
+        await Notifications.scheduleNotificationAsync({
+          content: { title: "⏰ Frist heute", body: `"${defect.title}" muss heute erledigt werden!`, data: { type: "deadline_today", defectId: defect.id }, sound: true },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: prefs.reminderHour, minute: prefs.reminderMinute + 2 },
+        });
+      } else if (diffDays >= 1 && diffDays <= 3) {
+        const t = new Date(defect.dueDate);
+        t.setDate(t.getDate() - 1);
+        t.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+        if (t.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: `📅 Frist in ${diffDays} ${diffDays === 1 ? "Tag" : "Tagen"}`, body: `"${defect.title}" - Frist: ${due.toLocaleDateString("de-DE")}`, data: { type: "deadline_upcoming", defectId: defect.id }, sound: true },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: t },
+          });
+        }
+      }
+    }
+  } catch {}
+}
+
+async function scheduleFollowUpReminders(prefs: NotificationPreferences): Promise<void> {
+  try {
+    const { getDefects } = await import("@/lib/defect-store");
+    const defects = await getDefects();
+    const now = new Date();
+    const maxFutureDays = 30;
+    const withFollowUp = defects.filter((d: any) => d.followUpDate && d.status !== "erledigt" && d.status !== "geschlossen");
+    for (const defect of withFollowUp) {
+      const fu = new Date(defect.followUpDate!);
+      const diffDays = Math.ceil((fu.getTime() - now.getTime()) / 86400000);
+      if (diffDays >= 0 && diffDays <= maxFutureDays) {
+        const t = new Date(defect.followUpDate!);
+        t.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+        if (t.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: "🔍 Nachprüfung heute", body: `Nachprüfung fällig: ${defect.title}${defect.location ? ` (${defect.location})` : ""}`, data: { type: "followup", defectId: defect.id }, sound: true },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: t },
+          });
+        }
+      }
+      if (diffDays >= 1 && diffDays <= maxFutureDays) {
+        const t = new Date(defect.followUpDate!);
+        t.setDate(t.getDate() - 1);
+        t.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+        if (t.getTime() > now.getTime()) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: "📋 Nachprüfung morgen", body: `Morgen: Nachprüfung für "${defect.title}"${defect.assignee ? ` (${defect.assignee})` : ""}`, data: { type: "followup_reminder", defectId: defect.id }, sound: true },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: t },
+          });
+        }
+      }
+    }
+  } catch {}
+}
+
+// Mängel-Fristen: immediate pushes for overdue / soon-due defects (fires once now,
+// re-evaluated each time the app reschedules).
+async function checkDefectDeadlines(prefs: NotificationPreferences): Promise<void> {
+  try {
+    const { getDefects } = await import("@/lib/defect-store");
+    const all = await getDefects();
+    const now = new Date();
+    const horizon = new Date(now.getTime() + prefs.defectDeadlineDays * 86400000);
+    const skip = (s: string) => s === "erledigt" || s === "geschlossen" || s === "abgelehnt";
+    const upcoming = all.filter((d) => !skip(d.status) && d.dueDate && new Date(d.dueDate) <= horizon && new Date(d.dueDate) >= now);
+    const overdue = all.filter((d) => !skip(d.status) && d.dueDate && new Date(d.dueDate) < now);
+    if (overdue.length > 0) {
       await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Checklisten-Erinnerung",
-          body: `${incompleteCount} offene ${incompleteCount === 1 ? "Punkt" : "Punkte"} in deinen Checklisten.`,
-          data: { type: "checklists" },
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: prefs.reminderHour,
-          minute: prefs.reminderMinute + 5,
-        },
+        content: { title: `⚠️ ${overdue.length} überfällige Mängel`, body: overdue.slice(0, 3).map((d) => d.title).join(", ") + (overdue.length > 3 ? ` und ${overdue.length - 3} weitere` : ""), data: { type: "defect_overdue" } },
+        trigger: null,
+      });
+    }
+    if (upcoming.length > 0) {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: `📋 ${upcoming.length} Mängel-Fristen in ${prefs.defectDeadlineDays} Tagen`, body: upcoming.slice(0, 3).map((d) => d.title).join(", ") + (upcoming.length > 3 ? ` und ${upcoming.length - 3} weitere` : ""), data: { type: "defect_deadline" } },
+        trigger: null,
       });
     }
   } catch {}
 }
 
-async function scheduleDailyDigest(prefs: NotificationPreferences): Promise<void> {
+// Build the summary body from the chosen content flags (snapshot at schedule time).
+async function buildSummaryBody(prefs: NotificationPreferences): Promise<string> {
+  const parts: string[] = [];
   try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Tägliche Zusammenfassung",
-        body: "Starte deinen Tag: Überprüfe offene Aufgaben und erstelle neue Protokolle.",
-        data: { type: "digest" },
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: prefs.reminderHour,
-        minute: prefs.reminderMinute,
-      },
-    });
-  } catch {}
-}
-
-/**
- * Schedule follow-up inspection reminders for defects with followUpDate.
- * Schedules a notification for the morning of the follow-up date and one day before.
- */
-async function scheduleFollowUpReminders(): Promise<void> {
-  try {
-    // Use getDefects from defect-store (Single Source of Truth)
     const { getDefects } = await import("@/lib/defect-store");
-    const defects = await getDefects();
-    const prefs = await getNotificationPreferences();
-
-    const now = new Date();
-    const maxFutureDays = 30; // Only schedule up to 30 days ahead (Expo limit)
-
-    const defectsWithFollowUp = defects.filter((d: any) =>
-      d.followUpDate &&
-      d.status !== "erledigt" &&
-      d.status !== "geschlossen"
-    );
-
-    for (const defect of defectsWithFollowUp) {
-      const followUpDate = new Date(defect.followUpDate!);
-      const diffMs = followUpDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-      // Schedule for the day of the follow-up
-      if (diffDays >= 0 && diffDays <= maxFutureDays) {
-        const triggerDate = new Date(defect.followUpDate!);
-        triggerDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
-
-        if (triggerDate.getTime() > now.getTime()) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "🔍 Nachprüfung heute",
-              body: `Nachprüfung fällig: ${defect.title}${defect.location ? ` (${defect.location})` : ""}`,
-              data: { type: "followup", defectId: defect.id },
-              sound: true,
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: triggerDate,
-            },
-          });
-        }
-      }
-
-      // Schedule reminder one day before
-      if (diffDays >= 1 && diffDays <= maxFutureDays) {
-        const dayBefore = new Date(defect.followUpDate!);
-        dayBefore.setDate(dayBefore.getDate() - 1);
-        dayBefore.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
-
-        if (dayBefore.getTime() > now.getTime()) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "📋 Nachprüfung morgen",
-              body: `Morgen: Nachprüfung für "${defect.title}"${defect.assignee ? ` (${defect.assignee})` : ""}`,
-              data: { type: "followup_reminder", defectId: defect.id },
-              sound: true,
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: dayBefore,
-            },
-          });
-        }
-      }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (prefs.summaryIncludeProtocols) {
+      try {
+        const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+        const n = protocols.filter((p: any) => new Date(p.createdAt) >= today).length;
+        if (n > 0) parts.push(`${n} Protokoll${n > 1 ? "e" : ""} heute`);
+      } catch {}
+    }
+    if (prefs.summaryIncludeDefects) {
+      const defects = await getDefects();
+      const open = defects.filter((d) => d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt");
+      const overdue = defects.filter((d) => d.dueDate && new Date(d.dueDate) < new Date() && d.status !== "erledigt" && d.status !== "geschlossen" && d.status !== "abgelehnt");
+      if (open.length > 0) parts.push(`${open.length} offene Mängel`);
+      if (overdue.length > 0) parts.push(`${overdue.length} überfällig`);
+    }
+    if (prefs.summaryIncludeTasks) {
+      try {
+        const protocols = JSON.parse((await AsyncStorage.getItem("protocols")) || "[]");
+        let open = 0;
+        for (const p of protocols) if (Array.isArray(p.todos)) open += p.todos.filter((t: any) => !t.done).length;
+        if (open > 0) parts.push(`${open} offene Aufgaben`);
+      } catch {}
     }
   } catch {}
+  return parts.length > 0 ? parts.join(" · ") : "Tippe für deine Tagesübersicht.";
 }
 
-/**
- * Schedule a specific follow-up notification for a single defect.
- * Called when user sets a follow-up date on a defect.
- */
+async function scheduleSummary(prefs: NotificationPreferences): Promise<void> {
+  const body = await buildSummaryBody(prefs);
+  await scheduleAtTime(
+    { title: "BuildKI – Tages-Zusammenfassung", body, data: { type: "daily_summary" } },
+    prefs.summaryHour,
+    prefs.summaryMinute,
+    prefs.weekdays, // shared weekday selection (one picker in the UI)
+  );
+}
+
+/** Schedule follow-up pushes for a single defect (called when a date is set). */
 export async function scheduleFollowUpForDefect(defectId: string, defectTitle: string, followUpDate: string, location?: string): Promise<void> {
   if (Platform.OS === "web") return;
-
   const prefs = await getNotificationPreferences();
   if (!prefs.enabled || !prefs.followUpReminder) return;
-
-  const hasPermission = await requestPermissions();
-  if (!hasPermission) return;
-
+  if (!(await requestPermissions())) return;
   const now = new Date();
-  const targetDate = new Date(followUpDate);
-  targetDate.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
-
-  // Schedule day-of notification
-  if (targetDate.getTime() > now.getTime()) {
+  const target = new Date(followUpDate);
+  target.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
+  if (target.getTime() > now.getTime()) {
     await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "🔍 Nachprüfung heute",
-        body: `Nachprüfung fällig: ${defectTitle}${location ? ` (${location})` : ""}`,
-        data: { type: "followup", defectId },
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: targetDate,
-      },
+      content: { title: "🔍 Nachprüfung heute", body: `Nachprüfung fällig: ${defectTitle}${location ? ` (${location})` : ""}`, data: { type: "followup", defectId }, sound: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: target },
     });
   }
-
-  // Schedule day-before notification
   const dayBefore = new Date(followUpDate);
   dayBefore.setDate(dayBefore.getDate() - 1);
   dayBefore.setHours(prefs.reminderHour, prefs.reminderMinute, 0, 0);
-
   if (dayBefore.getTime() > now.getTime()) {
     await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "📋 Nachprüfung morgen",
-        body: `Morgen: Nachprüfung für "${defectTitle}"`,
-        data: { type: "followup_reminder", defectId },
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: dayBefore,
-      },
+      content: { title: "📋 Nachprüfung morgen", body: `Morgen: Nachprüfung für "${defectTitle}"`, data: { type: "followup_reminder", defectId }, sound: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: dayBefore },
     });
   }
 }
 
 export async function sendImmediateNotification(title: string, body: string, data?: any): Promise<void> {
   if (Platform.OS === "web") return;
-  const hasPermission = await requestPermissions();
-  if (!hasPermission) return;
-
-  await Notifications.scheduleNotificationAsync({
-    content: { title, body, data, sound: true },
-    trigger: null,
-  });
+  if (!(await requestPermissions())) return;
+  await Notifications.scheduleNotificationAsync({ content: { title, body, data, sound: true }, trigger: null });
 }
 
-/**
- * Get all defects that have a follow-up date set and are pending inspection.
- */
 export async function getPendingFollowUps(): Promise<any[]> {
   try {
-    // Use getDefects from defect-store (Single Source of Truth)
     const { getDefects } = await import("@/lib/defect-store");
     const defects = await getDefects();
-    return defects.filter((d) =>
-      d.followUpDate &&
-      d.status !== "erledigt" &&
-      d.status !== "geschlossen"
-    ).sort((a, b) => new Date(a.followUpDate!).getTime() - new Date(b.followUpDate!).getTime());
+    return defects
+      .filter((d) => d.followUpDate && d.status !== "erledigt" && d.status !== "geschlossen")
+      .sort((a, b) => new Date(a.followUpDate!).getTime() - new Date(b.followUpDate!).getTime());
   } catch {
     return [];
   }
 }
 
-/**
- * Get overdue follow-ups (follow-up date has passed but defect not resolved).
- */
 export async function getOverdueFollowUps(): Promise<any[]> {
   try {
     const pending = await getPendingFollowUps();

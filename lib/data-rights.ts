@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 
 import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 import { clearUserInfo, removeSessionToken } from "@/lib/_core/auth";
-import { cancelDailySummary } from "@/lib/daily-summary";
+import { cancelAllNotifications } from "@/lib/notification-service";
 import { disconnectDropbox } from "@/lib/dropbox-integration";
 import { clearSession, secureDelete } from "@/lib/security";
 
@@ -152,7 +152,7 @@ export async function deleteAllLocalUserData(): Promise<{
   const storageKeys = await AsyncStorage.getAllKeys();
 
   await Promise.allSettled([
-    cancelDailySummary(),
+    cancelAllNotifications(),
     disconnectDropbox(),
     removeSessionToken(),
     clearUserInfo(),

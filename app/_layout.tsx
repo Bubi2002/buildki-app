@@ -202,10 +202,10 @@ export default function RootLayout() {
       const { initSyncManager } = require("@/lib/offline-sync-manager");
       initSyncManager();
     }
-    // Initialize daily summary & defect deadline reminders
+    // (Re)schedule all notifications from the unified settings on app start.
     if (Platform.OS !== "web") {
-      const { initDailySummary } = require("@/lib/daily-summary");
-      initDailySummary();
+      const { scheduleNotifications } = require("@/lib/notification-service");
+      void scheduleNotifications();
     }
     // Initialize in-app purchases (RevenueCat). No-op while monetization is
     // disabled or the RevenueCat key is not yet set.
