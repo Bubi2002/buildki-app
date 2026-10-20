@@ -18,8 +18,6 @@ import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
 import {
   getRaumbuchEntry,
   saveRaumbuchEntry,
-  archiveAndResetRaumbuchEntry,
-  raumbuchPhotoCount,
   raumbuchArchivePhotoCount,
   RAUMBUCH_POSITIONS,
   RAUMBUCH_POSITION_LABEL_KEY,
@@ -158,28 +156,6 @@ export default function RaumbuchRoomScreen() {
     try { await saveRaumbuchEntry(next); } catch {}
   };
 
-  // Archive the current round (keeps plan + walls) and start a fresh empty one.
-  const onSaveAndNew = () => {
-    if (!projectId || !roomId) return;
-    if (raumbuchPhotoCount(entry) === 0) {
-      Alert.alert(t("raumbuch_save_new" as any), t("raumbuch_save_new_msg" as any));
-      return;
-    }
-    Alert.alert(
-      t("raumbuch_save_new" as any),
-      t("raumbuch_save_new_msg" as any),
-      [
-        { text: t("btn_abbrechen" as any), style: "cancel" },
-        {
-          text: t("btn_speichern" as any),
-          onPress: async () => {
-            const next = await archiveAndResetRaumbuchEntry(projectId, roomId);
-            if (next) setEntry(next);
-          },
-        },
-      ],
-    );
-  };
 
   // Defects belonging to THIS room (matched by floor + room name).
   const roomDefects = allDefects.filter(
@@ -631,14 +607,8 @@ export default function RaumbuchRoomScreen() {
         </View>
         <Text style={{ fontSize: 11, color: colors.muted, marginTop: 10 }}>{t("raumbuch_longpress_remove" as any)}</Text>
 
-        {/* ── Speichern & Neu (Durchgang archivieren, Plan/Wände bleiben) ── */}
-        <Pressable
-          onPress={onSaveAndNew}
-          style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 20, paddingVertical: 13, borderRadius: 10, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}
-        >
-          <MaterialIcons name="save" size={18} color={colors.primary} />
-          <Text style={{ fontSize: 14, fontWeight: "800", color: colors.primary }}>{t("raumbuch_save_new" as any)}</Text>
-        </Pressable>
+        {/* Archivierte Durchgänge (das Archivieren selbst läuft jetzt zentral
+            über die Raumbuch-Übersicht: ein Knopf fürs ganze Raumbuch). */}
         {!!entry?.archives?.length && (
           <>
             <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 20 }]}>{t("raumbuch_archive_section" as any)} ({entry.archives.length})</Text>

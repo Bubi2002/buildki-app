@@ -10,7 +10,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
 import { getProjectStructure, type Floor, type Room } from "@/lib/room-store";
-import { getRaumbuch, raumbuchPhotoCount, RAUMBUCH_POSITIONS, type RaumbuchEntry } from "@/lib/raumbuch-store";
+import { getRaumbuch, raumbuchPhotoCount, archiveAndResetAllRaumbuch, RAUMBUCH_POSITIONS, type RaumbuchEntry } from "@/lib/raumbuch-store";
 import { generateRaumbuchPdf } from "@/lib/raumbuch-pdf";
 
 type ProjectRef = { id: string; name: string };
@@ -55,6 +55,31 @@ export default function RaumbuchScreen() {
 
   useEffect(() => { void load(); }, [load]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
+
+  // One button for the WHOLE Raumbuch: archive every documented room and start
+  // fresh; each room keeps its plan/marker/walls.
+  const documentedCount = Object.values(entries).filter((e) => raumbuchPhotoCount(e) > 0).length;
+  const onSaveAllAndNew = () => {
+    if (!project) return;
+    if (documentedCount === 0) {
+      Alert.alert(t("raumbuch_save_new_all" as any), t("raumbuch_save_new_msg" as any));
+      return;
+    }
+    Alert.alert(
+      t("raumbuch_save_new_all" as any),
+      t("raumbuch_save_new_msg" as any),
+      [
+        { text: t("btn_abbrechen" as any), style: "cancel" },
+        {
+          text: t("btn_speichern" as any),
+          onPress: async () => {
+            await archiveAndResetAllRaumbuch(project.id);
+            await load();
+          },
+        },
+      ],
+    );
+  };
 
   const openRoom = (floor: Floor, room: Room) => {
     router.push(`/raumbuch-room?projectId=${project?.id || ""}&roomId=${room.id}&floor=${encodeURIComponent(floor.name)}&room=${encodeURIComponent(room.name)}` as any);
@@ -150,6 +175,15 @@ export default function RaumbuchScreen() {
               </View>
             );
           })
+        )}
+        {project && documentedCount > 0 && (
+          <Pressable
+            onPress={onSaveAllAndNew}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialIcons name="save" size={18} color={colors.primary} />
+            <Text style={{ fontSize: 15, fontWeight: "800", color: colors.primary }}>{t("raumbuch_save_new_all" as any)}</Text>
+          </Pressable>
         )}
       </ScrollView>
     </ScreenContainer>

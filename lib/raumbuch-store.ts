@@ -161,3 +161,42 @@ export async function archiveAndResetRaumbuchEntry(projectId: string, roomId: st
   await AsyncStorage.setItem(KEY(projectId), JSON.stringify(all));
   return next;
 }
+
+/**
+ * Archive + reset EVERY documented room of the project in one go (one button for
+ * the whole Raumbuch). Each room keeps its plan/marker/crop/walls; only rooms
+ * that have at least one photo are archived. Returns how many rooms were reset.
+ */
+export async function archiveAndResetAllRaumbuch(projectId: string): Promise<number> {
+  const all = await getRaumbuch(projectId);
+  const now = new Date().toISOString();
+  let count = 0;
+  const next = all.map((entry) => {
+    const hasPhotos = RAUMBUCH_POSITIONS.some((p) => entry.photos?.[p]);
+    if (!hasPhotos) return entry;
+    count += 1;
+    const snapshot: RaumbuchArchive = {
+      id: `rba_${Date.now()}_${count}_${Math.random().toString(36).slice(2, 6)}`,
+      archivedAt: now,
+      photos: { ...(entry.photos || {}) },
+      notes: entry.notes ? { ...entry.notes } : undefined,
+      survey: entry.survey,
+      planId: entry.planId,
+      planName: entry.planName,
+      planX: entry.planX,
+      planY: entry.planY,
+      planCrop: entry.planCrop,
+      walls: entry.walls,
+    };
+    return {
+      ...entry,
+      photos: {},
+      notes: {},
+      survey: undefined,
+      archives: [snapshot, ...(entry.archives || [])],
+      updatedAt: now,
+    };
+  });
+  if (count > 0) await AsyncStorage.setItem(KEY(projectId), JSON.stringify(next));
+  return count;
+}
