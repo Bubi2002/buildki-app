@@ -1431,13 +1431,11 @@ return (
             ? t(
                 (cat === "unternehmen"
                   ? "cat_company_title"
-                  : cat === "versand"
-                    ? "cat_dispatch_title"
-                    : cat === "benachrichtigungen"
-                      ? "cat_notif_title"
-                      : cat === "konto"
-                        ? "cat_account_title"
-                        : "cat_app_title") as any,
+                  : cat === "benachrichtigungen"
+                    ? "cat_notif_title"
+                    : cat === "konto"
+                      ? "cat_account_title"
+                      : "cat_app_title") as any,
               )
             : t('settings_screen_title' as any)}
         </Text>
@@ -1452,7 +1450,6 @@ return (
           <View style={{ gap: 10 }}>
             {([
               { k: "unternehmen", icon: "business", title: t('cat_company_title' as any), sub: t('cat_company_sub' as any) },
-              { k: "versand", icon: "send", title: t('cat_dispatch_title' as any), sub: t('cat_dispatch_sub' as any) },
               { k: "benachrichtigungen", icon: "notifications", title: t('cat_notif_title' as any), sub: t('cat_notif_sub' as any) },
               { k: "konto", icon: "cloud", title: t('cat_account_title' as any), sub: t('cat_account_sub' as any) },
               { k: "app", icon: "settings", title: t('cat_app_title' as any), sub: t('cat_app_sub' as any) },
@@ -1900,8 +1897,8 @@ return (
             läuft über die iOS-„Dateien"-Auswahl (Cloud (Dropbox, Drive…)). */}
         {/* Standardempfänger wurde auf Wunsch entfernt — Versand erfolgt immer
             manuell, Empfänger werden beim Senden ausgewählt. */}
-        {/* Auto-Bericht */}
-        {inCat("versand") && (<>
+        {/* Auto-Bericht (von "Versand & Kontakte" hierher verschoben) */}
+        {inCat("benachrichtigungen") && (<>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {t('settings_auto_report_title' as any)}
