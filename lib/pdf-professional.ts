@@ -27,6 +27,7 @@ export interface CompanyInfo {
   website?: string;
   contactPerson?: string;
   logoBase64?: string;
+  logoSize?: "small" | "medium" | "large";
 }
 
 export interface PdfSection {
@@ -159,8 +160,11 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   const icoTag = ico(`<path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82Z"/><circle cx="7.5" cy="7.5" r="1.5"/>`);
   const icoHash = ico(`<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>`);
 
+  // Logo height follows the configured size; generous by default so a full
+  // logo (mark + wordmark) reads at letterhead scale.
+  const logoMaxH = companyInfo?.logoSize === "small" ? 64 : companyInfo?.logoSize === "large" ? 128 : 96;
   const logoHtml = companyInfo?.logoBase64
-    ? `<img src="${companyInfo.logoBase64}" alt="" />`
+    ? `<img src="${companyInfo.logoBase64}" alt="" style="max-height:${logoMaxH}px;" />`
     : "";
   const coName = esc(companyInfo?.name || "");
 
@@ -329,7 +333,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
       padding: 6px 0 16px; border-bottom: 1px solid #E6EBF1;
     }
     .topbar .brand { display: flex; align-items: center; gap: 14px; }
-    .topbar .brand img { max-height: 64px; max-width: 230px; object-fit: contain; }
+    .topbar .brand img { max-height: 96px; max-width: 320px; object-fit: contain; }
     .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -.2px; }
     .topbar .bandmeta { text-align: right; font-size: 9px; line-height: 1.55; color: #6B7A8D; }
     .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 20px 0 0; letter-spacing: -.6px; }
@@ -413,7 +417,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   <div class="topbar">
     <div class="brand">
       ${logoHtml || `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`}
-      ${coName ? `<div class="co">${coName}</div>` : ""}
+      ${coName && !logoHtml ? `<div class="co">${coName}</div>` : ""}
     </div>
     ${bandMeta ? `<div class="bandmeta">${bandMeta}</div>` : ""}
   </div>
@@ -519,6 +523,7 @@ export async function generateAndSharePdf(options: ProfessionalPdfOptions): Prom
           website: options.companyInfo?.website || branding.companyWebsite,
           contactPerson: options.companyInfo?.contactPerson || branding.companyContactPerson,
           logoBase64: logo || options.companyInfo?.logoBase64,
+          logoSize: options.companyInfo?.logoSize || branding.logoSize,
         };
       }
     } catch {

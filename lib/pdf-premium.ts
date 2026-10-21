@@ -123,7 +123,7 @@ export function buildPremiumHtml(opts: {
   // follows this so one setting themes every report consistently.
   const brand = accentColor || NAVY;
   // Logo height follows the configured size (keeps aspect ratio via width:auto).
-  const logoH = branding.logoSize === "small" ? 24 : branding.logoSize === "large" ? 44 : 32;
+  const logoH = branding.logoSize === "small" ? 40 : branding.logoSize === "large" ? 84 : 60;
   // Fallback brand mark (shown only when no logo is uploaded): navy, so a light
   // accent never turns it into an unreadable yellow/orange house.
   const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
