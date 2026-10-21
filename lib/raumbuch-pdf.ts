@@ -33,7 +33,7 @@ async function resolveLocalUri(uri: string): Promise<string> {
 // Read an image as a base64 data URI. Converts through ImageManipulator to a
 // web-safe JPEG first — iOS photos are often HEIC (which a PDF can't render) and
 // can be huge; this makes them display reliably and keeps the PDF small.
-async function toDataUri(uri?: string | null, maxWidth = 1400): Promise<string | null> {
+async function toDataUri(uri?: string | null, maxWidth = 1000, compress = 0.6): Promise<string | null> {
   if (!uri) return null;
   try {
     const resolved = await resolveLocalUri(uri);
@@ -43,7 +43,7 @@ async function toDataUri(uri?: string | null, maxWidth = 1400): Promise<string |
         const m = await ImageManipulator.manipulateAsync(
           resolved,
           [{ resize: { width: maxWidth } }],
-          { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG },
+          { compress, format: ImageManipulator.SaveFormat.JPEG },
         );
         if (m?.uri) src = m.uri;
       } catch {}
@@ -56,6 +56,9 @@ async function toDataUri(uri?: string | null, maxWidth = 1400): Promise<string |
 }
 
 const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// CSS class for a plan's background image (one definition per plan in <style>).
+const planClass = (id: string) => "planbg-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "_");
 
 /** Build a Raumbuch PDF: ONE PAGE PER WALL/position (A/B/C/D, Boden, Decke) with
  *  the full, uncropped photo, plus the room metadata and a plan excerpt. */
@@ -100,7 +103,10 @@ export async function generateRaumbuchPdf(
     if (!e.planId) return null;
     if (!(e.planId in planCache)) {
       const p = plans.find((x: any) => x.id === e.planId);
-      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 2000), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
+      // The plan excerpt is embedded on EVERY wall page, so its base64 is
+      // repeated many times in the HTML. Keep it small (displayed at ~190px) to
+      // avoid blowing up the HTML size and the iOS PDF renderer's memory.
+      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 700, 0.55), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
     }
     return planCache[e.planId];
   };
@@ -140,8 +146,12 @@ export async function generateRaumbuchPdf(
         }).join("")}</svg>`
       : "";
     const hasPin = e.planX != null && e.planY != null;
-    return `<div class="plan" style="width:${W}px;height:${contH.toFixed(1)}px;">
-      <img src="${pc.uri}" style="position:absolute;width:${imgW.toFixed(1)}px;height:${imgH.toFixed(1)}px;left:${(-cx * imgW).toFixed(1)}px;top:${(-cy * imgH).toFixed(1)}px;max-width:none;" />
+    // Use the plan image as a CSS background via a per-plan class (defined ONCE
+    // in <style>) instead of repeating the base64 <img> on every wall page. For
+    // large room books the same plan appears on 100+ pages — repeating the
+    // base64 blew up the HTML and made the iOS PDF renderer run out of memory.
+    const cls = planClass(e.planId || "");
+    return `<div class="plan ${cls}" style="width:${W}px;height:${contH.toFixed(1)}px;background-size:${imgW.toFixed(1)}px ${imgH.toFixed(1)}px;background-position:${(-cx * imgW).toFixed(1)}px ${(-cy * imgH).toFixed(1)}px;background-repeat:no-repeat;">
       ${wallSvg}
       ${hasPin ? `<div class="pin" style="left:${toX(e.planX!).toFixed(1)}px;top:${toY(e.planY!).toFixed(1)}px;"></div>` : ""}
     </div>`;
@@ -294,7 +304,7 @@ export async function generateRaumbuchPdf(
       for (const pos of RAUMBUCH_POSITIONS) {
         const uri = e.photos?.[pos];
         if (!uri) continue;
-        const photo = await toDataUri(uri);
+        const photo = await toDataUri(uri, 900, 0.55);
         if (!photo) continue;
         const label = esc(t(RAUMBUCH_POSITION_LABEL_KEY[pos]));
         const note = esc(e.notes?.[pos] || "");
@@ -326,7 +336,14 @@ export async function generateRaumbuchPdf(
     content.push(`<section class="page cover"><div class="cover-body"><div class="cover-title">${esc(projectName)}</div><div class="empty">Keine Fotos erfasst.</div></div></section>`);
   }
 
+  // Each plan's base64 is defined ONCE here and referenced by class on every
+  // wall page (no per-page repetition of the large image).
+  const planCss = Object.entries(planCache)
+    .map(([id, pc]) => (pc.uri ? `.${planClass(id)} { background-image: url("${pc.uri}"); }` : ""))
+    .join("\n");
+
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    ${planCss}
     @page { margin: 0 0 12mm 0; @bottom-left { content: "${esc(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 6mm 14mm; } @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 6mm 0; } }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #253040; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
