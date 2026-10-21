@@ -684,13 +684,13 @@ export default function MeasureScreen() {
             {project?.name || t('measure_project_placeholder' as any)}
           </Text>
         </View>
-        {measuredEvidence.length > 0 && (
+        {measuredEvidence.length > 0 && step < 2 && (
           <Pressable
             onPress={openOverview}
             accessibilityLabel={t('measure_overview_title' as any)}
             style={({ pressed }) => [{ padding: 4, marginRight: 4, opacity: pressed ? 0.6 : 1 }]}
           >
-            <MaterialIcons name="format-list-bulleted" size={24} color="#00ACC1" />
+            <MaterialIcons name="ios-share" size={24} color="#00ACC1" />
           </Pressable>
         )}
         {selectedEvidence && step >= 2 ? (
