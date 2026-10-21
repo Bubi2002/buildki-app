@@ -812,6 +812,36 @@ export default function MeasureScreen() {
                     ))}
                   </View>
                 )}
+
+                {/* Read-only Übersicht aller Eingaben — Bearbeiten nur über den
+                    Pinsel in der Tabelle. */}
+                {(() => {
+                  const dTitle = selectedEvidence.defectId ? (defects.find((d) => d.id === selectedEvidence.defectId)?.title || "") : "";
+                  const detailRows: { label: string; value: string }[] = [
+                    { label: t('measure_field_floor' as any), value: selectedEvidence.floor || "" },
+                    { label: t('measure_field_room' as any), value: selectedEvidence.room || "" },
+                    { label: t('measure_assign_label' as any), value: dTitle },
+                    { label: t('measure_finding_label' as any), value: selectedEvidence.findingText || "" },
+                  ];
+                  (selectedEvidence.measurements || []).forEach((m: any, i: number) => {
+                    const extras: string[] = [];
+                    if (m.tolerance != null) extras.push(`±${String(m.tolerance).replace(".", ",")}${m.toleranceUnit || ""}`);
+                    if (m.note && String(m.note).trim()) extras.push(String(m.note).trim());
+                    if (extras.length) detailRows.push({ label: `M${i + 1}`, value: extras.join(" · ") });
+                  });
+                  const shown = detailRows.filter((r) => r.value && r.value.trim());
+                  if (shown.length === 0) return null;
+                  return (
+                    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, marginTop: 10 }}>
+                      {shown.map((r, idx) => (
+                        <View key={`${r.label}-${idx}`} style={{ flexDirection: "row", gap: 10, paddingVertical: 5, borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: colors.border }}>
+                          <Text style={{ width: 92, fontSize: 12, color: colors.muted, fontWeight: "700" }}>{r.label}</Text>
+                          <Text style={{ flex: 1, fontSize: 13, color: colors.foreground }}>{r.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
               </>
             )}
 
