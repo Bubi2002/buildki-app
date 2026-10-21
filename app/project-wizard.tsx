@@ -108,6 +108,7 @@ export default function ProjectWizardScreen() {
   const [editRoom, setEditRoom] = useState<Room | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
   const [recording, setRecording] = useState(false);
+  const [recordingFloors, setRecordingFloors] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const uploadAudio = trpc.upload.audio.useMutation();
@@ -492,18 +493,63 @@ export default function ProjectWizardScreen() {
     setRooms(await getAllRooms(projectId));
   };
 
-  const addCustomFloor = async () => {
-    const name = newFloorName.trim();
-    if (!name || !projectId) { setFloorInputOpen(false); setNewFloorName(""); return; }
-    haptic();
-    const nextNum = floors.reduce((m, f) => Math.max(m, f.number), -1) + 1;
-    await addFloor(projectId, name, nextNum);
+  // Add one or SEVERAL floors at once — the text may hold multiple names
+  // separated by comma / "und" (typed or dictated), e.g. "EG, 1. OG, Keller".
+  const addFloorNames = async (names: string[]) => {
+    if (!projectId || names.length === 0) return;
+    let nextNum = floors.reduce((m, f) => Math.max(m, f.number), -1) + 1;
+    for (const n of names) { try { await addFloor(projectId, n, nextNum++); } catch {} }
     const fl = await getFloors(projectId);
     setFloors(fl);
-    const created = [...fl].reverse().find((f) => f.name === name);
+    const created = [...fl].reverse().find((f) => f.name === names[names.length - 1]);
     if (created) { setFloorId(created.id); setItemFloorId(created.id); }
+  };
+
+  const addCustomFloor = async () => {
+    const names = parseRoomNames(newFloorName);
+    if (!names.length || !projectId) { setFloorInputOpen(false); setNewFloorName(""); return; }
+    haptic();
+    await addFloorNames(names);
     setNewFloorName("");
     setFloorInputOpen(false);
+  };
+
+  // Speak floor names ("Erdgeschoss, erstes Obergeschoss, Keller") → adds each
+  // as a floor. Same mechanism as the room voice input.
+  const startVoiceFloors = async () => {
+    if (!projectId) return;
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecordingFloors(true);
+      haptic();
+    } catch { setRecordingFloors(false); }
+  };
+
+  const stopVoiceFloors = async () => {
+    setRecordingFloors(false);
+    setVoiceBusy(true);
+    try {
+      try { await recorder.stop(); } catch {}
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+      const uri = recorder.uri || (recorder.getStatus?.() as any)?.url || null;
+      if (!uri) throw new Error();
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      const uploaded = await uploadAudio.mutateAsync({ base64, mimeType: "audio/m4a", filename: `floors-${Date.now()}.m4a` });
+      const transcribed = await transcribe.mutateAsync({ audioUrl: uploaded.url, language: language || "de" });
+      const names = parseRoomNames((transcribed.text || "").trim());
+      if (names.length) {
+        await addFloorNames(names);
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert(t('hinweis'), t('wizard_voice_none' as any));
+      }
+    } catch {
+      Alert.alert(t('alert_fehler'), t('wizard_voice_failed' as any));
+    } finally {
+      setVoiceBusy(false);
+    }
   };
 
   const addStandardRooms = async () => {
@@ -1050,12 +1096,18 @@ export default function ProjectWizardScreen() {
             </View>
 
             {floorInputOpen && (
+              <>
               <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
                 <TextInput value={newFloorName} onChangeText={setNewFloorName} placeholder={t('wizard_floor' as any)} placeholderTextColor={colors.muted} autoFocus returnKeyType="done" onSubmitEditing={addCustomFloor} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+                <Pressable onPress={recordingFloors ? stopVoiceFloors : startVoiceFloors} disabled={voiceBusy || recording} style={({ pressed }) => [styles.addBtn, { backgroundColor: recordingFloors ? "#EF4444" : "#334155", opacity: pressed ? 0.85 : 1 }]}>
+                  <MaterialIcons name={recordingFloors ? "stop" : "mic"} size={22} color="#FFFFFF" />
+                </Pressable>
                 <Pressable onPress={addCustomFloor} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
                   <MaterialIcons name="check" size={22} color="#FFFFFF" />
                 </Pressable>
               </View>
+              <Text style={{ color: recordingFloors ? "#EF4444" : colors.muted, fontSize: 12, marginTop: 6 }}>{recordingFloors ? t('wizard_voice_listening' as any) : t('wizard_floor_voice_hint' as any)}</Text>
+              </>
             )}
 
             {floorPending && (
@@ -1162,12 +1214,18 @@ export default function ProjectWizardScreen() {
             </ScrollView>
 
             {floorInputOpen && (
+              <>
               <View style={{ flexDirection: "row", gap: 8, marginTop: 4, marginBottom: 8 }}>
                 <TextInput value={newFloorName} onChangeText={setNewFloorName} placeholder={t('wizard_floor' as any)} placeholderTextColor={colors.muted} autoFocus returnKeyType="done" onSubmitEditing={addCustomFloor} style={[styles.input, { flex: 1, marginBottom: 0, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
+                <Pressable onPress={recordingFloors ? stopVoiceFloors : startVoiceFloors} disabled={voiceBusy || recording} style={({ pressed }) => [styles.addBtn, { backgroundColor: recordingFloors ? "#EF4444" : "#334155", opacity: pressed ? 0.85 : 1 }]}>
+                  <MaterialIcons name={recordingFloors ? "stop" : "mic"} size={22} color="#FFFFFF" />
+                </Pressable>
                 <Pressable onPress={addCustomFloor} style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.85 : 1 }]}>
                   <MaterialIcons name="check" size={22} color="#FFFFFF" />
                 </Pressable>
               </View>
+              <Text style={{ color: recordingFloors ? "#EF4444" : colors.muted, fontSize: 12, marginTop: 2, marginBottom: 8 }}>{recordingFloors ? t('wizard_voice_listening' as any) : t('wizard_floor_voice_hint' as any)}</Text>
+              </>
             )}
 
             {/* Raum – aus den zuvor erstellten Räumen wählen */}
