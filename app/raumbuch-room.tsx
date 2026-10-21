@@ -481,9 +481,16 @@ export default function RaumbuchRoomScreen() {
     } else {
       dragRef.current = null;
       // Drop a wall that stayed basically a point (an accidental tap-drag).
+      // IMPORTANT: measure the length RELATIVE to the visible crop, not the whole
+      // plan — in a small, zoomed-in room a real (short) wall covers only a tiny
+      // fraction of the full plan and was being wrongly discarded.
       setTempWalls((prev) => {
         const w = prev[key]; if (!w) return prev;
-        if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.02) { const n = { ...prev }; delete n[key]; return n; }
+        const c = tempCrop;
+        const sx = planStep === 3 && c && c.w > 0.02 ? c.w : 1;
+        const sy = planStep === 3 && c && c.h > 0.02 ? c.h : 1;
+        const len = Math.hypot((w.x2 - w.x1) / sx, (w.y2 - w.y1) / sy);
+        if (len < 0.04) { const n = { ...prev }; delete n[key]; return n; }
         return prev;
       });
     }
