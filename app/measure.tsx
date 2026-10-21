@@ -833,11 +833,11 @@ export default function MeasureScreen() {
                 </GestureDetector>
 
                 <View style={styles.valueRow}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 0.6 }}>
                     <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_value' as any)}</Text>
                     <TextInput value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder="0,00" placeholderTextColor={colors.muted} style={[styles.input, styles.valueInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1.4 }}>
                     <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{t('measure_field_unit' as any)}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.chipRow}>
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
   stepItem: { flex: 1, alignItems: "center", gap: 5 },
   stepDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   stepLabel: { fontSize: 11, fontWeight: "700" },
-  valueInput: { fontSize: 22, fontWeight: "800" },
+  valueInput: { fontSize: 18, fontWeight: "800" },
   measTable: { marginTop: 12, borderWidth: 1, borderRadius: 10, overflow: "hidden" },
   measHeadRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8 },
   measHeadCell: { fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3 },
