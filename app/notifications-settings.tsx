@@ -204,7 +204,6 @@ export default function NotificationsSettingsScreen() {
               <Chips options={[1, 2, 3, 7]} value={prefs.taskLeadDays} onPick={(n) => set("taskLeadDays", n)} />
             </View>
           )}
-          <ToggleRow icon="fact-check" iconColor="#26A69A" title={t("notif_followup_title" as any)} sub={t("notif_followup_sub" as any)} value={prefs.followUpReminder} onChange={(v) => set("followUpReminder", v)} last />
         </View>
 
         {/* ── Tages-Zusammenfassung ── */}
@@ -222,18 +221,6 @@ export default function NotificationsSettingsScreen() {
               <ToggleRow icon="task-alt" iconColor="#26A69A" title={t("notif_content_tasks" as any)} value={prefs.summaryIncludeTasks} onChange={(v) => set("summaryIncludeTasks", v)} last />
             </View>
           </>
-        )}
-
-        {/* ── Mängel-Fristen ── */}
-        <Text style={secStyle}>{t("notif_sec_deadlines" as any)}</Text>
-        <View style={cardStyle}>
-          <ToggleRow icon="schedule" iconColor={colors.warning} title={t("notif_deadline_active" as any)} sub={t("notif_deadline_sub" as any)} value={prefs.defectDeadlineReminder} onChange={(v) => set("defectDeadlineReminder", v)} last />
-        </View>
-        {prefs.defectDeadlineReminder && (
-          <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 16, marginBottom: 20 }}>
-            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>{t("notif_deadline_days" as any)}</Text>
-            <Chips options={[1, 2, 3, 5, 7]} value={prefs.defectDeadlineDays} onPick={(n) => set("defectDeadlineDays", n)} />
-          </View>
         )}
 
         {/* Info */}

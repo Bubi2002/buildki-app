@@ -1897,38 +1897,8 @@ return (
             läuft über die iOS-„Dateien"-Auswahl (Cloud (Dropbox, Drive…)). */}
         {/* Standardempfänger wurde auf Wunsch entfernt — Versand erfolgt immer
             manuell, Empfänger werden beim Senden ausgewählt. */}
-        {/* Auto-Bericht (von "Versand & Kontakte" hierher verschoben) */}
-        {inCat("benachrichtigungen") && (<>
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {t('settings_auto_report_title' as any)}
-          </Text>
-          <Text style={[styles.sectionDescription, { color: colors.muted }]}>
-            {t('settings_auto_report_desc' as any)}
-          </Text>
-          <Pressable
-            onPress={() => router.push("/auto-report-settings" as any)}
-            style={({ pressed }) => [{
-              flexDirection: "row", alignItems: "center", padding: 14,
-              backgroundColor: colors.surface, borderRadius: 0, borderWidth: 1,
-              borderColor: colors.border, opacity: pressed ? 0.7 : 1,
-            }]}
-          >
-            <View style={{ width: 36, height: 36, borderRadius: 0, backgroundColor: colors.success + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-              <MaterialIcons name="schedule" size={20} color={colors.success} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{t('autobericht_einstellungen')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted }}>{t('haeufigkeit_uhrzeit_versand_konfiguriere')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
-        </View>
-
-
-
-
-        </>)}
+        {/* Auto-Bericht auf Wunsch komplett entfernt (war hier unter
+            "Benachrichtigungen"). Versand erfolgt nur noch manuell. */}
         {/* Team-Kontaktbuch entfernt: Zuständige werden direkt im "Zuständig"-Feld
             (AssigneeInput) aus den Telefonkontakten + zuletzt/oft genutzten
             Personen vorgeschlagen. */}

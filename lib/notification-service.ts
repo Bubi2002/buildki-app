@@ -177,9 +177,9 @@ export async function scheduleNotifications(): Promise<void> {
     if (prefs.openDefectsReminder) await scheduleDefectReminder(prefs);
     if (prefs.checklistReminder) await scheduleChecklistReminder(prefs);
     if (prefs.taskReminder) await scheduleTaskReminders(prefs);
-    if (prefs.followUpReminder) await scheduleFollowUpReminders(prefs);
-    await scheduleDeadlineReminders(prefs);
-    if (prefs.defectDeadlineReminder) await checkDefectDeadlines(prefs);
+    // Nachprüfung (follow-up) und Mängel-Fristen auf Wunsch entfernt — sie waren
+    // doppelt zu den Aufgaben-/Offene-Mängel-Erinnerungen und verursachten zudem
+    // sofortige Spam-Pushes. Nicht mehr planen.
     if (prefs.summaryEnabled) await scheduleSummary(prefs);
   } catch {}
 }
