@@ -332,11 +332,20 @@ export default function MeasureScreen() {
       const off = 18;
       const bx = Math.min(CANVAS_WIDTH - 15, Math.max(15, a.x + off * Math.cos(ang)));
       const by = Math.min(CANVAS_HEIGHT - 12, Math.max(12, a.y + off * Math.sin(ang)));
+      const lw = small ? 2.5 : 3;
+      const r = small ? 3.5 : 4.5;
       return (
         <G key={m.id}>
-          <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#00ACC1" strokeWidth={small ? 2.5 : 3} />
-          <Circle cx={a.x} cy={a.y} r={small ? 3.5 : 4.5} fill="#00ACC1" />
-          <Circle cx={b.x} cy={b.y} r={small ? 3.5 : 4.5} fill="#00ACC1" />
+          {/* White halo under the teal line + dots so the measurement stays
+              visible on ANY background (e.g. bright/teal-lit areas where a plain
+              teal line nearly disappeared). */}
+          <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#FFFFFF" strokeWidth={lw + 3} strokeOpacity={0.95} strokeLinecap="round" />
+          <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#00ACC1" strokeWidth={lw} strokeLinecap="round" />
+          <Circle cx={a.x} cy={a.y} r={r + 1.6} fill="#FFFFFF" />
+          <Circle cx={a.x} cy={a.y} r={r} fill="#00ACC1" />
+          <Circle cx={b.x} cy={b.y} r={r + 1.6} fill="#FFFFFF" />
+          <Circle cx={b.x} cy={b.y} r={r} fill="#00ACC1" />
+          <Rect x={bx - 15} y={by - 10} width={30} height={20} rx={10} fill="#FFFFFF" />
           <Rect x={bx - 14} y={by - 9} width={28} height={18} rx={9} fill="#00ACC1" />
           <SvgText x={bx} y={by + 4} fill="#FFFFFF" fontSize={11} fontWeight="800" textAnchor="middle">{`M${i + 1}`}</SvgText>
         </G>
