@@ -67,6 +67,9 @@ function buildChapteredTranscript(
   const filled = chapters.filter((c) => c.texts.length > 0).length;
   if (filled <= 1) return fullText;
   let out = "";
+  // Tell the model the text is split by room, so every finding/defect/task is
+  // assigned to the room under whose chapter it was spoken — not all to one room.
+  out += `HINWEIS: Dieser Text ist nach Räumen/Bereichen gegliedert. Jeder Abschnitt beginnt mit "=== KAPITEL: <Raum> ===". Ordne jede Feststellung, jeden Mangel und jede Aufgabe GENAU dem Raum/Bereich zu, unter dessen Kapitel sie genannt wurde. Verschiebe nichts in einen anderen Raum und erfinde keine Räume.\n\n`;
   const pre = clean(preamble.join(" "));
   if (pre) out += `${pre}\n\n`;
   for (const ch of chapters) {

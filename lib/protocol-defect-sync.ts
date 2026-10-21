@@ -144,7 +144,7 @@ function createCandidateFromText(rawText: string, confidence: number): ProtocolD
     description,
     location: cleanText(locationMatch?.[1]) || undefined,
     trade: cleanText(tradeMatch?.[1]) || undefined,
-    priority: parsePriority(priorityMatch?.[1] || text),
+    priority: priorityMatch ? parsePriority(priorityMatch[1]) : undefined,
     dueDate: parseDueDate(text),
     confidence,
   };
@@ -178,7 +178,9 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
           title: desc.length > 110 ? `${desc.slice(0, 107).trim()}…` : desc,
           description: desc,
           location: currentLocation,
-          priority: parsePriority(desc),
+          // Priority only from an explicit priority/Frist field (handled below),
+          // never guessed from the description text.
+          priority: undefined,
           confidence: 0.85,
         };
         candidates.push(lastFieldCandidate);
@@ -225,7 +227,7 @@ export function extractProtocolDefectCandidates(protocolText: string, transcript
           description,
           location: (locationIndex >= 0 ? cleanText(row[locationIndex]) : "") || currentLocation,
           trade: tradeIndex >= 0 ? cleanText(row[tradeIndex]) || undefined : undefined,
-          priority: parsePriority(priorityIndex >= 0 ? row[priorityIndex] : description),
+          priority: priorityIndex >= 0 ? parsePriority(row[priorityIndex]) : undefined,
           dueDate: dueDateIndex >= 0 ? parseDueDate(row[dueDateIndex]) : undefined,
           confidence: 0.92,
         });

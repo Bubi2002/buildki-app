@@ -70,12 +70,15 @@ Die Liste soll folgende Struktur haben:
    - Ort / Raum
    - Mangelbeschreibung
    - Gewerk / Verantwortlich
-   - Priorität (Hoch / Mittel / Niedrig)
+   - Priorität
    - Frist zur Beseitigung
 4. **Zusammenfassung** (Anzahl Mängel, kritische Punkte)
 5. **Empfohlene Maßnahmen**
 
-Sei präzise bei Ortsangaben und Beschreibungen. Priorisiere sicherheitsrelevante Mängel.`,
+WICHTIG:
+- Priorität NUR ausfüllen, wenn im Text ausdrücklich eine Priorität oder Dringlichkeit genannt wird (z. B. "hohe Priorität", "dringend", "eilt"). Andernfalls das Feld LEER lassen – niemals eine Priorität schätzen oder automatisch vergeben.
+- Ist der Text nach Räumen gegliedert (Abschnitte "=== KAPITEL: <Raum> ==="), ordne jeden Mangel GENAU dem Raum zu, unter dessen Kapitel er genannt wurde. Verschiebe keine Mängel in andere Räume und erfinde keine Räume.
+- Sei präzise bei Ortsangaben und Beschreibungen.`,
   },
   {
     id: "tagesbericht",
