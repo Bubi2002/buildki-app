@@ -22,8 +22,10 @@ export interface CompanyInfo {
   name: string;
   address?: string;
   phone?: string;
+  mobile?: string;
   email?: string;
   website?: string;
+  contactPerson?: string;
   logoBase64?: string;
 }
 
@@ -162,19 +164,21 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     : "";
   const coName = esc(companyInfo?.name || "");
 
-  // Compact report meta + full company contact shown top-right: Berichtstyp,
-  // Projekt, Datum und darunter Firma, Adresse, Telefon, Mail, Website.
-  const companyMeta = [
-    companyInfo?.name ? `<b style="color:#1b2430;">${esc(companyInfo.name)}</b>` : "",
+  // Top-right: ONLY the company letterhead block (Firma · Ansprechpartner ·
+  // Adresse · E-Mail/Telefon · Website). The report meta (Berichtstyp/Projekt/
+  // Datum) is NOT repeated here — it already appears in the info grid below, so
+  // the header stays clean instead of overcrowded.
+  const contactLine = [
+    companyInfo?.email ? `E-Mail: ${esc(companyInfo.email)}` : "",
+    companyInfo?.mobile ? `Mobile: ${esc(companyInfo.mobile)}` : (companyInfo?.phone ? `Tel: ${esc(companyInfo.phone)}` : ""),
+  ].filter(Boolean).join(" &middot; ");
+  const bandMeta = [
+    companyInfo?.name ? `<b style="color:#1b2430;font-size:11px;">${esc(companyInfo.name)}</b>` : "",
+    esc(companyInfo?.contactPerson || ""),
     esc(companyInfo?.address || ""),
-    companyInfo?.phone ? `Tel: ${esc(companyInfo.phone)}` : "",
-    esc(companyInfo?.email || ""),
+    contactLine,
     esc(companyInfo?.website || ""),
   ].filter(Boolean).join("<br/>");
-  const bandMeta = [
-    [reportType ? esc(reportType) : "", projekt ? esc(projekt) : "", esc(datum)].filter(Boolean).join("<br/>"),
-    companyMeta ? `<div style="margin-top:6px;">${companyMeta}</div>` : "",
-  ].filter(Boolean).join("");
 
   // Info grid (icon-labelled project meta).
   const infoCols: string[] = [];
@@ -497,21 +501,25 @@ export async function generateAndSharePdf(options: ProfessionalPdfOptions): Prom
     // of the generic house icon. The logo lives in the PDF branding store; pull
     // it (and any missing company fields) from there when not already set.
     try {
-      if (!options.companyInfo?.logoBase64) {
-        const { getPdfBranding } = await import("./pdf-branding-store");
-        const { resolveBrandingLogo } = await import("./pdf-premium");
-        const branding = await getPdfBranding();
-        const logo = await resolveBrandingLogo(branding);
-        if (logo || branding.companyName) {
-          options.companyInfo = {
-            name: options.companyInfo?.name || branding.companyName || "",
-            address: options.companyInfo?.address || branding.companyAddress,
-            phone: options.companyInfo?.phone || branding.companyPhone,
-            email: options.companyInfo?.email || branding.companyEmail,
-            website: options.companyInfo?.website || (branding as any).companyWebsite,
-            logoBase64: logo || options.companyInfo?.logoBase64,
-          };
-        }
+      const { getPdfBranding } = await import("./pdf-branding-store");
+      const { resolveBrandingLogo } = await import("./pdf-premium");
+      const branding = await getPdfBranding();
+      // Resolve the logo from every place it might live: the passed-in info, the
+      // branding store's logoUri (file:// or data:), then the legacy base64 key.
+      let logo = options.companyInfo?.logoBase64 || "";
+      if (!logo) logo = await resolveBrandingLogo(branding);
+      if (!logo) { try { logo = (await AsyncStorage.getItem(COMPANY_LOGO_KEY)) || ""; } catch {} }
+      if (logo || branding.companyName) {
+        options.companyInfo = {
+          name: options.companyInfo?.name || branding.companyName || "",
+          address: options.companyInfo?.address || branding.companyAddress,
+          phone: options.companyInfo?.phone || branding.companyPhone,
+          mobile: options.companyInfo?.mobile || branding.companyMobile,
+          email: options.companyInfo?.email || branding.companyEmail,
+          website: options.companyInfo?.website || branding.companyWebsite,
+          contactPerson: options.companyInfo?.contactPerson || branding.companyContactPerson,
+          logoBase64: logo || options.companyInfo?.logoBase64,
+        };
       }
     } catch {
       // Fall back to the house icon if branding can't be read.

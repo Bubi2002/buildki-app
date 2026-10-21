@@ -130,16 +130,20 @@ export function buildPremiumHtml(opts: {
   const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : houseSvg;
   const coName = escHtml(branding.companyName || "BuildKI");
   const coSub = escHtml(reportTag || branding.headerText || "Baudokumentation");
-  // Company block (top-right of every PDF): Firma, Adresse, Telefon, Mail,
-  // Website und Datum – auf Wunsch in jedem Export sichtbar.
-  const todayStr = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  // Company letterhead block (top-right of every PDF): Firma, Ansprechpartner,
+  // Adresse und E-Mail/Telefon in einer Zeile, optional Website. Kompakt
+  // gehalten – kein Datum hier (steht im Info-Raster), damit der Kopf nicht
+  // überladen wirkt.
+  const contactLine = [
+    branding.companyEmail ? `E-Mail: ${escHtml(branding.companyEmail)}` : "",
+    branding.companyMobile ? `Mobile: ${escHtml(branding.companyMobile)}` : (branding.companyPhone ? `Tel: ${escHtml(branding.companyPhone)}` : ""),
+  ].filter(Boolean).join(" &middot; ");
   const companyBlock = `<div class="company">${[
     branding.companyName ? `<b>${escHtml(branding.companyName)}</b>` : "",
+    escHtml(branding.companyContactPerson || ""),
     escHtml(branding.companyAddress || ""),
-    branding.companyPhone ? `Tel: ${escHtml(branding.companyPhone)}` : "",
-    escHtml(branding.companyEmail || ""),
+    contactLine,
     escHtml(branding.companyWebsite || ""),
-    `Datum: ${todayStr}`,
   ].filter(Boolean).join("<br>")}</div>`;
   // Three-part footer: company left · optional id/date centre · page nums right.
   const footerLeft = escCss(opts.footerLeft || branding.companyName || branding.footerText || "BuildKI");
