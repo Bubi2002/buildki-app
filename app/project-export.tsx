@@ -18,7 +18,7 @@ import { getChecklistResults, getChecklistCompletionRate, getChecklists } from "
 import { getFloorPlans } from "@/lib/floor-plan-store";
 import { getTimeEntries, getTimeTrackingSettings } from "@/lib/time-tracking-store";
 import { getProjectStructure } from "@/lib/room-store";
-import { getRaumbuch, raumbuchPhotoCount, RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY } from "@/lib/raumbuch-store";
+import { getRaumbuch, raumbuchPhotoCount, raumbuchPhotosFor, RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY } from "@/lib/raumbuch-store";
 import { getDirectProjectPhotos } from "@/lib/project-photo-store";
 import { getEvidence } from "@/lib/evidence-store";
 import { generateAndSharePdf, type PdfSection, type PdfImage, type PdfCard } from "@/lib/pdf-professional";
@@ -378,10 +378,11 @@ export default function ProjectExportScreen() {
           for (const e of entries) {
             const images: PdfImage[] = [];
             for (const pos of RAUMBUCH_POSITIONS) {
-              const uri = e.photos?.[pos];
-              if (!uri) continue;
-              const data = await toDataUri(uri);
-              if (data) images.push({ base64: data, caption: t(RAUMBUCH_POSITION_LABEL_KEY[pos] as any) });
+              const uris = raumbuchPhotosFor(e.photos, pos);
+              for (let i = 0; i < uris.length; i++) {
+                const data = await toDataUri(uris[i]);
+                if (data) images.push({ base64: data, caption: `${t(RAUMBUCH_POSITION_LABEL_KEY[pos] as any)}${uris.length > 1 ? ` (${i + 1}/${uris.length})` : ""}` });
+              }
             }
             if (!images.length) continue;
             const noteText = RAUMBUCH_POSITIONS

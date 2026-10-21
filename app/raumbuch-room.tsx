@@ -19,6 +19,7 @@ import {
   getRaumbuchEntry,
   saveRaumbuchEntry,
   raumbuchArchivePhotoCount,
+  raumbuchPhotosFor,
   RAUMBUCH_POSITIONS,
   RAUMBUCH_POSITION_LABEL_KEY,
   RAUMBUCH_SURVEY,
@@ -279,22 +280,29 @@ export default function RaumbuchRoomScreen() {
     } catch { return uri; }
   };
 
+  // Add one OR several photos to a position (a long wall often needs multiple
+  // shots). Picked images are appended to the position's photo list.
   const addPhoto = async (pos: RaumbuchPosition) => {
     try {
-      const picked = await pickImagesWithSource({ t, multiple: false, withCamera: true } as any);
+      const picked = await pickImagesWithSource({ t, multiple: true, withCamera: true } as any);
       if (!picked || picked.length === 0) return;
-      const saved = await persistPhotoFile(picked[0].uri, pos);
+      const saved: string[] = [];
+      for (const p of picked) saved.push(await persistPhotoFile(p.uri, pos));
       const cur = entry || blankEntry();
-      await persist({ ...cur, photos: { ...cur.photos, [pos]: saved } });
+      const existing = raumbuchPhotosFor(cur.photos, pos);
+      await persist({ ...cur, photos: { ...cur.photos, [pos]: [...existing, ...saved] } });
     } catch {}
   };
 
-  const removePhoto = (pos: RaumbuchPosition) => {
+  // Remove a single photo (by index) from a position.
+  const removePhoto = (pos: RaumbuchPosition, idx: number) => {
     Alert.alert(t("alert_foto_entfernen" as any), t("msg_dieses_foto_vom_mangel_entfernen" as any), [
       { text: t("btn_abbrechen" as any), style: "cancel" },
       { text: t("btn_entfernen" as any), style: "destructive", onPress: async () => {
         const cur = entry || blankEntry();
-        const photos = { ...cur.photos }; delete photos[pos];
+        const arr = raumbuchPhotosFor(cur.photos, pos).filter((_, i) => i !== idx);
+        const photos = { ...cur.photos };
+        if (arr.length) photos[pos] = arr; else delete photos[pos];
         await persist({ ...cur, photos });
       } },
     ]);
@@ -581,7 +589,7 @@ export default function RaumbuchRoomScreen() {
         <Text style={[styles.sectionLabel, { color: colors.muted, marginTop: 20 }]}>{t("raumbuch_positions_section" as any)}</Text>
         <View style={styles.grid}>
           {RAUMBUCH_POSITIONS.map((pos) => {
-            const photo = entry?.photos?.[pos];
+            const photos = raumbuchPhotosFor(entry?.photos, pos);
             return (
               <View key={pos} style={[styles.slot, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
@@ -589,17 +597,29 @@ export default function RaumbuchRoomScreen() {
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: (WALL_COLORS as Record<string, string>)[pos] }} />
                   )}
                   <Text style={[styles.slotLabel, { color: colors.foreground, marginBottom: 0 }]}>{label(pos)}</Text>
+                  {photos.length > 0 && (
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted }}>{photos.length}</Text>
+                  )}
                 </View>
-                {photo ? (
-                  <Pressable onPress={() => void addPhoto(pos)} onLongPress={() => removePhoto(pos)}>
-                    <Image source={{ uri: photo }} style={styles.slotPhoto} contentFit="cover" cachePolicy="memory-disk" />
-                    <View style={styles.slotEdit}><MaterialIcons name="edit" size={14} color="#FFFFFF" /></View>
-                  </Pressable>
-                ) : (
+                {photos.length === 0 ? (
                   <Pressable onPress={() => void addPhoto(pos)} style={({ pressed }) => [styles.slotEmpty, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
                     <MaterialIcons name="add-a-photo" size={26} color={colors.muted} />
                     <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>{t("measure_take_photo" as any)}</Text>
                   </Pressable>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {photos.map((uri, i) => (
+                      <Pressable key={`${uri}-${i}`} onLongPress={() => removePhoto(pos, i)}>
+                        <Image source={{ uri }} style={styles.slotPhotoSm} contentFit="cover" cachePolicy="memory-disk" />
+                        <Pressable onPress={() => removePhoto(pos, i)} hitSlop={6} style={styles.thumbRemove}>
+                          <MaterialIcons name="close" size={13} color="#FFFFFF" />
+                        </Pressable>
+                      </Pressable>
+                    ))}
+                    <Pressable onPress={() => void addPhoto(pos)} style={({ pressed }) => [styles.slotAddSm, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+                      <MaterialIcons name="add-a-photo" size={22} color={colors.muted} />
+                    </Pressable>
+                  </ScrollView>
                 )}
               </View>
             );
@@ -635,10 +655,14 @@ export default function RaumbuchRoomScreen() {
               </View>
               <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
                 <View style={styles.grid}>
-                  {RAUMBUCH_POSITIONS.filter((p) => archiveView?.photos?.[p]).map((p) => (
+                  {RAUMBUCH_POSITIONS.filter((p) => raumbuchPhotosFor(archiveView?.photos, p).length > 0).map((p) => (
                     <View key={p} style={[styles.slot, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                       <Text style={[styles.slotLabel, { color: colors.foreground }]}>{label(p)}</Text>
-                      <Image source={{ uri: archiveView!.photos[p]! }} style={styles.slotPhoto} contentFit="cover" cachePolicy="memory-disk" />
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                        {raumbuchPhotosFor(archiveView?.photos, p).map((uri, i) => (
+                          <Image key={`${uri}-${i}`} source={{ uri }} style={styles.slotPhotoSm} contentFit="cover" cachePolicy="memory-disk" />
+                        ))}
+                      </ScrollView>
                     </View>
                   ))}
                 </View>
@@ -1151,6 +1175,9 @@ const styles = StyleSheet.create({
   slotPhoto: { width: "100%", height: 110, borderRadius: 8, backgroundColor: "#00000010" },
   slotEdit: { position: "absolute", right: 6, bottom: 6, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10, padding: 4 },
   slotEmpty: { width: "100%", height: 110, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
+  slotPhotoSm: { width: 92, height: 92, borderRadius: 8, backgroundColor: "#00000010" },
+  slotAddSm: { width: 92, height: 92, borderRadius: 8, borderWidth: 1, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
+  thumbRemove: { position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 11, width: 22, height: 22, alignItems: "center", justifyContent: "center" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
   // Full height so the plan editor is as large as possible on the phone
   // (paddingTop is set inline from the safe-area inset so nothing hides under

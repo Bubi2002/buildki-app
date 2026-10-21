@@ -34,7 +34,10 @@ export type RaumbuchEntry = {
   planCrop?: { x: number; y: number; w: number; h: number };
   /** Optional drawn wall lines (normalised 0..1 plan coords), labelled A–H. */
   walls?: Partial<Record<"A" | "B" | "C" | "D" | "E" | "F" | "G" | "H", { x1: number; y1: number; x2: number; y2: number }>>;
-  photos: Partial<Record<RaumbuchPosition, string>>;
+  /** One or more photos per position. Legacy entries store a single string; new
+   *  entries store a string[] (a long wall can need several shots). Always read
+   *  via `raumbuchPhotosFor()` to normalise both shapes. */
+  photos: Partial<Record<RaumbuchPosition, string | string[]>>;
   notes?: Partial<Record<RaumbuchPosition, string>>;
   /** Filled-in Fragenkatalog answers for this room (second export template). */
   survey?: RaumbuchSurvey;
@@ -49,7 +52,7 @@ export type RaumbuchEntry = {
 export type RaumbuchArchive = {
   id: string;
   archivedAt: string;
-  photos: Partial<Record<RaumbuchPosition, string>>;
+  photos: Partial<Record<RaumbuchPosition, string | string[]>>;
   notes?: Partial<Record<RaumbuchPosition, string>>;
   survey?: RaumbuchSurvey;
   planId?: string;
@@ -114,15 +117,26 @@ export async function deleteRaumbuchEntry(projectId: string, roomId: string): Pr
   await AsyncStorage.setItem(KEY(projectId), JSON.stringify(all.filter((e) => e.roomId !== roomId)));
 }
 
-export function raumbuchPhotoCount(entry: RaumbuchEntry | null | undefined): number {
-  if (!entry) return 0;
-  return RAUMBUCH_POSITIONS.filter((p) => entry.photos?.[p]).length;
+/** Normalise a position's photo(s) to an array (handles legacy single-string). */
+export function raumbuchPhotosFor(
+  photos: Partial<Record<RaumbuchPosition, string | string[]>> | null | undefined,
+  pos: RaumbuchPosition,
+): string[] {
+  const v = photos?.[pos];
+  if (!v) return [];
+  return (Array.isArray(v) ? v : [v]).filter(Boolean);
 }
 
-/** Number of photos in an archived round. */
+/** Total number of photos across all positions (not positions documented). */
+export function raumbuchPhotoCount(entry: RaumbuchEntry | null | undefined): number {
+  if (!entry) return 0;
+  return RAUMBUCH_POSITIONS.reduce((n, p) => n + raumbuchPhotosFor(entry.photos, p).length, 0);
+}
+
+/** Total number of photos in an archived round. */
 export function raumbuchArchivePhotoCount(a: RaumbuchArchive | null | undefined): number {
   if (!a) return 0;
-  return RAUMBUCH_POSITIONS.filter((p) => a.photos?.[p]).length;
+  return RAUMBUCH_POSITIONS.reduce((n, p) => n + raumbuchPhotosFor(a.photos, p).length, 0);
 }
 
 /**
@@ -172,7 +186,7 @@ export async function archiveAndResetAllRaumbuch(projectId: string): Promise<num
   const now = new Date().toISOString();
   let count = 0;
   const next = all.map((entry) => {
-    const hasPhotos = RAUMBUCH_POSITIONS.some((p) => entry.photos?.[p]);
+    const hasPhotos = RAUMBUCH_POSITIONS.some((p) => raumbuchPhotosFor(entry.photos, p).length > 0);
     if (!hasPhotos) return entry;
     count += 1;
     const snapshot: RaumbuchArchive = {

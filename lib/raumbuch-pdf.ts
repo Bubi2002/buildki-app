@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getFloorPlans } from "./floor-plan-store";
 import { getPdfBranding } from "./pdf-branding-store";
 import { resolveBrandingLogo } from "./pdf-premium";
-import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
+import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, raumbuchPhotosFor, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 // Distinct colour per wall: A = Blau, B = Grün, C = Rot, D = Orange.
@@ -179,7 +179,9 @@ export async function generateRaumbuchPdf(
     if (/DACH|\bDG\b/.test(n)) return "DG";
     return (name || "R").replace(/[^A-Za-zÄÖÜ]/g, "").slice(0, 2).toUpperCase() || "R";
   };
-  const wallCount = (e: RaumbuchEntry) => RAUMBUCH_POSITIONS.filter((p) => e.photos?.[p]).length;
+  // Total photo pages for a room (each photo gets its own page; a position can
+  // hold several photos for a long wall).
+  const wallCount = (e: RaumbuchEntry) => RAUMBUCH_POSITIONS.reduce((n, p) => n + raumbuchPhotosFor(e.photos, p).length, 0);
   const pad2 = (n: number) => String(n).padStart(2, "0");
 
   // Only rooms with at least one photo produce content pages.
@@ -287,7 +289,7 @@ export async function generateRaumbuchPdf(
       // Fragenkatalog: a questionnaire/overview page per room (plan + up to 2
       // photos + the checklist to tick off + Freigabe/Änderung).
       if (template === "fragenkatalog") {
-        const thumbSrc = RAUMBUCH_POSITIONS.map((p) => e.photos?.[p]).filter(Boolean).slice(0, 2);
+        const thumbSrc = RAUMBUCH_POSITIONS.flatMap((p) => raumbuchPhotosFor(e.photos, p)).slice(0, 2);
         const thumbs: string[] = [];
         for (const u of thumbSrc) { const d = await toDataUri(u as string); if (d) thumbs.push(`<img class="rp" src="${d}" />`); }
         const planFull = pc ? buildPlanExcerpt(e, pc) : "";
@@ -307,32 +309,36 @@ export async function generateRaumbuchPdf(
       }
 
       for (const pos of RAUMBUCH_POSITIONS) {
-        const uri = e.photos?.[pos];
-        if (!uri) continue;
-        const photo = await toDataUri(uri, 900, 0.55);
-        if (!photo) continue;
+        const uris = raumbuchPhotosFor(e.photos, pos);
+        if (uris.length === 0) continue;
         const label = esc(t(RAUMBUCH_POSITION_LABEL_KEY[pos]));
         const note = esc(e.notes?.[pos] || "");
         const isWall = pos !== "boden" && pos !== "decke";
-        const posRow = isWall
-          ? `<div class="m"><span>Wand:</span> ${pos}</div>`
-          : `<div class="m"><span>Bereich:</span> ${label}</div>`;
         const plan = pc ? buildPlanExcerpt(e, pc, isWall ? (pos as RaumbuchWallKey) : undefined) : "";
-        content.push(`
-          <section class="page brk">
-            <div class="meta-row">
-              <div class="meta">
-                <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
-                ${template === "fragenkatalog" ? `<div class="m"><span>Raumnummer:</span> ${esc(roomNo)}</div>` : ""}
-                <div class="m"><span>Raum:</span> ${esc(e.roomName)}</div>
-                ${posRow}
-                ${note ? `<div class="m note"><span>Notiz:</span> ${note}</div>` : ""}
+        // One page per photo — a long wall can have several shots, numbered 1/n.
+        for (let pi = 0; pi < uris.length; pi++) {
+          const photo = await toDataUri(uris[pi], 900, 0.55);
+          if (!photo) continue;
+          const suffix = uris.length > 1 ? ` (${pi + 1}/${uris.length})` : "";
+          const posRow = isWall
+            ? `<div class="m"><span>Wand:</span> ${pos}${suffix}</div>`
+            : `<div class="m"><span>Bereich:</span> ${label}${suffix}</div>`;
+          content.push(`
+            <section class="page brk">
+              <div class="meta-row">
+                <div class="meta">
+                  <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
+                  ${template === "fragenkatalog" ? `<div class="m"><span>Raumnummer:</span> ${esc(roomNo)}</div>` : ""}
+                  <div class="m"><span>Raum:</span> ${esc(e.roomName)}</div>
+                  ${posRow}
+                  ${note ? `<div class="m note"><span>Notiz:</span> ${note}</div>` : ""}
+                </div>
+                ${plan}
               </div>
-              ${plan}
-            </div>
-            <div class="photo-wrap"><img class="photo" src="${photo}" /></div>
-            <div class="wall-label" style="color:${isWall ? WALL_COLOR[pos as RaumbuchWallKey] : accent};">${label}</div>
-          </section>`);
+              <div class="photo-wrap"><img class="photo" src="${photo}" /></div>
+              <div class="wall-label" style="color:${isWall ? WALL_COLOR[pos as RaumbuchWallKey] : accent};">${label}${suffix}</div>
+            </section>`);
+        }
       }
     }
   }
