@@ -86,6 +86,9 @@ export default function PhotoCompareScreen() {
   const compareRef = React.useRef<View>(null);
   const [zoomUri, setZoomUri] = useState<string | null>(null);
   const [aligning, setAligning] = useState(false);
+  // Aspect ratio (w/h) of the compared photo, so the slider box matches it and
+  // the WHOLE image shows (also for portrait/hochkant photos) without cropping.
+  const [imgAspect, setImgAspect] = useState(1.25);
   const [shareSelectVisible, setShareSelectVisible] = useState(false);
   const [shareIds, setShareIds] = useState<string[]>([]);
   const titleInputRef = React.useRef<TextInput>(null);
@@ -379,7 +382,8 @@ export default function PhotoCompareScreen() {
     const splitHeight = Math.min(SCREEN_HEIGHT * 0.55, colWidth * 1.5);
     // Interactive before/after slider dimensions.
     const sliderW = imgWidth;
-    const sliderH = Math.min(SCREEN_HEIGHT * 0.5, imgWidth * 0.8);
+    // Box follows the photo's aspect so the full image fits (portrait → taller).
+    const sliderH = Math.min(SCREEN_HEIGHT * 0.62, Math.max(180, imgWidth / imgAspect));
     const clampPos = (v: number) => Math.max(0, Math.min(1, v));
     const dividerX = sliderW * sliderPosition;
     const sliderPan = Gesture.Pan()
@@ -442,13 +446,13 @@ export default function PhotoCompareScreen() {
             <View ref={compareRef} style={{ backgroundColor: colors.background }}>
               {selectedPair.afterUri ? (
                 /* Interactive before/after slider: drag the handle between old & new. */
-                <GestureDetector gesture={aligning ? alignPan : sliderPan}>
+                <GestureDetector gesture={sliderPan}>
                   <View style={{ width: sliderW, height: sliderH, borderRadius: 8, overflow: "hidden", backgroundColor: colors.muted + "22", alignSelf: "center" }}>
                     {/* Base layer = after (new) */}
-                    <Image source={{ uri: selectedPair.afterUri }} style={{ position: "absolute", left: 0, top: 0, width: sliderW, height: sliderH, transform: afterTransform }} contentFit="cover" />
+                    <Image source={{ uri: selectedPair.afterUri }} style={{ position: "absolute", left: 0, top: 0, width: sliderW, height: sliderH }} contentFit="contain" onLoad={(e: any) => { const s = e?.source; if (s?.width && s?.height) setImgAspect(s.width / s.height); }} />
                     {/* Overlay = before (old), clipped to the left of the divider */}
                     <View style={{ position: "absolute", left: 0, top: 0, width: dividerX, height: sliderH, overflow: "hidden" }}>
-                      <Image source={{ uri: selectedPair.beforeUri }} style={{ width: sliderW, height: sliderH }} contentFit="cover" />
+                      <Image source={{ uri: selectedPair.beforeUri }} style={{ width: sliderW, height: sliderH }} contentFit="contain" />
                     </View>
                     {/* Labels */}
                     <View style={{ position: "absolute", top: 8, left: 8, backgroundColor: colors.error, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
@@ -461,7 +465,7 @@ export default function PhotoCompareScreen() {
                     <View style={{ position: "absolute", left: dividerX - 1.5, top: 0, width: 3, height: sliderH, backgroundColor: "#fff" }} />
                     {/* Drag handle */}
                     <View style={{ position: "absolute", left: dividerX - 20, top: sliderH / 2 - 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 4 }}>
-                      <MaterialIcons name={aligning ? "open-with" : "compare-arrows"} size={24} color="#1E3A5F" />
+                      <MaterialIcons name="compare-arrows" size={24} color="#1E3A5F" />
                     </View>
                   </View>
                 </GestureDetector>
@@ -474,7 +478,7 @@ export default function PhotoCompareScreen() {
                       <Text style={{ fontSize: 13, fontWeight: "700", color: colors.error }}>{t('vorher')}</Text>
                     </View>
                     <Pressable onPress={() => setZoomUri(selectedPair.beforeUri)}>
-                      <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="cover" />
+                      <Image source={{ uri: selectedPair.beforeUri }} style={{ width: "100%", height: splitHeight, borderRadius: 8, backgroundColor: colors.muted + "22" }} contentFit="contain" />
                     </Pressable>
                     <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center", marginTop: 6 }}>{formatDate(selectedPair.beforeDate)}</Text>
                   </View>
@@ -508,29 +512,9 @@ export default function PhotoCompareScreen() {
             {selectedPair.afterUri && (
               <>
                 <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginTop: 10 }}>
-                  {aligning ? t('photo_compare_align_hint' as any) : t('photo_compare_slider_hint' as any)}
+                  {t('photo_compare_slider_hint' as any)}
                 </Text>
-                <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 8 }}>
-                  <Pressable
-                    onPress={() => setAligning((v) => !v)}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: aligning ? colors.primary : colors.border, backgroundColor: aligning ? colors.primary + "18" : "transparent", opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <MaterialIcons name="open-with" size={16} color={aligning ? colors.primary : colors.muted} />
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: aligning ? colors.primary : colors.muted }}>
-                      {aligning ? t('done') : t('photo_compare_align' as any)}
-                    </Text>
-                  </Pressable>
-                  {aligning && ((selectedPair.alignX || 0) !== 0 || (selectedPair.alignY || 0) !== 0) && (
-                    <Pressable
-                      onPress={() => saveAlign(selectedPair.id, 0, 0)}
-                      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-                    >
-                      <MaterialIcons name="restart-alt" size={16} color={colors.muted} />
-                      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>{t('photo_compare_align_reset' as any)}</Text>
-                    </Pressable>
-                  )}
-                </View>
-                <View style={{ flexDirection: "row", justifyContent: "center", gap: 18, marginTop: 8 }}>
+                <View style={{ flexDirection: "row", justifyContent: "center", gap: 18, marginTop: 10 }}>
                   <Pressable onPress={() => setZoomUri(selectedPair.beforeUri)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 4, opacity: pressed ? 0.6 : 1 }]}>
                     <MaterialIcons name="zoom-in" size={18} color={colors.error} />
                     <Text style={{ fontSize: 12, fontWeight: "700", color: colors.error }}>{t('vorher')}</Text>
