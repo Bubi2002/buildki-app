@@ -148,7 +148,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     includeTableOfContents,
     watermark,
     footerText,
-    accentColor = "#1E3A5F",
+    accentColor = "#8A6E52",
     heroDataUri,
   } = options;
 

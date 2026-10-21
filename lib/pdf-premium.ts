@@ -94,7 +94,7 @@ export function renderLetterhead(opts: {
   const mb = opts.marginBottom ?? 0;
   return `<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:14px;border-bottom:1px solid #E6EBF1;margin-bottom:${mb}px;">
     <div style="display:flex;align-items:center;gap:14px;">${left}</div>
-    <div style="text-align:right;font-size:9px;line-height:1.55;color:#6B7A8D;">${company}</div>
+    <div style="text-align:right;font-size:9px;line-height:1.55;color:#1b2430;">${company}</div>
   </div>`;
 }
 
@@ -246,7 +246,7 @@ export function buildPremiumHtml(opts: {
      navy while the accent themes the rules/pills/icons. */
   .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -0.2px; line-height: 1.15; }
   .topbar .brand .co small { display: block; font-size: 8.5px; font-weight: 600; color: #6B7A8D; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
-  .topbar .company { font-size: 9px; color: #6B7A8D; text-align: right; line-height: 1.55; }
+  .topbar .company { font-size: 9px; color: #1b2430; text-align: right; line-height: 1.55; }
   .topbar .company b { color: #1b2430; font-size: 9.5px; }
   .wrap { padding: 24px 28px 12px; }
   .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 0; letter-spacing: -0.6px; }
