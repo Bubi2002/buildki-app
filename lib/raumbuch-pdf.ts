@@ -13,6 +13,7 @@ const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const WALL_COLOR: Record<RaumbuchWallKey, string> = { A: "#2563EB", B: "#16A34A", C: "#DC2626", D: "#EA580C", E: "#9333EA", F: "#0891B2", G: "#CA8A04", H: "#DB2777" };
 const PLAN_W = 190; // px width of the plan excerpt box in the PDF (kept small so
                     // the meta row stays short and the photo fits on the SAME page)
+const MAX_CONT_H = 200; // px (~53mm) — height cap for the plan excerpt box
 
 // iOS can change the app's Documents container path between installs/updates, so a
 // file:// path saved by an earlier build may no longer resolve. Re-home such a
@@ -81,6 +82,10 @@ export async function generateRaumbuchPdf(
   const projectId = entries[0]?.projectId || "";
   const plans = await getFloorPlans(projectId).catch(() => [] as any[]);
   const planCache: Record<string, { uri: string | null; aspect: number }> = {};
+  // Resolution each plan needs so its SMALLEST crop isn't upscaled past the
+  // source (the excerpt uses background-size = PLAN_W / crop-width). Filled from
+  // the rooms' crops below, read lazily in resolvePlan().
+  const planNeedW: Record<string, number> = {};
   const now = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const co = esc(branding?.companyName || "BuildKI");
 
@@ -108,10 +113,13 @@ export async function generateRaumbuchPdf(
     if (!e.planId) return null;
     if (!(e.planId in planCache)) {
       const p = plans.find((x: any) => x.id === e.planId);
-      // The plan excerpt is embedded on EVERY wall page, so its base64 is
-      // repeated many times in the HTML. Keep it small (displayed at ~190px) to
-      // avoid blowing up the HTML size and the iOS PDF renderer's memory.
-      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 1200, 0.72), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
+      // Embed the plan at the resolution its tightest crop needs (so the excerpt
+      // is never upscaled past the source → sharp even for small rooms/late
+      // pages), with a cap so memory/HTML size stay sane. The plan is embedded
+      // ONCE (CSS background), so a higher res here is one bitmap, not per page.
+      const need = planNeedW[e.planId] || PLAN_W * 4;
+      const srcW = Math.min(2600, Math.max(1200, Math.ceil(need * 1.4)));
+      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, srcW, 0.72), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
     }
     return planCache[e.planId];
   };
@@ -127,7 +135,6 @@ export async function generateRaumbuchPdf(
     // Keep the excerpt box from getting too TALL (a tall/portrait crop) — a tall
     // meta row would push the photo onto the next page. Scale the whole excerpt
     // down (no cropping) when it would exceed the height cap.
-    const MAX_CONT_H = 200; // px (~53mm)
     let W = PLAN_W, contH = W / contAspect;
     if (contH > MAX_CONT_H) { W = W * (MAX_CONT_H / contH); contH = MAX_CONT_H; }
     const imgW = W / cw, imgH = imgW / A;
@@ -186,6 +193,20 @@ export async function generateRaumbuchPdf(
 
   // Only rooms with at least one photo produce content pages.
   const withPhotos = entries.filter((e) => wallCount(e) > 0);
+  // Per plan: the largest background-size any room needs (smallest crop → biggest
+  // upscale), so resolvePlan() can embed a high-enough source resolution.
+  for (const e of withPhotos) {
+    if (!e.planId) continue;
+    const p = plans.find((x: any) => x.id === e.planId);
+    const A = p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6;
+    const cw = e.planCrop?.w ?? 1, ch = e.planCrop?.h ?? 1;
+    const contAspect = ch > 0 ? (cw * A) / ch : 1.6;
+    let W = PLAN_W;
+    const contH0 = contAspect > 0 ? W / contAspect : W;
+    if (contH0 > MAX_CONT_H) W = W * (MAX_CONT_H / contH0);
+    const imgW = cw > 0 ? W / cw : W;
+    planNeedW[e.planId] = Math.max(planNeedW[e.planId] || 0, imgW);
+  }
   const floorNames = Array.from(new Set(withPhotos.map((e) => e.floorName || "—")))
     .sort((a, b) => floorRank(a) - floorRank(b) || a.localeCompare(b, "de"));
   const floors = floorNames.map((fname) => ({
