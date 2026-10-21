@@ -405,10 +405,11 @@ export function generateCoverPage(
     heroDataUri?: string | null;
   }
 ): string {
-  const NAVY = "#1E3A5F";
+  const accentColor = branding.accentColor || protocol.projectColor || "#8A6E52";
+  // Cover headings/icons follow the brand accent (warm brown) for consistency.
+  const NAVY = accentColor;
   const INK = "#1b2430";
   const MUTED = "#6B7A8D";
-  const accentColor = branding.accentColor || protocol.projectColor || NAVY;
   const date = new Date(protocol.createdAt);
   const dateLong = date.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   const dateShort = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });

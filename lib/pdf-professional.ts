@@ -14,6 +14,7 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { renderLetterhead } from "./pdf-premium";
 
 const COMPANY_LOGO_KEY = "company_logo_base64";
 const COMPANY_INFO_KEY = "company_info";
@@ -164,29 +165,19 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   const icoTag = ico(`<path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82Z"/><circle cx="7.5" cy="7.5" r="1.5"/>`);
   const icoHash = ico(`<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>`);
 
-  // Logo height follows the configured size; generous by default so a full
-  // logo (mark + wordmark) reads at letterhead scale.
-  const logoMaxH = companyInfo?.logoSize === "small" ? 64 : companyInfo?.logoSize === "large" ? 128 : 96;
-  const logoHtml = companyInfo?.logoBase64
-    ? `<img src="${companyInfo.logoBase64}" alt="" style="max-height:${logoMaxH}px;" />`
-    : "";
-  const coName = esc(companyInfo?.name || "");
-
-  // Top-right: ONLY the company letterhead block (Firma · Ansprechpartner ·
-  // Adresse · E-Mail/Telefon · Website). The report meta (Berichtstyp/Projekt/
-  // Datum) is NOT repeated here — it already appears in the info grid below, so
-  // the header stays clean instead of overcrowded.
-  const contactLine = [
-    companyInfo?.email ? `E-Mail: ${esc(companyInfo.email)}` : "",
-    companyInfo?.mobile ? `Mobile: ${esc(companyInfo.mobile)}` : (companyInfo?.phone ? `Tel: ${esc(companyInfo.phone)}` : ""),
-  ].filter(Boolean).join(" &middot; ");
-  const bandMeta = [
-    companyInfo?.name ? `<b style="color:#1b2430;font-size:11px;">${esc(companyInfo.name)}</b>` : "",
-    esc(companyInfo?.contactPerson || ""),
-    esc(companyInfo?.address || ""),
-    contactLine,
-    esc(companyInfo?.website || ""),
-  ].filter(Boolean).join("<br/>");
+  // Header (logo left + compact company block right) comes from the shared
+  // renderLetterhead() so every PDF type has an identical letterhead.
+  const letterhead = renderLetterhead({
+    companyName: companyInfo?.name,
+    companyContactPerson: companyInfo?.contactPerson,
+    companyAddress: companyInfo?.address,
+    companyPhone: companyInfo?.phone,
+    companyMobile: companyInfo?.mobile,
+    companyEmail: companyInfo?.email,
+    companyWebsite: companyInfo?.website,
+    logoDataUri: companyInfo?.logoBase64,
+    logoSize: companyInfo?.logoSize,
+  });
 
   // Info grid (icon-labelled project meta).
   const infoCols: string[] = [];
@@ -418,13 +409,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   ${watermark ? `<div class="watermark">${esc(watermark)}</div>` : ""}
 
   <div class="sheet">
-  <div class="topbar">
-    <div class="brand">
-      ${logoHtml || `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`}
-      ${coName && !logoHtml ? `<div class="co">${coName}</div>` : ""}
-    </div>
-    ${bandMeta ? `<div class="bandmeta">${bandMeta}</div>` : ""}
-  </div>
+  ${letterhead}
 
   <h1 class="title">${esc(title)}</h1>
   <div class="title-rule"></div>

@@ -9,6 +9,7 @@ import {
   formatMeasurementForDocument,
   type DocumentEvidenceSnapshot,
 } from "@/lib/document-evidence";
+import { renderLetterhead } from "@/lib/pdf-premium";
 
 /**
  * Helper: wrap a promise with a timeout to prevent hanging
@@ -246,6 +247,19 @@ async function loadCompanySettings(): Promise<CompanySettings> {
       companyData.watermarkEnabled = wm.enabled;
       companyData.watermarkText = wm.text;
     }
+    // Enrich from the canonical branding record so the letterhead has the same
+    // contact person, mobile, website and logo size as every other PDF.
+    try {
+      const b = await AsyncStorage.getItem("pdf-branding");
+      if (b) {
+        const br = JSON.parse(b);
+        companyData.companyContactPerson = companyData.companyContactPerson || br.companyContactPerson;
+        companyData.companyMobile = companyData.companyMobile || br.companyMobile;
+        companyData.companyEmail = companyData.companyEmail || br.companyEmail;
+        companyData.companyWebsite = companyData.companyWebsite || br.companyWebsite;
+        companyData.logoSize = companyData.logoSize || br.logoSize;
+      }
+    } catch {}
     return companyData;
   } catch  {
     // Ignore
@@ -298,6 +312,8 @@ export function generatePdfHtml(
   watermarkText: string = "",
   layoutOptions: LayoutOptions = {}
 ): string {
+  // Brand accent (warm brown by default): themes headings, bars and dividers.
+  const accent = accentColor || "#8A6E52";
   // Layout options with defaults
   const layoutShowTranscription = layoutOptions.showTranscription !== false;
   const layoutShowTodos = layoutOptions.showTodos !== false;
@@ -355,7 +371,7 @@ export function generatePdfHtml(
     kpiCards.push({ value: kpiTodosOpen, label: "Offene Aufgaben", color: kpiTodosOpen > 0 ? "#B0763F" : "#5E8B6F" });
     kpiCards.push({ value: kpiTodosTotal - kpiTodosOpen, label: "Erledigt", color: "#5E8B6F" });
   }
-  if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: "Fotos", color: "#1E3A5F" });
+  if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: "Fotos", color: accent });
   if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? "Beleg" : "Belege", color: "#64748B" });
   const kpiBandHtml = (kpiCards.length > 0 && !hasCoverPage)
     ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
@@ -504,21 +520,20 @@ export function generatePdfHtml(
       </section>`
     : "";
 
-  const logoHtml = company.logoBase64
-    ? `<img src="${company.logoBase64}" style="max-height: 50px; max-width: 200px; object-fit: contain; display: block;" />`
-    : "";
-
-  // Right-hand masthead block: company lines + the date. Only present lines are
-  // joined (one <br/> each) so an empty address no longer leaves a blank gap
-  // between the company name and the phone number. The date is always shown.
-  const companyInfoHtml = `<div style="text-align: right; font-size: 10px; color: #444; line-height: 1.5;">${[
-    company.companyName ? `<strong style="color: #222;">${escapeHtml(company.companyName)}</strong>` : "",
-    company.companyAddress ? escapeHtml(company.companyAddress).replace(/\r?\n/g, "<br/>") : "",
-    company.companyPhone ? `Tel: ${escapeHtml(company.companyPhone)}` : "",
-    (company as any).companyEmail ? escapeHtml((company as any).companyEmail) : "",
-    (company as any).companyWebsite ? escapeHtml((company as any).companyWebsite) : "",
-    `<span style="color: #64748b;">Datum: ${escapeHtml(date)}</span>`,
-  ].filter(Boolean).join("<br/>")}</div>`;
+  // Shared letterhead (logo left + compact company block right) — identical to
+  // every other PDF type.
+  const letterhead = renderLetterhead({
+    companyName: company.companyName,
+    companyContactPerson: (company as any).companyContactPerson,
+    companyAddress: company.companyAddress,
+    companyPhone: company.companyPhone,
+    companyMobile: (company as any).companyMobile,
+    companyEmail: (company as any).companyEmail,
+    companyWebsite: (company as any).companyWebsite,
+    logoDataUri: company.logoBase64,
+    logoSize: (company as any).logoSize,
+    marginBottom: 14,
+  });
 
   // Helper: Get caption text for a photo based on its timestamp and transcription segments
   // Returns HTML with the exact sentence at photo time highlighted in bold
@@ -874,7 +889,7 @@ export function generatePdfHtml(
       margin: 0 0 16px 0;
       padding: 1px 0 11px 34px;
       border-bottom: 1px solid #e5e7eb;
-      color: #0F2744;
+      color: ${accent};
       font-size: 17px;
       font-weight: 800;
       letter-spacing: -0.2px;
@@ -886,7 +901,7 @@ export function generatePdfHtml(
       top: 0;
       width: 24px;
       height: 24px;
-      background: #1E3A5F;
+      background: ${accent};
       border-radius: 6px;
       color: #ffffff;
       font-size: 12px;
@@ -1046,7 +1061,7 @@ export function generatePdfHtml(
       margin: 0 0 16px 0;
       padding: 1px 0 11px 34px;
       border-bottom: 1px solid #e5e7eb;
-      color: #0F2744;
+      color: ${accent};
       font-size: 17px;
       font-weight: 800;
       letter-spacing: -0.2px;
@@ -1058,7 +1073,7 @@ export function generatePdfHtml(
       top: 0;
       width: 24px;
       height: 24px;
-      background: #1E3A5F;
+      background: ${accent};
       border-radius: 6px;
       color: #ffffff;
       font-size: 12px;
@@ -1115,7 +1130,7 @@ export function generatePdfHtml(
     .doc-title {
       font-size: 30px;
       font-weight: 800;
-      color: #0F2744;
+      color: ${accent};
       letter-spacing: -0.6px;
       line-height: 1.1;
       margin: 8px 0 2px 0;
@@ -1130,7 +1145,7 @@ export function generatePdfHtml(
       width: 56px;
       height: 4px;
       border-radius: 2px;
-      background: ${accentColor || protocol.projectColor || '#1E3A5F'};
+      background: ${accentColor || protocol.projectColor || '#8A6E52'};
       margin: 12px 0 18px 0;
     }
     .meta-table {
@@ -1351,10 +1366,10 @@ export function generatePdfHtml(
       page-break-before: always;
       font-size: 16px;
       font-weight: 700;
-      color: #0F2744;
+      color: ${accent};
       margin-top: 24px;
       margin-bottom: 12px;
-      border-bottom: 2px solid #0F2744;
+      border-bottom: 2px solid ${accent};
       padding-bottom: 6px;
     }
   </style>
@@ -1365,28 +1380,16 @@ export function generatePdfHtml(
     <div class="rh-right">${escapeHtml(protocol.templateName || "Protokoll")}${protocol.projectName ? " · " + escapeHtml(protocol.projectName) : ""} · ${date}</div>
   </div>
   ${isGutachten ? `
-  <div style="border-bottom: 3px solid #0F2744; padding-bottom: 16px; margin-bottom: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-      <div>
-        ${logoHtml}
-        <h1 style="font-size: 24px; font-weight: 800; color: #0F2744; margin: 8px 0 4px 0;">${escapeHtml(protocol.projectName || "Projekt")}</h1>
-        <p style="font-size: 11px; color: #666; margin: 0;"><strong>${escapeHtml(protocol.templateName || "Gutachterliche Bewertung")}</strong></p>
-      </div>
-      <div style="text-align: right;">
-        ${companyInfoHtml}
-      </div>
-    </div>
+  ${letterhead}
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 24px; font-weight: 800; color: ${accent}; margin: 10px 0 4px 0;">${escapeHtml(protocol.projectName || "Projekt")}</h1>
+    <p style="font-size: 11px; color: #666; margin: 0;"><strong>${escapeHtml(protocol.templateName || "Gutachterliche Bewertung")}</strong></p>
   </div>
   ` : `
-  <div class="header">
-    <div class="header-left">
-      ${logoHtml}
-      <p class="doc-subtitle"><strong>${escapeHtml(protocol.templateName || "Protokoll")}</strong></p>
-      <h1 class="doc-title">${escapeHtml(protocol.projectName || "Projekt")}</h1>
-    </div>
-    <div class="header-right">
-      ${companyInfoHtml}
-    </div>
+  ${letterhead}
+  <div class="header-titles">
+    <p class="doc-subtitle"><strong>${escapeHtml(protocol.templateName || "Protokoll")}</strong></p>
+    <h1 class="doc-title">${escapeHtml(protocol.projectName || "Projekt")}</h1>
   </div>
   <div class="title-rule"></div>
   `}

@@ -53,7 +53,7 @@ export async function generateDefectPdfHtml(
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const accentColor = branding.accentColor || "#1E3A5F";
+  const accentColor = branding.accentColor || "#8A6E52";
   const now = new Date();
   const dateStr = now.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -156,9 +156,22 @@ export async function generateDefectPdfHtml(
     return out;
   };
   const NAVY = "#0F2744";
-  const { resolveBrandingLogo, premiumIcons } = await import("./pdf-premium");
+  const { resolveBrandingLogo, premiumIcons, renderLetterhead, premiumPalette } = await import("./pdf-premium");
   const logoDataUri = await resolveBrandingLogo(branding);
-  const logoTag = logoDataUri ? `<img src="${logoDataUri}" alt="" />` : "";
+  const { beigeBg, beigeBorder } = premiumPalette(accentColor);
+  // Shared letterhead (logo left, compact company block right) — identical across all PDFs.
+  const letterhead = renderLetterhead({
+    companyName: branding.companyName,
+    companyContactPerson: branding.companyContactPerson,
+    companyAddress: branding.companyAddress,
+    companyPhone: branding.companyPhone,
+    companyMobile: branding.companyMobile,
+    companyEmail: branding.companyEmail,
+    companyWebsite: branding.companyWebsite,
+    logoDataUri,
+    logoSize: branding.logoSize,
+    marginBottom: 0,
+  });
   const siTotal = premiumIcons("#334155", 22).clipboard;
   const siOffen = premiumIcons("#DC2626", 22).warning;
   const siProg = premiumIcons("#D97706", 22).calendarClock;
@@ -167,16 +180,6 @@ export async function generateDefectPdfHtml(
   const { applyBrandingVariables } = await import("./pdf-branding-store");
   const nowStr = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const varCtx = { projekt: projectName, firma: branding.companyName, datum: nowStr, dokumenttyp: "Mängeldokumentation" };
-  const coName = esc(branding.companyName || "BuildKI");
-  const coSub = esc(applyBrandingVariables(branding.headerText || "Mängeldokumentation", varCtx));
-  // Company contact for the header band (Firma steht schon links): Adresse,
-  // Telefon, Mail, Website.
-  const headerCompanyMeta = [
-    branding.companyAddress ? esc(branding.companyAddress) : "",
-    branding.companyPhone ? `Tel: ${esc(branding.companyPhone)}` : "",
-    branding.companyEmail ? esc(branding.companyEmail) : "",
-    branding.companyWebsite ? esc(branding.companyWebsite) : "",
-  ].filter(Boolean).join("<br/>");
   const footerLeft = escCss(applyBrandingVariables(branding.footerText || (projectName ? `Projekt: ${projectName}` : "BuildKI"), varCtx));
   const pageBox = branding.showPageNumbers
     ? `@bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
@@ -210,26 +213,26 @@ export async function generateDefectPdfHtml(
 
   /* Title */
   .wrap { padding: 22px 16mm 10px; }
-  .title { font-size: 26px; font-weight: 800; color: ${NAVY}; margin: 0; letter-spacing: 0.2px; }
+  .title { font-size: 26px; font-weight: 800; color: ${accentColor}; margin: 0; letter-spacing: 0.2px; }
   .title-rule { height: 3px; width: 56px; background: ${accentColor}; margin: 11px 0 0; border-radius: 2px; }
   .subtitle { font-size: 11.5px; color: #64748b; margin: 10px 0 0; }
 
   /* Meta chips */
   .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
-  .meta-chip { flex: 1 1 0; min-width: 130px; border: 1px solid #e6eaf0; border-radius: 10px; padding: 11px 13px; background: #fff; }
+  .meta-chip { flex: 1 1 0; min-width: 130px; border: 1px solid ${beigeBorder}; border-radius: 10px; padding: 11px 13px; background: #fff; }
   .meta-chip .lbl { display: flex; align-items: center; gap: 6px; font-size: 8.5px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 5px; }
   .meta-chip .val { font-size: 12.5px; font-weight: 700; color: #253040; line-height: 1.35; }
 
   /* KPI cards */
   .kpi-row { display: flex; gap: 9px; margin: 14px 0 0; }
-  .kpi { flex: 1; border: 1px solid #e6eaf0; border-radius: 12px; padding: 13px 6px 11px; text-align: center; background: #fff; }
+  .kpi { flex: 1; border: 1px solid ${beigeBorder}; border-radius: 12px; padding: 13px 6px 11px; text-align: center; background: #fff; }
   .kpi .ic { display: flex; justify-content: center; margin-bottom: 5px; }
   .kpi .n { font-size: 22px; font-weight: 800; line-height: 1; }
   .kpi .l { font-size: 8.5px; color: #64748b; margin-top: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
 
   /* Summary trio */
   .trio { display: flex; gap: 9px; margin: 12px 0 0; }
-  .trio .box { flex: 1; background: #f7f9fb; border: 1px solid #e6eaf0; border-radius: 12px; padding: 12px 13px; }
+  .trio .box { flex: 1; background: ${beigeBg}; border: 1px solid ${beigeBorder}; border-radius: 12px; padding: 12px 13px; }
   .trio .box .h { font-size: 8.5px; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; font-weight: 800; margin-bottom: 6px; }
   .trio .box .b { font-size: 11.5px; color: #334155; line-height: 1.5; }
   .trio .box .sub { font-size: 9.5px; color: #94a3b8; margin-top: 3px; }
@@ -241,14 +244,14 @@ export async function generateDefectPdfHtml(
 
   /* Section heading */
   .section-chip { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
-  .section-chip .num { background: ${NAVY}; color: #fff; font-size: 12px; font-weight: 800; width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
-  .section-chip .txt { font-size: 14px; font-weight: 800; color: ${NAVY}; text-transform: uppercase; letter-spacing: 0.5px; }
+  .section-chip .num { background: ${accentColor}; color: #fff; font-size: 12px; font-weight: 800; width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; }
+  .section-chip .txt { font-size: 14px; font-weight: 800; color: ${accentColor}; text-transform: uppercase; letter-spacing: 0.5px; }
   .page-break { page-break-before: always; }
   .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.2px; white-space: nowrap; }
 
   /* Overview table */
-  .summary-table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 10.5px; border: 1px solid #e6eaf0; border-radius: 10px; overflow: hidden; }
-  .summary-table th { background: #eef2f7; font-weight: 800; color: ${NAVY}; text-align: left; text-transform: uppercase; font-size: 9px; letter-spacing: 0.4px; padding: 9px 10px; border-bottom: 1px solid #dde4ec; }
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 10.5px; border: 1px solid ${beigeBorder}; border-radius: 10px; overflow: hidden; }
+  .summary-table th { background: ${accentColor}; font-weight: 800; color: #fff; text-align: left; text-transform: uppercase; font-size: 9px; letter-spacing: 0.4px; padding: 9px 10px; border-bottom: 1px solid ${accentColor}; }
   .summary-table td { padding: 9px 10px; border-bottom: 1px solid #eef1f5; vertical-align: top; color: #334155; }
   .summary-table tr:last-child td { border-bottom: none; }
   .summary-table tr:nth-child(even) td { background: #fafbfc; }
@@ -256,24 +259,21 @@ export async function generateDefectPdfHtml(
   .prio-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
 
   /* Detail cards */
-  .defect-card { border: 1px solid #e6eaf0; border-radius: 12px; margin-bottom: 14px; page-break-inside: avoid; overflow: hidden; }
-  .defect-card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 13px 15px; background: #f7f9fb; border-bottom: 1px solid #eef1f5; }
-  .defect-title { font-size: 13px; font-weight: 800; color: ${NAVY}; flex: 1; line-height: 1.35; }
+  .defect-card { border: 1px solid ${beigeBorder}; border-radius: 12px; margin-bottom: 14px; page-break-inside: avoid; overflow: hidden; }
+  .defect-card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 13px 15px; background: ${beigeBg}; border-bottom: 1px solid #eef1f5; }
+  .defect-title { font-size: 13px; font-weight: 800; color: ${accentColor}; flex: 1; line-height: 1.35; }
   .defect-body { padding: 13px 15px; }
   .kv { display: flex; flex-wrap: wrap; gap: 7px 10px; }
   .kv .item { flex: 1 1 42%; min-width: 150px; display: flex; gap: 6px; font-size: 10.5px; }
   .kv .k { color: #94a3b8; font-weight: 700; min-width: 66px; }
   .kv .v { color: #334155; font-weight: 600; }
-  .defect-description { font-size: 11px; color: #334155; margin-top: 11px; padding: 10px 12px; background: #f7f9fb; border-left: 3px solid ${accentColor}; border-radius: 6px; line-height: 1.5; }
+  .defect-description { font-size: 11px; color: #334155; margin-top: 11px; padding: 10px 12px; background: ${beigeBg}; border-left: 3px solid ${accentColor}; border-radius: 6px; line-height: 1.5; }
   .defect-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
-  .defect-photo { width: 128px; height: 94px; object-fit: cover; border-radius: 8px; border: 1px solid #e6eaf0; }
+  .defect-photo { width: 128px; height: 94px; object-fit: cover; border-radius: 8px; border: 1px solid ${beigeBorder}; }
 </style>
 </head>
 <body>
-  <div class="header">
-    <div class="brand">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
-    <div class="rtag"><div class="t">Bericht</div><div class="d">${dateStr}</div>${headerCompanyMeta ? `<div style="font-size:8.5px;color:#9db8d4;margin-top:6px;line-height:1.5;font-weight:400;letter-spacing:0;text-transform:none;">${headerCompanyMeta}</div>` : ""}</div>
-  </div>
+  <div style="padding: 18px 16mm 0;">${letterhead}</div>
   <div class="wrap">
     <h1 class="title">Mängelbericht</h1>
     <div class="title-rule"></div>
@@ -388,7 +388,7 @@ export async function generateDefectPdfHtml(
       }
 
       if (d.aiSummary) {
-        html += `<div style="margin-top: 10px; padding: 10px 12px; background: #eef5fc; border-left: 3px solid ${accentColor}; border-radius: 6px; font-size: 10.5px; line-height: 1.5;">
+        html += `<div style="margin-top: 10px; padding: 10px 12px; background: ${beigeBg}; border-left: 3px solid ${accentColor}; border-radius: 6px; font-size: 10.5px; line-height: 1.5;">
           <strong style="color: ${accentColor};">KI-Zusammenfassung:</strong> ${richText(d.aiSummary)}
         </div>`;
       }

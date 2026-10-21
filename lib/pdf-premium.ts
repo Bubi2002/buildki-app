@@ -36,6 +36,61 @@ export const escHtml = (s: unknown) =>
 const escCss = (s: unknown) =>
   String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
+/**
+ * Beige block tints derived from the brand accent: a soft fill + border for
+ * boxes (info grids, bands, cards). Bars/chips/table-heads use the solid accent.
+ * Used by every PDF generator so one accent themes the whole document.
+ */
+export function premiumPalette(accent: string) {
+  return { beigeBg: `${accent}12`, beigeBorder: `${accent}30` };
+}
+
+/**
+ * Shared PDF letterhead (logo left, compact company block right) used by EVERY
+ * PDF generator so the header looks identical everywhere. Pure inline styles so
+ * it can be dropped into any document's own CSS without class collisions.
+ * The left side shows the uploaded logo (bigger, follows logoSize); when a logo
+ * is present the company NAME text is omitted (the logo carries the wordmark),
+ * otherwise a fallback house mark + name is shown. The right side is the compact
+ * block: Firma · Ansprechpartner · Adresse · "E-Mail: … · Mobile: …" · Website.
+ */
+export function renderLetterhead(opts: {
+  companyName?: string;
+  companyContactPerson?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyMobile?: string;
+  companyEmail?: string;
+  companyWebsite?: string;
+  logoDataUri?: string;
+  logoSize?: "small" | "medium" | "large";
+  marginBottom?: number;
+}): string {
+  const logoH = opts.logoSize === "small" ? 64 : opts.logoSize === "large" ? 128 : 96;
+  const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
+  const logo = opts.logoDataUri
+    ? `<img src="${opts.logoDataUri}" alt="" style="max-height:${logoH}px;max-width:320px;object-fit:contain;display:block;" />`
+    : houseSvg;
+  const name = escHtml(opts.companyName || "");
+  const showName = !opts.logoDataUri && !!name;
+  const contactLine = [
+    opts.companyEmail ? `E-Mail: ${escHtml(opts.companyEmail)}` : "",
+    opts.companyMobile ? `Mobile: ${escHtml(opts.companyMobile)}` : (opts.companyPhone ? `Tel: ${escHtml(opts.companyPhone)}` : ""),
+  ].filter(Boolean).join(" &middot; ");
+  const company = [
+    name ? `<b style="color:#1b2430;font-size:11px;">${name}</b>` : "",
+    escHtml(opts.companyContactPerson || ""),
+    escHtml(opts.companyAddress || "").replace(/\n/g, "<br>"),
+    contactLine,
+    escHtml(opts.companyWebsite || ""),
+  ].filter(Boolean).join("<br>");
+  const mb = opts.marginBottom ?? 0;
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:14px;border-bottom:1px solid #E6EBF1;margin-bottom:${mb}px;">
+    <div style="display:flex;align-items:center;gap:14px;">${logo}${showName ? `<div style="font-size:19px;font-weight:800;color:${NAVY};letter-spacing:-.2px;">${name}</div>` : ""}</div>
+    <div style="text-align:right;font-size:9px;line-height:1.55;color:#6B7A8D;">${company}</div>
+  </div>`;
+}
+
 /** Small line icons (stroke = accent color). */
 export function premiumIcons(accent: string, size = 14) {
   const s = (inner: string) =>
@@ -127,7 +182,7 @@ export function buildPremiumHtml(opts: {
   const beigeBg = `${brand}12`;
   const beigeBorder = `${brand}30`;
   // Logo height follows the configured size (keeps aspect ratio via width:auto).
-  const logoH = branding.logoSize === "small" ? 40 : branding.logoSize === "large" ? 84 : 60;
+  const logoH = branding.logoSize === "small" ? 64 : branding.logoSize === "large" ? 128 : 96;
   // Fallback brand mark (shown only when no logo is uploaded): navy, so a light
   // accent never turns it into an unreadable yellow/orange house.
   const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
@@ -178,7 +233,7 @@ export function buildPremiumHtml(opts: {
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #1f2937; font-size: 12px; line-height: 1.5; }
   .topbar { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 28px 14px; border-bottom: 1px solid #E6EBF1; }
   .topbar .brand { display: flex; align-items: center; gap: 10px; }
-  .topbar .brand img { height: ${logoH}px; width: auto; object-fit: contain; }
+  .topbar .brand img { max-height: ${logoH}px; max-width: 320px; width: auto; object-fit: contain; }
   /* Company wordmark stays navy ink (not the accent): a light accent like
      yellow/orange is unreadable on white, and the house style keeps the name
      navy while the accent themes the rules/pills/icons. */
@@ -227,7 +282,7 @@ export function buildPremiumHtml(opts: {
 </head>
 <body>
   <div class="topbar">
-    <div class="brand">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
+    <div class="brand">${logoTag}${logoDataUri ? "" : `<div class="co">${coName}<small>${coSub}</small></div>`}</div>
     ${companyBlock}
   </div>
   <div class="wrap">

@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { getFloorPlans } from "./floor-plan-store";
 import { getPdfBranding } from "./pdf-branding-store";
+import { resolveBrandingLogo } from "./pdf-premium";
 import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -71,8 +72,12 @@ export async function generateRaumbuchPdf(
   template: RaumbuchTemplate = "standard",
 ): Promise<string> {
   const branding = await getPdfBranding().catch(() => null);
-  const NAVY = "#0F2744";
-  const accent = branding?.accentColor || "#1E3A5F";
+  const accent = branding?.accentColor || "#8A6E52";
+  // Headings/dividers follow the brand accent (warm brown); beige tints for blocks.
+  const NAVY = accent;
+  const beigeBg = `${accent}12`;
+  const beigeBorder = `${accent}30`;
+  const logoDataUri = await resolveBrandingLogo(branding).catch(() => "");
   const projectId = entries[0]?.projectId || "";
   const plans = await getFloorPlans(projectId).catch(() => [] as any[]);
   const planCache: Record<string, { uri: string | null; aspect: number }> = {};
@@ -240,7 +245,7 @@ export async function generateRaumbuchPdf(
   // ── Cover page ──
   content.push(`
     <section class="page cover">
-      <div class="cover-co">${co}</div>
+      ${logoDataUri ? `<img class="cover-logo" src="${logoDataUri}" />` : `<div class="cover-co">${co}</div>`}
       ${heroDataUri ? `<img class="cover-hero" src="${heroDataUri}" />` : `<div class="cover-hero ph"></div>`}
       <div class="cover-body">
         <div class="cover-kicker">Raumbuch</div>
@@ -352,13 +357,14 @@ export async function generateRaumbuchPdf(
     /* ── Cover ── */
     .cover { padding: 0; }
     .cover-co { font-size: 22px; font-weight: 800; letter-spacing: 0.5px; color: ${NAVY}; padding: 22mm 14mm 10px; }
+    .cover-logo { display: block; max-height: 120px; max-width: 320px; object-fit: contain; padding: 20mm 14mm 10px; }
     .cover-hero { display: block; width: 100%; height: 95mm; object-fit: cover; }
     .cover-hero.ph { height: 2mm; background: ${NAVY}; }
     .cover-body { padding: 16px 14mm 0; }
     .cover-kicker { font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: ${accent}; }
     .cover-title { font-size: 26px; font-weight: 800; color: ${NAVY}; margin: 4px 0 0; }
     .cover-meta { margin-top: 18px; font-size: 12.5px; line-height: 1.6; color: #253040; }
-    .cover-block { margin-bottom: 12px; }
+    .cover-block { margin-bottom: 10px; background: ${beigeBg}; border: 1px solid ${beigeBorder}; border-radius: 10px; padding: 10px 12px; }
     .cover-block b { color: ${NAVY}; }
     .cover-date { margin-top: 14px; font-size: 10px; color: #9aa6b4; letter-spacing: 1px; }
     /* ── Table of contents ── */
