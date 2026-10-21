@@ -653,16 +653,24 @@ export default function ProjectWizardScreen() {
   // produces clean names (the list is also editable afterwards).
   const parseRoomNames = (text: string): string[] =>
     text
-      .split(/\s*(?:,|;|·|\/|\n|\bund\b|\bsowie\b|\band\b)\s*/gi)
+      // Spoken joiner → "/" so two words that belong together stay ONE name:
+      // "Wohnen Strich Essen" / "… Schrägstrich …" / "… slash …" → "Wohnen/Essen".
+      .replace(/\s*\b(?:schr(?:ä|ae)gstrich|querstrich|slash|strich)\b\s*/gi, "/")
+      .replace(/\s*\/\s*/g, "/")
+      // NOTE: "/" is intentionally NOT a separator (combined rooms keep it).
+      .split(/\s*(?:,|;|·|\n|\bund\b|\bsowie\b|\band\b)\s*/gi)
       .map((s) =>
         s
           .trim()
           .replace(/[.!?]+$/g, "")
           .replace(/^(?:es\s+gibt\s+(?:noch\s+)?|hier\s+ist\s+|das\s+ist\s+|noch\s+|ein(?:e|en)?\s+|a\s+|an\s+|the\s+|there\s+is\s+(?:a\s+)?)/i, "")
+          .replace(/^\/+|\/+$/g, "") // drop stray leading/trailing slash
           .trim(),
       )
       .filter((s) => s.length >= 2 && !/^\d+$/.test(s) && !/^(zwei|drei|vier|eins|two|three)$/i.test(s))
-      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      // Capitalize the first letter AND each part after a "/", "-" or space
+      // (so "wohnen/essen" → "Wohnen/Essen").
+      .map((s) => s.replace(/(^|[/\-\s])([a-zäöüß])/g, (_m, p, c) => p + c.toUpperCase()))
       .slice(0, 25);
 
   const startVoiceRooms = async () => {
