@@ -362,16 +362,26 @@ async function checkDefectDeadlines(prefs: NotificationPreferences): Promise<voi
     const skip = (s: string) => s === "erledigt" || s === "geschlossen" || s === "abgelehnt";
     const upcoming = all.filter((d) => !skip(d.status) && d.dueDate && new Date(d.dueDate) <= horizon && new Date(d.dueDate) >= now);
     const overdue = all.filter((d) => !skip(d.status) && d.dueDate && new Date(d.dueDate) < now);
+    // IMPORTANT: schedule these for the daily reminder time, NOT `trigger: null`
+    // (which fires IMMEDIATELY). scheduleNotifications() runs on app start and
+    // whenever the notification settings screen opens/changes — an immediate
+    // trigger spammed the user with these defect pushes every single time.
+    const bump = (addMin: number) => {
+      const total = prefs.reminderHour * 60 + prefs.reminderMinute + addMin;
+      return { hour: Math.floor(total / 60) % 24, minute: ((total % 60) + 60) % 60 };
+    };
     if (overdue.length > 0) {
+      const b = bump(15);
       await Notifications.scheduleNotificationAsync({
         content: { title: `⚠️ ${overdue.length} überfällige Mängel`, body: overdue.slice(0, 3).map((d) => d.title).join(", ") + (overdue.length > 3 ? ` und ${overdue.length - 3} weitere` : ""), data: { type: "defect_overdue" } },
-        trigger: null,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: b.hour, minute: b.minute },
       });
     }
     if (upcoming.length > 0) {
+      const b = bump(17);
       await Notifications.scheduleNotificationAsync({
         content: { title: `📋 ${upcoming.length} Mängel-Fristen in ${prefs.defectDeadlineDays} Tagen`, body: upcoming.slice(0, 3).map((d) => d.title).join(", ") + (upcoming.length > 3 ? ` und ${upcoming.length - 3} weitere` : ""), data: { type: "defect_deadline" } },
-        trigger: null,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: b.hour, minute: b.minute },
       });
     }
   } catch {}
