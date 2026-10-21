@@ -1607,65 +1607,8 @@ return (
             optional
           />
 
-          {/* Darstellung */}
-          <GroupHeading colors={colors}>{t('company_group_display' as any)}</GroupHeading>
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <MaterialIcons name="palette" size={16} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>{t('company_brand_color' as any)}</Text>
-            </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {BRAND_COLORS.map((c) => {
-                const active = (branding?.accentColor || "#1E3A5F").toLowerCase() === c.toLowerCase();
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => updateBranding("accentColor", c)}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: c,
-                      borderWidth: active ? 3 : 1,
-                      borderColor: active ? colors.foreground : colors.border,
-                    }}
-                  />
-                );
-              })}
-            </View>
-          </View>
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <MaterialIcons name="photo-size-select-large" size={16} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>{t('company_logo_size' as any)}</Text>
-            </View>
-            <Segmented
-              colors={colors}
-              value={branding?.logoSize || "medium"}
-              onChange={(v) => updateBranding("logoSize", v as any)}
-              options={[
-                { v: "small", label: t('logo_size_small' as any) },
-                { v: "medium", label: t('logo_size_medium' as any) },
-                { v: "large", label: t('logo_size_large' as any) },
-              ]}
-            />
-          </View>
-          <View style={styles.inputGroup}>
-            <View style={styles.inputLabel}>
-              <MaterialIcons name="align-horizontal-left" size={16} color={colors.primary} />
-              <Text style={[styles.labelText, { color: colors.foreground }]}>{t('company_logo_position' as any)}</Text>
-            </View>
-            <Segmented
-              colors={colors}
-              value={branding?.logoPosition || "left"}
-              onChange={(v) => updateBranding("logoPosition", v as any)}
-              options={[
-                { v: "left", label: t('logo_pos_left' as any) },
-                { v: "center", label: t('logo_pos_center' as any) },
-                { v: "right", label: t('logo_pos_right' as any) },
-              ]}
-            />
-          </View>
+          {/* Firmenfarbe, Logogröße und Logoposition auf Wunsch entfernt – die
+              PDFs nutzen die festen Vorgaben (Akzent Braun, Logo mittel, links). */}
           <LabeledInput
             colors={colors}
             icon="draw"
