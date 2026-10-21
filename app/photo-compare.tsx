@@ -309,8 +309,8 @@ export default function PhotoCompareScreen() {
       await saveComparisons(updatedPairs);
       const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const dataRows = [
-        selectedPair.trade ? `<p style="margin:3px 0;"><strong style="color:#1E3A5F;">${t('photo_compare_trade')}:</strong> ${escapeHtml(selectedPair.trade)}</p>` : "",
-        selectedPair.description ? `<p style="margin:3px 0;"><strong style="color:#1E3A5F;">${t('photo_compare_description')}:</strong> ${escapeHtml(selectedPair.description)}</p>` : "",
+        selectedPair.trade ? `<p style="margin:3px 0;"><strong style="color:#1b2430;">${t('photo_compare_trade')}:</strong> ${escapeHtml(selectedPair.trade)}</p>` : "",
+        selectedPair.description ? `<p style="margin:3px 0;"><strong style="color:#1b2430;">${t('photo_compare_description')}:</strong> ${escapeHtml(selectedPair.description)}</p>` : "",
       ].join("");
       // Project meta (Bauvorhaben/Adresse) comes from the project itself; Raum is
       // the one optional field entered here.
@@ -338,15 +338,15 @@ export default function PhotoCompareScreen() {
       const cell = (label: string, color: string, date: string, img: string | null) => `
         <td style="width:50%; vertical-align:top; padding:6px;">
           <div style="font-weight:700; color:${color}; text-align:center; margin-bottom:6px; font-size:13px;">${label}</div>
-          ${img ? `<img src="${img}" style="width:100%; border:1px solid #e8ecf1; border-radius:8px;"/>` : `<div style="height:200px; border:1px dashed #e8ecf1; border-radius:8px;"></div>`}
+          ${img ? `<img src="${img}" style="width:100%; max-height:150mm; object-fit:contain; display:block; border:1px solid #e8ecf1; border-radius:8px;"/>` : `<div style="height:200px; border:1px dashed #e8ecf1; border-radius:8px;"></div>`}
           <div style="text-align:center; color:#64748b; font-size:11px; margin-top:6px;">${date}</div>
         </td>`;
       const branding = await getPdfBranding().catch(() => null);
-      const accent = branding?.accentColor || "#1E3A5F";
+      const accent = branding?.accentColor || "#8A6E52";
       const logoDataUri = await resolveBrandingLogo(branding);
       const body = `
         ${metaHeader}
-        <table style="width:100%; border-collapse:collapse; margin-top:14px;"><tr>
+        <table style="width:100%; border-collapse:collapse; margin-top:14px; page-break-inside:avoid;"><tr>
           ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
           ${cell(t('nachher'), "#4E8B6B", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
         </tr></table>
