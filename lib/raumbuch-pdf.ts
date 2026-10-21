@@ -111,7 +111,7 @@ export async function generateRaumbuchPdf(
       // The plan excerpt is embedded on EVERY wall page, so its base64 is
       // repeated many times in the HTML. Keep it small (displayed at ~190px) to
       // avoid blowing up the HTML size and the iOS PDF renderer's memory.
-      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 700, 0.55), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
+      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 1200, 0.72), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
     }
     return planCache[e.planId];
   };
@@ -353,9 +353,12 @@ export async function generateRaumbuchPdf(
     .map(([id, pc]) => (pc.uri ? `.${planClass(id)} { background-image: url("${pc.uri}"); }` : ""))
     .join("\n");
 
+  // CSS-safe: a raw newline / quote inside a @page content string breaks the
+  // WHOLE @page rule, dropping BOTH the footer text AND the page number.
+  const cssStr = (s: unknown) => String(s ?? "").replace(/[\r\n]+/g, " ").replace(/\\/g, "\\\\").replace(/"/g, '\\"').trim();
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
     ${planCss}
-    @page { margin: 0 0 12mm 0; @bottom-left { content: "${esc(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 6mm 14mm; } @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 6mm 0; } }
+    @page { margin: 0 0 16mm 0; @bottom-left { content: "${cssStr(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 8mm 14mm; } @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 8mm 0; } }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #253040; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .page { padding: 18px 14mm 0; }
