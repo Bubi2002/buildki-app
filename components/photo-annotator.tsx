@@ -39,6 +39,8 @@ type Annotation = {
   color: AnnotationColor;
   points: { x: number; y: number }[];
   text?: string;
+  /** Stroke/line width chosen in the editor; older annotations fall back to the default. */
+  width?: number;
 };
 
 type Props = {
@@ -52,6 +54,10 @@ type Props = {
 };
 
 const COLORS: AnnotationColor[] = ["#EF4444", "#F59E0B", "#22C55E", "#3B82F6", "#FFFFFF"];
+// Selectable stroke widths (thin → thick). Default is the middle one; all are
+// slimmer than the old fixed width of 3 so arrows/markers read smaller.
+const STROKE_SIZES = [1.5, 2.5, 4] as const;
+const DEFAULT_STROKE = 2.5;
 const TOOLS: { type: AnnotationType; icon: string; label: string }[] = [
   { type: "freehand", icon: "gesture", label: "photo_annotator_tool_freehand" },
   { type: "arrow", icon: "arrow-forward", label: "photo_annotator_tool_arrow" },
@@ -65,6 +71,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
   const [annotations, setAnnotations] = useState<Annotation[]>(existingAnnotations);
   const [currentTool, setCurrentTool] = useState<AnnotationType>("freehand");
   const [currentColor, setCurrentColor] = useState<AnnotationColor>("#EF4444");
+  const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [imageSize, setImageSize] = useState({ width: SCREEN_WIDTH - 32, height: (SCREEN_WIDTH - 32) * 1.33 });
@@ -111,6 +118,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
       type: currentTool,
       color: currentColor,
       points: [...currentPath],
+      width: strokeWidth,
     };
 
     setAnnotations(prev => [...prev, newAnnotation]);
@@ -120,7 +128,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Measure: ask for the real-world length and label the line.
     if (currentTool === "measure") promptMeasure(newAnnotation.id);
-  }, [isDrawing, currentPath, currentTool, currentColor]);
+  }, [isDrawing, currentPath, currentTool, currentColor, strokeWidth]);
 
   const promptMeasure = (id: string) => {
     const apply = (val?: string) => {
@@ -170,14 +178,19 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
 
   const renderAnnotation = (annotation: Annotation) => {
     const { type, color, points, id, text } = annotation;
+    const w = annotation.width ?? DEFAULT_STROKE;
     if (type === "marker") {
       const p = points[0];
       if (!p) return null;
+      // Marker scales with the chosen width but stays compact.
+      const rOuter = w + 3.5;
+      const ring = Math.max(1.2, w * 0.7);
+      const rInner = Math.max(1.4, w * 0.8);
       return (
         <React.Fragment key={id}>
-          <Circle cx={p.x} cy={p.y} r={8} fill={color} />
-          <Circle cx={p.x} cy={p.y} r={8} fill="none" stroke="#FFFFFF" strokeWidth={2} />
-          <Circle cx={p.x} cy={p.y} r={3} fill="#FFFFFF" />
+          <Circle cx={p.x} cy={p.y} r={rOuter} fill={color} />
+          <Circle cx={p.x} cy={p.y} r={rOuter} fill="none" stroke="#FFFFFF" strokeWidth={ring} />
+          <Circle cx={p.x} cy={p.y} r={rInner} fill="#FFFFFF" />
         </React.Fragment>
       );
     }
@@ -188,22 +201,22 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
         const d = points.reduce((acc, p, i) => {
           return acc + (i === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`);
         }, "");
-        return <Path key={id} d={d} stroke={color} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />;
+        return <Path key={id} d={d} stroke={color} strokeWidth={w} fill="none" strokeLinecap="round" strokeLinejoin="round" />;
       }
       case "arrow": {
         const start = points[0];
         const end = points[points.length - 1];
         const angle = Math.atan2(end.y - start.y, end.x - start.x);
-        const headLen = 15;
+        const headLen = 6 + w * 2;
         const head1x = end.x - headLen * Math.cos(angle - Math.PI / 6);
         const head1y = end.y - headLen * Math.sin(angle - Math.PI / 6);
         const head2x = end.x - headLen * Math.cos(angle + Math.PI / 6);
         const head2y = end.y - headLen * Math.sin(angle + Math.PI / 6);
         return (
           <React.Fragment key={id}>
-            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={3} />
-            <Line x1={end.x} y1={end.y} x2={head1x} y2={head1y} stroke={color} strokeWidth={3} />
-            <Line x1={end.x} y1={end.y} x2={head2x} y2={head2y} stroke={color} strokeWidth={3} />
+            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={w} strokeLinecap="round" />
+            <Line x1={end.x} y1={end.y} x2={head1x} y2={head1y} stroke={color} strokeWidth={w} strokeLinecap="round" />
+            <Line x1={end.x} y1={end.y} x2={head2x} y2={head2y} stroke={color} strokeWidth={w} strokeLinecap="round" />
           </React.Fragment>
         );
       }
@@ -215,16 +228,16 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
         const rx = Math.abs(end.x - start.x) / 2;
         const ry = Math.abs(end.y - start.y) / 2;
         const r = Math.max(rx, ry);
-        return <Circle key={id} cx={cx} cy={cy} r={r} stroke={color} strokeWidth={3} fill="none" />;
+        return <Circle key={id} cx={cx} cy={cy} r={r} stroke={color} strokeWidth={w} fill="none" />;
       }
       case "rect": {
         const start = points[0];
         const end = points[points.length - 1];
         const x = Math.min(start.x, end.x);
         const y = Math.min(start.y, end.y);
-        const w = Math.abs(end.x - start.x);
-        const h = Math.abs(end.y - start.y);
-        return <Rect key={id} x={x} y={y} width={w} height={h} stroke={color} strokeWidth={3} fill="none" />;
+        const rw = Math.abs(end.x - start.x);
+        const rh = Math.abs(end.y - start.y);
+        return <Rect key={id} x={x} y={y} width={rw} height={rh} stroke={color} strokeWidth={w} fill="none" />;
       }
       case "measure": {
         const start = points[0];
@@ -233,15 +246,16 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
         const midy = (start.y + end.y) / 2;
         const angle = Math.atan2(end.y - start.y, end.x - start.x);
         const perp = angle + Math.PI / 2;
-        const tick = 6;
+        const mw = Math.max(1.2, w * 0.8);
+        const tick = 4 + w;
         const tdx = tick * Math.cos(perp), tdy = tick * Math.sin(perp);
         const label = text || "";
         const boxW = Math.max(24, label.length * 6.5 + 10);
         return (
           <React.Fragment key={id}>
-            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={2} />
-            <Line x1={start.x - tdx} y1={start.y - tdy} x2={start.x + tdx} y2={start.y + tdy} stroke={color} strokeWidth={2} />
-            <Line x1={end.x - tdx} y1={end.y - tdy} x2={end.x + tdx} y2={end.y + tdy} stroke={color} strokeWidth={2} />
+            <Line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={mw} />
+            <Line x1={start.x - tdx} y1={start.y - tdy} x2={start.x + tdx} y2={start.y + tdy} stroke={color} strokeWidth={mw} />
+            <Line x1={end.x - tdx} y1={end.y - tdy} x2={end.x + tdx} y2={end.y + tdy} stroke={color} strokeWidth={mw} />
             {label ? (
               <>
                 <Rect x={midx - boxW / 2} y={midy - 20} width={boxW} height={14} rx={3} fill="rgba(0,0,0,0.65)" />
@@ -263,6 +277,7 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
       type: currentTool,
       color: currentColor,
       points: currentPath,
+      width: strokeWidth,
     });
   };
 
@@ -275,10 +290,11 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
       type: "marker",
       color: currentColor,
       points: [{ x, y }],
+      width: strokeWidth,
     };
     setAnnotations(prev => [...prev, newAnnotation]);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [currentColor]);
+  }, [currentColor, strokeWidth]);
 
   const cw = imageSize.width;
   const ch = imageSize.height;
@@ -371,6 +387,8 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
                   source={{ uri: photoUri }}
                   style={[styles.image, { width: imageSize.width, height: imageSize.height }]}
                   contentFit="contain"
+                  allowDownscaling={false}
+                  cachePolicy="memory-disk"
                   onLoad={(e) => {
                     const { width: imgW, height: imgH } = e.source;
                     const containerW = SCREEN_WIDTH - 32;
@@ -403,6 +421,23 @@ export function PhotoAnnotator({ visible, photoUri, onClose, onSave, existingAnn
                 <Text style={[styles.toolLabel, currentTool === tool.type && { color: "#007AFF" }]}>{t(tool.label as any)}</Text>
               </Pressable>
             ))}
+          </View>
+
+          {/* Stroke width selection */}
+          <View style={styles.sizeRow}>
+            <MaterialIcons name="line-weight" size={20} color="#888" style={{ marginRight: 4 }} />
+            {STROKE_SIZES.map((s) => {
+              const on = strokeWidth === s;
+              return (
+                <Pressable
+                  key={s}
+                  onPress={() => setStrokeWidth(s)}
+                  style={[styles.sizeBtn, on && styles.sizeBtnActive]}
+                >
+                  <View style={{ width: 26, height: Math.max(2, s * 1.6), borderRadius: 999, backgroundColor: on ? "#007AFF" : "#AAA" }} />
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Color selection */}
@@ -491,6 +526,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#999",
     marginTop: 2,
+  },
+  sizeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  sizeBtn: {
+    height: 30,
+    minWidth: 42,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2E2E2E",
+  },
+  sizeBtnActive: {
+    backgroundColor: "#007AFF20",
   },
   colorRow: {
     flexDirection: "row",
