@@ -514,6 +514,14 @@ export default function MeasureScreen() {
 
       const dateRow = { label: t('measure_pdf_date' as any), value: new Date().toLocaleDateString(DATE_LOCALE[language] || "de-DE", { day: "2-digit", month: "long", year: "numeric" }) };
 
+      // Ort (Etage/Raum) und zugeordneter Mangel – auf Wunsch mit im PDF.
+      const defectTitle = selectedDefectId ? (defects.find((d) => d.id === selectedDefectId)?.title || "") : "";
+      const contextRows = [
+        { label: t('measure_field_floor' as any), value: selectedFloor || "" },
+        { label: t('measure_field_room' as any), value: selectedRoom || "" },
+        { label: t('measure_assign_label' as any), value: defectTitle },
+      ];
+
       let rows: { label: string; value: string }[];
       if (hasActive) {
         const accuracyText =
@@ -545,6 +553,7 @@ export default function MeasureScreen() {
         });
         rows.push(dateRow);
       }
+      rows = [...contextRows, ...rows];
 
       const result = await exportMeasurementPdf({
         imageUri,
@@ -580,8 +589,14 @@ export default function MeasureScreen() {
     [evidence],
   );
 
-  const rowsForEvidence = (e: EvidenceItem): { label: string; value: string }[] =>
-    (e.measurements || []).map((m: any, i: number) => {
+  const rowsForEvidence = (e: EvidenceItem): { label: string; value: string }[] => {
+    const defectTitle = e.defectId ? (defects.find((d) => d.id === e.defectId)?.title || "") : "";
+    const context = [
+      { label: t('measure_field_floor' as any), value: (e.floor || "") as string },
+      { label: t('measure_field_room' as any), value: (e.room || "") as string },
+      { label: t('measure_assign_label' as any), value: defectTitle },
+    ];
+    const measRows = (e.measurements || []).map((m: any, i: number) => {
       const mMethod = METHODS.find((x) => x.value === m.method) || METHODS[0];
       const acc = mMethod.accuracy === "estimated"
         ? t('measure_quality_estimate' as any)
@@ -592,6 +607,8 @@ export default function MeasureScreen() {
       const tol = m.tolerance != null ? ` ±${String(m.tolerance).replace(".", ",")}${m.toleranceUnit || ""}` : "";
       return { label: `M${i + 1}`, value: `${valStr}${tol} · ${t(mMethod.label as any)} (${acc})` };
     });
+    return [...context, ...measRows];
+  };
 
   const evidenceTitle = (e: EvidenceItem): string =>
     (e.findingText || e.room || e.sourceFilename || t('measure_title' as any)) as string;

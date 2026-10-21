@@ -105,7 +105,7 @@ export async function exportMeasurementsOverviewPdf(params: {
       .join("");
     sections.push(`
       <div style="margin-top:18px;page-break-inside:avoid;">
-        <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:6px;">${escHtml(it.label)}</div>
+        <div style="font-size:15px;font-weight:800;color:${accent};margin-bottom:6px;">${escHtml(it.label)}</div>
         ${dataUri ? `<div class="card" style="text-align:center;padding:10px;background:#f8fafc;"><img src="${dataUri}" style="max-width:100%;max-height:360px;object-fit:contain;display:inline-block;" /></div>` : ""}
         ${it.findingText && it.findingText.trim() ? `<div class="note" style="white-space:pre-wrap;margin-top:8px;">${escHtml(it.findingText)}</div>` : ""}
         <table class="prem-table" style="margin-top:10px;"><tbody>${rowsHtml}</tbody></table>
