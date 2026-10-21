@@ -51,31 +51,57 @@ function buildChapteredTranscript(
     .filter((m) => m.label.startsWith("KAPITEL:"))
     .map((m) => ({ time: m.time, name: m.label.replace(/^KAPITEL:\s*/, "").trim(), texts: [] as string[] }))
     .sort((a, b) => a.time - b.time);
-  // Only worth segmenting with 2+ chapters and real segment timestamps.
-  if (chapters.length < 2 || !segments || segments.length === 0) return fullText;
-  const preamble: string[] = [];
-  for (const seg of segments) {
-    let ci = -1;
-    for (let i = 0; i < chapters.length; i++) {
-      if (seg.start >= chapters[i].time - 1) ci = i; else break; // 1s tolerance
-    }
-    if (ci === -1) preamble.push(seg.text); else chapters[ci].texts.push(seg.text);
-  }
+  if (chapters.length < 2) return fullText;
+
   const clean = (s: string) => s.replace(/\s+/g, " ").trim();
-  // Safety: if the timing clearly didn't line up (everything landed in the first
-  // chapter / preamble and the rest is empty), fall back to the raw transcript.
-  const filled = chapters.filter((c) => c.texts.length > 0).length;
-  if (filled <= 1) return fullText;
-  let out = "";
   // Tell the model the text is split by room, so every finding/defect/task is
   // assigned to the room under whose chapter it was spoken — not all to one room.
-  out += `HINWEIS: Dieser Text ist nach Räumen/Bereichen gegliedert. Jeder Abschnitt beginnt mit "=== KAPITEL: <Raum> ===". Ordne jede Feststellung, jeden Mangel und jede Aufgabe GENAU dem Raum/Bereich zu, unter dessen Kapitel sie genannt wurde. Verschiebe nichts in einen anderen Raum und erfinde keine Räume.\n\n`;
-  const pre = clean(preamble.join(" "));
-  if (pre) out += `${pre}\n\n`;
-  for (const ch of chapters) {
-    out += `=== KAPITEL: ${ch.name} ===\n${clean(ch.texts.join(" ")) || "(hierzu wurde nichts gesprochen)"}\n\n`;
+  const HINT = `HINWEIS: Dieser Text ist nach Räumen/Bereichen gegliedert. Jeder Abschnitt beginnt mit "=== KAPITEL: <Raum> ===". Ordne jede Feststellung, jeden Mangel und jede Aufgabe GENAU dem Raum/Bereich zu, unter dessen Kapitel sie genannt wurde. Verschiebe nichts in einen anderen Raum und erfinde keine Räume.\n\n`;
+  const render = (pre: string) => {
+    let out = HINT;
+    if (pre) out += `${pre}\n\n`;
+    for (const ch of chapters) {
+      out += `=== KAPITEL: ${ch.name} ===\n${clean(ch.texts.join(" ")) || "(hierzu wurde nichts gesprochen)"}\n\n`;
+    }
+    return out.trim();
+  };
+
+  // 1) Preferred: real Whisper segment timestamps → assign each segment to the
+  //    last chapter whose marker time is at/just before the segment start.
+  if (segments && segments.length > 0) {
+    const preamble: string[] = [];
+    for (const seg of segments) {
+      let ci = -1;
+      for (let i = 0; i < chapters.length; i++) {
+        if (seg.start >= chapters[i].time - 1) ci = i; else break; // 1s tolerance
+      }
+      if (ci === -1) preamble.push(seg.text); else chapters[ci].texts.push(seg.text);
+    }
+    if (chapters.filter((c) => c.texts.length > 0).length >= 2) return render(clean(preamble.join(" ")));
+    // Timing didn't line up (segments missing times or everything in one chapter)
+    // → reset and fall through to the proportional split.
+    chapters.forEach((c) => { c.texts = []; });
   }
-  return out.trim();
+
+  // 2) Fallback (no usable segment timing): split the transcript across the
+  //    chapters PROPORTIONALLY to their marker-time spans. Rough, but keeps each
+  //    room's content with that room instead of lumping everything into one.
+  const words = clean(fullText).split(" ").filter(Boolean);
+  if (words.length < chapters.length * 3) return fullText;
+  const lastT = chapters[chapters.length - 1].time;
+  const firstT = chapters[0].time;
+  const avgGap = chapters.length > 1 ? Math.max(5, (lastT - firstT) / (chapters.length - 1)) : 30;
+  const endT = lastT + avgGap; // estimated recording end (last marker + one avg gap)
+  if (endT <= 0) return fullText;
+  const n = words.length;
+  const idxAt = (t: number) => Math.max(0, Math.min(n, Math.round((t / endT) * n)));
+  const pre = words.slice(0, idxAt(firstT)).join(" ");
+  for (let i = 0; i < chapters.length; i++) {
+    const start = idxAt(chapters[i].time);
+    const end = i < chapters.length - 1 ? idxAt(chapters[i + 1].time) : n;
+    chapters[i].texts = [words.slice(start, Math.max(start, end)).join(" ")];
+  }
+  return render(pre);
 }
 
 // Picks the best-fitting template from the transcript when the user chose
