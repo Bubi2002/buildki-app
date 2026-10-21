@@ -377,6 +377,18 @@ export function generatePdfHtml(
     ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
     : "";
 
+  // Inhaltsverzeichnis der begangenen Räume (aus den Kapitel-Markern). Füllt die
+  // sonst fast leere erste Inhaltsseite, wenn ein Deckblatt vorangestellt wird.
+  const roomChapters = ((protocol as any).markers || [])
+    .filter((m: any) => typeof m?.label === "string" && m.label.startsWith("KAPITEL:"))
+    .map((m: any) => String(m.label).replace(/^KAPITEL:\s*/, "").trim())
+    .filter(Boolean);
+  const tocHtml = (hasCoverPage && roomChapters.length >= 2)
+    ? `<div class="doc-toc"><div class="doc-toc-h">Inhalt</div>${roomChapters
+        .map((r: string, i: number) => `<div class="doc-toc-row"><span class="doc-toc-n">${i + 1}</span><span class="doc-toc-t">${escapeHtml(r)}</span></div>`)
+        .join("")}</div>`
+    : "";
+
   // Which legacy photos are placed inline via [FOTO X]? (used for evidence de-duplication + the
   // Fotodokumentation appendix further below). Computed once up front so the evidence section can
   // avoid re-rendering an image that already appears inline.
@@ -1151,6 +1163,11 @@ export function generatePdfHtml(
       background: ${accentColor || protocol.projectColor || '#8A6E52'};
       margin: 12px 0 18px 0;
     }
+    .doc-toc { margin: 8px 0 6px; }
+    .doc-toc-h { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: ${accent}; margin: 0 0 10px; }
+    .doc-toc-row { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid #eef1f5; font-size: 12.5px; }
+    .doc-toc-n { min-width: 22px; height: 22px; border-radius: 6px; background: ${accent}; color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+    .doc-toc-t { color: #1b2430; font-weight: 600; }
     .meta-table {
       width: 100%;
       border-collapse: separate;
@@ -1293,7 +1310,7 @@ export function generatePdfHtml(
       align-items: center;
       gap: 6px;
       font-weight: 800;
-      color: #334155;
+      color: #1b2430;
     }
     .running-header .rh-left img {
       max-height: 15px;
@@ -1429,6 +1446,8 @@ export function generatePdfHtml(
   </table>` : ''}
 
   ${kpiBandHtml}
+
+  ${tocHtml}
 
   ${todos.length > 0 && layoutShowTodos ? `
   <div class="section-block" style="margin: 24px 0;">
@@ -1693,16 +1712,12 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
 
   // Generate PDF (with timeout to prevent hanging)
   const printResult = await withTimeout(
+    // No native `margins` here on purpose: they override the CSS @page rule and
+    // disable its margin boxes — i.e. the footer + page number silently vanish.
+    // The CSS @page (margin: 17mm 18mm 20mm 18mm) is the single source of truth,
+    // consistent with every other PDF, so the footer page number renders.
     Print.printToFileAsync({
       html: finalHtml,
-      // Generous page margins so content never sits at the edge. These override
-      // the CSS @page margin, so they are the single source of truth here.
-      margins: {
-        left: 48,
-        top: 46,
-        right: 48,
-        bottom: 56,
-      },
     }),
     30000, // 30 second timeout for PDF generation
     null

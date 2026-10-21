@@ -72,7 +72,7 @@ export function renderLetterhead(opts: {
   const logoH = opts.logoSize === "small" ? 64 : opts.logoSize === "large" ? 128 : 96;
   const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
   const name = escHtml(opts.companyName || "");
-  const wordmark = name ? `<div style="font-size:19px;font-weight:800;color:${NAVY};letter-spacing:-.2px;">${name}</div>` : "";
+  const wordmark = name ? `<div style="font-size:19px;font-weight:800;color:#1b2430;letter-spacing:-.2px;">${name}</div>` : "";
   // Left side: hideLogo → wordmark only; else the uploaded logo (name hidden,
   // the logo carries it); else the house fallback + wordmark.
   const left = opts.hideLogo
