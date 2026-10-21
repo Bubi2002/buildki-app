@@ -157,8 +157,7 @@ export async function exportFloorPlansPdf(
   const branding = await getPdfBranding().catch(() => null);
   const accent = branding?.accentColor || "#8A6E52";
   const logoDataUri = await resolveBrandingLogo(branding).catch(() => "");
-  // Shared letterhead (logo + compact company block), reused on every plan page.
-  const letterhead = renderLetterhead({
+  const headOpts = {
     companyName: branding?.companyName,
     companyContactPerson: branding?.companyContactPerson,
     companyAddress: branding?.companyAddress,
@@ -166,10 +165,13 @@ export async function exportFloorPlansPdf(
     companyMobile: branding?.companyMobile,
     companyEmail: branding?.companyEmail,
     companyWebsite: branding?.companyWebsite,
-    logoDataUri,
     logoSize: branding?.logoSize,
     marginBottom: 8,
-  });
+  } as const;
+  // The logo appears ONLY on the first plan page; the rest show the text-only
+  // header (company wordmark), so the logo is never repeated per page.
+  const letterheadFirst = renderLetterhead({ ...headOpts, logoDataUri });
+  const letterheadRest = renderLetterhead({ ...headOpts, hideLogo: true });
 
   // Defect photos (for Mangel pins) live on the defect, not the pin.
   let defectPhotosById: Record<string, string[]> = {};
@@ -205,7 +207,8 @@ export async function exportFloorPlansPdf(
     const plan = plans[i];
     const dataUri = await fileToDataUri(plan.imageUri);
     if (!dataUri) continue;
-    pages.push(planPage(plan, pinsByPlan[plan.id] || [], dataUri, i === plans.length - 1, letterhead, photoMap));
+    const lh = pages.length === 0 ? letterheadFirst : letterheadRest;
+    pages.push(planPage(plan, pinsByPlan[plan.id] || [], dataUri, i === plans.length - 1, lh, photoMap));
   }
   if (pages.length === 0) return "empty";
 

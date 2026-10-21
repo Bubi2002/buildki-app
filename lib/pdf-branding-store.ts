@@ -471,8 +471,14 @@ export function generateCoverPage(
   // and uses no min-height (that caused a blank page). Small top padding keeps
   // the big title clear of the running-header band.
   void brandHtml; void companyHtml; void slogan;
+  // The logo appears ONLY here on the cover (Deckblatt) — the content pages carry
+  // a text-only running header, so it is never repeated per page.
+  const coverLogo = logoBase64
+    ? `<img src="${logoBase64}" style="max-height:110px;max-width:320px;object-fit:contain;display:block;margin-bottom:16px;" />`
+    : "";
   return `
   <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:${INK}; padding-top:6mm;">
+    ${coverLogo}
     <div>
       <div style="font-size:40px;font-weight:800;color:${INK};letter-spacing:-1px;line-height:1.05;">${title}</div>
       ${subtitle ? `<div style="font-size:25px;font-weight:600;color:${NAVY};margin-top:2px;letter-spacing:-.4px;">${subtitle}</div>` : ""}

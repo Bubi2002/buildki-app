@@ -65,14 +65,21 @@ export function renderLetterhead(opts: {
   logoDataUri?: string;
   logoSize?: "small" | "medium" | "large";
   marginBottom?: number;
+  /** Inner pages: show NO logo (and no house fallback) — just the company name
+   *  wordmark on the left. The logo then lives only on the cover/first page. */
+  hideLogo?: boolean;
 }): string {
   const logoH = opts.logoSize === "small" ? 64 : opts.logoSize === "large" ? 128 : 96;
   const houseSvg = `<svg viewBox="0 0 48 48" fill="none" style="width:30px;height:30px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
-  const logo = opts.logoDataUri
-    ? `<img src="${opts.logoDataUri}" alt="" style="max-height:${logoH}px;max-width:320px;object-fit:contain;display:block;" />`
-    : houseSvg;
   const name = escHtml(opts.companyName || "");
-  const showName = !opts.logoDataUri && !!name;
+  const wordmark = name ? `<div style="font-size:19px;font-weight:800;color:${NAVY};letter-spacing:-.2px;">${name}</div>` : "";
+  // Left side: hideLogo → wordmark only; else the uploaded logo (name hidden,
+  // the logo carries it); else the house fallback + wordmark.
+  const left = opts.hideLogo
+    ? wordmark
+    : opts.logoDataUri
+      ? `<img src="${opts.logoDataUri}" alt="" style="max-height:${logoH}px;max-width:320px;object-fit:contain;display:block;" />`
+      : `${houseSvg}${wordmark}`;
   const contactLine = [
     opts.companyEmail ? `E-Mail: ${escHtml(opts.companyEmail)}` : "",
     opts.companyMobile ? `Mobile: ${escHtml(opts.companyMobile)}` : (opts.companyPhone ? `Tel: ${escHtml(opts.companyPhone)}` : ""),
@@ -86,7 +93,7 @@ export function renderLetterhead(opts: {
   ].filter(Boolean).join("<br>");
   const mb = opts.marginBottom ?? 0;
   return `<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:14px;border-bottom:1px solid #E6EBF1;margin-bottom:${mb}px;">
-    <div style="display:flex;align-items:center;gap:14px;">${logo}${showName ? `<div style="font-size:19px;font-weight:800;color:${NAVY};letter-spacing:-.2px;">${name}</div>` : ""}</div>
+    <div style="display:flex;align-items:center;gap:14px;">${left}</div>
     <div style="text-align:right;font-size:9px;line-height:1.55;color:#6B7A8D;">${company}</div>
   </div>`;
 }

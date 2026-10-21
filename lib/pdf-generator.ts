@@ -533,6 +533,9 @@ export function generatePdfHtml(
     logoDataUri: company.logoBase64,
     logoSize: (company as any).logoSize,
     marginBottom: 14,
+    // With a cover page the logo sits on the cover (Deckblatt) only; the inner
+    // content header then shows just the company wordmark, no repeated logo.
+    hideLogo: hasCoverPage,
   });
 
   // Helper: Get caption text for a photo based on its timestamp and transcription segments
@@ -1376,7 +1379,7 @@ export function generatePdfHtml(
 </head>
 <body>
   <div class="running-header">
-    <div class="rh-left">${company.logoBase64 ? `<img src="${company.logoBase64}" alt="" />` : ""}${company.companyName ? escapeHtml(company.companyName) : ""}</div>
+    <div class="rh-left">${company.companyName ? escapeHtml(company.companyName) : ""}</div>
     <div class="rh-right">${escapeHtml(protocol.templateName || "Protokoll")}${protocol.projectName ? " · " + escapeHtml(protocol.projectName) : ""} · ${date}</div>
   </div>
   ${isGutachten ? `
