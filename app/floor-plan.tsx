@@ -13,7 +13,6 @@ import {
   Image as RNImage,
   Platform,
   Keyboard,
-  TouchableWithoutFeedback,
   KeyboardAvoidingView,
   ActivityIndicator,
   InteractionManager,
@@ -1323,13 +1322,12 @@ export default function FloorPlanScreen() {
       )}
 
       {/* Pin Creation Modal (Bottom Sheet Style) */}
-      <Modal visible={showPinModal} transparent animationType="slide">
-        <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}>
+      <Modal visible={showPinModal} transparent animationType="slide" onRequestClose={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }}>
           <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "flex-end" }}>
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => { Keyboard.dismiss(); setShowPinModal(false); setPendingPin(null); }} />
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0} style={{ width: "100%", justifyContent: "flex-end" }}>
                 <View style={[styles.modalContent, { backgroundColor: colors.background, maxHeight: "90%" }]}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('neue_markierung')}</Text>
             <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
@@ -1569,10 +1567,8 @@ export default function FloorPlanScreen() {
             </View>
             </ScrollView>
               </View>
-            </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
           </View>
-        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Plan Name Modal */}
@@ -1803,10 +1799,9 @@ export default function FloorPlanScreen() {
         animationType="slide"
         onRequestClose={cancelPinEdit}
       >
-        <TouchableWithoutFeedback onPress={cancelPinEdit}>
           <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%", justifyContent: "center" }}>
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={cancelPinEdit} />
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0} style={{ width: "100%", justifyContent: "center" }}>
                 <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
                   <View style={styles.modalHandle} />
                   <Text style={[styles.modalTitle, { color: colors.foreground }]}>{t('markierung_bearbeiten')}</Text>
@@ -1847,10 +1842,8 @@ export default function FloorPlanScreen() {
                     </Pressable>
                   </View>
                 </View>
-              </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
           </View>
-        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Protocol selection modal */}
