@@ -493,7 +493,6 @@ export default function ProjectExportScreen() {
         projekt: projectName || undefined,
         sections,
         includeTableOfContents: sections.length > 3,
-        accentColor: "#1E3A5F",
         heroDataUri,
       });
       if (exportedUri) {

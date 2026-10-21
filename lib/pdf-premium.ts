@@ -122,6 +122,10 @@ export function buildPremiumHtml(opts: {
   // falling back to the house navy. Everything that used to be hard-navy now
   // follows this so one setting themes every report consistently.
   const brand = accentColor || NAVY;
+  // Beige block tints from the brand accent (soft fill + border for boxes),
+  // while bars/chips use the solid accent.
+  const beigeBg = `${brand}12`;
+  const beigeBorder = `${brand}30`;
   // Logo height follows the configured size (keeps aspect ratio via width:auto).
   const logoH = branding.logoSize === "small" ? 40 : branding.logoSize === "large" ? 84 : 60;
   // Fallback brand mark (shown only when no logo is uploaded): navy, so a light
@@ -186,18 +190,18 @@ export function buildPremiumHtml(opts: {
   .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 0; letter-spacing: -0.6px; }
   .title-rule { height: 3px; background: ${accentColor}; margin: 10px 0 0; border-radius: 2px; }
   .subtitle { font-size: 12px; color: #64748b; margin: 12px 0 0; }
-  .infogrid { display: flex; margin: 18px 0 2px; border: 1px solid #e8ecf1; border-radius: 10px; overflow: hidden; }
+  .infogrid { display: flex; margin: 18px 0 2px; border: 1px solid ${beigeBorder}; border-radius: 10px; overflow: hidden; background: ${beigeBg}; }
   .infocol { flex: 1; padding: 12px 14px; border-right: 1px solid #eef1f5; }
   .infocol:last-child { border-right: none; }
   .infocol .lbl { display: flex; align-items: center; gap: 6px; font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
   .infocol .val { font-size: 14px; font-weight: 700; color: #1f2937; }
-  .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px; margin: 18px 0 2px; }
+  .summary-band { background: ${beigeBg}; border: 1px solid ${beigeBorder}; border-radius: 12px; padding: 16px; margin: 18px 0 2px; }
   .stats-grid { display: flex; gap: 10px; }
-  .stat-box { flex: 1; min-width: 68px; padding: 12px; border-radius: 10px; text-align: center; background: #fff; border: 1px solid #e8ecf1; }
+  .stat-box { flex: 1; min-width: 68px; padding: 12px; border-radius: 10px; text-align: center; background: #fff; border: 1px solid ${beigeBorder}; }
   .stat-icon { display: flex; justify-content: center; margin-bottom: 6px; }
   .stat-number { font-size: 20px; font-weight: 800; }
   .stat-label { font-size: 9px; color: #64748b; margin-top: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-  .progress-band { display: flex; align-items: center; gap: 20px; background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px 20px; margin: 18px 0 2px; }
+  .progress-band { display: flex; align-items: center; gap: 20px; background: ${beigeBg}; border: 1px solid ${beigeBorder}; border-radius: 12px; padding: 16px 20px; margin: 18px 0 2px; }
   .progress-band .pmeta { flex: 1; }
   .progress-band .plabel { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px; }
   .progress-band .pbig { font-size: 26px; font-weight: 800; color: ${brand}; margin-top: 2px; }
@@ -214,10 +218,10 @@ export function buildPremiumHtml(opts: {
   .page-break { page-break-before: always; }
   .prem-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
   .prem-table th, .prem-table td { padding: 9px 10px; border-bottom: 1px solid #eef1f5; text-align: left; vertical-align: top; }
-  .prem-table th { background: #f8fafc; font-weight: 700; color: #334155; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; font-size: 10px; letter-spacing: 0.3px; }
+  .prem-table th { background: ${brand}; font-weight: 700; color: #fff; border-bottom: 2px solid ${brand}; text-transform: uppercase; font-size: 10px; letter-spacing: 0.3px; }
   .prem-table tr:nth-child(even) td { background: #fbfcfd; }
   .note { font-size: 12px; color: #334155; padding: 10px 12px; background: #f8fafc; border-radius: 6px; margin: 4px 0 12px; }
-  .card { border: 1px solid #e8ecf1; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; page-break-inside: avoid; }
+  .card { border: 1px solid ${beigeBorder}; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; page-break-inside: avoid; }
   ${extraCss || ""}
 </style>
 </head>

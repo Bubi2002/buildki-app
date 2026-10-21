@@ -71,7 +71,7 @@ export const DEFAULT_BRANDING: PdfBranding = {
   showPageNumbers: true,
   showDate: true,
   showProjectName: true,
-  accentColor: "#1E3A5F",
+  accentColor: "#8A6E52",
   filenameSchema: "project_date_nr",
   pdfTemplate: "standard" as PdfTemplate,
   photoWatermark: true,
@@ -144,9 +144,10 @@ export async function getPdfBranding(): Promise<PdfBranding> {
       if (!JSON.parse(stored).autoSendMode) {
         merged.autoSendMode = merged.autoSendEmail ? "auto" : "off";
       }
-      // Migrate the old teal default accent to the new navy default.
-      if (merged.accentColor === "#0E7490") {
-        merged.accentColor = "#1E3A5F";
+      // Migrate the old default accents (teal, then navy) to the new warm-brown
+      // house default so existing installs on an untouched default pick it up.
+      if (merged.accentColor === "#0E7490" || merged.accentColor === "#1E3A5F") {
+        merged.accentColor = "#8A6E52";
       }
       return merged;
     }

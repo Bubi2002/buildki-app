@@ -152,6 +152,10 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   } = options;
 
   const NAVY = "#1E3A5F";
+  // Beige block tints derived from the brand accent: a soft fill + border for
+  // boxes (info grid, summary, cards), while bars/chips use the solid accent.
+  const beigeBg = `${accentColor}12`;
+  const beigeBorder = `${accentColor}30`;
   const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const escCss = (s: string) => String(s ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const ico = (path: string) => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
@@ -340,12 +344,12 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .title-rule { width: 54px; height: 4px; background: ${accentColor}; border-radius: 2px; margin: 8px 0 10px; }
     .subtitle { font-size: 12px; color: #64748b; margin-bottom: 4px; }
     .infogrid { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 4px; }
-    .infocol { flex: 1; min-width: 130px; background: #f8fafc; border: 1px solid #e8ecf1; border-radius: 10px; padding: 10px 12px; }
+    .infocol { flex: 1; min-width: 130px; background: ${beigeBg}; border: 1px solid ${beigeBorder}; border-radius: 10px; padding: 10px 12px; }
     .infocol .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
     .infocol .val { font-size: 12px; font-weight: 600; color: #1f2937; }
-    .summary-band { background: #f6f8fa; border: 1px solid #e8ecf1; border-radius: 12px; padding: 14px; margin: 14px 0 4px; }
+    .summary-band { background: ${beigeBg}; border: 1px solid ${beigeBorder}; border-radius: 12px; padding: 14px; margin: 14px 0 4px; }
     .stats-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-    .stat-box { flex: 1; min-width: 90px; background: #fff; border: 1px solid #eef1f5; border-radius: 8px; padding: 10px 6px; text-align: center; }
+    .stat-box { flex: 1; min-width: 90px; background: #fff; border: 1px solid ${beigeBorder}; border-radius: 8px; padding: 10px 6px; text-align: center; }
     .stat-number { font-size: 22px; font-weight: 800; }
     .stat-label { font-size: 9px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: .3px; }
     /* No frame around the table of contents — flat on the page. */
@@ -358,11 +362,11 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .toc-pg::after { content: target-counter(attr(href url), page); }
     .section { margin-bottom: 20px; }
     .section-chip { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; }
-    .section-chip .num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: ${NAVY}; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; }
-    .section-chip .txt { font-size: 15px; font-weight: 700; color: ${NAVY}; }
+    .section-chip .num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: ${accentColor}; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .section-chip .txt { font-size: 15px; font-weight: 700; color: ${accentColor}; }
     .section-content { font-size: 11px; line-height: 1.6; }
     .section-content p { margin-bottom: 7px; }
-    .section-content h2, .section-content h3, .section-content h4 { color: ${NAVY}; margin: 8px 0 5px; }
+    .section-content h2, .section-content h3, .section-content h4 { color: ${accentColor}; margin: 8px 0 5px; }
     .section-content h2 { font-size: 13px; }
     .section-content h3 { font-size: 12px; }
     .section-content h4 { font-size: 11px; }
@@ -374,7 +378,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .section-image { width: 100%; max-height: 200px; object-fit: contain; border: 1px solid #e8ecf1; border-radius: 6px; page-break-inside: avoid; break-inside: avoid; }
     .image-caption { font-size: 9px; color: #64748b; margin-top: 4px; font-style: italic; }
     /* Boxed cards (Mängel/Vergleich/Messen) — like the app, kept on one page. */
-    .mcard { border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; background: #fff; page-break-inside: avoid; break-inside: avoid; }
+    .mcard { border: 1px solid ${beigeBorder}; border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; background: #fff; page-break-inside: avoid; break-inside: avoid; }
     .mcard .mc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .mcard .mc-title { font-size: 12.5px; font-weight: 800; color: #1b2430; flex: 1; }
     .mcard .mc-badges { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
@@ -393,7 +397,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     .mcard .mc-check em { color: #64748b; font-style: italic; }
     .image-annotation { font-size: 9px; color: ${accentColor}; margin-top: 2px; }
     .data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
-    .data-table th { background: #f8fafc; color: #334155; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid #e2e8f0; }
+    .data-table th { background: ${accentColor}; color: #fff; padding: 8px 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: .3px; border-bottom: 2px solid ${accentColor}; }
     .data-table td { padding: 7px 10px; border-bottom: 1px solid #eef1f5; color: #334155; white-space: pre-line; vertical-align: top; }
     .data-table tr:nth-child(even) td { background: #fbfcfd; }
     .pill { display: inline-block; padding: 2px 9px; border-radius: 11px; font-size: 9px; font-weight: 700; white-space: nowrap; }
@@ -508,6 +512,9 @@ export async function generateAndSharePdf(options: ProfessionalPdfOptions): Prom
       const { getPdfBranding } = await import("./pdf-branding-store");
       const { resolveBrandingLogo } = await import("./pdf-premium");
       const branding = await getPdfBranding();
+      // Adopt the configured brand accent (warm brown etc.) unless the caller
+      // explicitly set one — themes bars, chips and the beige block tints.
+      if (!options.accentColor && branding.accentColor) options.accentColor = branding.accentColor;
       // Resolve the logo from every place it might live: the passed-in info, the
       // branding store's logoUri (file:// or data:), then the legacy base64 key.
       let logo = options.companyInfo?.logoBase64 || "";
