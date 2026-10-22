@@ -465,20 +465,33 @@ export function generateCoverPage(
     ? `<img src="${extras.heroDataUri}" style="margin-top:22px;width:100%;height:150px;border-radius:12px;object-fit:cover;display:block;" />`
     : "";
 
-  // The content pages carry a fixed running-header (logo + report meta) and a
-  // fixed footer on EVERY page, including this cover. So the cover itself does
-  // NOT repeat the brand/company block or a footer (that caused the overlap),
-  // and uses no min-height (that caused a blank page). Small top padding keeps
-  // the big title clear of the running-header band.
   void brandHtml; void companyHtml; void slogan;
-  // The logo appears ONLY here on the cover (Deckblatt) — the content pages carry
-  // a text-only running header, so it is never repeated per page.
-  const coverLogo = logoBase64
-    ? `<img src="${logoBase64}" style="max-height:85px;max-width:260px;object-fit:contain;display:block;margin-bottom:16px;" />`
-    : "";
+  // Deckblatt-Briefkopf: LINKS Logo + Firmenname, RECHTS der Kontaktblock
+  // (Firmenname fett in Akzentfarbe, Ansprechpartner, Adresse, "E-Mail: … ·
+  // Mobile: …", Website). Dies ersetzt die frühere laufende Kopfzeile — die
+  // Inhaltsseiten tragen oben KEINE Kopfzeile mehr.
+  const addressOneLine = (branding.companyAddress || "").replace(/\s*\n\s*/g, ", ").trim();
+  const coverContactLine = [
+    branding.companyEmail ? `E-Mail: ${branding.companyEmail}` : "",
+    branding.companyMobile ? `Mobile: ${branding.companyMobile}` : (branding.companyPhone ? `Tel: ${branding.companyPhone}` : ""),
+  ].filter(Boolean).join(" · ");
+  const coverLogoImg = logoBase64
+    ? `<img src="${logoBase64}" style="max-height:72px;max-width:260px;object-fit:contain;display:block;" />`
+    : `<svg viewBox="0 0 48 48" fill="none" style="width:40px;height:40px;"><path d="M24 4L6 17v27h12V30h12v14h12V17L24 4z" fill="${NAVY}"/><path d="M24 4L6 17h8l10-7 10 7h8L24 4z" fill="#2E6BA6"/></svg>`;
+  const letterheadLeft = `<div style="display:flex;flex-direction:column;gap:9px;align-items:flex-start;">${coverLogoImg}${
+    branding.companyName ? `<div style="font-size:15px;font-weight:800;color:${INK};letter-spacing:-.2px;">${branding.companyName}</div>` : ""
+  }</div>`;
+  const letterheadRight = `<div style="text-align:right;line-height:1.6;color:${INK};font-size:12.5px;">${[
+    branding.companyName ? `<div style="font-size:15px;font-weight:800;color:${accentColor};letter-spacing:.2px;margin-bottom:3px;">${branding.companyName}</div>` : "",
+    branding.companyContactPerson ? `<div>${branding.companyContactPerson}</div>` : "",
+    addressOneLine ? `<div>${addressOneLine}</div>` : "",
+    coverContactLine ? `<div>${coverContactLine}</div>` : "",
+    branding.companyWebsite ? `<div>${branding.companyWebsite}</div>` : "",
+  ].filter(Boolean).join("")}</div>`;
+  const letterheadHtml = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:16px;border-bottom:1px solid #E6EBF1;margin-bottom:22px;">${letterheadLeft}${letterheadRight}</div>`;
   return `
-  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:${INK}; padding-top:6mm;">
-    ${coverLogo}
+  <div style="page-break-after: always; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color:${INK}; padding-top:4mm;">
+    ${letterheadHtml}
     <div>
       <div style="font-size:40px;font-weight:800;color:${INK};letter-spacing:-1px;line-height:1.05;">${title}</div>
       ${subtitle ? `<div style="font-size:25px;font-weight:600;color:${NAVY};margin-top:2px;letter-spacing:-.4px;">${subtitle}</div>` : ""}
