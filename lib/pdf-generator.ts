@@ -206,11 +206,29 @@ type CompanySettings = {
   watermarkText?: string;
 };
 
+// iOS assigns a new app-container UUID on every app update/reinstall, so an
+// absolute path like file:///var/.../Application/<UUID>/Documents/… stops
+// resolving even though the file still lives in Documents. Re-anchor any stored
+// Documents-relative path onto the CURRENT documentDirectory before reading, so
+// photos/logo/evidence don't silently disappear from the PDF after an update.
+function resolveDocUri(uri: string): string {
+  if (!uri || !uri.startsWith("file://")) return uri;
+  const doc = FileSystem.documentDirectory;
+  if (!doc) return uri;
+  const marker = "/Documents/";
+  const i = uri.indexOf(marker);
+  if (i < 0) return uri;
+  const base = doc.endsWith("/") ? doc : `${doc}/`;
+  const rebuilt = `${base}${uri.slice(i + marker.length)}`;
+  return rebuilt === uri ? uri : rebuilt;
+}
+
 /**
  * Convert a local file URI to a base64 data URI for embedding in HTML
  */
-async function fileToBase64DataUri(uri: string): Promise<string | null> {
+async function fileToBase64DataUri(rawUri: string): Promise<string | null> {
   try {
+    const uri = resolveDocUri(rawUri);
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) return null;
 
@@ -377,12 +395,18 @@ export function generatePdfHtml(
     ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
     : "";
 
-  // Inhaltsverzeichnis der begangenen Räume (aus den Kapitel-Markern). Füllt die
-  // sonst fast leere erste Inhaltsseite, wenn ein Deckblatt vorangestellt wird.
-  const roomChapters = ((protocol as any).markers || [])
-    .filter((m: any) => typeof m?.label === "string" && m.label.startsWith("KAPITEL:"))
-    .map((m: any) => String(m.label).replace(/^KAPITEL:\s*/, "").trim())
-    .filter(Boolean);
+  // Inhaltsverzeichnis der begangenen Räume — aus den tatsächlichen Kapitel-
+  // Überschriften (# …) des Protokolltexts, die unten zu Kapiteln (document-
+  // chapter) werden. So passt das Verzeichnis immer zum Inhalt und füllt die
+  // sonst fast leere erste Inhaltsseite, wenn ein Deckblatt vorangestellt ist.
+  const roomChapters: string[] = [];
+  for (const rawLine of getProtocolText(protocol).split("\n")) {
+    const m = rawLine.trim().match(/^#\s+(.+)$/);
+    if (m) {
+      const label = formatInline(m[1]).replace(/<[^>]+>/g, "").trim();
+      if (label) roomChapters.push(label);
+    }
+  }
   const tocHtml = (hasCoverPage && roomChapters.length >= 2)
     ? `<div class="doc-toc"><div class="doc-toc-h">Inhalt</div>${roomChapters
         .map((r: string, i: number) => `<div class="doc-toc-row"><span class="doc-toc-n">${i + 1}</span><span class="doc-toc-t">${escapeHtml(r)}</span></div>`)
@@ -852,7 +876,7 @@ export function generatePdfHtml(
        margins, so content got stuck to (and clipped at) the right edge. @page
        keeps only the vertical margins; the footer margin-boxes get side padding. */
     @page {
-      margin: 17mm 0 20mm 0;
+      margin: 20mm 0 20mm 0;
       @bottom-left {
         content: "${footerLeftContent}";
         font-size: 8px;
@@ -898,12 +922,16 @@ export function generatePdfHtml(
     .section-block {
       page-break-inside: avoid;
     }
+    /* Rooms FLOW continuously (no forced page break per room): a room with no
+       findings no longer wastes a whole page, and a new room no longer starts
+       glued to the very top edge. A generous top margin + the h2 divider keep
+       the rooms clearly separated. */
     .document-chapter {
-      break-before: page;
-      page-break-before: always;
-      margin-top: 0;
-      padding-top: 0;
+      margin-top: 30px;
       counter-increment: chapter;
+    }
+    .document-chapter:first-of-type {
+      margin-top: 14px;
     }
     .document-chapter > h2 {
       position: relative;
@@ -1578,8 +1606,10 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   const photoDataUris: string[] = [];
   if (protocol.photos && protocol.photos.length > 0) {
     for (let i = 0; i < protocol.photos.length; i++) {
-      const photoUri = protocol.photos[i];
-      
+      // Re-anchor a possibly stale absolute Documents path onto the current
+      // container first, so a photo that survived an app update still loads.
+      const photoUri = resolveDocUri(protocol.photos[i]);
+
       // Step 1: Compress the photo for smaller PDF size
       const compressedUri = await compressPhotoForPdf(photoUri);
       const uriToRead = compressedUri || photoUri;
