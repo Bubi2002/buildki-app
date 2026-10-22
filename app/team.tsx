@@ -22,6 +22,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "@/lib/language-provider";
 import { collaboration, getOrCreateLocalTeam, buildInviteLink } from "@/lib/collaboration";
+import { loadPhoneContacts, type PhoneContact } from "@/lib/phone-contacts";
 import {
   TeamMember,
   TEAM_ROLES,
@@ -45,6 +46,26 @@ export default function TeamScreen() {
   const [newRole, setNewRole] = useState<TeamMember["role"]>("handwerker");
   const [newColor, setNewColor] = useState(MEMBER_COLORS[0]);
   const [sendInvite, setSendInvite] = useState(true);
+  // Live contact suggestions while typing the name (>= 3 letters).
+  const [phoneContacts, setPhoneContacts] = useState<PhoneContact[]>([]);
+  const [contactsTried, setContactsTried] = useState(false);
+  const [showNameSuggest, setShowNameSuggest] = useState(true);
+
+  // Load the phone's contacts once (prompts for permission the first time the
+  // user types a name). If denied, we simply show no suggestions.
+  const ensureContactsLoaded = async () => {
+    if (contactsTried) return;
+    setContactsTried(true);
+    const res = await loadPhoneContacts();
+    if (res.ok) setPhoneContacts(res.contacts);
+  };
+  const nameQuery = newName.trim().toLowerCase();
+  const nameSuggestions =
+    showNameSuggest && nameQuery.length >= 3
+      ? phoneContacts
+          .filter((c) => c.name.toLowerCase().includes(nameQuery) && c.name.toLowerCase() !== nameQuery)
+          .slice(0, 6)
+      : [];
 
   useFocusEffect(
     useCallback(() => {
@@ -282,7 +303,7 @@ export default function TeamScreen() {
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primary }}>{t('aus_kontakten' as any)}</Text>
               </Pressable>
 
-              <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {/* Name */}
                 <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('name')}</Text>
                 <TextInput
@@ -290,9 +311,30 @@ export default function TeamScreen() {
                   placeholder={t('vor_und_nachname')}
                   placeholderTextColor={colors.muted + "80"}
                   value={newName}
-                  onChangeText={setNewName}
+                  onChangeText={(v) => { setNewName(v); setShowNameSuggest(true); if (v.trim().length >= 3) void ensureContactsLoaded(); }}
                   returnKeyType="next"
                 />
+                {nameSuggestions.length > 0 && (
+                  <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, marginTop: -6, marginBottom: 12 }}>
+                    {nameSuggestions.map((c, idx) => (
+                      <Pressable
+                        key={`${c.name}-${idx}`}
+                        onPress={() => {
+                          setNewName(c.name);
+                          if (c.email) setNewEmail(c.email);
+                          if (c.phone) setNewPhone(c.phone);
+                          setShowNameSuggest(false);
+                        }}
+                        style={({ pressed }) => [{ paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: idx > 0 ? 1 : 0, borderTopColor: colors.border, opacity: pressed ? 0.6 : 1 }]}
+                      >
+                        <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "600" }}>{c.name}</Text>
+                        {(c.email || c.phone) ? (
+                          <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }} numberOfLines={1}>{[c.email, c.phone].filter(Boolean).join("  ·  ")}</Text>
+                        ) : null}
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
 
                 {/* Email */}
                 <Text style={[styles.inputLabel, { color: colors.muted }]}>{t('email')}</Text>
