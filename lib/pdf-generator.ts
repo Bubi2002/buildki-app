@@ -847,12 +847,17 @@ export function generatePdfHtml(
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    /* Horizontal spacing comes from body + fixed-element padding, NOT from @page
+       side margins: iOS expo-print does not reliably honor horizontal @page
+       margins, so content got stuck to (and clipped at) the right edge. @page
+       keeps only the vertical margins; the footer margin-boxes get side padding. */
     @page {
-      margin: 17mm 18mm 20mm 18mm;
+      margin: 17mm 0 20mm 0;
       @bottom-left {
         content: "${footerLeftContent}";
         font-size: 8px;
         color: #94a3b8;
+        padding-left: 18mm;
       }
       @bottom-center {
         content: "${footerContent}";
@@ -863,6 +868,7 @@ export function generatePdfHtml(
         content: "Seite " counter(page) " von " counter(pages);
         font-size: 8px;
         color: #94a3b8;
+        padding-right: 18mm;
       }` : ""}
     }
     * {
@@ -874,7 +880,7 @@ export function generatePdfHtml(
       color: #1f2937;
       line-height: 1.6;
       margin: 0;
-      padding: 0;
+      padding: 0 18mm;
       counter-reset: chapter;
     }
     /* Intelligent page breaks */
@@ -1291,7 +1297,7 @@ export function generatePdfHtml(
       font-size: 8.5px;
       color: #94a3b8;
       border-top: 1px solid #e8ecf1;
-      padding: 7px 4px 0;
+      padding: 7px 18mm 0;
     }
     .running-header {
       position: fixed;
@@ -1303,7 +1309,7 @@ export function generatePdfHtml(
       font-size: 8.5px;
       color: #94a3b8;
       border-bottom: 1px solid #e8ecf1;
-      padding: 0 0 6px 0;
+      padding: 0 18mm 6px 18mm;
     }
     .running-header .rh-left {
       display: flex;
