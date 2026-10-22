@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, Switch, Alert, Platform, TextInput } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScreenContainer } from "@/components/screen-container";
@@ -112,22 +113,47 @@ export default function NotificationsSettingsScreen() {
     </View>
   );
 
-  const TimeBox = ({ hour, minute, onHour, onMinute }: { hour: number; minute: number; onHour: (n: number) => void; onMinute: (n: number) => void }) => (
-    <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 16, marginBottom: 14, alignItems: "center" }}>
-      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>{String(hour).padStart(2, "0")}:{String(minute).padStart(2, "0")} {t("uhr" as any)}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 }}>
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>{t("stunde")}</Text>
-          <NumberInput value={hour} min={0} max={23} onValueChange={onHour} colors={colors} />
+  // iOS: native Apple-style rotating wheel; Android/web: stepper fallback.
+  const TimeBox = ({ hour, minute, onHour, onMinute }: { hour: number; minute: number; onHour: (n: number) => void; onMinute: (n: number) => void }) => {
+    if (Platform.OS === "ios") {
+      const value = new Date();
+      value.setHours(hour, minute, 0, 0);
+      return (
+        <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingVertical: 10, marginBottom: 14, alignItems: "center" }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>{String(hour).padStart(2, "0")}:{String(minute).padStart(2, "0")} {t("uhr" as any)}</Text>
+          <DateTimePicker
+            value={value}
+            mode="time"
+            display="spinner"
+            is24Hour
+            minuteInterval={5}
+            locale="de-DE"
+            themeVariant="dark"
+            textColor={colors.foreground}
+            accentColor={colors.primary}
+            style={{ alignSelf: "stretch", height: 180 }}
+            onChange={(_e, d) => { if (d) { onHour(d.getHours()); onMinute(d.getMinutes()); } }}
+          />
         </View>
-        <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginTop: 20 }}>:</Text>
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>{t("minute")}</Text>
-          <NumberInput value={minute} min={0} max={55} onValueChange={onMinute} colors={colors} />
+      );
+    }
+    return (
+      <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 16, marginBottom: 14, alignItems: "center" }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>{String(hour).padStart(2, "0")}:{String(minute).padStart(2, "0")} {t("uhr" as any)}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <View style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>{t("stunde")}</Text>
+            <NumberInput value={hour} min={0} max={23} onValueChange={onHour} colors={colors} />
+          </View>
+          <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginTop: 20 }}>:</Text>
+          <View style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 8, fontWeight: "600" }}>{t("minute")}</Text>
+            <NumberInput value={minute} min={0} max={55} onValueChange={onMinute} colors={colors} />
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (!prefs) return <ScreenContainer className="flex-1" />;
 
@@ -205,23 +231,6 @@ export default function NotificationsSettingsScreen() {
             </View>
           )}
         </View>
-
-        {/* ── Tages-Zusammenfassung ── */}
-        <Text style={secStyle}>{t("notif_sec_summary" as any)}</Text>
-        <View style={cardStyle}>
-          <ToggleRow icon="event-note" iconColor={colors.primary} title={t("notif_sec_summary" as any)} sub={t("notif_summary_sub" as any)} value={prefs.summaryEnabled} onChange={(v) => set("summaryEnabled", v)} last />
-        </View>
-        {prefs.summaryEnabled && (
-          <>
-            <TimeBox hour={prefs.summaryHour} minute={prefs.summaryMinute} onHour={(n) => set("summaryHour", n)} onMinute={(n) => set("summaryMinute", n)} />
-            <View style={cardStyle}>
-              <View style={{ padding: 12, paddingBottom: 6 }}><Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>{t("notif_content" as any)}</Text></View>
-              <ToggleRow icon="description" iconColor={colors.primary} title={t("notif_content_protocols" as any)} value={prefs.summaryIncludeProtocols} onChange={(v) => set("summaryIncludeProtocols", v)} />
-              <ToggleRow icon="warning" iconColor={colors.warning} title={t("notif_content_defects" as any)} value={prefs.summaryIncludeDefects} onChange={(v) => set("summaryIncludeDefects", v)} />
-              <ToggleRow icon="task-alt" iconColor="#26A69A" title={t("notif_content_tasks" as any)} value={prefs.summaryIncludeTasks} onChange={(v) => set("summaryIncludeTasks", v)} last />
-            </View>
-          </>
-        )}
 
         {/* Info */}
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, backgroundColor: colors.primary + "08" }}>
