@@ -11,6 +11,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import { timelineEngine } from "@/lib/timeline-engine";
 import { syncProtocolDefects } from "@/lib/protocol-defect-sync";
 import { PROTOCOL_TEMPLATES } from "@/shared/templates";
+import { normalizeMaengelTables, isMaengelTemplate } from "@/lib/maengel-normalize";
 
 // Build a clean, human-readable protocol title instead of dumping the first 50
 // characters of raw speech. Prefers a real heading from the generated protocol,
@@ -536,7 +537,7 @@ export async function startBackgroundProcessing(job: PendingJob, apiClient: {
         ...protocols[idx],
         transcription: transcription.text,
         transcriptionSegments: transcriptionSegments.length > 0 ? transcriptionSegments.map(s => ({ start: s.start, end: s.end, text: s.text })) : undefined,
-        protocol: protocol.protocol,
+        protocol: isMaengelTemplate(effectiveTemplateId) ? normalizeMaengelTables(protocol.protocol) : protocol.protocol,
         // Persist the template the AI actually used when "Automatisch" was chosen.
         ...(job.templateId === "auto" ? { templateId: effectiveTemplateId, templateName: effectiveTemplateName } : {}),
         title: deriveProtocolTitle(protocol.protocol || "", transcription.text || "", effectiveTemplateName),

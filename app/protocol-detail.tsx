@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/use-colors";
 import { PlanWithPins } from "@/components/plan-with-pins";
 import { getFloorPlans, getPlanPins, type FloorPlan, type PlanPin } from "@/lib/floor-plan-store";
 import { getDefects, type Defect } from "@/lib/defect-store";
+import { normalizeMaengelTables, isMaengelTemplate } from "@/lib/maengel-normalize";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
@@ -389,6 +390,19 @@ export default function ProtocolDetailScreen() {
               const i2 = protocols.findIndex((p: Protocol) => p.id === id);
               if (i2 >= 0) { protocols[i2] = { ...protocols[i2], title: derived }; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
             }
+          } catch {}
+        }
+      }
+      // Heile Alt-Mängellisten, die als Aufzählung gespeichert wurden, zu einer
+      // Markdown-Tabelle — damit die Mangel-Karten (und die PDF-Tabelle) wieder
+      // erscheinen. Einmalig persistiert; idempotent (Tabellen bleiben gleich).
+      if (found && isMaengelTemplate((found as any).templateId) && found.protocol) {
+        const normalized = normalizeMaengelTables(found.protocol);
+        if (normalized !== found.protocol) {
+          found = { ...found, protocol: normalized } as any;
+          try {
+            const i3 = protocols.findIndex((p: Protocol) => p.id === id);
+            if (i3 >= 0) { protocols[i3] = { ...protocols[i3], protocol: normalized }; await AsyncStorage.setItem("protocols", JSON.stringify(protocols)); }
           } catch {}
         }
       }
@@ -1349,7 +1363,7 @@ export default function ProtocolDetailScreen() {
         id: Date.now().toString(),
         templateId,
         templateName: result.templateName,
-        text: result.protocol,
+        text: isMaengelTemplate(templateId) ? normalizeMaengelTables(result.protocol) : result.protocol,
         todos: versionTodos,
         evidenceIds: [...(protocol.evidenceIds || [])],
         createdAt: new Date().toISOString(),

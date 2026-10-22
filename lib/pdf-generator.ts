@@ -4,6 +4,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProtocolText } from "@/lib/protocol-compat";
+import { normalizeMaengelTables, isMaengelTemplate } from "@/lib/maengel-normalize";
 import {
   createDocumentEvidenceSelection,
   formatMeasurementForDocument,
@@ -1538,6 +1539,9 @@ export async function generateProtocolHtmlPreview(protocol: PdfProtocol): Promis
   const company = await loadCompanySettings();
   const evidenceSnapshots = await resolveEvidenceSnapshots(protocol);
   const resolvedProtocol: PdfProtocol = { ...protocol, evidenceSnapshots };
+  // Safety net: if a Mängelliste slipped through as a bullet list, turn it into
+  // a Markdown table so the PDF renders the Mangel table (same as in-app cards).
+  if (isMaengelTemplate(protocol.templateId)) resolvedProtocol.protocol = normalizeMaengelTables(getProtocolText(protocol));
   const photoDataUris: string[] = [];
   if (protocol.photos && protocol.photos.length > 0) {
     for (const photoUri of protocol.photos) {
@@ -1572,6 +1576,9 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   const company = await loadCompanySettings();
   const evidenceSnapshots = await resolveEvidenceSnapshots(protocol);
   const resolvedProtocol: PdfProtocol = { ...protocol, evidenceSnapshots };
+  // Safety net: if a Mängelliste slipped through as a bullet list, turn it into
+  // a Markdown table so the PDF renders the Mangel table (same as in-app cards).
+  if (isMaengelTemplate(protocol.templateId)) resolvedProtocol.protocol = normalizeMaengelTables(getProtocolText(protocol));
 
   // Convert photos to base64 data URIs
   const photoDataUris: string[] = [];
