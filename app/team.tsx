@@ -61,10 +61,10 @@ export default function TeamScreen() {
   };
   const nameQuery = newName.trim().toLowerCase();
   const nameSuggestions =
-    showNameSuggest && nameQuery.length >= 3
+    showNameSuggest && nameQuery.length >= 1
       ? phoneContacts
           .filter((c) => c.name.toLowerCase().includes(nameQuery) && c.name.toLowerCase() !== nameQuery)
-          .slice(0, 6)
+          .slice(0, 8)
       : [];
 
   useFocusEffect(
@@ -311,7 +311,7 @@ export default function TeamScreen() {
                   placeholder={t('vor_und_nachname')}
                   placeholderTextColor={colors.muted + "80"}
                   value={newName}
-                  onChangeText={(v) => { setNewName(v); setShowNameSuggest(true); if (v.trim().length >= 3) void ensureContactsLoaded(); }}
+                  onChangeText={(v) => { setNewName(v); setShowNameSuggest(true); if (v.trim().length >= 1) void ensureContactsLoaded(); }}
                   returnKeyType="next"
                 />
                 {nameSuggestions.length > 0 && (
