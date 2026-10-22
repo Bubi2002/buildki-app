@@ -1,10 +1,31 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
 
 import {
   linkPlanPinToProtocol,
   normalizePlanPinText,
   type FloorPlanProtocolReference,
 } from "./floor-plan-pin-actions";
+
+// iOS assigns a new app-container UUID on every app update/reinstall, so an
+// absolute path like file:///var/.../Application/<UUID>/Documents/… stops
+// resolving even though the file still lives in Documents. That is why plans
+// (whose image path was baked in absolutely) turned white after a few days of
+// TestFlight updates. Re-anchor any stored Documents-relative path onto the
+// CURRENT documentDirectory on read, so the path always points at the live
+// container. No-op when the path already matches or isn't under Documents.
+function resolveDocUri(uri: string): string {
+  if (!uri || !uri.startsWith("file://")) return uri;
+  const doc = FileSystem.documentDirectory;
+  if (!doc) return uri;
+  const marker = "/Documents/";
+  const i = uri.indexOf(marker);
+  if (i < 0) return uri;
+  const rel = uri.slice(i + marker.length);
+  const base = doc.endsWith("/") ? doc : `${doc}/`;
+  const rebuilt = `${base}${rel}`;
+  return rebuilt === uri ? uri : rebuilt;
+}
 
 const FLOOR_PLANS_KEY = "floor-plans";
 const PLAN_PINS_KEY = "plan-pins";
@@ -40,7 +61,11 @@ export type PlanPin = {
 export async function getFloorPlans(projectId?: string): Promise<FloorPlan[]> {
   try {
     const raw = await AsyncStorage.getItem(FLOOR_PLANS_KEY);
-    const plans: FloorPlan[] = raw ? JSON.parse(raw) : [];
+    const parsed: FloorPlan[] = raw ? JSON.parse(raw) : [];
+    const plans = parsed.map((p) => {
+      const fixed = resolveDocUri(p.imageUri);
+      return fixed === p.imageUri ? p : { ...p, imageUri: fixed };
+    });
     if (projectId) return plans.filter((p) => p.projectId === projectId);
     return plans;
   } catch {

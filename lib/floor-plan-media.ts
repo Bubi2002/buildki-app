@@ -35,6 +35,23 @@ export async function persistFloorPlanMedia(
   const maximum = input.kind === "plan" ? 3072 : 2048;
   const target = fitWithinBounds(sourceWidth, sourceHeight, maximum, maximum);
 
+  // ImagePicker/DocumentPicker/ImageManipulator all return files in the cache
+  // or tmp dir, which iOS purges after a few days -> the plan turns white.
+  // Everything must end up copied into the persistent Documents dir.
+  const persistentDir =
+    Platform.OS !== "web" && FileSystem.documentDirectory
+      ? `${FileSystem.documentDirectory}${MEDIA_DIRECTORY}/${safeSegment(input.projectId)}/`
+      : null;
+
+  const copyIntoPersistent = async (from: string): Promise<string> => {
+    if (!persistentDir) return from;
+    const info = await FileSystem.getInfoAsync(persistentDir);
+    if (!info.exists) await FileSystem.makeDirectoryAsync(persistentDir, { intermediates: true });
+    const destination = `${persistentDir}${safeSegment(input.ownerId)}-${input.kind}-${Date.now()}.jpg`;
+    await FileSystem.copyAsync({ from, to: destination });
+    return destination;
+  };
+
   try {
     const actions = input.width && input.height && (target.width < sourceWidth || target.height < sourceHeight)
       ? [{ resize: target }]
@@ -48,17 +65,22 @@ export async function persistFloorPlanMedia(
       },
     );
 
-    if (Platform.OS === "web" || !FileSystem.documentDirectory) {
+    // Web / no document dir: nothing persistent to copy into.
+    if (!persistentDir) {
       return { uri: processed.uri, width: processed.width, height: processed.height };
     }
 
-    const directory = `${FileSystem.documentDirectory}${MEDIA_DIRECTORY}/${safeSegment(input.projectId)}/`;
-    const info = await FileSystem.getInfoAsync(directory);
-    if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-    const destination = `${directory}${safeSegment(input.ownerId)}-${input.kind}-${Date.now()}.jpg`;
-    await FileSystem.copyAsync({ from: processed.uri, to: destination });
-    return { uri: destination, width: processed.width, height: processed.height };
+    const uri = await copyIntoPersistent(processed.uri);
+    return { uri, width: processed.width, height: processed.height };
   } catch {
-    return { uri: input.sourceUri, width: sourceWidth, height: sourceHeight };
+    // Manipulation failed — still copy the ORIGINAL into persistent storage so
+    // the record never points at a purgeable cache/temp file. Only if even that
+    // fails do we fall back to the source URI (best effort).
+    try {
+      const uri = await copyIntoPersistent(input.sourceUri);
+      return { uri, width: sourceWidth, height: sourceHeight };
+    } catch {
+      return { uri: input.sourceUri, width: sourceWidth, height: sourceHeight };
+    }
   }
 }
