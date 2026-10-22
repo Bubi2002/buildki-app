@@ -377,6 +377,13 @@ export function generatePdfHtml(
   const footerLeftContent = company.companyName ? cssStr(company.companyName) : "BuildKI";
   const footerContent = cssStr(`Erstellt am ${date} um ${time}`);
   const showFooterPageNumbers = layoutOptions.showPageNumbers !== false;
+  // Running page header via @page top margin boxes (instead of a position:fixed
+  // div that iOS glued to the very top edge and repeated on the cover too). Set
+  // up here, suppressed on the first page (cover) via @page:first below.
+  const headerLeftContent = company.companyName ? cssStr(company.companyName) : "";
+  const headerRightContent = cssStr(
+    `${protocol.templateName || "Protokoll"}${protocol.projectName ? " · " + protocol.projectName : ""} · ${date}`,
+  );
 
   // ── Cover key figures (Kennzahlen-Karten) ─────────────────────────────────
   // Built from the data a single protocol actually has: tasks, photos, evidence.
@@ -877,6 +884,20 @@ export function generatePdfHtml(
        keeps only the vertical margins; the footer margin-boxes get side padding. */
     @page {
       margin: 20mm 0 20mm 0;
+      @top-left {
+        content: "${headerLeftContent}";
+        font-size: 8px;
+        color: #6b7280;
+        vertical-align: bottom;
+        padding: 0 0 4mm 18mm;
+      }
+      @top-right {
+        content: "${headerRightContent}";
+        font-size: 8px;
+        color: #6b7280;
+        vertical-align: bottom;
+        padding: 0 18mm 4mm 0;
+      }
       @bottom-left {
         content: "${footerLeftContent}";
         font-size: 8px;
@@ -894,6 +915,12 @@ export function generatePdfHtml(
         color: #94a3b8;
         padding-right: 18mm;
       }` : ""}
+    }
+    /* First page is the cover (Deckblatt): it carries the big logo + title, so
+       the running page header is redundant there — blank it out. */
+    @page:first {
+      @top-left { content: ""; }
+      @top-right { content: ""; }
     }
     * {
       box-sizing: border-box;
@@ -1327,34 +1354,9 @@ export function generatePdfHtml(
       border-top: 1px solid #e8ecf1;
       padding: 7px 18mm 0;
     }
-    .running-header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      display: flex;
-      align-items: center;
-      font-size: 8.5px;
-      color: #94a3b8;
-      border-bottom: 1px solid #e8ecf1;
-      padding: 0 18mm 6px 18mm;
-    }
-    .running-header .rh-left {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-weight: 800;
-      color: #1b2430;
-    }
-    .running-header .rh-left img {
-      max-height: 15px;
-      max-width: 56px;
-      object-fit: contain;
-    }
-    .running-header .rh-right {
-      margin-left: auto;
-      text-align: right;
-    }
+    /* Running page header is rendered via @page @top-left/@top-right margin
+       boxes (see above), not a fixed div, so it never glues to the top edge or
+       repeats on the cover. */
     .watermark {
       position: fixed;
       top: 50%;
@@ -1429,10 +1431,6 @@ export function generatePdfHtml(
   </style>
 </head>
 <body>
-  <div class="running-header">
-    <div class="rh-left">${company.companyName ? escapeHtml(company.companyName) : ""}</div>
-    <div class="rh-right">${escapeHtml(protocol.templateName || "Protokoll")}${protocol.projectName ? " · " + escapeHtml(protocol.projectName) : ""} · ${date}</div>
-  </div>
   ${isGutachten ? `
   ${letterhead}
   <div style="margin-bottom: 24px;">
