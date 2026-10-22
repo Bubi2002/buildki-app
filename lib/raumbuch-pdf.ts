@@ -57,6 +57,45 @@ async function toDataUri(uri?: string | null, maxWidth = 1000, compress = 0.6): 
   }
 }
 
+// Crop the plan to a room's excerpt region (normalised 0..1) from the ORIGINAL
+// image at full resolution, then size it to ~4× the display width for crisp
+// print. This replaces the old "embed whole plan + CSS background-size upscale"
+// which blurred small crops (small rooms) once background-size exceeded the
+// source. aspect = cropped region's w/h (= the excerpt box aspect).
+const planDimsCache: Record<string, { w: number; h: number }> = {};
+async function cropPlanRegion(
+  uri: string | null | undefined,
+  crop?: { x: number; y: number; w: number; h: number },
+): Promise<{ uri: string; aspect: number } | null> {
+  if (!uri || Platform.OS === "web") return null;
+  try {
+    const resolved = await resolveLocalUri(uri);
+    // Probe the plan's pixel dimensions ONCE per image (crop coords need them).
+    let dims = planDimsCache[resolved];
+    if (!dims) {
+      const probe = await ImageManipulator.manipulateAsync(resolved, [], {});
+      if (!probe.width || !probe.height) return null;
+      dims = { w: probe.width, h: probe.height };
+      planDimsCache[resolved] = dims;
+    }
+    const pw = dims.w, ph = dims.h;
+    if (!pw || !ph) return null;
+    const cx = crop?.x ?? 0, cy = crop?.y ?? 0, cw = crop?.w ?? 1, ch = crop?.h ?? 1;
+    let originX = Math.max(0, Math.min(pw - 1, Math.round(cx * pw)));
+    let originY = Math.max(0, Math.min(ph - 1, Math.round(cy * ph)));
+    const cwPx = Math.max(1, Math.min(pw - originX, Math.round(cw * pw)));
+    const chPx = Math.max(1, Math.min(ph - originY, Math.round(ch * ph)));
+    const ops: any[] = [{ crop: { originX, originY, width: cwPx, height: chPx } }];
+    const targetW = Math.min(cwPx, Math.round(PLAN_W * 4)); // never upscale past source
+    if (cwPx > targetW) ops.push({ resize: { width: targetW } });
+    const m = await ImageManipulator.manipulateAsync(resolved, ops, { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG });
+    const b64 = await FileSystem.readAsStringAsync(m.uri, { encoding: FileSystem.EncodingType.Base64 });
+    return { uri: `data:image/jpeg;base64,${b64}`, aspect: cwPx / chPx };
+  } catch {
+    return null;
+  }
+}
+
 const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 // CSS class for a plan's background image (one definition per plan in <style>).
@@ -81,11 +120,24 @@ export async function generateRaumbuchPdf(
   const logoDataUri = await resolveBrandingLogo(branding).catch(() => "");
   const projectId = entries[0]?.projectId || "";
   const plans = await getFloorPlans(projectId).catch(() => [] as any[]);
+  // Full plan per plan-id — used ONLY for the floor-divider page (shown large).
   const planCache: Record<string, { uri: string | null; aspect: number }> = {};
-  // Resolution each plan needs so its SMALLEST crop isn't upscaled past the
-  // source (the excerpt uses background-size = PLAN_W / crop-width). Filled from
-  // the rooms' crops below, read lazily in resolvePlan().
-  const planNeedW: Record<string, number> = {};
+  // Pre-cropped excerpt per (plan-id + crop) — used on the room/wall pages, shown
+  // 1:1 so it stays sharp regardless of how small the room/crop is.
+  const planCropCache: Record<string, { uri: string; aspect: number } | null> = {};
+  const cropKeyOf = (e: RaumbuchEntry) =>
+    `${e.planId}_${Math.round((e.planCrop?.x ?? 0) * 1000)}_${Math.round((e.planCrop?.y ?? 0) * 1000)}_${Math.round((e.planCrop?.w ?? 1) * 1000)}_${Math.round((e.planCrop?.h ?? 1) * 1000)}`;
+  const planCropClass = (key: string) => "planx-" + key.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const resolvePlanCropped = async (e: RaumbuchEntry): Promise<{ uri: string; aspect: number; cls: string } | null> => {
+    if (!e.planId) return null;
+    const key = cropKeyOf(e);
+    if (!(key in planCropCache)) {
+      const p = plans.find((x: any) => x.id === e.planId);
+      planCropCache[key] = await cropPlanRegion(p?.imageUri, e.planCrop);
+    }
+    const v = planCropCache[key];
+    return v ? { ...v, cls: planCropClass(key) } : null;
+  };
   const now = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const co = esc(branding?.companyName || "BuildKI");
 
@@ -113,31 +165,25 @@ export async function generateRaumbuchPdf(
     if (!e.planId) return null;
     if (!(e.planId in planCache)) {
       const p = plans.find((x: any) => x.id === e.planId);
-      // Embed the plan at the resolution its tightest crop needs (so the excerpt
-      // is never upscaled past the source → sharp even for small rooms/late
-      // pages), with a cap so memory/HTML size stay sane. The plan is embedded
-      // ONCE (CSS background), so a higher res here is one bitmap, not per page.
-      const need = planNeedW[e.planId] || PLAN_W * 4;
-      const srcW = Math.min(2600, Math.max(1200, Math.ceil(need * 1.4)));
-      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, srcW, 0.72), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
+      // Full plan for the divider page only (shown large → 1600px is plenty).
+      planCache[e.planId] = { uri: await toDataUri(p?.imageUri, 1600, 0.72), aspect: p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6 };
     }
     return planCache[e.planId];
   };
 
   // Build the plan excerpt, applying the optional crop and drawing the labelled
   // wall lines (the wall for the current page is highlighted).
-  const buildPlanExcerpt = (e: RaumbuchEntry, pc: { uri: string | null; aspect: number }, highlight?: RaumbuchWallKey): string => {
+  const buildPlanExcerpt = (e: RaumbuchEntry, pc: { uri: string | null; aspect: number; cls: string }, highlight?: RaumbuchWallKey): string => {
     if (!pc.uri) return "";
-    const A = pc.aspect || 1.6;
     const cr = e.planCrop;
     const cx = cr?.x ?? 0, cy = cr?.y ?? 0, cw = cr?.w ?? 1, ch = cr?.h ?? 1;
-    const contAspect = (cw * A) / ch;
+    // pc is the PRE-CROPPED region → its aspect IS the excerpt box aspect; the
+    // image fills the box 1:1 (no CSS upscaling).
+    const contAspect = pc.aspect || 1.6;
     // Keep the excerpt box from getting too TALL (a tall/portrait crop) — a tall
-    // meta row would push the photo onto the next page. Scale the whole excerpt
-    // down (no cropping) when it would exceed the height cap.
+    // meta row would push the photo onto the next page.
     let W = PLAN_W, contH = W / contAspect;
     if (contH > MAX_CONT_H) { W = W * (MAX_CONT_H / contH); contH = MAX_CONT_H; }
-    const imgW = W / cw, imgH = imgW / A;
     const toX = (px: number) => (((px - cx) / cw) * W);
     const toY = (py: number) => (((py - cy) / ch) * contH);
     const walls = e.walls || {};
@@ -158,12 +204,10 @@ export async function generateRaumbuchPdf(
         }).join("")}</svg>`
       : "";
     const hasPin = e.planX != null && e.planY != null;
-    // Use the plan image as a CSS background via a per-plan class (defined ONCE
-    // in <style>) instead of repeating the base64 <img> on every wall page. For
-    // large room books the same plan appears on 100+ pages — repeating the
-    // base64 blew up the HTML and made the iOS PDF renderer run out of memory.
-    const cls = planClass(e.planId || "");
-    return `<div class="plan ${cls}" style="width:${W}px;height:${contH.toFixed(1)}px;background-size:${imgW.toFixed(1)}px ${imgH.toFixed(1)}px;background-position:${(-cx * imgW).toFixed(1)}px ${(-cy * imgH).toFixed(1)}px;background-repeat:no-repeat;">
+    // The pre-cropped region is defined ONCE per (plan+crop) as a CSS background
+    // (planCss) and referenced by class, so it is never repeated per page. It
+    // fills the box 1:1 (no upscaling) → sharp on every page.
+    return `<div class="plan ${pc.cls}" style="width:${W}px;height:${contH.toFixed(1)}px;background-size:100% 100%;background-position:0 0;background-repeat:no-repeat;">
       ${wallSvg}
       ${hasPin ? `<div class="pin" style="left:${toX(e.planX!).toFixed(1)}px;top:${toY(e.planY!).toFixed(1)}px;"></div>` : ""}
     </div>`;
@@ -193,20 +237,6 @@ export async function generateRaumbuchPdf(
 
   // Only rooms with at least one photo produce content pages.
   const withPhotos = entries.filter((e) => wallCount(e) > 0);
-  // Per plan: the largest background-size any room needs (smallest crop → biggest
-  // upscale), so resolvePlan() can embed a high-enough source resolution.
-  for (const e of withPhotos) {
-    if (!e.planId) continue;
-    const p = plans.find((x: any) => x.id === e.planId);
-    const A = p && p.width > 0 && p.height > 0 ? p.width / p.height : 1.6;
-    const cw = e.planCrop?.w ?? 1, ch = e.planCrop?.h ?? 1;
-    const contAspect = ch > 0 ? (cw * A) / ch : 1.6;
-    let W = PLAN_W;
-    const contH0 = contAspect > 0 ? W / contAspect : W;
-    if (contH0 > MAX_CONT_H) W = W * (MAX_CONT_H / contH0);
-    const imgW = cw > 0 ? W / cw : W;
-    planNeedW[e.planId] = Math.max(planNeedW[e.planId] || 0, imgW);
-  }
   const floorNames = Array.from(new Set(withPhotos.map((e) => e.floorName || "—")))
     .sort((a, b) => floorRank(a) - floorRank(b) || a.localeCompare(b, "de"));
   const floors = floorNames.map((fname) => ({
@@ -304,7 +334,7 @@ export async function generateRaumbuchPdf(
 
     for (let ri = 0; ri < fl.rooms.length; ri++) {
       const e = fl.rooms[ri];
-      const pc = await resolvePlan(e);
+      const pcx = await resolvePlanCropped(e);
       const roomNo = `${fl.code}-${pad2(ri + 1)}`;
 
       // Fragenkatalog: a questionnaire/overview page per room (plan + up to 2
@@ -313,7 +343,7 @@ export async function generateRaumbuchPdf(
         const thumbSrc = RAUMBUCH_POSITIONS.flatMap((p) => raumbuchPhotosFor(e.photos, p)).slice(0, 2);
         const thumbs: string[] = [];
         for (const u of thumbSrc) { const d = await toDataUri(u as string); if (d) thumbs.push(`<img class="rp" src="${d}" />`); }
-        const planFull = pc ? buildPlanExcerpt(e, pc) : "";
+        const planFull = pcx ? buildPlanExcerpt(e, pcx) : "";
         content.push(`
           <section class="page brk room-overview">
             <div class="meta-row">
@@ -335,7 +365,7 @@ export async function generateRaumbuchPdf(
         const label = esc(t(RAUMBUCH_POSITION_LABEL_KEY[pos]));
         const note = esc(e.notes?.[pos] || "");
         const isWall = pos !== "boden" && pos !== "decke";
-        const plan = pc ? buildPlanExcerpt(e, pc, isWall ? (pos as RaumbuchWallKey) : undefined) : "";
+        const plan = pcx ? buildPlanExcerpt(e, pcx, isWall ? (pos as RaumbuchWallKey) : undefined) : "";
         // One page per photo — a long wall can have several shots, numbered 1/n.
         for (let pi = 0; pi < uris.length; pi++) {
           const photo = await toDataUri(uris[pi], 900, 0.55);
@@ -370,8 +400,8 @@ export async function generateRaumbuchPdf(
 
   // Each plan's base64 is defined ONCE here and referenced by class on every
   // wall page (no per-page repetition of the large image).
-  const planCss = Object.entries(planCache)
-    .map(([id, pc]) => (pc.uri ? `.${planClass(id)} { background-image: url("${pc.uri}"); }` : ""))
+  const planCss = Object.entries(planCropCache)
+    .map(([key, v]) => (v?.uri ? `.${planCropClass(key)} { background-image: url("${v.uri}"); }` : ""))
     .join("\n");
 
   // CSS-safe: a raw newline / quote inside a @page content string breaks the
