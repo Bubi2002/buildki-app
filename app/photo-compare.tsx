@@ -283,7 +283,7 @@ export default function PhotoCompareScreen() {
         datum: new Date().toLocaleDateString("de-DE"),
         projekt: projectName || undefined,
         sections: [{ title: `${t('vorhernachher')} (${pairs.length})`, content: "", cards }],
-        accentColor: "#1E3A5F",
+        accentColor: "#8A6E52",
       });
     } catch (e: any) {
       Alert.alert(t('alert_fehler'), e?.message || "");
@@ -344,13 +344,21 @@ export default function PhotoCompareScreen() {
       const branding = await getPdfBranding().catch(() => null);
       const accent = branding?.accentColor || "#8A6E52";
       const logoDataUri = await resolveBrandingLogo(branding);
+      // House style: wrap the info blocks in warm beige cards (accent 12 % fill +
+      // 30 % border), like the other PDFs. The shared meta header's gray left
+      // border/margin are neutralised so it sits cleanly inside the beige card.
+      const metaCard = metaHeader
+        ? `<div style="background:${accent}12; border:1px solid ${accent}30; border-radius:10px; padding:12px 16px; margin-bottom:4px;">${metaHeader
+            .replace("margin:0 0 16px;", "margin:0;")
+            .replace("border-left:3px solid #E5E7EB; padding-left:10px;", "")}</div>`
+        : "";
       const body = `
-        ${metaHeader}
+        ${metaCard}
         <table style="width:100%; border-collapse:collapse; margin-top:14px; page-break-inside:avoid;"><tr>
           ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
           ${cell(t('nachher'), "#4E8B6B", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
         </tr></table>
-        ${dataRows ? `<div style="margin-top:14px; padding:12px 14px; border:1px solid #e8ecf1; border-radius:8px; font-size:12px; line-height:1.5; color:#334155;">${dataRows}</div>` : ""}`;
+        ${dataRows ? `<div style="margin-top:16px; padding:14px 16px; background:${accent}12; border:1px solid ${accent}30; border-radius:10px; font-size:12px; line-height:1.55; color:#334155;">${dataRows}</div>` : ""}`;
       const html = buildPremiumHtml({
         branding: branding || ({} as any),
         accentColor: accent,
