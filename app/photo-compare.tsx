@@ -355,8 +355,8 @@ export default function PhotoCompareScreen() {
       const body = `
         ${metaCard}
         <table style="width:100%; border-collapse:collapse; margin-top:14px; page-break-inside:avoid;"><tr>
-          ${cell(t('vorher'), "#DC2626", selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
-          ${cell(t('nachher'), "#4E8B6B", selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
+          ${cell(t('vorher'), accent, selectedPair.beforeDate ? formatDate(selectedPair.beforeDate) : "", beforeImg)}
+          ${cell(t('nachher'), accent, selectedPair.afterDate ? formatDate(selectedPair.afterDate) : "", afterImg)}
         </tr></table>
         ${dataRows ? `<div style="margin-top:16px; padding:14px 16px; background:${accent}12; border:1px solid ${accent}30; border-radius:10px; font-size:12px; line-height:1.55; color:#334155;">${dataRows}</div>` : ""}`;
       const html = buildPremiumHtml({
