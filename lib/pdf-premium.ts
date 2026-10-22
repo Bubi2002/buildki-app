@@ -244,10 +244,10 @@ export function buildPremiumHtml(opts: {
   /* Company wordmark stays navy ink (not the accent): a light accent like
      yellow/orange is unreadable on white, and the house style keeps the name
      navy while the accent themes the rules/pills/icons. */
-  .topbar .brand .co { font-size: 19px; font-weight: 800; color: ${NAVY}; letter-spacing: -0.2px; line-height: 1.15; }
+  .topbar .brand .co { font-size: 18px; font-weight: 800; color: #1b2430; letter-spacing: -0.2px; line-height: 1.15; }
   .topbar .brand .co small { display: block; font-size: 8.5px; font-weight: 600; color: #6B7A8D; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
-  .topbar .company { font-size: 9px; color: #1b2430; text-align: right; line-height: 1.55; }
-  .topbar .company b { color: #1b2430; font-size: 9.5px; }
+  .topbar .company { font-size: 10.5px; color: #1b2430; text-align: right; line-height: 1.6; }
+  .topbar .company b { color: ${brand}; font-size: 12.5px; }
   .wrap { padding: 24px 28px 12px; }
   .title { font-size: 30px; font-weight: 800; color: #1b2430; margin: 0; letter-spacing: -0.6px; }
   .title-rule { height: 3px; background: ${accentColor}; margin: 10px 0 0; border-radius: 2px; }
@@ -289,7 +289,7 @@ export function buildPremiumHtml(opts: {
 </head>
 <body>
   <div class="topbar">
-    <div class="brand">${logoTag}${logoDataUri ? "" : `<div class="co">${coName}<small>${coSub}</small></div>`}</div>
+    <div class="brand">${logoTag}<div class="co">${coName}<small>${coSub}</small></div></div>
     ${companyBlock}
   </div>
   <div class="wrap">
