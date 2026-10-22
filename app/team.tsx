@@ -275,7 +275,7 @@ export default function TeamScreen() {
 
               {/* Aus Telefon-/Apple-Kontakten übernehmen */}
               <Pressable
-                onPress={() => setShowContactPicker(true)}
+                onPress={() => { setShowCreateModal(false); setTimeout(() => setShowContactPicker(true), 350); }}
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primary + "15", marginBottom: 16, opacity: pressed ? 0.7 : 1 }]}
               >
                 <MaterialIcons name="contacts" size={18} color={colors.primary} />
@@ -401,7 +401,10 @@ export default function TeamScreen() {
       {/* Kontakt-Auswahl (Name/E-Mail/Telefon übernehmen) */}
       <ContactPickerModal
         visible={showContactPicker}
-        onClose={() => setShowContactPicker(false)}
+        // iOS kann kein zweites Modal über dem Einladen-Dialog präsentieren —
+        // deshalb wurde der Dialog beim Öffnen des Pickers geschlossen; hier
+        // wieder öffnen (zeitversetzt, damit sich die Modals nicht überlagern).
+        onClose={() => { setShowContactPicker(false); setTimeout(() => setShowCreateModal(true), 350); }}
         onSelect={() => {}}
         onSelectContacts={(cs) => {
           const c = cs[0];
@@ -411,6 +414,7 @@ export default function TeamScreen() {
             if (c.phone) setNewPhone(c.phone);
           }
           setShowContactPicker(false);
+          setTimeout(() => setShowCreateModal(true), 350);
         }}
         multi={false}
         includeNoEmail
