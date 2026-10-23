@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "@/lib/language-provider";
+import { localizeChecklist } from "@/lib/checklist-i18n";
 import { ExportDetailsBox, EMPTY_EXPORT_DETAILS, type ExportDetails } from "@/components/export-details-box";
 import { buildPremiumHtml, progressRing, legend, premiumIcons, resolveBrandingLogo, type InfoCol } from "@/lib/pdf-premium";
 import { generateAndSharePdf, type PdfCard } from "@/lib/pdf-professional";
@@ -42,7 +43,7 @@ import {
 } from "@/lib/checklist-store";
 
 export default function ChecklistsScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -359,7 +360,11 @@ export default function ChecklistsScreen() {
     ]);
   };
 
-  const renderChecklist = ({ item }: { item: Checklist }) => (
+  const renderChecklist = ({ item }: { item: Checklist }) => {
+    // Display in the current app language (built-in checklists); edits/export
+    // still use the canonical `item`.
+    const d = localizeChecklist(item, language);
+    return (
     <Pressable
       onPress={() => startChecklist(item)}
       style={({ pressed }) => [
@@ -372,21 +377,22 @@ export default function ChecklistsScreen() {
         <MaterialIcons name="playlist-add-check" size={22} color={colors.primary} />
         <View style={styles.checklistInfo}>
           <Text style={[styles.checklistName, { color: colors.foreground }]} numberOfLines={1}>
-            {item.name}
+            {d.name}
           </Text>
-          <Text style={[styles.checklistCategory, { color: colors.muted }]}>{item.category}</Text>
+          <Text style={[styles.checklistCategory, { color: colors.muted }]}>{d.category}</Text>
         </View>
         <View style={[styles.itemCountBadge, { backgroundColor: colors.primary + "15" }]}>
           <Text style={[styles.itemCountText, { color: colors.primary }]}>{item.items.length}</Text>
         </View>
       </View>
-      {item.description ? (
+      {d.description ? (
         <Text style={[styles.checklistDesc, { color: colors.muted }]} numberOfLines={1}>
-          {item.description}
+          {d.description}
         </Text>
       ) : null}
     </Pressable>
-  );
+    );
+  };
 
   // Reopen a past inspection (to view/continue/export).
   const openResult = (result: ChecklistResult) => {
@@ -534,13 +540,13 @@ export default function ChecklistsScreen() {
                 <View style={styles.detailHeader}>
                   <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.modalTitle, { color: colors.foreground }]}>{selectedChecklist.name}</Text>
+                      <Text style={[styles.modalTitle, { color: colors.foreground }]}>{localizeChecklist(selectedChecklist, language).name}</Text>
                       <Text style={[styles.detailProgress, { color: colors.muted }]}>
                         {activeResult.results.filter((r) => r.checked).length}/{activeResult.results.length} geprüft
                       </Text>
                     </View>
                     <Pressable
-                      onPress={() => exportPdf(selectedChecklist, activeResult)}
+                      onPress={() => exportPdf(localizeChecklist(selectedChecklist, language), activeResult)}
                       accessibilityLabel={t('pdf_teilen')}
                       style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
                     >
@@ -627,7 +633,7 @@ export default function ChecklistsScreen() {
                   );
                 })()}
                 <FlatList
-                  data={selectedChecklist.items}
+                  data={localizeChecklist(selectedChecklist, language).items}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => {
                     const result = activeResult.results.find((r) => r.itemId === item.id);
