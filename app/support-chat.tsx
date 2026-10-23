@@ -188,6 +188,13 @@ export default function SupportChatScreen() {
 
   const renderFAQ = () => (
     <View style={styles.faqContainer}>
+      {/* Bei laufendem Chat: zurück zum Gespräch (sonst säße man in der FAQ fest). */}
+      {messages.length > 0 && (
+        <Pressable onPress={() => setShowFAQ(false)} style={({ pressed }) => [styles.showFAQButton, { alignSelf: "flex-start", marginBottom: 8, opacity: pressed ? 0.7 : 1 }]}>
+          <MaterialIcons name="arrow-back" size={16} color={colors.primary} />
+          <Text style={[styles.showFAQText, { color: colors.primary }]}>{t('btn_zurueck')}</Text>
+        </Pressable>
+      )}
       <View style={[styles.welcomeSection, { borderBottomColor: "#1E3A5F" }]}>
         <View style={[styles.supportIconContainer, { backgroundColor: colors.primary + "15" }]}>
           <MaterialIcons name="support-agent" size={40} color={colors.primary} />
@@ -247,7 +254,7 @@ export default function SupportChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-        {showFAQ && messages.length === 0 ? (
+        {showFAQ ? (
           <FlatList
             data={[{ key: "faq" }]}
             renderItem={() => renderFAQ()}
