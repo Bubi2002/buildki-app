@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Language } from "@/lib/i18n";
+import { getPdfLabels, pdfLocale, localizeReportType } from "@/lib/pdf-i18n";
 
 const PDF_BRANDING_KEY = "pdf-branding";
 const PDF_BRANDING_PROFILES_KEY = "pdf-branding-profiles";
@@ -393,6 +395,7 @@ export function generateCoverPage(
   protocol: {
     title: string;
     templateName?: string;
+    templateId?: string;
     projectName?: string;
     projectColor?: string;
     createdAt: string;
@@ -403,17 +406,20 @@ export function generateCoverPage(
   extras?: {
     kpiCards?: { value: string | number; label: string; sub?: string; subWarn?: boolean; color: string; bg: string; icon: string }[];
     heroDataUri?: string | null;
-  }
+  },
+  lang: Language = "de",
 ): string {
+  const L = getPdfLabels(lang);
+  const loc = pdfLocale(lang);
   const accentColor = branding.accentColor || protocol.projectColor || "#8A6E52";
   // Cover headings/icons follow the brand accent (warm brown) for consistency.
   const NAVY = accentColor;
   const INK = "#1b2430";
   const MUTED = "#6B7A8D";
   const date = new Date(protocol.createdAt);
-  const dateLong = date.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-  const dateShort = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const title = protocol.templateName || "Protokoll";
+  const dateLong = date.toLocaleDateString(loc, { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const dateShort = date.toLocaleDateString(loc, { day: "2-digit", month: "2-digit", year: "numeric" });
+  const title = localizeReportType(protocol.templateId, protocol.templateName || "Protokoll", lang);
   const subtitle = protocol.projectName || "";
   const slogan = (branding as any).companySlogan || "";
 
@@ -428,11 +434,11 @@ export function generateCoverPage(
   };
 
   const meta: { icon: string; k: string; v: string }[] = [];
-  if (subtitle) meta.push({ icon: ICONS.project, k: "Projekt", v: subtitle });
-  meta.push({ icon: ICONS.report, k: "Berichtstyp", v: title });
-  meta.push({ icon: ICONS.date, k: "Datum", v: dateLong });
-  if (protocol.location?.address) meta.push({ icon: ICONS.pin, k: "Adresse", v: `${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}` });
-  if (branding.companyName) meta.push({ icon: ICONS.user, k: "Erstellt durch", v: branding.companyName });
+  if (subtitle) meta.push({ icon: ICONS.project, k: L.project, v: subtitle });
+  meta.push({ icon: ICONS.report, k: L.reportType, v: title });
+  meta.push({ icon: ICONS.date, k: L.date, v: dateLong });
+  if (protocol.location?.address) meta.push({ icon: ICONS.pin, k: L.address, v: `${protocol.location.address}${protocol.location.city ? `, ${protocol.location.city}` : ""}` });
+  if (branding.companyName) meta.push({ icon: ICONS.user, k: L.createdBy, v: branding.companyName });
   const metaHtml = meta
     .map((m) => `<div style="display:flex;align-items:center;gap:9px;">${ic(m.icon)}<span style="font-size:11px;color:${MUTED};font-weight:600;">${m.k}</span></div><div style="font-size:11.5px;color:${INK};font-weight:700;">${m.v}</div>`)
     .join("");

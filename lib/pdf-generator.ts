@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProtocolText } from "@/lib/protocol-compat";
 import { normalizeMaengelTables, isMaengelTemplate } from "@/lib/maengel-normalize";
+import type { Language } from "@/lib/i18n";
 import {
   createDocumentEvidenceSelection,
   formatMeasurementForDocument,
@@ -1782,7 +1783,10 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       if (resolvedProtocol.projectImageUri) {
         heroDataUri = await withTimeout(fileToBase64DataUri(resolvedProtocol.projectImageUri), 5000, null);
       }
-      coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64, { kpiCards, heroDataUri });
+      // PDF chrome labels + date format follow the chosen app language (the
+      // AI-generated text content stays in the recording language).
+      const appLang = (((await AsyncStorage.getItem("app_language")) || "de") as Language);
+      coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64, { kpiCards, heroDataUri }, appLang);
     } catch (e) {
       console.warn("[PDF-Gen] Cover page generation failed:", e);
     }
