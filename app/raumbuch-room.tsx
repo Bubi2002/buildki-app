@@ -12,6 +12,7 @@ import { ZoomableCanvas, type ZoomableCanvasHandle } from "@/components/zoomable
 import { screenPointToNormalized } from "@/lib/zoom-transform";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "@/lib/language-provider";
+import { localizeSurveyGroup, localizeSurveyOption } from "@/lib/raumbuch-survey-i18n";
 import { pickImagesWithSource } from "@/lib/import-picker";
 import { getFloorPlans, getPinsForProject, type FloorPlan, type PlanPin } from "@/lib/floor-plan-store";
 import { getDefects, saveDefect, type Defect } from "@/lib/defect-store";
@@ -46,7 +47,7 @@ const FRAME_CORNER_PX = 38; // touch radius to grab a corner
 const FRAME_EDGE_PX = 26; // touch distance to grab an edge anywhere along its line
 
 export default function RaumbuchRoomScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -800,14 +801,14 @@ export default function RaumbuchRoomScreen() {
           const checked = new Set(survey.checked?.[g.key] || []);
           return (
             <View key={g.key} style={{ marginTop: 14 }}>
-              <Text style={{ fontSize: 13, fontWeight: "800", color: colors.foreground, marginBottom: 8 }}>{g.label}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: colors.foreground, marginBottom: 8 }}>{localizeSurveyGroup(g.key, g.label, language)}</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {g.options.map((o) => {
                   const on = checked.has(o);
                   return (
                     <Pressable key={o} onPress={() => void toggleSurvey(g.key, o)} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + "18" : colors.surface, opacity: pressed ? 0.7 : 1 }]}>
                       <MaterialIcons name={on ? "check-box" : "check-box-outline-blank"} size={16} color={on ? colors.primary : colors.muted} />
-                      <Text style={{ fontSize: 12.5, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.foreground }}>{o}</Text>
+                      <Text style={{ fontSize: 12.5, fontWeight: on ? "700" : "600", color: on ? colors.primary : colors.foreground }}>{localizeSurveyOption(o, language)}</Text>
                     </Pressable>
                   );
                 })}
