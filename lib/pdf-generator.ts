@@ -169,6 +169,64 @@ function liftTableRowPhotos(text: string): string {
   return out.join("\n");
 }
 
+// Place each photo WITH the room it was taken in, instead of all at the end.
+// Rooms come from the KAPITEL markers (each has a time); a room spans from its
+// marker time until the next room's. A photo (via its recording timestamp) is
+// appended as a "[FOTO N]" line at the end of the matching "# <Raum>" section,
+// so the existing inline-photo renderer shows it under that room. Photos that
+// already have an inline marker, or that fall into no room window, are left
+// alone (they stay in the Fotodokumentation appendix). No markers → unchanged.
+function assignPhotosToRooms(
+  text: string,
+  markers: { time: number; label: string }[] | undefined,
+  photoTimestamps: number[] | undefined,
+): string {
+  if (!text || !photoTimestamps || photoTimestamps.length === 0) return text;
+  const chaps = (markers || [])
+    .filter((m) => typeof m?.label === "string" && m.label.startsWith("KAPITEL:"))
+    .map((m) => ({ time: m.time, name: m.label.replace(/^KAPITEL:\s*/, "").trim() }))
+    .sort((a, b) => a.time - b.time);
+  if (chaps.length === 0) return text;
+  const norm = (s: string) => (s || "").toLowerCase().replace(/\*\*/g, "").replace(/[\s·.\-_/]+/g, "");
+  const windows = chaps.map((c, i) => ({
+    nkey: norm(c.name),
+    start: c.time,
+    end: i + 1 < chaps.length ? chaps[i + 1].time : Infinity,
+  }));
+  // Photos already referenced inline anywhere in the text — don't duplicate.
+  const already = new Set<number>();
+  const re = /\[Foto\s*(\d+)/gi;
+  let mm: RegExpExecArray | null;
+  while ((mm = re.exec(text)) !== null) already.add(parseInt(mm[1], 10) - 1);
+  // Assign each remaining photo to the room whose time window contains it.
+  const roomPhotos = new Map<string, number[]>();
+  photoTimestamps.forEach((ts, idx) => {
+    if (already.has(idx) || ts == null) return;
+    const w = windows.find((win) => ts >= win.start && ts < win.end);
+    if (!w) return;
+    if (!roomPhotos.has(w.nkey)) roomPhotos.set(w.nkey, []);
+    roomPhotos.get(w.nkey)!.push(idx + 1);
+  });
+  if (roomPhotos.size === 0) return text;
+  const lines = text.split("\n");
+  const out: string[] = [];
+  let curKey: string | null = null;
+  const flush = () => {
+    if (curKey && roomPhotos.has(curKey)) {
+      out.push("");
+      for (const n of roomPhotos.get(curKey)!) out.push(`[FOTO ${n}]`);
+      roomPhotos.delete(curKey);
+    }
+  };
+  for (const line of lines) {
+    const hm = line.trim().match(/^#\s+(.+)$/);
+    if (hm) { flush(); curKey = norm(hm[1]); }
+    out.push(line);
+  }
+  flush();
+  return out.join("\n");
+}
+
 function formatEvidenceSource(snapshot: DocumentEvidenceSnapshot): string {
   const parts = [snapshot.sourceLabel];
   // A timecode is only meaningful for a real video frame. A still photo's
@@ -396,12 +454,21 @@ export function generatePdfHtml(
     ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
     : "";
 
+  // Protokolltext mit den Fotos beim jeweiligen Raum (statt alle am Ende): fügt
+  // "[FOTO N]" ans Ende des passenden Raum-Abschnitts ein (per Zeitstempel ↔
+  // Kapitel-Marker). Danach übernimmt die normale Inline-Foto-Darstellung.
+  const protocolBodyText = assignPhotosToRooms(
+    getProtocolText(protocol),
+    (protocol as any).markers,
+    protocol.photoTimestamps,
+  );
+
   // Inhaltsverzeichnis der begangenen Räume — aus den tatsächlichen Kapitel-
   // Überschriften (# …) des Protokolltexts, die unten zu Kapiteln (document-
   // chapter) werden. So passt das Verzeichnis immer zum Inhalt und füllt die
   // sonst fast leere erste Inhaltsseite, wenn ein Deckblatt vorangestellt ist.
   const roomChapters: string[] = [];
-  for (const rawLine of getProtocolText(protocol).split("\n")) {
+  for (const rawLine of protocolBodyText.split("\n")) {
     const m = rawLine.trim().match(/^#\s+(.+)$/);
     if (m) {
       const label = formatInline(m[1]).replace(/<[^>]+>/g, "").trim();
@@ -421,7 +488,7 @@ export function generatePdfHtml(
   {
     const inlineRegex = /\[Foto\s*(\d+)(?:\s*[–\-–][^\]]*)?\]/gi;
     let inlineMatch: RegExpExecArray | null;
-    const protocolText = getProtocolText(protocol);
+    const protocolText = protocolBodyText;
     while ((inlineMatch = inlineRegex.exec(protocolText)) !== null) {
       inlinePlacedPhotos.add(parseInt(inlineMatch[1], 10) - 1);
     }
@@ -590,7 +657,7 @@ export function generatePdfHtml(
   // Convert protocol text to HTML (handle line breaks, bullet points, inline photo placeholders, and markdown tables)
   // Lift any [FOTO X] markers OUT of markdown table cells first, so the photo
   // renders as an image below the table instead of showing as literal "[FOTO 1]".
-  const lines = liftTableRowPhotos(getProtocolText(protocol)).split("\n");
+  const lines = liftTableRowPhotos(protocolBodyText).split("\n");
   const processedLines: string[] = [];
   let i = 0;
   while (i < lines.length) {
