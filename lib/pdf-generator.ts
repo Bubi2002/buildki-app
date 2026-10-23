@@ -928,11 +928,16 @@ export function generatePdfHtml(
        glued to the very top edge. A generous top margin + the h2 divider keep
        the rooms clearly separated. */
     .document-chapter {
-      margin-top: 30px;
+      margin-top: 38px;
       counter-increment: chapter;
     }
+    /* Clear gap + a divider above the FIRST room so its heading reads as the
+       start of that room's content, not as another entry of the table of
+       contents right above it. */
     .document-chapter:first-of-type {
-      margin-top: 14px;
+      margin-top: 30px;
+      padding-top: 26px;
+      border-top: 2px solid ${accent};
     }
     .document-chapter > h2 {
       position: relative;
