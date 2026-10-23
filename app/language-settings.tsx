@@ -72,20 +72,6 @@ export default function LanguageSettingsScreen() {
           </Text>
         </View>
 
-        {/* Protocol Language Note */}
-        <View style={{ marginTop: 20, padding: 16, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground, marginBottom: 8 }}>{t('protokollsprache')}</Text>
-          <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20 }}>
-            {t('language_settings_protocol_note' as any)}
-          </Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 6, opacity: pressed ? 0.6 : 1 }]}
-          >
-            <MaterialIcons name="settings" size={16} color={colors.primary} />
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>{t('zu_den_einstellungen')}</Text>
-          </Pressable>
-        </View>
       </ScrollView>
     </ScreenContainer>
   );
