@@ -70,14 +70,14 @@ Die Liste soll folgende Struktur haben:
    - Ort / Raum
    - Mangelbeschreibung
    - Gewerk / Verantwortlich
-   - Priorität
    - Frist zur Beseitigung
 4. **Zusammenfassung** (Anzahl Mängel, kritische Punkte)
 5. **Empfohlene Maßnahmen**
 
 WICHTIG:
-- Gib die Mängel IMMER als Markdown-Tabelle mit genau diesen Spalten aus (| Nr. | Ort / Raum | Mangelbeschreibung | Gewerk / Verantwortlich | Priorität | Frist zur Beseitigung |) – NIEMALS als Aufzählung, Stichpunkte oder Fließtext. Jeder einzelne Mangel ist eine eigene Tabellenzeile.
-- Priorität NUR ausfüllen, wenn im Text ausdrücklich eine Priorität oder Dringlichkeit genannt wird (z. B. "hohe Priorität", "dringend", "eilt"). Andernfalls das Feld LEER lassen – niemals eine Priorität schätzen oder automatisch vergeben.
+- Gib die Mängel IMMER als Markdown-Tabelle mit genau diesen Spalten aus (| Nr. | Ort / Raum | Mangelbeschreibung | Gewerk / Verantwortlich | Frist zur Beseitigung |) – NIEMALS als Aufzählung, Stichpunkte oder Fließtext. Jeder einzelne Mangel ist eine eigene Tabellenzeile.
+- Vergib KEINE Priorität und KEINE Dringlichkeit – es gibt keine Prioritätsspalte. Schreibe auch keine Priorität in andere Spalten.
+- Wandle relative Fristangaben in ein KONKRETES Datum um, bezogen auf das Begehungsdatum (das im Kontext angegebene Aufnahmedatum): "morgen" = Begehungsdatum + 1 Tag, "nächste Woche Mittwoch" = der Mittwoch der Folgewoche, "in 2 Wochen" entsprechend. Format: "TT.MM.JJJJ" (optional mit Wochentag, z. B. "Mi, 29.10.2026"). Nur wenn gar keine Frist genannt wird, lass die Zelle leer – niemals eine Frist erfinden.
 - Ist der Text nach Räumen gegliedert (Abschnitte "=== KAPITEL: <Raum> ==="), schreibe pro Raum eine Überschrift mit einfachem Rautezeichen "# <Raum>" und darunter eine EIGENE Markdown-Tabelle (mit Kopfzeile) nur mit den Mängeln dieses Raums. Ordne jeden Mangel GENAU dem Raum zu, unter dessen Kapitel er genannt wurde. Verschiebe keine Mängel in andere Räume und erfinde keine Räume.
 - Sei präzise bei Ortsangaben und Beschreibungen.`,
   },
