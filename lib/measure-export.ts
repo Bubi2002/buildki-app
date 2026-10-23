@@ -3,9 +3,11 @@ import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import { buildPremiumHtml, resolveBrandingLogo, escHtml } from "./pdf-premium";
 import { getPdfBranding } from "./pdf-branding-store";
+import { resolveDocUri } from "./resolve-doc-uri";
 
-async function fileToDataUri(uri: string): Promise<string | null> {
+async function fileToDataUri(rawUri: string): Promise<string | null> {
   try {
+    const uri = resolveDocUri(rawUri);
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) return null;
     const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });

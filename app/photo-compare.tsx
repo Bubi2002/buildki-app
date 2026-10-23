@@ -28,6 +28,7 @@ import { Swipeable, Gesture, GestureDetector } from "react-native-gesture-handle
 import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { getProjectStructure, type Room as ProjectRoom, type Floor as ProjectFloor } from "@/lib/room-store";
 import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
+import { resolveDocUri } from "@/lib/resolve-doc-uri";
 import { generateAndSharePdf, type PdfCard, type PdfImage } from "@/lib/pdf-professional";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 
@@ -255,11 +256,11 @@ export default function PhotoCompareScreen() {
         const raw = await AsyncStorage.getItem("projects");
         projectName = (raw ? JSON.parse(raw) : []).find((p: any) => p.id === params.projectId)?.name || "";
       } catch {}
-      const toData = async (uri?: string | null): Promise<string | null> => {
-        if (!uri) return null;
+      const toData = async (rawUri?: string | null): Promise<string | null> => {
+        if (!rawUri) return null;
         try {
-          let src = uri;
-          try { const m = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1400 } }], { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG }); if (m?.uri) src = m.uri; } catch {}
+          let src = resolveDocUri(rawUri);
+          try { const m = await ImageManipulator.manipulateAsync(src, [{ resize: { width: 1400 } }], { compress: 0.72, format: ImageManipulator.SaveFormat.JPEG }); if (m?.uri) src = m.uri; } catch {}
           const b64 = await FileSystem.readAsStringAsync(src, { encoding: FileSystem.EncodingType.Base64 });
           return `data:image/jpeg;base64,${b64}`;
         } catch { return null; }
@@ -293,10 +294,10 @@ export default function PhotoCompareScreen() {
   const shareComparison = async () => {
     if (!selectedPair) return;
     try {
-      const toDataUri = async (uri?: string | null): Promise<string | null> => {
-        if (!uri) return null;
+      const toDataUri = async (rawUri?: string | null): Promise<string | null> => {
+        if (!rawUri) return null;
         try {
-          const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const b64 = await FileSystem.readAsStringAsync(resolveDocUri(rawUri), { encoding: FileSystem.EncodingType.Base64 });
           return `data:image/jpeg;base64,${b64}`;
         } catch {
           return null;
