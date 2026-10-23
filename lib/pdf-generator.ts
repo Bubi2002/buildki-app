@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProtocolText } from "@/lib/protocol-compat";
 import { normalizeMaengelTables, isMaengelTemplate } from "@/lib/maengel-normalize";
 import type { Language } from "@/lib/i18n";
+import { getPdfLabels, pdfLocale, localizeReportType } from "@/lib/pdf-i18n";
 import {
   createDocumentEvidenceSelection,
   formatMeasurementForDocument,
@@ -359,6 +360,8 @@ interface LayoutOptions {
   hasCoverPage?: boolean;
   /** Show "Seite X von Y" in the footer (from branding.showPageNumbers). */
   showPageNumbers?: boolean;
+  /** App language for the PDF chrome labels + date format (content stays as-is). */
+  lang?: Language;
 }
 
 // Status / priority label → colour, for rendering coloured pills in tables.
@@ -392,6 +395,10 @@ export function generatePdfHtml(
 ): string {
   // Brand accent (warm brown by default): themes headings, bars and dividers.
   const accent = accentColor || "#8A6E52";
+  // PDF chrome labels + date locale follow the app language (content stays as-is).
+  const lang: Language = layoutOptions.lang || "de";
+  const L = getPdfLabels(lang);
+  const loc = pdfLocale(lang);
   // Layout options with defaults
   const layoutShowTranscription = layoutOptions.showTranscription !== false;
   const layoutShowTodos = layoutOptions.showTodos !== false;
@@ -412,12 +419,12 @@ export function generatePdfHtml(
   const isDetailed = pdfTemplate === "detailed";
   const isGutachten = protocol.templateId === "gutachterliche-bewertung";
   const todos = protocol.todos || [];
-  const date = new Date(protocol.createdAt).toLocaleDateString("de-DE", {
+  const date = new Date(protocol.createdAt).toLocaleDateString(loc, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
-  const time = new Date(protocol.createdAt).toLocaleTimeString("de-DE", {
+  const time = new Date(protocol.createdAt).toLocaleTimeString(loc, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -435,7 +442,7 @@ export function generatePdfHtml(
   // So collapse all newlines to spaces before inserting (besides escaping \ and ").
   const cssStr = (s: string) => String(s ?? "").replace(/[\r\n]+/g, " ").replace(/\\/g, "\\\\").replace(/"/g, '\\"').trim();
   const footerLeftContent = company.companyName ? cssStr(company.companyName) : "BuildKI";
-  const footerContent = cssStr(`Erstellt am ${date} um ${time}`);
+  const footerContent = cssStr(`${L.createdOn} ${date}, ${time}`);
   const showFooterPageNumbers = layoutOptions.showPageNumbers !== false;
 
   // ── Cover key figures (Kennzahlen-Karten) ─────────────────────────────────
@@ -446,11 +453,11 @@ export function generatePdfHtml(
   const kpiTodosOpen = (protocol.todos || []).filter((tdo) => !tdo.done).length;
   const kpiCards: { value: string | number; label: string; color: string }[] = [];
   if (kpiTodosTotal > 0) {
-    kpiCards.push({ value: kpiTodosOpen, label: "Offene Aufgaben", color: kpiTodosOpen > 0 ? "#B0763F" : "#5E8B6F" });
-    kpiCards.push({ value: kpiTodosTotal - kpiTodosOpen, label: "Erledigt", color: "#5E8B6F" });
+    kpiCards.push({ value: kpiTodosOpen, label: L.openTasks, color: kpiTodosOpen > 0 ? "#B0763F" : "#5E8B6F" });
+    kpiCards.push({ value: kpiTodosTotal - kpiTodosOpen, label: L.completed, color: "#5E8B6F" });
   }
-  if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: "Fotos", color: accent });
-  if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? "Beleg" : "Belege", color: "#64748B" });
+  if (kpiPhotoCount > 0) kpiCards.push({ value: kpiPhotoCount, label: L.photos, color: accent });
+  if (kpiEvidenceCount > 0) kpiCards.push({ value: kpiEvidenceCount, label: kpiEvidenceCount === 1 ? L.attachmentOne : L.attachmentMany, color: "#64748B" });
   const kpiBandHtml = (kpiCards.length > 0 && !hasCoverPage)
     ? `<div class="stat-band">${kpiCards.map((cd) => `<div class="stat-card"><span class="num" style="color:${cd.color};">${cd.value}</span><span class="lbl">${cd.label}</span></div>`).join("")}</div>`
     : "";
@@ -594,7 +601,7 @@ export function generatePdfHtml(
   const evidenceHtml = evidenceArticles.length > 0
     ? `
       <section class="document-chapter evidence-section">
-        <h2>Fotodokumentation &amp; Messungen</h2>
+        <h2>${escapeHtml(L.photoDocs)}</h2>
         <div class="evidence-grid">${evidenceArticles.join("")}</div>
       </section>`
     : "";
@@ -608,17 +615,17 @@ export function generatePdfHtml(
   const sigCols: { role: string; svg: string; caption: string }[] = [];
   if (protocol.signatures && protocol.signatures.length > 0) {
     for (const sig of protocol.signatures) {
-      sigCols.push({ role: escapeHtml(sig.role || `Erstellt durch${coSuffix}`), svg: sig.paths?.length ? sigSvg(sig.paths) : "", caption: escapeHtml(sig.signedAt || "Ort, Datum") });
+      sigCols.push({ role: escapeHtml(sig.role || `${L.createdBy}${coSuffix}`), svg: sig.paths?.length ? sigSvg(sig.paths) : "", caption: escapeHtml(sig.signedAt || L.placeDate) });
     }
   } else if (protocol.signaturePaths && protocol.signaturePaths.length > 0) {
-    sigCols.push({ role: `Erstellt durch${coSuffix}`, svg: sigSvg(protocol.signaturePaths), caption: date });
+    sigCols.push({ role: `${L.createdBy}${coSuffix}`, svg: sigSvg(protocol.signaturePaths), caption: date });
   } else {
-    sigCols.push({ role: `Erstellt durch${coSuffix}`, svg: "", caption: "Ort, Datum" });
+    sigCols.push({ role: `${L.createdBy}${coSuffix}`, svg: "", caption: L.placeDate });
   }
-  sigCols.push({ role: "Zur Kenntnis genommen", svg: "", caption: "Ort, Datum" });
+  sigCols.push({ role: L.acknowledged, svg: "", caption: L.placeDate });
   const freigabeHtml = layoutShowSignatures
     ? `<section class="freigabe-section">
-        <h2>Freigabe</h2>
+        <h2>${escapeHtml(L.release)}</h2>
         <div class="sign-grid">
           ${sigCols.map((c) => `<div class="sign-col"><div class="sign-role">${c.role}</div><div class="sign-area">${c.svg}</div><div class="sign-line"></div><div class="sign-caption">${c.caption}</div></div>`).join("")}
         </div>
@@ -737,7 +744,7 @@ export function generatePdfHtml(
           const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[photoIdx] != null
             ? `${Math.floor(protocol.photoTimestamps[photoIdx] / 60)}:${(protocol.photoTimestamps[photoIdx] % 60).toString().padStart(2, '0')} Min.`
             : null;
-          const wmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}`;
+          const wmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString(loc)} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}`;
           const watermarkOverlay = photoWatermark ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${wmContent}</div>` : "";
           return `
           <div class="photo-block" style="margin: 12px 0; border: 1px solid #eee; border-radius: 6px; padding: 10px; background: #fafafa;">
@@ -775,7 +782,7 @@ export function generatePdfHtml(
             const timestamp = protocol.photoTimestamps && protocol.photoTimestamps[idx] != null
               ? `${Math.floor(protocol.photoTimestamps[idx] / 60)}:${(protocol.photoTimestamps[idx] % 60).toString().padStart(2, '0')}`
               : null;
-            const gridWmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString("de-DE")}${protocol.projectName ? " | " + protocol.projectName : ""}`;
+            const gridWmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString(loc)}${protocol.projectName ? " | " + protocol.projectName : ""}`;
             const gridWatermark = photoWatermark ? `<div style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;padding:1px 4px;border-radius:2px;">${gridWmContent}</div>` : "";
             htmlResult += `
               <div class="photo-block" style="flex: 1; min-width: ${cols >= 3 ? '30%' : cols === 2 ? '45%' : '100%'}; max-width: ${cols >= 3 ? '32%' : cols === 2 ? '48%' : '100%'};">
@@ -865,7 +872,7 @@ export function generatePdfHtml(
       ? `
     <div style="page-break-before: auto; margin-top: 24px;">
       <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">
-        Fotodokumentation (${remainingPhotoIndices.length} ${remainingPhotoIndices.length === 1 ? "Bild" : "Bilder"})
+        ${escapeHtml(L.photoDocs)} (${remainingPhotoIndices.length})
       </h3>
       ${remainingPhotoIndices
         .map((i) => {
@@ -874,7 +881,7 @@ export function generatePdfHtml(
             ? `${Math.floor(protocol.photoTimestamps[i] / 60)}:${(protocol.photoTimestamps[i] % 60).toString().padStart(2, '0')} Min.`
             : null;
           const caption = getPhotoCaptionFromSegments(i);
-          const docWmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString("de-DE")} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}`;
+          const docWmContent = watermarkText || `${new Date(protocol.createdAt).toLocaleDateString(loc)} ${timestamp || ""}${protocol.projectName ? " | " + protocol.projectName : ""}`;
           const docWatermark = photoWatermark ? `<div style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;">${docWmContent}</div>` : "";
           return `
           <div class="photo-block" style="width: 100%; margin-bottom: 20px;">
@@ -904,7 +911,7 @@ export function generatePdfHtml(
       
       <!-- Gesamtplan mit Markierung -->
       <div style="margin-bottom: 20px;">
-        <p style="font-size: 11px; color: #555; margin-bottom: 8px; font-weight: 600;">Übersicht (Gesamtplan)</p>
+        <p style="font-size: 11px; color: #555; margin-bottom: 8px; font-weight: 600;">${escapeHtml(L.overview)}</p>
         <div style="position: relative; display: inline-block; width: 100%; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
           <img src="${planImageBase64}" style="width: 100%; display: block;" />
           <div style="position: absolute; top: ${protocol.planData.pinY * 100}%; left: ${protocol.planData.pinX * 100}%; transform: translate(-50%, -100%); z-index: 10;">
@@ -919,7 +926,7 @@ export function generatePdfHtml(
 
       <!-- Ausschnitt/Zoom der markierten Stelle -->
       <div style="margin-bottom: 12px;">
-        <p style="font-size: 11px; color: #555; margin-bottom: 8px; font-weight: 600;">Detailausschnitt</p>
+        <p style="font-size: 11px; color: #555; margin-bottom: 8px; font-weight: 600;">${escapeHtml(L.detail)}</p>
         <div style="width: 100%; height: 280px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; position: relative;">
           <img src="${planImageBase64}" style="position: absolute; width: 300%; height: 300%; object-fit: cover; left: ${-protocol.planData.pinX * 300 + 50}%; top: ${-protocol.planData.pinY * 300 + 50}%;" />
           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); z-index: 10;">
@@ -1481,45 +1488,45 @@ export function generatePdfHtml(
   ${isGutachten ? `
   ${letterhead}
   <div style="margin-bottom: 24px;">
-    <h1 style="font-size: 24px; font-weight: 800; color: ${accent}; margin: 10px 0 4px 0;">${escapeHtml(protocol.projectName || "Projekt")}</h1>
-    <p style="font-size: 11px; color: #666; margin: 0;"><strong>${escapeHtml(protocol.templateName || "Gutachterliche Bewertung")}</strong></p>
+    <h1 style="font-size: 24px; font-weight: 800; color: ${accent}; margin: 10px 0 4px 0;">${escapeHtml(protocol.projectName || L.project)}</h1>
+    <p style="font-size: 11px; color: #666; margin: 0;"><strong>${escapeHtml(localizeReportType(protocol.templateId, protocol.templateName || "Gutachterliche Bewertung", lang))}</strong></p>
   </div>
   ` : `
   ${letterhead}
   <div class="header-titles">
-    <p class="doc-subtitle"><strong>${escapeHtml(protocol.templateName || "Protokoll")}</strong></p>
-    <h1 class="doc-title">${escapeHtml(protocol.projectName || "Projekt")}</h1>
+    <p class="doc-subtitle"><strong>${escapeHtml(localizeReportType(protocol.templateId, protocol.templateName || "Protokoll", lang))}</strong></p>
+    <h1 class="doc-title">${escapeHtml(protocol.projectName || L.project)}</h1>
   </div>
   <div class="title-rule"></div>
   `}
 
   ${layoutShowMetadata ? `<table class="meta-table">
-    ${protocol.protocolNumber ? `<tr><td>Protokoll-Nr.</td><td><strong>${protocol.protocolNumber}</strong></td></tr>` : ''}
-    ${protocol.projectName ? `<tr><td>Projekt</td><td><strong>${protocol.projectName}</strong></td></tr>` : ''}
+    ${protocol.protocolNumber ? `<tr><td>${escapeHtml(L.protocolNr)}</td><td><strong>${protocol.protocolNumber}</strong></td></tr>` : ''}
+    ${protocol.projectName ? `<tr><td>${escapeHtml(L.project)}</td><td><strong>${protocol.projectName}</strong></td></tr>` : ''}
     <tr>
-      <td>Datum</td>
+      <td>${escapeHtml(L.date)}</td>
       <td>${date}</td>
     </tr>
     <tr>
-      <td>Uhrzeit</td>
+      <td>${escapeHtml(L.time)}</td>
       <td>${time}</td>
     </tr>
     <tr>
-      <td>Aufnahmedauer</td>
+      <td>${escapeHtml(L.duration)}</td>
       <td>${durationStr}</td>
     </tr>
     <tr>
-      <td>Vorlage</td>
-      <td>${protocol.templateName || "Freies Protokoll"}</td>
+      <td>${escapeHtml(L.reportType)}</td>
+      <td>${escapeHtml(localizeReportType(protocol.templateId, protocol.templateName || "Freies Protokoll", lang))}</td>
     </tr>
     ${
       evidenceSnapshots.length > 0 || photoDataUris.filter(Boolean).length > 0
-        ? `<tr><td>Anh\u00e4nge</td><td>${evidenceSnapshots.length || photoDataUris.filter(Boolean).length} Beleg${(evidenceSnapshots.length || photoDataUris.filter(Boolean).length) !== 1 ? "e" : ""}</td></tr>`
+        ? `<tr><td>${escapeHtml(L.attachmentMany)}</td><td>${(() => { const n = evidenceSnapshots.length || photoDataUris.filter(Boolean).length; return `${n} ${n !== 1 ? escapeHtml(L.attachmentMany) : escapeHtml(L.attachmentOne)}`; })()}</td></tr>`
         : ""
     }
     ${
       protocol.location
-        ? `<tr><td>Standort</td><td>${protocol.location.address || `${protocol.location.latitude.toFixed(5)}, ${protocol.location.longitude.toFixed(5)}`}</td></tr>`
+        ? `<tr><td>${escapeHtml(L.address)}</td><td>${protocol.location.address || `${protocol.location.latitude.toFixed(5)}, ${protocol.location.longitude.toFixed(5)}`}</td></tr>`
         : ""
     }
   </table>` : ''}
@@ -1530,15 +1537,15 @@ export function generatePdfHtml(
 
   ${todos.length > 0 && layoutShowTodos ? `
   <div class="section-block" style="margin: 24px 0;">
-    <h3 style="font-size:15px;font-weight:800;color:#1b2430;letter-spacing:-0.2px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #E6EBF1;">Mängel &amp; Aufgaben <span style="font-weight:600;color:#6B7A8D;font-size:11px;">(${todos.filter(t => t.done).length}/${todos.length} erledigt)</span></h3>
+    <h3 style="font-size:15px;font-weight:800;color:#1b2430;letter-spacing:-0.2px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #E6EBF1;">${escapeHtml(L.defectsTasks)} <span style="font-weight:600;color:#6B7A8D;font-size:11px;">(${todos.filter(t => t.done).length}/${todos.length} ${escapeHtml(L.done)})</span></h3>
     <table style="width:100%;border-collapse:collapse;font-size:10.5px;">
       <thead><tr>
-        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:34px;">Nr.</th>
-        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;">Beschreibung</th>
-        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:78px;">Status</th>
-        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:72px;">Priorität</th>
-        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;">Verantwortlich</th>
-        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:82px;">Frist</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:34px;">${escapeHtml(L.colNr)}</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;">${escapeHtml(L.colDescShort)}</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:78px;">${escapeHtml(L.colStatus)}</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:72px;">${escapeHtml(L.colPriority)}</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;">${escapeHtml(L.colResponsible)}</th>
+        <th style="text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6B7A8D;font-weight:700;padding:8px 10px;border:1px solid #E6EBF1;background:#F4F7FA;width:82px;">${escapeHtml(L.colDeadline)}</th>
       </tr></thead>
       <tbody>
         ${todos.map((todo, i) => {
@@ -1574,14 +1581,14 @@ export function generatePdfHtml(
 
   ${protocol.checklistResults && protocol.checklistResults.length > 0 ? `
   <div style="margin-top: 30px; page-break-inside: avoid;">
-    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">Checklisten-Ergebnisse</h3>
+    <h3 style="font-size: 14px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 12px;">${escapeHtml(L.checklistResults)}</h3>
     ${protocol.checklistResults.map(cl => `
       <div style="margin-bottom: 16px; border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <div style="font-weight: 600; font-size: 13px; color: #333;">${cl.name}</div>
           <div style="font-size: 11px; color: ${cl.completionRate === 100 ? '#22c55e' : '#f59e0b'}; font-weight: 600;">${cl.completionRate}%</div>
         </div>
-        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">Pr\u00fcfer: ${cl.inspector}${cl.completedAt ? ` \u2022 ${new Date(cl.completedAt).toLocaleDateString('de-DE')}` : ''}</div>
+        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">${escapeHtml(L.inspector)}: ${cl.inspector}${cl.completedAt ? ` \u2022 ${new Date(cl.completedAt).toLocaleDateString(loc)}` : ''}</div>
         <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
           ${cl.items.map(item => `
             <tr style="border-bottom: 1px solid #f0f0f0;">
@@ -1641,7 +1648,8 @@ export async function generateProtocolHtmlPreview(protocol: PdfProtocol): Promis
       if (branding.pdfTemplate) pdfTemplate = branding.pdfTemplate;
     }
   } catch {}
-  return generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate);
+  const previewLang = (((await AsyncStorage.getItem("app_language")) || "de") as Language);
+  return generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, true, "", { lang: previewLang });
 }
 
 export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string> {
@@ -1745,6 +1753,10 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
     }
   } catch {}
   const showPageNumbers = brandingData?.showPageNumbers !== false;
+  // PDF chrome labels + date format follow the chosen app language (the
+  // AI-generated text content stays in the recording language).
+  const appLang = (((await AsyncStorage.getItem("app_language")) || "de") as Language);
+  const Lc = getPdfLabels(appLang);
 
   // Generate cover page FIRST (if enabled) so the body can drop the duplicate
   // metadata table + KPI band only when a cover is actually produced.
@@ -1772,8 +1784,8 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       const _durMin = Math.round((resolvedProtocol.duration || 0) / 60);
       const kpiCards: any[] = [];
       if (_todos.length > 0) {
-        kpiCards.push({ value: _open, label: "Offene Aufgaben", sub: _open > 0 ? `${_open} offen` : undefined, subWarn: _open > 0, color: _open > 0 ? "#B7791F" : "#2F855A", bg: _open > 0 ? "#FBF0DD" : "#E4F3EA", icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' });
-        kpiCards.push({ value: _todos.length - _open, label: "Erledigt", color: "#2F855A", bg: "#E4F3EA", icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' });
+        kpiCards.push({ value: _open, label: Lc.openTasks, sub: _open > 0 ? `${_open} ${Lc.open}` : undefined, subWarn: _open > 0, color: _open > 0 ? "#B7791F" : "#2F855A", bg: _open > 0 ? "#FBF0DD" : "#E4F3EA", icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' });
+        kpiCards.push({ value: _todos.length - _open, label: Lc.completed, color: "#2F855A", bg: "#E4F3EA", icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>' });
       }
       // "Fotos" and "Dauer" cards dropped on purpose — not useful on a cover.
       void _photoN; void _durMin;
@@ -1783,9 +1795,6 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
       if (resolvedProtocol.projectImageUri) {
         heroDataUri = await withTimeout(fileToBase64DataUri(resolvedProtocol.projectImageUri), 5000, null);
       }
-      // PDF chrome labels + date format follow the chosen app language (the
-      // AI-generated text content stays in the recording language).
-      const appLang = (((await AsyncStorage.getItem("app_language")) || "de") as Language);
       coverPageHtml = generateCoverPage(fullBranding, resolvedProtocol, logoBase64, { kpiCards, heroDataUri }, appLang);
     } catch (e) {
       console.warn("[PDF-Gen] Cover page generation failed:", e);
@@ -1793,7 +1802,7 @@ export async function generateProtocolPdf(protocol: PdfProtocol): Promise<string
   }
 
   // Generate the body HTML — dropping the duplicate metadata/KPIs when a cover exists.
-  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize, hasCoverPage: !!coverPageHtml, showPageNumbers });
+  const html = generatePdfHtml(resolvedProtocol, company, photoDataUris, evidenceDataUris, planImageBase64, accentColor, pdfTemplate, photoWatermark, watermarkText, { showTranscription, showTodos, showMetadata, showSignatures, photoSize, hasCoverPage: !!coverPageHtml, showPageNumbers, lang: appLang });
 
   // Insert cover page before the body content if available
   const finalHtml = coverPageHtml

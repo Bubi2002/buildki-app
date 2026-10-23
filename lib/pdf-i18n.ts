@@ -26,6 +26,8 @@ export type PdfLabels = {
   checklistResults: string; inspector: string; photoDocs: string; release: string;
   acknowledged: string; placeDate: string; overview: string; detail: string;
   summary: string; recommendedActions: string; photo: string;
+  createdOn: string; colStatus: string; colPriority: string; colResponsible: string; colDescShort: string;
+  openTasks: string; completed: string; photos: string;
 };
 
 const DE: PdfLabels = {
@@ -36,6 +38,8 @@ const DE: PdfLabels = {
   checklistResults: "Checklisten-Ergebnisse", inspector: "Prüfer", photoDocs: "Fotodokumentation", release: "Freigabe",
   acknowledged: "Zur Kenntnis genommen", placeDate: "Ort, Datum", overview: "Übersicht (Gesamtplan)", detail: "Detailausschnitt",
   summary: "Zusammenfassung", recommendedActions: "Empfohlene Maßnahmen", photo: "Foto",
+  createdOn: "Erstellt am", colStatus: "Status", colPriority: "Priorität", colResponsible: "Verantwortlich", colDescShort: "Beschreibung",
+  openTasks: "Offene Aufgaben", completed: "Erledigt", photos: "Fotos",
 };
 
 const EN: PdfLabels = {
@@ -46,6 +50,8 @@ const EN: PdfLabels = {
   checklistResults: "Checklist results", inspector: "Inspector", photoDocs: "Photo documentation", release: "Sign-off",
   acknowledged: "Acknowledged", placeDate: "Place, date", overview: "Overview (full plan)", detail: "Detail section",
   summary: "Summary", recommendedActions: "Recommended actions", photo: "Photo",
+  createdOn: "Created on", colStatus: "Status", colPriority: "Priority", colResponsible: "Responsible", colDescShort: "Description",
+  openTasks: "Open tasks", completed: "Completed", photos: "Photos",
 };
 
 const FR: PdfLabels = {
@@ -56,6 +62,8 @@ const FR: PdfLabels = {
   checklistResults: "Résultats de la liste de contrôle", inspector: "Contrôleur", photoDocs: "Documentation photo", release: "Validation",
   acknowledged: "Pris connaissance", placeDate: "Lieu, date", overview: "Vue d'ensemble (plan complet)", detail: "Extrait de détail",
   summary: "Résumé", recommendedActions: "Mesures recommandées", photo: "Photo",
+  createdOn: "Créé le", colStatus: "Statut", colPriority: "Priorité", colResponsible: "Responsable", colDescShort: "Description",
+  openTasks: "Tâches ouvertes", completed: "Terminé", photos: "Photos",
 };
 
 const ES: PdfLabels = {
@@ -66,6 +74,8 @@ const ES: PdfLabels = {
   checklistResults: "Resultados de la lista de control", inspector: "Inspector", photoDocs: "Documentación fotográfica", release: "Aprobación",
   acknowledged: "Enterado", placeDate: "Lugar, fecha", overview: "Vista general (plano completo)", detail: "Detalle",
   summary: "Resumen", recommendedActions: "Medidas recomendadas", photo: "Foto",
+  createdOn: "Creado el", colStatus: "Estado", colPriority: "Prioridad", colResponsible: "Responsable", colDescShort: "Descripción",
+  openTasks: "Tareas abiertas", completed: "Completado", photos: "Fotos",
 };
 
 const PL: PdfLabels = {
@@ -76,6 +86,8 @@ const PL: PdfLabels = {
   checklistResults: "Wyniki listy kontrolnej", inspector: "Kontroler", photoDocs: "Dokumentacja fotograficzna", release: "Zatwierdzenie",
   acknowledged: "Przyjęto do wiadomości", placeDate: "Miejscowość, data", overview: "Przegląd (cały plan)", detail: "Fragment szczegółowy",
   summary: "Podsumowanie", recommendedActions: "Zalecane działania", photo: "Zdjęcie",
+  createdOn: "Utworzono", colStatus: "Status", colPriority: "Priorytet", colResponsible: "Odpowiedzialny", colDescShort: "Opis",
+  openTasks: "Otwarte zadania", completed: "Ukończone", photos: "Zdjęcia",
 };
 
 const RU: PdfLabels = {
@@ -86,6 +98,8 @@ const RU: PdfLabels = {
   checklistResults: "Результаты чек-листа", inspector: "Проверяющий", photoDocs: "Фотодокументация", release: "Согласование",
   acknowledged: "Ознакомлен", placeDate: "Место, дата", overview: "Обзор (полный план)", detail: "Фрагмент",
   summary: "Сводка", recommendedActions: "Рекомендуемые меры", photo: "Фото",
+  createdOn: "Создано", colStatus: "Статус", colPriority: "Приоритет", colResponsible: "Ответственный", colDescShort: "Описание",
+  openTasks: "Открытые задачи", completed: "Выполнено", photos: "Фото",
 };
 
 const UK: PdfLabels = {
@@ -96,6 +110,8 @@ const UK: PdfLabels = {
   checklistResults: "Результати чек-листа", inspector: "Перевіряючий", photoDocs: "Фотодокументація", release: "Погодження",
   acknowledged: "Ознайомлено", placeDate: "Місце, дата", overview: "Огляд (повний план)", detail: "Фрагмент",
   summary: "Підсумок", recommendedActions: "Рекомендовані заходи", photo: "Фото",
+  createdOn: "Створено", colStatus: "Статус", colPriority: "Пріоритет", colResponsible: "Відповідальний", colDescShort: "Опис",
+  openTasks: "Відкриті завдання", completed: "Виконано", photos: "Фото",
 };
 
 const RO: PdfLabels = {
@@ -106,6 +122,8 @@ const RO: PdfLabels = {
   checklistResults: "Rezultatele listei de verificare", inspector: "Inspector", photoDocs: "Documentație foto", release: "Aprobare",
   acknowledged: "Luat la cunoștință", placeDate: "Loc, data", overview: "Prezentare generală (plan complet)", detail: "Detaliu",
   summary: "Rezumat", recommendedActions: "Măsuri recomandate", photo: "Foto",
+  createdOn: "Creat la", colStatus: "Stare", colPriority: "Prioritate", colResponsible: "Responsabil", colDescShort: "Descriere",
+  openTasks: "Sarcini deschise", completed: "Finalizat", photos: "Foto",
 };
 
 const BG: PdfLabels = {
@@ -116,6 +134,8 @@ const BG: PdfLabels = {
   checklistResults: "Резултати от контролния списък", inspector: "Проверяващ", photoDocs: "Фотодокументация", release: "Одобрение",
   acknowledged: "Запознат", placeDate: "Място, дата", overview: "Преглед (пълен план)", detail: "Детайл",
   summary: "Обобщение", recommendedActions: "Препоръчани мерки", photo: "Снимка",
+  createdOn: "Създадено на", colStatus: "Статус", colPriority: "Приоритет", colResponsible: "Отговорник", colDescShort: "Описание",
+  openTasks: "Отворени задачи", completed: "Изпълнено", photos: "Снимки",
 };
 
 const TR: PdfLabels = {
@@ -126,6 +146,8 @@ const TR: PdfLabels = {
   checklistResults: "Kontrol listesi sonuçları", inspector: "Denetçi", photoDocs: "Fotoğraf dokümantasyonu", release: "Onay",
   acknowledged: "Bilgilendirildi", placeDate: "Yer, tarih", overview: "Genel bakış (tam plan)", detail: "Detay",
   summary: "Özet", recommendedActions: "Önerilen önlemler", photo: "Fotoğraf",
+  createdOn: "Oluşturulma", colStatus: "Durum", colPriority: "Öncelik", colResponsible: "Sorumlu", colDescShort: "Açıklama",
+  openTasks: "Açık görevler", completed: "Tamamlandı", photos: "Fotoğraflar",
 };
 
 const LABELS: Record<Language, PdfLabels> = { de: DE, en: EN, fr: FR, es: ES, pl: PL, ru: RU, uk: UK, ro: RO, bg: BG, tr: TR };
