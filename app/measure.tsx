@@ -753,7 +753,12 @@ export default function MeasureScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>{t('measure_recent_title' as any)}</Text>
                 {measuredEvidence.map((e) => {
                   const rows = rowsForEvidence(e);
-                  const summary = rows.map((r) => r.value).join("  ·  ");
+                  // Messwerte zuerst (sonst schiebt ein langer Befundtext den
+                  // gemessenen Wert aus der Vorschau), dann Ort/Befund; leere
+                  // Felder weglassen, damit keine "· · ·" entstehen.
+                  const measVals = rows.filter((r) => /^M\d+$/.test(r.label)).map((r) => r.value);
+                  const ctxVals = rows.filter((r) => !/^M\d+$/.test(r.label)).map((r) => r.value);
+                  const summary = [...measVals, ...ctxVals].filter((v) => v && v.trim()).join("  ·  ");
                   const selected = selectedEvidence?.id === e.id;
                   return (
                     <Pressable
@@ -766,7 +771,7 @@ export default function MeasureScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.recentTitle, { color: colors.foreground }]} numberOfLines={1}>{evidenceTitle(e)}</Text>
-                        <Text style={[styles.recentSub, { color: colors.muted }]} numberOfLines={2}>{summary}</Text>
+                        <Text style={[styles.recentSub, { color: colors.muted }]} numberOfLines={3}>{summary}</Text>
                       </View>
                       <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
                     </Pressable>
