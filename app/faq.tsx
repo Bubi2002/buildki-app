@@ -57,22 +57,22 @@ const FAQ: Group[] = [
     title: "PDF & Berichte",
     items: [
       { q: "Wie exportiere ich ein PDF?", a: "Im Protokoll/Bericht auf „Exportieren“ tippen. Je nach Werkzeug gibt es passende Vorlagen (Protokoll, Mängel, Raumbuch, Bautagebuch …)." },
-      { q: "Wie bekomme ich mein Logo und meine Firmendaten in die Berichte?", a: "Einstellungen und dann „Unternehmen & Profil“: Logo hochladen, Firmenname, Anschrift, Ansprechpartner, Kontakt und mehr eintragen. Diese Daten erscheinen im Kopf aller Berichte." },
-      { q: "Wie ändere ich das Aussehen (Firmenfarbe, Logogröße)?", a: "Einstellungen und dann „Unternehmen & Profil“, Abschnitt Darstellung für Firmenfarbe/Logo – und „Berichte & PDF“ für Vorlage, Wasserzeichen und Titelblatt." },
+      { q: "Wie bekomme ich mein Logo und meine Firmendaten in die Berichte?", a: "Einstellungen und dann „Unternehmen & Profil“: Logo hochladen sowie Firmenname, Ersteller, Telefon, E-Mail, Website und Adresse eintragen. Diese Daten erscheinen im Kopf aller Berichte." },
+      { q: "Kann ich Farbe und Layout der PDF-Berichte anpassen?", a: "Das PDF-Layout ist fest vorgegeben (einheitliche Akzentfarbe und Logo-Position), damit alle Berichte gleich aussehen. In „Unternehmen & Profil“ lässt sich nur das Wasserzeichen bzw. der Firmenstempel anpassen." },
     ],
   },
   {
     title: "Versand",
     items: [
       { q: "Wie verschicke ich einen Bericht?", a: "Nach dem Export über Teilen/E-Mail. Empfänger wählst du beim Senden aus den Projektbeteiligten und dem Team-Kontaktbuch." },
-      { q: "Was bedeuten Manuell, Vorbereiten und Automatisch?", a: "Einstellungen und dann „Versand & Kontakte“: Manuell (du exportierst und sendest selbst), Vorbereiten (PDF wird erstellt, Versand erst nach deiner Bestätigung), Automatisch (sofort an die Standardempfänger). Standard ist Manuell – es wird nichts ohne dich gesendet." },
+      { q: "Wird ein Bericht automatisch oder manuell verschickt?", a: "Der Versand erfolgt immer manuell: Du exportierst den Bericht und verschickst ihn selbst über Teilen/E-Mail. Die Empfänger wählst du dabei aus den Projektbeteiligten und dem Team-Kontaktbuch. Es wird nie automatisch etwas gesendet." },
     ],
   },
   {
     title: "Kontakte",
     items: [
       { q: "Warum sehe ich nur einen Apple-Kontakt?", a: "iOS gibt Apps standardmäßig nur begrenzten Zugriff. Tippe im Kontakt-Feld auf „Weitere Kontakte freigeben“, um weitere Kontakte zu erlauben." },
-      { q: "Wie pflege ich ein eigenes Team-Kontaktbuch?", a: "Mehr und dann Team: dort kannst du Namen, E-Mail, Telefon und Rolle hinterlegen. Diese Kontakte stehen als Empfänger und Zuständige zur Verfügung." },
+      { q: "Wie pflege ich ein eigenes Team-Kontaktbuch?", a: "Im Tab „Einstellungen“ und dann „Team“: dort kannst du Namen, E-Mail, Telefon und Rolle hinterlegen. Diese Kontakte stehen als Empfänger und Zuständige zur Verfügung." },
     ],
   },
   {
@@ -80,14 +80,14 @@ const FAQ: Group[] = [
     items: [
       { q: "Wie hole ich einen Plan aus Dropbox in die App?", a: "Beim Plan-Hinzufügen „Cloud (Dropbox, Drive…)“ wählen – es öffnet sich die iOS-„Dateien“-Auswahl, dort auf Dropbox tippen und den Plan (PDF oder Bild) auswählen. Dafür ist kein „Verbinden“ nötig; die Dropbox-App muss nur auf dem iPad installiert sein." },
       { q: "Wie lege ich eine PDF in Dropbox ab?", a: "Beim Export auf „Teilen“ tippen und „In Dropbox sichern“ wählen. Das geht ohne Konto-Verbindung über die iOS-Freigabe." },
-      { q: "Wie sichere ich meine Daten?", a: "Mehr und dann „Cloud & Dropbox“ bzw. Einstellungen und dann „Konto & Datensicherung“: dort findest du Backup und, falls angemeldet, die Cloud-Synchronisierung." },
+      { q: "Wie sichere ich meine Daten?", a: "Im Tab „Einstellungen“ und dann „Konto & Datensicherung“: dort findest du Backup/Wiederherstellen und, falls angemeldet, die Cloud-Synchronisierung." },
     ],
   },
   {
     title: "Sprache & Datenschutz",
     items: [
       { q: "Wie ändere ich die App-Sprache?", a: "Einstellungen und dann „App & Datenschutz“ und dann Sprache." },
-      { q: "Wo finde ich Datenschutz und rechtliche Hinweise?", a: "Mehr und dann Rechtliches. Dort sind auch DSGVO-Export und Datenschutzeinstellungen zu finden." },
+      { q: "Wo finde ich Datenschutz und rechtliche Hinweise?", a: "Im Tab „Einstellungen“ und dann „App & Datenschutz“: dort findest du die Datenschutz-Einstellungen und unter „Rechtliches“ die rechtlichen Hinweise (inkl. Datenexport)." },
     ],
   },
 ];
