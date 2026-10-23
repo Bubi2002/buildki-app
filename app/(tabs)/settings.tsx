@@ -35,6 +35,7 @@ import { startOAuthLogin } from "@/constants/oauth";
 import { trpc } from "@/lib/trpc";
 import { PrivacyChoicesSection } from "@/components/privacy-choices-section";
 import { SignaturePad } from "@/components/signature-pad";
+import { NotificationsSettingsBody } from "@/components/notifications-settings-body";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SvgXml } from "react-native-svg";
 import { getConsentRequiredMessage, isConsentGiven } from "@/lib/privacy-consent";
@@ -1789,17 +1790,8 @@ return (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t('settings_notifications')}</Text>
           <Text style={[styles.sectionDescription, { color: colors.muted }]}>{t('erinnerungen_fuer_maengel_und')}</Text>
-          <Pressable
-            onPress={() => router.push("/notifications-settings" as any)}
-            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="notifications" size={22} color={colors.primary} style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{t('pushbenachrichtigungen')}</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{t('taegliche_erinnerungen_konfigurieren')}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
-          </Pressable>
+          {/* Konfiguration direkt hier (nicht mehr erst in eine Unterseite tippen). */}
+          <NotificationsSettingsBody />
         </View>
 
         </>)}
