@@ -237,8 +237,13 @@ export async function generateRaumbuchPdf(
 
   // Only rooms with at least one photo produce content pages.
   const withPhotos = entries.filter((e) => wallCount(e) > 0);
-  const floorNames = Array.from(new Set(withPhotos.map((e) => e.floorName || "—")))
-    .sort((a, b) => floorRank(a) - floorRank(b) || a.localeCompare(b, "de"));
+  // Floors are grouped physically (KG/UG → EG → OG → DG). Within the SAME rank
+  // (e.g. UG and KG both rank as basement) keep the order the user created them
+  // in — not alphabetically, which wrongly put KG before a UG that was added first.
+  const firstSeen = new Map<string, number>();
+  withPhotos.forEach((e, i) => { const f = e.floorName || "—"; if (!firstSeen.has(f)) firstSeen.set(f, i); });
+  const floorNames = Array.from(firstSeen.keys())
+    .sort((a, b) => floorRank(a) - floorRank(b) || (firstSeen.get(a)! - firstSeen.get(b)!));
   const floors = floorNames.map((fname) => ({
     name: fname,
     code: floorCode(fname),
