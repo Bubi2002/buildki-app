@@ -292,6 +292,19 @@ export default function RaumbuchRoomScreen() {
       const cur = entry || blankEntry();
       const existing = raumbuchPhotosFor(cur.photos, pos);
       await persist({ ...cur, photos: { ...cur.photos, [pos]: [...existing, ...saved] } });
+      // Nach einer Einzel-Aufnahme (typisch Kamera) direkt fragen, ob ein
+      // weiteres Foto folgt — so kann man mehrere Fotos pro Wand in einem Fluss
+      // machen, ohne jedes Mal erneut "+" zu tippen. (Wiederholen/Retake bietet
+      // die iOS-Kamera beim Aufnehmen selbst an.)
+      if (picked.length === 1) {
+        const more = await new Promise<boolean>((res) => {
+          Alert.alert(t("raumbuch_photo_another_q" as any), "", [
+            { text: t("btn_fertig" as any), style: "cancel", onPress: () => res(false) },
+            { text: t("raumbuch_photo_more" as any), onPress: () => res(true) },
+          ]);
+        });
+        if (more) await addPhoto(pos);
+      }
     } catch {}
   };
 

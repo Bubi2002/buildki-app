@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { resolveDocUri } from "@/lib/resolve-doc-uri";
 
 // Positions documented per room: up to eight walls (A–H, for rooms with corners
 // or pillars) + floor + ceiling.
@@ -117,14 +118,17 @@ export async function deleteRaumbuchEntry(projectId: string, roomId: string): Pr
   await AsyncStorage.setItem(KEY(projectId), JSON.stringify(all.filter((e) => e.roomId !== roomId)));
 }
 
-/** Normalise a position's photo(s) to an array (handles legacy single-string). */
+/** Normalise a position's photo(s) to an array (handles legacy single-string).
+ * Re-anchors each URI onto the CURRENT documentDirectory (resolveDocUri), so
+ * wall photos stored under raumbuch/<projectId>/ with an absolute path don't
+ * vanish after an app update changes the iOS container UUID. */
 export function raumbuchPhotosFor(
   photos: Partial<Record<RaumbuchPosition, string | string[]>> | null | undefined,
   pos: RaumbuchPosition,
 ): string[] {
   const v = photos?.[pos];
   if (!v) return [];
-  return (Array.isArray(v) ? v : [v]).filter(Boolean);
+  return (Array.isArray(v) ? v : [v]).filter(Boolean).map(resolveDocUri);
 }
 
 /** Total number of photos across all positions (not positions documented). */
