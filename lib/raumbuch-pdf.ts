@@ -7,6 +7,9 @@ import { getFloorPlans } from "./floor-plan-store";
 import { getPdfBranding } from "./pdf-branding-store";
 import { resolveBrandingLogo } from "./pdf-premium";
 import { RAUMBUCH_POSITIONS, RAUMBUCH_POSITION_LABEL_KEY, RAUMBUCH_SURVEY, raumbuchPhotosFor, type RaumbuchEntry, type RaumbuchWallKey } from "./raumbuch-store";
+import { getPdfLabels, pdfLocale } from "./pdf-i18n";
+import { localizeSurveyGroup, localizeSurveyOption } from "./raumbuch-survey-i18n";
+import type { Language } from "./i18n";
 
 const WALL_KEYS: RaumbuchWallKey[] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 // Distinct colour per wall: A = Blau, B = Grün, C = Rot, D = Orange.
@@ -113,6 +116,10 @@ export async function generateRaumbuchPdf(
 ): Promise<string> {
   const branding = await getPdfBranding().catch(() => null);
   const accent = branding?.accentColor || "#8A6E52";
+  // PDF chrome labels + date follow the app language (user content stays as-is).
+  const lang = (((await AsyncStorage.getItem("app_language")) || "de") as Language);
+  const L = getPdfLabels(lang);
+  const loc = pdfLocale(lang);
   // Headings/dividers follow the brand accent (warm brown); beige tints for blocks.
   const NAVY = accent;
   const beigeBg = `${accent}12`;
@@ -138,7 +145,7 @@ export async function generateRaumbuchPdf(
     const v = planCropCache[key];
     return v ? { ...v, cls: planCropClass(key) } : null;
   };
-  const now = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const now = new Date().toLocaleDateString(loc, { day: "2-digit", month: "2-digit", year: "numeric" });
   const co = esc(branding?.companyName || "BuildKI");
 
   // Project meta for the cover page.
@@ -278,9 +285,9 @@ export async function generateRaumbuchPdf(
         const box = on ? BOX_ON : BOX_OFF;
         if (o === "Sonstiges") {
           const txt = (s.other?.[q.key] || "").trim();
-          return `<span class="${on ? "on" : ""}">${box} ${esc(o)} ${txt ? esc(txt) : "______________"}</span>`;
+          return `<span class="${on ? "on" : ""}">${box} ${esc(localizeSurveyOption(o, lang))} ${txt ? esc(txt) : "______________"}</span>`;
         }
-        return `<span class="${on ? "on" : ""}">${box} ${esc(o)}</span>`;
+        return `<span class="${on ? "on" : ""}">${box} ${esc(localizeSurveyOption(o, lang))}</span>`;
       });
       // User-added custom points — ticked state mirrors the checked set.
       const customOpts = (s.custom?.[q.key] || []).map((c) => {
@@ -288,14 +295,14 @@ export async function generateRaumbuchPdf(
         return `<span class="${on ? "on" : ""}">${on ? BOX_ON : BOX_OFF} ${esc(c)}</span>`;
       });
       const allOpts = [...opts, ...customOpts].join("&nbsp;&nbsp;&nbsp;");
-      return `<div class="quiz-row"><div class="quiz-label">${esc(q.label)}</div><div class="quiz-opts">${allOpts}</div></div>`;
+      return `<div class="quiz-row"><div class="quiz-label">${esc(localizeSurveyGroup(q.key, q.label, lang))}</div><div class="quiz-opts">${allOpts}</div></div>`;
     }).join("");
     const freiOn = s.decision === "freigabe";
     const aendOn = s.decision === "aenderung";
     const note = (s.decisionNote || "").trim();
     return `
       <div class="quiz">${rows}</div>
-      <div class="freigabe"><b>BITTE ANKREUZEN:</b> &nbsp; <span class="${freiOn ? "on" : ""}">${freiOn ? BOX_ON : BOX_OFF} <b>Freigabe</b></span> &nbsp;&nbsp;oder&nbsp;&nbsp; <span class="${aendOn ? "on" : ""}">${aendOn ? BOX_ON : BOX_OFF} <b>Änderung</b></span> <span class="freigabe-hint">(bitte hier angeben)</span> ${note ? esc(note) : "___________________________"}</div>`;
+      <div class="freigabe"><b>${esc(L.pleaseCheck)}</b> &nbsp; <span class="${freiOn ? "on" : ""}">${freiOn ? BOX_ON : BOX_OFF} <b>${esc(L.release)}</b></span> &nbsp;&nbsp;${esc(L.orWord)}&nbsp;&nbsp; <span class="${aendOn ? "on" : ""}">${aendOn ? BOX_ON : BOX_OFF} <b>${esc(L.change)}</b></span> <span class="freigabe-hint">${esc(L.pleaseSpecify)}</span> ${note ? esc(note) : "___________________________"}</div>`;
   };
 
   const content: string[] = [];
@@ -320,7 +327,7 @@ export async function generateRaumbuchPdf(
   // ── Table of contents ──
   content.push(`
     <section class="page brk toc">
-      <h1 class="toc-head">Inhalt</h1>
+      <h1 class="toc-head">${esc(L.contents)}</h1>
       ${tocFloors.map((fl) => `
         <div class="toc-floor">${esc(fl.name).toUpperCase()}</div>
         ${fl.rooms.map((r) => `<div class="toc-row"><span class="toc-no">${esc(r.no)}</span><span class="toc-name">${esc(r.name)}</span><span class="toc-dots"></span><span class="toc-pg">${r.page}</span></div>`).join("")}
@@ -353,7 +360,7 @@ export async function generateRaumbuchPdf(
           <section class="page brk room-overview">
             <div class="meta-row">
               <div class="meta">
-                <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
+                <div class="m"><span>${esc(L.floor)}:</span> ${esc(e.floorName)}</div>
                 <div class="m"><span>Raumnummer:</span> ${esc(roomNo)}</div>
                 <div class="m"><span>Bezeichnung:</span> ${esc(e.roomName)}</div>
               </div>
@@ -383,9 +390,9 @@ export async function generateRaumbuchPdf(
             <section class="page brk">
               <div class="meta-row">
                 <div class="meta">
-                  <div class="m"><span>Geschoss:</span> ${esc(e.floorName)}</div>
+                  <div class="m"><span>${esc(L.floor)}:</span> ${esc(e.floorName)}</div>
                   ${template === "fragenkatalog" ? `<div class="m"><span>Raumnummer:</span> ${esc(roomNo)}</div>` : ""}
-                  <div class="m"><span>Raum:</span> ${esc(e.roomName)}</div>
+                  <div class="m"><span>${esc(L.room)}:</span> ${esc(e.roomName)}</div>
                   ${posRow}
                   ${note ? `<div class="m note"><span>Notiz:</span> ${note}</div>` : ""}
                 </div>
@@ -400,7 +407,7 @@ export async function generateRaumbuchPdf(
   }
 
   if (floors.length === 0) {
-    content.push(`<section class="page cover"><div class="cover-body"><div class="cover-title">${esc(projectName)}</div><div class="empty">Keine Fotos erfasst.</div></div></section>`);
+    content.push(`<section class="page cover"><div class="cover-body"><div class="cover-title">${esc(projectName)}</div><div class="empty">${esc(L.noPhotos)}</div></div></section>`);
   }
 
   // Each plan's base64 is defined ONCE here and referenced by class on every
@@ -414,7 +421,7 @@ export async function generateRaumbuchPdf(
   const cssStr = (s: unknown) => String(s ?? "").replace(/[\r\n]+/g, " ").replace(/\\/g, "\\\\").replace(/"/g, '\\"').trim();
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
     ${planCss}
-    @page { margin: 0 0 16mm 0; @bottom-left { content: "${cssStr(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 8mm 14mm; } @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 8mm 0; } }
+    @page { margin: 0 0 16mm 0; @bottom-left { content: "${cssStr(projectName)}"; font-size: 8px; color: #9aa6b4; padding: 0 0 8mm 14mm; } @bottom-right { content: "${cssStr(L.page)} " counter(page) " / " counter(pages); font-size: 8px; color: #9aa6b4; padding: 0 14mm 8mm 0; } }
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; color: #253040; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .page { padding: 18px 14mm 0; }

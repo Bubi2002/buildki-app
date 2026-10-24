@@ -1,9 +1,15 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildPremiumHtml, resolveBrandingLogo, escHtml } from "./pdf-premium";
 import { getPdfBranding } from "./pdf-branding-store";
 import { resolveDocUri } from "./resolve-doc-uri";
+import type { Language } from "./i18n";
+
+async function appLanguage(): Promise<Language> {
+  try { return (((await AsyncStorage.getItem("app_language")) || "de") as Language); } catch { return "de"; }
+}
 
 async function fileToDataUri(rawUri: string): Promise<string | null> {
   try {
@@ -75,6 +81,7 @@ export async function exportMeasurementPdf(params: {
     subtitle: escHtml(params.heading),
     body,
     logoDataUri,
+    lang: await appLanguage(),
   });
 
   const { uri } = await Print.printToFileAsync({ html });
@@ -123,6 +130,7 @@ export async function exportMeasurementsOverviewPdf(params: {
     subtitle: escHtml(params.heading),
     body: sections.join(""),
     logoDataUri,
+    lang: await appLanguage(),
   });
 
   const { uri } = await Print.printToFileAsync({ html });

@@ -28,6 +28,8 @@ export type PdfLabels = {
   summary: string; recommendedActions: string; photo: string;
   createdOn: string; colStatus: string; colPriority: string; colResponsible: string; colDescShort: string;
   openTasks: string; completed: string; photos: string;
+  contents: string; floor: string; room: string; noPhotos: string; page: string;
+  pleaseCheck: string; change: string; orWord: string; pleaseSpecify: string;
 };
 
 const DE: PdfLabels = {
@@ -40,6 +42,8 @@ const DE: PdfLabels = {
   summary: "Zusammenfassung", recommendedActions: "Empfohlene Maßnahmen", photo: "Foto",
   createdOn: "Erstellt am", colStatus: "Status", colPriority: "Priorität", colResponsible: "Verantwortlich", colDescShort: "Beschreibung",
   openTasks: "Offene Aufgaben", completed: "Erledigt", photos: "Fotos",
+  contents: "Inhalt", floor: "Geschoss", room: "Raum", noPhotos: "Keine Fotos erfasst.", page: "Seite",
+  pleaseCheck: "BITTE ANKREUZEN:", change: "Änderung", orWord: "oder", pleaseSpecify: "(bitte hier angeben)",
 };
 
 const EN: PdfLabels = {
@@ -52,6 +56,8 @@ const EN: PdfLabels = {
   summary: "Summary", recommendedActions: "Recommended actions", photo: "Photo",
   createdOn: "Created on", colStatus: "Status", colPriority: "Priority", colResponsible: "Responsible", colDescShort: "Description",
   openTasks: "Open tasks", completed: "Completed", photos: "Photos",
+  contents: "Contents", floor: "Floor", room: "Room", noPhotos: "No photos recorded.", page: "Page",
+  pleaseCheck: "PLEASE TICK:", change: "Change", orWord: "or", pleaseSpecify: "(please specify here)",
 };
 
 const FR: PdfLabels = {
@@ -64,6 +70,8 @@ const FR: PdfLabels = {
   summary: "Résumé", recommendedActions: "Mesures recommandées", photo: "Photo",
   createdOn: "Créé le", colStatus: "Statut", colPriority: "Priorité", colResponsible: "Responsable", colDescShort: "Description",
   openTasks: "Tâches ouvertes", completed: "Terminé", photos: "Photos",
+  contents: "Sommaire", floor: "Étage", room: "Pièce", noPhotos: "Aucune photo enregistrée.", page: "Page",
+  pleaseCheck: "COCHER SVP :", change: "Modification", orWord: "ou", pleaseSpecify: "(à préciser ici)",
 };
 
 const ES: PdfLabels = {
@@ -76,6 +84,8 @@ const ES: PdfLabels = {
   summary: "Resumen", recommendedActions: "Medidas recomendadas", photo: "Foto",
   createdOn: "Creado el", colStatus: "Estado", colPriority: "Prioridad", colResponsible: "Responsable", colDescShort: "Descripción",
   openTasks: "Tareas abiertas", completed: "Completado", photos: "Fotos",
+  contents: "Índice", floor: "Planta", room: "Sala", noPhotos: "No se registraron fotos.", page: "Página",
+  pleaseCheck: "MARCAR POR FAVOR:", change: "Cambio", orWord: "o", pleaseSpecify: "(especificar aquí)",
 };
 
 const PL: PdfLabels = {
@@ -88,6 +98,8 @@ const PL: PdfLabels = {
   summary: "Podsumowanie", recommendedActions: "Zalecane działania", photo: "Zdjęcie",
   createdOn: "Utworzono", colStatus: "Status", colPriority: "Priorytet", colResponsible: "Odpowiedzialny", colDescShort: "Opis",
   openTasks: "Otwarte zadania", completed: "Ukończone", photos: "Zdjęcia",
+  contents: "Spis treści", floor: "Kondygnacja", room: "Pomieszczenie", noPhotos: "Brak zdjęć.", page: "Strona",
+  pleaseCheck: "PROSZĘ ZAZNACZYĆ:", change: "Zmiana", orWord: "lub", pleaseSpecify: "(proszę podać tutaj)",
 };
 
 const RU: PdfLabels = {
@@ -100,6 +112,8 @@ const RU: PdfLabels = {
   summary: "Сводка", recommendedActions: "Рекомендуемые меры", photo: "Фото",
   createdOn: "Создано", colStatus: "Статус", colPriority: "Приоритет", colResponsible: "Ответственный", colDescShort: "Описание",
   openTasks: "Открытые задачи", completed: "Выполнено", photos: "Фото",
+  contents: "Содержание", floor: "Этаж", room: "Помещение", noPhotos: "Фото не добавлены.", page: "Стр.",
+  pleaseCheck: "ОТМЕТЬТЕ:", change: "Изменение", orWord: "или", pleaseSpecify: "(укажите здесь)",
 };
 
 const UK: PdfLabels = {
@@ -112,6 +126,8 @@ const UK: PdfLabels = {
   summary: "Підсумок", recommendedActions: "Рекомендовані заходи", photo: "Фото",
   createdOn: "Створено", colStatus: "Статус", colPriority: "Пріоритет", colResponsible: "Відповідальний", colDescShort: "Опис",
   openTasks: "Відкриті завдання", completed: "Виконано", photos: "Фото",
+  contents: "Зміст", floor: "Поверх", room: "Приміщення", noPhotos: "Фото не додані.", page: "Стор.",
+  pleaseCheck: "ПОЗНАЧТЕ:", change: "Зміна", orWord: "або", pleaseSpecify: "(вкажіть тут)",
 };
 
 const RO: PdfLabels = {
@@ -124,6 +140,8 @@ const RO: PdfLabels = {
   summary: "Rezumat", recommendedActions: "Măsuri recomandate", photo: "Foto",
   createdOn: "Creat la", colStatus: "Stare", colPriority: "Prioritate", colResponsible: "Responsabil", colDescShort: "Descriere",
   openTasks: "Sarcini deschise", completed: "Finalizat", photos: "Foto",
+  contents: "Cuprins", floor: "Etaj", room: "Încăpere", noPhotos: "Nicio fotografie.", page: "Pagina",
+  pleaseCheck: "BIFAȚI:", change: "Modificare", orWord: "sau", pleaseSpecify: "(precizați aici)",
 };
 
 const BG: PdfLabels = {
@@ -136,6 +154,8 @@ const BG: PdfLabels = {
   summary: "Обобщение", recommendedActions: "Препоръчани мерки", photo: "Снимка",
   createdOn: "Създадено на", colStatus: "Статус", colPriority: "Приоритет", colResponsible: "Отговорник", colDescShort: "Описание",
   openTasks: "Отворени задачи", completed: "Изпълнено", photos: "Снимки",
+  contents: "Съдържание", floor: "Етаж", room: "Помещение", noPhotos: "Няма снимки.", page: "Стр.",
+  pleaseCheck: "МОЛЯ, ОТБЕЛЕЖЕТЕ:", change: "Промяна", orWord: "или", pleaseSpecify: "(моля, посочете тук)",
 };
 
 const TR: PdfLabels = {
@@ -148,6 +168,8 @@ const TR: PdfLabels = {
   summary: "Özet", recommendedActions: "Önerilen önlemler", photo: "Fotoğraf",
   createdOn: "Oluşturulma", colStatus: "Durum", colPriority: "Öncelik", colResponsible: "Sorumlu", colDescShort: "Açıklama",
   openTasks: "Açık görevler", completed: "Tamamlandı", photos: "Fotoğraflar",
+  contents: "İçindekiler", floor: "Kat", room: "Oda", noPhotos: "Fotoğraf yok.", page: "Sayfa",
+  pleaseCheck: "LÜTFEN İŞARETLEYİN:", change: "Değişiklik", orWord: "veya", pleaseSpecify: "(lütfen burada belirtin)",
 };
 
 const LABELS: Record<Language, PdfLabels> = { de: DE, en: EN, fr: FR, es: ES, pl: PL, ru: RU, uk: UK, ro: RO, bg: BG, tr: TR };

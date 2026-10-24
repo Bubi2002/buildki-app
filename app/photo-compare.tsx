@@ -29,6 +29,7 @@ import { buildExportDetailsHeaderHtml } from "@/lib/pdf-meta-header";
 import { getProjectStructure, type Room as ProjectRoom, type Floor as ProjectFloor } from "@/lib/room-store";
 import { buildPremiumHtml, resolveBrandingLogo } from "@/lib/pdf-premium";
 import { resolveDocUri } from "@/lib/resolve-doc-uri";
+import { pdfLocale } from "@/lib/pdf-i18n";
 import { generateAndSharePdf, type PdfCard, type PdfImage } from "@/lib/pdf-professional";
 import { getPdfBranding } from "@/lib/pdf-branding-store";
 
@@ -74,7 +75,7 @@ async function persistCompareImage(uri: string): Promise<string> {
 }
 
 export default function PhotoCompareScreen() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string }>();
@@ -268,8 +269,8 @@ export default function PhotoCompareScreen() {
       const cards: PdfCard[] = [];
       for (const p of pairs) {
         const images: PdfImage[] = [];
-        const before = await toData(p.beforeUri); if (before) images.push({ base64: before, caption: "Vorher" });
-        const after = await toData(p.afterUri); if (after) images.push({ base64: after, caption: "Nachher" });
+        const before = await toData(p.beforeUri); if (before) images.push({ base64: before, caption: t('vorher') });
+        const after = await toData(p.afterUri); if (after) images.push({ base64: after, caption: t('nachher') });
         cards.push({
           title: p.label || t('vorhernachher'),
           fields: [{ label: "Raum", value: p.room || "" }, { label: "Gewerk", value: p.trade || "" }],
@@ -281,7 +282,7 @@ export default function PhotoCompareScreen() {
         title: t('vorhernachher'),
         subtitle: projectName || undefined,
         reportType: t('vorhernachher'),
-        datum: new Date().toLocaleDateString("de-DE"),
+        datum: new Date().toLocaleDateString(pdfLocale(language)),
         projekt: projectName || undefined,
         sections: [{ title: `${t('vorhernachher')} (${pairs.length})`, content: "", cards }],
         accentColor: "#8A6E52",
@@ -367,6 +368,7 @@ export default function PhotoCompareScreen() {
         reportTag: t('vergleich'),
         body,
         logoDataUri,
+        lang: language,
       });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
@@ -379,7 +381,7 @@ export default function PhotoCompareScreen() {
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return d.toLocaleDateString(pdfLocale(language), { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
   // Detail view with slider

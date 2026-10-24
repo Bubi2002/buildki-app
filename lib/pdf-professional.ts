@@ -14,6 +14,8 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Language } from "./i18n";
+import { getPdfLabels } from "./pdf-i18n";
 import { renderLetterhead } from "./pdf-premium";
 
 const COMPANY_LOGO_KEY = "company_logo_base64";
@@ -75,6 +77,8 @@ export interface ProfessionalPdfOptions {
   title: string;
   subtitle?: string;
   reportType?: string;
+  /** App language for the fixed chrome labels (defaults to German). */
+  lang?: Language;
   datum: string;
   projekt?: string;
   projektNummer?: string;
@@ -135,6 +139,7 @@ const PROF_PILL_COLORS: Record<string, string> = {
 };
 
 export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): string {
+  const Lp = getPdfLabels(options.lang || "de");
   const {
     title,
     subtitle,
@@ -181,10 +186,10 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
 
   // Info grid (icon-labelled project meta).
   const infoCols: string[] = [];
-  if (projekt) infoCols.push(`<div class="infocol"><div class="lbl">${icoBuilding} Projekt</div><div class="val">${esc(projekt)}</div></div>`);
-  infoCols.push(`<div class="infocol"><div class="lbl">${icoCal} Datum</div><div class="val">${esc(datum)}</div></div>`);
-  if (reportType) infoCols.push(`<div class="infocol"><div class="lbl">${icoTag} Berichtstyp</div><div class="val">${esc(reportType)}</div></div>`);
-  if (projektNummer) infoCols.push(`<div class="infocol"><div class="lbl">${icoHash} Projekt-Nr.</div><div class="val">${esc(projektNummer)}</div></div>`);
+  if (projekt) infoCols.push(`<div class="infocol"><div class="lbl">${icoBuilding} ${esc(Lp.project)}</div><div class="val">${esc(projekt)}</div></div>`);
+  infoCols.push(`<div class="infocol"><div class="lbl">${icoCal} ${esc(Lp.date)}</div><div class="val">${esc(datum)}</div></div>`);
+  if (reportType) infoCols.push(`<div class="infocol"><div class="lbl">${icoTag} ${esc(Lp.reportType)}</div><div class="val">${esc(reportType)}</div></div>`);
+  if (projektNummer) infoCols.push(`<div class="infocol"><div class="lbl">${icoHash} ${esc(Lp.protocolNr)}</div><div class="val">${esc(projektNummer)}</div></div>`);
   const infoHtml = `<div class="infogrid">${infoCols.join("")}</div>`;
 
   // Auto-dashboard: sections whose title ends with "(N)" become stat cards.
@@ -298,7 +303,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
   const authorLine = [companyInfo?.name, companyInfo?.phone, companyInfo?.email, companyInfo?.website, companyInfo?.address]
     .map((s) => (s || "").trim()).filter(Boolean).join("  ·  ");
   const footerLeft = escCss(
-    (footerText || authorLine || (projekt ? `Projekt: ${projekt}` : "BuildKI")).replace(/\r?\n+/g, "  ·  "),
+    (footerText || authorLine || (projekt ? `${Lp.project}: ${projekt}` : "BuildKI")).replace(/\r?\n+/g, "  ·  "),
   );
 
   return `<!DOCTYPE html>
@@ -313,7 +318,7 @@ export function generateProfessionalPdfHtml(options: ProfessionalPdfOptions): st
     @page {
       margin: 18mm 0 18mm 0;
       @bottom-left { content: "${footerLeft}"; font-size: 8px; color: #94a3b8; padding-left: 16mm; }
-      @bottom-right { content: "Seite " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding-right: 16mm; }
+      @bottom-right { content: "${escCss(Lp.page)} " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding-right: 16mm; }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -489,6 +494,8 @@ export async function generateAndSharePdf(options: ProfessionalPdfOptions): Prom
       const stored = await getCompanyInfo();
       if (stored) options.companyInfo = stored;
     }
+    // Chrome labels follow the app language (content stays as passed in).
+    if (!options.lang) options.lang = (((await AsyncStorage.getItem("app_language")) || "de") as Language);
 
     // Make the header show the real company logo (like the other PDFs) instead
     // of the generic house icon. The logo lives in the PDF branding store; pull

@@ -9,6 +9,8 @@
  */
 import * as FileSystem from "expo-file-system/legacy";
 import type { PdfBranding } from "./pdf-branding-store";
+import type { Language } from "./i18n";
+import { getPdfLabels } from "./pdf-i18n";
 
 const NAVY = "#1E3A5F";
 
@@ -178,8 +180,11 @@ export function buildPremiumHtml(opts: {
   extraCss?: string;
   /** Pre-resolved base64 data URI of the logo (see resolveBrandingLogo). */
   logoDataUri?: string;
+  /** App language for the footer page label (defaults to German). */
+  lang?: Language;
 }): string {
   const { branding, accentColor, title, subtitle, reportTag, info, body, extraCss, logoDataUri } = opts;
+  const pageLabel = getPdfLabels(opts.lang || "de").page;
   // Single brand accent for the whole document: the configured Firmenfarbe,
   // falling back to the house navy. Everything that used to be hard-navy now
   // follows this so one setting themes every report consistently.
@@ -215,7 +220,7 @@ export function buildPremiumHtml(opts: {
   const footerLeft = escCss(opts.footerLeft || branding.companyName || branding.footerText || "BuildKI");
   const footerCenter = escCss(opts.footerCenter || "");
   const pageBox = branding.showPageNumbers
-    ? `@bottom-right { content: "Seite " counter(page) " von " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
+    ? `@bottom-right { content: "${escCss(pageLabel)} " counter(page) " / " counter(pages); font-size: 8px; color: #94a3b8; padding: 0 14mm 7mm 0; }`
     : "";
   const centerBox = footerCenter
     ? `@bottom-center { content: "${footerCenter}"; font-size: 8px; color: #94a3b8; padding: 0 0 7mm 0; }`
