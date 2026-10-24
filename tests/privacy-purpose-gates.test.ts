@@ -48,8 +48,8 @@ describe("Privacy-by-default and purpose gates", () => {
 
   it("requires a per-recording information confirmation and stores local raw audio when processing is off", () => {
     const source = read("app/(tabs)/record.tsx");
-    expect(source).toContain("Personen vor Aufnahme informieren");
-    expect(source).toContain("Bestätigt – Aufnahme starten");
+    expect(source).toContain("record_inform_persons_title");
+    expect(source).toContain("record_inform_persons_confirm");
     expect(source).toContain("const canProcessWithServer = privacyChoices.aiProcessing && privacyChoices.cloudSync");
     expect(source).toContain("Lokale Aufnahme – Verarbeitung deaktiviert");
     expect(source).toContain("sourceAudioUri: fileUri");

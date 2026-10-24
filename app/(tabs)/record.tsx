@@ -1417,12 +1417,12 @@ export default function RecordScreen() {
     }
 
     Alert.alert(
-      "Personen vor Aufnahme informieren",
+      t('record_inform_persons_title' as any),
       t('record_inform_persons_msg' as any),
       [
         { text: t('btn_abbrechen'), style: "cancel" },
         {
-          text: "Bestätigt – Aufnahme starten",
+          text: t('record_inform_persons_confirm' as any),
           onPress: () => beginRecordingAfterNotice(),
         },
       ],
